@@ -2,6 +2,7 @@ name = "syston-postbus"
 main = "dist/index.js"
 compatibility_date = "2025-09-30"
 minify = true
+workers_dev = true
 
 [observability]
 enabled = true
@@ -23,8 +24,9 @@ YT_REDIRECT_URL = "https://syston-postbus.team-platform-2025.workers.dev/api/v1/
 
 [[kv_namespaces]]
 binding = "KV_IDEMP"
-id = "5948d4a91ac04b50904a06c923221994"   # <-- replace after Step 3
+id = "5948d4a91ac04b50904a06c923221994"   # <-- replace after Step 3 (if regenerated)
 
+# --- Queues
 [[queues.producers]]
 binding = "POST_QUEUE"
 queue = "post-queue"
@@ -36,18 +38,19 @@ queue = "dead-letter"
 [[queues.consumers]]
 queue = "post-queue"
 
+# --- Durable Object
 [[durable_objects.bindings]]
 name = "TenantRateLimiter"
 class_name = "TenantRateLimiter"
 
+# --- DO migration
 [[migrations]]
 tag = "v1"
 new_classes = [ "TenantRateLimiter" ]
-
-workers_dev = true
 
 # Custom domain routes (update zone_name with your actual domain)
 # routes = [
 #   { pattern = "api.YOURBRAND.com/*", zone_name = "YOURBRAND.com" }
 # ]
+
 
