@@ -1,0 +1,13 @@
+name = "setup-console"
+main = "index.ts"
+compatibility_date = "2025-09-30"
+workers_dev = true
+
+[vars]
+BACKEND_URL = "https://syston-postbus.team-platform-2025.workers.dev"
+API_VERSION = "v1"
+
+# Custom domain routes (update zone_name with your actual domain)
+# routes = [
+#   { pattern = "setup.YOURBRAND.com/*", zone_name = "YOURBRAND.com" }
+# ]

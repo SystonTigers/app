@@ -1,0 +1,34 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+dist/
+.worker-next/
+.wrangler/
+
+# Logs
+*.log
+npm-debug.log*
+.DS_Store
+
+# Environment & Secrets
+.env
+.env.local
+.dev.vars
+*.pem
+*.key
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+Thumbs.db
+desktop.ini
+
+# Wrangler
+.mf/

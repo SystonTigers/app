@@ -1,0 +1,20 @@
+name = "syston-fixtures"
+main = "index.ts"
+compatibility_date = "2025-09-30"
+workers_dev = true
+
+[observability]
+enabled = true
+
+[vars]
+CACHE_TTL_SECS = "3600"
+
+[[kv_namespaces]]
+binding = "KV_FIXTURES"
+id = "52ed67601985488293159bf93f4d9283"
+
+# Custom domain routes (update zone_name with your actual domain)
+# routes = [
+#   { pattern = "fixtures.YOURBRAND.com/*", zone_name = "YOURBRAND.com" }
+# ]
+

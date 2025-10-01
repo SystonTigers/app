@@ -1,0 +1,19 @@
+{
+  "type": "module",
+  "scripts": {
+    "build": "esbuild src/index.ts --bundle --format=esm --outdir=dist && esbuild src/queue-consumer.ts --bundle --format=esm --outdir=dist",
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20240919.0",
+    "esbuild": "^0.23.0",
+    "typescript": "^5.6.0",
+    "wrangler": "^3.80.0"
+  },
+  "dependencies": {
+    "jose": "^6.1.0",
+    "node-fetch": "^3.3.2",
+    "zod": "^3.25.76"
+  }
+}
