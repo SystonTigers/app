@@ -10,9 +10,16 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: '20' }
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'   # keep 20 if you prefer, 22 matches your local
+
+      - name: Install Wrangler v4 (global)
+        run: npm install -g wrangler@4
+
+      # --- Backend
       - name: Install deps (backend)
         working-directory: backend
         run: npm ci
@@ -23,28 +30,31 @@ jobs:
 
       - name: Publish backend
         working-directory: backend
-        run: npx wrangler deploy --minify
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: wrangler deploy --minify
 
+      # --- Fixtures
       - name: Publish fixtures
         working-directory: workers/fixtures
-        run: npx wrangler deploy --minify
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: wrangler deploy --minify
 
+      # --- Admin
       - name: Publish admin console
         working-directory: admin
-        run: npx wrangler deploy --minify
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: wrangler deploy --minify
 
+      # --- Setup
       - name: Publish setup console
         working-directory: setup
-        run: npx wrangler deploy --minify
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: wrangler deploy --minify
