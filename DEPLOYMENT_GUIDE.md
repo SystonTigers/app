@@ -50,3 +50,28 @@ wrangler deploy
 
 - Add repo secrets: `CF_API_TOKEN`, `CF_ACCOUNT_ID`.
 - Push to `main` → auto-deploy.
+
+## 7. Generate Admin Token (no 403)
+
+From PowerShell:
+```powershell
+cd "$HOME\OneDrive\Desktop\SystonApp\backend"
+
+# Use the SAME value you set with `wrangler secret put JWT_SECRET`
+# (if your original secret was base64, pass that base64 here)
+.\scripts\print-admin-jwt.ps1 -JwtSecret "<YOUR_JWT_SECRET>"
+
+# Copy the printed eyJ... token:
+$env:ADMIN_JWT = "PASTE_TOKEN_HERE"
+
+# Test an admin endpoint (example: create album)
+$BASE="https://syston-postbus.team-platform-2025.workers.dev"
+$HDR="authorization: Bearer $env:ADMIN_JWT"
+'{"tenant":"test-tenant","title":"U13 v Rivals","teamId":"u13"}' |
+  curl.exe -i -X POST "$BASE/api/v1/admin/gallery/albums" -H $HDR -H "content-type: application/json" --data-binary "@-"
+```
+
+If you still see 403:
+
+* Decode the token on jwt.io and confirm `roles: ["admin"]`, `iss`, `aud`, `exp`.
+* Ensure the **JWT_SECRET used to sign** equals the **wrangler secret** set in the worker.

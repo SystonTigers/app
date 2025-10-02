@@ -1,30 +1,35 @@
 // scripts/make-admin-jwt.mjs
 import { SignJWT } from "jose";
 
-const secret = process.env.JWT_SECRET;
-if (!secret) {
-  console.error("Set JWT_SECRET env var first (same value you stored with wrangler).");
+const raw = process.env.JWT_SECRET || "";
+if (!raw) {
+  console.error("ERROR: JWT_SECRET env var is required in this shell (same value as wrangler secret).");
   process.exit(1);
 }
 
-const key = new TextEncoder().encode(secret);
+// Accept either plain text or base64. Try both.
+let secretBytes;
+try {
+  secretBytes = Uint8Array.from(atob(raw), c => c.charCodeAt(0));
+} catch {
+  secretBytes = new TextEncoder().encode(raw);
+}
 
-// expire in ~180 days (in seconds)
 const now = Math.floor(Date.now() / 1000);
-const exp = now + 180 * 24 * 60 * 60;
+const exp = now + 60 * 60 * 24 * 180; // 180 days
 
 const payload = {
   iss: "syston.app",
   aud: "syston-mobile",
   sub: "admin-user",
   tenantId: "system",
-  role: "admin",
+  roles: ["admin"], // IMPORTANT: array
   iat: now,
-  exp
+  exp,
 };
 
 const token = await new SignJWT(payload)
-  .setProtectedHeader({ alg: "HS256", typ: "JWT" })
-  .sign(key);
+  .setProtectedHeader({ alg: "HS256" })
+  .sign(secretBytes);
 
 console.log(token);

@@ -43,3 +43,18 @@ Use Admin Console or:
 ```
 
 Queue another job → should go direct.
+
+## Admin JWT Smoke Test
+
+```powershell
+cd "$HOME\OneDrive\Desktop\SystonApp\backend"
+# Print a token
+.\scripts\print-admin-jwt.ps1 -JwtSecret "<YOUR_JWT_SECRET>"
+$env:ADMIN_JWT="PASTE_TOKEN"
+
+# Album create (should return 200/201)
+$BASE="https://syston-postbus.team-platform-2025.workers.dev"
+$HDR="authorization: Bearer $env:ADMIN_JWT"
+'{"tenant":"test-tenant","title":"U13 v Rivals","teamId":"u13"}' |
+  curl.exe -i -X POST "$BASE/api/v1/admin/gallery/albums" -H $HDR -H "content-type: application/json" --data-binary "@-"
+```
