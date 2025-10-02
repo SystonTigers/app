@@ -1,4 +1,4 @@
-import { TenantConfig, TenantFlags, TenantId } from "../types";
+import { TenantConfig, TenantFlags, TenantId, TenantCredentials, Channel } from "../types";
 
 const key = (tenant: TenantId) => `tenant:${tenant}`;
 
@@ -9,6 +9,7 @@ export async function getTenantConfig(env: any, tenant: TenantId): Promise<Tenan
 }
 
 export async function putTenantConfig(env: any, cfg: TenantConfig): Promise<void> {
+  cfg.updated_at = Date.now();
   await env.KV_IDEMP.put(key(cfg.id), JSON.stringify(cfg));
 }
 
@@ -18,7 +19,10 @@ export async function ensureTenant(env: any, tenant: TenantId): Promise<TenantCo
   const fresh: TenantConfig = {
     id: tenant,
     flags: { use_make: false, direct_yt: true },
+    creds: {},
     makeWebhookUrl: null,
+    created_at: Date.now(),
+    updated_at: Date.now(),
   };
   await putTenantConfig(env, fresh);
   return fresh;
@@ -41,4 +45,39 @@ export async function setMakeWebhook(env: any, tenant: TenantId, url: string): P
 // Backward compatibility: old getTenant function
 export async function getTenant(env: any, tenantId: string) {
   return await ensureTenant(env, tenantId);
+}
+
+// New helper functions for per-channel management
+
+export async function setTenantFlags(env: any, tenant: TenantId, patch: Partial<TenantFlags>): Promise<TenantConfig> {
+  const cfg = await ensureTenant(env, tenant);
+  cfg.flags = { ...cfg.flags, ...patch };
+  await putTenantConfig(env, cfg);
+  return cfg;
+}
+
+export async function setTenantCreds(env: any, tenant: TenantId, patch: Partial<TenantCredentials>): Promise<TenantConfig> {
+  const cfg = await ensureTenant(env, tenant);
+  cfg.creds = { ...cfg.creds, ...patch };
+  await putTenantConfig(env, cfg);
+  return cfg;
+}
+
+export async function setChannelWebhook(env: any, tenant: TenantId, channel: Channel, url: string): Promise<TenantConfig> {
+  const cfg = await ensureTenant(env, tenant);
+  if (!cfg.creds) cfg.creds = {};
+  if (!cfg.creds.make) cfg.creds.make = {};
+  cfg.creds.make[channel] = url;
+  await putTenantConfig(env, cfg);
+  return cfg;
+}
+
+export async function setYouTubeBYOGoogle(env: any, tenant: TenantId, client_id: string, client_secret: string): Promise<TenantConfig> {
+  const cfg = await ensureTenant(env, tenant);
+  if (!cfg.creds) cfg.creds = {};
+  if (!cfg.creds.yt) cfg.creds.yt = {};
+  cfg.creds.yt.client_id = client_id;
+  cfg.creds.yt.client_secret = client_secret;
+  await putTenantConfig(env, cfg);
+  return cfg;
 }

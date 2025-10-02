@@ -4,7 +4,7 @@ import { z } from "zod";
 import { PostReqSchema, json, cors, readIdempotencyKey } from "./services/util";
 import { requireJWT, hasRole } from "./services/auth";
 import { ensureIdempotent } from "./services/idempotency";
-import { ensureTenant, setMakeWebhook, updateFlags, putTenantConfig, getTenantConfig } from "./services/tenants";
+import { ensureTenant, setMakeWebhook, updateFlags, putTenantConfig, getTenantConfig, setTenantFlags, setChannelWebhook, setYouTubeBYOGoogle } from "./services/tenants";
 import { issueTenantAdminJWT } from "./services/jwt";
 import type { TenantConfig } from "./types";
 import queueWorker from "./queue-consumer";
@@ -209,6 +209,68 @@ export default {
       await putTenantConfig(env, cfg);
 
       return new Response("YouTube connected. You can close this window.", { status: 200 });
+    }
+
+    // POST /api/v1/admin/tenant/channel/flags
+    // Set per-channel managed toggles
+    if (url.pathname === `/api/${v}/admin/tenant/channel/flags` && req.method === "POST") {
+      const user = await requireJWT(req, env).catch(() => null);
+      if (!user || !hasRole(user, "admin")) {
+        return json({ success: false, error: { code: "FORBIDDEN" } }, 403, corsHdrs);
+      }
+      const body = await req.json().catch(() => ({}));
+      const schema = z.object({
+        tenant: z.string().min(1),
+        managed: z.record(z.boolean()).optional(),
+      });
+      const parsed = schema.safeParse(body);
+      if (!parsed.success) return json({ success: false, error: { code: "VALIDATION", details: parsed.error.issues } }, 400, corsHdrs);
+
+      const { tenant, managed } = parsed.data;
+      const updated = await setTenantFlags(env, tenant, { managed });
+      return json({ success: true, data: { tenant: updated.id, flags: updated.flags } }, 200, corsHdrs);
+    }
+
+    // POST /api/v1/admin/tenant/channel/webhook
+    // Set BYO-Make webhook per channel
+    if (url.pathname === `/api/${v}/admin/tenant/channel/webhook` && req.method === "POST") {
+      const user = await requireJWT(req, env).catch(() => null);
+      if (!user || !hasRole(user, "admin")) {
+        return json({ success: false, error: { code: "FORBIDDEN" } }, 403, corsHdrs);
+      }
+      const body = await req.json().catch(() => ({}));
+      const schema = z.object({
+        tenant: z.string().min(1),
+        channel: z.enum(["yt", "fb", "ig", "tiktok", "x"]),
+        url: z.string().url(),
+      });
+      const parsed = schema.safeParse(body);
+      if (!parsed.success) return json({ success: false, error: { code: "VALIDATION", details: parsed.error.issues } }, 400, corsHdrs);
+
+      const { tenant, channel, url: webhookUrl } = parsed.data;
+      const updated = await setChannelWebhook(env, tenant, channel, webhookUrl);
+      return json({ success: true, data: { tenant: updated.id, channel, webhook: webhookUrl } }, 200, corsHdrs);
+    }
+
+    // POST /api/v1/admin/tenant/yt/byo-google
+    // Set BYO-Google client (YouTube)
+    if (url.pathname === `/api/${v}/admin/tenant/yt/byo-google` && req.method === "POST") {
+      const user = await requireJWT(req, env).catch(() => null);
+      if (!user || !hasRole(user, "admin")) {
+        return json({ success: false, error: { code: "FORBIDDEN" } }, 403, corsHdrs);
+      }
+      const body = await req.json().catch(() => ({}));
+      const schema = z.object({
+        tenant: z.string().min(1),
+        client_id: z.string().min(1),
+        client_secret: z.string().min(1),
+      });
+      const parsed = schema.safeParse(body);
+      if (!parsed.success) return json({ success: false, error: { code: "VALIDATION", details: parsed.error.issues } }, 400, corsHdrs);
+
+      const { tenant, client_id, client_secret } = parsed.data;
+      const updated = await setYouTubeBYOGoogle(env, tenant, client_id, client_secret);
+      return json({ success: true, data: { tenant: updated.id, byo_google: true } }, 200, corsHdrs);
     }
 
     // -------- Tenant self-serve endpoints --------
