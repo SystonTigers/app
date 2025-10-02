@@ -5,8 +5,8 @@ workers_dev = true
 
 [vars]
 BACKEND_URL = "https://syston-postbus.team-platform-2025.workers.dev"
-# Optional: default tenant (you can change it on the page)
 DEFAULT_TENANT = "test-tenant"
+API_VERSION = "v1"
 
 # Custom domain routes (update zone_name with your actual domain)
 # routes = [

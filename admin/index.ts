@@ -2,9 +2,17 @@
 export interface Env {
   BACKEND_URL: string
   DEFAULT_TENANT?: string
+  API_VERSION?: string
   ADMIN_USER: string
   ADMIN_PASS: string
   ADMIN_JWT: string
+}
+
+// Helper functions for URL building
+function trimSlash(s: string) { return s.replace(/\/+$/, ""); }
+function apiBase(env: Env) {
+  const ver = env.API_VERSION || "v1";
+  return `${trimSlash(env.BACKEND_URL)}/api/${ver}`;
 }
 
 function unauthorized() {
@@ -42,10 +50,76 @@ export default {
     const url = new URL(req.url)
     if (!checkBasicAuth(req, env)) return unauthorized()
 
+    // Diagnostics page
+    if (req.method === "GET" && url.pathname === "/diag") {
+      const base = apiBase(env);
+      const jwtMasked = (env.ADMIN_JWT || "").slice(0, 16) + "...";
+
+      let diagHtml = `<h3>Diagnostics</h3>`;
+      diagHtml += `<p><strong>BACKEND_URL:</strong> <code>${env.BACKEND_URL}</code></p>`;
+      diagHtml += `<p><strong>API_VERSION:</strong> <code>${env.API_VERSION || "v1"}</code></p>`;
+      diagHtml += `<p><strong>API Base:</strong> <code>${base}</code></p>`;
+      diagHtml += `<p><strong>ADMIN_JWT (first 16):</strong> <code>${jwtMasked}</code></p>`;
+      diagHtml += `<hr>`;
+
+      const authHeaders = {
+        "authorization": `Bearer ${env.ADMIN_JWT}`,
+        "content-type": "application/json",
+        "x-admin-console": "true",
+      };
+
+      // Test 1: whoami
+      try {
+        const whoamiUrl = `${base}/admin/whoami`;
+        diagHtml += `<h4>Test 1: GET ${whoamiUrl}</h4>`;
+        const r1 = await fetch(whoamiUrl, { headers: authHeaders });
+        const body1 = await r1.text();
+        diagHtml += `<p><strong>Status:</strong> <span class="${r1.ok ? 'ok' : 'err'}">${r1.status}</span></p>`;
+        diagHtml += `<pre>${body1.slice(0, 300)}</pre><hr>`;
+      } catch (e: any) {
+        diagHtml += `<p class="err">Error: ${e.message}</p><hr>`;
+      }
+
+      // Test 2: healthz
+      try {
+        const healthUrl = `${trimSlash(env.BACKEND_URL)}/healthz`;
+        diagHtml += `<h4>Test 2: GET ${healthUrl}</h4>`;
+        const r2 = await fetch(healthUrl);
+        const body2 = await r2.text();
+        diagHtml += `<p><strong>Status:</strong> <span class="${r2.ok ? 'ok' : 'err'}">${r2.status}</span></p>`;
+        diagHtml += `<pre>${body2.slice(0, 300)}</pre><hr>`;
+      } catch (e: any) {
+        diagHtml += `<p class="err">Error: ${e.message}</p><hr>`;
+      }
+
+      // Test 3: flags test
+      try {
+        const flagsUrl = `${base}/admin/tenant/flags`;
+        diagHtml += `<h4>Test 3: POST ${flagsUrl}</h4>`;
+        const testBody = JSON.stringify({ tenant: "diag-tenant", flags: { use_make: false, direct_yt: true } });
+        const r3 = await fetch(flagsUrl, {
+          method: "POST",
+          headers: authHeaders,
+          body: testBody,
+        });
+        const body3 = await r3.text();
+        diagHtml += `<p><strong>Status:</strong> <span class="${r3.ok ? 'ok' : 'err'}">${r3.status}</span></p>`;
+        diagHtml += `<pre>${body3.slice(0, 300)}</pre><hr>`;
+      } catch (e: any) {
+        diagHtml += `<p class="err">Error: ${e.message}</p><hr>`;
+      }
+
+      diagHtml += `<p><a href="/">Back to Home</a></p>`;
+      return html(diagHtml);
+    }
+
     // Home page with forms
     if (req.method === "GET" && url.pathname === "/") {
       const t = env.DEFAULT_TENANT || "test-tenant"
       return html(`
+        <p><a href="/diag">🔍 Diagnostics</a></p>
+        <hr>
+
         <form method=post action="/api/create">
           <h3>Create Tenant</h3>
           <input name="id"   placeholder="tenant id" required value="${t}">
@@ -237,12 +311,15 @@ export default {
     // Redirect user to Google OAuth via backend
     if (req.method === "GET" && url.pathname === "/yt/start") {
       const tenant = url.searchParams.get("tenant") || (env.DEFAULT_TENANT || "test-tenant")
-      const backend = env.BACKEND_URL.replace(/\/$/, "")
-      const auth = { authorization: `Bearer ${env.ADMIN_JWT}` }
+      const base = apiBase(env)
+      const auth = {
+        authorization: `Bearer ${env.ADMIN_JWT}`,
+        "x-admin-console": "true"
+      }
 
       try {
         // Expect backend to respond with { success: true, data: { url: "https://accounts.google.com/..." } }
-        const r = await fetch(`${backend}/api/v1/admin/yt/start?tenant=${encodeURIComponent(tenant)}`, { headers: auth })
+        const r = await fetch(`${base}/admin/yt/start?tenant=${encodeURIComponent(tenant)}`, { headers: auth })
         const data = await r.json().catch(() => ({}))
 
         if (!r.ok || !data?.success || !data?.data?.url) {
@@ -258,10 +335,11 @@ export default {
 
     if (req.method === "POST" && url.pathname.startsWith("/api/")) {
       const form = await req.formData()
-      const backend = env.BACKEND_URL.replace(/\/$/, "")
+      const base = apiBase(env)
       const auth = {
         authorization: `Bearer ${env.ADMIN_JWT}`,
         "content-type": "application/json",
+        "x-admin-console": "true",
       } as const
 
       try {
@@ -271,18 +349,19 @@ export default {
           const _display = String(form.get("name") || "").trim() // kept for future PATCH support
           if (!tenantId) return html(`<pre class="err">tenant id required</pre><a href="/">Back</a>`)
 
-          // Use managed defaults (matches your platform’s default)
+          // Use managed defaults (matches your platform's default)
           const flags = { use_make: false, direct_yt: true }
           const body = JSON.stringify({ tenant: tenantId, flags })
+          const endpointUrl = `${base}/admin/tenant/flags`
 
-          const r = await fetch(`${backend}/api/v1/admin/tenant/flags`, {
+          const r = await fetch(endpointUrl, {
             method: "POST",
             headers: auth,
             body,
           })
           const text = await r.text()
           return html(
-            `<pre class="${r.ok ? "ok" : "err"}">POST /tenant/flags (create) → ${r.status}\n${text}</pre><a href="/">Back</a>`,
+            `<pre class="${r.ok ? "ok" : "err"}">POST ${endpointUrl} (create) → ${r.status}\n${text}</pre><a href="/">Back</a>`,
           )
         }
 
@@ -294,7 +373,8 @@ export default {
               ? { use_make: true, direct_yt: false }
               : { use_make: false, direct_yt: true }
           const body = JSON.stringify({ tenant, flags })
-          const r = await fetch(`${backend}/api/v1/admin/tenant/flags`, {
+          const endpointUrl = `${base}/admin/tenant/flags`
+          const r = await fetch(endpointUrl, {
             method: "POST",
             headers: auth,
             body,
@@ -309,7 +389,7 @@ export default {
           const tenant = String(form.get("tenant"))
           const urlv = String(form.get("url"))
           const body = JSON.stringify({ tenant, make_webhook_url: urlv })
-          const r = await fetch(`${backend}/api/v1/admin/tenant/webhook`, {
+          const r = await fetch(`${base}/admin/tenant/webhook`, {
             method: "POST",
             headers: auth,
             body,
@@ -323,7 +403,7 @@ export default {
         if (url.pathname === "/api/fixtures-refresh") {
           const tenant = String(form.get("tenant"))
           const body = JSON.stringify({ tenant })
-          const r = await fetch(`${backend}/api/v1/admin/fixtures/refresh`, {
+          const r = await fetch(`${base}/admin/fixtures/refresh`, {
             method: "POST",
             headers: auth,
             body,
@@ -338,7 +418,7 @@ export default {
           const tenant = String(form.get("tenant"))
           const ttl = Number(form.get("ttl") || "60")
           const body = JSON.stringify({ tenant, ttl_minutes: ttl })
-          const r = await fetch(`${backend}/api/v1/admin/tenant/invite`, {
+          const r = await fetch(`${base}/admin/tenant/invite`, {
             method: "POST",
             headers: auth,
             body,
@@ -354,7 +434,7 @@ export default {
           const matchId = String(form.get("matchId"))
           const candidates = JSON.parse(String(form.get("candidates") || "[]"))
           const body = JSON.stringify({ tenant, candidates, maxVotesPerUser: 1 })
-          const r = await fetch(`${backend}/api/v1/admin/matches/${matchId}/motm/open`, {
+          const r = await fetch(`${base}/admin/matches/${matchId}/motm/open`, {
             method: "POST",
             headers: auth,
             body,
@@ -369,7 +449,7 @@ export default {
           const tenant = String(form.get("tenant"))
           const matchId = String(form.get("matchId"))
           const body = JSON.stringify({ tenant })
-          const r = await fetch(`${backend}/api/v1/admin/matches/${matchId}/motm/close`, {
+          const r = await fetch(`${base}/admin/matches/${matchId}/motm/close`, {
             method: "POST",
             headers: auth,
             body,
@@ -383,7 +463,7 @@ export default {
         if (url.pathname === "/api/motm/tally") {
           const tenant = String(form.get("tenant"))
           const matchId = String(form.get("matchId"))
-          const r = await fetch(`${backend}/api/v1/admin/matches/${matchId}/motm/tally?tenant=${tenant}`, {
+          const r = await fetch(`${base}/admin/matches/${matchId}/motm/tally?tenant=${tenant}`, {
             method: "GET",
             headers: auth,
           })
@@ -400,7 +480,7 @@ export default {
           const title = String(form.get("title"))
           const startUtc = String(form.get("startUtc"))
           const body = JSON.stringify({ tenant, id, type, title, startUtc })
-          const r = await fetch(`${backend}/api/v1/admin/events`, {
+          const r = await fetch(`${base}/admin/events`, {
             method: "POST",
             headers: auth,
             body,
@@ -418,7 +498,7 @@ export default {
           const home = String(form.get("home"))
           const away = String(form.get("away"))
           const body = JSON.stringify({ tenant, title, home, away })
-          const r = await fetch(`${backend}/api/v1/admin/matches/${matchId}/live/open`, {
+          const r = await fetch(`${base}/admin/matches/${matchId}/live/open`, {
             method: "POST",
             headers: auth,
             body,
@@ -436,7 +516,7 @@ export default {
           const minute = Number(form.get("minute") || "0")
           const payload = JSON.parse(String(form.get("payload") || "{}"))
           const body = JSON.stringify({ tenant, type, minute, payload })
-          const r = await fetch(`${backend}/api/v1/admin/matches/${matchId}/live/event`, {
+          const r = await fetch(`${base}/admin/matches/${matchId}/live/event`, {
             method: "POST",
             headers: auth,
             body,
@@ -451,7 +531,7 @@ export default {
           const tenant = String(form.get("tenant"))
           const matchId = String(form.get("matchId"))
           const body = JSON.stringify({ tenant })
-          const r = await fetch(`${backend}/api/v1/admin/matches/${matchId}/live/close`, {
+          const r = await fetch(`${base}/admin/matches/${matchId}/live/close`, {
             method: "POST",
             headers: auth,
             body,
@@ -468,7 +548,7 @@ export default {
           const userId = String(form.get("userId"))
           const text = String(form.get("text"))
           const body = JSON.stringify({ tenant, userId, text })
-          const r = await fetch(`${backend}/api/v1/chat/${roomId}/send`, {
+          const r = await fetch(`${base}/chat/${roomId}/send`, {
             method: "POST",
             headers: auth,
             body,
@@ -484,7 +564,7 @@ export default {
           const title = String(form.get("title"))
           const teamId = String(form.get("teamId") || "")
           const body = JSON.stringify({ tenant, title, teamId: teamId || undefined })
-          const r = await fetch(`${backend}/api/v1/media/albums`, {
+          const r = await fetch(`${base}/media/albums`, {
             method: "POST",
             headers: auth,
             body,
@@ -500,7 +580,7 @@ export default {
           const albumId = String(form.get("albumId"))
           const contentType = String(form.get("contentType"))
           const body = JSON.stringify({ tenant, contentType })
-          const r = await fetch(`${backend}/api/v1/media/albums/${albumId}/upload-url`, {
+          const r = await fetch(`${base}/media/albums/${albumId}/upload-url`, {
             method: "POST",
             headers: auth,
             body,
@@ -517,7 +597,7 @@ export default {
           const objectKey = String(form.get("objectKey"))
           const caption = String(form.get("caption") || "")
           const body = JSON.stringify({ tenant, objectKey, caption: caption || undefined })
-          const r = await fetch(`${backend}/api/v1/media/albums/${albumId}/commit`, {
+          const r = await fetch(`${base}/media/albums/${albumId}/commit`, {
             method: "POST",
             headers: auth,
             body,
@@ -534,7 +614,7 @@ export default {
           const name = String(form.get("name"))
           const ageGroup = String(form.get("ageGroup") || "")
           const body = JSON.stringify({ tenant, teamId, name, ageGroup: ageGroup || undefined })
-          const r = await fetch(`${backend}/api/v1/admin/teams`, {
+          const r = await fetch(`${base}/admin/teams`, {
             method: "POST",
             headers: auth,
             body,
@@ -558,7 +638,7 @@ export default {
             maxUses,
             ttl_minutes,
           })
-          const r = await fetch(`${backend}/api/v1/admin/invites/create`, {
+          const r = await fetch(`${base}/admin/invites/create`, {
             method: "POST",
             headers: auth,
             body,
@@ -575,7 +655,7 @@ export default {
           const teamId = String(form.get("teamId"))
           const type = String(form.get("type"))
           const body = JSON.stringify({ tenant, roomId, teamId, type })
-          const r = await fetch(`${backend}/api/v1/admin/chat/rooms`, {
+          const r = await fetch(`${base}/admin/chat/rooms`, {
             method: "POST",
             headers: auth,
             body,

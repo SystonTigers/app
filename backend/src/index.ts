@@ -39,6 +39,18 @@ export default {
 
     const v = env.API_VERSION || "v1";
 
+    // Log admin console requests
+    if (url.pathname.includes("/admin/")) {
+      const fromAdminConsole = req.headers.get("x-admin-console") === "true";
+      if (fromAdminConsole) {
+        console.log("ADMIN_CONSOLE_CALL", {
+          path: url.pathname,
+          method: req.method,
+          hdr_auth_present: !!req.headers.get("authorization"),
+        });
+      }
+    }
+
     // -------- Admin debug endpoint --------
 
     // GET /api/v1/admin/whoami
