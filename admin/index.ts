@@ -8,7 +8,10 @@ export interface Env {
 }
 
 function unauthorized() {
-  return new Response("Unauthorized", { status: 401, headers: { "WWW-Authenticate": 'Basic realm="admin"' }})
+  return new Response("Unauthorized", {
+    status: 401,
+    headers: { "WWW-Authenticate": 'Basic realm="admin"' },
+  })
 }
 
 function checkBasicAuth(req: Request, env: Env) {
@@ -19,12 +22,20 @@ function checkBasicAuth(req: Request, env: Env) {
   return u === env.ADMIN_USER && p === env.ADMIN_PASS
 }
 
-const html = (body: string) => new Response(
-  `<!doctype html><meta name=viewport content="width=device-width,initial-scale=1">
-  <style>body{font:14px system-ui;margin:20px;max-width:780px}form{margin:12px 0;padding:12px;border:1px solid #ddd;border-radius:10px}input,button{padding:8px;margin:4px 0}code{background:#f6f8fa;padding:2px 6px;border-radius:6px}</style>
-  <h2>Admin Console</h2>
-  ${body}`, { headers: { "content-type": "text/html; charset=utf-8" } }
-)
+const html = (body: string) =>
+  new Response(
+    `<!doctype html><meta name=viewport content="width=device-width,initial-scale=1">
+<style>
+  body{font:14px system-ui;margin:20px;max-width:780px}
+  form{margin:12px 0;padding:12px;border:1px solid #ddd;border-radius:10px}
+  input,button{padding:8px;margin:4px 0}
+  code{background:#f6f8fa;padding:2px 6px;border-radius:6px}
+  .ok{color:#137333}.err{color:#b00020}
+</style>
+<h2>Admin Console</h2>
+${body}`,
+    { headers: { "content-type": "text/html; charset=utf-8" } },
+  )
 
 export default {
   async fetch(req: Request, env: Env) {
@@ -37,9 +48,10 @@ export default {
       return html(`
         <form method=post action="/api/create">
           <h3>Create Tenant</h3>
-          <input name="id" placeholder="tenant id" required value="${t}">
+          <input name="id"   placeholder="tenant id" required value="${t}">
           <input name="name" placeholder="display name (optional)">
           <button>Create</button>
+          <p><small>Note: creation uses the Flags endpoint with defaults (managed mode).</small></p>
         </form>
 
         <form method=post action="/api/flags">
@@ -55,6 +67,12 @@ export default {
           <input name="tenant" placeholder="tenant id" required value="${t}">
           <input name="url" placeholder="https://hook.make.com/...." required>
           <button>Save Webhook</button>
+        </form>
+
+        <form method=get action="/yt/start">
+          <h3>YouTube OAuth (Managed plan)</h3>
+          <input name="tenant" placeholder="tenant id" required value="${t}">
+          <button>Connect YouTube</button>
         </form>
 
         <form method=post action="/api/fixtures-refresh">
@@ -74,62 +92,127 @@ export default {
       `)
     }
 
+    // Redirect user to Google OAuth via backend
+    if (req.method === "GET" && url.pathname === "/yt/start") {
+      const tenant = url.searchParams.get("tenant") || (env.DEFAULT_TENANT || "test-tenant")
+      const backend = env.BACKEND_URL.replace(/\/$/, "")
+      const auth = { authorization: `Bearer ${env.ADMIN_JWT}` }
+
+      try {
+        // Expect backend to respond with { success: true, data: { url: "https://accounts.google.com/..." } }
+        const r = await fetch(`${backend}/api/v1/admin/yt/start?tenant=${encodeURIComponent(tenant)}`, { headers: auth })
+        const data = await r.json().catch(() => ({}))
+
+        if (!r.ok || !data?.success || !data?.data?.url) {
+          const text = await r.text().catch(() => "Unknown error")
+          return html(`<pre class="err">GET /admin/yt/start → ${r.status}\n${text}</pre><a href="/">Back</a>`)
+        }
+
+        return Response.redirect(data.data.url, 302)
+      } catch (e: any) {
+        return html(`<pre class="err">Error: ${e?.message || e}</pre><a href="/">Back</a>`)
+      }
+    }
+
     if (req.method === "POST" && url.pathname.startsWith("/api/")) {
       const form = await req.formData()
       const backend = env.BACKEND_URL.replace(/\/$/, "")
-      const auth = { "authorization": `Bearer ${env.ADMIN_JWT}`, "content-type": "application/json" }
+      const auth = {
+        authorization: `Bearer ${env.ADMIN_JWT}`,
+        "content-type": "application/json",
+      } as const
 
       try {
         if (url.pathname === "/api/create") {
-          const body = JSON.stringify({ id: String(form.get("id")), name: String(form.get("name")||"") })
-          const r = await fetch(`${backend}/api/v1/admin/tenant/create`, { method:"POST", headers: auth, body })
+          // 👉 CREATE via flags endpoint (auto-creates if missing)
+          const tenantId = String(form.get("id") || "").trim()
+          const _display = String(form.get("name") || "").trim() // kept for future PATCH support
+          if (!tenantId) return html(`<pre class="err">tenant id required</pre><a href="/">Back</a>`)
+
+          // Use managed defaults (matches your platform’s default)
+          const flags = { use_make: false, direct_yt: true }
+          const body = JSON.stringify({ tenant: tenantId, flags })
+
+          const r = await fetch(`${backend}/api/v1/admin/tenant/flags`, {
+            method: "POST",
+            headers: auth,
+            body,
+          })
           const text = await r.text()
-          return html(`<pre>POST /tenant/create → ${r.status}\n${text}</pre><a href="/">Back</a>`)
+          return html(
+            `<pre class="${r.ok ? "ok" : "err"}">POST /tenant/flags (create) → ${r.status}\n${text}</pre><a href="/">Back</a>`,
+          )
         }
 
         if (url.pathname === "/api/flags") {
           const tenant = String(form.get("tenant"))
           const preset = String(form.get("preset"))
-          const flags = preset === "make" ? { use_make: true,  direct_yt: false }
-                                          : { use_make: false, direct_yt: true  }
+          const flags =
+            preset === "make"
+              ? { use_make: true, direct_yt: false }
+              : { use_make: false, direct_yt: true }
           const body = JSON.stringify({ tenant, flags })
-          const r = await fetch(`${backend}/api/v1/admin/tenant/flags`, { method:"POST", headers: auth, body })
+          const r = await fetch(`${backend}/api/v1/admin/tenant/flags`, {
+            method: "POST",
+            headers: auth,
+            body,
+          })
           const text = await r.text()
-          return html(`<pre>POST /tenant/flags → ${r.status}\n${text}</pre><a href="/">Back</a>`)
+          return html(
+            `<pre class="${r.ok ? "ok" : "err"}">POST /tenant/flags → ${r.status}\n${text}</pre><a href="/">Back</a>`,
+          )
         }
 
         if (url.pathname === "/api/webhook") {
           const tenant = String(form.get("tenant"))
           const urlv = String(form.get("url"))
           const body = JSON.stringify({ tenant, make_webhook_url: urlv })
-          const r = await fetch(`${backend}/api/v1/admin/tenant/webhook`, { method:"POST", headers: auth, body })
+          const r = await fetch(`${backend}/api/v1/admin/tenant/webhook`, {
+            method: "POST",
+            headers: auth,
+            body,
+          })
           const text = await r.text()
-          return html(`<pre>POST /tenant/webhook → ${r.status}\n${text}</pre><a href="/">Back</a>`)
+          return html(
+            `<pre class="${r.ok ? "ok" : "err"}">POST /tenant/webhook → ${r.status}\n${text}</pre><a href="/">Back</a>`,
+          )
         }
 
         if (url.pathname === "/api/fixtures-refresh") {
           const tenant = String(form.get("tenant"))
           const body = JSON.stringify({ tenant })
-          const r = await fetch(`${backend}/api/v1/admin/fixtures/refresh`, { method:"POST", headers: auth, body })
+          const r = await fetch(`${backend}/api/v1/admin/fixtures/refresh`, {
+            method: "POST",
+            headers: auth,
+            body,
+          })
           const text = await r.text()
-          return html(`<pre>POST /fixtures/refresh → ${r.status}\n${text}</pre><a href="/">Back</a>`)
+          return html(
+            `<pre class="${r.ok ? "ok" : "err"}">POST /fixtures/refresh → ${r.status}\n${text}</pre><a href="/">Back</a>`,
+          )
         }
 
         if (url.pathname === "/api/invite") {
           const tenant = String(form.get("tenant"))
           const ttl = Number(form.get("ttl") || "60")
           const body = JSON.stringify({ tenant, ttl_minutes: ttl })
-          const r = await fetch(`${backend}/api/v1/admin/tenant/invite`, { method:"POST", headers: auth, body })
+          const r = await fetch(`${backend}/api/v1/admin/tenant/invite`, {
+            method: "POST",
+            headers: auth,
+            body,
+          })
           const text = await r.text()
-          return html(`<pre>POST /tenant/invite → ${r.status}\n${text}</pre><a href="/">Back</a>`)
+          return html(
+            `<pre class="${r.ok ? "ok" : "err"}">POST /tenant/invite → ${r.status}\n${text}</pre><a href="/">Back</a>`,
+          )
         }
 
         return new Response("Not Found", { status: 404 })
       } catch (e: any) {
-        return html(`<pre>Error: ${e?.message || e}</pre><a href="/">Back</a>`)
+        return html(`<pre class="err">Error: ${e?.message || e}</pre><a href="/">Back</a>`)
       }
     }
 
     return new Response("Not Found", { status: 404 })
-  }
+  },
 }
