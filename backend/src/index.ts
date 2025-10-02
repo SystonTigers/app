@@ -420,5 +420,17 @@ export default {
   },
 
   // <- This wires the queue consumer to this worker
-  queue: queueWorker.queue
+  queue: queueWorker.queue,
+
+  // <- Cron handler (called by [triggers].crons in wrangler.toml)
+  async scheduled(controller: ScheduledController, env: any, ctx: ExecutionContext) {
+    console.log("cron tick", new Date().toISOString());
+
+    // OPTIONAL: event reminders (wire later)
+    // try {
+    //   await sendEventReminders(env);
+    // } catch (err) {
+    //   console.error("reminders failure", err);
+    // }
+  }
 };
