@@ -7,7 +7,6 @@ export interface Env {
   ADMIN_PASS: string
   ADMIN_JWT: string
   BACKEND: Fetcher
-  SHOW_DIAG?: boolean
 }
 
 // Helper functions for URL building
@@ -57,12 +56,8 @@ export default {
     const url = new URL(req.url)
     if (!checkBasicAuth(req, env)) return unauthorized()
 
-    // Diagnostics page - gated behind SHOW_DIAG env + ?diag=1 query flag
+    // Diagnostics page
     if (req.method === "GET" && url.pathname === "/diag") {
-      // Check if diagnostics are enabled
-      if (!env.SHOW_DIAG || url.searchParams.get("diag") !== "1") {
-        return html(`<pre class="err">Diagnostics disabled</pre><a href="/">Back</a>`)
-      }
       const base = apiBase(env);
       const tokenPrefix = (env.ADMIN_JWT || "").slice(0, 16);
 
@@ -133,7 +128,7 @@ export default {
     if (req.method === "GET" && url.pathname === "/") {
       const t = env.DEFAULT_TENANT || "test-tenant"
       return html(`
-        ${env.SHOW_DIAG ? '<p><a href="/diag?diag=1">🔍 Diagnostics</a></p>' : ""}
+        <p><a href="/diag">🔍 Diagnostics</a></p>
         <hr>
 
         <form method=post action="/api/create">

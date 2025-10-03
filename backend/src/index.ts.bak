@@ -4,7 +4,7 @@ import { z } from "zod";
 import { PostReqSchema, json, cors, readIdempotencyKey } from "./services/util";
 import { requireJWT, hasRole, requireAdmin } from "./services/auth";
 import { ensureIdempotent } from "./services/idempotency";
-import { ensureTenant, setMakeWebhook, updateFlags, putTenantConfig, getTenantConfig, setTenantFlags, setChannelWebhook, setYouTubeBYOGoogle, isAllowedWebhookHost } from "./services/tenants";
+import { ensureTenant, setMakeWebhook, updateFlags, putTenantConfig, getTenantConfig, setTenantFlags, setChannelWebhook, setYouTubeBYOGoogle } from "./services/tenants";
 import { issueTenantAdminJWT } from "./services/jwt";
 import type { TenantConfig } from "./types";
 import queueWorker from "./queue-consumer";
@@ -39,32 +39,16 @@ export default {
 
     const v = env.API_VERSION || "v1";
 
-    // Log admin console requests
-    if (url.pathname.includes("/admin/")) {
-      const fromAdminConsole = req.headers.get("x-admin-console") === "true";
-      if (fromAdminConsole) {
-        console.log("ADMIN_CONSOLE_CALL", {
-          path: url.pathname,
-          method: req.method,
-          hdr_auth_present: !!req.headers.get("authorization"),
-        });
-      }
-    }
-
     // -------- Admin debug endpoint --------
 
-    // GET /api/v1/admin/whoami - Debug endpoint to verify JWT is valid/parsed
+    // GET /api/v1/admin/whoami
     if (url.pathname === `/api/${v}/admin/whoami` && req.method === "GET") {
       try {
-        const claims = await requireJWT(req, env); // normalized claims
+        const claims = await requireAdmin(req, env);
         return json({ ok: true, claims }, 200, corsHdrs);
-      } catch (err: any) {
-        // If requireJWT throws a Response object, return it directly
-        if (err instanceof Response) {
-          return err;
-        }
-        console.error("WHOAMI_FAIL", err?.message, err?.stack);
-        return json({ ok: false, error: String(err?.message || err) }, 401, corsHdrs);
+      } catch (e: any) {
+        if (e instanceof Response) throw e;
+        return json({ success: false, error: { code: "INTERNAL", message: e.message } }, 500, corsHdrs);
       }
     }
 
@@ -95,47 +79,23 @@ export default {
 
     // POST /api/v1/admin/tenant/webhook
     if (url.pathname === `/api/${v}/admin/tenant/webhook` && req.method === "POST") {
-      try {
-        await requireAdmin(req, env);
-        const body = await req.json().catch(() => ({}));
+      await requireAdmin(req, env);
+      const body = await req.json().catch(() => ({}));
+      const schema = z.object({
+        tenant: z.string().min(1),
+        make_webhook_url: z.string().url(),
+      });
+      const parsed = schema.safeParse(body);
+      if (!parsed.success) return json({ success: false, error: { code: "VALIDATION", details: parsed.error.issues } }, 400, corsHdrs);
 
-        // Validate input
-        const schema = z.object({
-          tenant: z.string().min(1),
-          make_webhook_url: z.string().url(),
-        });
-        const parsed = schema.safeParse(body);
-        if (!parsed.success) {
-          return json({ success: false, error: { code: "VALIDATION", details: parsed.error.issues } }, 400, corsHdrs);
-        }
-
-        const { tenant, make_webhook_url } = parsed.data;
-
-        // Parse URL defensively
-        let u: URL;
-        try {
-          u = new URL(make_webhook_url);
-        } catch {
-          return json({ success: false, error: { code: "VALIDATION", message: "Invalid URL format" } }, 400, corsHdrs);
-        }
-
-        // Validate host against allowlist
-        const allowedCsv = (env.ALLOWED_WEBHOOK_HOSTS || "") + ",.make.com";
-        if (!isAllowedWebhookHost(u.host, allowedCsv)) {
-          return json({ success: false, error: { code: "VALIDATION", message: `Host ${u.host} not allowed` } }, 400, corsHdrs);
-        }
-
-        // Save webhook
-        const updated = await setMakeWebhook(env, tenant, make_webhook_url);
-        return json({ success: true, data: { tenant: updated.id, makeWebhookUrl: updated.makeWebhookUrl } }, 200, corsHdrs);
-      } catch (e: any) {
-        // If auth threw a Response, return it
-        if (e instanceof Response) return e;
-
-        // Log and return clean 500
-        console.error("ADMIN_WEBHOOK_SAVE_ERROR", { msg: e?.message, stack: e?.stack });
-        return json({ success: false, error: { code: "INTERNAL", message: "Webhook save failed" } }, 500, corsHdrs);
+      const { tenant, make_webhook_url } = parsed.data;
+      const allowedHosts = (env.ALLOWED_WEBHOOK_HOSTS || "").split(",").map((s: string) => s.trim()).filter(Boolean);
+      const host = new URL(make_webhook_url).host;
+      if (allowedHosts.length && !allowedHosts.includes(host)) {
+        return json({ success: false, error: { code: "VALIDATION", message: `Host ${host} not allowed` } }, 400, corsHdrs);
       }
+      const updated = await setMakeWebhook(env, tenant, make_webhook_url);
+      return json({ success: true, data: { tenant: updated.id, makeWebhookUrl: updated.makeWebhookUrl } }, 200, corsHdrs);
     }
 
     // POST /api/v1/admin/fixtures/refresh
@@ -357,10 +317,9 @@ export default {
       const parsed = schema.safeParse(body);
       if (!parsed.success) return json({ success: false, error: { code: "VALIDATION", details: parsed.error.issues } }, 400, corsHdrs);
 
+      const allowedHosts = (env.ALLOWED_WEBHOOK_HOSTS || "").split(",").map((s: string) => s.trim()).filter(Boolean);
       const u = new URL(parsed.data.make_webhook_url);
-      // Add .make.com suffix support globally
-      const allowedCsv = (env.ALLOWED_WEBHOOK_HOSTS || "") + ",.make.com";
-      if (!isAllowedWebhookHost(u.host, allowedCsv)) {
+      if (allowedHosts.length && !allowedHosts.includes(u.host)) {
         return json({ success: false, error: { code: "VALIDATION", message: `Host ${u.host} not allowed` } }, 400, corsHdrs);
       }
 
@@ -411,11 +370,6 @@ export default {
     // POST /api/v1/stripe/webhook
     // Handles Stripe events to update tenant plans
     if (url.pathname === `/api/${v}/stripe/webhook` && req.method === "POST") {
-      // Guard: check if Stripe is configured
-      if (!env.STRIPE_SECRET_KEY && !env.STRIPE_WEBHOOK_SECRET) {
-        return json({ success: false, error: { code: "STRIPE_DISABLED", message: "Stripe not configured" } }, 503, corsHdrs);
-      }
-
       const evt = await req.json().catch(() => null);
       if (!evt) return new Response("bad json", { status: 400 });
 
@@ -1178,68 +1132,6 @@ export default {
         return json({ ok: true, messages }, 200, corsHdrs);
       } catch (e: any) {
         return json({ success: false, error: { code: "CHAT_ERROR", message: e.message } }, 500, corsHdrs);
-      }
-    }
-
-
-    // -------- Export/Backup Endpoints (Admin-only) --------
-
-    // GET /api/v1/admin/export/tenant/:id
-    if (url.pathname.match(new RegExp(`^/api/${v}/admin/export/tenant/([^/]+)$`)) && req.method === "GET") {
-      const user = await requireJWT(req, env).catch(() => null);
-      if (!user || !hasRole(user, "admin")) {
-        return json({ success: false, error: { code: "FORBIDDEN" } }, 403, corsHdrs);
-      }
-      const match = url.pathname.match(new RegExp(`^/api/${v}/admin/export/tenant/([^/]+)$`));
-      const tenantId = match ? match[1] : "";
-      try {
-        const cfg = await getTenantConfig(env, tenantId);
-        if (!cfg) {
-          return json({ success: false, error: { code: "NOT_FOUND", message: "Tenant not found" } }, 404, corsHdrs);
-        }
-        // Return safe tenant config (no secrets)
-        const exportData = {
-          id: cfg.id,
-          name: cfg.name,
-          flags: cfg.flags || {},
-          makeWebhookUrl: cfg.makeWebhookUrl ? "***configured***" : undefined,
-          createdAt: cfg.createdAt,
-        };
-        return json({ success: true, data: exportData }, 200, corsHdrs);
-      } catch (e: any) {
-        return json({ success: false, error: { code: "INTERNAL", message: e.message } }, 500, corsHdrs);
-      }
-    }
-
-    // GET /api/v1/admin/export/tenant/:id/chat-index
-    if (url.pathname.match(new RegExp(`^/api/${v}/admin/export/tenant/([^/]+)/chat-index$`)) && req.method === "GET") {
-      const user = await requireJWT(req, env).catch(() => null);
-      if (!user || !hasRole(user, "admin")) {
-        return json({ success: false, error: { code: "FORBIDDEN" } }, 403, corsHdrs);
-      }
-      const match = url.pathname.match(new RegExp(`^/api/${v}/admin/export/tenant/([^/]+)/chat-index$`));
-      const tenantId = match ? match[1] : "";
-      try {
-        const rooms = await ChatKV.listRooms(env, tenantId);
-        return json({ success: true, data: { tenant: tenantId, rooms } }, 200, corsHdrs);
-      } catch (e: any) {
-        return json({ success: false, error: { code: "INTERNAL", message: e.message } }, 500, corsHdrs);
-      }
-    }
-
-    // GET /api/v1/admin/export/tenant/:id/gallery-index
-    if (url.pathname.match(new RegExp(`^/api/${v}/admin/export/tenant/([^/]+)/gallery-index$`)) && req.method === "GET") {
-      const user = await requireJWT(req, env).catch(() => null);
-      if (!user || !hasRole(user, "admin")) {
-        return json({ success: false, error: { code: "FORBIDDEN" } }, 403, corsHdrs);
-      }
-      const match = url.pathname.match(new RegExp(`^/api/${v}/admin/export/tenant/([^/]+)/gallery-index$`));
-      const tenantId = match ? match[1] : "";
-      try {
-        const albums = await GalleryKV.listAlbums(env, tenantId);
-        return json({ success: true, data: { tenant: tenantId, albums } }, 200, corsHdrs);
-      } catch (e: any) {
-        return json({ success: false, error: { code: "INTERNAL", message: e.message } }, 500, corsHdrs);
       }
     }
 

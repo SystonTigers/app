@@ -22,7 +22,7 @@ const payload = {
   iss: "syston.app",
   aud: "syston-mobile",
   sub: "admin-user",
-  tenantId: "system",
+  tenant_id: "system",
   roles: ["admin"], // IMPORTANT: array
   iat: now,
   exp,

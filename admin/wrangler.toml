@@ -4,9 +4,15 @@ compatibility_date = "2025-09-30"
 workers_dev = true
 
 [vars]
+SHOW_DIAG = false
 BACKEND_URL = "https://syston-postbus.team-platform-2025.workers.dev"
 DEFAULT_TENANT = "test-tenant"
 API_VERSION = "v1"
+
+# Service binding for worker-to-worker communication
+[[services]]
+binding = "BACKEND"
+service = "syston-postbus"
 
 # Custom domain routes (update zone_name with your actual domain)
 # routes = [

@@ -125,6 +125,23 @@ export default {
             job,
             timestamp: Date.now()
           }).catch(() => {});
+
+          // Optional: send alert webhook (non-blocking)
+          if (env.DLQ_ALERT_URL) {
+            try {
+              await fetch(env.DLQ_ALERT_URL, {
+                method: "POST",
+                headers: { "content-type": "application/json" },
+                body: JSON.stringify({
+                  tenant: job.tenant,
+                  reason: err?.message || "unknown",
+                  ts: Date.now()
+                })
+              });
+            } catch {
+              // Ignore alert failures - never block the worker
+            }
+          }
         }
         await setFinalIdempotent(env, job.idemKey, {
           success: false,

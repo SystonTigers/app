@@ -42,6 +42,15 @@ Body:
 { "tenant":"club-123", "make_webhook_url":"https://hook.make.com/XXX" }
 ```
 
+**Host Validation:**
+- The webhook URL host must be in the allowlist configured via `ALLOWED_WEBHOOK_HOSTS`
+- Supports exact hosts (`hook.make.com`, `webhook.site`)
+- Supports suffix rules (`.make.com` matches `hook.eu2.make.com`, `hook.us1.make.com`, etc.)
+- Supports wildcard style (`*.make.com` is equivalent to `.make.com`)
+- The backend automatically adds `.make.com` suffix support globally
+
+Returns 400 if host is not allowed.
+
 ### POST /api/v1/admin/tenant/flags
 
 Set flags as admin.

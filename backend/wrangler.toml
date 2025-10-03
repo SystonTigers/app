@@ -14,13 +14,23 @@ JWT_AUDIENCE = "syston-mobile"
 # Fixtures refresh endpoint
 FIXTURES_REFRESH_URL = "https://syston-fixtures.team-platform-2025.workers.dev/refresh"
 # Allowlist of hosts for BYO-Make webhooks (comma-separated)
-ALLOWED_WEBHOOK_HOSTS = "hook.make.com,webhook.site"
-# Public URL for tenant setup page
-SETUP_URL = "https://setup.yourbrand.app"
+ALLOWED_WEBHOOK_HOSTS = "hook.make.com,hook.eu2.make.com,hook.us1.make.com,*.make.com,webhook.site"
+# Public URL for tenant setup page (invite flow)
+SETUP_URL = "https://setup-console.team-platform-2025.workers.dev"
+# Gallery settings
+GALLERY_ALLOWED = "image/jpeg,image/png,image/webp"
+GALLERY_MAX_BYTES = "10485760"
 # YouTube OAuth redirect URL (update with your domain when ready)
 YT_REDIRECT_URL = "https://syston-postbus.team-platform-2025.workers.dev/api/v1/admin/yt/callback"
 # CORS allowed origins (comma-separated, optional - defaults include localhost)
 # CORS_ALLOWED = "https://app.yourbrand.com,https://admin.yourbrand.com"
+# DLQ alert webhook (optional - notifies on queue failures)
+# DLQ_ALERT_URL = "https://hooks.slack.com/services/YOUR/WEBHOOK/URL"
+# Rate limits (requests per minute, per tenant)
+RL_POSTS_PER_MIN = "60"
+RL_UPLOADS_PER_MIN = "20"
+
+
 
 [[kv_namespaces]]
 binding = "KV_IDEMP"
@@ -38,15 +48,46 @@ queue = "dead-letter"
 [[queues.consumers]]
 queue = "post-queue"
 
-# --- Durable Object
+# --- R2 Storage (Media/Gallery)
+# NOTE: R2 must be enabled in Cloudflare Dashboard first
+# Uncomment after enabling R2 and running: wrangler r2 bucket create syston-media
+[[r2_buckets]]
+binding = "R2_MEDIA"
+bucket_name = "syston-media"
+
+# --- Durable Objects
 [[durable_objects.bindings]]
 name = "TenantRateLimiter"
 class_name = "TenantRateLimiter"
 
-# --- DO migration
+[[durable_objects.bindings]]
+name = "VotingRoom"
+class_name = "VotingRoom"
+
+[[durable_objects.bindings]]
+name = "ChatRoom"
+class_name = "ChatRoom"
+
+[[durable_objects.bindings]]
+name = "MatchRoom"
+class_name = "MatchRoom"
+
+# --- DO migrations
 [[migrations]]
 tag = "v1"
 new_classes = [ "TenantRateLimiter" ]
+
+[[migrations]]
+tag = "v2"
+new_classes = [ "VotingRoom" ]
+
+[[migrations]]
+tag = "v3"
+new_classes = [ "ChatRoom", "MatchRoom" ]
+
+# --- Cron triggers (event reminders)
+[triggers]
+crons = [ "*/5 * * * *" ]
 
 # Custom domain routes (update zone_name with your actual domain)
 # routes = [

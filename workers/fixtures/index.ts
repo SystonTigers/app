@@ -33,6 +33,73 @@ export default {
       return new Response(body, { headers: { "content-type": "application/json" } });
     }
 
+    // GET /table?league={id}&season={yyyy}
+    if (url.pathname === "/table" && request.method === "GET") {
+      const league = url.searchParams.get("league") || "default";
+      const season = url.searchParams.get("season") || new Date().getFullYear().toString();
+      const key = `leagues:${league}:${season}:table`;
+      const cached = await env.KV_FIXTURES.get(key);
+      if (cached) {
+        return new Response(JSON.stringify({ ok: true, data: JSON.parse(cached) }), {
+          headers: { "content-type": "application/json" }
+        });
+      }
+      return new Response(JSON.stringify({ ok: false, message: "not cached" }), {
+        status: 404,
+        headers: { "content-type": "application/json" }
+      });
+    }
+
+    // GET /fixtures?league={id}&season={yyyy}
+    if (url.pathname === "/fixtures" && request.method === "GET") {
+      const league = url.searchParams.get("league") || "default";
+      const season = url.searchParams.get("season") || new Date().getFullYear().toString();
+      const key = `leagues:${league}:${season}:fixtures`;
+      const cached = await env.KV_FIXTURES.get(key);
+      if (cached) {
+        return new Response(JSON.stringify({ ok: true, data: JSON.parse(cached) }), {
+          headers: { "content-type": "application/json" }
+        });
+      }
+      return new Response(JSON.stringify({ ok: false, message: "not cached" }), {
+        status: 404,
+        headers: { "content-type": "application/json" }
+      });
+    }
+
+    // GET /results?league={id}&season={yyyy}
+    if (url.pathname === "/results" && request.method === "GET") {
+      const league = url.searchParams.get("league") || "default";
+      const season = url.searchParams.get("season") || new Date().getFullYear().toString();
+      const key = `leagues:${league}:${season}:results`;
+      const cached = await env.KV_FIXTURES.get(key);
+      if (cached) {
+        return new Response(JSON.stringify({ ok: true, data: JSON.parse(cached) }), {
+          headers: { "content-type": "application/json" }
+        });
+      }
+      return new Response(JSON.stringify({ ok: false, message: "not cached" }), {
+        status: 404,
+        headers: { "content-type": "application/json" }
+      });
+    }
+
+    // GET /seasons?league={id}
+    if (url.pathname === "/seasons" && request.method === "GET") {
+      const league = url.searchParams.get("league") || "default";
+      const key = `leagues:${league}:seasons`;
+      const cached = await env.KV_FIXTURES.get(key);
+      if (cached) {
+        return new Response(JSON.stringify({ ok: true, data: JSON.parse(cached) }), {
+          headers: { "content-type": "application/json" }
+        });
+      }
+      // Default seasons list if not cached
+      return new Response(JSON.stringify({ ok: true, data: ["2025", "2024", "2023"] }), {
+        headers: { "content-type": "application/json" }
+      });
+    }
+
     return new Response("Not found", { status: 404 });
   }
 };

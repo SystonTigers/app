@@ -68,3 +68,32 @@ export interface FallbackResponse {
   suggested: string[];
   channel: Channel;
 }
+
+// Env interface for Workers
+export interface Env {
+  KV_IDEMP: KVNamespace;
+  POST_QUEUE: Queue;
+  DLQ: Queue;
+  DLQ_ALERT_URL?: string;
+  RL_POSTS_PER_MIN?: string;
+  RL_UPLOADS_PER_MIN?: string;
+  R2_MEDIA: R2Bucket;
+  TenantRateLimiter: DurableObjectNamespace;
+  VotingRoom: DurableObjectNamespace;
+  ChatRoom: DurableObjectNamespace;
+  MatchRoom: DurableObjectNamespace;
+  JWT_SECRET: string;
+  ADMIN_JWT: string;
+  YT_CLIENT_ID?: string;
+  YT_CLIENT_SECRET?: string;
+  YT_SHARDS_JSON?: string;
+  YT_REDIRECT_URL: string;
+  FCM_SERVER_KEY?: string;
+  FIXTURES_REFRESH_URL?: string;
+  SETUP_URL: string;
+  GALLERY_MAX_BYTES?: string;
+  GALLERY_ALLOWED?: string;
+  API_VERSION: string;
+  CORS_ALLOWED?: string;
+  [key: string]: any;
+}

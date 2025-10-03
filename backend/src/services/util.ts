@@ -12,7 +12,7 @@ export function json(body: unknown, status = 200, headers: Record<string, string
 }
 
 export function cors(originList: string[] | null, reqOrigin: string | null) {
-  // Default allowed origins for development and common production patterns
+  // Default allowed origins for development (only used if CORS_ALLOWED not set)
   const defaultAllowed = new Set([
     "https://localhost:5173",
     "http://localhost:5173",
@@ -21,9 +21,9 @@ export function cors(originList: string[] | null, reqOrigin: string | null) {
     "capacitor://localhost",
   ]);
 
-  // Merge with user-provided origins
+  // If CORS_ALLOWED is set, only allow those origins; otherwise use dev defaults
   const allowed = originList
-    ? new Set([...defaultAllowed, ...originList])
+    ? new Set(originList)
     : defaultAllowed;
 
   const origin = reqOrigin || "";
@@ -31,12 +31,60 @@ export function cors(originList: string[] | null, reqOrigin: string | null) {
 
   return {
     "Access-Control-Allow-Origin": allowOrigin,
-    "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
-    "Access-Control-Allow-Headers": "content-type,authorization,Idempotency-Key",
+    "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
+    "Access-Control-Allow-Headers": "content-type,authorization,Idempotency-Key,x-amz-content-sha256,x-amz-date,x-amz-acl,x-amz-meta-*",
     "Vary": "Origin"
   };
 }
 
 export function readIdempotencyKey(req: Request) {
   return req.headers.get("Idempotency-Key") || "";
+}
+
+// Additional utility helpers
+export function assert(cond: any, msg = "bad request") {
+  if (!cond) throw badReq(msg);
+}
+
+export function badReq(message: string) {
+  return Object.assign(new Error(message), { status: 400 });
+}
+
+export function nowMs() {
+  return Date.now();
+}
+
+export function expMs(ttlMinutes: number) {
+  return Date.now() + ttlMinutes * 60_000;
+}
+
+export function id() {
+  return Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+}
+
+// nanoid-like implementation (no dependency needed)
+export function nanoid(size = 21) {
+  const alphabet = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+  let id = '';
+  const bytes = new Uint8Array(size);
+  crypto.getRandomValues(bytes);
+  for (let i = 0; i < size; i++) {
+    id += alphabet[bytes[i] % alphabet.length];
+  }
+  return id;
+}
+
+// KV helpers
+export async function kvGetJSON<T>(kv: KVNamespace, key: string) {
+  return (await kv.get(key, "json")) as T | null;
+}
+
+export async function kvPutJSON(kv: KVNamespace, key: string, value: any, opts?: KVNamespacePutOptions) {
+  return kv.put(key, JSON.stringify(value), opts);
+}
+
+export async function kvListJSON<T>(kv: KVNamespace, prefix: string) {
+  const list = await kv.list({ prefix, limit: 1000 });
+  const rows = await Promise.all(list.keys.map((k) => kv.get(k.name, "json") as Promise<T>));
+  return rows.filter(Boolean) as T[];
 }

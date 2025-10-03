@@ -81,3 +81,44 @@ export async function setYouTubeBYOGoogle(env: any, tenant: TenantId, client_id:
   await putTenantConfig(env, cfg);
   return cfg;
 }
+
+// Webhook host validation with suffix support - defensive, never throws
+export function isAllowedWebhookHost(host: string, allowedCsv: string): boolean {
+  try {
+    if (!host) return false;
+    const raw = (allowedCsv || "").trim();
+    if (!raw) return false; // fail closed if no config
+
+    const items = raw
+      .split(',')
+      .map(s => s.trim().toLowerCase())
+      .filter(Boolean);
+
+    const h = host.toLowerCase();
+
+    // Exact match
+    if (items.includes(h)) return true;
+
+    // Wildcard *.make.com
+    if (items.includes("*.make.com") && h.endsWith(".make.com")) return true;
+
+    // Generic make.com allowance (exact or any subdomain)
+    if (items.includes("make.com") && (h === "make.com" || h.endsWith(".make.com"))) return true;
+
+    // Check other suffix rules
+    for (const item of items) {
+      if (item.startsWith('.')) {
+        // explicit suffix rule (e.g. ".make.com")
+        if (h.endsWith(item)) return true;
+      } else if (item.startsWith('*.')) {
+        // wildcard style (e.g. "*.make.com")
+        const suf = item.slice(1); // ".make.com"
+        if (h.endsWith(suf)) return true;
+      }
+    }
+
+    return false;
+  } catch {
+    return false; // never crash due to parsing errors
+  }
+}
