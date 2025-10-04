@@ -18,6 +18,7 @@ export interface ProvisioningRequest {
   timezone?: string;
   plan?: "free" | "managed" | "enterprise";
   makeWebhookUrl?: string;
+  promoCode?: string;  // Optional promo code
 }
 
 export interface ProvisioningResult {
@@ -59,10 +60,38 @@ export async function provisionTenant(
       };
     }
 
-    // 2. Determine flags based on plan
-    const flags = determineFlagsForPlan(request.plan || "free");
+    // 2. Apply promo code if provided
+    let finalPlan = request.plan || "free";
+    let promoCodeApplied = null;
 
-    // 3. Create tenant config
+    if (request.promoCode) {
+      const { PromoCodeService } = await import("./promoCodes");
+      const promoService = new PromoCodeService(env);
+
+      const promoResult = await promoService.applyPromoCode(request.promoCode, tenantId);
+
+      if (promoResult.success && promoResult.discount) {
+        promoCodeApplied = {
+          code: request.promoCode,
+          discount: promoResult.discount
+        };
+
+        // Apply plan upgrade if promo code specifies it
+        if (promoResult.discount.type === 'plan_upgrade') {
+          finalPlan = promoResult.discount.plan as "free" | "managed" | "enterprise";
+        }
+
+        console.log(`[Provisioning] Promo code applied: ${request.promoCode} for ${tenantId}`);
+      } else {
+        console.warn(`[Provisioning] Invalid promo code: ${request.promoCode}`, promoResult.error);
+        // Don't fail provisioning, just log warning and continue
+      }
+    }
+
+    // 3. Determine flags based on final plan
+    const flags = determineFlagsForPlan(finalPlan);
+
+    // 4. Create tenant config
     const tenantConfig: TenantConfig = {
       id: tenantId,
       name: request.clubName,
@@ -73,9 +102,13 @@ export async function provisionTenant(
       metadata: {
         contactEmail: request.contactEmail,
         contactName: request.contactName,
-        plan: request.plan || "free",
+        plan: finalPlan,
         createdAt: new Date().toISOString(),
-        provisionedBy: "automated"
+        provisionedBy: "automated",
+        ...(promoCodeApplied && {
+          promoCode: promoCodeApplied.code,
+          promoDiscount: promoCodeApplied.discount
+        })
       }
     };
 

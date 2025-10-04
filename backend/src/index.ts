@@ -54,7 +54,8 @@ export default {
           locale: z.string().optional(),
           timezone: z.string().optional(),
           plan: z.enum(["free", "managed", "enterprise"]).optional(),
-          makeWebhookUrl: z.string().url().optional()
+          makeWebhookUrl: z.string().url().optional(),
+          promoCode: z.string().optional()
         });
 
         const data = schema.parse(body);
@@ -263,6 +264,82 @@ export default {
       const r = await fetch(refreshUrl, { method: "POST" }).catch(() => null);
       const ok = !!r && r.ok;
       return json({ success: ok, data: { pinged: ok } }, ok ? 200 : 502, corsHdrs);
+    }
+
+    // -------- Promo Code Management (Admin) --------
+
+    // POST /api/v1/admin/promo/create
+    if (url.pathname === `/api/${v}/admin/promo/create` && req.method === "POST") {
+      await requireAdmin(req, env);
+      try {
+        const body = await req.json().catch(() => ({}));
+        const schema = z.object({
+          code: z.string().min(1),
+          type: z.enum(["percentage_discount", "months_free", "plan_upgrade", "referral_reward"]),
+          value: z.union([z.string(), z.number()]),
+          durationMonths: z.number().optional(),
+          maxUses: z.number().optional(),
+          expiresAt: z.string().optional(),
+          active: z.boolean().default(true),
+          metadata: z.object({
+            description: z.string().optional(),
+            targetTenant: z.string().optional()
+          }).optional()
+        });
+
+        const data = schema.parse(body);
+        const { PromoCodeService } = await import("./services/promoCodes");
+        const promoService = new PromoCodeService(env);
+
+        const result = await promoService.createPromoCode({
+          ...data,
+          createdBy: "admin"
+        });
+
+        if (result.success) {
+          return json({ success: true, data: result.code }, 200, corsHdrs);
+        } else {
+          return json({ success: false, error: { code: "PROMO_CREATE_FAILED", message: result.error } }, 400, corsHdrs);
+        }
+      } catch (err: any) {
+        if (err.errors) {
+          return json({ success: false, error: { code: "VALIDATION_ERROR", message: err.errors[0].message } }, 400, corsHdrs);
+        }
+        return json({ success: false, error: { code: "PROMO_CREATE_FAILED", message: err.message } }, 500, corsHdrs);
+      }
+    }
+
+    // GET /api/v1/admin/promo/list
+    if (url.pathname === `/api/${v}/admin/promo/list` && req.method === "GET") {
+      await requireAdmin(req, env);
+      try {
+        const { PromoCodeService } = await import("./services/promoCodes");
+        const promoService = new PromoCodeService(env);
+        const promoCodes = await promoService.listPromoCodes();
+        return json({ success: true, data: promoCodes }, 200, corsHdrs);
+      } catch (err: any) {
+        return json({ success: false, error: { code: "PROMO_LIST_FAILED", message: err.message } }, 500, corsHdrs);
+      }
+    }
+
+    // POST /api/v1/admin/promo/:code/deactivate
+    if (url.pathname.match(new RegExp(`^/api/${v}/admin/promo/[^/]+/deactivate$`)) && req.method === "POST") {
+      await requireAdmin(req, env);
+      try {
+        const code = url.pathname.split("/")[5];
+        const { PromoCodeService } = await import("./services/promoCodes");
+        const promoService = new PromoCodeService(env);
+
+        const result = await promoService.deactivatePromoCode(code);
+
+        if (result.success) {
+          return json({ success: true }, 200, corsHdrs);
+        } else {
+          return json({ success: false, error: { code: "PROMO_DEACTIVATE_FAILED", message: result.error } }, 400, corsHdrs);
+        }
+      } catch (err: any) {
+        return json({ success: false, error: { code: "PROMO_DEACTIVATE_FAILED", message: err.message } }, 500, corsHdrs);
+      }
     }
 
     // POST /api/v1/admin/tenant/invite
