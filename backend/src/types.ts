@@ -59,6 +59,14 @@ export interface TenantConfig {
   makeWebhookUrl?: string | null;
   created_at?: number;
   updated_at?: number;
+  // Tenant metadata
+  metadata?: {
+    contactEmail?: string;
+    contactName?: string;
+    plan?: string;
+    createdAt?: string;
+    provisionedBy?: string;
+  };
 }
 
 // Fallback response for manual upload
@@ -95,5 +103,13 @@ export interface Env {
   GALLERY_ALLOWED?: string;
   API_VERSION: string;
   CORS_ALLOWED?: string;
+  // Apps Script automation
+  GOOGLE_SERVICE_ACCOUNT_KEY?: string;
+  APPS_SCRIPT_TEMPLATE_ID?: string;
+  APPS_SCRIPT_AUTO_DEPLOY?: string;
+  BACKEND_URL?: string;
+  RESEND_API_KEY?: string;
+  SENDGRID_API_KEY?: string;
+  ADMIN_CONSOLE_URL?: string;
   [key: string]: any;
 }

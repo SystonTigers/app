@@ -29,6 +29,13 @@ YT_REDIRECT_URL = "https://syston-postbus.team-platform-2025.workers.dev/api/v1/
 # Rate limits (requests per minute, per tenant)
 RL_POSTS_PER_MIN = "60"
 RL_UPLOADS_PER_MIN = "20"
+# Apps Script automation (optional - enables auto-deployment)
+APPS_SCRIPT_AUTO_DEPLOY = "true"  # Set to "true" to enable
+BACKEND_URL = "https://syston-postbus.team-platform-2025.workers.dev"
+ADMIN_CONSOLE_URL = "https://admin-console.team-platform-2025.workers.dev"
+# NOTE: GOOGLE_SERVICE_ACCOUNT_KEY and APPS_SCRIPT_TEMPLATE_ID are secrets
+# Set them using: wrangler secret put GOOGLE_SERVICE_ACCOUNT_KEY
+#                 wrangler secret put APPS_SCRIPT_TEMPLATE_ID
 
 
 
