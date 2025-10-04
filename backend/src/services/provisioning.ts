@@ -83,17 +83,13 @@ export async function provisionTenant(
 
     // 4. Generate JWT tokens
     const adminJWT = await issueTenantAdminJWT(env, {
-      sub: `${tenantId}-admin`,
       tenant_id: tenantId,
-      role: "admin",
-      email: request.contactEmail
+      ttlMinutes: 525600 // 1 year
     });
 
     const automationJWT = await issueTenantAdminJWT(env, {
-      sub: `${tenantId}-automation`,
       tenant_id: tenantId,
-      role: "automation",
-      email: "automation@" + tenantId
+      ttlMinutes: 525600 // 1 year
     });
 
     // 5. Generate setup URLs
@@ -193,10 +189,10 @@ async function generateSetupToken(env: Env, tenantId: string): Promise<string> {
   const token = crypto.randomUUID();
   const expiresAt = Date.now() + (24 * 60 * 60 * 1000); // 24 hours
 
+  // Store setup token with 24-hour expiration
   await env.KV_IDEMP.put(
     `setup-token:${token}`,
-    JSON.stringify({ tenantId, expiresAt }),
-    { expirationTtl: 86400 } // 24 hours
+    JSON.stringify({ tenantId, expiresAt })
   );
 
   return token;

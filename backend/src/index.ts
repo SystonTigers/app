@@ -14,6 +14,7 @@ import * as Invites from "./services/invites";
 import * as Teams from "./services/teams";
 import * as ChatKV from "./services/chatKV";
 import * as GalleryKV from "./services/galleryKV";
+import { provisionTenant } from "./services/provisioning";
 
 // Export the Durable Object classes so the binding works
 export { TenantRateLimiter } from "./do/rateLimiter";
@@ -38,6 +39,39 @@ export default {
     }
 
     const v = env.API_VERSION || "v1";
+
+    // -------- Public signup endpoint --------
+
+    // POST /api/v1/signup - Automated tenant provisioning
+    if (url.pathname === `/api/${v}/signup` && req.method === "POST") {
+      try {
+        const body = await req.json().catch(() => ({}));
+        const schema = z.object({
+          clubName: z.string().min(1, "clubName required"),
+          clubShortName: z.string().min(1, "clubShortName required"),
+          contactEmail: z.string().email("valid email required"),
+          contactName: z.string().min(1, "contactName required"),
+          locale: z.string().optional(),
+          timezone: z.string().optional(),
+          plan: z.enum(["free", "managed", "enterprise"]).optional(),
+          makeWebhookUrl: z.string().url().optional()
+        });
+
+        const data = schema.parse(body);
+        const result = await provisionTenant(env, data);
+
+        if (result.success) {
+          return json({ success: true, data: result.tenant }, 200, corsHdrs);
+        } else {
+          return json({ success: false, error: result.error }, 400, corsHdrs);
+        }
+      } catch (err: any) {
+        if (err.errors) {
+          return json({ success: false, error: { code: "VALIDATION_ERROR", message: err.errors[0].message } }, 400, corsHdrs);
+        }
+        return json({ success: false, error: { code: "SIGNUP_FAILED", message: err.message } }, 500, corsHdrs);
+      }
+    }
 
     // Log admin console requests
     if (url.pathname.includes("/admin/")) {
