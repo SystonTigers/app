@@ -3,10 +3,10 @@
 import { z } from "zod";
 import { PostReqSchema, json, cors, readIdempotencyKey } from "./services/util";
 import { requireJWT, hasRole, requireAdmin } from "./services/auth";
-import { ensureIdempotent } from "./services/idempotency";
+import { ensureIdempotent, setFinalIdempotent } from "./services/idempotency";
 import { ensureTenant, setMakeWebhook, updateFlags, putTenantConfig, getTenantConfig, setTenantFlags, setChannelWebhook, setYouTubeBYOGoogle, isAllowedWebhookHost } from "./services/tenants";
 import { issueTenantAdminJWT } from "./services/jwt";
-import type { TenantConfig } from "./types";
+import type { TenantConfig, PostJob } from "./types";
 import queueWorker from "./queue-consumer";
 import { putEvent, getEvent, deleteEvent, listEvents, setRsvp, getRsvp, addCheckin, listCheckins } from "./services/events";
 import { registerDevice, sendToUser } from "./services/push";
@@ -70,6 +70,86 @@ export default {
           return json({ success: false, error: { code: "VALIDATION_ERROR", message: err.errors[0].message } }, 400, corsHdrs);
         }
         return json({ success: false, error: { code: "SIGNUP_FAILED", message: err.message } }, 500, corsHdrs);
+      }
+    }
+
+    // -------- Apps Script Integration --------
+
+    // POST /api/v1/post - Receive events from Apps Script
+    if (url.pathname === `/api/${v}/post` && req.method === "POST") {
+      try {
+        // Require authentication (automationJWT)
+        const claims = await requireJWT(req, env);
+        const tenantId = claims.tenant_id || claims.tenantId;
+
+        if (!tenantId) {
+          return json({ success: false, error: "tenant_id required in JWT" }, 400, corsHdrs);
+        }
+
+        const body = await req.json().catch(() => ({}));
+        const schema = z.object({
+          event_type: z.string().min(1, "event_type required"),
+          data: z.record(z.unknown()),
+          channels: z.array(z.enum(["yt", "fb", "ig", "tiktok", "x"])).optional(),
+          template: z.string().optional()
+        });
+
+        const parsed = schema.safeParse(body);
+        if (!parsed.success) {
+          return json({
+            success: false,
+            error: { code: "VALIDATION_ERROR", details: parsed.error.issues }
+          }, 400, corsHdrs);
+        }
+
+        const { event_type, data, channels, template } = parsed.data;
+
+        // Idempotency check
+        const idemHeader = readIdempotencyKey(req);
+        const idem = await ensureIdempotent(env, tenantId, body, idemHeader || undefined);
+        if (idem.hit) {
+          return json(idem.response, 200, corsHdrs);
+        }
+
+        // Create post job
+        const job: PostJob = {
+          tenant: tenantId,
+          template: template || event_type,
+          channels: channels || ["yt", "fb", "ig"],
+          data: {
+            ...data,
+            event_type,
+            timestamp: new Date().toISOString()
+          },
+          createdAt: Date.now(),
+          idemKey: idem.key
+        };
+
+        // Queue the job
+        await env.POST_QUEUE.send(job);
+
+        const result = {
+          success: true,
+          queued: true,
+          tenant: tenantId,
+          event_type,
+          job_id: idem.key
+        };
+
+        // Store idempotent response
+        await idem.store(result);
+
+        return json(result, 200, corsHdrs);
+
+      } catch (err: any) {
+        if (err instanceof Response) {
+          return err;
+        }
+        console.error("POST_EVENT_ERROR", err);
+        return json({
+          success: false,
+          error: { code: "POST_FAILED", message: err.message }
+        }, 500, corsHdrs);
       }
     }
 
