@@ -249,6 +249,230 @@ END:VCALENDAR
 
 ---
 
+## 🎬 Phase 1.5: Video Processing & Highlights (NEW - ADDED)
+
+**Status**: UI Complete, Backend Needs Setup | **Priority**: P1 | **Timeline**: 2-3 weeks
+
+### Two Ways to Create Highlights
+
+The platform offers **DUAL-MODE** video processing, both using the same AI backend:
+
+#### 📱 Mode 1: Mobile App (Quick Clips)
+**Perfect for**: Parents, players, quick clips, social sharing
+
+**Features:**
+- Record video directly in app (5 min max)
+- Select from phone library
+- Preview with playback controls
+- Upload to server for AI processing
+- Track processing status
+- Push notification when ready
+
+**Use Cases:**
+- Parent records goal from stands (30 sec clip)
+- Player records training drill
+- Quick match highlights
+- Instant social sharing
+
+**Tech Stack:**
+- `expo-av` - Video recording/playback
+- `expo-image-picker` - Library selection
+- `expo-media-library` - Permissions
+- `expo-video-thumbnails` - Thumbnails
+
+#### 🖥️ Mode 2: Server-Side (Full Match Automation)
+**Perfect for**: Coaches, full matches, professional highlights
+
+**Workflow:**
+1. Upload full 90-minute match video to Google Drive
+2. Apps Script creates metadata and exports JSON with timestamps
+3. AI detects ALL highlight moments automatically
+4. Auto-creates professional clips
+5. Uploads to YouTube
+6. Posts to social media (X, Instagram, Facebook)
+
+**Use Cases:**
+- Full match highlight reels
+- Season compilations
+- Player spotlight videos
+- Professional editing at scale
+
+### 🤖 AI Video Processing Backend
+
+**Three Production Tools:**
+
+#### 1. highlights_bot (Python AI Editor)
+**Location:** `video-processing/highlights_bot/`
+
+**What it does:**
+- Analyzes match videos using YOLOv8 AI/ML
+- Detects key moments (goals, cards, near-misses)
+- Automatically cuts and edits highlight clips
+- Exports finished highlights
+
+**Key Files:**
+- `main.py` - Entry point
+- `detect.py` - AI detection engine (20KB)
+- `edit.py` - Video editing logic (25KB)
+- `config.yaml` - Configuration
+
+**Configuration:**
+```yaml
+detection:
+  model: yolov8
+  confidence: 0.7
+editing:
+  transition: fade
+  duration_before: 5  # seconds before event
+  duration_after: 5   # seconds after event
+export:
+  format: mp4
+  quality: high
+  codec: h264
+```
+
+**Usage:**
+```bash
+cd video-processing/highlights_bot
+python main.py --json events.json --video match.mp4 --output highlights/
+```
+
+#### 2. football-highlights-processor (Docker Production)
+**Location:** `video-processing/football-highlights-processor/`
+
+**What it does:**
+- Production-ready Docker containerization
+- Integrates with Apps Script
+- Monitoring and health checks
+- Scalable processing queue
+
+**Deploy:**
+```bash
+cd video-processing/football-highlights-processor
+docker-compose up -d --scale worker=3  # 3 concurrent workers
+```
+
+**Performance:**
+- 10-minute video: ~2-3 minutes to process
+- Full 90-minute match: ~15-20 minutes
+- Concurrent jobs: 5 videos at once
+- Queue size: Unlimited
+
+#### 3. football-highlights-installer (Setup CLI)
+**Location:** `video-processing/football-highlights-installer/`
+
+**What it does:**
+- One-command installation
+- Sets up all dependencies
+- Configures integrations
+- Creates templates
+
+**Usage:**
+```bash
+cd video-processing/football-highlights-installer
+npm install
+npm run setup
+```
+
+### 📊 Complete Video Flow
+
+```
+PATH A: MOBILE APP
+==================
+1. User opens app → Videos tab
+2. Record OR select video
+3. Upload → POST /api/v1/videos/upload
+4. [Joins Path B at AI Processing]
+
+PATH B: SERVER-SIDE
+===================
+1. Upload to Google Drive
+2. Apps Script exports JSON
+3. [Joins Path A at AI Processing]
+
+SHARED AI PROCESSING
+====================
+4. highlights_bot detects events
+5. Cuts and edits clips
+6. Processor queues jobs
+7. Uploads to YouTube
+8. Posts to social media
+9. Notify user: "Highlights ready!"
+```
+
+### Apps Script Integration
+
+**Files:**
+- `apps-script/video-clips.gs`
+- `apps-script/video/`
+- `apps-script/user-menu-functions.gs`
+
+**What it does:**
+- Tracks clip metadata in Google Sheets
+- Manages YouTube uploads
+- Organizes clips by player
+- Generates graphics overlays
+- Exports JSON for AI processing
+
+**JSON Format:**
+```json
+{
+  "match_id": "20251007_syston_vs_panthers",
+  "events": [
+    {"minute": 23, "type": "goal", "player": "John Smith"},
+    {"minute": 45, "type": "yellow_card", "player": "Mike Jones"}
+  ],
+  "video_url": "https://drive.google.com/...",
+  "clips": [
+    {"start": 1380, "end": 1410, "event": "goal"}
+  ]
+}
+```
+
+### Tech Stack (Video)
+
+**Mobile:**
+- expo-av (recording/playback)
+- expo-image-picker (library access)
+- expo-media-library (permissions)
+- expo-video-thumbnails (thumbnails)
+
+**Server-Side:**
+- Python 3.8+ (highlights_bot runtime)
+- OpenCV (video processing)
+- TensorFlow/PyTorch (AI models)
+- YOLOv8 (object detection)
+- FFmpeg (encoding/decoding)
+- Docker & Docker Compose (production)
+
+**Storage:**
+- R2 Storage (uploaded videos, processed clips)
+- Google Drive (optional input source)
+- YouTube (final distribution)
+
+### Cost Estimate
+
+**Infrastructure:**
+- R2 Storage: ~$0.50-2/month (depending on volume)
+- Python + Docker: Can run on $5-10/month VPS
+- **Total Video Cost**: ~$5-12/month
+
+**Already Built:**
+- ✅ Mobile UI (`mobile/src/screens/VideoScreen.tsx`)
+- ✅ Video libraries installed
+- ✅ AI processing tools integrated
+- ✅ Apps Script integration ready
+- ✅ Documentation complete
+
+**Needs Setup:**
+- [ ] Deploy Python highlights_bot
+- [ ] Configure Docker processor
+- [ ] Set up R2 video storage
+- [ ] Test video upload from app
+- [ ] Configure Apps Script exports
+
+---
+
 ## 🔔 Phase 2: Smart Push Notifications (NEW)
 
 **Status**: Not started | **Priority**: P1 | **Timeline**: 2-3 weeks
@@ -553,6 +777,18 @@ POST https://exp.host/--/api/v2/push/send
 - [ ] Player stats (goals, assists, appearances, cards)
 - [ ] MOTM voting (during/after matches)
 
+#### 6.5. Videos (Tab 6 - NEW)
+- [x] Record video (expo-av, 5 min max)
+- [x] Select from library (expo-image-picker)
+- [x] Video preview with controls
+- [x] Upload to server
+- [x] Recent highlights list
+- [x] AI processing explanation
+- [x] Pro tips section
+- [ ] Processing status tracking
+- [ ] Download processed clips
+- [ ] Share to social media
+
 #### 7. Gallery
 - [ ] Match albums
 - [ ] Photo viewer
@@ -621,6 +857,31 @@ POST https://exp.host/--/api/v2/push/send
 - `PUT /api/v1/coaching/sessions/{id}` - Update session
 - `POST /api/v1/coaching/tactics` - Save tactic/formation
 
+### Videos (NEW)
+- `POST /api/v1/videos/upload` - Upload video from mobile app
+- `GET /api/v1/videos?tenant={id}` - List videos (paginated)
+- `GET /api/v1/videos/{id}?tenant={id}` - Get video details
+- `GET /api/v1/videos/{id}/status?tenant={id}` - Get processing status
+- `DELETE /api/v1/videos/{id}` - Delete video (admin only)
+- `POST /api/v1/videos/{id}/process` - Trigger AI processing
+- `GET /api/v1/videos/{id}/clips` - List generated clips
+
+**Upload Example:**
+```typescript
+const formData = new FormData();
+formData.append('video', {
+  uri: videoUri,
+  name: 'video.mp4',
+  type: 'video/mp4'
+});
+formData.append('tenant', TENANT_ID);
+formData.append('user_id', userId);
+
+await api.post('/api/v1/videos/upload', formData, {
+  headers: { 'Content-Type': 'multipart/form-data' }
+});
+```
+
 ### Team Store
 - `GET /api/v1/store/products` - List products (Printify sync)
 - `POST /api/v1/store/cart` - Add to cart
@@ -663,6 +924,31 @@ tactic:{tenant}:{tactic_id} → {id, formation, positions[], instructions}
 product:{tenant}:{product_id} → {printify_id, name, price, markup}
 cart:{user_id} → {items: [{product, quantity, customization}]}
 order:{tenant}:{order_id} → {id, user, items, status, tracking}
+
+// Videos (NEW)
+video:{tenant}:{video_id} → {
+  id, tenant, user_id, filename, size, duration,
+  upload_timestamp, status: "uploading|processing|completed|failed",
+  r2_key, youtube_url, clips: [{start, end, event, clip_url}],
+  processing_progress: 0-100
+}
+video_metadata:{video_id} → {
+  events: [{minute, type, player}],
+  match_id, json_export_url
+}
+```
+
+**R2 Storage Structure:**
+```
+videos/
+  {tenant}/
+    uploads/
+      {video_id}.mp4           # Original uploads
+    processed/
+      {video_id}/
+        clip_001.mp4           # Processed clips
+        clip_002.mp4
+        thumbnail.jpg
 ```
 
 ---
@@ -694,6 +980,7 @@ order:{tenant}:{order_id} → {id, user, items, status, tracking}
   - Expo setup, navigation, login flow
   - Next event widget
   - News feed UI (mock data)
+  - ✅ **DONE**: Video tab with recording/upload UI
 - **Week 3-4**: Calendar & Events
   - Custom calendar UI
   - Event list/details
@@ -704,21 +991,29 @@ order:{tenant}:{order_id} → {id, user, items, status, tracking}
   - League table
   - Player profiles
   - MOTM voting
-- **Week 7-8**: Gallery & Chat
+- **Week 7-8**: Videos & Gallery
+  - ✅ **DONE**: Video recording/selection UI
+  - ✅ **DONE**: Video preview with controls
+  - Video backend integration
   - Photo albums
   - Image viewer
-  - Chat rooms
   - Testing & bug fixes
 
-### Month 3: Notifications & Feed Backend
-- **Week 9-10**: Push notifications
+### Month 3: Notifications, Feed & Video Backend
+- **Week 9-10**: Push notifications + Video processing setup
   - Expo push setup
   - Geo-fencing logic (Durable Objects)
   - Notification types (goals, cards, HT, FT)
-- **Week 11-12**: News feed backend
+  - Deploy highlights_bot (Python)
+  - Configure Docker processor
+  - Set up R2 video storage
+- **Week 11-12**: News feed backend + Video integration
   - Feed API endpoints
   - Channel toggles (app/social)
   - Make.com integration for social posting
+  - Video upload API endpoint
+  - Test video processing pipeline
+  - YouTube upload integration
 
 ### Month 4: Training Tools
 - **Week 13-14**: Session planner & drill library
@@ -861,7 +1156,9 @@ curl -X POST \
 
 ---
 
-**Last Updated**: 2025-10-06
+**Last Updated**: 2025-10-07
 **Owner**: Clayton
-**Status**: Planning → Ready to Build
-**Next Milestone**: Mobile app MVP (2 months)
+**Status**: Mobile MVP In Progress (Video Features Added)
+**Next Milestone**: Deploy video processing backend + Connect real data
+**Video Status**: Mobile UI ✅ Complete | Backend needs deployment
+**Progress**: 5 screens built (Home, Calendar, Fixtures, Squad, Videos) | Mock data working

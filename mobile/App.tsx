@@ -12,6 +12,7 @@ import HomeScreen from './src/screens/HomeScreen';
 import CalendarScreen from './src/screens/CalendarScreen';
 import FixturesScreen from './src/screens/FixturesScreen';
 import SquadScreen from './src/screens/SquadScreen';
+import VideoScreen from './src/screens/VideoScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -83,8 +84,18 @@ export default function App() {
               name="Squad"
               component={SquadScreen}
               options={{
-                tabBarIcon: ({ color, size }) => (
+                tabBarIcon: ({ color, size}) => (
                   <MaterialCommunityIcons name="account-group" size={size} color={color} />
+                ),
+              }}
+            />
+            <Tab.Screen
+              name="Videos"
+              component={VideoScreen}
+              options={{
+                title: 'Videos',
+                tabBarIcon: ({ color, size }) => (
+                  <MaterialCommunityIcons name="video" size={size} color={color} />
                 ),
               }}
             />

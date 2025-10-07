@@ -1,12 +1,50 @@
 # 🎬 Video Processing & Highlights System
 
-**Complete video processing infrastructure for automated match highlights generation**
+**Complete video processing infrastructure with TWO MODES: Mobile App + Server-Side Automation**
+
+---
+
+## 🎯 Two Ways to Create Highlights
+
+### 📱 Mode 1: Mobile App (In-App Recording/Upload)
+**Perfect for**: Parents, players, quick clips, social sharing
+
+**User Experience**:
+1. Open mobile app → Videos tab
+2. Record video OR select from library
+3. Preview and upload
+4. AI processes automatically
+5. Get notified when ready!
+
+**Use Cases**:
+- Parent records goal from stands
+- Player records training drill
+- Quick 30-second clips
+- Instant social sharing
+
+### 🖥️ Mode 2: Server-Side (Full Match Automation)
+**Perfect for**: Coaches, full matches, professional highlights
+
+**Workflow**:
+1. Upload full 90-minute match video
+2. AI detects ALL highlight moments
+3. Auto-creates professional clips
+4. Uploads to YouTube
+5. Posts to social media
+
+**Use Cases**:
+- Full match highlight reels
+- Season compilations
+- Player spotlight videos
+- Professional editing
+
+**BOTH modes use the same AI processing backend - seamless integration!**
 
 ---
 
 ## 📦 What's Included
 
-This directory contains **3 production-ready video processing tools** that work together to automatically create match highlights from full game footage.
+This directory contains **3 production-ready video processing tools** plus **mobile app integration** that work together to create match highlights.
 
 ### 1. **highlights_bot** - AI-Powered Video Editor (Python)
 **Location**: `video-processing/highlights_bot/`
@@ -65,7 +103,17 @@ This directory contains **3 production-ready video processing tools** that work 
 
 ## 🔗 How It Integrates with Main System
 
-### Existing System (Apps Script)
+### Mobile App (NEW)
+**Location**: `mobile/src/screens/VideoScreen.tsx`
+
+**What it does**:
+- Record/select videos in-app
+- Preview before upload
+- Upload to server
+- Track processing status
+- Notify when ready
+
+### Apps Script (Existing)
 **Location**: `apps-script/video-clips.gs`, `apps-script/video/`
 
 **What it does**:
@@ -75,7 +123,7 @@ This directory contains **3 production-ready video processing tools** that work 
 - Generates graphics overlays
 - Exports JSON for processing
 
-### Video Processing Tools (NEW)
+### Video Processing Tools (Server-Side)
 **Location**: `video-processing/`
 
 **What they do**:
@@ -84,68 +132,109 @@ This directory contains **3 production-ready video processing tools** that work 
 - Edit and produce finished videos
 - Process at scale with Docker
 
-### Integration Flow
+### Complete Integration Flow
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                     FULL WORKFLOW                            │
+│          COMPLETE WORKFLOW (TWO ENTRY POINTS)                │
 └─────────────────────────────────────────────────────────────┘
 
-1. MATCH HAPPENS
-   └─> Coach records full match video
+PATH A: MOBILE APP (Quick Clips)
+================================
+1. USER OPENS APP
+   └─> mobile/src/screens/VideoScreen.tsx
+   └─> Tap "Record" or "Select Video"
 
-2. UPLOAD RAW VIDEO
-   └─> Upload to Google Drive or input folder
+2. RECORD/SELECT
+   └─> Record: Up to 5 minutes
+   └─> Select: From phone library
+   └─> Preview with playback controls
 
-3. APPS SCRIPT TRACKING (existing)
+3. UPLOAD TO SERVER
+   └─> Upload via API: /api/v1/videos/upload
+   └─> Shows progress bar
+   └─> Notification: "Processing started!"
+
+4. [Joins Path B at step 4]
+
+PATH B: SERVER-SIDE (Full Match Automation)
+==========================================
+1. MATCH RECORDED
+   └─> Coach records full 90-minute match
+
+2. UPLOAD TO GOOGLE DRIVE
+   └─> Upload to designated folder
+   └─> Or: Direct upload via web interface
+
+3. APPS SCRIPT TRACKING
    └─> apps-script/video-clips.gs creates metadata
    └─> Stores: match_id, timestamp, players, event types
    └─> Exports JSON with clip markers
 
-4. HIGHLIGHTS BOT (NEW - Python AI)
+SHARED PROCESSING (Both Paths Converge Here)
+============================================
+4. HIGHLIGHTS BOT (Python AI)
    └─> video-processing/highlights_bot/
-   └─> Reads JSON from Apps Script
+   └─> Reads JSON from Apps Script OR mobile upload
    └─> Analyzes video with AI (detect.py)
    └─> Cuts clips at exact timestamps
    └─> Edits and produces highlights
 
-5. PROCESSOR (NEW - Docker Production)
+5. PROCESSOR (Docker Production)
    └─> video-processing/football-highlights-processor/
    └─> Queues processing jobs
    └─> Monitors progress
    └─> Handles errors and retries
+   └─> Scales with demand
 
-6. FINAL UPLOAD
+6. FINAL UPLOAD & DISTRIBUTION
    └─> Apps Script uploads to YouTube
-   └─> Updates metadata
-   └─> Notifies via Make.com webhooks
+   └─> Updates metadata in Sheets
+   └─> Triggers Make.com webhooks
+   └─> Posts to social media (X, Instagram, Facebook)
+
+7. USER NOTIFICATION
+   └─> Push notification: "Your highlights are ready!"
+   └─> Mobile app: Shows in "Recent Highlights"
+   └─> Email: Link to YouTube video
 ```
 
 ---
 
 ## 🚀 Getting Started
 
-### Prerequisites
+### For Mobile App Users (Easiest!)
+**No setup needed!** Just:
+1. Open mobile app
+2. Go to Videos tab
+3. Record or select video
+4. Upload and wait!
+
+Server-side processing happens automatically. ✨
+
+### For Coaches/Admins (Server Setup)
+
+#### Prerequisites
 - Python 3.8+ (for highlights_bot)
 - Docker & Docker Compose (for processor)
 - Node.js 18+ (for installer)
-- Google Apps Script access (already have this!)
+- Google Apps Script access (already configured!)
 
-### Quick Start
+#### Quick Start
 
-#### Option 1: Use the Installer (Easiest)
+**Option 1: Use the Installer (Easiest)**
 ```bash
 cd video-processing/football-highlights-installer
 npm install
 npm run setup
 ```
 
-#### Option 2: Manual Setup
+**Option 2: Manual Setup**
 
 **Step 1: Install highlights_bot**
 ```bash
 cd video-processing/highlights_bot
-pip install -r requirements.txt  # If it exists
+pip install -r requirements.txt
 python main.py --help
 ```
 
