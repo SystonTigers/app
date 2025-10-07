@@ -1,0 +1,33 @@
+name: API Contract Validation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'openapi.yaml'
+      - '.spectral.yaml'
+      - '.github/workflows/api-contract.yml'
+  pull_request:
+    paths:
+      - 'openapi.yaml'
+      - '.spectral.yaml'
+      - '.github/workflows/api-contract.yml'
+
+jobs:
+  lint:
+    name: Lint OpenAPI specification
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install OpenAPI validator
+        run: npm install -g @stoplight/spectral-cli
+
+      - name: Lint openapi.yaml
+        run: spectral lint openapi.yaml

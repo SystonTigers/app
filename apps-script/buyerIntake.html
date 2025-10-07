@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<!--
+  @fileoverview Buyer intake onboarding form for Football Automation System
+  @version 6.2.0
+  @description Renders the buyer onboarding workflow for self-service provisioning
+-->
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Buyer Intake</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+      }
+
+      body {
+        font-family: 'Segoe UI', Roboto, Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+        background: #f5f7fa;
+        color: #1f2933;
+      }
+
+      .container {
+        max-width: 760px;
+        margin: 24px auto;
+        padding: 24px 32px 40px;
+        background: #ffffff;
+        border-radius: 12px;
+        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+      }
+
+      h1 {
+        margin-top: 0;
+        font-size: 26px;
+        line-height: 1.3;
+        color: #0f172a;
+      }
+
+      p.description {
+        color: #475569;
+        margin-bottom: 24px;
+      }
+
+      form {
+        display: grid;
+        gap: 20px;
+      }
+
+      .form-section {
+        border: 1px solid #e2e8f0;
+        padding: 20px;
+        border-radius: 10px;
+      }
+
+      .form-section h2 {
+        margin: 0 0 12px;
+        font-size: 18px;
+        color: #1f2937;
+      }
+
+      label {
+        display: block;
+        font-weight: 600;
+        margin-bottom: 6px;
+        color: #1f2933;
+      }
+
+      input[type="text"],
+      input[type="url"],
+      input[type="color"],
+      select,
+      textarea {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        font-size: 14px;
+        box-sizing: border-box;
+        background: #ffffff;
+      }
+
+      input[type="file"] {
+        width: 100%;
+      }
+
+      .roster-table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+
+      .roster-table th,
+      .roster-table td {
+        border: 1px solid #e2e8f0;
+        padding: 8px;
+        text-align: left;
+      }
+
+      .roster-table th {
+        background: #f8fafc;
+        font-weight: 600;
+        color: #0f172a;
+      }
+
+      .actions {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+      }
+
+      button {
+        padding: 12px 20px;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 14px;
+      }
+
+      button.primary {
+        background: #2563eb;
+        color: #ffffff;
+      }
+
+      button.secondary {
+        background: #e2e8f0;
+        color: #111827;
+      }
+
+      .message {
+        border-radius: 8px;
+        padding: 12px 16px;
+        font-size: 14px;
+        display: none;
+      }
+
+      .message.success {
+        background: #dcfce7;
+        color: #065f46;
+        border: 1px solid #22c55e;
+      }
+
+      .message.error {
+        background: #fee2e2;
+        color: #b91c1c;
+        border: 1px solid #f87171;
+      }
+
+      .message.info {
+        background: #e0f2fe;
+        color: #0c4a6e;
+        border: 1px solid #38bdf8;
+      }
+
+      .helper-text {
+        color: #475569;
+        font-size: 12px;
+        margin-top: 4px;
+      }
+
+      .required {
+        color: #ef4444;
+        margin-left: 3px;
+      }
+
+      .loading {
+        opacity: 0.6;
+        pointer-events: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Club Onboarding – Buyer Intake</h1>
+      <p class="description">
+        Provide your club's key details so the automation system can self-configure without engineering support.
+        You'll receive a confirmation once everything has been saved to the system config.
+      </p>
+
+      <div id="message" class="message info">
+        Please complete the form below. Fields marked with <span class="required">*</span> are required.
+      </div>
+
+      <form id="buyer-intake-form">
+        <div class="form-section">
+          <h2>Club Identity</h2>
+          <label for="clubName">Club Name <span class="required">*</span></label>
+          <input id="clubName" name="clubName" type="text" placeholder="Your Club Name" required />
+
+          <label for="clubShortName">Club Short Name</label>
+          <input id="clubShortName" name="clubShortName" type="text" placeholder="e.g. Town FC" />
+
+          <label for="league">League <span class="required">*</span></label>
+          <input id="league" name="league" type="text" placeholder="Leicestershire & District League" required />
+
+          <label for="ageGroup">Primary Age Group <span class="required">*</span></label>
+          <input id="ageGroup" name="ageGroup" type="text" placeholder="Senior Men's" required />
+        </div>
+
+        <div class="form-section">
+          <h2>Branding</h2>
+          <label for="badgeUpload">Club Badge Upload</label>
+          <input id="badgeUpload" name="badgeUpload" type="file" accept="image/*" />
+          <p class="helper-text">Upload PNG/SVG up to 1MB. Either upload or provide a hosted URL.</p>
+
+          <label for="badgeUrl">Club Badge URL</label>
+          <input id="badgeUrl" name="badgeUrl" type="url" placeholder="https://example.com/badge.png" />
+          <p class="helper-text">If both upload and URL are supplied the uploaded image is prioritised.</p>
+
+          <label for="primaryColor">Primary Colour <span class="required">*</span></label>
+          <input id="primaryColor" name="primaryColor" type="color" value="#ff6600" required />
+
+          <label for="secondaryColor">Secondary Colour</label>
+          <input id="secondaryColor" name="secondaryColor" type="color" value="#000000" />
+        </div>
+
+        <div class="form-section">
+          <h2>Squad Roster <span class="required">*</span></h2>
+          <p class="helper-text">Add every player who should appear in automation. Include shirt numbers for player minutes tracking.</p>
+          <table class="roster-table" id="rosterTable">
+            <thead>
+              <tr>
+                <th>Player Name <span class="required">*</span></th>
+                <th>Position</th>
+                <th>Squad Number</th>
+              </tr>
+            </thead>
+            <tbody id="rosterBody"></tbody>
+          </table>
+          <div class="actions">
+            <button type="button" class="secondary" id="addPlayer">Add Player</button>
+            <button type="button" class="secondary" id="clearRoster">Clear Roster</button>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button type="button" class="secondary" id="resetButton">Reset</button>
+          <button type="submit" class="primary" id="submitButton">Save Buyer Profile</button>
+        </div>
+      </form>
+    </div>
+
+    <script>
+      const existingProfile = <?!= JSON.stringify(prefillData || {}) ?>;
+
+      const form = document.getElementById('buyer-intake-form');
+      const messageEl = document.getElementById('message');
+      const rosterBody = document.getElementById('rosterBody');
+      const addPlayerButton = document.getElementById('addPlayer');
+      const clearRosterButton = document.getElementById('clearRoster');
+      const resetButton = document.getElementById('resetButton');
+      const submitButton = document.getElementById('submitButton');
+
+      function showMessage(type, text) {
+        messageEl.className = `message ${type}`;
+        messageEl.textContent = text;
+        messageEl.style.display = 'block';
+      }
+
+      function setLoading(isLoading) {
+        if (isLoading) {
+          form.classList.add('loading');
+          submitButton.textContent = 'Saving…';
+        } else {
+          form.classList.remove('loading');
+          submitButton.textContent = 'Save Buyer Profile';
+        }
+      }
+
+      function addRosterRow(player = {}) {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td><input type="text" name="playerName" placeholder="Jane Doe" value="${player.playerName || ''}" /></td>
+          <td><input type="text" name="position" placeholder="Midfielder" value="${player.position || ''}" /></td>
+          <td><input type="text" name="squadNumber" placeholder="10" value="${player.squadNumber || ''}" /></td>
+        `;
+        rosterBody.appendChild(row);
+      }
+
+      function clearRoster() {
+        rosterBody.innerHTML = '';
+      }
+
+      function populateForm(profile) {
+        if (!profile || typeof profile !== 'object') return;
+        form.clubName.value = profile.clubName || '';
+        form.clubShortName.value = profile.clubShortName || '';
+        form.league.value = profile.league || '';
+        form.ageGroup.value = profile.ageGroup || '';
+        if (profile.primaryColor) {
+          form.primaryColor.value = profile.primaryColor;
+        }
+        if (profile.secondaryColor) {
+          form.secondaryColor.value = profile.secondaryColor;
+        }
+        if (profile.badgeUrl) {
+          form.badgeUrl.value = profile.badgeUrl;
+        }
+
+        clearRoster();
+        const roster = Array.isArray(profile.rosterEntries) ? profile.rosterEntries : [];
+        if (roster.length === 0) {
+          addRosterRow();
+        } else {
+          roster.forEach(addRosterRow);
+        }
+      }
+
+      function extractRoster() {
+        const rows = Array.from(rosterBody.querySelectorAll('tr'));
+        return rows
+          .map(row => {
+            const [nameInput, positionInput, squadInput] = row.querySelectorAll('input');
+            return {
+              playerName: (nameInput.value || '').trim(),
+              position: (positionInput.value || '').trim(),
+              squadNumber: (squadInput.value || '').trim()
+            };
+          })
+          .filter(entry => entry.playerName);
+      }
+
+      function validateFormPayload(payload) {
+        if (!payload.clubName) {
+          return 'Club name is required.';
+        }
+        if (!payload.league) {
+          return 'League name is required.';
+        }
+        if (!payload.ageGroup) {
+          return 'Primary age group is required.';
+        }
+        if (!payload.primaryColor) {
+          return 'Primary colour is required.';
+        }
+        if (!payload.badgeUrl && !payload.badgeBase64) {
+          return 'Provide either a club badge upload or a hosted URL.';
+        }
+        if (!Array.isArray(payload.rosterEntries) || payload.rosterEntries.length === 0) {
+          return 'Add at least one player to the roster.';
+        }
+        const colourPattern = /^#([0-9a-f]{3}){1,2}$/i;
+        if (payload.primaryColor && !colourPattern.test(payload.primaryColor)) {
+          return 'Primary colour must be a valid hex code.';
+        }
+        if (payload.secondaryColor && !colourPattern.test(payload.secondaryColor)) {
+          return 'Secondary colour must be a valid hex code.';
+        }
+        return null;
+      }
+
+      function collectFormData(badgeBase64) {
+        const rosterEntries = extractRoster();
+        return {
+          clubName: form.clubName.value.trim(),
+          clubShortName: form.clubShortName.value.trim(),
+          league: form.league.value.trim(),
+          ageGroup: form.ageGroup.value.trim(),
+          primaryColor: form.primaryColor.value,
+          secondaryColor: form.secondaryColor.value,
+          badgeUrl: form.badgeUrl.value.trim(),
+          badgeBase64,
+          rosterEntries
+        };
+      }
+
+      function readBadgeFile() {
+        const fileInput = form.badgeUpload;
+        const file = fileInput.files && fileInput.files[0];
+        if (!file) {
+          return Promise.resolve('');
+        }
+        if (file.size > 1024 * 1024) {
+          return Promise.reject(new Error('Badge upload must be smaller than 1MB.'));
+        }
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result.split(',')[1] || '');
+          reader.onerror = () => reject(new Error('Failed to read badge file.'));
+          reader.readAsDataURL(file);
+        });
+      }
+
+      form.addEventListener('submit', event => {
+        event.preventDefault();
+        setLoading(true);
+        showMessage('info', 'Validating and saving your details…');
+
+        readBadgeFile()
+          .then(badgeBase64 => {
+            const payload = collectFormData(badgeBase64);
+            const validationError = validateFormPayload(payload);
+            if (validationError) {
+              throw new Error(validationError);
+            }
+            google.script.run
+              .withSuccessHandler(response => {
+                setLoading(false);
+                if (response && response.success) {
+                  populateForm(response.profile || payload);
+                  showMessage('success', response.message || 'Buyer profile saved successfully.');
+                } else {
+                  showMessage('error', (response && response.error) || 'Unable to save buyer profile.');
+                }
+              })
+              .withFailureHandler(error => {
+                setLoading(false);
+                showMessage('error', error && error.message ? error.message : 'Failed to save buyer profile.');
+              })
+              .submitBuyerIntake(payload);
+          })
+          .catch(error => {
+            setLoading(false);
+            showMessage('error', error.message || 'An unexpected error occurred.');
+          });
+      });
+
+      addPlayerButton.addEventListener('click', () => addRosterRow());
+      clearRosterButton.addEventListener('click', () => {
+        clearRoster();
+        addRosterRow();
+      });
+
+      resetButton.addEventListener('click', () => {
+        populateForm(existingProfile);
+        showMessage('info', 'Form reset to the most recently saved values.');
+      });
+
+      // Initialise UI with either saved profile or default empty roster row
+      if (existingProfile && Object.keys(existingProfile).length > 0) {
+        populateForm(existingProfile);
+        showMessage('info', 'Existing buyer profile loaded. Update any field and save.');
+      } else {
+        addRosterRow();
+        showMessage('info', 'Please provide your club details to complete onboarding.');
+      }
+    </script>
+  </body>
+</html>

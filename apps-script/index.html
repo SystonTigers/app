@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Club Console</title>
+
+    <!-- PWA Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Club Console">
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" id="pwa-manifest-link">
+    <script>
+        (function updateManifestLink() {
+            const manifestLink = document.querySelector('#pwa-manifest-link');
+            if (!manifestLink) {
+                return;
+            }
+
+            const { origin, pathname, search } = window.location;
+            const trimmedPath = pathname.replace(/\/+$/, '');
+            const baseUrl = trimmedPath ? `${origin}${trimmedPath}` : origin;
+            const manifestUrl = `${baseUrl}/manifest.json${search || ''}`;
+
+            manifestLink.setAttribute('href', manifestUrl);
+        })();
+    </script>
+    <meta name="theme-color" content="#ff6600">
+
+    <style>
+        <?!= include('styles'); ?>
+    </style>
+</head>
+<body>
+    <div id="app">
+        <!-- Loading Screen -->
+        <div id="loading" class="loading-screen">
+            <div class="loading-spinner"></div>
+            <div class="loading-text">Loading Club Console...</div>
+        </div>
+
+        <!-- Main App (Hidden initially) -->
+        <div id="main-app" class="main-app" style="display: none;">
+            <!-- Header -->
+            <header class="app-header">
+                <div class="header-content">
+                    <div class="club-info">
+                        <img id="club-badge" class="club-badge" src="" alt="Badge" style="display: none;">
+                        <h1 id="club-name-display" class="club-name">Club Console</h1>
+                    </div>
+                    <div class="connection-indicator" id="connection-indicator">
+                        <span class="connection-dot"></span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Tab Navigation -->
+            <nav class="tab-nav">
+                <button class="tab-button" data-tab="setup">
+                    <span class="tab-icon">⚙️</span>
+                    <span class="tab-label">Setup</span>
+                </button>
+                <button class="tab-button active" data-tab="match">
+                    <span class="tab-icon">⚽</span>
+                    <span class="tab-label">Match</span>
+                </button>
+                <button class="tab-button" data-tab="archive">
+                    <span class="tab-icon">🗂️</span>
+                    <span class="tab-label">Archive</span>
+                </button>
+                <button class="tab-button" data-tab="stats">
+                    <span class="tab-icon">📊</span>
+                    <span class="tab-label">Player Stats</span>
+                </button>
+            </nav>
+
+            <!-- Tab Content -->
+            <main class="tab-content">
+                <!-- Setup Tab -->
+                <div id="setup-tab" class="tab-pane">
+                    <?!= include('setup'); ?>
+                </div>
+
+                <!-- Match Tab -->
+                <div id="match-tab" class="tab-pane active">
+                    <?!= include('match'); ?>
+                </div>
+
+                <!-- Archive Tab -->
+                <div id="archive-tab" class="tab-pane">
+                    <?!= include('archive'); ?>
+                </div>
+
+                <!-- Player Stats Tab -->
+                <div id="stats-tab" class="tab-pane">
+                    <?!= include('player-stats'); ?>
+                </div>
+            </main>
+        </div>
+
+        <!-- Status Messages -->
+        <div id="status-messages" class="status-messages"></div>
+
+        <!-- Confirmation Modal -->
+        <div id="modal-overlay" class="modal-overlay" style="display: none;">
+            <div class="modal">
+                <div class="modal-header">
+                    <h3 id="modal-title">Confirm Action</h3>
+                </div>
+                <div class="modal-body">
+                    <p id="modal-message">Are you sure?</p>
+                </div>
+                <div class="modal-actions">
+                    <button id="modal-cancel" class="btn btn-secondary">Cancel</button>
+                    <button id="modal-confirm" class="btn btn-primary">Confirm</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        <?!= include('scripts'); ?>
+    </script>
+</body>
+</html>

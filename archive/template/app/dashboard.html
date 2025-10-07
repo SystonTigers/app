@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    body {
+      font-family: 'Google Sans', Arial, sans-serif;
+      margin: 0;
+      padding: 16px;
+      background: #f8f9fa;
+      font-size: 14px;
+    }
+    .container {
+      background: white;
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .header {
+      border-bottom: 2px solid #1a73e8;
+      padding-bottom: 12px;
+      margin-bottom: 20px;
+    }
+    .header h2 {
+      color: #1a73e8;
+      margin: 0;
+      font-size: 20px;
+    }
+    .status-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    .status-card {
+      padding: 16px;
+      border-radius: 6px;
+      border: 1px solid #e8eaed;
+    }
+    .status-ok {
+      background: #e8f5e8;
+      border-color: #34a853;
+    }
+    .status-warn {
+      background: #fef7e0;
+      border-color: #fbbc04;
+    }
+    .status-error {
+      background: #fce8e6;
+      border-color: #ea4335;
+    }
+    .status-title {
+      font-weight: 500;
+      margin-bottom: 8px;
+    }
+    .status-value {
+      font-size: 24px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    .status-ok .status-value { color: #137333; }
+    .status-warn .status-value { color: #f29900; }
+    .status-error .status-value { color: #d93025; }
+    .metric-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid #e8eaed;
+    }
+    .metric-row:last-child {
+      border-bottom: none;
+    }
+    .metric-label {
+      font-weight: 500;
+    }
+    .metric-value {
+      color: #5f6368;
+    }
+    .section {
+      margin-bottom: 20px;
+    }
+    .section h3 {
+      color: #1a73e8;
+      margin: 0 0 12px 0;
+      font-size: 16px;
+    }
+    .checks-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .checks-list li {
+      padding: 6px 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .check-ok { color: #137333; }
+    .check-warn { color: #f29900; }
+    .check-error { color: #d93025; }
+    .refresh-btn {
+      background: #1a73e8;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      float: right;
+    }
+    .refresh-btn:hover {
+      background: #1557b0;
+    }
+    .timestamp {
+      color: #5f6368;
+      font-size: 12px;
+      text-align: right;
+      margin-top: 16px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h2>📊 System Dashboard</h2>
+      <button class="refresh-btn" onclick="location.reload()">🔄 Refresh</button>
+    </div>
+
+    <!-- System Status Overview -->
+    <div class="status-grid">
+      <div class="status-card <?= health.status === 'OK' ? 'status-ok' : health.status === 'WARN' ? 'status-warn' : 'status-error' ?>">
+        <div class="status-title">System Health</div>
+        <div class="status-value"><?= health.status ?></div>
+        <div>Version <?= version ?></div>
+      </div>
+
+      <div class="status-card status-ok">
+        <div class="status-title">Total Sheets</div>
+        <div class="status-value"><?= metrics.spreadsheet.sheetCount ?></div>
+        <div><?= metrics.spreadsheet.name ?></div>
+      </div>
+    </div>
+
+    <!-- Health Checks -->
+    <div class="section">
+      <h3>🏥 Health Checks</h3>
+      <ul class="checks-list">
+        <? Object.keys(health.checks || {}).forEach(function(checkName) {
+           const check = health.checks[checkName];
+           const statusClass = check.status === 'OK' ? 'check-ok' : check.status === 'WARN' ? 'check-warn' : 'check-error';
+           const icon = check.status === 'OK' ? '✅' : check.status === 'WARN' ? '⚠️' : '❌';
+        ?>
+        <li>
+          <span class="<?= statusClass ?>"><?= icon ?></span>
+          <strong><?= checkName ?>:</strong> <?= check.message ?>
+        </li>
+        <? }); ?>
+      </ul>
+    </div>
+
+    <!-- Sheet Information -->
+    <div class="section">
+      <h3>📄 Sheet Information</h3>
+      <? Object.keys(metrics.sheets || {}).forEach(function(sheetName) {
+         const sheet = metrics.sheets[sheetName];
+      ?>
+      <div class="metric-row">
+        <span class="metric-label"><?= sheetName ?></span>
+        <span class="metric-value"><?= sheet.rows ?> rows, <?= sheet.columns ?> columns</span>
+      </div>
+      <? }); ?>
+    </div>
+
+    <!-- Warnings and Errors -->
+    <? if (health.warnings && health.warnings.length > 0) { ?>
+    <div class="section">
+      <h3>⚠️ Warnings</h3>
+      <ul>
+        <? health.warnings.forEach(function(warning) { ?>
+        <li style="color: #f29900;"><?= warning ?></li>
+        <? }); ?>
+      </ul>
+    </div>
+    <? } ?>
+
+    <? if (health.errors && health.errors.length > 0) { ?>
+    <div class="section">
+      <h3>❌ Errors</h3>
+      <ul>
+        <? health.errors.forEach(function(error) { ?>
+        <li style="color: #d93025;"><?= error ?></li>
+        <? }); ?>
+      </ul>
+    </div>
+    <? } ?>
+
+    <!-- Performance -->
+    <? if (health.performance) { ?>
+    <div class="section">
+      <h3>⚡ Performance</h3>
+      <div class="metric-row">
+        <span class="metric-label">Health Check Time</span>
+        <span class="metric-value"><?= health.performance.healthCheckTime ?>ms</span>
+      </div>
+      <? if (metrics.performance) { ?>
+      <div class="metric-row">
+        <span class="metric-label">Query Time</span>
+        <span class="metric-value"><?= metrics.performance.queryTime ?>ms</span>
+      </div>
+      <? } ?>
+    </div>
+    <? } ?>
+
+    <div class="timestamp">
+      Last updated: <?= health.timestamp ? new Date(health.timestamp).toLocaleString() : 'Unknown' ?>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,684 @@
+/* Club Console Styles - Mobile First Design */
+
+:root {
+    --primary-color: <?= getConfigValue('BRANDING.PRIMARY_COLOR') || '#FF0000' ?>;
+    --secondary-color: <?= getConfigValue('BRANDING.SECONDARY_COLOR') || '#FFFFFF' ?>;
+    --accent-color: <?= getConfigValue('BRANDING.SECONDARY_COLOR') || '#000000' ?>;
+    --background: #000000;
+    --surface: #1a1a1a;
+    --surface-light: #2a2a2a;
+    --text-primary: #ffffff;
+    --text-secondary: #cccccc;
+    --success: #4CAF50;
+    --warning: #FFC107;
+    --error: #F44336;
+    --border: #333333;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--background);
+    color: var(--text-primary);
+    line-height: 1.5;
+    overflow-x: hidden;
+}
+
+/* Loading Screen */
+.loading-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100vh;
+    background: var(--background);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+}
+
+.loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid var(--border);
+    border-top: 3px solid var(--primary-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 20px;
+}
+
+.loading-text {
+    font-size: 16px;
+    color: var(--text-secondary);
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Main App */
+.main-app {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Header */
+.app-header {
+    background: var(--surface);
+    padding: 16px;
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.club-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.club-badge {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.club-name {
+    font-size: 20px;
+    font-weight: bold;
+    color: var(--primary-color);
+}
+
+.connection-indicator {
+    display: flex;
+    align-items: center;
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.connection-dot {
+    width: 8px;
+    height: 8px;
+    background: var(--success);
+    border-radius: 50%;
+    margin-right: 6px;
+}
+
+.connection-indicator.offline .connection-dot {
+    background: var(--error);
+}
+
+/* Tab Navigation */
+.tab-nav {
+    background: var(--surface);
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.tab-button {
+    flex: 1;
+    min-width: 120px;
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    padding: 16px 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border-bottom: 3px solid transparent;
+}
+
+.tab-button.active {
+    color: var(--primary-color);
+    border-bottom-color: var(--primary-color);
+}
+
+.tab-button:hover:not(.active) {
+    color: var(--text-primary);
+    background: var(--surface-light);
+}
+
+.tab-icon {
+    font-size: 20px;
+}
+
+.tab-label {
+    font-size: 12px;
+    font-weight: 500;
+}
+
+/* Tab Content */
+.tab-content {
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.tab-pane {
+    display: none;
+    padding: 20px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.tab-pane.active {
+    display: block;
+}
+
+/* Cards */
+.card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+}
+
+.card-title {
+    font-size: 18px;
+    font-weight: bold;
+    color: var(--text-primary);
+}
+
+/* Form Elements */
+.form-group {
+    margin-bottom: 16px;
+}
+
+.form-label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.form-input,
+.form-select,
+.form-textarea {
+    width: 100%;
+    padding: 12px;
+    background: var(--background);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-primary);
+    font-size: 16px;
+    transition: border-color 0.2s ease;
+}
+
+.form-input:focus,
+.form-select:focus,
+.form-textarea:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+
+.form-textarea {
+    resize: vertical;
+    min-height: 100px;
+}
+
+/* Color Input Special Styling */
+.color-input-group {
+    display: flex;
+    gap: 12px;
+    align-items: end;
+}
+
+.color-preview {
+    width: 48px;
+    height: 48px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    cursor: pointer;
+}
+
+/* Buttons */
+.btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 6px;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 48px;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.btn-primary {
+    background: var(--primary-color);
+    color: var(--secondary-color);
+}
+
+.btn-primary:hover:not(:disabled) {
+    opacity: 0.9;
+    transform: translateY(-1px);
+}
+
+.btn-secondary {
+    background: var(--surface-light);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+}
+
+.btn-secondary:hover:not(:disabled) {
+    background: var(--border);
+}
+
+.btn-success {
+    background: var(--success);
+    color: white;
+}
+
+.btn-warning {
+    background: var(--warning);
+    color: black;
+}
+
+.btn-error {
+    background: var(--error);
+    color: white;
+}
+
+/* Action Buttons (Large for Match) */
+.action-btn {
+    width: 100%;
+    padding: 20px;
+    font-size: 18px;
+    font-weight: bold;
+    border-radius: 12px;
+    margin-bottom: 12px;
+    touch-action: manipulation;
+    user-select: none;
+}
+
+.goal-btn {
+    background: var(--success);
+    color: white;
+}
+
+.card-btn {
+    color: black;
+}
+
+.card-btn.yellow {
+    background: #FFEB3B;
+}
+
+.card-btn.red {
+    background: #F44336;
+    color: white;
+}
+
+.sub-btn {
+    background: #2196F3;
+    color: white;
+}
+
+.state-btn {
+    background: var(--warning);
+    color: black;
+}
+
+/* Button Groups */
+.btn-group {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.btn-group .btn {
+    flex: 1;
+}
+
+/* Status Messages */
+.status-messages {
+    position: fixed;
+    top: 80px;
+    right: 20px;
+    z-index: 1000;
+    max-width: 300px;
+}
+
+.status-message {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px 16px;
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    animation: slideIn 0.3s ease;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+.status-message.success {
+    border-left: 4px solid var(--success);
+}
+
+.status-message.error {
+    border-left: 4px solid var(--error);
+}
+
+.status-message.warning {
+    border-left: 4px solid var(--warning);
+}
+
+.status-close {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 18px;
+    cursor: pointer;
+    padding: 0;
+    margin-left: 12px;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* Modal */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+    padding: 20px;
+}
+
+.modal {
+    background: var(--surface);
+    border-radius: 12px;
+    padding: 24px;
+    width: 100%;
+    max-width: 400px;
+    border: 1px solid var(--border);
+}
+
+.modal-header {
+    margin-bottom: 16px;
+}
+
+.modal-body {
+    margin-bottom: 24px;
+    color: var(--text-secondary);
+}
+
+.modal-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+}
+
+.modal-actions .btn {
+    min-width: 80px;
+}
+
+/* Score Display */
+.score-display {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+    font-size: 24px;
+    font-weight: bold;
+}
+
+.score-team {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.score-value {
+    font-size: 48px;
+    color: var(--primary-color);
+}
+
+.score-label {
+    font-size: 14px;
+    color: var(--text-secondary);
+    font-weight: normal;
+}
+
+.score-vs {
+    font-size: 18px;
+    color: var(--text-secondary);
+}
+
+/* Player Grid */
+.player-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.player-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 8px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.player-card:hover {
+    border-color: var(--primary-color);
+    background: var(--surface-light);
+}
+
+.player-card.selected {
+    border-color: var(--primary-color);
+    background: var(--primary-color);
+    color: var(--secondary-color);
+}
+
+.player-number {
+    font-size: 18px;
+    font-weight: bold;
+    margin-bottom: 4px;
+}
+
+.player-name {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.player-card.selected .player-name {
+    color: var(--secondary-color);
+}
+
+/* Events List */
+.events-list {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.event-item {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.event-item:last-child {
+    border-bottom: none;
+}
+
+.event-details {
+    flex: 1;
+}
+
+.event-time {
+    font-weight: bold;
+    color: var(--primary-color);
+}
+
+.event-description {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin-top: 2px;
+}
+
+.event-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.event-undo {
+    background: var(--warning);
+    color: black;
+    padding: 4px 8px;
+    border: none;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .header-content {
+        padding: 0;
+    }
+
+    .club-name {
+        font-size: 18px;
+    }
+
+    .tab-pane {
+        padding: 16px;
+    }
+
+    .card {
+        padding: 16px;
+    }
+
+    .btn-group {
+        flex-direction: column;
+    }
+
+    .btn-group .btn {
+        width: 100%;
+    }
+
+    .score-display {
+        padding: 16px;
+        font-size: 20px;
+    }
+
+    .score-value {
+        font-size: 36px;
+    }
+
+    .player-grid {
+        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+        gap: 8px;
+    }
+
+    .modal {
+        margin: 20px;
+        padding: 20px;
+    }
+}
+
+/* Utilities */
+.hidden {
+    display: none !important;
+}
+
+.text-center {
+    text-align: center;
+}
+
+.text-success {
+    color: var(--success);
+}
+
+.text-warning {
+    color: var(--warning);
+}
+
+.text-error {
+    color: var(--error);
+}
+
+.mt-20 {
+    margin-top: 20px;
+}
+
+.mb-20 {
+    margin-bottom: 20px;
+}
+
+.no-wrap {
+    white-space: nowrap;
+}

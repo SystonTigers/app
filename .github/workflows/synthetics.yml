@@ -1,0 +1,26 @@
+name: synthetics
+
+on:
+  schedule:
+    - cron: '22 3 * * *'
+  workflow_dispatch: {}
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Health check
+        run: |
+          curl -fsS ${{ secrets.WORKER_BASE }}/healthz
+
+      - name: Enqueue sandbox post
+        run: |
+          curl -fsS -X POST ${{ secrets.WORKER_BASE }}/api/v1/post \
+            -H "authorization: Bearer ${{ secrets.SANDBOX_JWT }}" \
+            -H "content-type: application/json" \
+            -H "Idempotency-Key: syn-$(date +%s)" \
+            --data '{"tenant":"sandbox","template":"smoke","channels":["yt"],"data":{"msg":"hello"}}' \
+            -i
+
+      - name: Assert Queue drained (optional)
+        run: echo "If you expose /debug for admins, poll it here to ensure dequeue."

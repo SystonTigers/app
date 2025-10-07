@@ -1,0 +1,818 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title><?= config.TEAM_NAME ?> – Control Panel</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <style>
+    :root { --bg:#0b0b0b; --card:#151515; --accent:#ffd200; --muted:#999; --ok:#29a745; --warn:#e0a800; --err:#dc3545; }
+    html,body { background:#0b0b0b; color:#f6f6f6; font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,'Helvetica Neue',Arial,sans-serif; margin:0; }
+    .wrap { max-width:1100px; margin:32px auto; padding:0 16px; }
+    h1 { margin:0 0 20px; font-size:26px; }
+    .grid { display:grid; grid-template-columns: repeat(auto-fit,minmax(280px,1fr)); gap:16px; }
+    .card { background:var(--card); border:1px solid #222; border-radius:16px; padding:16px; box-shadow:0 1px 10px rgba(0,0,0,.25); }
+    .card h2 { margin:0 0 12px; font-size:18px; color:#fff; }
+    .muted { color:var(--muted); font-size:12px; }
+    .row { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:8px 0; border-top:1px solid #1f1f1f; }
+    .row:first-child { border-top:none; padding-top:0; }
+    .btn { display:inline-flex; align-items:center; gap:8px; padding:10px 14px; border-radius:10px; border:1px solid #2a2a2a; background:#111; color:#fff; cursor:pointer; }
+    .btn:hover { background:#171717; }
+    .btn.primary { background:var(--accent); color:#000; border-color:#e6be00; font-weight:700; }
+    .btn.ghost { background:transparent; }
+    .btn-row { display:flex; gap:10px; flex-wrap:wrap; }
+    .pill { display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:999px; border:1px solid #2a2a2a; font-size:12px; }
+    .ok { border-color:#215c33; background:rgba(41,167,69,.1); color:#b6ffca; }
+    .warn { border-color:#5c4a21; background:rgba(224,168,0,.12); color:#ffe8a6; }
+    .err { border-color:#5c2121; background:rgba(220,53,69,.12); color:#ffc2c7; }
+    .switch { position:relative; width:48px; height:28px; }
+    .switch input { display:none; }
+    .slider { position:absolute; cursor:pointer; top:0; left:0; right:0; bottom:0; background:#333; transition:.2s; border-radius:14px; }
+    .slider:before { position:absolute; content:''; height:22px; width:22px; left:3px; top:3px; background:#999; transition:.2s; border-radius:50%; }
+    input:checked + .slider { background:var(--accent); }
+    input:checked + .slider:before { transform:translateX(20px); background:#000; }
+    .kv { display:grid; grid-template-columns: 140px 1fr; gap:8px; font-size:14px; }
+    .kv div { padding:4px 0; border-bottom:1px dashed #262626; }
+    .kv div:nth-child(odd) { color:#ccc; }
+    small.code { display:inline-block; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; background:#0f0f0f; border:1px solid #222; border-radius:6px; padding:2px 6px; color:#ddd; }
+    .privacy-list { list-style:none; margin:8px 0 0 0; padding:0; }
+    .privacy-list li { padding:6px 0; border-bottom:1px solid #1f1f1f; font-size:13px; }
+    .privacy-list li:last-child { border-bottom:none; }
+    .privacy-block { margin-top:12px; }
+    .toggle-stack { display:flex; flex-direction:column; gap:10px; width:100%; }
+    .toggle-item small { color:#6b7280; }
+    .tabs { display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin:20px 0; }
+    .tab-btn { background:#111; color:#ddd; border:1px solid #222; border-radius:999px; padding:8px 16px; cursor:pointer; font-size:13px; letter-spacing:.04em; text-transform:uppercase; }
+    .tab-btn.active { background:var(--accent); color:#000; border-color:#e6be00; font-weight:700; }
+    .tab-hint { color:var(--muted); font-size:12px; margin-left:auto; }
+    .view { display:none; }
+    .view.active { display:block; }
+    .hidden { display:none !important; }
+    .flash { padding:12px 16px; border-radius:12px; border:1px solid transparent; margin-bottom:16px; font-size:13px; }
+    .flash.success { background:rgba(41,167,69,.12); border-color:#215c33; color:#b6ffca; }
+    .flash.error { background:rgba(220,53,69,.12); border-color:#5c2121; color:#ffc2c7; }
+    .flash.info { background:rgba(224,168,0,.12); border-color:#5c4a21; color:#ffe8a6; }
+    .live-grid { display:grid; grid-template-columns: repeat(auto-fit,minmax(320px,1fr)); gap:16px; }
+    .form-grid { display:grid; gap:12px; }
+    .form-grid label { font-size:11px; color:var(--muted); letter-spacing:.08em; text-transform:uppercase; }
+    .form-grid input,
+    .form-grid select,
+    .form-grid textarea { background:#0f0f0f; border:1px solid #222; border-radius:10px; padding:10px 12px; color:#fff; font-size:14px; font-family:inherit; }
+    .form-grid textarea { min-height:80px; resize:vertical; }
+    .scoreboard { display:flex; align-items:center; justify-content:space-between; gap:18px; padding:10px 0; }
+    .scoreboard .team { flex:1; text-align:center; }
+    .scoreboard .team-name { font-size:16px; color:#f6f6f6; font-weight:600; margin-bottom:4px; }
+    .scoreboard .team-score { font-size:48px; font-weight:700; }
+    .scoreboard .vs { font-size:14px; color:var(--muted); text-transform:uppercase; letter-spacing:.2em; }
+    .status-grid { display:flex; flex-wrap:wrap; gap:10px; margin-top:12px; }
+    .status-grid button { flex:1 1 150px; justify-content:center; }
+    .event-list { list-style:none; margin:0; padding:0; display:grid; gap:10px; }
+    .event-item { background:#101010; border-radius:12px; border:1px solid #222; padding:12px; }
+    .event-item .time { font-size:11px; color:var(--muted); letter-spacing:.08em; text-transform:uppercase; margin-bottom:4px; }
+    .event-item .body { color:#fff; font-size:14px; line-height:1.45; }
+    .muted span.score { color:#f6f6f6; font-weight:600; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>⚙️ <?= config.TEAM_NAME ?> – Operations Console</h1>
+
+    <div class="tabs">
+      <button class="tab-btn active" data-view="control">Control panel</button>
+      <button class="tab-btn" data-view="live">Live match console</button>
+      <div class="tab-hint">Live tools stay Make.com friendly & Bible compliant</div>
+    </div>
+
+    <section id="controlView" class="view active">
+      <div class="grid">
+        <div class="card">
+        <h2>System status</h2>
+        <div id="statusPills" class="btn-row" style="margin-bottom:10px;"></div>
+        <div class="kv" id="sysInfo"></div>
+        <div class="row" style="margin-top:12px;">
+          <div class="muted">Validate configuration & connections</div>
+          <button class="btn" onclick="refreshValidation()">Re-validate</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Feature toggles</h2>
+        <div id="featureList"></div>
+        <div class="row">
+          <div class="muted">Toggle & Save</div>
+          <div class="btn-row">
+            <button class="btn primary" onclick="saveFeatures()">Save changes</button>
+            <button class="btn ghost" onclick="loadState()">Reset</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Privacy & Consent</h2>
+        <div id="privacySummary" class="kv"></div>
+        <div id="privacyExpiry" class="privacy-block"></div>
+        <div class="row">
+          <div class="muted">Safeguards</div>
+          <div id="privacyToggles" class="toggle-stack"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Run now</h2>
+        <div class="btn-row">
+          <button class="btn" onclick="runAction('runBatchFixtures')">Run: Batch (fixtures+results+postponed)</button>
+          <button class="btn" onclick="runAction('runFixturesBatch')">Run: Fixtures batch</button>
+          <button class="btn" onclick="runAction('runResultsBatch')">Run: Results batch</button>
+          <button class="btn" onclick="runAction('runPostponedBatch')">Run: Postponed</button>
+          <button class="btn" onclick="runAction('runWeeklySchedulerNow')">Run: Weekly scheduler (today)</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Notes</h2>
+        <div class="muted">
+          • Uses <small class="code">validateConfiguration()</small> from <small class="code">config.js</small> for health. <br>
+          • Make.com router keys must exist (e.g. <small class="code">fixtures_1_league … fixtures_5_league</small>,
+          <small class="code">results_1_league … results_5_league</small>, <small class="code">match_postponed</small>).<br>
+          • Script Properties must set <small class="code">SPREADSHEET_ID</small> and <small class="code">MAKE_WEBHOOK_URL</small>.
+        </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="liveView" class="view">
+      <div id="liveFlash" class="flash hidden"></div>
+      <div class="live-grid">
+        <div class="card">
+          <h2>Scoreboard</h2>
+          <div class="scoreboard">
+            <div class="team">
+              <div class="team-name" id="homeTeamName"><?= config.TEAM_NAME ?></div>
+              <div class="team-score" id="homeScore">0</div>
+            </div>
+            <div class="vs">vs</div>
+            <div class="team">
+              <div class="team-name" id="awayTeamName">Opponent</div>
+              <div class="team-score" id="awayScore">0</div>
+            </div>
+          </div>
+          <div class="muted" id="matchMeta">Match details pending</div>
+          <div class="row" style="margin-top:12px;">
+            <div class="muted">Refresh latest live data snapshot</div>
+            <button id="liveRefresh" class="btn" type="button" onclick="loadLiveConsoleState()">Refresh</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Match status</h2>
+          <div class="muted">Kick-off, half-time, second-half, and full-time posts</div>
+          <div id="statusButtons" class="status-grid"></div>
+        </div>
+
+        <div class="card">
+          <h2>Goal</h2>
+          <form id="goalForm" class="form-grid" onsubmit="submitGoal(event)">
+            <label for="goalMinute">Minute</label>
+            <input id="goalMinute" type="number" min="0" max="130" placeholder="e.g. 42">
+            <label for="goalPlayer">Scorer</label>
+            <select id="goalPlayer"></select>
+            <label for="goalAssist">Assist (optional)</label>
+            <select id="goalAssist"></select>
+            <label for="goalNote">Internal note (optional)</label>
+            <textarea id="goalNote" placeholder="Brace detection handled automatically"></textarea>
+            <button id="goalSubmit" class="btn primary" type="submit" data-live-submit>Record goal</button>
+          </form>
+        </div>
+
+        <div class="card">
+          <h2>Card</h2>
+          <form id="cardForm" class="form-grid" onsubmit="submitCard(event)">
+            <label for="cardMinute">Minute</label>
+            <input id="cardMinute" type="number" min="0" max="130" placeholder="e.g. 67">
+            <label for="cardPlayer">Player</label>
+            <select id="cardPlayer"></select>
+            <label for="cardType">Card type</label>
+            <select id="cardType"></select>
+            <label for="cardNote">Internal note (optional)</label>
+            <textarea id="cardNote" placeholder="E.g. dissent, tactical"></textarea>
+            <button id="cardSubmit" class="btn primary" type="submit" data-live-submit>Record card</button>
+          </form>
+        </div>
+
+        <div class="card">
+          <h2>Substitution</h2>
+          <form id="subForm" class="form-grid" onsubmit="submitSub(event)">
+            <label for="subMinute">Minute</label>
+            <input id="subMinute" type="number" min="0" max="130" placeholder="e.g. 74">
+            <label for="playerOff">Player off</label>
+            <select id="playerOff"></select>
+            <label for="playerOn">Player on</label>
+            <select id="playerOn"></select>
+            <label for="subNote">Internal note (optional)</label>
+            <textarea id="subNote" placeholder="E.g. tactical, injury"></textarea>
+            <button id="subSubmit" class="btn primary" type="submit" data-live-submit>Record substitution</button>
+          </form>
+        </div>
+
+        <div class="card">
+          <h2>Video notes</h2>
+          <form id="noteForm" class="form-grid" onsubmit="submitNote(event)">
+            <label for="noteMinute">Minute</label>
+            <input id="noteMinute" type="number" min="0" max="130" placeholder="e.g. 51">
+            <label for="noteType">Marker</label>
+            <select id="noteType"></select>
+            <label for="notePlayer">Player</label>
+            <select id="notePlayer"></select>
+            <label for="noteDetails">Details</label>
+            <textarea id="noteDetails" placeholder="E.g. &quot;Huge save&quot; or &quot;Great build-up&quot;"></textarea>
+            <button id="noteSubmit" class="btn primary" type="submit" data-live-submit>Save note</button>
+          </form>
+        </div>
+
+        <div class="card" style="grid-column:1 / -1;">
+          <h2>Recent events</h2>
+          <ul id="recentEvents" class="event-list"></ul>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const el = s => document.querySelector(s);
+    const pills = (arr) => arr.map(x => `<span class="pill ${x.cls}">${x.text}</span>`).join('');
+    const liveState = { loaded: false, data: null, readyMessageShown: false };
+
+    function loadState() {
+      google.script.run.withSuccessHandler(state => {
+        const { features, info, validation, privacy, privacyFlags } = state;
+        // info
+        el('#sysInfo').innerHTML = `
+          <div>Version</div><div>${info.version}</div>
+          <div>Club</div><div>${info.club}</div>
+          <div>Season</div><div>${info.season}</div>
+          <div>Timezone</div><div>${info.tz}</div>
+          <div>Webhook</div><div>${info.webhook ? 'Configured' : 'Missing'}</div>
+        `;
+
+        // validation pills
+        const p = [];
+        if (validation.valid) p.push({cls:'ok', text:'Config OK'});
+        else p.push({cls:'err', text:'Config Issues'});
+        if (validation.warnings?.length) p.push({cls:'warn', text:`${validation.warnings.length} warning(s)`});
+        el('#statusPills').innerHTML = pills(p);
+
+        // features
+        const html = Object.keys(features).sort().map(k => {
+          const checked = features[k] ? 'checked' : '';
+          return `
+            <div class="row">
+              <div style="display:flex;align-items:center; gap:10px;">
+                <label class="switch">
+                  <input type="checkbox" data-key="${k}" ${checked}>
+                  <span class="slider"></span>
+                </label>
+                <div><b>${k}</b></div>
+              </div>
+            </div>
+          `;
+        }).join('');
+        el('#featureList').innerHTML = html;
+
+        // privacy summary
+        const summary = (privacy && privacy.success !== false) ? (privacy.summary || {}) : {};
+        if (Object.keys(summary).length > 0) {
+          el('#privacySummary').innerHTML = `
+            <div>Total players</div><div>${summary.total_players ?? 0}</div>
+            <div>Minors</div><div>${summary.minors ?? 0}</div>
+            <div>Minors needing consent</div><div>${summary.minors_without_active_consent ?? 0}</div>
+            <div>Blocked (7d)</div><div>${summary.audit?.blocked_last_7_days ?? 0}</div>
+          `;
+
+          const expiring = summary.expiring_consents || [];
+          if (expiring.length) {
+            const list = expiring.slice(0, 5).map(item => `
+              <li><strong>${item.playerName}</strong> · ${item.consentType} · ${item.days_remaining} day(s)</li>
+            `).join('');
+            el('#privacyExpiry').innerHTML = `<div class="muted">Expiring soon</div><ul class="privacy-list">${list}</ul>`;
+          } else {
+            el('#privacyExpiry').innerHTML = '<div class="muted">No consents expiring in the next window.</div>';
+          }
+        } else {
+          el('#privacySummary').innerHTML = '<div class="muted">Privacy summary unavailable.</div>';
+          el('#privacyExpiry').innerHTML = '';
+        }
+
+        const pFlags = privacyFlags || {};
+        el('#privacyToggles').innerHTML = `
+          <div class="toggle-item">
+            <label class="switch">
+              <input type="checkbox" data-privacy="anonymiseFaces" ${pFlags.anonymiseFaces ? 'checked' : ''}>
+              <span class="slider"></span>
+            </label>
+            <div class="label">Force anonymised faces when uncertain<br><small>Applies to all outbound media</small></div>
+          </div>
+          <div class="toggle-item">
+            <label class="switch">
+              <input type="checkbox" data-privacy="useInitialsOnly" ${pFlags.useInitialsOnly ? 'checked' : ''}>
+              <span class="slider"></span>
+            </label>
+            <div class="label">Use initials for minors or sensitive posts<br><small>Overrides player names automatically</small></div>
+          </div>
+        `;
+
+      }).getControlPanelState();
+    }
+
+    function saveFeatures() {
+      const featureInputs = [...document.querySelectorAll('input[data-key]')];
+      const features = {};
+      featureInputs.forEach(i => features[i.dataset.key] = i.checked);
+
+      const privacyInputs = [...document.querySelectorAll('input[data-privacy]')];
+      const privacyFlags = {};
+      privacyInputs.forEach(i => privacyFlags[i.dataset.privacy] = i.checked);
+
+      google.script.run.withSuccessHandler(loadState).updateControlPanelSettings({
+        features,
+        privacyFlags
+      });
+    }
+
+    function refreshValidation() {
+      google.script.run.withSuccessHandler(v => {
+        const p = [];
+        if (v.valid) p.push({cls:'ok', text:'Config OK'});
+        else p.push({cls:'err', text:'Config Issues'});
+        if (v.warnings?.length) p.push({cls:'warn', text:`${v.warnings.length} warning(s)`});
+        el('#statusPills').innerHTML = pills(p);
+        alert((v.valid ? 'Validation OK' : 'Issues found') + (v.issues?.length ? `\n• ${v.issues.join('\n• ')}` : ''));
+      }).getValidation();
+    }
+
+    function runAction(name) {
+      google.script.run.withSuccessHandler(r => {
+        alert(r && r.message ? r.message : 'Triggered: ' + name);
+      }).actionRunRunner(name);
+    }
+
+    function initTabs() {
+      const buttons = document.querySelectorAll('.tab-btn[data-view]');
+      buttons.forEach(btn => {
+        btn.addEventListener('click', () => {
+          const view = btn.dataset.view;
+          showView(view);
+        });
+      });
+    }
+
+    function showView(viewName) {
+      const targetId = viewName === 'live' ? 'liveView' : 'controlView';
+      document.querySelectorAll('.view').forEach(section => {
+        section.classList.toggle('active', section.id === targetId);
+      });
+      document.querySelectorAll('.tab-btn[data-view]').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.view === viewName);
+      });
+
+      if (viewName === 'live' && !liveState.loaded) {
+        loadLiveConsoleState();
+      }
+    }
+
+    function setLiveLoading(isLoading) {
+      const refreshBtn = el('#liveRefresh');
+      if (refreshBtn) {
+        if (isLoading) {
+          refreshBtn.dataset.originalLabel = refreshBtn.textContent;
+          refreshBtn.textContent = 'Loading…';
+        } else {
+          refreshBtn.textContent = refreshBtn.dataset.originalLabel || 'Refresh';
+        }
+        refreshBtn.disabled = isLoading;
+      }
+      document.querySelectorAll('[data-live-submit]').forEach(button => {
+        if (isLoading) {
+          button.dataset.originalLabel = button.textContent;
+          button.textContent = 'Please wait…';
+        } else if (button.dataset.originalLabel) {
+          button.textContent = button.dataset.originalLabel;
+        }
+        button.disabled = isLoading;
+      });
+    }
+
+    function loadLiveConsoleState(showSpinner = true) {
+      if (showSpinner) {
+        setLiveLoading(true);
+      }
+      google.script.run
+        .withSuccessHandler(state => {
+          liveState.loaded = true;
+          liveState.data = state;
+          renderLiveConsole(state);
+          setLiveLoading(false);
+        })
+        .withFailureHandler(err => {
+          setLiveLoading(false);
+          showLiveFlash('error', 'Failed to load live data: ' + (err && err.message ? err.message : err));
+        })
+        .getLiveMatchConsoleState();
+    }
+
+    function renderLiveConsole(state) {
+      if (!state || state.success === false) {
+        showLiveFlash('error', state && state.error ? state.error : 'Unable to load live match data');
+        return;
+      }
+
+      const info = state.info || {};
+      const scoreboard = state.scoreboard || { home: 0, away: 0 };
+
+      if (el('#homeTeamName')) {
+        el('#homeTeamName').textContent = info.homeName || info.clubShortName || info.clubName || '<?= config.TEAM_NAME ?>';
+      }
+      if (el('#awayTeamName')) {
+        el('#awayTeamName').textContent = info.opponent || 'Opponent';
+      }
+      if (el('#homeScore')) {
+        el('#homeScore').textContent = typeof scoreboard.home === 'number' ? scoreboard.home : (scoreboard.home || 0);
+      }
+      if (el('#awayScore')) {
+        el('#awayScore').textContent = typeof scoreboard.away === 'number' ? scoreboard.away : (scoreboard.away || 0);
+      }
+      if (el('#matchMeta')) {
+        const matchBits = [];
+        if (info.competition) matchBits.push(info.competition);
+        if (info.matchId) matchBits.push('ID: ' + info.matchId);
+        if (state.recentEvents && state.recentEvents.length && state.recentEvents[0].timestamp) {
+          matchBits.push('Updated ' + formatEventTime(state.recentEvents[0].timestamp));
+        }
+        el('#matchMeta').textContent = matchBits.length ? matchBits.join(' • ') : 'Match details pending';
+      }
+
+      renderStatusButtons(state.statusOptions || []);
+      populatePlayerSelects(state.players || []);
+      populateCardTypeSelect(state.cardTypes || []);
+      populateNoteTypeSelect(state.noteMarkers || []);
+      renderRecentEvents(state.recentEvents || []);
+
+      if (!liveState.readyMessageShown) {
+        showLiveFlash('info', 'Live match console ready');
+        liveState.readyMessageShown = true;
+      }
+    }
+
+    function renderStatusButtons(options) {
+      const container = el('#statusButtons');
+      if (!container) {
+        return;
+      }
+      if (!options.length) {
+        container.innerHTML = '<div class="muted">No status actions configured.</div>';
+        return;
+      }
+      container.innerHTML = options.map(opt => {
+        return `<button type="button" class="btn" data-status-btn="${opt.id}" onclick="submitStatus('${opt.id}')">${opt.label}</button>`;
+      }).join('');
+    }
+
+    function populatePlayerSelects(players) {
+      const uniques = Array.from(new Set(players.filter(Boolean).map(p => String(p).trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b));
+      const goalOptions = [{ value: 'Goal', label: 'Opposition Goal' }].concat(uniques.map(name => ({ value: name, label: name })));
+      setSelectOptions('#goalPlayer', goalOptions, 'Select scorer');
+      const assistOptions = [{ value: '', label: 'No assist' }].concat(uniques.map(name => ({ value: name, label: name })));
+      setSelectOptions('#goalAssist', assistOptions, 'No assist');
+
+      const cardExtras = [{ value: 'Opposition', label: 'Opposition' }];
+      const cardOptions = cardExtras.concat(uniques.map(name => ({ value: name, label: name })));
+      setSelectOptions('#cardPlayer', cardOptions, 'Select player');
+
+      setSelectOptions('#playerOff', uniques.map(name => ({ value: name, label: name })), 'Select player off');
+      setSelectOptions('#playerOn', uniques.map(name => ({ value: name, label: name })), 'Select player on');
+
+      const notePlayers = [{ value: 'Team', label: 'Team' }, { value: 'Opposition', label: 'Opposition' }].concat(uniques.map(name => ({ value: name, label: name })));
+      setSelectOptions('#notePlayer', notePlayers, 'Select player');
+    }
+
+    function populateCardTypeSelect(cardTypes) {
+      const options = (cardTypes || []).map(type => ({ value: type.id || type.value || type, label: type.label || type.name || type }));
+      setSelectOptions('#cardType', options, 'Select card type');
+    }
+
+    function populateNoteTypeSelect(noteTypes) {
+      const options = (noteTypes || []).map(type => ({ value: type.id || type.value || type, label: type.label || type.name || type }));
+      setSelectOptions('#noteType', options, 'Select marker');
+    }
+
+    function setSelectOptions(selector, options, placeholder) {
+      const select = el(selector);
+      if (!select) {
+        return;
+      }
+      const merged = [{ value: '', label: placeholder || 'Select option' }].concat(options || []);
+      select.innerHTML = merged.map(opt => `<option value="${opt.value ?? ''}">${opt.label ?? opt.value ?? ''}</option>`).join('');
+    }
+
+    function renderRecentEvents(events) {
+      const list = el('#recentEvents');
+      if (!list) {
+        return;
+      }
+      if (!events.length) {
+        list.innerHTML = '<li class="muted">No live events captured yet.</li>';
+        return;
+      }
+      list.innerHTML = events.map(event => {
+        const minute = event.minute ? `${event.minute}'` : '';
+        const player = event.player ? ` · ${event.player}` : '';
+        const card = event.cardType ? ` · ${event.cardType}` : '';
+        const notes = event.notes ? `<div class="muted">${event.notes}</div>` : '';
+        const score = typeof event.homeScore === 'number' && typeof event.awayScore === 'number'
+          ? `<span class="score">${event.homeScore} - ${event.awayScore}</span>`
+          : '';
+        return `
+          <li class="event-item">
+            <div class="time">${formatEventTime(event.timestamp)} ${minute}</div>
+            <div class="body"><strong>${event.event || 'Event'}</strong>${player}${card}${score ? ' · ' + score : ''}</div>
+            ${notes}
+          </li>
+        `;
+      }).join('');
+    }
+
+    function formatEventTime(timestamp) {
+      if (!timestamp) {
+        return '';
+      }
+      try {
+        const date = new Date(timestamp);
+        if (!isNaN(date.getTime())) {
+          return date.toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false });
+        }
+      } catch (error) {
+        // Ignore parse errors and fall through
+      }
+      return timestamp;
+    }
+
+    function showLiveFlash(type, message) {
+      const box = el('#liveFlash');
+      if (!box) {
+        return;
+      }
+      box.classList.remove('hidden', 'success', 'error', 'info');
+      box.classList.add(type || 'info');
+      box.textContent = message;
+      if (box.dataset.timeoutId) {
+        clearTimeout(Number(box.dataset.timeoutId));
+      }
+      const timeout = setTimeout(() => {
+        box.classList.add('hidden');
+      }, 5000);
+      box.dataset.timeoutId = String(timeout);
+    }
+
+    function generateRequestId() {
+      return `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    }
+
+    function getActiveMatchId() {
+      if (liveState && liveState.data && liveState.data.info) {
+        return liveState.data.info.matchId || liveState.data.info.defaultMatchId || '';
+      }
+      return '';
+    }
+
+    function submitGoal(event) {
+      event.preventDefault();
+      const minute = (el('#goalMinute')?.value || '').trim();
+      const player = (el('#goalPlayer')?.value || '').trim();
+      const assist = el('#goalAssist')?.value || '';
+      const note = (el('#goalNote')?.value || '').trim();
+
+      if (!minute || !player) {
+        showLiveFlash('error', 'Minute and scorer are required');
+        return;
+      }
+
+      const button = el('#goalSubmit');
+      if (button) {
+        button.disabled = true;
+        button.dataset.originalLabel = button.textContent;
+        button.textContent = 'Recording…';
+      }
+
+      const payload = {
+        requestId: generateRequestId(),
+        minute,
+        player,
+        assist,
+        note,
+        matchId: getActiveMatchId()
+      };
+
+      google.script.run
+        .withSuccessHandler(result => {
+          handleLiveResult(result, 'Goal recorded successfully');
+          if (result && result.success) {
+            event.target.reset();
+          }
+          resetButton(button);
+        })
+        .withFailureHandler(err => {
+          showLiveFlash('error', 'Failed to record goal: ' + (err && err.message ? err.message : err));
+          resetButton(button);
+        })
+        .recordLiveMatchGoal(payload);
+    }
+
+    function submitCard(event) {
+      event.preventDefault();
+      const minute = (el('#cardMinute')?.value || '').trim();
+      const player = (el('#cardPlayer')?.value || '').trim();
+      const cardType = (el('#cardType')?.value || '').trim();
+      const note = (el('#cardNote')?.value || '').trim();
+
+      if (!minute || !player || !cardType) {
+        showLiveFlash('error', 'Minute, player, and card type are required');
+        return;
+      }
+
+      const button = el('#cardSubmit');
+      if (button) {
+        button.disabled = true;
+        button.dataset.originalLabel = button.textContent;
+        button.textContent = 'Recording…';
+      }
+
+      const payload = {
+        requestId: generateRequestId(),
+        minute,
+        player,
+        cardType,
+        note,
+        matchId: getActiveMatchId()
+      };
+
+      google.script.run
+        .withSuccessHandler(result => {
+          handleLiveResult(result, 'Card recorded successfully');
+          if (result && result.success) {
+            event.target.reset();
+          }
+          resetButton(button);
+        })
+        .withFailureHandler(err => {
+          showLiveFlash('error', 'Failed to record card: ' + (err && err.message ? err.message : err));
+          resetButton(button);
+        })
+        .recordLiveMatchCard(payload);
+    }
+
+    function submitSub(event) {
+      event.preventDefault();
+      const minute = (el('#subMinute')?.value || '').trim();
+      const playerOff = (el('#playerOff')?.value || '').trim();
+      const playerOn = (el('#playerOn')?.value || '').trim();
+      const note = (el('#subNote')?.value || '').trim();
+
+      if (!minute || !playerOff || !playerOn) {
+        showLiveFlash('error', 'Minute, player off, and player on are required');
+        return;
+      }
+
+      const button = el('#subSubmit');
+      if (button) {
+        button.disabled = true;
+        button.dataset.originalLabel = button.textContent;
+        button.textContent = 'Recording…';
+      }
+
+      const payload = {
+        requestId: generateRequestId(),
+        minute,
+        playerOff,
+        playerOn,
+        note,
+        matchId: getActiveMatchId()
+      };
+
+      google.script.run
+        .withSuccessHandler(result => {
+          handleLiveResult(result, 'Substitution recorded successfully');
+          if (result && result.success) {
+            event.target.reset();
+          }
+          resetButton(button);
+        })
+        .withFailureHandler(err => {
+          showLiveFlash('error', 'Failed to record substitution: ' + (err && err.message ? err.message : err));
+          resetButton(button);
+        })
+        .recordLiveMatchSubstitution(payload);
+    }
+
+    function submitNote(event) {
+      event.preventDefault();
+      const minute = (el('#noteMinute')?.value || '').trim();
+      const noteType = (el('#noteType')?.value || '').trim();
+      const player = (el('#notePlayer')?.value || '').trim();
+      const details = (el('#noteDetails')?.value || '').trim();
+
+      if (!noteType) {
+        showLiveFlash('error', 'Select a marker for the note');
+        return;
+      }
+
+      const button = el('#noteSubmit');
+      if (button) {
+        button.disabled = true;
+        button.dataset.originalLabel = button.textContent;
+        button.textContent = 'Saving…';
+      }
+
+      const payload = {
+        requestId: generateRequestId(),
+        minute,
+        noteType,
+        player,
+        details,
+        matchId: getActiveMatchId()
+      };
+
+      google.script.run
+        .withSuccessHandler(result => {
+          handleLiveResult(result, 'Note saved for video editor');
+          if (result && result.success) {
+            event.target.reset();
+          }
+          resetButton(button);
+        })
+        .withFailureHandler(err => {
+          showLiveFlash('error', 'Failed to save note: ' + (err && err.message ? err.message : err));
+          resetButton(button);
+        })
+        .recordLiveMatchNote(payload);
+    }
+
+    function submitStatus(statusId) {
+      if (!statusId) {
+        return;
+      }
+      const button = document.querySelector(`[data-status-btn='${statusId}']`);
+      if (button) {
+        button.disabled = true;
+        button.dataset.originalLabel = button.textContent;
+        button.textContent = 'Posting…';
+      }
+
+      const payload = {
+        requestId: generateRequestId(),
+        statusId,
+        matchId: getActiveMatchId()
+      };
+
+      google.script.run
+        .withSuccessHandler(result => {
+          handleLiveResult(result, `${statusId.replace(/_/g, ' ')} posted`);
+          resetButton(button);
+        })
+        .withFailureHandler(err => {
+          showLiveFlash('error', 'Failed to post status: ' + (err && err.message ? err.message : err));
+          resetButton(button);
+        })
+        .recordLiveMatchStatus(payload);
+    }
+
+    function handleLiveResult(result, successMessage) {
+      if (result && result.duplicate) {
+        showLiveFlash('info', 'Duplicate request ignored (already processed).');
+        loadLiveConsoleState(false);
+        return;
+      }
+
+      if (result && result.success) {
+        showLiveFlash('success', successMessage);
+        loadLiveConsoleState(false);
+      } else {
+        showLiveFlash('error', result && result.error ? result.error : 'Operation failed');
+      }
+    }
+
+    function resetButton(button) {
+      if (!button) {
+        return;
+      }
+      button.disabled = false;
+      button.textContent = button.dataset.originalLabel || button.textContent;
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      initTabs();
+      loadState();
+      const params = new URLSearchParams(window.location.search);
+      const initial = params.get('view') === 'live' ? 'live' : 'control';
+      showView(initial);
+    });
+  </script>
+</body>
+</html>

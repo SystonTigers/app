@@ -1,0 +1,246 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: football-highlights
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: google-credentials
+  namespace: football-highlights
+type: Opaque
+data:
+  credentials.json: BASE64_ENCODED_CREDENTIALS_HERE
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: football-highlights
+data:
+  NODE_ENV: "production"
+  LOG_LEVEL: "info"
+  PORT: "8080"
+  MAX_CONCURRENT_JOBS: "3"
+  REDIS_URL: "redis://redis-service:6379"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: football-highlights-app
+  namespace: football-highlights
+  labels:
+    app: football-highlights
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: football-highlights
+  template:
+    metadata:
+      labels:
+        app: football-highlights
+    spec:
+      containers:
+      - name: app
+        image: football-highlights:latest
+        ports:
+        - containerPort: 8080
+        env:
+        - name: NODE_ENV
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: NODE_ENV
+        - name: LOG_LEVEL
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: LOG_LEVEL
+        - name: PORT
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: PORT
+        - name: MAX_CONCURRENT_JOBS
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: MAX_CONCURRENT_JOBS
+        - name: REDIS_URL
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: REDIS_URL
+        - name: GOOGLE_APPLICATION_CREDENTIALS
+          value: "/app/secrets/google-credentials.json"
+        volumeMounts:
+        - name: google-creds
+          mountPath: /app/secrets
+          readOnly: true
+        - name: temp-storage
+          mountPath: /tmp
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+          limits:
+            memory: "4Gi"
+            cpu: "2000m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 120
+          periodSeconds: 30
+          timeoutSeconds: 15
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+      volumes:
+      - name: google-creds
+        secret:
+          secretName: google-credentials
+      - name: temp-storage
+        emptyDir:
+          sizeLimit: 20Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: football-highlights-service
+  namespace: football-highlights
+spec:
+  selector:
+    app: football-highlights
+  ports:
+  - port: 80
+    targetPort: 8080
+  type: LoadBalancer
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: football-highlights
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+      - name: redis
+        image: redis:7-alpine
+        ports:
+        - containerPort: 6379
+        args:
+          - redis-server
+          - --appendonly
+          - "yes"
+          - --maxmemory
+          - "512mb"
+          - --maxmemory-policy
+          - "allkeys-lru"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+        volumeMounts:
+        - name: redis-data
+          mountPath: /data
+      volumes:
+      - name: redis-data
+        persistentVolumeClaim:
+          claimName: redis-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-service
+  namespace: football-highlights
+spec:
+  selector:
+    app: redis
+  ports:
+  - port: 6379
+    targetPort: 6379
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: redis-pvc
+  namespace: football-highlights
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: football-highlights-hpa
+  namespace: football-highlights
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: football-highlights-app
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: football-highlights-ingress
+  namespace: football-highlights
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/body-size: "5g"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "900"
+spec:
+  tls:
+  - hosts:
+    - api.footballhighlights.com
+    secretName: football-highlights-tls
+  rules:
+  - host: api.footballhighlights.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: football-highlights-service
+            port:
+              number: 80

@@ -1,0 +1,70 @@
+name: Apps Script CI
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - 'apps-script/**'
+      - 'appsscript.json'
+      - '.clasp.json'
+      - 'scripts/update-webapp.mjs'
+      - '.github/workflows/ci-appsscript.yml'
+
+concurrency:
+  group: apps-script-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install clasp
+        run: npm install -g @google/clasp
+
+      - name: Configure clasp authentication
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: |
+          if [ -z "$CLASPRC_JSON" ]; then
+            echo "::error::CLASPRC_JSON secret is unavailable. This usually happens on forked workflows; Apps Script deployment requires the repository secret."
+            exit 1
+          fi
+          printf '%s' "$CLASPRC_JSON" > "$HOME/.clasprc.json"
+
+      - name: Verify clasp status
+        run: |
+          if [ ! -f .clasp.json ]; then
+            echo "::error::Missing .clasp.json. Ensure the Apps Script project configuration is committed."
+            exit 1
+          fi
+          if [ ! -f apps-script/appsscript.json ]; then
+            echo "::error::Missing apps-script/appsscript.json. Did you check out the Apps Script source?"
+            exit 1
+          fi
+          npx clasp status --rootDir apps-script
+
+      - name: Push project source
+        run: |
+          if [ ! -f .clasp.json ]; then
+            echo "::error::Missing .clasp.json. Ensure the Apps Script project configuration is committed."
+            exit 1
+          fi
+          if [ ! -f apps-script/appsscript.json ]; then
+            echo "::error::Missing apps-script/appsscript.json. Did you check out the Apps Script source?"
+            exit 1
+          fi
+          npx clasp push --force --rootDir apps-script
+
+      - name: Update existing Web App deployment
+        run: node scripts/update-webapp.mjs

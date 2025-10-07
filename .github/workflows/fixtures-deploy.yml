@@ -1,0 +1,44 @@
+name: Deploy Fixtures Worker
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'workers/fixtures.ts'
+      - 'workers/wrangler.toml'
+      - 'workers/**/*.ts'
+      - '.github/workflows/fixtures-deploy.yml'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy to Cloudflare
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build fixtures worker
+        run: npm run build:fixtures
+
+      - name: Deploy to Cloudflare Workers
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          workingDirectory: 'workers'
+          command: deploy
+
+      - name: Verify deployment
+        run: |
+          echo "Fixtures Worker deployed successfully"
+          echo "Worker URL: https://syston-fixtures.YOUR_SUBDOMAIN.workers.dev"

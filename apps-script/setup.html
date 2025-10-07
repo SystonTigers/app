@@ -1,0 +1,327 @@
+<div class="setup-container">
+    <!-- Club Branding Section -->
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">Club Branding</h2>
+        </div>
+        <div class="card-body">
+            <div class="form-group">
+                <label class="form-label">Club Name</label>
+                <input type="text" id="club-name-input" class="form-input" placeholder="Enter club name">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Primary Color</label>
+                <div class="color-input-group">
+                    <input type="color" id="primary-color" class="form-input" style="width: 60px; padding: 4px;">
+                    <input type="text" id="primary-color-text" class="form-input" placeholder="#FF0000" style="flex: 1;">
+                    <div id="primary-preview" class="color-preview"></div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Secondary Color</label>
+                <div class="color-input-group">
+                    <input type="color" id="secondary-color" class="form-input" style="width: 60px; padding: 4px;">
+                    <input type="text" id="secondary-color-text" class="form-input" placeholder="#FFFFFF" style="flex: 1;">
+                    <div id="secondary-preview" class="color-preview"></div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Club Badge URL</label>
+                <input type="url" id="badge-url" class="form-input" placeholder="https://example.com/badge.png">
+                <small style="color: var(--text-secondary); margin-top: 4px; display: block;">
+                    Enter a URL to your club badge image
+                </small>
+            </div>
+
+            <!-- Live Preview -->
+            <div class="form-group">
+                <label class="form-label">Live Preview</label>
+                <div id="brand-preview" class="brand-preview">
+                    <img id="preview-badge" class="preview-badge" alt="Badge" style="display: none;">
+                    <div id="preview-name" class="preview-name">Club Name</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Competition Details -->
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">Competition Details</h2>
+        </div>
+        <div class="card-body">
+            <div class="form-group">
+                <label class="form-label">League Name</label>
+                <input type="text" id="league-name" class="form-input" placeholder="e.g. Premier League">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Age Group</label>
+                <select id="age-group" class="form-select">
+                    <option value="">Select Age Group</option>
+                    <option value="U7">Under 7s</option>
+                    <option value="U8">Under 8s</option>
+                    <option value="U9">Under 9s</option>
+                    <option value="U10">Under 10s</option>
+                    <option value="U11">Under 11s</option>
+                    <option value="U12">Under 12s</option>
+                    <option value="U13">Under 13s</option>
+                    <option value="U14">Under 14s</option>
+                    <option value="U15">Under 15s</option>
+                    <option value="U16">Under 16s</option>
+                    <option value="U17">Under 17s</option>
+                    <option value="U18">Under 18s</option>
+                    <option value="Senior">Senior</option>
+                    <option value="Custom">Custom</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">League Table URL</label>
+                <input type="url" id="league-table-url" class="form-input" placeholder="https://example.com/table">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Fixtures URL</label>
+                <input type="url" id="fixtures-url" class="form-input" placeholder="https://example.com/fixtures">
+            </div>
+        </div>
+    </div>
+
+    <!-- Match Settings -->
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">Match Settings</h2>
+        </div>
+        <div class="card-body">
+            <div class="form-group">
+                <label class="form-label">Match Structure</label>
+                <select id="match-structure" class="form-select">
+                    <option value="HALVES">Two Halves</option>
+                    <option value="QUARTERS">Four Quarters</option>
+                </select>
+            </div>
+
+            <div id="halves-settings" class="settings-group">
+                <div class="form-group">
+                    <label class="form-label">Minutes per Half</label>
+                    <input type="number" id="half-length" class="form-input" min="1" max="90" value="45">
+                </div>
+            </div>
+
+            <div id="quarters-settings" class="settings-group" style="display: none;">
+                <div class="form-group">
+                    <label class="form-label">Minutes per Quarter</label>
+                    <input type="number" id="quarter-length" class="form-input" min="1" max="30" value="15">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Team Size on Field</label>
+                <select id="team-size" class="form-select">
+                    <option value="5">5 a side</option>
+                    <option value="7">7 a side</option>
+                    <option value="9">9 a side</option>
+                    <option value="11">11 a side</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">
+                    <input type="checkbox" id="extra-time-enabled" style="margin-right: 8px;">
+                    Enable Extra Time
+                </label>
+            </div>
+
+            <div id="extra-time-settings" class="settings-group" style="display: none;">
+                <div class="form-group">
+                    <label class="form-label">Extra Time Half Length (minutes)</label>
+                    <input type="number" id="et-half-length" class="form-input" min="1" max="30" value="15">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">
+                    <input type="checkbox" id="rolling-subs" style="margin-right: 8px;">
+                    Allow Rolling Substitutions
+                </label>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">
+                    <input type="checkbox" id="sin-bin-enabled" style="margin-right: 8px;">
+                    Enable Sin Bin (10 minute temporary dismissal)
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <!-- Squad Management -->
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">Squad Management</h2>
+            <button id="add-player-btn" class="btn btn-secondary">+ Add Player</button>
+        </div>
+        <div class="card-body">
+            <div id="players-list" class="players-list">
+                <!-- Players will be loaded here -->
+            </div>
+
+            <!-- Add Player Form (Hidden initially) -->
+            <div id="add-player-form" class="add-player-form" style="display: none;">
+                <div class="form-group">
+                    <label class="form-label">Player Number</label>
+                    <input type="number" id="new-player-number" class="form-input" min="1" max="99">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Player Name</label>
+                    <input type="text" id="new-player-name" class="form-input" placeholder="Full Name">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Position</label>
+                    <select id="new-player-position" class="form-select">
+                        <option value="">Select Position</option>
+                        <option value="GK">Goalkeeper</option>
+                        <option value="DEF">Defender</option>
+                        <option value="MID">Midfielder</option>
+                        <option value="FWD">Forward</option>
+                    </select>
+                </div>
+                <div class="btn-group">
+                    <button id="save-player-btn" class="btn btn-primary">Save Player</button>
+                    <button id="cancel-player-btn" class="btn btn-secondary">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Webhook Settings -->
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">Social Media Integration</h2>
+        </div>
+        <div class="card-body">
+            <div class="form-group">
+                <label class="form-label">Make.com Webhook URL</label>
+                <input type="url" id="webhook-url" class="form-input" placeholder="https://hook.eu1.make.com/...">
+                <small style="color: var(--text-secondary); margin-top: 4px; display: block;">
+                    This will be used for automated social media posts
+                </small>
+            </div>
+
+            <div class="form-group">
+                <button id="test-webhook-btn" class="btn btn-secondary">Test Connection</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Save Settings -->
+    <div class="card">
+        <div class="card-body text-center">
+            <button id="save-config-btn" class="btn btn-primary btn-large">
+                💾 Save All Settings
+            </button>
+        </div>
+    </div>
+</div>
+
+<style>
+.brand-preview {
+    background: var(--surface-light);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: all 0.2s ease;
+}
+
+.preview-badge {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.preview-name {
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.settings-group {
+    margin-left: 20px;
+    padding-left: 16px;
+    border-left: 2px solid var(--border);
+}
+
+.players-list {
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+}
+
+.player-item {
+    display: flex;
+    justify-content: between;
+    align-items: center;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+}
+
+.player-item:last-child {
+    border-bottom: none;
+}
+
+.player-info {
+    flex: 1;
+}
+
+.player-number {
+    font-weight: bold;
+    color: var(--primary-color);
+    margin-right: 12px;
+}
+
+.player-name {
+    margin-right: 12px;
+}
+
+.player-position {
+    font-size: 12px;
+    color: var(--text-secondary);
+    background: var(--surface-light);
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-right: 12px;
+}
+
+.player-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.btn-small {
+    padding: 4px 8px;
+    font-size: 12px;
+    min-height: auto;
+}
+
+.add-player-form {
+    background: var(--surface-light);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 16px;
+    margin-top: 16px;
+}
+
+.btn-large {
+    padding: 16px 32px;
+    font-size: 18px;
+    min-width: 200px;
+}
+</style>

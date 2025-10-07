@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title><?= title ? `${title} – ${config.TEAM_NAME}` : config.TEAM_NAME ?></title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    :root {
+      --primary: <?= config.PRIMARY_COLOR ?>;
+      --secondary: <?= config.SECONDARY_COLOR ?>;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+      background: #f8f9fa; padding: 20px; min-height: 100vh;
+    }
+    .container { max-width: 1200px; margin: 0 auto; }
+    .header {
+      background: white; padding: 30px; border-radius: 15px; margin-bottom: 30px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1); text-align: center;
+    }
+    .content {
+      display: grid; grid-template-columns: 1fr 2fr; gap: 30px;
+    }
+    .form-section, .list-section {
+      background: white; padding: 25px; border-radius: 15px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    .form-group {
+      margin-bottom: 20px;
+    }
+    label {
+      display: block; margin-bottom: 5px; font-weight: 600; color: #333;
+    }
+    input, select, textarea {
+      width: 100%; padding: 12px; border: 2px solid #e1e5e9;
+      border-radius: 8px; font-size: 16px; transition: border-color 0.3s;
+    }
+    input:focus, select:focus { outline: none; border-color: var(--primary); }
+    .btn {
+      background: var(--primary); color: white; padding: 12px 25px;
+      border: none; border-radius: 8px; font-size: 16px; font-weight: 600;
+      cursor: pointer; transition: background 0.3s; width: 100%;
+    }
+    .btn:hover { filter: brightness(0.9); }
+    .fixture-item {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 15px; border-bottom: 1px solid #eee;
+    }
+    .fixture-info h4 { margin: 0; color: #333; }
+    .fixture-info p { margin: 5px 0 0 0; color: #666; font-size: 14px; }
+    .back-btn {
+      background: #6c757d; margin-bottom: 20px; width: auto; display: inline-block;
+      text-decoration: none; text-align: center;
+    }
+    .fixture-status {
+      padding: 5px 10px; border-radius: 20px; font-size: 12px; font-weight: bold;
+    }
+    .upcoming { background: #e3f2fd; color: #1976d2; }
+    .completed { background: #e8f5e8; color: #2e7d2e; }
+    .club-badge {
+      width: 60px; height: 60px; margin: 0 auto 15px;
+      background: url('<?= config.BADGE_URL ?>') center/contain no-repeat;
+      border-radius: 50%;
+    }
+    @media (max-width: 768px) { .content { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <a href="?" class="btn back-btn">← Back to Dashboard</a>
+      <? if (config.BADGE_URL && !config.BADGE_URL.includes('[SET')) { ?>
+        <div class="club-badge"></div>
+      <? } ?>
+      <h1>📅 <?= config.TEAM_NAME ?> - Fixture Management</h1>
+      <p>Add matches, set dates, venues - build your season!</p>
+      <p><strong><?= config.LEAGUE_NAME ?></strong> • <?= config.SEASON ?></p>
+    </div>
+
+    <div class="content">
+      <div class="form-section">
+        <h2>Add New Fixture</h2>
+        <form id="fixtureForm">
+          <div class="form-group">
+            <label for="opposition">Opposition *</label>
+            <input type="text" id="opposition" name="opposition" required
+                   placeholder="e.g. Local Rivals FC">
+          </div>
+
+          <div class="form-group">
+            <label for="matchDate">Match Date * (DD/MM/YYYY)</label>
+            <input type="date" id="matchDate" name="matchDate" required>
+            <small style="color: #666;">UK date format will be used for display</small>
+          </div>
+
+          <div class="form-group">
+            <label for="kickoffTime">Kick-off Time *</label>
+            <input type="time" id="kickoffTime" name="kickoffTime" required>
+          </div>
+
+          <div class="form-group">
+            <label for="venue">Venue *</label>
+            <select id="venue" name="venue" required>
+              <option value="">Select Venue</option>
+              <option value="Home">Home</option>
+              <option value="Away">Away</option>
+              <option value="Neutral">Neutral</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="venueDetails">Venue Details</label>
+            <input type="text" id="venueDetails" name="venueDetails"
+                   placeholder="e.g. <?= config.STADIUM_NAME || 'Home Ground' ?>">
+          </div>
+
+          <div class="form-group">
+            <label for="competition">Competition *</label>
+            <select id="competition" name="competition" required>
+              <option value="">Select Competition</option>
+              <option value="League">League</option>
+              <option value="Cup">Cup</option>
+              <option value="Friendly">Friendly</option>
+              <option value="Playoff">Playoff</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="importance">Match Importance</label>
+            <select id="importance" name="importance">
+              <option value="Normal">Normal</option>
+              <option value="Important">Important</option>
+              <option value="Derby">Derby</option>
+              <option value="Cup Final">Cup Final</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="notes">Notes</label>
+            <textarea id="notes" name="notes" rows="3"
+                      placeholder="Any additional match information..."></textarea>
+          </div>
+
+          <button type="submit" class="btn">📅 Add Fixture for <?= config.TEAM_SHORT ?></button>
+        </form>
+      </div>
+
+      <div class="list-section">
+        <h2><?= config.TEAM_SHORT ?> Upcoming Fixtures</h2>
+        <div id="fixtureList">
+          <div class="fixture-item">
+            <div class="fixture-info">
+              <h4>Loading fixtures...</h4>
+              <p>Please wait while we load your fixtures</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('fixtureForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+
+      const formData = new FormData(e.target);
+      formData.append('action', 'add_fixture');
+
+      try {
+        const response = await fetch(window.location.href.split('?')[0], {
+          method: 'POST',
+          body: formData
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          alert('✅ Fixture added successfully for <?= config.TEAM_NAME ?>!');
+          e.target.reset();
+          loadFixtures();
+        } else {
+          alert('❌ Error: ' + result.error);
+        }
+      } catch (error) {
+        alert('❌ Error adding fixture: ' + error.message);
+      }
+    });
+
+    function loadFixtures() {
+      // Load actual fixtures from Google Sheets
+      google.script.run
+        .withSuccessHandler(function(fixtures) {
+          const fixtureList = document.getElementById('fixtureList');
+
+          if (fixtures && fixtures.length > 0) {
+            fixtureList.innerHTML = fixtures.map(fixture => `
+              <div class="fixture-item">
+                <div class="fixture-info">
+                  <h4><?= config.TEAM_SHORT ?> vs ${fixture.opposition}</h4>
+                  <p>${fixture.dateFormatted} • ${fixture.venue} • ${fixture.competition}</p>
+                </div>
+                <span class="fixture-status ${fixture.status.toLowerCase()}">${fixture.status}</span>
+              </div>
+            `).join('');
+          } else {
+            fixtureList.innerHTML = `
+              <div class="fixture-item">
+                <div class="fixture-info">
+                  <h4>No fixtures scheduled</h4>
+                  <p>Use the form to add your first fixture for <?= config.TEAM_NAME ?></p>
+                </div>
+              </div>
+            `;
+          }
+        })
+        .withFailureHandler(function(error) {
+          console.error('Failed to load fixtures:', error);
+          const fixtureList = document.getElementById('fixtureList');
+          fixtureList.innerHTML = `
+            <div class="fixture-item">
+              <div class="fixture-info">
+                <h4>Error loading fixtures</h4>
+                <p>Please refresh the page to try again</p>
+              </div>
+            </div>
+          `;
+        })
+        .getFixturesList();
+    }
+
+    // Set minimum date to today
+    document.getElementById('matchDate').min = new Date().toISOString().split('T')[0];
+
+    loadFixtures();
+    console.log('📅 <?= config.TEAM_NAME ?> Fixture Management Ready!');
+  </script>
+</body>
+</html>

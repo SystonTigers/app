@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    body {
+      font-family: 'Google Sans', Arial, sans-serif;
+      margin: 0;
+      padding: 16px;
+      background: #f8f9fa;
+      font-size: 14px;
+    }
+    .container {
+      background: white;
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .header {
+      border-bottom: 2px solid #1a73e8;
+      padding-bottom: 12px;
+      margin-bottom: 20px;
+    }
+    .header h2 {
+      color: #1a73e8;
+      margin: 0;
+      font-size: 20px;
+    }
+    .subtitle {
+      color: #5f6368;
+      margin-top: 4px;
+      font-size: 12px;
+    }
+    .section {
+      margin-bottom: 24px;
+    }
+    .section h3 {
+      color: #1a73e8;
+      margin: 0 0 12px 0;
+      font-size: 16px;
+    }
+    .consent-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+    }
+    .consent-table th,
+    .consent-table td {
+      text-align: left;
+      padding: 8px 12px;
+      border-bottom: 1px solid #e8eaed;
+    }
+    .consent-table th {
+      background: #f8f9fa;
+      font-weight: 500;
+      color: #1a73e8;
+    }
+    .consent-yes {
+      color: #137333;
+      font-weight: 500;
+    }
+    .consent-no {
+      color: #d93025;
+      font-weight: 500;
+    }
+    .consent-expired {
+      color: #f29900;
+      font-weight: 500;
+    }
+    .btn {
+      background: #1a73e8;
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      margin-right: 4px;
+    }
+    .btn:hover {
+      background: #1557b0;
+    }
+    .btn-secondary {
+      background: #5f6368;
+    }
+    .btn-secondary:hover {
+      background: #3c4043;
+    }
+    .btn-danger {
+      background: #d93025;
+    }
+    .btn-danger:hover {
+      background: #b52d20;
+    }
+    .form-group {
+      margin-bottom: 16px;
+    }
+    .form-group label {
+      display: block;
+      font-weight: 500;
+      margin-bottom: 4px;
+      color: #202124;
+    }
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #dadce0;
+      border-radius: 4px;
+      font-size: 14px;
+      box-sizing: border-box;
+    }
+    .form-group textarea {
+      height: 60px;
+      resize: vertical;
+    }
+    .add-consent-form {
+      background: #f8f9fa;
+      padding: 16px;
+      border-radius: 6px;
+      border: 1px solid #e8eaed;
+      margin-top: 16px;
+    }
+    .success {
+      background: #e8f5e8;
+      border: 1px solid #34a853;
+      color: #137333;
+      padding: 12px;
+      border-radius: 4px;
+      margin: 12px 0;
+    }
+    .error {
+      background: #fce8e6;
+      border: 1px solid #ea4335;
+      color: #d93025;
+      padding: 12px;
+      border-radius: 4px;
+      margin: 12px 0;
+    }
+    .info {
+      background: #e8f0fe;
+      border: 1px solid #1a73e8;
+      color: #1a73e8;
+      padding: 12px;
+      border-radius: 4px;
+      margin: 12px 0;
+    }
+    .empty-state {
+      text-align: center;
+      color: #5f6368;
+      padding: 40px 20px;
+    }
+    .actions {
+      margin-top: 12px;
+    }
+    #status {
+      min-height: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h2>🔐 Privacy Manager</h2>
+      <div class="subtitle">Manage player consent for social media posts (GDPR compliant)</div>
+    </div>
+
+    <div id="status"></div>
+
+    <!-- Information -->
+    <div class="info">
+      <strong>GDPR Compliance:</strong> All players must have explicit consent before appearing in social media posts.
+      Players without consent will be automatically blocked from posts.
+    </div>
+
+    <!-- Current Consents -->
+    <div class="section">
+      <h3>📋 Current Consents</h3>
+
+      <? if (!hasConsentSheet) { ?>
+        <div class="error">
+          <strong>Setup Required:</strong> Player consent sheet not found. Please run the Setup Wizard first.
+        </div>
+      <? } else if (consents.length === 0) { ?>
+        <div class="empty-state">
+          <p><strong>No consent records found</strong></p>
+          <p>Add player consents below to enable social media posting</p>
+        </div>
+      <? } else { ?>
+        <table class="consent-table">
+          <thead>
+            <tr>
+              <th>Player Name</th>
+              <th>Consent Status</th>
+              <th>Expires</th>
+              <th>Notes</th>
+              <th>Updated</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <? consents.forEach(function(consent) {
+               const consentStatus = consent.consent.toLowerCase();
+               const isExpired = consent.expires && new Date(consent.expires) < new Date();
+               const statusClass = isExpired ? 'consent-expired' : (consentStatus === 'yes' ? 'consent-yes' : 'consent-no');
+               const statusText = isExpired ? 'EXPIRED' : consent.consent;
+            ?>
+            <tr>
+              <td><strong><?= consent.name ?></strong></td>
+              <td><span class="<?= statusClass ?>"><?= statusText ?></span></td>
+              <td><?= consent.expires ? new Date(consent.expires).toLocaleDateString() : 'Never' ?></td>
+              <td><?= consent.notes || '-' ?></td>
+              <td><?= consent.updated ? new Date(consent.updated).toLocaleDateString() : '-' ?></td>
+              <td>
+                <button class="btn btn-secondary" onclick="editConsent('<?= consent.playerId ?>', '<?= consent.name ?>', '<?= consent.consent ?>', '<?= consent.notes ?>')">
+                  ✏️ Edit
+                </button>
+              </td>
+            </tr>
+            <? }); ?>
+          </tbody>
+        </table>
+      <? } ?>
+    </div>
+
+    <!-- Add/Edit Consent Form -->
+    <div class="section">
+      <h3 id="formTitle">➕ Add Player Consent</h3>
+
+      <div class="add-consent-form">
+        <form id="consentForm">
+          <input type="hidden" id="editMode" value="false">
+          <input type="hidden" id="originalPlayerId" value="">
+
+          <div class="form-group">
+            <label for="playerName">Player Name *</label>
+            <input type="text" id="playerName" required placeholder="e.g. John Smith">
+          </div>
+
+          <div class="form-group">
+            <label for="consentStatus">Consent Status *</label>
+            <select id="consentStatus" required>
+              <option value="">Select...</option>
+              <option value="Yes">Yes - Can appear in posts</option>
+              <option value="No">No - Cannot appear in posts</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="notes">Notes</label>
+            <textarea id="notes" placeholder="e.g. Parent consent given, Adult player, etc."></textarea>
+          </div>
+
+          <div class="actions">
+            <button type="submit" class="btn" id="submitBtn">💾 Save Consent</button>
+            <button type="button" class="btn btn-secondary" onclick="cancelEdit()" id="cancelBtn" style="display: none;">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- GDPR Actions -->
+    <div class="section">
+      <h3>📜 GDPR Actions</h3>
+      <p style="color: #5f6368; font-size: 12px;">
+        Handle data protection requests from players or parents
+      </p>
+
+      <div style="margin-top: 12px;">
+        <button class="btn btn-secondary" onclick="showGDPRDialog('export')">📤 Export Player Data</button>
+        <button class="btn btn-danger" onclick="showGDPRDialog('delete')">🗑️ Delete Player Data</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- GDPR Dialog -->
+  <div id="gdprDialog" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000;">
+    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 24px; border-radius: 8px; max-width: 400px; width: 90%;">
+      <h3 id="gdprDialogTitle">GDPR Request</h3>
+      <div class="form-group">
+        <label for="gdprPlayerName">Player Name</label>
+        <input type="text" id="gdprPlayerName" placeholder="Enter player name">
+      </div>
+      <div style="margin-top: 16px;">
+        <button class="btn" onclick="processGDPRRequest()" id="gdprSubmitBtn">Process Request</button>
+        <button class="btn btn-secondary" onclick="closeGDPRDialog()">Cancel</button>
+      </div>
+      <div id="gdprStatus"></div>
+    </div>
+  </div>
+
+  <script>
+    let currentGDPRAction = '';
+
+    document.getElementById('consentForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      saveConsent();
+    });
+
+    function saveConsent() {
+      const playerName = document.getElementById('playerName').value.trim();
+      const consentStatus = document.getElementById('consentStatus').value;
+      const notes = document.getElementById('notes').value.trim();
+      const isEdit = document.getElementById('editMode').value === 'true';
+
+      if (!playerName || !consentStatus) {
+        showStatus('error', 'Player name and consent status are required');
+        return;
+      }
+
+      // Generate player ID from name
+      const playerId = playerName.toLowerCase().replace(/[^a-z0-9]/g, '_');
+
+      const submitBtn = document.getElementById('submitBtn');
+      submitBtn.disabled = true;
+      submitBtn.textContent = '💾 Saving...';
+
+      google.script.run
+        .withSuccessHandler(onConsentSaved)
+        .withFailureHandler(onConsentError)
+        .app_updatePlayerConsent(playerId, playerName, consentStatus === 'Yes', notes);
+    }
+
+    function onConsentSaved(result) {
+      const submitBtn = document.getElementById('submitBtn');
+      submitBtn.disabled = false;
+      submitBtn.textContent = '💾 Save Consent';
+
+      if (result.success) {
+        showStatus('success', `Consent updated for ${result.playerId}`);
+
+        // Reset form
+        document.getElementById('consentForm').reset();
+        cancelEdit();
+
+        // Refresh page after delay
+        setTimeout(() => location.reload(), 1500);
+      } else {
+        showStatus('error', 'Failed to save consent: ' + result.error);
+      }
+    }
+
+    function onConsentError(error) {
+      const submitBtn = document.getElementById('submitBtn');
+      submitBtn.disabled = false;
+      submitBtn.textContent = '💾 Save Consent';
+
+      showStatus('error', 'Error saving consent: ' + error.message);
+    }
+
+    function editConsent(playerId, name, consent, notes) {
+      document.getElementById('formTitle').textContent = '✏️ Edit Player Consent';
+      document.getElementById('editMode').value = 'true';
+      document.getElementById('originalPlayerId').value = playerId;
+      document.getElementById('playerName').value = name;
+      document.getElementById('consentStatus').value = consent;
+      document.getElementById('notes').value = notes || '';
+      document.getElementById('submitBtn').textContent = '💾 Update Consent';
+      document.getElementById('cancelBtn').style.display = 'inline-block';
+
+      // Scroll to form
+      document.querySelector('.add-consent-form').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function cancelEdit() {
+      document.getElementById('formTitle').textContent = '➕ Add Player Consent';
+      document.getElementById('editMode').value = 'false';
+      document.getElementById('originalPlayerId').value = '';
+      document.getElementById('consentForm').reset();
+      document.getElementById('submitBtn').textContent = '💾 Save Consent';
+      document.getElementById('cancelBtn').style.display = 'none';
+    }
+
+    function showGDPRDialog(action) {
+      currentGDPRAction = action;
+      const dialog = document.getElementById('gdprDialog');
+      const title = document.getElementById('gdprDialogTitle');
+      const submitBtn = document.getElementById('gdprSubmitBtn');
+
+      if (action === 'export') {
+        title.textContent = '📤 Export Player Data';
+        submitBtn.textContent = 'Export Data';
+      } else if (action === 'delete') {
+        title.textContent = '🗑️ Delete Player Data';
+        submitBtn.textContent = 'Delete Data';
+        submitBtn.className = 'btn btn-danger';
+      }
+
+      dialog.style.display = 'block';
+    }
+
+    function closeGDPRDialog() {
+      document.getElementById('gdprDialog').style.display = 'none';
+      document.getElementById('gdprPlayerName').value = '';
+      document.getElementById('gdprStatus').innerHTML = '';
+    }
+
+    function processGDPRRequest() {
+      const playerName = document.getElementById('gdprPlayerName').value.trim();
+      if (!playerName) {
+        document.getElementById('gdprStatus').innerHTML = '<div class="error">Player name is required</div>';
+        return;
+      }
+
+      const playerId = playerName.toLowerCase().replace(/[^a-z0-9]/g, '_');
+      const submitBtn = document.getElementById('gdprSubmitBtn');
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Processing...';
+
+      google.script.run
+        .withSuccessHandler(onGDPRComplete)
+        .withFailureHandler(onGDPRError)
+        .app_handleGDPRRequest(playerId, currentGDPRAction, `Request for ${playerName}`);
+    }
+
+    function onGDPRComplete(result) {
+      const submitBtn = document.getElementById('gdprSubmitBtn');
+      submitBtn.disabled = false;
+      submitBtn.textContent = currentGDPRAction === 'export' ? 'Export Data' : 'Delete Data';
+
+      const status = document.getElementById('gdprStatus');
+      if (result.success) {
+        status.innerHTML = `<div class="success">GDPR request completed successfully</div>`;
+        setTimeout(closeGDPRDialog, 2000);
+      } else {
+        status.innerHTML = `<div class="error">Request failed: ${result.error}</div>`;
+      }
+    }
+
+    function onGDPRError(error) {
+      const submitBtn = document.getElementById('gdprSubmitBtn');
+      submitBtn.disabled = false;
+      submitBtn.textContent = currentGDPRAction === 'export' ? 'Export Data' : 'Delete Data';
+
+      document.getElementById('gdprStatus').innerHTML = `<div class="error">Error: ${error.message}</div>`;
+    }
+
+    function showStatus(type, message) {
+      const status = document.getElementById('status');
+      status.innerHTML = `<div class="${type}">${message}</div>`;
+
+      // Auto-clear after 5 seconds
+      setTimeout(() => {
+        status.innerHTML = '';
+      }, 5000);
+    }
+  </script>
+</body>
+</html>

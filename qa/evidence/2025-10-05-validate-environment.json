@@ -1,0 +1,11 @@
+{
+  "ok": true,
+  "timestamp": "2025-10-05T01:38:19.000Z",
+  "checks": [
+    {"name": "Script Properties", "status": "PASS", "details": {"present": 18, "missing": []}},
+    {"name": "Config Sheet", "status": "PASS", "details": {"missingKeys": [], "populatedKeys": 17}},
+    {"name": "Triggers", "status": "PASS", "details": {"total": 2, "missing": [], "duplicates": []}},
+    {"name": "Environment Tag", "status": "PASS", "details": {"env": "staging"}}
+  ],
+  "warnings": []
+}

@@ -1,0 +1,106 @@
+<div class="archive-container">
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">Match Archive</h2>
+            <button id="refresh-archive-btn" class="btn btn-secondary btn-small">
+                🔄 Refresh
+            </button>
+        </div>
+        <div class="card-body">
+            <p class="archive-intro">
+                Review the most recent match events and confirm what will appear in the public archive feed.
+            </p>
+            <div id="archive-empty" class="archive-empty">No archived events yet.</div>
+            <div id="archive-timeline" class="archive-timeline" aria-live="polite"></div>
+        </div>
+    </div>
+
+    <div class="card info-card">
+        <div class="card-header">
+            <h3 class="card-title">Widget Status</h3>
+        </div>
+        <div class="card-body">
+            <div id="homepage-widget-summary" class="widget-summary">
+                <div class="widget-summary__empty">Homepage widget is waiting for a new update.</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.archive-container {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.archive-intro {
+    color: var(--text-secondary);
+    margin-bottom: 16px;
+}
+
+.archive-empty {
+    color: var(--text-secondary);
+    text-align: center;
+    padding: 24px;
+    border: 1px dashed var(--border);
+    border-radius: 8px;
+}
+
+.archive-timeline {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.archive-item {
+    background: var(--surface-light);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    display: grid;
+    grid-template-columns: 80px 1fr;
+    gap: 12px;
+}
+
+.archive-item__time {
+    font-size: 14px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.archive-item__title {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.archive-item__meta {
+    color: var(--text-secondary);
+    font-size: 13px;
+}
+
+.info-card {
+    background: var(--surface-light);
+}
+
+.widget-summary {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.widget-summary__empty {
+    color: var(--text-secondary);
+}
+
+.widget-summary__headline {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.widget-summary__context {
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+</style>

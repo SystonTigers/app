@@ -1,0 +1,124 @@
+<div class="player-stats-container">
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">Team Snapshot</h2>
+        </div>
+        <div class="card-body">
+            <div id="player-stats-metrics" class="player-stats-metrics">
+                <div class="metric-card">
+                    <div class="metric-value" id="metric-total-players">0</div>
+                    <div class="metric-label">Registered Players</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="metric-active-players">0</div>
+                    <div class="metric-label">Active</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="metric-positions">0</div>
+                    <div class="metric-label">Positions Covered</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">Player Roster</h2>
+        </div>
+        <div class="card-body">
+            <div class="player-stats-table" id="player-stats-table">
+                <div class="player-stats-empty">Player list will appear once loaded.</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.player-stats-container {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.player-stats-metrics {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 16px;
+}
+
+.metric-card {
+    background: var(--surface-light);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    text-align: center;
+}
+
+.metric-value {
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--primary-color);
+}
+
+.metric-label {
+    color: var(--text-secondary);
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.player-stats-table {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.player-stats-row {
+    display: grid;
+    grid-template-columns: 64px 1fr 1fr 80px;
+    align-items: center;
+    background: var(--surface-light);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 16px;
+}
+
+.player-stats-row__header {
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.player-stats-empty {
+    color: var(--text-secondary);
+    text-align: center;
+    padding: 24px;
+    border: 1px dashed var(--border);
+    border-radius: 8px;
+}
+
+@media (max-width: 600px) {
+    .player-stats-row {
+        grid-template-columns: 48px 1fr;
+        grid-template-areas:
+            "number name"
+            "position status";
+        row-gap: 6px;
+    }
+
+    .player-stats-row span:nth-child(1) {
+        grid-area: number;
+    }
+    .player-stats-row span:nth-child(2) {
+        grid-area: name;
+    }
+    .player-stats-row span:nth-child(3) {
+        grid-area: position;
+    }
+    .player-stats-row span:nth-child(4) {
+        grid-area: status;
+        justify-self: end;
+    }
+}
+</style>

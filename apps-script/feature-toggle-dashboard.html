@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Feature Toggle Dashboard – <?= config.TEAM_NAME ?></title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    :root {
+      --primary: <?= config.PRIMARY_COLOR ?>;
+      --secondary: <?= config.SECONDARY_COLOR ?>;
+      --success: #28a745;
+      --warning: #ffc107;
+      --danger: #dc3545;
+      --info: #17a2b8;
+      --dark: #343a40;
+      --light: #f8f9fa;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+      background: var(--light);
+      color: #333;
+      line-height: 1.6;
+    }
+
+    .header {
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      color: white;
+      padding: 2rem;
+      text-align: center;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+
+    .club-badge {
+      width: 60px;
+      height: 60px;
+      margin: 0 auto 1rem;
+      <? if (config.BADGE_URL && !config.BADGE_URL.includes('[SET')) { ?>
+        background: url('<?= config.BADGE_URL ?>') center/contain no-repeat;
+      <? } else { ?>
+        background: rgba(255,255,255,0.2);
+      <? } ?>
+      border-radius: 50%;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      gap: 2rem;
+      margin-bottom: 2rem;
+    }
+
+    .sidebar {
+      background: white;
+      border-radius: 15px;
+      padding: 1.5rem;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      height: fit-content;
+    }
+
+    .main-content {
+      background: white;
+      border-radius: 15px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      overflow: hidden;
+    }
+
+    .metrics-overview {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      padding: 1.5rem;
+      border-bottom: 1px solid #e9ecef;
+    }
+
+    .metric-card {
+      text-align: center;
+      padding: 1rem;
+      border-radius: 10px;
+      border: 2px solid #e9ecef;
+    }
+
+    .metric-card.total { border-color: var(--info); background: #e3f2fd; }
+    .metric-card.enabled { border-color: var(--success); background: #e8f5e8; }
+    .metric-card.disabled { border-color: var(--warning); background: #fff8e1; }
+    .metric-card.errors { border-color: var(--danger); background: #ffebee; }
+
+    .metric-number {
+      font-size: 2rem;
+      font-weight: bold;
+      margin-bottom: 0.5rem;
+    }
+
+    .metric-label {
+      font-size: 0.9rem;
+      opacity: 0.8;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .category-filter {
+      margin-bottom: 1.5rem;
+    }
+
+    .filter-button {
+      display: block;
+      width: 100%;
+      padding: 0.75rem 1rem;
+      margin-bottom: 0.5rem;
+      border: 2px solid #e9ecef;
+      background: white;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s;
+      text-align: left;
+    }
+
+    .filter-button:hover {
+      border-color: var(--primary);
+      background: var(--primary);
+      color: white;
+    }
+
+    .filter-button.active {
+      border-color: var(--primary);
+      background: var(--primary);
+      color: white;
+    }
+
+    .feature-grid {
+      padding: 1.5rem;
+      display: grid;
+      gap: 1rem;
+    }
+
+    .feature-card {
+      border: 2px solid #e9ecef;
+      border-radius: 12px;
+      padding: 1.5rem;
+      transition: all 0.3s;
+      position: relative;
+    }
+
+    .feature-card:hover {
+      border-color: var(--primary);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    .feature-card.enabled {
+      border-color: var(--success);
+      background: #f8fff8;
+    }
+
+    .feature-card.disabled {
+      border-color: #6c757d;
+      background: #f8f9fa;
+    }
+
+    .feature-card.killed {
+      border-color: var(--danger);
+      background: #ffebee;
+    }
+
+    .feature-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .feature-title {
+      font-size: 1.2rem;
+      font-weight: 600;
+      color: #333;
+    }
+
+    .feature-toggle {
+      position: relative;
+      width: 60px;
+      height: 30px;
+      background: #ccc;
+      border-radius: 15px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    .feature-toggle.enabled {
+      background: var(--success);
+    }
+
+    .feature-toggle::before {
+      content: '';
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 24px;
+      height: 24px;
+      background: white;
+      border-radius: 50%;
+      transition: transform 0.3s;
+    }
+
+    .feature-toggle.enabled::before {
+      transform: translateX(30px);
+    }
+
+    .feature-badges {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .badge {
+      padding: 0.25rem 0.75rem;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: bold;
+      text-transform: uppercase;
+    }
+
+    .badge.core { background: var(--primary); color: white; }
+    .badge.integration { background: var(--info); color: white; }
+    .badge.social { background: #ff6b6b; color: white; }
+    .badge.video { background: #9c27b0; color: white; }
+    .badge.analytics { background: #ff9800; color: white; }
+    .badge.privacy { background: #4caf50; color: white; }
+    .badge.performance { background: #607d8b; color: white; }
+    .badge.monitoring { background: #795548; color: white; }
+    .badge.experimental { background: var(--warning); color: #333; }
+    .badge.hardware { background: #2196f3; color: white; }
+    .badge.content { background: #e91e63; color: white; }
+
+    .badge.kill-switch {
+      background: var(--danger);
+      color: white;
+      position: absolute;
+      top: 10px;
+      right: 10px;
+    }
+
+    .feature-description {
+      color: #666;
+      margin-bottom: 1rem;
+      font-size: 0.95rem;
+    }
+
+    .feature-metrics {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .mini-metric {
+      text-align: center;
+      padding: 0.5rem;
+      background: rgba(0,0,0,0.05);
+      border-radius: 6px;
+    }
+
+    .mini-metric-number {
+      font-weight: bold;
+      font-size: 1.1rem;
+    }
+
+    .mini-metric-label {
+      font-size: 0.7rem;
+      opacity: 0.7;
+      text-transform: uppercase;
+    }
+
+    .feature-actions {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: flex-end;
+    }
+
+    .btn {
+      padding: 0.5rem 1rem;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 600;
+      transition: all 0.3s;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+    }
+
+    .btn-danger {
+      background: var(--danger);
+      color: white;
+    }
+
+    .btn-secondary {
+      background: #6c757d;
+      color: white;
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+
+    .rollout-controls {
+      background: #e3f2fd;
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .rollout-slider {
+      width: 100%;
+      margin: 0.5rem 0;
+    }
+
+    .dependencies {
+      font-size: 0.8rem;
+      color: #666;
+      margin-top: 0.5rem;
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+      z-index: 1000;
+    }
+
+    .modal-content {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      border-radius: 15px;
+      padding: 2rem;
+      max-width: 500px;
+      width: 90%;
+      max-height: 90%;
+      overflow-y: auto;
+    }
+
+    .close {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      font-size: 1.5rem;
+      cursor: pointer;
+      color: #666;
+    }
+
+    .form-group {
+      margin-bottom: 1rem;
+    }
+
+    .form-label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: 600;
+    }
+
+    .form-input {
+      width: 100%;
+      padding: 0.75rem;
+      border: 2px solid #e9ecef;
+      border-radius: 6px;
+      font-size: 1rem;
+    }
+
+    .form-input:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+
+    .search-box {
+      width: 100%;
+      padding: 1rem;
+      border: 2px solid #e9ecef;
+      border-radius: 10px;
+      font-size: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .search-box:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+
+    .emergency-panel {
+      background: linear-gradient(135deg, var(--danger), #dc1558);
+      color: white;
+      padding: 1.5rem;
+      border-radius: 12px;
+      margin-bottom: 1.5rem;
+    }
+
+    .emergency-title {
+      font-size: 1.1rem;
+      font-weight: bold;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .emergency-actions {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .btn-emergency {
+      background: rgba(255,255,255,0.2);
+      color: white;
+      border: 2px solid rgba(255,255,255,0.3);
+    }
+
+    .btn-emergency:hover {
+      background: rgba(255,255,255,0.3);
+    }
+
+    @media (max-width: 768px) {
+      .dashboard-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .container {
+        padding: 1rem;
+      }
+
+      .metrics-overview {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .feature-actions {
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <? if (config.BADGE_URL && !config.BADGE_URL.includes('[SET')) { ?>
+      <div class="club-badge"></div>
+    <? } ?>
+    <h1><?= config.TEAM_NAME ?></h1>
+    <p>Advanced Feature Toggle Management</p>
+    <p>Real-time control of system features and rollouts</p>
+  </div>
+
+  <div class="container">
+    <div class="dashboard-grid">
+      <div class="sidebar">
+        <div class="emergency-panel">
+          <div class="emergency-title">
+            🚨 Emergency Controls
+          </div>
+          <div class="emergency-actions">
+            <button class="btn btn-emergency" onclick="emergencyKill('social_media_posting')">
+              Kill Social Media
+            </button>
+            <button class="btn btn-emergency" onclick="emergencyKill('make_webhooks')">
+              Kill Webhooks
+            </button>
+            <button class="btn btn-emergency" onclick="emergencyKill('live_match_processing')">
+              Kill Live Processing
+            </button>
+          </div>
+        </div>
+
+        <div class="category-filter">
+          <h3 style="margin-bottom: 1rem;">Filter by Category</h3>
+          <button class="filter-button active" onclick="filterByCategory('all')">
+            All Features
+          </button>
+          <button class="filter-button" onclick="filterByCategory('core')">
+            Core Features
+          </button>
+          <button class="filter-button" onclick="filterByCategory('integration')">
+            Integrations
+          </button>
+          <button class="filter-button" onclick="filterByCategory('social')">
+            Social Media
+          </button>
+          <button class="filter-button" onclick="filterByCategory('video')">
+            Video Processing
+          </button>
+          <button class="filter-button" onclick="filterByCategory('analytics')">
+            Analytics
+          </button>
+          <button class="filter-button" onclick="filterByCategory('privacy')">
+            Privacy & GDPR
+          </button>
+          <button class="filter-button" onclick="filterByCategory('performance')">
+            Performance
+          </button>
+          <button class="filter-button" onclick="filterByCategory('experimental')">
+            Experimental
+          </button>
+        </div>
+
+        <div style="text-align: center;">
+          <button class="btn btn-primary" onclick="showCreateFeatureModal()">
+            ➕ Create New Feature
+          </button>
+        </div>
+      </div>
+
+      <div class="main-content">
+        <div class="metrics-overview">
+          <div class="metric-card total">
+            <div class="metric-number" id="totalFeatures">0</div>
+            <div class="metric-label">Total Features</div>
+          </div>
+          <div class="metric-card enabled">
+            <div class="metric-number" id="enabledFeatures">0</div>
+            <div class="metric-label">Enabled</div>
+          </div>
+          <div class="metric-card disabled">
+            <div class="metric-number" id="disabledFeatures">0</div>
+            <div class="metric-label">Disabled</div>
+          </div>
+          <div class="metric-card errors">
+            <div class="metric-number" id="errorFeatures">0</div>
+            <div class="metric-label">With Errors</div>
+          </div>
+        </div>
+
+        <div style="padding: 1.5rem; border-bottom: 1px solid #e9ecef;">
+          <input type="text" class="search-box" placeholder="🔍 Search features..."
+                 onkeyup="searchFeatures(this.value)">
+        </div>
+
+        <div class="feature-grid" id="featureGrid">
+          <div style="text-align: center; padding: 2rem; color: #666;">
+            <div style="font-size: 3rem;">⚙️</div>
+            <p>Loading feature toggles...</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Feature Edit Modal -->
+  <div id="featureModal" class="modal">
+    <div class="modal-content">
+      <span class="close" onclick="closeModal()">&times;</span>
+      <h2 id="modalTitle">Edit Feature Toggle</h2>
+
+      <form id="featureForm">
+        <div class="form-group">
+          <label class="form-label">Feature Name</label>
+          <input type="text" id="featureName" class="form-input" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Description</label>
+          <textarea id="featureDescription" class="form-input" rows="3"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Toggle Type</label>
+          <select id="featureType" class="form-input">
+            <option value="boolean">Boolean (On/Off)</option>
+            <option value="percentage">Percentage Rollout</option>
+            <option value="user_list">User Allowlist</option>
+            <option value="time_window">Time Window</option>
+            <option value="ab_test">A/B Test</option>
+          </select>
+        </div>
+
+        <div class="form-group" id="percentageControls" style="display: none;">
+          <label class="form-label">Rollout Percentage</label>
+          <input type="range" id="rolloutPercentage" class="rollout-slider"
+                 min="0" max="100" value="50" oninput="updatePercentageDisplay(this.value)">
+          <div style="text-align: center; margin-top: 0.5rem;">
+            <span id="percentageDisplay">50%</span>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Category</label>
+          <select id="featureCategory" class="form-input">
+            <option value="core">Core</option>
+            <option value="integration">Integration</option>
+            <option value="social">Social Media</option>
+            <option value="video">Video</option>
+            <option value="analytics">Analytics</option>
+            <option value="privacy">Privacy</option>
+            <option value="performance">Performance</option>
+            <option value="experimental">Experimental</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">
+            <input type="checkbox" id="killSwitchEnabled">
+            Enable Kill Switch
+          </label>
+        </div>
+
+        <div style="text-align: right; margin-top: 2rem;">
+          <button type="button" class="btn btn-secondary" onclick="closeModal()">
+            Cancel
+          </button>
+          <button type="submit" class="btn btn-primary">
+            Save Changes
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    let currentFeatures = [];
+    let currentFilter = 'all';
+
+    // Load dashboard data on page load
+    window.addEventListener('load', function() {
+      loadDashboardData();
+    });
+
+    async function loadDashboardData() {
+      try {
+        const response = await google.script.run
+          .withSuccessHandler(function(data) {
+            currentFeatures = data.features || [];
+            updateMetrics(data.metrics || {});
+            renderFeatures(currentFeatures);
+          })
+          .withFailureHandler(function(error) {
+            console.error('Failed to load dashboard data:', error);
+            showError('Failed to load feature data');
+          })
+          .getDashboardData();
+
+      } catch (error) {
+        console.error('Error loading dashboard:', error);
+        showError('Error loading dashboard data');
+      }
+    }
+
+    function updateMetrics(metrics) {
+      document.getElementById('totalFeatures').textContent = metrics.total || 0;
+      document.getElementById('enabledFeatures').textContent = metrics.enabled || 0;
+      document.getElementById('disabledFeatures').textContent = metrics.disabled || 0;
+      document.getElementById('errorFeatures').textContent = metrics.errors || 0;
+    }
+
+    function renderFeatures(features) {
+      const grid = document.getElementById('featureGrid');
+
+      if (!features || features.length === 0) {
+        grid.innerHTML = `
+          <div style="text-align: center; padding: 2rem; color: #666;">
+            <div style="font-size: 3rem;">📋</div>
+            <p>No features found</p>
+          </div>
+        `;
+        return;
+      }
+
+      grid.innerHTML = features.map(feature => `
+        <div class="feature-card ${feature.enabled ? 'enabled' : 'disabled'} ${feature.status === 'killed' ? 'killed' : ''}"
+             data-category="${feature.category}">
+
+          ${feature.killSwitch ? '<span class="badge kill-switch">🚨 Kill Switch</span>' : ''}
+
+          <div class="feature-header">
+            <div class="feature-title">${feature.name}</div>
+            <div class="feature-toggle ${feature.enabled ? 'enabled' : ''}"
+                 onclick="toggleFeature('${feature.key}', ${!feature.enabled})">
+            </div>
+          </div>
+
+          <div class="feature-badges">
+            <span class="badge ${feature.category}">${feature.category}</span>
+            <span class="badge">${feature.type}</span>
+          </div>
+
+          <div class="feature-description">
+            ${feature.description || 'No description available'}
+          </div>
+
+          <div class="feature-metrics">
+            <div class="mini-metric">
+              <div class="mini-metric-number">${feature.metrics.evaluations || 0}</div>
+              <div class="mini-metric-label">Evaluations</div>
+            </div>
+            <div class="mini-metric">
+              <div class="mini-metric-number">${feature.metrics.activations || 0}</div>
+              <div class="mini-metric-label">Activations</div>
+            </div>
+            <div class="mini-metric">
+              <div class="mini-metric-number">${feature.metrics.errors || 0}</div>
+              <div class="mini-metric-label">Errors</div>
+            </div>
+          </div>
+
+          ${feature.dependencies && feature.dependencies.length > 0 ? `
+            <div class="dependencies">
+              <strong>Dependencies:</strong> ${feature.dependencies.join(', ')}
+            </div>
+          ` : ''}
+
+          <div class="feature-actions">
+            <button class="btn btn-secondary" onclick="editFeature('${feature.key}')">
+              Edit
+            </button>
+            ${feature.killSwitch ? `
+              <button class="btn btn-danger" onclick="emergencyKill('${feature.key}')">
+                🚨 Kill
+              </button>
+            ` : ''}
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function filterByCategory(category) {
+      currentFilter = category;
+
+      // Update filter buttons
+      document.querySelectorAll('.filter-button').forEach(btn => {
+        btn.classList.remove('active');
+      });
+      event.target.classList.add('active');
+
+      // Filter features
+      const filteredFeatures = category === 'all' ?
+        currentFeatures :
+        currentFeatures.filter(f => f.category === category);
+
+      renderFeatures(filteredFeatures);
+    }
+
+    function searchFeatures(searchTerm) {
+      const filtered = currentFeatures.filter(feature =>
+        feature.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        feature.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        feature.key.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+
+      renderFeatures(filtered);
+    }
+
+    async function toggleFeature(featureKey, enable) {
+      try {
+        const result = await google.script.run
+          .withSuccessHandler(function(result) {
+            if (result.success) {
+              showSuccess(`Feature ${enable ? 'enabled' : 'disabled'} successfully`);
+              loadDashboardData(); // Refresh data
+            } else {
+              showError(result.error);
+            }
+          })
+          .withFailureHandler(function(error) {
+            showError('Failed to toggle feature: ' + error);
+          })
+          .updateFeatureToggle(featureKey, { defaultValue: enable });
+
+      } catch (error) {
+        console.error('Error toggling feature:', error);
+        showError('Error toggling feature');
+      }
+    }
+
+    async function emergencyKill(featureKey) {
+      const reason = prompt('Emergency kill reason (required):');
+      if (!reason) return;
+
+      try {
+        const result = await google.script.run
+          .withSuccessHandler(function(result) {
+            if (result.success) {
+              showSuccess('Feature killed successfully');
+              loadDashboardData(); // Refresh data
+            } else {
+              showError(result.error);
+            }
+          })
+          .withFailureHandler(function(error) {
+            showError('Failed to kill feature: ' + error);
+          })
+          .emergencyKillSwitch(featureKey, reason);
+
+      } catch (error) {
+        console.error('Error killing feature:', error);
+        showError('Error killing feature');
+      }
+    }
+
+    function editFeature(featureKey) {
+      const feature = currentFeatures.find(f => f.key === featureKey);
+      if (!feature) return;
+
+      document.getElementById('modalTitle').textContent = `Edit ${feature.name}`;
+      document.getElementById('featureName').value = feature.name;
+      document.getElementById('featureDescription').value = feature.description || '';
+      document.getElementById('featureType').value = feature.type;
+      document.getElementById('featureCategory').value = feature.category;
+      document.getElementById('killSwitchEnabled').checked = feature.killSwitch || false;
+
+      if (feature.type === 'percentage') {
+        document.getElementById('percentageControls').style.display = 'block';
+        document.getElementById('rolloutPercentage').value = feature.defaultValue || 50;
+        updatePercentageDisplay(feature.defaultValue || 50);
+      }
+
+      document.getElementById('featureModal').style.display = 'block';
+    }
+
+    function showCreateFeatureModal() {
+      document.getElementById('modalTitle').textContent = 'Create New Feature';
+      document.getElementById('featureForm').reset();
+      document.getElementById('percentageControls').style.display = 'none';
+      document.getElementById('featureModal').style.display = 'block';
+    }
+
+    function closeModal() {
+      document.getElementById('featureModal').style.display = 'none';
+    }
+
+    function updatePercentageDisplay(value) {
+      document.getElementById('percentageDisplay').textContent = value + '%';
+    }
+
+    // Form handling
+    document.getElementById('featureType').addEventListener('change', function() {
+      const percentageControls = document.getElementById('percentageControls');
+      percentageControls.style.display = this.value === 'percentage' ? 'block' : 'none';
+    });
+
+    document.getElementById('featureForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      // Handle form submission here
+      showSuccess('Feature saved successfully');
+      closeModal();
+      loadDashboardData();
+    });
+
+    function showSuccess(message) {
+      // Simple success notification
+      alert('✅ ' + message);
+    }
+
+    function showError(message) {
+      // Simple error notification
+      alert('❌ ' + message);
+    }
+
+    // Close modal when clicking outside
+    window.addEventListener('click', function(event) {
+      const modal = document.getElementById('featureModal');
+      if (event.target === modal) {
+        closeModal();
+      }
+    });
+
+    console.log('🎛️ <?= config.TEAM_NAME ?> Feature Toggle Dashboard Ready!');
+  </script>
+</body>
+</html>

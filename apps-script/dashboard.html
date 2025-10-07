@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title><?= title ? `${title} – ${config.TEAM_NAME}` : config.TEAM_NAME ?></title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    :root {
+      --primary: <?= config.PRIMARY_COLOR ?>;
+      --secondary: <?= config.SECONDARY_COLOR ?>;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+      background: linear-gradient(135deg, var(--primary) 0%, #764ba2 100%);
+      min-height: 100vh; color: #333;
+    }
+    .dashboard {
+      max-width: 1200px; margin: 0 auto; padding: 20px;
+    }
+    .header {
+      text-align: center; margin-bottom: 40px;
+      background: rgba(255,255,255,0.95); padding: 30px; border-radius: 20px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    }
+    .club-badge {
+      width: 80px; height: 80px; margin: 0 auto 20px;
+      background: url('<?= config.BADGE_URL ?>') center/contain no-repeat;
+      border-radius: 50%;
+    }
+    .cards {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px; margin-bottom: 30px;
+    }
+    .card {
+      background: white; border-radius: 15px; padding: 25px;
+      box-shadow: 0 5px 20px rgba(0,0,0,0.1); transition: transform 0.3s;
+      cursor: pointer; text-decoration: none; color: inherit;
+    }
+    .card:hover { transform: translateY(-5px); box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+    .card-icon { font-size: 48px; margin-bottom: 15px; }
+    .card-title { font-size: 20px; font-weight: bold; margin-bottom: 10px; }
+    .card-desc { color: #666; font-size: 14px; }
+    .status-bar {
+      background: rgba(255,255,255,0.95); border-radius: 15px; padding: 20px;
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px;
+    }
+    .status-item { text-align: center; }
+    .status-value { font-size: 24px; font-weight: bold; color: var(--primary); }
+    .status-label { font-size: 12px; color: #666; text-transform: uppercase; }
+    .team-info {
+      background: rgba(255,255,255,0.1); padding: 15px; border-radius: 10px;
+      margin-top: 20px; color: white; text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="dashboard">
+    <div class="header">
+      <? if (config.BADGE_URL && !config.BADGE_URL.includes('[SET')) { ?>
+        <div class="club-badge"></div>
+      <? } ?>
+      <h1>🏈 <?= config.TEAM_NAME ?></h1>
+      <h2>Complete Admin Dashboard</h2>
+      <p>Manage everything from one place - no technical skills required!</p>
+
+      <div class="team-info">
+        <strong><?= config.LEAGUE_NAME ?></strong> • <?= config.AGE_GROUP ?> • <?= config.SEASON ?>
+      </div>
+    </div>
+
+    <div class="cards">
+      <a href="?players" class="card">
+        <div class="card-icon">👥</div>
+        <div class="card-title">Player Management</div>
+        <div class="card-desc">Add players, set DOB, positions, manage squad</div>
+      </a>
+
+      <a href="?fixtures" class="card">
+        <div class="card-icon">📅</div>
+        <div class="card-title">Fixture Management</div>
+        <div class="card-desc">Add matches, set dates, venues, competitions</div>
+      </a>
+
+      <a href="?live" class="card">
+        <div class="card-icon">⚽</div>
+        <div class="card-title">Enhanced Live Match</div>
+        <div class="card-desc">Professional live console with automation</div>
+      </a>
+
+      <a href="?season" class="card">
+        <div class="card-icon">🏆</div>
+        <div class="card-title">Season Setup</div>
+        <div class="card-desc">Configure season, leagues, competitions</div>
+      </a>
+
+      <a href="?historical" class="card">
+        <div class="card-icon">📊</div>
+        <div class="card-title">Historical Data</div>
+        <div class="card-desc">Import past seasons, results, statistics</div>
+      </a>
+
+      <a href="?stats" class="card">
+        <div class="card-icon">📈</div>
+        <div class="card-title">Statistics Dashboard</div>
+        <div class="card-desc">Performance analysis and reports</div>
+      </a>
+
+      <a href="?health" class="card">
+        <div class="card-icon">🔧</div>
+        <div class="card-title">System Health</div>
+        <div class="card-desc">Check connections, test automation</div>
+      </a>
+    </div>
+
+    <div class="status-bar">
+      <div class="status-item">
+        <div class="status-value" id="playerCount">-</div>
+        <div class="status-label">Players</div>
+      </div>
+      <div class="status-item">
+        <div class="status-value" id="fixtureCount">-</div>
+        <div class="status-label">Fixtures</div>
+      </div>
+      <div class="status-item">
+        <div class="status-value" id="resultCount">-</div>
+        <div class="status-label">Results</div>
+      </div>
+      <div class="status-item">
+        <div class="status-value">✅</div>
+        <div class="status-label">System Status</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Load dashboard stats with config-aware error handling
+    function loadStats() {
+      google.script.run
+        .withSuccessHandler(function(stats) {
+          document.getElementById('playerCount').textContent = stats.playerCount || '0';
+          document.getElementById('fixtureCount').textContent = stats.fixtureCount || '0';
+          document.getElementById('resultCount').textContent = stats.resultCount || '0';
+        })
+        .withFailureHandler(function(error) {
+          console.error('Failed to load stats:', error);
+          // Fallback to default values
+          document.getElementById('playerCount').textContent = '0';
+          document.getElementById('fixtureCount').textContent = '0';
+          document.getElementById('resultCount').textContent = '0';
+        })
+        .getDashboardStats();
+    }
+
+    loadStats();
+    console.log('🏈 <?= config.TEAM_NAME ?> Admin Dashboard Ready!');
+  </script>
+</body>
+</html>

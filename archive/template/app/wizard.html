@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    body {
+      font-family: 'Google Sans', Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: #f8f9fa;
+    }
+    .container {
+      background: white;
+      border-radius: 8px;
+      padding: 24px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 2px solid #1a73e8;
+    }
+    .header h2 {
+      color: #1a73e8;
+      margin: 0;
+      font-size: 24px;
+    }
+    .subtitle {
+      color: #5f6368;
+      margin-top: 8px;
+    }
+    .form-group {
+      margin-bottom: 16px;
+    }
+    label {
+      display: block;
+      font-weight: 500;
+      margin-bottom: 4px;
+      color: #202124;
+    }
+    .required {
+      color: #d93025;
+    }
+    input[type="text"], input[type="email"], input[type="url"], select {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #dadce0;
+      border-radius: 4px;
+      font-size: 14px;
+      box-sizing: border-box;
+    }
+    input[type="color"] {
+      width: 60px;
+      height: 32px;
+      border: 1px solid #dadce0;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .color-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .color-preview {
+      width: 24px;
+      height: 24px;
+      border-radius: 4px;
+      border: 1px solid #dadce0;
+    }
+    button {
+      background: #1a73e8;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      width: 100%;
+      margin-top: 16px;
+    }
+    button:hover {
+      background: #1557b0;
+    }
+    button:disabled {
+      background: #dadce0;
+      cursor: not-allowed;
+    }
+    .success {
+      background: #e8f5e8;
+      border: 1px solid #34a853;
+      color: #137333;
+      padding: 12px;
+      border-radius: 4px;
+      margin-top: 16px;
+    }
+    .error {
+      background: #fce8e6;
+      border: 1px solid #ea4335;
+      color: #d93025;
+      padding: 12px;
+      border-radius: 4px;
+      margin-top: 16px;
+    }
+    .help-text {
+      font-size: 12px;
+      color: #5f6368;
+      margin-top: 4px;
+    }
+    .section {
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid #e8eaed;
+    }
+    .section:last-child {
+      border-bottom: none;
+    }
+    .section h3 {
+      color: #1a73e8;
+      margin: 0 0 12px 0;
+      font-size: 16px;
+    }
+    #status {
+      min-height: 20px;
+    }
+    .loading {
+      text-align: center;
+      color: #5f6368;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h2>⚽ Football Automation Setup</h2>
+      <div class="subtitle">Configure your club's automation system in just a few steps</div>
+    </div>
+
+    <form id="setupForm">
+      <!-- Club Information -->
+      <div class="section">
+        <h3>🏈 Club Information</h3>
+
+        <div class="form-group">
+          <label for="teamName">Club Name <span class="required">*</span></label>
+          <input type="text" id="teamName" required placeholder="e.g. Manchester United FC" value="<?= config.TEAM_NAME ?>">
+          <div class="help-text">Your club's full name as it appears on social media</div>
+        </div>
+
+        <div class="form-group">
+          <label for="homeVenue">Home Venue</label>
+          <input type="text" id="homeVenue" placeholder="e.g. Old Trafford" value="<?= config.HOME_VENUE ?>">
+          <div class="help-text">Your home ground name</div>
+        </div>
+
+        <div class="form-group">
+          <label for="timezone">Timezone</label>
+          <select id="timezone">
+            <option value="Europe/London" <?= config.TIMEZONE === 'Europe/London' ? 'selected' : '' ?>>UK (GMT/BST)</option>
+            <option value="Europe/Paris" <?= config.TIMEZONE === 'Europe/Paris' ? 'selected' : '' ?>>Central Europe (CET/CEST)</option>
+            <option value="America/New_York" <?= config.TIMEZONE === 'America/New_York' ? 'selected' : '' ?>>US Eastern</option>
+            <option value="America/Chicago" <?= config.TIMEZONE === 'America/Chicago' ? 'selected' : '' ?>>US Central</option>
+            <option value="America/Denver" <?= config.TIMEZONE === 'America/Denver' ? 'selected' : '' ?>>US Mountain</option>
+            <option value="America/Los_Angeles" <?= config.TIMEZONE === 'America/Los_Angeles' ? 'selected' : '' ?>>US Pacific</option>
+            <option value="Australia/Sydney" <?= config.TIMEZONE === 'Australia/Sydney' ? 'selected' : '' ?>>Australia Eastern</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Branding -->
+      <div class="section">
+        <h3>🎨 Club Colors</h3>
+
+        <div class="form-group">
+          <label for="primaryColor">Primary Color <span class="required">*</span></label>
+          <div class="color-group">
+            <input type="color" id="primaryColor" value="<?= config.PRIMARY_COLOR ?>" onchange="updateColorPreview('primary')">
+            <input type="text" id="primaryColorText" value="<?= config.PRIMARY_COLOR ?>" pattern="^#[0-9A-Fa-f]{6}$" onchange="updateColorInput('primary')">
+            <div class="color-preview" id="primaryPreview" style="background-color: <?= config.PRIMARY_COLOR ?>"></div>
+          </div>
+          <div class="help-text">Your club's main color for posts and graphics</div>
+        </div>
+
+        <div class="form-group">
+          <label for="secondaryColor">Secondary Color <span class="required">*</span></label>
+          <div class="color-group">
+            <input type="color" id="secondaryColor" value="<?= config.SECONDARY_COLOR ?>" onchange="updateColorPreview('secondary')">
+            <input type="text" id="secondaryColorText" value="<?= config.SECONDARY_COLOR ?>" pattern="^#[0-9A-Fa-f]{6}$" onchange="updateColorInput('secondary')">
+            <div class="color-preview" id="secondaryPreview" style="background-color: <?= config.SECONDARY_COLOR ?>"></div>
+          </div>
+          <div class="help-text">Your club's secondary color for accents</div>
+        </div>
+      </div>
+
+      <!-- Integration -->
+      <div class="section">
+        <h3>🔗 Integrations</h3>
+
+        <div class="form-group">
+          <label for="leagueUrl">League Website</label>
+          <input type="url" id="leagueUrl" placeholder="e.g. https://fulltime.thefa.com/..." value="<?= config.LEAGUE_URL ?>">
+          <div class="help-text">Your league's website for fixture/result data</div>
+        </div>
+
+        <div class="form-group">
+          <label for="makeWebhook">Make.com Webhook URL</label>
+          <input type="url" id="makeWebhook" placeholder="https://hook.eu1.make.com/..." value="<?= config.MAKE_WEBHOOK_RESULTS ?>">
+          <div class="help-text">Your Make.com webhook for social media automation (optional)</div>
+        </div>
+      </div>
+
+      <button type="submit" id="installBtn">
+        🚀 Install & Configure System
+      </button>
+    </form>
+
+    <div id="status"></div>
+  </div>
+
+  <script>
+    function updateColorPreview(type) {
+      const colorInput = document.getElementById(type + 'Color');
+      const textInput = document.getElementById(type + 'ColorText');
+      const preview = document.getElementById(type + 'Preview');
+
+      textInput.value = colorInput.value;
+      preview.style.backgroundColor = colorInput.value;
+    }
+
+    function updateColorInput(type) {
+      const colorInput = document.getElementById(type + 'Color');
+      const textInput = document.getElementById(type + 'ColorText');
+      const preview = document.getElementById(type + 'Preview');
+
+      if (/^#[0-9A-Fa-f]{6}$/.test(textInput.value)) {
+        colorInput.value = textInput.value;
+        preview.style.backgroundColor = textInput.value;
+      }
+    }
+
+    document.getElementById('setupForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      install();
+    });
+
+    function install() {
+      const btn = document.getElementById('installBtn');
+      const status = document.getElementById('status');
+
+      btn.disabled = true;
+      btn.textContent = '⏳ Installing...';
+      status.innerHTML = '<div class="loading">Setting up your football automation system...</div>';
+
+      const formData = {
+        TEAM_NAME: document.getElementById('teamName').value.trim(),
+        HOME_VENUE: document.getElementById('homeVenue').value.trim(),
+        TIMEZONE: document.getElementById('timezone').value,
+        PRIMARY_COLOR: document.getElementById('primaryColorText').value.trim(),
+        SECONDARY_COLOR: document.getElementById('secondaryColorText').value.trim(),
+        LEAGUE_URL: document.getElementById('leagueUrl').value.trim(),
+        MAKE_WEBHOOK_RESULTS: document.getElementById('makeWebhook').value.trim(),
+        SEASON: new Date().getFullYear() + '/' + (new Date().getFullYear() + 1),
+        ENABLE_PRIVACY_CHECKS: 'true',
+        ENABLE_MONITORING: 'true'
+      };
+
+      // Validate required fields
+      if (!formData.TEAM_NAME) {
+        showError('Club name is required');
+        resetButton();
+        return;
+      }
+
+      if (!formData.PRIMARY_COLOR.match(/^#[0-9A-Fa-f]{6}$/)) {
+        showError('Primary color must be a valid hex color (e.g. #FFD100)');
+        resetButton();
+        return;
+      }
+
+      if (!formData.SECONDARY_COLOR.match(/^#[0-9A-Fa-f]{6}$/)) {
+        showError('Secondary color must be a valid hex color (e.g. #000000)');
+        resetButton();
+        return;
+      }
+
+      google.script.run
+        .withSuccessHandler(onInstallSuccess)
+        .withFailureHandler(onInstallFailure)
+        .app_setupInstall(formData);
+    }
+
+    function onInstallSuccess(result) {
+      const status = document.getElementById('status');
+
+      if (result.success) {
+        status.innerHTML = `
+          <div class="success">
+            <strong>✅ Setup Complete!</strong><br>
+            Your football automation system is now configured and ready to use.<br><br>
+            <strong>Status:</strong> ${result.status || 'OK'}<br>
+            <strong>Next steps:</strong>
+            <ul>
+              <li>Add players to the Players sheet</li>
+              <li>Set up player privacy consents</li>
+              <li>Test with the "Test Post" menu option</li>
+            </ul>
+          </div>
+        `;
+
+        // Update button
+        const btn = document.getElementById('installBtn');
+        btn.textContent = '✅ Setup Complete';
+        btn.style.background = '#34a853';
+
+      } else {
+        showError('Setup failed: ' + (result.error || 'Unknown error'));
+      }
+    }
+
+    function onInstallFailure(error) {
+      showError('Setup failed: ' + error.message);
+    }
+
+    function showError(message) {
+      const status = document.getElementById('status');
+      status.innerHTML = `<div class="error"><strong>❌ Error:</strong> ${message}</div>`;
+      resetButton();
+    }
+
+    function resetButton() {
+      const btn = document.getElementById('installBtn');
+      btn.disabled = false;
+      btn.textContent = '🚀 Install & Configure System';
+      btn.style.background = '#1a73e8';
+    }
+
+    // Initialize color previews
+    updateColorPreview('primary');
+    updateColorPreview('secondary');
+  </script>
+</body>
+</html>

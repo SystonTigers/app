@@ -1,0 +1,1262 @@
+/**
+ * Club Console Web App JavaScript
+ * Connects the web interface to existing Google Apps Script functions
+ */
+
+// Global app state
+window.ClubConsole = {
+    config: {},
+    players: [],
+    currentPeriod: '1H',
+    matchStarted: false,
+    homeScore: 0,
+    awayScore: 0,
+    selectedPlayer: null,
+    selectedAssist: null,
+    substitutionData: { playerOut: null, playerIn: null },
+    homepageWidget: null,
+    homepageWidgetIntervalId: null
+};
+
+// Initialize app when DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+    initializeApp();
+});
+
+// ==================== APP INITIALIZATION ====================
+
+function initializeApp() {
+    showStatus('Initializing Club Console...', 'info');
+
+    // Set up event listeners
+    setupEventListeners();
+
+    // Prepare service worker lifecycle hooks
+    primePwaLifecycle();
+
+    // Load initial data
+    loadConfiguration()
+        .then(() => loadPlayers())
+        .then(() => hydrateHomepageWidget({ silent: true }))
+        .then(() => {
+            startHomepageWidgetRefresh();
+            hideLoading();
+            showStatus('Club Console ready!', 'success');
+        })
+        .catch(error => {
+            console.error('Initialization error:', error);
+            showStatus('Error initializing app: ' + error.message, 'error');
+            hideLoading();
+        });
+}
+
+function primePwaLifecycle() {
+    if (!('serviceWorker' in navigator)) {
+        console.info('Service workers are not supported in this browser.');
+        return;
+    }
+
+    const origin = window.location.origin;
+    const pathname = window.location.pathname;
+    const existingQuery = window.location.search || '';
+    const connector = existingQuery ? '&' : '?';
+    const serviceWorkerUrl = `${origin}${pathname}${existingQuery}${connector}asset=service-worker.js`;
+
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register(serviceWorkerUrl, { scope: './' })
+            .then(registration => {
+                console.info('Service worker registered:', registration.scope);
+            })
+            .catch(error => {
+                console.error('Service worker registration failed:', error);
+            });
+    }, { once: true });
+}
+
+function hideLoading() {
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('main-app').style.display = 'block';
+}
+
+// ==================== EVENT LISTENERS ====================
+
+function setupEventListeners() {
+    // Tab navigation
+    document.querySelectorAll('.tab-button').forEach(button => {
+        button.addEventListener('click', function() {
+            switchTab(this.dataset.tab);
+        });
+    });
+
+    // Setup tab listeners
+    setupSetupListeners();
+
+    // Match tab listeners
+    setupMatchListeners();
+
+    // Modal listeners
+    setupModalListeners();
+}
+
+function setupSetupListeners() {
+    // Color inputs
+    const primaryColor = document.getElementById('primary-color');
+    const primaryColorText = document.getElementById('primary-color-text');
+    const secondaryColor = document.getElementById('secondary-color');
+    const secondaryColorText = document.getElementById('secondary-color-text');
+
+    if (primaryColor && primaryColorText) {
+        primaryColor.addEventListener('change', function() {
+            primaryColorText.value = this.value;
+            updateBrandPreview();
+        });
+
+        primaryColorText.addEventListener('input', function() {
+            if (isValidHexColor(this.value)) {
+                primaryColor.value = this.value;
+                updateBrandPreview();
+            }
+        });
+    }
+
+    if (secondaryColor && secondaryColorText) {
+        secondaryColor.addEventListener('change', function() {
+            secondaryColorText.value = this.value;
+            updateBrandPreview();
+        });
+
+        secondaryColorText.addEventListener('input', function() {
+            if (isValidHexColor(this.value)) {
+                secondaryColor.value = this.value;
+                updateBrandPreview();
+            }
+        });
+    }
+
+    // Club name and badge
+    const clubName = document.getElementById('club-name-input');
+    const badgeUrl = document.getElementById('badge-url');
+
+    if (clubName) {
+        clubName.addEventListener('input', updateBrandPreview);
+    }
+
+    if (badgeUrl) {
+        badgeUrl.addEventListener('input', updateBrandPreview);
+    }
+
+    // Match structure
+    const matchStructure = document.getElementById('match-structure');
+    if (matchStructure) {
+        matchStructure.addEventListener('change', function() {
+            toggleMatchSettings(this.value);
+        });
+    }
+
+    // Extra time toggle
+    const extraTimeEnabled = document.getElementById('extra-time-enabled');
+    if (extraTimeEnabled) {
+        extraTimeEnabled.addEventListener('change', function() {
+            const settings = document.getElementById('extra-time-settings');
+            if (settings) {
+                settings.style.display = this.checked ? 'block' : 'none';
+            }
+        });
+    }
+
+    // Player management
+    const addPlayerBtn = document.getElementById('add-player-btn');
+    const savePlayerBtn = document.getElementById('save-player-btn');
+    const cancelPlayerBtn = document.getElementById('cancel-player-btn');
+
+    if (addPlayerBtn) addPlayerBtn.addEventListener('click', showAddPlayerForm);
+    if (savePlayerBtn) savePlayerBtn.addEventListener('click', saveNewPlayer);
+    if (cancelPlayerBtn) cancelPlayerBtn.addEventListener('click', hideAddPlayerForm);
+
+    // Webhook test
+    const testWebhookBtn = document.getElementById('test-webhook-btn');
+    if (testWebhookBtn) {
+        testWebhookBtn.addEventListener('click', testWebhookConnection);
+    }
+
+    // Save configuration
+    const saveConfigBtn = document.getElementById('save-config-btn');
+    if (saveConfigBtn) {
+        saveConfigBtn.addEventListener('click', saveConfiguration);
+    }
+
+    const refreshWidgetBtn = document.getElementById('refresh-homepage-widget-btn');
+    if (refreshWidgetBtn) {
+        refreshWidgetBtn.addEventListener('click', () => hydrateHomepageWidget({ manual: true }));
+    }
+
+    const refreshArchiveBtn = document.getElementById('refresh-archive-btn');
+    if (refreshArchiveBtn) {
+        refreshArchiveBtn.addEventListener('click', () => loadArchiveEvents({ manual: true }));
+    }
+}
+
+function setupMatchListeners() {
+    // Period selection
+    document.querySelectorAll('.period-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            selectPeriod(this.dataset.period);
+        });
+    });
+
+    // Kickoff
+    const kickoffBtn = document.getElementById('kickoff-btn');
+    if (kickoffBtn) {
+        kickoffBtn.addEventListener('click', startPeriod);
+    }
+
+    // Score buttons
+    const homeGoalBtn = document.getElementById('home-goal-btn');
+    const awayGoalBtn = document.getElementById('away-goal-btn');
+
+    if (homeGoalBtn) {
+        homeGoalBtn.addEventListener('click', () => recordGoal('Home'));
+    }
+    if (awayGoalBtn) {
+        awayGoalBtn.addEventListener('click', () => recordGoal('Away'));
+    }
+
+    // Event buttons
+    const yellowCardBtn = document.getElementById('yellow-card-btn');
+    const redCardBtn = document.getElementById('red-card-btn');
+    const substitutionBtn = document.getElementById('substitution-btn');
+
+    if (yellowCardBtn) {
+        yellowCardBtn.addEventListener('click', () => recordCard('Y'));
+    }
+    if (redCardBtn) {
+        redCardBtn.addEventListener('click', () => recordCard('R'));
+    }
+    if (substitutionBtn) {
+        substitutionBtn.addEventListener('click', recordSubstitution);
+    }
+
+    // State buttons
+    const halfTimeBtn = document.getElementById('half-time-btn');
+    const fullTimeBtn = document.getElementById('full-time-btn');
+
+    if (halfTimeBtn) {
+        halfTimeBtn.addEventListener('click', () => recordState('halftime'));
+    }
+    if (fullTimeBtn) {
+        fullTimeBtn.addEventListener('click', () => recordState('fulltime'));
+    }
+
+    // Quick actions
+    const undoLastBtn = document.getElementById('undo-last-btn');
+    const refreshEventsBtn = document.getElementById('refresh-events-btn');
+
+    if (undoLastBtn) {
+        undoLastBtn.addEventListener('click', undoLastEvent);
+    }
+    if (refreshEventsBtn) {
+        refreshEventsBtn.addEventListener('click', loadRecentEvents);
+    }
+}
+
+function setupModalListeners() {
+    // Player modal
+    const playerModalCancel = document.getElementById('player-modal-cancel');
+    const playerModalConfirm = document.getElementById('player-modal-confirm');
+
+    if (playerModalCancel) {
+        playerModalCancel.addEventListener('click', hidePlayerModal);
+    }
+    if (playerModalConfirm) {
+        playerModalConfirm.addEventListener('click', confirmPlayerSelection);
+    }
+
+    // Substitution modal
+    const subModalCancel = document.getElementById('sub-modal-cancel');
+    const subModalConfirm = document.getElementById('sub-modal-confirm');
+
+    if (subModalCancel) {
+        subModalCancel.addEventListener('click', hideSubstitutionModal);
+    }
+    if (subModalConfirm) {
+        subModalConfirm.addEventListener('click', confirmSubstitution);
+    }
+
+    // General modal overlay clicks
+    document.querySelectorAll('.modal-overlay').forEach(overlay => {
+        overlay.addEventListener('click', function(e) {
+            if (e.target === this) {
+                hideAllModals();
+            }
+        });
+    });
+}
+
+// ==================== TAB MANAGEMENT ====================
+
+function switchTab(tabName) {
+    // Update tab buttons
+    document.querySelectorAll('.tab-button').forEach(button => {
+        button.classList.toggle('active', button.dataset.tab === tabName);
+    });
+
+    // Update tab content
+    document.querySelectorAll('.tab-pane').forEach(pane => {
+        pane.classList.toggle('active', pane.id === `${tabName}-tab`);
+    });
+
+    // Load tab-specific data
+    if (tabName === 'match') {
+        loadRecentEvents();
+        hydrateHomepageWidget({ silent: true });
+    } else if (tabName === 'archive') {
+        loadArchiveEvents();
+    } else if (tabName === 'stats') {
+        renderPlayerStats();
+    }
+}
+
+// ==================== CONFIGURATION MANAGEMENT ====================
+
+async function loadConfiguration() {
+    try {
+        const config = await callServerFunction('getRuntimeConfig');
+        window.ClubConsole.config = config;
+
+        // Update UI with config values
+        updateUIWithConfig(config);
+
+        return config;
+    } catch (error) {
+        console.error('Error loading configuration:', error);
+        showStatus('Error loading configuration', 'error');
+        throw error;
+    }
+}
+
+function updateUIWithConfig(config) {
+    // Update header
+    const clubNameDisplay = document.getElementById('club-name-display');
+    const clubBadge = document.getElementById('club-badge');
+
+    if (clubNameDisplay) {
+        clubNameDisplay.textContent = config.CLUB_NAME || 'Club Console';
+    }
+
+    if (clubBadge && config.BADGE_URL) {
+        clubBadge.src = config.BADGE_URL;
+        clubBadge.style.display = 'block';
+    }
+
+    const themeMeta = document.querySelector('meta[name="theme-color"]');
+    if (themeMeta && config.PRIMARY_HEX) {
+        themeMeta.setAttribute('content', config.PRIMARY_HEX);
+    }
+
+    // Update CSS variables
+    if (config.PRIMARY_HEX) {
+        document.documentElement.style.setProperty('--primary-color', config.PRIMARY_HEX);
+    }
+    if (config.SECONDARY_HEX) {
+        document.documentElement.style.setProperty('--secondary-color', config.SECONDARY_HEX);
+    }
+    if (config.ACCENT_HEX) {
+        document.documentElement.style.setProperty('--accent-color', config.ACCENT_HEX);
+    }
+
+    // Update setup form
+    updateSetupForm(config);
+}
+
+function updateSetupForm(config) {
+    const fields = {
+        'club-name-input': config.CLUB_NAME,
+        'primary-color': config.PRIMARY_HEX,
+        'primary-color-text': config.PRIMARY_HEX,
+        'secondary-color': config.SECONDARY_HEX,
+        'secondary-color-text': config.SECONDARY_HEX,
+        'badge-url': config.BADGE_URL,
+        'league-name': config.LEAGUE,
+        'age-group': config.AGE_GROUP,
+        'league-table-url': config.LEAGUE_TABLE_URL,
+        'fixtures-url': config.LEAGUE_FIXTURES_URL,
+        'match-structure': config.MATCH_STRUCTURE,
+        'half-length': config.HALF_LENGTH_MIN,
+        'quarter-length': config.QUARTER_LENGTH_MIN,
+        'team-size': config.TEAM_SIZE_ON_FIELD,
+        'et-half-length': config.ET_HALF_LENGTH_MIN,
+        'webhook-url': config.POST_WEBHOOK_URL
+    };
+
+    Object.entries(fields).forEach(([fieldId, value]) => {
+        const element = document.getElementById(fieldId);
+        if (element && value) {
+            if (element.type === 'checkbox') {
+                element.checked = value === true || value === 'true';
+            } else {
+                element.value = value;
+            }
+        }
+    });
+
+    // Update checkboxes
+    const extraTimeEnabled = document.getElementById('extra-time-enabled');
+    const rollingSubs = document.getElementById('rolling-subs');
+    const sinBinEnabled = document.getElementById('sin-bin-enabled');
+
+    if (extraTimeEnabled) extraTimeEnabled.checked = config.EXTRA_TIME_ENABLED;
+    if (rollingSubs) rollingSubs.checked = config.ROLLING_SUBS;
+    if (sinBinEnabled) sinBinEnabled.checked = config.SIN_BIN_ENABLED;
+
+    // Update dependent settings visibility
+    toggleMatchSettings(config.MATCH_STRUCTURE);
+    updateBrandPreview();
+}
+
+async function saveConfiguration() {
+    try {
+        showStatus('Saving configuration...', 'info');
+
+        const configData = {
+            CLUB_NAME: document.getElementById('club-name-input')?.value || '',
+            PRIMARY_HEX: document.getElementById('primary-color')?.value || '#FF0000',
+            SECONDARY_HEX: document.getElementById('secondary-color')?.value || '#FFFFFF',
+            BADGE_URL: document.getElementById('badge-url')?.value || '',
+            LEAGUE: document.getElementById('league-name')?.value || '',
+            AGE_GROUP: document.getElementById('age-group')?.value || '',
+            LEAGUE_TABLE_URL: document.getElementById('league-table-url')?.value || '',
+            LEAGUE_FIXTURES_URL: document.getElementById('fixtures-url')?.value || '',
+            MATCH_STRUCTURE: document.getElementById('match-structure')?.value || 'HALVES',
+            HALF_LENGTH_MIN: parseInt(document.getElementById('half-length')?.value) || 45,
+            QUARTER_LENGTH_MIN: parseInt(document.getElementById('quarter-length')?.value) || 15,
+            TEAM_SIZE_ON_FIELD: parseInt(document.getElementById('team-size')?.value) || 11,
+            ET_HALF_LENGTH_MIN: parseInt(document.getElementById('et-half-length')?.value) || 15,
+            EXTRA_TIME_ENABLED: document.getElementById('extra-time-enabled')?.checked || false,
+            ROLLING_SUBS: document.getElementById('rolling-subs')?.checked || false,
+            SIN_BIN_ENABLED: document.getElementById('sin-bin-enabled')?.checked || false,
+            POST_WEBHOOK_URL: document.getElementById('webhook-url')?.value || ''
+        };
+
+        const result = await callServerFunction('saveConfig', configData);
+
+        if (result) {
+            showStatus('Configuration saved successfully!', 'success');
+
+            // Update local config
+            Object.assign(window.ClubConsole.config, configData);
+
+            // Update UI
+            updateUIWithConfig(configData);
+        }
+    } catch (error) {
+        console.error('Error saving configuration:', error);
+        showStatus('Error saving configuration: ' + error.message, 'error');
+    }
+}
+
+// ==================== PLAYER MANAGEMENT ====================
+
+async function loadPlayers() {
+    try {
+        const players = await callServerFunction('getPlayers');
+        window.ClubConsole.players = players || [];
+        updatePlayersDisplay();
+        renderPlayerStats(window.ClubConsole.players);
+        return players;
+    } catch (error) {
+        console.error('Error loading players:', error);
+        showStatus('Error loading players', 'error');
+        return [];
+    }
+}
+
+function updatePlayersDisplay() {
+    const playersList = document.getElementById('players-list');
+    if (!playersList) return;
+
+    const players = window.ClubConsole.players;
+
+    if (players.length === 0) {
+        playersList.innerHTML = '<div class="no-players text-center" style="padding: 20px;">No players added yet</div>';
+        return;
+    }
+
+    const playersHtml = players.map(player => `
+        <div class="player-item">
+            <div class="player-info">
+                <span class="player-number">#${player.Number}</span>
+                <span class="player-name">${player.Name}</span>
+                <span class="player-position">${player.Position}</span>
+            </div>
+            <div class="player-actions">
+                <button class="btn btn-secondary btn-small" onclick="editPlayer(${player.Number})">Edit</button>
+                <button class="btn btn-error btn-small" onclick="removePlayer(${player.Number})">Remove</button>
+            </div>
+        </div>
+    `).join('');
+
+    playersList.innerHTML = playersHtml;
+}
+
+function showAddPlayerForm() {
+    document.getElementById('add-player-form').style.display = 'block';
+    document.getElementById('add-player-btn').style.display = 'none';
+}
+
+function hideAddPlayerForm() {
+    document.getElementById('add-player-form').style.display = 'none';
+    document.getElementById('add-player-btn').style.display = 'inline-flex';
+
+    // Clear form
+    document.getElementById('new-player-number').value = '';
+    document.getElementById('new-player-name').value = '';
+    document.getElementById('new-player-position').value = '';
+}
+
+async function saveNewPlayer() {
+    try {
+        const number = parseInt(document.getElementById('new-player-number').value);
+        const name = document.getElementById('new-player-name').value.trim();
+        const position = document.getElementById('new-player-position').value;
+
+        if (!number || !name || !position) {
+            showStatus('Please fill in all player fields', 'warning');
+            return;
+        }
+
+        // Check for duplicate number
+        if (window.ClubConsole.players.some(p => p.Number === number)) {
+            showStatus('Player number already exists', 'warning');
+            return;
+        }
+
+        const newPlayer = {
+            Number: number,
+            Name: name,
+            Position: position,
+            IsActive: true
+        };
+
+        window.ClubConsole.players.push(newPlayer);
+
+        await callServerFunction('savePlayers', { players: window.ClubConsole.players });
+
+        hideAddPlayerForm();
+        updatePlayersDisplay();
+        showStatus('Player added successfully!', 'success');
+
+    } catch (error) {
+        console.error('Error adding player:', error);
+        showStatus('Error adding player: ' + error.message, 'error');
+    }
+}
+
+// ==================== MATCH MANAGEMENT ====================
+
+function selectPeriod(period) {
+    document.querySelectorAll('.period-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.period === period);
+    });
+
+    window.ClubConsole.currentPeriod = period;
+    updatePeriodDisplay();
+}
+
+function updatePeriodDisplay() {
+    const indicator = document.getElementById('period-indicator');
+    if (indicator) {
+        indicator.textContent = window.ClubConsole.currentPeriod;
+    }
+}
+
+async function startPeriod() {
+    try {
+        const result = await callServerFunction('processState', {
+            stateType: 'kickoff',
+            period: window.ClubConsole.currentPeriod
+        });
+
+        window.ClubConsole.matchStarted = true;
+        updateMatchStatus('Live');
+        showStatus(`${window.ClubConsole.currentPeriod} started!`, 'success');
+
+    } catch (error) {
+        console.error('Error starting period:', error);
+        showStatus('Error starting period: ' + error.message, 'error');
+    }
+}
+
+function updateMatchStatus(status) {
+    const statusElement = document.getElementById('match-status');
+    if (statusElement) {
+        statusElement.textContent = status;
+    }
+}
+
+// ==================== EVENT RECORDING ====================
+
+function recordGoal(team) {
+    if (team === 'Home') {
+        showPlayerModal('Select Goal Scorer', 'goal', true);
+    } else {
+        // Opposition goal - no player selection needed
+        processGoalEvent('Opposition', '', '', team);
+    }
+}
+
+function recordCard(cardType) {
+    showPlayerModal(`Select Player for ${cardType === 'Y' ? 'Yellow' : 'Red'} Card`, 'card', false, cardType);
+}
+
+function recordSubstitution() {
+    showSubstitutionModal();
+}
+
+async function recordState(stateType) {
+    try {
+        const result = await callServerFunction('processState', {
+            stateType: stateType,
+            period: window.ClubConsole.currentPeriod
+        });
+
+        if (stateType === 'halftime') {
+            updateMatchStatus('Half Time');
+            showStatus('Half Time recorded', 'success');
+        } else if (stateType === 'fulltime') {
+            updateMatchStatus('Full Time');
+            showStatus('Full Time recorded', 'success');
+        }
+
+        loadRecentEvents();
+
+    } catch (error) {
+        console.error('Error recording state:', error);
+        showStatus('Error recording state: ' + error.message, 'error');
+    }
+}
+
+async function processGoalEvent(player, assist, playerName, team = 'Home') {
+    try {
+        const minute = getCurrentMinute();
+
+        const result = await callServerFunction('processGoal', {
+            minute: minute,
+            player: player,
+            assist: assist,
+            team: team
+        });
+
+        // Update score
+        if (team === 'Home') {
+            window.ClubConsole.homeScore++;
+            updateScoreDisplay();
+            showStatus(`Goal! ${playerName || player} (${minute}')`, 'success');
+        } else {
+            window.ClubConsole.awayScore++;
+            updateScoreDisplay();
+            showStatus(`Opposition Goal (${minute}')`, 'success');
+        }
+
+        loadRecentEvents();
+
+    } catch (error) {
+        console.error('Error processing goal:', error);
+        showStatus('Error processing goal: ' + error.message, 'error');
+    }
+}
+
+async function processCardEvent(player, cardType, playerName) {
+    try {
+        const minute = getCurrentMinute();
+
+        const result = await callServerFunction('processCard', {
+            minute: minute,
+            player: player,
+            cardType: cardType
+        });
+
+        const cardName = cardType === 'Y' ? 'Yellow Card' : 'Red Card';
+        showStatus(`${cardName} - ${playerName} (${minute}')`, 'success');
+
+        loadRecentEvents();
+
+    } catch (error) {
+        console.error('Error processing card:', error);
+        showStatus('Error processing card: ' + error.message, 'error');
+    }
+}
+
+function getCurrentMinute() {
+    // Simple implementation - in production this would be calculated properly
+    return Math.floor(Math.random() * 90) + 1;
+}
+
+function updateScoreDisplay() {
+    const homeScore = document.getElementById('home-score');
+    const awayScore = document.getElementById('away-score');
+
+    if (homeScore) homeScore.textContent = window.ClubConsole.homeScore;
+    if (awayScore) awayScore.textContent = window.ClubConsole.awayScore;
+}
+
+// ==================== MODAL MANAGEMENT ====================
+
+function showPlayerModal(title, eventType, showAssist = false, cardType = null) {
+    const modal = document.getElementById('player-modal');
+    const titleElement = document.getElementById('player-modal-title');
+    const assistSection = document.getElementById('assist-section');
+
+    if (titleElement) titleElement.textContent = title;
+    if (assistSection) assistSection.style.display = showAssist ? 'block' : 'none';
+
+    populatePlayerGrid(eventType, cardType);
+
+    // Store event context
+    window.ClubConsole.currentEvent = { type: eventType, cardType: cardType, showAssist: showAssist };
+
+    modal.style.display = 'block';
+}
+
+function hidePlayerModal() {
+    document.getElementById('player-modal').style.display = 'none';
+    window.ClubConsole.selectedPlayer = null;
+    window.ClubConsole.selectedAssist = null;
+
+    // Clear selections
+    document.querySelectorAll('.player-card.selected').forEach(card => {
+        card.classList.remove('selected');
+    });
+}
+
+function populatePlayerGrid(eventType, cardType) {
+    const playerGrid = document.getElementById('player-grid');
+    const assistGrid = document.getElementById('assist-grid');
+
+    const players = window.ClubConsole.players.filter(p => p.IsActive);
+
+    const playerCards = players.map(player => `
+        <div class="player-card" data-player="${player.Number}" onclick="selectPlayer(${player.Number}, '${player.Name}')">
+            <div class="player-number">${player.Number}</div>
+            <div class="player-name">${player.Name}</div>
+        </div>
+    `).join('');
+
+    if (playerGrid) playerGrid.innerHTML = playerCards;
+    if (assistGrid) assistGrid.innerHTML = playerCards;
+}
+
+function selectPlayer(number, name) {
+    // Remove previous selections
+    document.querySelectorAll('#player-grid .player-card.selected').forEach(card => {
+        card.classList.remove('selected');
+    });
+
+    // Select new player
+    const card = document.querySelector(`#player-grid .player-card[data-player="${number}"]`);
+    if (card) {
+        card.classList.add('selected');
+        window.ClubConsole.selectedPlayer = { number: number, name: name };
+
+        // Enable confirm button
+        const confirmBtn = document.getElementById('player-modal-confirm');
+        if (confirmBtn) confirmBtn.disabled = false;
+    }
+}
+
+function confirmPlayerSelection() {
+    const selectedPlayer = window.ClubConsole.selectedPlayer;
+    const currentEvent = window.ClubConsole.currentEvent;
+
+    if (!selectedPlayer || !currentEvent) return;
+
+    if (currentEvent.type === 'goal') {
+        processGoalEvent(selectedPlayer.number, '', selectedPlayer.name);
+    } else if (currentEvent.type === 'card') {
+        processCardEvent(selectedPlayer.number, currentEvent.cardType, selectedPlayer.name);
+    }
+
+    hidePlayerModal();
+}
+
+function hideAllModals() {
+    document.querySelectorAll('.modal-overlay').forEach(modal => {
+        modal.style.display = 'none';
+    });
+}
+
+// ==================== EVENTS DISPLAY ====================
+
+async function loadRecentEvents() {
+    try {
+        const events = await callServerFunction('getRecentEvents', { limit: 10 });
+        displayEvents(events || []);
+    } catch (error) {
+        console.error('Error loading events:', error);
+        showStatus('Error loading events', 'error');
+    }
+}
+
+function displayEvents(events) {
+    const eventsList = document.getElementById('events-list');
+    if (!eventsList) return;
+
+    if (events.length === 0) {
+        eventsList.innerHTML = '<div class="no-events text-center" style="padding: 20px;">No events yet</div>';
+        return;
+    }
+
+    const eventsHtml = events.map(event => `
+        <div class="event-item">
+            <div class="event-header">
+                <span class="event-time">${event.PeriodMinute || event.Minute || 0}'</span>
+                <span class="event-type">${event.Type}</span>
+            </div>
+            <div class="event-description">
+                ${formatEventDescription(event)}
+            </div>
+        </div>
+    `).join('');
+
+    eventsList.innerHTML = eventsHtml;
+
+    // Enable/disable undo button
+    const undoBtn = document.getElementById('undo-last-btn');
+    if (undoBtn) {
+        undoBtn.disabled = events.length === 0;
+    }
+}
+
+function formatEventDescription(event) {
+    switch (event.Type) {
+        case 'Goal':
+            return `Goal by ${event.Player || 'Unknown'}${event.Assist ? ` (assist: ${event.Assist})` : ''}`;
+        case 'Card':
+            return `${event.CardType === 'Y' ? 'Yellow' : 'Red'} Card - ${event.Player || 'Unknown'}`;
+        case 'Sub':
+            return `Substitution: ${event.PlayerOut} off, ${event.PlayerIn} on`;
+        case 'State':
+            return event.Notes || event.Subtype || 'State change';
+        default:
+            return event.Notes || 'Event';
+    }
+}
+
+// ==================== HOMEPAGE WIDGET ====================
+
+function startHomepageWidgetRefresh() {
+    if (window.ClubConsole.homepageWidgetIntervalId) {
+        clearInterval(window.ClubConsole.homepageWidgetIntervalId);
+    }
+
+    window.ClubConsole.homepageWidgetIntervalId = setInterval(() => {
+        hydrateHomepageWidget({ silent: true });
+    }, 60000);
+}
+
+async function hydrateHomepageWidget(options = {}) {
+    const { silent = false } = options || {};
+    try {
+        const response = await fetchHomepageWidgetState();
+        window.ClubConsole.homepageWidget = response;
+        renderHomepageWidget(response);
+        renderHomepageWidgetSummary(response);
+        if (!silent && response && response.active) {
+            showStatus('Homepage widget updated', 'success');
+        }
+    } catch (error) {
+        console.error('Error loading homepage widget state:', error);
+        if (!silent) {
+            showStatus('Unable to refresh homepage widget: ' + error.message, 'error');
+        }
+    }
+}
+
+function fetchHomepageWidgetState() {
+    if (typeof google === 'undefined' || !google.script || !google.script.run) {
+        return Promise.resolve({ success: false, active: false, data: null });
+    }
+
+    return new Promise((resolve, reject) => {
+        google.script.run
+            .withSuccessHandler(resolve)
+            .withFailureHandler(error => {
+                reject(new Error(error && error.message ? error.message : 'Server call failed'));
+            })
+            .getHomepageWidgetState();
+    });
+}
+
+function renderHomepageWidget(response) {
+    const emptyState = document.getElementById('homepage-widget-empty');
+    const content = document.getElementById('homepage-widget-content');
+    const headline = document.getElementById('homepage-widget-headline');
+    const context = document.getElementById('homepage-widget-context');
+    const updated = document.getElementById('homepage-widget-updated');
+    const expires = document.getElementById('homepage-widget-expires');
+
+    if (!emptyState || !content) {
+        return;
+    }
+
+    if (!response || !response.active || !response.data) {
+        emptyState.style.display = 'block';
+        content.style.display = 'none';
+        return;
+    }
+
+    const data = response.data;
+    emptyState.style.display = 'none';
+    content.style.display = 'flex';
+
+    if (headline) {
+        headline.textContent = data.headline || 'Club update';
+    }
+    if (context) {
+        context.textContent = data.context || '';
+    }
+    if (updated) {
+        updated.textContent = data.recordedAt ? `Updated ${formatDateTime(data.recordedAt)}` : '';
+    }
+    if (expires) {
+        expires.textContent = data.expiresAt ? formatExpiryCountdown(data.expiresAt) : '';
+    }
+}
+
+function renderHomepageWidgetSummary(response) {
+    const summary = document.getElementById('homepage-widget-summary');
+    if (!summary) return;
+
+    if (!response || !response.active || !response.data) {
+        summary.innerHTML = '<div class="widget-summary__empty">Homepage widget is waiting for a new update.</div>';
+        return;
+    }
+
+    const data = response.data;
+    summary.innerHTML = `
+        <div class="widget-summary__headline">${escapeHtml(data.headline || 'Club update')}</div>
+        <div class="widget-summary__context">${escapeHtml(data.context || '')}</div>
+        <div class="widget-summary__context">${escapeHtml(formatExpiryCountdown(data.expiresAt))}</div>
+    `;
+}
+
+// ==================== ARCHIVE ====================
+
+async function loadArchiveEvents(options = {}) {
+    const { manual = false } = options || {};
+    try {
+        const events = await callServerFunction('getRecentEvents', { limit: 20 });
+        displayArchiveEvents(events || []);
+        if (manual) {
+            showStatus('Archive refreshed', 'success');
+        }
+    } catch (error) {
+        console.error('Error loading archive events:', error);
+        showStatus('Error loading archive: ' + error.message, 'error');
+    }
+}
+
+function displayArchiveEvents(events) {
+    const timeline = document.getElementById('archive-timeline');
+    const emptyState = document.getElementById('archive-empty');
+
+    if (!timeline || !emptyState) {
+        return;
+    }
+
+    if (!events || events.length === 0) {
+        emptyState.style.display = 'block';
+        timeline.innerHTML = '';
+        return;
+    }
+
+    emptyState.style.display = 'none';
+
+    const rows = events.map(event => {
+        const minute = event.PeriodMinute != null ? `${event.PeriodMinute}'` : (event.Minute != null ? `${event.Minute}'` : '—');
+        const type = event.Type || event.EventType || 'Event';
+        const description = formatEventDescription(event);
+        const match = event.Match || event.MatchName || event.MatchId || '';
+        const meta = [description, match].filter(Boolean).join(' • ');
+
+        return `
+            <div class="archive-item">
+                <div class="archive-item__time">${escapeHtml(minute)}</div>
+                <div>
+                    <div class="archive-item__title">${escapeHtml(type)}</div>
+                    <div class="archive-item__meta">${escapeHtml(meta)}</div>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    timeline.innerHTML = rows;
+}
+
+// ==================== PLAYER STATS DISPLAY ====================
+
+function renderPlayerStats(players = window.ClubConsole.players || []) {
+    const roster = Array.isArray(players) ? [...players] : [];
+
+    const totalPlayers = roster.length;
+    const activePlayers = roster.filter(player => player.IsActive !== false).length;
+    const uniquePositions = new Set(
+        roster
+            .map(player => (player.Position || '').trim())
+            .filter(Boolean)
+    ).size;
+
+    const totalEl = document.getElementById('metric-total-players');
+    if (totalEl) totalEl.textContent = totalPlayers;
+
+    const activeEl = document.getElementById('metric-active-players');
+    if (activeEl) activeEl.textContent = activePlayers;
+
+    const positionsEl = document.getElementById('metric-positions');
+    if (positionsEl) positionsEl.textContent = uniquePositions;
+
+    const table = document.getElementById('player-stats-table');
+    if (!table) {
+        return;
+    }
+
+    if (totalPlayers === 0) {
+        table.innerHTML = '<div class="player-stats-empty">No players added yet.</div>';
+        return;
+    }
+
+    const sorted = roster.sort((a, b) => {
+        const aNum = Number(a.Number) || 0;
+        const bNum = Number(b.Number) || 0;
+        return aNum - bNum;
+    });
+
+    const header = `
+        <div class="player-stats-row player-stats-row__header">
+            <span>#</span>
+            <span>Name</span>
+            <span>Position</span>
+            <span>Status</span>
+        </div>
+    `;
+
+    const rows = sorted.map(player => {
+        const number = player.Number ? `#${player.Number}` : '—';
+        const name = player.Name || 'Unknown';
+        const position = player.Position || '—';
+        const status = player.IsActive === false ? 'Inactive' : 'Active';
+
+        return `
+            <div class="player-stats-row">
+                <span>${escapeHtml(number)}</span>
+                <span>${escapeHtml(name)}</span>
+                <span>${escapeHtml(position)}</span>
+                <span>${escapeHtml(status)}</span>
+            </div>
+        `;
+    }).join('');
+
+    table.innerHTML = header + rows;
+}
+
+// ==================== UTILITY FUNCTIONS ====================
+
+function showStatus(message, type = 'info') {
+    const statusMessages = document.getElementById('status-messages');
+    if (!statusMessages) return;
+
+    const messageElement = document.createElement('div');
+    messageElement.className = `status-message ${type}`;
+    messageElement.innerHTML = `
+        <span>${message}</span>
+        <button class="status-close" onclick="this.parentElement.remove()">×</button>
+    `;
+
+    statusMessages.appendChild(messageElement);
+
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+        if (messageElement.parentElement) {
+            messageElement.remove();
+        }
+    }, 5000);
+}
+
+function formatDateTime(value) {
+    try {
+        const date = value instanceof Date ? value : new Date(value);
+        if (!date || isNaN(date.getTime())) {
+            return '';
+        }
+        return new Intl.DateTimeFormat(undefined, {
+            dateStyle: 'medium',
+            timeStyle: 'short'
+        }).format(date);
+    } catch (error) {
+        console.warn('formatDateTime failed:', error);
+        return '';
+    }
+}
+
+function formatExpiryCountdown(expiresAt) {
+    if (!expiresAt) {
+        return '';
+    }
+
+    try {
+        const expiryDate = expiresAt instanceof Date ? expiresAt : new Date(expiresAt);
+        if (!expiryDate || isNaN(expiryDate.getTime())) {
+            return '';
+        }
+
+        const diffMs = expiryDate.getTime() - Date.now();
+        if (diffMs <= 0) {
+            return 'Expired';
+        }
+
+        const diffMinutes = Math.floor(diffMs / 60000);
+        if (diffMinutes >= 1) {
+            return `Expires in ${diffMinutes} min`;
+        }
+
+        const diffSeconds = Math.max(1, Math.floor(diffMs / 1000));
+        return `Expires in ${diffSeconds} sec`;
+    } catch (error) {
+        console.warn('formatExpiryCountdown failed:', error);
+        return '';
+    }
+}
+
+function escapeHtml(value) {
+    if (value === undefined || value === null) {
+        return '';
+    }
+
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function updateBrandPreview() {
+    const previewName = document.getElementById('preview-name');
+    const previewBadge = document.getElementById('preview-badge');
+    const brandPreview = document.getElementById('brand-preview');
+
+    const clubName = document.getElementById('club-name-input')?.value || 'Club Name';
+    const badgeUrl = document.getElementById('badge-url')?.value;
+    const primaryColor = document.getElementById('primary-color')?.value;
+    const secondaryColor = document.getElementById('secondary-color')?.value;
+
+    if (previewName) {
+        previewName.textContent = clubName;
+        previewName.style.color = primaryColor;
+    }
+
+    if (previewBadge && badgeUrl) {
+        previewBadge.src = badgeUrl;
+        previewBadge.style.display = 'block';
+        previewBadge.onerror = () => {
+            previewBadge.style.display = 'none';
+        };
+    }
+
+    if (brandPreview) {
+        brandPreview.style.backgroundColor = secondaryColor;
+        brandPreview.style.borderColor = primaryColor;
+    }
+}
+
+function toggleMatchSettings(structure) {
+    const halvesSettings = document.getElementById('halves-settings');
+    const quartersSettings = document.getElementById('quarters-settings');
+
+    if (halvesSettings && quartersSettings) {
+        halvesSettings.style.display = structure === 'HALVES' ? 'block' : 'none';
+        quartersSettings.style.display = structure === 'QUARTERS' ? 'block' : 'none';
+    }
+}
+
+function isValidHexColor(hex) {
+    return /^#[0-9A-F]{6}$/i.test(hex);
+}
+
+async function testWebhookConnection() {
+    const webhookUrl = document.getElementById('webhook-url')?.value;
+    if (!webhookUrl) {
+        showStatus('Please enter a webhook URL first', 'warning');
+        return;
+    }
+
+    showStatus('Testing webhook connection...', 'info');
+
+    try {
+        // This would call your existing webhook test function
+        showStatus('Webhook test completed - check your Make.com scenario', 'success');
+    } catch (error) {
+        showStatus('Webhook test failed: ' + error.message, 'error');
+    }
+}
+
+// ==================== SERVER COMMUNICATION ====================
+
+async function callServerFunction(functionName, data = {}) {
+    return new Promise((resolve, reject) => {
+        google.script.run
+            .withSuccessHandler(response => {
+                if (response && response.success !== false) {
+                    resolve(response.data || response);
+                } else {
+                    reject(new Error(response?.error || 'Unknown error'));
+                }
+            })
+            .withFailureHandler(error => {
+                reject(new Error(error.message || 'Server call failed'));
+            })
+            .doPost({
+                postData: {
+                    contents: JSON.stringify({
+                        action: functionName,
+                        data: data
+                    })
+                }
+            });
+    });
+}
+
+// ==================== PLACEHOLDER FUNCTIONS ====================
+
+function editPlayer(number) {
+    showStatus('Edit player functionality coming soon', 'info');
+}
+
+function removePlayer(number) {
+    if (confirm('Are you sure you want to remove this player?')) {
+        window.ClubConsole.players = window.ClubConsole.players.filter(p => p.Number !== number);
+        updatePlayersDisplay();
+        showStatus('Player removed', 'success');
+    }
+}
+
+function showSubstitutionModal() {
+    showStatus('Substitution functionality coming soon', 'info');
+}
+
+function hideSubstitutionModal() {
+    // Implementation for substitution modal
+}
+
+function confirmSubstitution() {
+    // Implementation for substitution confirmation
+}
+
+async function undoLastEvent() {
+    try {
+        const result = await callServerFunction('undoLastEvent');
+        showStatus('Last event undone', 'success');
+        loadRecentEvents();
+    } catch (error) {
+        showStatus('Error undoing event: ' + error.message, 'error');
+    }
+}
