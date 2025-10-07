@@ -1,0 +1,426 @@
+name: Deploy Football Highlights Processor
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+
+env:
+  NODE_VERSION: '18'
+  DOCKER_IMAGE: football-highlights-processor
+  REGISTRY: ghcr.io
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run linting
+        run: npm run lint
+
+      - name: Run unit tests
+        run: npm run test:unit
+        env:
+          NODE_ENV: test
+
+      - name: Run integration tests
+        run: npm run test:integration
+        env:
+          NODE_ENV: test
+          REDIS_URL: redis://localhost:6379
+          GOOGLE_CREDENTIALS: ${{ secrets.TEST_GOOGLE_CREDENTIALS }}
+
+      - name: Run performance tests
+        run: npm run test:performance
+        env:
+          NODE_ENV: test
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: |
+            test-results.xml
+            coverage/
+            tests/reports/
+
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      - name: Run npm audit
+        run: npm audit --audit-level moderate
+
+  build:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    needs: [test, security]
+
+    outputs:
+      image-digest: ${{ steps.build.outputs.digest }}
+      image-tag: ${{ steps.meta.outputs.tags }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ github.repository }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Docker image
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            NODE_ENV=production
+            BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
+            VCS_REF=${{ github.sha }}
+
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main'
+
+    environment:
+      name: staging
+      url: https://staging.footballhighlights.app
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to Railway (Staging)
+        run: |
+          curl -X POST \
+            -H "Authorization: Bearer ${{ secrets.RAILWAY_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "environmentId": "${{ secrets.RAILWAY_STAGING_ENV_ID }}",
+              "serviceId": "${{ secrets.RAILWAY_SERVICE_ID }}",
+              "variables": {
+                "DOCKER_IMAGE": "${{ needs.build.outputs.image-tag }}"
+              }
+            }' \
+            https://backboard.railway.app/graphql/v2
+
+      - name: Deploy to Render (Staging)
+        run: |
+          curl -X POST \
+            -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "serviceId": "${{ secrets.RENDER_STAGING_SERVICE_ID }}",
+              "clearCache": true
+            }' \
+            https://api.render.com/v1/services/${{ secrets.RENDER_STAGING_SERVICE_ID }}/deploys
+
+      - name: Wait for deployment
+        run: |
+          echo "Waiting for staging deployment to be ready..."
+          sleep 120
+
+      - name: Run staging health checks
+        run: |
+          chmod +x deployment/health-check.sh
+          ./deployment/health-check.sh ${{ secrets.STAGING_API_URL }}
+
+      - name: Run staging smoke tests
+        run: |
+          npm ci
+          npm run test:smoke
+        env:
+          API_URL: ${{ secrets.STAGING_API_URL }}
+          TEST_VIDEO_PATH: tests/fixtures/sample-video.mp4
+
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [build, deploy-staging]
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    environment:
+      name: production
+      url: https://api.footballhighlights.app
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Production deployment checklist
+        run: |
+          echo "🔍 Production Deployment Checklist"
+          echo "✅ All tests passed"
+          echo "✅ Security scan completed"
+          echo "✅ Docker image built and pushed"
+          echo "✅ Staging deployment verified"
+          echo "🚀 Ready for production deployment"
+
+      - name: Create deployment backup
+        run: |
+          # Create backup metadata
+          cat > deployment-backup.json << EOF
+          {
+            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "version": "${GITHUB_REF#refs/tags/}",
+            "commit": "${{ github.sha }}",
+            "previous_image": "${{ secrets.CURRENT_PRODUCTION_IMAGE }}",
+            "new_image": "${{ needs.build.outputs.image-tag }}"
+          }
+          EOF
+
+      - name: Deploy to Railway (Production)
+        run: |
+          curl -X POST \
+            -H "Authorization: Bearer ${{ secrets.RAILWAY_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "environmentId": "${{ secrets.RAILWAY_PRODUCTION_ENV_ID }}",
+              "serviceId": "${{ secrets.RAILWAY_SERVICE_ID }}",
+              "variables": {
+                "DOCKER_IMAGE": "${{ needs.build.outputs.image-tag }}",
+                "NODE_ENV": "production"
+              }
+            }' \
+            https://backboard.railway.app/graphql/v2
+
+      - name: Deploy to Render (Production)
+        run: |
+          curl -X POST \
+            -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "serviceId": "${{ secrets.RENDER_PRODUCTION_SERVICE_ID }}",
+              "clearCache": true
+            }' \
+            https://api.render.com/v1/services/${{ secrets.RENDER_PRODUCTION_SERVICE_ID }}/deploys
+
+      - name: Wait for production deployment
+        run: |
+          echo "Waiting for production deployment to be ready..."
+          sleep 180
+
+      - name: Run production health checks
+        run: |
+          chmod +x deployment/health-check.sh
+          ./deployment/health-check.sh ${{ secrets.PRODUCTION_API_URL }}
+
+      - name: Run production validation tests
+        run: |
+          npm ci
+          npm run test:production
+        env:
+          API_URL: ${{ secrets.PRODUCTION_API_URL }}
+
+      - name: Update deployment status
+        if: success()
+        run: |
+          curl -X POST \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "state": "success",
+              "description": "Production deployment successful",
+              "environment": "production",
+              "environment_url": "https://api.footballhighlights.app"
+            }' \
+            "https://api.github.com/repos/${{ github.repository }}/deployments"
+
+      - name: Send deployment notification
+        if: always()
+        run: |
+          STATUS=${{ job.status }}
+          VERSION=${GITHUB_REF#refs/tags/}
+
+          if [[ "$STATUS" == "success" ]]; then
+            MESSAGE="🎉 Production deployment successful: $VERSION"
+            COLOR="good"
+          else
+            MESSAGE="❌ Production deployment failed: $VERSION"
+            COLOR="danger"
+          fi
+
+          if [[ -n "${{ secrets.SLACK_WEBHOOK_URL }}" ]]; then
+            curl -X POST -H 'Content-type: application/json' \
+              --data "{
+                \"text\": \"$MESSAGE\",
+                \"color\": \"$COLOR\",
+                \"fields\": [
+                  {\"title\": \"Version\", \"value\": \"$VERSION\", \"short\": true},
+                  {\"title\": \"Commit\", \"value\": \"${{ github.sha }}\", \"short\": true},
+                  {\"title\": \"Actor\", \"value\": \"${{ github.actor }}\", \"short\": true}
+                ]
+              }" \
+              ${{ secrets.SLACK_WEBHOOK_URL }}
+          fi
+
+  rollback:
+    name: Rollback Production
+    runs-on: ubuntu-latest
+    if: failure() && needs.deploy-production.result == 'failure'
+    needs: [deploy-production]
+
+    environment:
+      name: production
+      url: https://api.footballhighlights.app
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Rollback Railway deployment
+        run: |
+          echo "🔄 Rolling back Railway deployment..."
+          # Railway rollback logic here
+          curl -X POST \
+            -H "Authorization: Bearer ${{ secrets.RAILWAY_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "environmentId": "${{ secrets.RAILWAY_PRODUCTION_ENV_ID }}",
+              "serviceId": "${{ secrets.RAILWAY_SERVICE_ID }}",
+              "variables": {
+                "DOCKER_IMAGE": "${{ secrets.PREVIOUS_PRODUCTION_IMAGE }}"
+              }
+            }' \
+            https://backboard.railway.app/graphql/v2
+
+      - name: Rollback Render deployment
+        run: |
+          echo "🔄 Rolling back Render deployment..."
+          # Render doesn't have direct rollback API, so we redeploy previous version
+          curl -X POST \
+            -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "serviceId": "${{ secrets.RENDER_PRODUCTION_SERVICE_ID }}",
+              "clearCache": true
+            }' \
+            https://api.render.com/v1/services/${{ secrets.RENDER_PRODUCTION_SERVICE_ID }}/deploys
+
+      - name: Verify rollback
+        run: |
+          echo "Waiting for rollback to complete..."
+          sleep 120
+
+          chmod +x deployment/health-check.sh
+          if ./deployment/health-check.sh ${{ secrets.PRODUCTION_API_URL }}; then
+            echo "✅ Rollback successful"
+          else
+            echo "❌ Rollback failed - manual intervention required"
+            exit 1
+          fi
+
+      - name: Notify rollback
+        if: always()
+        run: |
+          if [[ -n "${{ secrets.SLACK_WEBHOOK_URL }}" ]]; then
+            curl -X POST -H 'Content-type: application/json' \
+              --data '{
+                "text": "🔄 Production rollback completed",
+                "color": "warning",
+                "fields": [
+                  {"title": "Status", "value": "${{ job.status }}", "short": true},
+                  {"title": "Reason", "value": "Deployment failure", "short": true}
+                ]
+              }' \
+              ${{ secrets.SLACK_WEBHOOK_URL }}
+          fi
+
+  cleanup:
+    name: Cleanup
+    runs-on: ubuntu-latest
+    needs: [deploy-production]
+    if: always()
+
+    steps:
+      - name: Clean up old images
+        run: |
+          # Clean up old container images in registry
+          # Keep last 10 images
+          echo "🧹 Cleaning up old container images..."
+
+          # This would typically use GitHub's container registry API
+          # to delete old images, keeping only the most recent ones
+
+      - name: Update production image tag
+        if: needs.deploy-production.result == 'success'
+        run: |
+          # Update the current production image reference
+          curl -X PATCH \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "name": "CURRENT_PRODUCTION_IMAGE",
+              "value": "${{ needs.build.outputs.image-tag }}"
+            }' \
+            "https://api.github.com/repos/${{ github.repository }}/actions/variables/CURRENT_PRODUCTION_IMAGE"

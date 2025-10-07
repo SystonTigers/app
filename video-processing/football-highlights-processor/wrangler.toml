@@ -1,0 +1,22 @@
+[env.production]
+name = "football-highlights-queue"
+main = "src/integrations/cloudflare-worker.js"
+compatibility_date = "2023-10-30"
+compatibility_flags = ["nodejs_compat"]
+
+[[env.production.kv_namespaces]]
+binding = "JOBS_KV"
+id = "YOUR_KV_NAMESPACE_ID"
+
+[env.production.vars]
+PROCESSING_ENGINE_URL = "https://your-processing-engine.railway.app"
+API_SECRET = "your-api-secret"
+
+[env.staging]
+name = "football-highlights-queue-staging"
+main = "src/integrations/cloudflare-worker.js"
+compatibility_date = "2023-10-30"
+
+[[env.staging.kv_namespaces]]
+binding = "JOBS_KV"
+id = "YOUR_STAGING_KV_NAMESPACE_ID"

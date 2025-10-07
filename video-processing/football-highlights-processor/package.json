@@ -1,0 +1,209 @@
+{
+  "name": "football-highlights-processor",
+  "version": "2.0.0",
+  "description": "Complete football highlights processing system with Google Apps Script integration, storage management, and customer success tracking",
+  "main": "src/server.js",
+  "type": "module",
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
+  "bin": {
+    "integrate": "bin/integrate.js"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "worker": "node src/worker.js",
+    "test": "npm run test:unit && npm run test:integration",
+    "test:unit": "jest --config jest.config.js --testPathPattern=unit",
+    "test:integration": "jest --config jest.config.js --testPathPattern=integration --runInBand",
+    "test:performance": "node tests/performance/load-testing.js",
+    "test:customer": "jest --config jest.config.js --testPathPattern=customer",
+    "test:e2e": "jest --config jest.config.js --testPathPattern=e2e --runInBand",
+    "test:all": "npm run test:unit && npm run test:integration && npm run test:customer && npm run test:performance",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:smoke": "node tests/smoke/smoke-tests.js",
+    "test:production": "node tests/production/production-validation.js",
+    "test:security": "npm audit && docker run --rm -v $(pwd):/app securecodewarrior/docker-security-scan",
+    "lint": "eslint src/ tests/ --ext .js,.json",
+    "lint:fix": "eslint src/ tests/ --ext .js,.json --fix",
+    "format": "prettier --write src/ tests/ *.js *.json *.md",
+    "format:check": "prettier --check src/ tests/ *.js *.json *.md",
+    "build": "docker build -t football-highlights-processor .",
+    "build:production": "docker build -t football-highlights-processor:production --build-arg NODE_ENV=production .",
+    "deploy:staging": "bash deployment/deploy.sh latest staging",
+    "deploy:production": "bash deployment/deploy.sh latest production",
+    "health-check": "curl -f http://localhost:8080/health || exit 1",
+    "logs": "docker-compose logs -f",
+    "logs:errors": "docker-compose logs -f | grep -i error",
+    "migrate": "node scripts/migrate.js",
+    "seed": "node scripts/seed.js",
+    "backup": "node scripts/backup.js",
+    "cleanup": "node scripts/cleanup.js",
+    "monitor": "node scripts/monitor.js",
+    "reports": "node scripts/generate-reports.js",
+    "validate-config": "node scripts/validate-config.js",
+    "setup": "npm install && npm run validate-config && npm run migrate",
+    "integrate": "node bin/integrate.js",
+    "precommit": "npm run lint && npm run format:check && npm run test:unit",
+    "prepush": "npm run test",
+    "preversion": "npm run test:all && npm run build",
+    "postversion": "git push && git push --tags"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "helmet": "^7.1.0",
+    "multer": "^1.4.5-lts.1",
+    "bull": "^4.12.2",
+    "@bull-board/api": "^5.10.2",
+    "@bull-board/express": "^5.10.2",
+    "winston": "^3.11.0",
+    "winston-daily-rotate-file": "^4.7.1",
+    "redis": "^4.6.10",
+    "ioredis": "^5.3.2",
+    "node-fetch": "^3.3.2",
+    "form-data": "^4.0.0",
+    "googleapis": "^128.0.0",
+    "youtube-api-search": "^0.0.5",
+    "fluent-ffmpeg": "^2.1.2",
+    "sharp": "^0.32.6",
+    "node-cron": "^3.0.3",
+    "nodemailer": "^6.9.7",
+    "validator": "^13.11.0",
+    "bcrypt": "^5.1.1",
+    "jsonwebtoken": "^9.0.2",
+    "express-rate-limit": "^7.1.5",
+    "express-slow-down": "^2.0.1",
+    "compression": "^1.7.4",
+    "prom-client": "^15.0.0",
+    "pg": "^8.11.3",
+    "sequelize": "^6.35.1",
+    "fs-extra": "^11.1.1",
+    "dotenv": "^16.3.1",
+    "uuid": "^9.0.1",
+    "moment": "^2.29.4",
+    "lodash": "^4.17.21",
+    "axios": "^1.6.2",
+    "cheerio": "^1.0.0-rc.12",
+    "puppeteer": "^21.5.2",
+    "@tensorflow/tfjs-node": "^4.14.0",
+    "opencv4nodejs": "^5.6.0",
+    "natural": "^6.7.0",
+    "compromise": "^14.10.0",
+    "archiver": "^6.0.1",
+    "stream-to-buffer": "^0.1.0",
+    "chalk": "^5.3.0",
+    "ora": "^7.0.1",
+    "inquirer": "^9.2.12"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "supertest": "^6.3.3",
+    "nodemon": "^3.0.2",
+    "eslint": "^8.54.0",
+    "eslint-config-airbnb-base": "^15.0.0",
+    "eslint-plugin-import": "^2.29.0",
+    "eslint-plugin-jest": "^27.6.0",
+    "prettier": "^3.1.0",
+    "@babel/core": "^7.23.3",
+    "@babel/preset-env": "^7.23.3",
+    "babel-jest": "^29.7.0",
+    "husky": "^8.0.3",
+    "lint-staged": "^15.1.0",
+    "autocannon": "^7.12.0",
+    "clinic": "^13.0.1",
+    "nyc": "^15.1.0",
+    "sinon": "^17.0.1",
+    "nock": "^13.4.0",
+    "faker": "^6.6.6",
+    "testcontainers": "^10.2.2",
+    "docker-compose": "^0.24.2",
+    "wait-port": "^1.1.0"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "collectCoverageFrom": [
+      "src/**/*.js",
+      "!src/**/*.test.js",
+      "!src/**/index.js"
+    ],
+    "coverageDirectory": "coverage",
+    "coverageReporters": [
+      "text",
+      "lcov",
+      "html"
+    ],
+    "testMatch": [
+      "**/tests/**/*.test.js",
+      "**/src/**/*.test.js"
+    ],
+    "testTimeout": 30000,
+    "setupFilesAfterEnv": [
+      "<rootDir>/tests/setup.js"
+    ],
+    "globalTeardown": "<rootDir>/tests/teardown.js"
+  },
+  "lint-staged": {
+    "*.js": [
+      "eslint --fix",
+      "prettier --write",
+      "git add"
+    ],
+    "*.{json,md}": [
+      "prettier --write",
+      "git add"
+    ]
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged",
+      "pre-push": "npm run test"
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/football-highlights-processor.git"
+  },
+  "keywords": [
+    "football",
+    "soccer",
+    "video-processing",
+    "highlights",
+    "youth-sports",
+    "google-apps-script",
+    "youtube",
+    "google-drive",
+    "ai",
+    "computer-vision",
+    "ffmpeg",
+    "nodejs",
+    "express",
+    "docker",
+    "microservices"
+  ],
+  "author": "Football Highlights Team",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/yourusername/football-highlights-processor/issues"
+  },
+  "homepage": "https://github.com/yourusername/football-highlights-processor#readme",
+  "funding": {
+    "type": "opencollective",
+    "url": "https://opencollective.com/football-highlights"
+  },
+  "config": {
+    "unsafe-perm": true
+  },
+  "nodemonConfig": {
+    "watch": ["src"],
+    "ext": "js,json",
+    "ignore": ["tests/", "node_modules/", "logs/", "coverage/"],
+    "env": {
+      "NODE_ENV": "development",
+      "LOG_LEVEL": "debug"
+    }
+  }
+}

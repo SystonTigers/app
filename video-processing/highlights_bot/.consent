@@ -1,0 +1,3 @@
+CONSENT_GRANTED_FOR_SAMPLE_PROCESSING=true
+# This file indicates consent has been given for processing
+# In production, implement proper consent management

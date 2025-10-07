@@ -1,0 +1,240 @@
+groups:
+  - name: football_highlights_alerts
+    rules:
+      # System Health Alerts
+      - alert: ServiceDown
+        expr: up{job="football-highlights-app"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Football Highlights service is down"
+          description: "The Football Highlights Processor service has been down for more than 1 minute."
+
+      - alert: HighErrorRate
+        expr: rate(http_requests_total{status=~"5.."}[5m]) / rate(http_requests_total[5m]) > 0.1
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is above 10% for the last 5 minutes."
+
+      # Performance Alerts
+      - alert: HighResponseTime
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 5
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High response time"
+          description: "95th percentile response time is above 5 seconds."
+
+      - alert: HighMemoryUsage
+        expr: process_resident_memory_bytes / 1024 / 1024 / 1024 > 3
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage"
+          description: "Memory usage is above 3GB."
+
+      - alert: HighCPUUsage
+        expr: rate(process_cpu_seconds_total[5m]) > 0.8
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage"
+          description: "CPU usage is above 80% for the last 5 minutes."
+
+      # Queue Alerts
+      - alert: QueueBacklog
+        expr: video_queue_waiting_jobs > 10
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Video processing queue backlog"
+          description: "More than 10 jobs are waiting in the video processing queue."
+
+      - alert: QueueProcessingStalled
+        expr: rate(video_queue_completed_jobs_total[10m]) == 0 and video_queue_waiting_jobs > 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Video processing queue stalled"
+          description: "No jobs have been completed in the last 10 minutes, but jobs are waiting."
+
+      - alert: HighJobFailureRate
+        expr: rate(video_queue_failed_jobs_total[10m]) / rate(video_queue_total_jobs_total[10m]) > 0.2
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High job failure rate"
+          description: "More than 20% of video processing jobs are failing."
+
+      # Storage Alerts
+      - alert: StorageSpaceWarning
+        expr: storage_drive_usage_percent > 75
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Drive storage usage high"
+          description: "Drive storage usage is above 75%."
+
+      - alert: StorageSpaceCritical
+        expr: storage_drive_usage_percent > 90
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Drive storage usage critical"
+          description: "Drive storage usage is above 90%. Immediate action required."
+
+      - alert: CleanupJobFailed
+        expr: increase(storage_cleanup_failures_total[1h]) > 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Storage cleanup job failed"
+          description: "Storage cleanup job has failed in the last hour."
+
+      # Video Processing Alerts
+      - alert: VideoProcessingTakingTooLong
+        expr: video_processing_duration_seconds > 1800 # 30 minutes
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Video processing taking too long"
+          description: "A video has been processing for more than 30 minutes."
+
+      - alert: VideoUploadFailures
+        expr: rate(video_upload_failures_total[5m]) > 0.1
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High video upload failure rate"
+          description: "Video upload failures are above 10% for the last 5 minutes."
+
+      # Customer Experience Alerts
+      - alert: CustomerSatisfactionDrop
+        expr: customer_satisfaction_score < 4.0
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Customer satisfaction score dropped"
+          description: "Average customer satisfaction score is below 4.0."
+
+      - alert: HighUserErrorRate
+        expr: rate(user_errors_total[10m]) > 0.05
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High user error rate"
+          description: "User-facing errors are above 5% for the last 10 minutes."
+
+      # External Service Alerts
+      - alert: YouTubeAPIErrors
+        expr: rate(youtube_api_errors_total[5m]) > 0.1
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "YouTube API errors"
+          description: "YouTube API error rate is above 10% for the last 5 minutes."
+
+      - alert: DriveAPIErrors
+        expr: rate(drive_api_errors_total[5m]) > 0.1
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Google Drive API errors"
+          description: "Google Drive API error rate is above 10% for the last 5 minutes."
+
+      - alert: SheetsAPIQuotaExceeded
+        expr: sheets_api_quota_exceeded > 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Google Sheets API quota exceeded"
+          description: "Google Sheets API quota has been exceeded."
+
+  - name: business_metrics_alerts
+    rules:
+      # Business KPI Alerts
+      - alert: DailyVideoProcessingBelowTarget
+        expr: increase(video_processing_completed_total[24h]) < 50
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "Daily video processing below target"
+          description: "Less than 50 videos processed in the last 24 hours."
+
+      - alert: WeeklyActiveUsersDrop
+        expr: weekly_active_users < 100
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "Weekly active users dropped"
+          description: "Weekly active users is below 100."
+
+      - alert: HighChurnRate
+        expr: customer_churn_rate_weekly > 0.05
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "High customer churn rate"
+          description: "Weekly customer churn rate is above 5%."
+
+  - name: infrastructure_alerts
+    rules:
+      # Infrastructure Health
+      - alert: RedisDown
+        expr: up{job="redis"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Redis is down"
+          description: "Redis service is not responding."
+
+      - alert: RedisMemoryHigh
+        expr: redis_memory_used_bytes / redis_memory_max_bytes > 0.9
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Redis memory usage high"
+          description: "Redis memory usage is above 90%."
+
+      - alert: DiskSpaceWarning
+        expr: (node_filesystem_avail_bytes{fstype!="tmpfs"} / node_filesystem_size_bytes{fstype!="tmpfs"}) < 0.2
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Low disk space"
+          description: "Disk space is below 20% on filesystem {{ $labels.mountpoint }}."
+
+      - alert: DiskSpaceCritical
+        expr: (node_filesystem_avail_bytes{fstype!="tmpfs"} / node_filesystem_size_bytes{fstype!="tmpfs"}) < 0.1
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Critical disk space"
+          description: "Disk space is below 10% on filesystem {{ $labels.mountpoint }}."

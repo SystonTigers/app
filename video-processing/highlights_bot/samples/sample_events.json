@@ -1,0 +1,56 @@
+[
+  {
+    "type": "goal",
+    "half": 1,
+    "clock": "23:45",
+    "team": "Syston",
+    "player": "John Striker",
+    "assist": "Mike Midfielder",
+    "score": {"home": 1, "away": 0},
+    "notes": "Great strike from outside the box",
+    "consent_given": true
+  },
+  {
+    "type": "big_save",
+    "half": 1,
+    "clock": "34:12",
+    "team": "Syston",
+    "player": "Keeper Name",
+    "notes": "Point blank save from corner"
+  },
+  {
+    "type": "goal",
+    "half": 2,
+    "clock": "58:23",
+    "team": "Opposition",
+    "player": "Goal",
+    "score": {"home": 1, "away": 1},
+    "notes": "Opposition equalizer"
+  },
+  {
+    "type": "card",
+    "half": 2,
+    "clock": "67:30",
+    "team": "Opposition",
+    "player": "Opposition Player",
+    "notes": "Yellow card for dissent"
+  },
+  {
+    "type": "chance",
+    "half": 2,
+    "clock": "89:12",
+    "team": "Syston",
+    "player": "Late Hero",
+    "notes": "Shot just wide in dying minutes"
+  },
+  {
+    "status": "HT",
+    "half": 1,
+    "clock": "45:00"
+  },
+  {
+    "status": "FT",
+    "half": 2,
+    "clock": "90:00"
+  }
+]

@@ -1,0 +1,58 @@
+{
+  "name": "create-football-highlights",
+  "version": "1.0.0",
+  "description": "Free automated video editing system installer for football clubs",
+  "main": "bin/install.js",
+  "type": "module",
+  "bin": {
+    "create-football-highlights": "bin/install.js"
+  },
+  "scripts": {
+    "start": "node bin/install.js",
+    "test": "jest tests/",
+    "build": "npm pack",
+    "prepublish": "npm test"
+  },
+  "keywords": [
+    "football",
+    "soccer",
+    "highlights",
+    "video-editing",
+    "free",
+    "automation",
+    "sports"
+  ],
+  "author": "Football Highlights System",
+  "license": "MIT",
+  "dependencies": {
+    "chalk": "^5.3.0",
+    "ora": "^7.0.1",
+    "inquirer": "^9.2.12",
+    "googleapis": "^126.0.1",
+    "open": "^9.1.0",
+    "node-fetch": "^3.3.2",
+    "dotenv": "^16.3.1",
+    "fs-extra": "^11.1.1",
+    "archiver": "^6.0.1",
+    "express": "^4.18.2",
+    "uuid": "^9.0.1",
+    "jsonwebtoken": "^9.0.2",
+    "qrcode-terminal": "^0.12.0",
+    "axios": "^1.5.0"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "@types/node": "^20.8.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/football-highlights/installer.git"
+  },
+  "bugs": {
+    "url": "https://github.com/football-highlights/installer/issues"
+  },
+  "homepage": "https://github.com/football-highlights/installer#readme"
+}

@@ -1,0 +1,115 @@
+services:
+  - type: web
+    name: football-highlights-processor
+    env: docker
+    dockerfilePath: ./Dockerfile
+    plan: professional
+    region: oregon
+    numInstances: 1
+    scaling:
+      minInstances: 1
+      maxInstances: 3
+      targetMemoryPercent: 70
+      targetCPUPercent: 70
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 8080
+      - key: LOG_LEVEL
+        value: info
+      - key: MAX_CONCURRENT_JOBS
+        value: 3
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: football-redis
+          property: connectionString
+      - key: GOOGLE_APPLICATION_CREDENTIALS
+        fromFile: ./secrets/google-credentials.json
+      - key: WEBHOOK_URL
+        sync: false
+      - key: YOUTUBE_API_KEY
+        sync: false
+      - key: DRIVE_FOLDER_ID
+        sync: false
+    healthCheckPath: /health
+    disk:
+      name: video-processing-disk
+      size: 20
+      mount: /tmp
+    buildCommand: npm ci --only=production
+    startCommand: node src/server.js
+
+  - type: redis
+    name: football-redis
+    plan: pro
+    region: oregon
+    ipAllowList: []
+    maxmemoryPolicy: allkeys-lru
+
+  - type: worker
+    name: football-worker
+    env: docker
+    dockerfilePath: ./Dockerfile
+    plan: professional
+    region: oregon
+    numInstances: 2
+    scaling:
+      minInstances: 1
+      maxInstances: 4
+      targetMemoryPercent: 80
+      targetCPUPercent: 80
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: LOG_LEVEL
+        value: info
+      - key: WORKER_MODE
+        value: true
+      - key: WORKER_CONCURRENCY
+        value: 2
+      - key: MAX_MEMORY
+        value: 4GB
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: football-redis
+          property: connectionString
+      - key: GOOGLE_APPLICATION_CREDENTIALS
+        fromFile: ./secrets/google-credentials.json
+    disk:
+      name: worker-processing-disk
+      size: 50
+      mount: /tmp
+    buildCommand: npm ci --only=production
+    startCommand: node src/worker.js
+
+  - type: cron
+    name: football-cleanup
+    env: docker
+    dockerfilePath: ./Dockerfile
+    plan: starter
+    region: oregon
+    schedule: "0 2 * * *"  # Daily at 2 AM
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: LOG_LEVEL
+        value: info
+      - key: CRON_MODE
+        value: cleanup
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: football-redis
+          property: connectionString
+      - key: GOOGLE_APPLICATION_CREDENTIALS
+        fromFile: ./secrets/google-credentials.json
+    buildCommand: npm ci --only=production
+    startCommand: node src/cron/cleanup.js
+
+databases:
+  - name: football-postgres
+    plan: starter
+    region: oregon

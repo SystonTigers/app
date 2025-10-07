@@ -1,0 +1,70 @@
+match:
+  # default half length for this team; EDL can override per match
+  default_half_minutes: 49
+  added_time_fallback_minutes: 2
+  # enable if EDL includes HT / 2H KO / FT markers to align clock
+  trust_status_markers: true
+
+paths:
+  intro: assets/intro.mp4
+  outro: assets/outro.mp4
+  font: assets/Font-Bold.ttf
+  home_badge: assets/home.png
+  away_badge: assets/away.png
+
+render:
+  fps: 30
+  crf: 20
+  preset: veryfast
+  audio_bitrate_k: 160
+  loudnorm: true
+
+variants:
+  produce_169: true
+  produce_11: true
+  produce_916: true
+
+padding:
+  default: { pre: 7, post: 10 }
+  goal:
+    pre_bonus_on_attack: 5
+    post_bonus_on_celebration: 8
+  save:
+    pre: 11
+    post: 7
+  chance:
+    pre: 8
+    post: 8
+  foul_or_card:
+    pre: 4
+    post: 10
+  max_pre: 15
+  max_post: 25
+
+replay:
+  enable_for: ["goal","goal_like","big_save"]
+  slowmo_factor: 0.5        # 50% speed
+  freeze_ms: 300            # hold at impact
+  pip: true                 # picture-in-picture of alternate crop
+  stinger: true             # "REPLAY" stinger text
+
+zoom:
+  enable: true
+  min_zoom: 1.08
+  max_zoom: 1.30
+  smoothing: 0.15           # EMA smoothing for bbox
+  edge_margin_pct: 0.18     # padding around tracked box
+
+detection:
+  audio_peak_sigma: 3.0
+  scene_cut_threshold: 30   # histogram diff, tune on samples
+  goal_area_grid: 3         # thirds; count players in attacking third
+  celebration_window_s: 6
+  promote_if_signals: 2     # promote candidate if ≥2 signals overlap ±4s
+  dedupe_window_s: 15       # merge with guided events if within this window
+  scorebug_ocr: false       # keep false unless OCR is implemented
+
+limits:
+  max_clips: 40
+  min_clip_len_s: 6
+  max_clip_len_s: 30

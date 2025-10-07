@@ -1,0 +1,73 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - "alert_rules.yml"
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+
+scrape_configs:
+  # Football Highlights Processor
+  - job_name: 'football-highlights-app'
+    static_configs:
+      - targets: ['football-highlights-processor:8080']
+    scrape_interval: 10s
+    metrics_path: /metrics
+    scheme: http
+
+  # Redis monitoring
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']
+    scrape_interval: 10s
+
+  # Node.js application metrics
+  - job_name: 'nodejs-app-metrics'
+    static_configs:
+      - targets: ['football-highlights-processor:8080']
+    scrape_interval: 5s
+    metrics_path: /metrics/detailed
+    scheme: http
+
+  # System metrics
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+    scrape_interval: 15s
+
+  # Process-specific metrics
+  - job_name: 'process-metrics'
+    static_configs:
+      - targets: ['football-highlights-processor:8080']
+    scrape_interval: 10s
+    metrics_path: /metrics/process
+    scheme: http
+
+  # Video processing queue metrics
+  - job_name: 'queue-metrics'
+    static_configs:
+      - targets: ['football-highlights-processor:8080']
+    scrape_interval: 5s
+    metrics_path: /metrics/queue
+    scheme: http
+
+  # Storage metrics
+  - job_name: 'storage-metrics'
+    static_configs:
+      - targets: ['football-highlights-processor:8080']
+    scrape_interval: 30s
+    metrics_path: /metrics/storage
+    scheme: http
+
+  # Customer success metrics
+  - job_name: 'customer-metrics'
+    static_configs:
+      - targets: ['football-highlights-processor:8080']
+    scrape_interval: 60s
+    metrics_path: /metrics/customer
+    scheme: http
