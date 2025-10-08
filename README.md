@@ -107,9 +107,26 @@ New club is live! No deployment, no secrets, no setup.
 
 ## 📚 Documentation
 
+### Getting Started
 - **[PRODUCT_ROADMAP.md](./PRODUCT_ROADMAP.md)** - Full feature list, 6-month timeline
-- **[API_CONTRACT.md](./API_CONTRACT.md)** - API endpoints
-- **[SECURITY.md](./SECURITY.md)** - Auth, CORS, webhooks
+- **[CLAUDE.md](./CLAUDE.md)** - Complete system guide for AI assistants
+- **[ENVIRONMENT_SETUP.md](./ENVIRONMENT_SETUP.md)** - Development environment setup
+
+### Technical Documentation
+- **[docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)** - System architecture and design decisions
+- **[API_CONTRACT.md](./API_CONTRACT.md)** - Complete API endpoints reference
+- **[SECURITY.md](./SECURITY.md)** - Authentication, CORS, webhooks, security
+
+### Operations & Production
+- **[docs/RUNBOOK.md](./docs/RUNBOOK.md)** - Daily operations, incident response, deployment procedures
+- **[docs/ERROR_CODES.md](./docs/ERROR_CODES.md)** - Complete error codes reference for debugging
+- **[DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md)** - Step-by-step deployment instructions
+
+### Feature-Specific Guides
+- **[docs/VIDEO_SYSTEM.md](./docs/VIDEO_SYSTEM.md)** - Complete video processing system guide
+- **[docs/HISTORICAL_IMPORT.md](./docs/HISTORICAL_IMPORT.md)** - Import past season data from CSV
+- **[mobile/README.md](./mobile/README.md)** - Mobile app development guide
+- **[video-processing/README.md](./video-processing/README.md)** - AI video processing setup
 
 ---
 
