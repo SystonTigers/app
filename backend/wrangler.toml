@@ -1,6 +1,6 @@
-name = "syston-postbus"
-main = "dist/index.js"
-compatibility_date = "2025-09-30"
+name = "syston-backend"
+main = "dist/index.mjs"
+compatibility_date = "2025-09-01"
 minify = true
 workers_dev = true
 

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { withSecurity } from "../middleware/securityHeaders";
 
 export const PostReqSchema = z.object({
   tenant: z.string().min(1),
@@ -7,8 +8,11 @@ export const PostReqSchema = z.object({
   data: z.record(z.any())
 });
 
-export function json(body: unknown, status = 200, headers: Record<string, string> = {}) {
-  return new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json", ...headers } });
+export function json(body: unknown, status = 200, headers: HeadersInit = {}) {
+  const finalHeaders = new Headers({ "content-type": "application/json" });
+  const extra = new Headers(headers);
+  extra.forEach((value, key) => finalHeaders.set(key, value));
+  return new Response(JSON.stringify(body), withSecurity({ status, headers: finalHeaders }));
 }
 
 export function cors(originList: string[] | null, reqOrigin: string | null) {
