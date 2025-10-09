@@ -1,3 +1,10 @@
+
+const CONNECT_SRC = [
+  "'self'",
+  "https://syston-postbus.team-platform-2025.workers.dev",
+  "https://api.systontigers.co.uk",
+].join(" ");
+
 export const securityHeaders = {
   "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload",
   "X-Content-Type-Options": "nosniff",
@@ -7,6 +14,7 @@ export const securityHeaders = {
   "Cross-Origin-Embedder-Policy": "require-corp",
   // Adjust connect-src to include your public API origin(s) if needed:
   "Content-Security-Policy":
+    `default-src 'self'; img-src 'self' https: data:; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src ${CONNECT_SRC}; font-src 'self' https:`,
     "default-src 'self'; img-src 'self' https: data:; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'; font-src 'self' https:",
 } as const;
 

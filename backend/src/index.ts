@@ -19,6 +19,7 @@ import { withSecurity } from "./middleware/securityHeaders";
 import { corsHeaders, isPreflight } from "./middleware/cors";
 import { newRequestId, logJSON } from "./lib/log";
 import { healthz, readyz } from "./routes/health";
+declare const APP_VERSION: string;
 
 const DEV_DEFAULT_CORS = new Set([
   "https://localhost:5173",
@@ -28,6 +29,7 @@ const DEV_DEFAULT_CORS = new Set([
   "capacitor://localhost",
 ]);
 
+function buildCorsHeaders(origin: string | null, env: any, requestId: string, release: string) {
 function buildCorsHeaders(origin: string | null, env: any, requestId: string) {
   const headers = corsHeaders(origin);
   const envAllowed = typeof env?.CORS_ALLOWED === "string"
@@ -61,6 +63,9 @@ function buildCorsHeaders(origin: string | null, env: any, requestId: string) {
     if (hdr) allowHeaders.add(hdr);
   }
   headers.set("Access-Control-Allow-Headers", Array.from(allowHeaders).join(","));
+  headers.set("Access-Control-Expose-Headers", "X-Request-Id, X-Release");
+  headers.set("X-Request-Id", requestId);
+  headers.set("X-Release", release);
   headers.set("Access-Control-Expose-Headers", "X-Request-Id");
   headers.set("X-Request-Id", requestId);
   return headers;
@@ -91,6 +96,8 @@ export default {
     const t0 = Date.now();
     const requestId = newRequestId();
     const origin = req.headers.get("Origin");
+    const release = typeof APP_VERSION === "string" ? APP_VERSION : "unknown";
+    const corsHdrs = buildCorsHeaders(origin, env, requestId, release);
     const corsHdrs = buildCorsHeaders(origin, env, requestId);
     let url: URL | null = null;
 
@@ -1712,6 +1719,11 @@ export default {
         status: 500,
         ms,
       });
+      return json(
+        { success: false, error: { code: "INTERNAL", message: "Unexpected error" } },
+        500,
+        corsHdrs
+      );
       const headers = mergeHeaders(corsHdrs, { "content-type": "application/json" });
       return new Response(JSON.stringify({ error: { code: "INTERNAL", requestId } }), withSecurity({ status: 500, headers }));
     } finally {
