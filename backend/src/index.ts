@@ -21,7 +21,8 @@ import { rateLimit } from "./middleware/rateLimit";
 import { newRequestId, logJSON } from "./lib/log";
 import { parse, isValidationError } from "./lib/validate";
 import { healthz, readyz } from "./routes/health";
-
+import { newRequestId, logJSON } from "./lib/log";
+import { healthz, readyz } from "./routes/health";
 declare const APP_VERSION: string;
 
 const DEV_DEFAULT_CORS = new Set([
@@ -58,6 +59,8 @@ function buildRateLimitScope(pathname: string) {
 }
 
 function buildCorsHeaders(origin: string | null, env: any, requestId: string, release: string) {
+function buildCorsHeaders(origin: string | null, env: any, requestId: string, release: string) {
+function buildCorsHeaders(origin: string | null, env: any, requestId: string) {
   const headers = corsHeaders(origin);
   const envAllowed = typeof env?.CORS_ALLOWED === "string"
     ? String(env.CORS_ALLOWED)
@@ -93,6 +96,8 @@ function buildCorsHeaders(origin: string | null, env: any, requestId: string, re
   headers.set("Access-Control-Expose-Headers", "X-Request-Id, X-Release");
   headers.set("X-Request-Id", requestId);
   headers.set("X-Release", release);
+  headers.set("Access-Control-Expose-Headers", "X-Request-Id");
+  headers.set("X-Request-Id", requestId);
   return headers;
 }
 
@@ -123,6 +128,7 @@ export default {
     const origin = req.headers.get("Origin");
     const release = typeof APP_VERSION === "string" ? APP_VERSION : "unknown";
     const corsHdrs = buildCorsHeaders(origin, env, requestId, release);
+    const corsHdrs = buildCorsHeaders(origin, env, requestId);
     let url: URL | null = null;
 
     if (isPreflight(req)) {
@@ -174,6 +180,17 @@ export default {
           corsHdrs.set("X-RateLimit-Remaining", String(Math.max(limitResult.remaining, 0)));
         }
       }
+
+      if (req.method === "GET" && url.pathname === "/healthz") {
+        const res = await healthz();
+        return respondWithCors(res, corsHdrs);
+      }
+      if (req.method === "GET" && url.pathname === "/readyz") {
+        const res = await readyz(env);
+        return respondWithCors(res, corsHdrs);
+      }
+
+      const v = env.API_VERSION || "v1";
 
     // -------- Public signup endpoint --------
 
@@ -260,6 +277,7 @@ export default {
       } catch (err: any) {
         if (err instanceof Response) {
           return respondWithCors(err, corsHdrs);
+
         }
         if (isValidationError(err)) {
           return json({
@@ -270,6 +288,7 @@ export default {
               issues: err.issues
             }
           }, err.status, corsHdrs);
+          
         }
         logJSON({
           level: "error",
@@ -1770,6 +1789,9 @@ export default {
         500,
         corsHdrs
       );
+      
+      const headers = mergeHeaders(corsHdrs, { "content-type": "application/json" });
+      return new Response(JSON.stringify({ error: { code: "INTERNAL", requestId } }), withSecurity({ status: 500, headers }));
     } finally {
       const ms = Date.now() - t0;
       logJSON({ level: "info", msg: "request_end", requestId, path: url?.pathname, ms });

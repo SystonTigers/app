@@ -14,6 +14,7 @@ export const securityHeaders = {
   // Adjust connect-src to include your public API origin(s) if needed:
   "Content-Security-Policy":
     `default-src 'self'; img-src 'self' https: data:; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src ${CONNECT_SRC}; font-src 'self' https:`,
+    "default-src 'self'; img-src 'self' https: data:; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'; font-src 'self' https:",
 } as const;
 
 export function withSecurity(init: ResponseInit = {}): ResponseInit {
