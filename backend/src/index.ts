@@ -1,7 +1,7 @@
 // src/index.ts
 
 import { z } from "zod";
-import { PostReqSchema, json, cors, readIdempotencyKey } from "./services/util";
+import { PostReqSchema, json, readIdempotencyKey } from "./services/util";
 import { requireJWT, hasRole, requireAdmin } from "./services/auth";
 import { ensureIdempotent, setFinalIdempotent } from "./services/idempotency";
 import { ensureTenant, setMakeWebhook, updateFlags, putTenantConfig, getTenantConfig, setTenantFlags, setChannelWebhook, setYouTubeBYOGoogle, isAllowedWebhookHost } from "./services/tenants";
@@ -15,6 +15,100 @@ import * as Teams from "./services/teams";
 import * as ChatKV from "./services/chatKV";
 import * as GalleryKV from "./services/galleryKV";
 import { provisionTenant } from "./services/provisioning";
+import { withSecurity } from "./middleware/securityHeaders";
+import { corsHeaders, isPreflight } from "./middleware/cors";
+import { rateLimit } from "./middleware/rateLimit";
+import { newRequestId, logJSON } from "./lib/log";
+import { parse, isValidationError } from "./lib/validate";
+import { healthz, readyz } from "./routes/health";
+
+declare const APP_VERSION: string;
+
+const DEV_DEFAULT_CORS = new Set([
+  "https://localhost:5173",
+  "http://localhost:5173",
+  "https://localhost:3000",
+  "http://localhost:3000",
+  "capacitor://localhost",
+]);
+
+const SignupSchema = z.object({
+  clubName: z.string().min(1, "clubName required"),
+  clubShortName: z.string().min(1, "clubShortName required"),
+  contactEmail: z.string().email("valid email required"),
+  contactName: z.string().min(1, "contactName required"),
+  locale: z.string().optional(),
+  timezone: z.string().optional(),
+  plan: z.enum(["free", "managed", "enterprise"]).optional(),
+  makeWebhookUrl: z.string().url().optional(),
+  promoCode: z.string().optional()
+});
+
+const PostEventSchema = z.object({
+  event_type: z.string().min(1, "event_type required"),
+  data: z.record(z.unknown()),
+  channels: z.array(z.enum(["yt", "fb", "ig", "tiktok", "x"])).optional(),
+  template: z.string().optional()
+});
+
+function buildRateLimitScope(pathname: string) {
+  const segments = pathname.split("/").filter(Boolean);
+  if (!segments.length) return "root";
+  return segments.slice(0, 3).join(":");
+}
+
+function buildCorsHeaders(origin: string | null, env: any, requestId: string, release: string) {
+  const headers = corsHeaders(origin);
+  const envAllowed = typeof env?.CORS_ALLOWED === "string"
+    ? String(env.CORS_ALLOWED)
+        .split(",")
+        .map((o: string) => o.trim())
+        .filter(Boolean)
+    : [];
+
+  const allowList = new Set<string>([...DEV_DEFAULT_CORS, ...envAllowed]);
+  if (origin && allowList.has(origin)) {
+    headers.set("Access-Control-Allow-Origin", origin);
+  }
+
+  const allowHeaders = new Set(
+    (headers.get("Access-Control-Allow-Headers") || "")
+      .split(",")
+      .map((h) => h.trim())
+      .filter(Boolean)
+  );
+  for (const hdr of [
+    "authorization",
+    "content-type",
+    "Idempotency-Key",
+    "idempotency-key",
+    "x-amz-content-sha256",
+    "x-amz-date",
+    "x-amz-acl",
+    "x-amz-meta-*",
+  ]) {
+    if (hdr) allowHeaders.add(hdr);
+  }
+  headers.set("Access-Control-Allow-Headers", Array.from(allowHeaders).join(","));
+  headers.set("Access-Control-Expose-Headers", "X-Request-Id, X-Release");
+  headers.set("X-Request-Id", requestId);
+  headers.set("X-Release", release);
+  return headers;
+}
+
+function mergeHeaders(base: Headers, extra?: HeadersInit) {
+  const merged = new Headers(base);
+  if (extra) {
+    const addition = new Headers(extra);
+    addition.forEach((value, key) => merged.set(key, value));
+  }
+  return merged;
+}
+
+function respondWithCors(res: Response, base: Headers) {
+  const headers = mergeHeaders(base, res.headers);
+  return new Response(res.body, withSecurity({ status: res.status, headers }));
+}
 
 // Export the Durable Object classes so the binding works
 export { TenantRateLimiter } from "./do/rateLimiter";
@@ -23,22 +117,63 @@ export { MatchRoom } from "./do/matchRoom";
 export { ChatRoom } from "./do/chatRoom";
 
 export default {
-  async fetch(req: Request, env: any): Promise<Response> {
-    const url = new URL(req.url);
+  async fetch(req: Request, env: any, _ctx: ExecutionContext): Promise<Response> {
+    const t0 = Date.now();
+    const requestId = newRequestId();
+    const origin = req.headers.get("Origin");
+    const release = typeof APP_VERSION === "string" ? APP_VERSION : "unknown";
+    const corsHdrs = buildCorsHeaders(origin, env, requestId, release);
+    let url: URL | null = null;
 
-    // CORS
-    const allowed = env.CORS_ALLOWED ? String(env.CORS_ALLOWED).split(",") : null;
-    const corsHdrs = cors(allowed, req.headers.get("origin"));
-    if (req.method === "OPTIONS") {
-      return new Response(null, { status: 204, headers: corsHdrs });
+    if (isPreflight(req)) {
+      return new Response(null, withSecurity({ status: 204, headers: mergeHeaders(corsHdrs) }));
     }
 
-    // Health
-    if (url.pathname === "/healthz") {
-      return json({ ok: true, ts: Date.now() }, 200, corsHdrs);
-    }
+    try {
+      url = new URL(req.url);
 
-    const v = env.API_VERSION || "v1";
+      if (req.method === "GET" && url.pathname === "/healthz") {
+        const res = await healthz();
+        return respondWithCors(res, corsHdrs);
+      }
+      if (req.method === "GET" && url.pathname === "/readyz") {
+        const res = await readyz(env);
+        return respondWithCors(res, corsHdrs);
+      }
+
+      const v = env.API_VERSION || "v1";
+
+      const method = req.method.toUpperCase();
+      if (method !== "GET" && method !== "HEAD") {
+        const scope = buildRateLimitScope(url.pathname);
+        const limitResult = await rateLimit(req, env, {
+          scope,
+          requestId,
+          path: url.pathname
+        });
+
+        if (!limitResult.ok) {
+          const headers = new Headers(corsHdrs);
+          if (typeof limitResult.retryAfter === "number") {
+            headers.set("Retry-After", String(limitResult.retryAfter));
+          }
+          if (typeof limitResult.limit === "number") {
+            headers.set("X-RateLimit-Limit", String(limitResult.limit));
+          }
+          headers.set("X-RateLimit-Remaining", "0");
+          return json({
+            success: false,
+            error: { code: "RATE_LIMITED", message: "Too many requests" }
+          }, 429, headers);
+        }
+
+        if (typeof limitResult.limit === "number") {
+          corsHdrs.set("X-RateLimit-Limit", String(limitResult.limit));
+        }
+        if (typeof limitResult.remaining === "number") {
+          corsHdrs.set("X-RateLimit-Remaining", String(Math.max(limitResult.remaining, 0)));
+        }
+      }
 
     // -------- Public signup endpoint --------
 
@@ -46,19 +181,7 @@ export default {
     if (url.pathname === `/api/${v}/signup` && req.method === "POST") {
       try {
         const body = await req.json().catch(() => ({}));
-        const schema = z.object({
-          clubName: z.string().min(1, "clubName required"),
-          clubShortName: z.string().min(1, "clubShortName required"),
-          contactEmail: z.string().email("valid email required"),
-          contactName: z.string().min(1, "contactName required"),
-          locale: z.string().optional(),
-          timezone: z.string().optional(),
-          plan: z.enum(["free", "managed", "enterprise"]).optional(),
-          makeWebhookUrl: z.string().url().optional(),
-          promoCode: z.string().optional()
-        });
-
-        const data = schema.parse(body);
+        const data = parse(SignupSchema, body);
         const result = await provisionTenant(env, data);
 
         if (result.success) {
@@ -67,8 +190,15 @@ export default {
           return json({ success: false, error: result.error }, 400, corsHdrs);
         }
       } catch (err: any) {
-        if (err.errors) {
-          return json({ success: false, error: { code: "VALIDATION_ERROR", message: err.errors[0].message } }, 400, corsHdrs);
+        if (isValidationError(err)) {
+          return json({
+            success: false,
+            error: {
+              code: "INVALID_REQUEST",
+              message: "Validation failed",
+              issues: err.issues
+            }
+          }, err.status, corsHdrs);
         }
         return json({ success: false, error: { code: "SIGNUP_FAILED", message: err.message } }, 500, corsHdrs);
       }
@@ -88,22 +218,7 @@ export default {
         }
 
         const body = await req.json().catch(() => ({}));
-        const schema = z.object({
-          event_type: z.string().min(1, "event_type required"),
-          data: z.record(z.unknown()),
-          channels: z.array(z.enum(["yt", "fb", "ig", "tiktok", "x"])).optional(),
-          template: z.string().optional()
-        });
-
-        const parsed = schema.safeParse(body);
-        if (!parsed.success) {
-          return json({
-            success: false,
-            error: { code: "VALIDATION_ERROR", details: parsed.error.issues }
-          }, 400, corsHdrs);
-        }
-
-        const { event_type, data, channels, template } = parsed.data;
+        const { event_type, data, channels, template } = parse(PostEventSchema, body);
 
         // Idempotency check
         const idemHeader = readIdempotencyKey(req);
@@ -144,9 +259,25 @@ export default {
 
       } catch (err: any) {
         if (err instanceof Response) {
-          return err;
+          return respondWithCors(err, corsHdrs);
         }
-        console.error("POST_EVENT_ERROR", err);
+        if (isValidationError(err)) {
+          return json({
+            success: false,
+            error: {
+              code: "INVALID_REQUEST",
+              message: "Validation failed",
+              issues: err.issues
+            }
+          }, err.status, corsHdrs);
+        }
+        logJSON({
+          level: "error",
+          msg: `POST_EVENT_ERROR:${err?.message || "unknown"}`,
+          requestId,
+          path: url.pathname,
+          status: 500,
+        });
         return json({
           success: false,
           error: { code: "POST_FAILED", message: err.message }
@@ -158,10 +289,11 @@ export default {
     if (url.pathname.includes("/admin/")) {
       const fromAdminConsole = req.headers.get("x-admin-console") === "true";
       if (fromAdminConsole) {
-        console.log("ADMIN_CONSOLE_CALL", {
+        logJSON({
+          level: "info",
+          msg: "ADMIN_CONSOLE_CALL",
+          requestId,
           path: url.pathname,
-          method: req.method,
-          hdr_auth_present: !!req.headers.get("authorization"),
         });
       }
     }
@@ -176,9 +308,15 @@ export default {
       } catch (err: any) {
         // If requireJWT throws a Response object, return it directly
         if (err instanceof Response) {
-          return err;
+          return respondWithCors(err, corsHdrs);
         }
-        console.error("WHOAMI_FAIL", err?.message, err?.stack);
+        logJSON({
+          level: "error",
+          msg: `WHOAMI_FAIL:${err?.message || "unknown"}`,
+          requestId,
+          path: url.pathname,
+          status: 401,
+        });
         return json({ ok: false, error: String(err?.message || err) }, 401, corsHdrs);
       }
     }
@@ -245,10 +383,16 @@ export default {
         return json({ success: true, data: { tenant: updated.id, makeWebhookUrl: updated.makeWebhookUrl } }, 200, corsHdrs);
       } catch (e: any) {
         // If auth threw a Response, return it
-        if (e instanceof Response) return e;
+        if (e instanceof Response) return respondWithCors(e, corsHdrs);
 
         // Log and return clean 500
-        console.error("ADMIN_WEBHOOK_SAVE_ERROR", { msg: e?.message, stack: e?.stack });
+        logJSON({
+          level: "error",
+          msg: `ADMIN_WEBHOOK_SAVE_ERROR:${e?.message || "unknown"}`,
+          requestId,
+          path: url.pathname,
+          status: 500,
+        });
         return json({ success: false, error: { code: "INTERNAL", message: "Webhook save failed" } }, 500, corsHdrs);
       }
     }
@@ -1204,13 +1348,11 @@ export default {
         if (!obj) {
           return new Response("Not found", { status: 404 });
         }
-        return new Response(obj.body, {
-          headers: {
-            "content-type": obj.httpMetadata?.contentType || "image/jpeg",
-            "cache-control": "public, max-age=3600",
-            ...corsHdrs,
-          },
+        const headers = mergeHeaders(corsHdrs, {
+          "content-type": obj.httpMetadata?.contentType || "image/jpeg",
+          "cache-control": "public, max-age=3600",
         });
+        return new Response(obj.body, withSecurity({ status: 200, headers }));
       } catch (e: any) {
         return json({ success: false, error: { code: "R2_ERROR", message: e.message } }, 500, corsHdrs);
       }
@@ -1555,13 +1697,11 @@ export default {
         if (!obj) {
           return json({ success: false, error: { code: "NOT_FOUND" } }, 404, corsHdrs);
         }
-        return new Response(obj.body, {
-          headers: {
-            "content-type": obj.httpMetadata?.contentType || "image/jpeg",
-            "cache-control": "public, max-age=3600",
-            ...corsHdrs,
-          },
+        const headers = mergeHeaders(corsHdrs, {
+          "content-type": obj.httpMetadata?.contentType || "image/jpeg",
+          "cache-control": "public, max-age=3600",
         });
+        return new Response(obj.body, withSecurity({ status: 200, headers }));
       } catch (e: any) {
         return json({ success: false, error: { code: "R2_ERROR", message: e.message } }, 500, corsHdrs);
       }
@@ -1603,6 +1743,37 @@ export default {
 
     // Fallback
     return json({ success: false, error: { code: "NOT_FOUND", message: "Route not found" } }, 404, corsHdrs);
+    } catch (err: any) {
+      const ms = Date.now() - t0;
+      if (err instanceof Response) {
+        const secured = respondWithCors(err, corsHdrs);
+        logJSON({
+          level: "error",
+          msg: err.statusText || "response_error",
+          requestId,
+          path: url?.pathname,
+          status: secured.status,
+          ms,
+        });
+        return secured;
+      }
+      logJSON({
+        level: "error",
+        msg: err?.message || "unhandled",
+        requestId,
+        path: url?.pathname,
+        status: 500,
+        ms,
+      });
+      return json(
+        { success: false, error: { code: "INTERNAL", message: "Unexpected error" } },
+        500,
+        corsHdrs
+      );
+    } finally {
+      const ms = Date.now() - t0;
+      logJSON({ level: "info", msg: "request_end", requestId, path: url?.pathname, ms });
+    }
   },
 
   // <- This wires the queue consumer to this worker
@@ -1610,7 +1781,7 @@ export default {
 
   // <- Cron handler (called by [triggers].crons in wrangler.toml)
   async scheduled(controller: ScheduledController, env: any, ctx: ExecutionContext) {
-    console.log("cron tick", new Date().toISOString());
+    logJSON({ level: "info", msg: "cron_tick", path: "scheduled", ms: Date.now() - controller.scheduledTime });
 
     // OPTIONAL: event reminders (wire later)
     // try {
