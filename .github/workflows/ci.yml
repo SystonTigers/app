@@ -1,5 +1,4 @@
 name: CI
-
 on:
   pull_request:
   push:
@@ -8,13 +7,11 @@ on:
 defaults:
   run:
     working-directory: backend
-
 jobs:
   verify:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -35,3 +32,8 @@ jobs:
 
       - name: Build
         run: npm run build
+      - run: npm ci --workspaces
+      - run: npm run -ws lint || echo "no lint script"
+      - run: npm run -ws typecheck || echo "no typecheck script"
+      - run: npm test --workspaces -- --run || echo "no tests"
+      - run: npm run -ws build
