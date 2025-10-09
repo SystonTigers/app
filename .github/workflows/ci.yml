@@ -3,6 +3,10 @@ on:
   pull_request:
   push:
     branches: [main]
+
+defaults:
+  run:
+    working-directory: backend
 jobs:
   verify:
     runs-on: ubuntu-latest
@@ -12,6 +16,22 @@ jobs:
         with:
           node-version: '22'
           cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint || echo "no lint script"
+
+      - name: Typecheck
+        run: npm run typecheck || echo "no typecheck script"
+
+      - name: Unit tests
+        run: npm test -- --run || echo "no tests"
+
+      - name: Build
+        run: npm run build
       - run: npm ci --workspaces
       - run: npm run -ws lint || echo "no lint script"
       - run: npm run -ws typecheck || echo "no typecheck script"
