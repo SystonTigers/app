@@ -17,6 +17,10 @@ import * as GalleryKV from "./services/galleryKV";
 import { provisionTenant } from "./services/provisioning";
 import { withSecurity } from "./middleware/securityHeaders";
 import { corsHeaders, isPreflight } from "./middleware/cors";
+import { rateLimit } from "./middleware/rateLimit";
+import { newRequestId, logJSON } from "./lib/log";
+import { parse, isValidationError } from "./lib/validate";
+import { healthz, readyz } from "./routes/health";
 import { newRequestId, logJSON } from "./lib/log";
 import { healthz, readyz } from "./routes/health";
 declare const APP_VERSION: string;
@@ -29,6 +33,32 @@ const DEV_DEFAULT_CORS = new Set([
   "capacitor://localhost",
 ]);
 
+const SignupSchema = z.object({
+  clubName: z.string().min(1, "clubName required"),
+  clubShortName: z.string().min(1, "clubShortName required"),
+  contactEmail: z.string().email("valid email required"),
+  contactName: z.string().min(1, "contactName required"),
+  locale: z.string().optional(),
+  timezone: z.string().optional(),
+  plan: z.enum(["free", "managed", "enterprise"]).optional(),
+  makeWebhookUrl: z.string().url().optional(),
+  promoCode: z.string().optional()
+});
+
+const PostEventSchema = z.object({
+  event_type: z.string().min(1, "event_type required"),
+  data: z.record(z.unknown()),
+  channels: z.array(z.enum(["yt", "fb", "ig", "tiktok", "x"])).optional(),
+  template: z.string().optional()
+});
+
+function buildRateLimitScope(pathname: string) {
+  const segments = pathname.split("/").filter(Boolean);
+  if (!segments.length) return "root";
+  return segments.slice(0, 3).join(":");
+}
+
+function buildCorsHeaders(origin: string | null, env: any, requestId: string, release: string) {
 function buildCorsHeaders(origin: string | null, env: any, requestId: string, release: string) {
 function buildCorsHeaders(origin: string | null, env: any, requestId: string) {
   const headers = corsHeaders(origin);
@@ -119,25 +149,56 @@ export default {
 
       const v = env.API_VERSION || "v1";
 
+      const method = req.method.toUpperCase();
+      if (method !== "GET" && method !== "HEAD") {
+        const scope = buildRateLimitScope(url.pathname);
+        const limitResult = await rateLimit(req, env, {
+          scope,
+          requestId,
+          path: url.pathname
+        });
+
+        if (!limitResult.ok) {
+          const headers = new Headers(corsHdrs);
+          if (typeof limitResult.retryAfter === "number") {
+            headers.set("Retry-After", String(limitResult.retryAfter));
+          }
+          if (typeof limitResult.limit === "number") {
+            headers.set("X-RateLimit-Limit", String(limitResult.limit));
+          }
+          headers.set("X-RateLimit-Remaining", "0");
+          return json({
+            success: false,
+            error: { code: "RATE_LIMITED", message: "Too many requests" }
+          }, 429, headers);
+        }
+
+        if (typeof limitResult.limit === "number") {
+          corsHdrs.set("X-RateLimit-Limit", String(limitResult.limit));
+        }
+        if (typeof limitResult.remaining === "number") {
+          corsHdrs.set("X-RateLimit-Remaining", String(Math.max(limitResult.remaining, 0)));
+        }
+      }
+
+      if (req.method === "GET" && url.pathname === "/healthz") {
+        const res = await healthz();
+        return respondWithCors(res, corsHdrs);
+      }
+      if (req.method === "GET" && url.pathname === "/readyz") {
+        const res = await readyz(env);
+        return respondWithCors(res, corsHdrs);
+      }
+
+      const v = env.API_VERSION || "v1";
+
     // -------- Public signup endpoint --------
 
     // POST /api/v1/signup - Automated tenant provisioning
     if (url.pathname === `/api/${v}/signup` && req.method === "POST") {
       try {
         const body = await req.json().catch(() => ({}));
-        const schema = z.object({
-          clubName: z.string().min(1, "clubName required"),
-          clubShortName: z.string().min(1, "clubShortName required"),
-          contactEmail: z.string().email("valid email required"),
-          contactName: z.string().min(1, "contactName required"),
-          locale: z.string().optional(),
-          timezone: z.string().optional(),
-          plan: z.enum(["free", "managed", "enterprise"]).optional(),
-          makeWebhookUrl: z.string().url().optional(),
-          promoCode: z.string().optional()
-        });
-
-        const data = schema.parse(body);
+        const data = parse(SignupSchema, body);
         const result = await provisionTenant(env, data);
 
         if (result.success) {
@@ -146,8 +207,15 @@ export default {
           return json({ success: false, error: result.error }, 400, corsHdrs);
         }
       } catch (err: any) {
-        if (err.errors) {
-          return json({ success: false, error: { code: "VALIDATION_ERROR", message: err.errors[0].message } }, 400, corsHdrs);
+        if (isValidationError(err)) {
+          return json({
+            success: false,
+            error: {
+              code: "INVALID_REQUEST",
+              message: "Validation failed",
+              issues: err.issues
+            }
+          }, err.status, corsHdrs);
         }
         return json({ success: false, error: { code: "SIGNUP_FAILED", message: err.message } }, 500, corsHdrs);
       }
@@ -167,22 +235,7 @@ export default {
         }
 
         const body = await req.json().catch(() => ({}));
-        const schema = z.object({
-          event_type: z.string().min(1, "event_type required"),
-          data: z.record(z.unknown()),
-          channels: z.array(z.enum(["yt", "fb", "ig", "tiktok", "x"])).optional(),
-          template: z.string().optional()
-        });
-
-        const parsed = schema.safeParse(body);
-        if (!parsed.success) {
-          return json({
-            success: false,
-            error: { code: "VALIDATION_ERROR", details: parsed.error.issues }
-          }, 400, corsHdrs);
-        }
-
-        const { event_type, data, channels, template } = parsed.data;
+        const { event_type, data, channels, template } = parse(PostEventSchema, body);
 
         // Idempotency check
         const idemHeader = readIdempotencyKey(req);
@@ -224,6 +277,18 @@ export default {
       } catch (err: any) {
         if (err instanceof Response) {
           return respondWithCors(err, corsHdrs);
+
+        }
+        if (isValidationError(err)) {
+          return json({
+            success: false,
+            error: {
+              code: "INVALID_REQUEST",
+              message: "Validation failed",
+              issues: err.issues
+            }
+          }, err.status, corsHdrs);
+          
         }
         logJSON({
           level: "error",
@@ -1724,6 +1789,7 @@ export default {
         500,
         corsHdrs
       );
+      
       const headers = mergeHeaders(corsHdrs, { "content-type": "application/json" });
       return new Response(JSON.stringify({ error: { code: "INTERNAL", requestId } }), withSecurity({ status: 500, headers }));
     } finally {

@@ -1,4 +1,3 @@
-
 const CONNECT_SRC = [
   "'self'",
   "https://syston-postbus.team-platform-2025.workers.dev",
