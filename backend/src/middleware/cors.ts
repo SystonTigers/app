@@ -3,6 +3,10 @@ const ALLOWED = new Set<string>([
   "https://admin.systontigers.co.uk",
   "https://setup.systontigers.co.uk",
   // Add/remove domains carefully; keep this list tight and audited.
+  // TODO: replace with real domains:
+  "https://app.example.tld",
+  "https://admin.example.tld",
+  "https://setup.example.tld",
 ]);
 
 export function corsHeaders(origin: string | null) {

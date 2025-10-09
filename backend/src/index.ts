@@ -19,7 +19,6 @@ import { withSecurity } from "./middleware/securityHeaders";
 import { corsHeaders, isPreflight } from "./middleware/cors";
 import { newRequestId, logJSON } from "./lib/log";
 import { healthz, readyz } from "./routes/health";
-
 declare const APP_VERSION: string;
 
 const DEV_DEFAULT_CORS = new Set([
@@ -31,6 +30,7 @@ const DEV_DEFAULT_CORS = new Set([
 ]);
 
 function buildCorsHeaders(origin: string | null, env: any, requestId: string, release: string) {
+function buildCorsHeaders(origin: string | null, env: any, requestId: string) {
   const headers = corsHeaders(origin);
   const envAllowed = typeof env?.CORS_ALLOWED === "string"
     ? String(env.CORS_ALLOWED)
@@ -66,6 +66,8 @@ function buildCorsHeaders(origin: string | null, env: any, requestId: string, re
   headers.set("Access-Control-Expose-Headers", "X-Request-Id, X-Release");
   headers.set("X-Request-Id", requestId);
   headers.set("X-Release", release);
+  headers.set("Access-Control-Expose-Headers", "X-Request-Id");
+  headers.set("X-Request-Id", requestId);
   return headers;
 }
 
@@ -96,6 +98,7 @@ export default {
     const origin = req.headers.get("Origin");
     const release = typeof APP_VERSION === "string" ? APP_VERSION : "unknown";
     const corsHdrs = buildCorsHeaders(origin, env, requestId, release);
+    const corsHdrs = buildCorsHeaders(origin, env, requestId);
     let url: URL | null = null;
 
     if (isPreflight(req)) {
@@ -1721,6 +1724,8 @@ export default {
         500,
         corsHdrs
       );
+      const headers = mergeHeaders(corsHdrs, { "content-type": "application/json" });
+      return new Response(JSON.stringify({ error: { code: "INTERNAL", requestId } }), withSecurity({ status: 500, headers }));
     } finally {
       const ms = Date.now() - t0;
       logJSON({ level: "info", msg: "request_end", requestId, path: url?.pathname, ms });
