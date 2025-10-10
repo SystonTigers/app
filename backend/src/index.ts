@@ -21,8 +21,6 @@ import { rateLimit } from "./middleware/rateLimit";
 import { newRequestId, logJSON } from "./lib/log";
 import { parse, isValidationError } from "./lib/validate";
 import { healthz, readyz } from "./routes/health";
-import { newRequestId, logJSON } from "./lib/log";
-import { healthz, readyz } from "./routes/health";
 declare const APP_VERSION: string;
 
 const DEV_DEFAULT_CORS = new Set([
@@ -59,8 +57,6 @@ function buildRateLimitScope(pathname: string) {
 }
 
 function buildCorsHeaders(origin: string | null, env: any, requestId: string, release: string) {
-function buildCorsHeaders(origin: string | null, env: any, requestId: string, release: string) {
-function buildCorsHeaders(origin: string | null, env: any, requestId: string) {
   const headers = corsHeaders(origin);
   const envAllowed = typeof env?.CORS_ALLOWED === "string"
     ? String(env.CORS_ALLOWED)
@@ -96,8 +92,6 @@ function buildCorsHeaders(origin: string | null, env: any, requestId: string) {
   headers.set("Access-Control-Expose-Headers", "X-Request-Id, X-Release");
   headers.set("X-Request-Id", requestId);
   headers.set("X-Release", release);
-  headers.set("Access-Control-Expose-Headers", "X-Request-Id");
-  headers.set("X-Request-Id", requestId);
   return headers;
 }
 
@@ -128,7 +122,6 @@ export default {
     const origin = req.headers.get("Origin");
     const release = typeof APP_VERSION === "string" ? APP_VERSION : "unknown";
     const corsHdrs = buildCorsHeaders(origin, env, requestId, release);
-    const corsHdrs = buildCorsHeaders(origin, env, requestId);
     let url: URL | null = null;
 
     if (isPreflight(req)) {
@@ -180,17 +173,6 @@ export default {
           corsHdrs.set("X-RateLimit-Remaining", String(Math.max(limitResult.remaining, 0)));
         }
       }
-
-      if (req.method === "GET" && url.pathname === "/healthz") {
-        const res = await healthz();
-        return respondWithCors(res, corsHdrs);
-      }
-      if (req.method === "GET" && url.pathname === "/readyz") {
-        const res = await readyz(env);
-        return respondWithCors(res, corsHdrs);
-      }
-
-      const v = env.API_VERSION || "v1";
 
     // -------- Public signup endpoint --------
 
@@ -427,6 +409,383 @@ export default {
       const r = await fetch(refreshUrl, { method: "POST" }).catch(() => null);
       const ok = !!r && r.ok;
       return json({ success: ok, data: { pinged: ok } }, ok ? 200 : 502, corsHdrs);
+    }
+
+    // -------- Fixtures API (Public) --------
+
+    // POST /api/v1/fixtures/sync - Sync fixtures from Google Apps Script
+    if (url.pathname === `/api/${v}/fixtures/sync` && req.method === "POST") {
+      try {
+        const body = await req.json().catch(() => ({}));
+        const { fixtures } = body;
+
+        if (!Array.isArray(fixtures)) {
+          return json({ success: false, error: { code: "INVALID_DATA", message: "fixtures must be an array" } }, 400, corsHdrs);
+        }
+
+        let synced = 0;
+        for (const fixture of fixtures) {
+          try {
+            await env.DB.prepare(`
+              INSERT INTO fixtures (
+                fixture_date, opponent, venue, competition, kick_off_time, status, source, updated_at
+              )
+              VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+              ON CONFLICT(fixture_date, opponent)
+              DO UPDATE SET
+                venue = excluded.venue,
+                competition = excluded.competition,
+                kick_off_time = excluded.kick_off_time,
+                status = excluded.status,
+                source = excluded.source,
+                updated_at = CURRENT_TIMESTAMP
+            `).bind(
+              fixture.date,
+              fixture.opponent,
+              fixture.venue || '',
+              fixture.competition || '',
+              fixture.time || '',
+              fixture.status || 'scheduled',
+              fixture.source || 'unknown'
+            ).run();
+            synced++;
+          } catch (err) {
+            logJSON("error", requestId, { message: "Fixture sync error", error: String(err) });
+          }
+        }
+
+        return json({ success: true, synced }, 200, corsHdrs);
+      } catch (err) {
+        logJSON("error", requestId, { message: "Fixtures sync failed", error: String(err) });
+        return json({ success: false, error: { code: "INTERNAL", message: "Sync failed" } }, 500, corsHdrs);
+      }
+    }
+
+    // GET /api/v1/fixtures/upcoming - Get upcoming fixtures
+    if (url.pathname === `/api/${v}/fixtures/upcoming` && req.method === "GET") {
+      try {
+        const result = await env.DB.prepare(`
+          SELECT
+            id, fixture_date as date, opponent, venue, competition,
+            kick_off_time as kickOffTime, status, source
+          FROM fixtures
+          WHERE fixture_date >= DATE('now')
+            AND status != 'postponed'
+          ORDER BY fixture_date ASC
+          LIMIT 10
+        `).all();
+
+        return json({ success: true, data: result.results || [] }, 200, corsHdrs);
+      } catch (err) {
+        logJSON("error", requestId, { message: "Get fixtures failed", error: String(err) });
+        return json({ success: false, error: { code: "INTERNAL" } }, 500, corsHdrs);
+      }
+    }
+
+    // GET /api/v1/fixtures/all - Get all fixtures
+    if (url.pathname === `/api/${v}/fixtures/all` && req.method === "GET") {
+      try {
+        const limit = parseInt(url.searchParams.get('limit') || '50');
+        const status = url.searchParams.get('status');
+
+        let query = `
+          SELECT
+            id, fixture_date as date, opponent, venue, competition,
+            kick_off_time as kickOffTime, status, source
+          FROM fixtures
+        `;
+
+        const params: string[] = [];
+
+        if (status) {
+          query += ' WHERE status = ?';
+          params.push(status);
+        }
+
+        query += ' ORDER BY fixture_date DESC LIMIT ?';
+        params.push(limit.toString());
+
+        const result = await env.DB.prepare(query).bind(...params).all();
+
+        return json({ success: true, data: result.results || [] }, 200, corsHdrs);
+      } catch (err) {
+        logJSON("error", requestId, { message: "Get all fixtures failed", error: String(err) });
+        return json({ success: false, error: { code: "INTERNAL" } }, 500, corsHdrs);
+      }
+    }
+
+    // GET /api/v1/fixtures/results - Get recent results
+    if (url.pathname === `/api/${v}/fixtures/results` && req.method === "GET") {
+      try {
+        const limit = parseInt(url.searchParams.get('limit') || '10');
+
+        const result = await env.DB.prepare(`
+          SELECT
+            id, match_date as date, opponent, home_score as homeScore,
+            away_score as awayScore, venue, competition, scorers
+          FROM results
+          ORDER BY match_date DESC
+          LIMIT ?
+        `).bind(limit).all();
+
+        return json({ success: true, data: result.results || [] }, 200, corsHdrs);
+      } catch (err) {
+        logJSON("error", requestId, { message: "Get results failed", error: String(err) });
+        return json({ success: false, error: { code: "INTERNAL" } }, 500, corsHdrs);
+      }
+    }
+
+    // POST /api/v1/fixtures/results - Add a match result
+    if (url.pathname === `/api/${v}/fixtures/results` && req.method === "POST") {
+      try {
+        const result = await req.json().catch(() => ({}));
+
+        await env.DB.prepare(`
+          INSERT INTO results (
+            match_date, opponent, home_score, away_score, venue, competition, scorers
+          )
+          VALUES (?, ?, ?, ?, ?, ?, ?)
+          ON CONFLICT(match_date, opponent)
+          DO UPDATE SET
+            home_score = excluded.home_score,
+            away_score = excluded.away_score,
+            venue = excluded.venue,
+            competition = excluded.competition,
+            scorers = excluded.scorers
+        `).bind(
+          result.date,
+          result.opponent,
+          result.homeScore || 0,
+          result.awayScore || 0,
+          result.venue || '',
+          result.competition || '',
+          result.scorers || ''
+        ).run();
+
+        return json({ success: true }, 200, corsHdrs);
+      } catch (err) {
+        logJSON("error", requestId, { message: "Add result failed", error: String(err) });
+        return json({ success: false, error: { code: "INTERNAL" } }, 500, corsHdrs);
+      }
+    }
+
+    // -------- Fixture Settings (Admin/Public) --------
+
+    // GET /api/v1/fixtures/settings - Get fixture sync settings
+    if (url.pathname === `/api/${v}/fixtures/settings` && req.method === "GET") {
+      try {
+        const tenantId = url.searchParams.get('tenant_id') || 'default';
+
+        const result = await env.DB.prepare(`
+          SELECT
+            tenant_id as tenantId,
+            team_name as teamName,
+            fa_website_url as faWebsiteUrl,
+            fa_snippet_url as faSnippetUrl,
+            sync_enabled as syncEnabled,
+            sync_interval_minutes as syncIntervalMinutes,
+            calendar_id as calendarId
+          FROM fixture_settings
+          WHERE tenant_id = ?
+        `).bind(tenantId).first();
+
+        if (result) {
+          return json({ success: true, data: result }, 200, corsHdrs);
+        } else {
+          return json({ success: false, error: { code: "NOT_FOUND", message: "Settings not found" } }, 404, corsHdrs);
+        }
+      } catch (err) {
+        logJSON("error", requestId, { message: "Get settings failed", error: String(err) });
+        return json({ success: false, error: { code: "INTERNAL" } }, 500, corsHdrs);
+      }
+    }
+
+    // GET /api/v1/fixtures/settings/config - Public endpoint for Apps Script to fetch config
+    if (url.pathname === `/api/${v}/fixtures/settings/config` && req.method === "GET") {
+      try {
+        const tenantId = url.searchParams.get('tenant_id') || 'default';
+
+        const result = await env.DB.prepare(`
+          SELECT
+            tenant_id as tenantId,
+            team_name as teamName,
+            fa_website_url as faWebsiteUrl,
+            fa_snippet_url as faSnippetUrl,
+            sync_enabled as syncEnabled,
+            calendar_id as calendarId
+          FROM fixture_settings
+          WHERE tenant_id = ?
+        `).bind(tenantId).first();
+
+        if (result) {
+          return json({ success: true, data: result }, 200, corsHdrs);
+        } else {
+          // Return default config if not found
+          return json({
+            success: true,
+            data: {
+              tenantId: 'default',
+              teamName: 'Shepshed Dynamo Youth U16',
+              faWebsiteUrl: '',
+              faSnippetUrl: '',
+              syncEnabled: true,
+              calendarId: ''
+            }
+          }, 200, corsHdrs);
+        }
+      } catch (err) {
+        logJSON("error", requestId, { message: "Get config failed", error: String(err) });
+        return json({ success: false, error: { code: "INTERNAL" } }, 500, corsHdrs);
+      }
+    }
+
+    // PUT /api/v1/fixtures/settings - Update fixture sync settings (Admin only)
+    if (url.pathname === `/api/${v}/fixtures/settings` && req.method === "PUT") {
+      const user = await requireJWT(req, env).catch(() => null);
+      if (!user || !hasRole(user, "admin")) {
+        return json({ success: false, error: { code: "FORBIDDEN" } }, 403, corsHdrs);
+      }
+
+      try {
+        const body = await req.json().catch(() => ({}));
+        const tenantId = body.tenantId || 'default';
+
+        // Update or insert settings
+        await env.DB.prepare(`
+          INSERT INTO fixture_settings (
+            tenant_id,
+            team_name,
+            fa_website_url,
+            fa_snippet_url,
+            sync_enabled,
+            sync_interval_minutes,
+            calendar_id,
+            calendar_enabled,
+            gmail_search_query,
+            gmail_label,
+            email_sync_enabled,
+            updated_at
+          )
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+          ON CONFLICT(tenant_id)
+          DO UPDATE SET
+            team_name = excluded.team_name,
+            fa_website_url = excluded.fa_website_url,
+            fa_snippet_url = excluded.fa_snippet_url,
+            sync_enabled = excluded.sync_enabled,
+            sync_interval_minutes = excluded.sync_interval_minutes,
+            calendar_id = excluded.calendar_id,
+            calendar_enabled = excluded.calendar_enabled,
+            gmail_search_query = excluded.gmail_search_query,
+            gmail_label = excluded.gmail_label,
+            email_sync_enabled = excluded.email_sync_enabled,
+            updated_at = CURRENT_TIMESTAMP
+        `).bind(
+          tenantId,
+          body.teamName || '',
+          body.faWebsiteUrl || '',
+          body.faSnippetUrl || '',
+          body.syncEnabled ? 1 : 0,
+          body.syncIntervalMinutes || 5,
+          body.calendarId || '',
+          body.calendarEnabled ? 1 : 0,
+          body.gmailSearchQuery || '',
+          body.gmailLabel || '',
+          body.emailSyncEnabled ? 1 : 0
+        ).run();
+
+        return json({ success: true }, 200, corsHdrs);
+      } catch (err) {
+        logJSON("error", requestId, { message: "Update settings failed", error: String(err) });
+        return json({ success: false, error: { code: "INTERNAL" } }, 500, corsHdrs);
+      }
+    }
+
+    // -------- League Table API --------
+
+    // POST /api/v1/league/sync - Sync league standings from Apps Script
+    if (url.pathname === `/api/${v}/league/sync` && req.method === "POST") {
+      try {
+        const body = await req.json().catch(() => ({}));
+        const { tenantId, competition, standings } = body;
+
+        if (!Array.isArray(standings)) {
+          return json({ success: false, error: { code: "INVALID_DATA", message: "standings must be an array" } }, 400, corsHdrs);
+        }
+
+        // Clear existing standings for this competition
+        await env.DB.prepare('DELETE FROM league_standings WHERE tenant_id = ? AND competition = ?')
+          .bind(tenantId || 'default', competition || '').run();
+
+        // Insert new standings
+        let synced = 0;
+        for (const team of standings) {
+          try {
+            await env.DB.prepare(`
+              INSERT INTO league_standings (
+                tenant_id, competition, team_name, position,
+                played, won, drawn, lost, goals_for, goals_against, goal_difference, points,
+                last_updated
+              )
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            `).bind(
+              tenantId || 'default',
+              competition || '',
+              team.teamName,
+              team.position,
+              team.played,
+              team.won,
+              team.drawn,
+              team.lost,
+              team.goalsFor,
+              team.goalsAgainst,
+              team.goalDifference,
+              team.points
+            ).run();
+            synced++;
+          } catch (err) {
+            logJSON("error", requestId, { message: "Error syncing team", error: String(err) });
+          }
+        }
+
+        return json({ success: true, synced }, 200, corsHdrs);
+      } catch (err) {
+        logJSON("error", requestId, { message: "League sync failed", error: String(err) });
+        return json({ success: false, error: { code: "INTERNAL" } }, 500, corsHdrs);
+      }
+    }
+
+    // GET /api/v1/league/table - Get league table
+    if (url.pathname === `/api/${v}/league/table` && req.method === "GET") {
+      try {
+        const tenantId = url.searchParams.get('tenant_id') || 'default';
+        const competition = url.searchParams.get('competition');
+
+        let query = `
+          SELECT
+            position, team_name as teamName, played, won, drawn, lost,
+            goals_for as goalsFor, goals_against as goalsAgainst,
+            goal_difference as goalDifference, points
+          FROM league_standings
+          WHERE tenant_id = ?
+        `;
+
+        const params: string[] = [tenantId];
+
+        if (competition) {
+          query += ' AND competition = ?';
+          params.push(competition);
+        }
+
+        query += ' ORDER BY position ASC';
+
+        const result = await env.DB.prepare(query).bind(...params).all();
+
+        return json({ success: true, data: result.results || [] }, 200, corsHdrs);
+      } catch (err) {
+        logJSON("error", requestId, { message: "Get league table failed", error: String(err) });
+        return json({ success: false, error: { code: "INTERNAL" } }, 500, corsHdrs);
+      }
     }
 
     // -------- Promo Code Management (Admin) --------

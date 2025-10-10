@@ -43,6 +43,12 @@ ADMIN_CONSOLE_URL = "https://admin-console.team-platform-2025.workers.dev"
 binding = "KV_IDEMP"
 id = "5948d4a91ac04b50904a06c923221994"   # <-- replace after Step 3 (if regenerated)
 
+# --- D1 Database (SQLite)
+[[d1_databases]]
+binding = "DB"
+database_name = "syston-db"
+database_id = "3031c292-6290-4906-947d-ab9a145538ed"
+
 # --- Queues
 [[queues.producers]]
 binding = "POST_QUEUE"
