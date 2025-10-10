@@ -83,6 +83,7 @@ export interface Env {
   POST_QUEUE: Queue;
   DLQ: Queue;
   DLQ_ALERT_URL?: string;
+  RATE_LIMIT_KV?: KVNamespace;
   RL_POSTS_PER_MIN?: string;
   RL_UPLOADS_PER_MIN?: string;
   R2_MEDIA: R2Bucket;
@@ -111,5 +112,6 @@ export interface Env {
   RESEND_API_KEY?: string;
   SENDGRID_API_KEY?: string;
   ADMIN_CONSOLE_URL?: string;
+  ENVIRONMENT?: string;
   [key: string]: any;
 }
