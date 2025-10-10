@@ -1567,6 +1567,282 @@ export default {
       }
     }
 
+    // -------- Player Images (Admin) --------
+
+    // POST /api/v1/admin/player-images
+    if (url.pathname === `/api/${v}/admin/player-images` && req.method === "POST") {
+      const user = await requireJWT(req, env).catch(() => null);
+      if (!user || !hasRole(user, "admin")) {
+        return json({ success: false, error: { code: "FORBIDDEN" } }, 403, corsHdrs);
+      }
+      const body = await req.json().catch(() => ({}));
+      const tenant = body.tenant || "default";
+
+      try {
+        const { createPlayerImage } = await import("./services/playerImages");
+        const image = await createPlayerImage(env, tenant, {
+          playerId: body.playerId,
+          playerName: body.playerName,
+          type: body.type,
+          imageUrl: body.imageUrl,
+          r2Key: body.r2Key,
+          uploadedBy: user.userId || "admin",
+          metadata: body.metadata,
+        });
+        return json({ success: true, data: image }, 200, corsHdrs);
+      } catch (e: any) {
+        return json({ success: false, error: { code: "PLAYER_IMAGE_ERROR", message: e.message } }, 500, corsHdrs);
+      }
+    }
+
+    // GET /api/v1/admin/player-images (list)
+    if (url.pathname === `/api/${v}/admin/player-images` && req.method === "GET") {
+      const user = await requireJWT(req, env).catch(() => null);
+      if (!user || !hasRole(user, "admin")) {
+        return json({ success: false, error: { code: "FORBIDDEN" } }, 403, corsHdrs);
+      }
+      const tenant = url.searchParams.get("tenant") || "default";
+      const playerId = url.searchParams.get("playerId") || undefined;
+      const type = url.searchParams.get("type") as "headshot" | "action" | undefined;
+
+      try {
+        const { listPlayerImages } = await import("./services/playerImages");
+        const images = await listPlayerImages(env, tenant, { playerId, type });
+        return json({ success: true, data: images }, 200, corsHdrs);
+      } catch (e: any) {
+        return json({ success: false, error: { code: "PLAYER_IMAGE_ERROR", message: e.message } }, 500, corsHdrs);
+      }
+    }
+
+    // GET /api/v1/admin/player-images/:id
+    if (url.pathname.match(new RegExp(`^/api/${v}/admin/player-images/[^/]+$`)) && req.method === "GET") {
+      const user = await requireJWT(req, env).catch(() => null);
+      if (!user || !hasRole(user, "admin")) {
+        return json({ success: false, error: { code: "FORBIDDEN" } }, 403, corsHdrs);
+      }
+      const imageId = url.pathname.split("/").pop()!;
+      const tenant = url.searchParams.get("tenant") || "default";
+
+      try {
+        const { getPlayerImage } = await import("./services/playerImages");
+        const image = await getPlayerImage(env, tenant, imageId);
+        if (!image) {
+          return json({ success: false, error: { code: "NOT_FOUND" } }, 404, corsHdrs);
+        }
+        return json({ success: true, data: image }, 200, corsHdrs);
+      } catch (e: any) {
+        return json({ success: false, error: { code: "PLAYER_IMAGE_ERROR", message: e.message } }, 500, corsHdrs);
+      }
+    }
+
+    // PATCH /api/v1/admin/player-images/:id
+    if (url.pathname.match(new RegExp(`^/api/${v}/admin/player-images/[^/]+$`)) && req.method === "PATCH") {
+      const user = await requireJWT(req, env).catch(() => null);
+      if (!user || !hasRole(user, "admin")) {
+        return json({ success: false, error: { code: "FORBIDDEN" } }, 403, corsHdrs);
+      }
+      const imageId = url.pathname.split("/").pop()!;
+      const body = await req.json().catch(() => ({}));
+      const tenant = body.tenant || "default";
+
+      try {
+        const { updatePlayerImage } = await import("./services/playerImages");
+        const image = await updatePlayerImage(env, tenant, imageId, body);
+        if (!image) {
+          return json({ success: false, error: { code: "NOT_FOUND" } }, 404, corsHdrs);
+        }
+        return json({ success: true, data: image }, 200, corsHdrs);
+      } catch (e: any) {
+        return json({ success: false, error: { code: "PLAYER_IMAGE_ERROR", message: e.message } }, 500, corsHdrs);
+      }
+    }
+
+    // DELETE /api/v1/admin/player-images/:id
+    if (url.pathname.match(new RegExp(`^/api/${v}/admin/player-images/[^/]+$`)) && req.method === "DELETE") {
+      const user = await requireJWT(req, env).catch(() => null);
+      if (!user || !hasRole(user, "admin")) {
+        return json({ success: false, error: { code: "FORBIDDEN" } }, 403, corsHdrs);
+      }
+      const imageId = url.pathname.split("/").pop()!;
+      const tenant = url.searchParams.get("tenant") || "default";
+
+      try {
+        const { deletePlayerImage } = await import("./services/playerImages");
+        const deleted = await deletePlayerImage(env, tenant, imageId);
+        if (!deleted) {
+          return json({ success: false, error: { code: "NOT_FOUND" } }, 404, corsHdrs);
+        }
+        return json({ success: true }, 200, corsHdrs);
+      } catch (e: any) {
+        return json({ success: false, error: { code: "PLAYER_IMAGE_ERROR", message: e.message } }, 500, corsHdrs);
+      }
+    }
+
+    // -------- Auto-Posts Matrix (Admin) --------
+
+    // GET /api/v1/admin/auto-posts-matrix
+    if (url.pathname === `/api/${v}/admin/auto-posts-matrix` && req.method === "GET") {
+      const user = await requireJWT(req, env).catch(() => null);
+      if (!user || !hasRole(user, "admin")) {
+        return json({ success: false, error: { code: "FORBIDDEN" } }, 403, corsHdrs);
+      }
+      const tenant = url.searchParams.get("tenant") || "default";
+
+      try {
+        const { getAutoPostsMatrix } = await import("./services/autoPostsMatrix");
+        const matrix = await getAutoPostsMatrix(env, tenant);
+        return json({ success: true, data: matrix }, 200, corsHdrs);
+      } catch (e: any) {
+        return json({ success: false, error: { code: "MATRIX_ERROR", message: e.message } }, 500, corsHdrs);
+      }
+    }
+
+    // PUT /api/v1/admin/auto-posts-matrix
+    if (url.pathname === `/api/${v}/admin/auto-posts-matrix` && req.method === "PUT") {
+      const user = await requireJWT(req, env).catch(() => null);
+      if (!user || !hasRole(user, "admin")) {
+        return json({ success: false, error: { code: "FORBIDDEN" } }, 403, corsHdrs);
+      }
+      const body = await req.json().catch(() => ({}));
+      const tenant = body.tenant || "default";
+
+      try {
+        const { updateAutoPostsMatrix } = await import("./services/autoPostsMatrix");
+        const matrix = await updateAutoPostsMatrix(env, tenant, body.matrix);
+        return json({ success: true, data: matrix }, 200, corsHdrs);
+      } catch (e: any) {
+        return json({ success: false, error: { code: "MATRIX_ERROR", message: e.message } }, 500, corsHdrs);
+      }
+    }
+
+    // POST /api/v1/admin/auto-posts-matrix/reset
+    if (url.pathname === `/api/${v}/admin/auto-posts-matrix/reset` && req.method === "POST") {
+      const user = await requireJWT(req, env).catch(() => null);
+      if (!user || !hasRole(user, "admin")) {
+        return json({ success: false, error: { code: "FORBIDDEN" } }, 403, corsHdrs);
+      }
+      const body = await req.json().catch(() => ({}));
+      const tenant = body.tenant || "default";
+
+      try {
+        const { resetAutoPostsMatrix } = await import("./services/autoPostsMatrix");
+        const matrix = await resetAutoPostsMatrix(env, tenant);
+        return json({ success: true, data: matrix }, 200, corsHdrs);
+      } catch (e: any) {
+        return json({ success: false, error: { code: "MATRIX_ERROR", message: e.message } }, 500, corsHdrs);
+      }
+    }
+
+    // -------- Club Config (Admin) --------
+
+    // GET /api/v1/admin/club-config
+    if (url.pathname === `/api/${v}/admin/club-config` && req.method === "GET") {
+      const user = await requireJWT(req, env).catch(() => null);
+      if (!user || !hasRole(user, "admin")) {
+        return json({ success: false, error: { code: "FORBIDDEN" } }, 403, corsHdrs);
+      }
+      const tenant = url.searchParams.get("tenant") || "default";
+
+      try {
+        const { getClubConfig } = await import("./services/clubConfig");
+        const config = await getClubConfig(env, tenant);
+        return json({ success: true, data: config }, 200, corsHdrs);
+      } catch (e: any) {
+        return json({ success: false, error: { code: "CONFIG_ERROR", message: e.message } }, 500, corsHdrs);
+      }
+    }
+
+    // PUT /api/v1/admin/club-config
+    if (url.pathname === `/api/${v}/admin/club-config` && req.method === "PUT") {
+      const user = await requireJWT(req, env).catch(() => null);
+      if (!user || !hasRole(user, "admin")) {
+        return json({ success: false, error: { code: "FORBIDDEN" } }, 403, corsHdrs);
+      }
+      const body = await req.json().catch(() => ({}));
+      const tenant = body.tenant || "default";
+
+      try {
+        const { updateClubConfig } = await import("./services/clubConfig");
+        const config = await updateClubConfig(env, tenant, body.config);
+        return json({ success: true, data: config }, 200, corsHdrs);
+      } catch (e: any) {
+        return json({ success: false, error: { code: "CONFIG_ERROR", message: e.message } }, 500, corsHdrs);
+      }
+    }
+
+    // PATCH /api/v1/admin/club-config/:section
+    if (url.pathname.match(new RegExp(`^/api/${v}/admin/club-config/[^/]+$`)) && req.method === "PATCH") {
+      const user = await requireJWT(req, env).catch(() => null);
+      if (!user || !hasRole(user, "admin")) {
+        return json({ success: false, error: { code: "FORBIDDEN" } }, 403, corsHdrs);
+      }
+      const section = url.pathname.split("/").pop()!;
+      const body = await req.json().catch(() => ({}));
+      const tenant = body.tenant || "default";
+
+      try {
+        const { updateClubConfigSection } = await import("./services/clubConfig");
+        const config = await updateClubConfigSection(env, tenant, section as any, body.data);
+        return json({ success: true, data: config }, 200, corsHdrs);
+      } catch (e: any) {
+        return json({ success: false, error: { code: "CONFIG_ERROR", message: e.message } }, 500, corsHdrs);
+      }
+    }
+
+    // POST /api/v1/admin/club-config/upload-badge
+    if (url.pathname === `/api/${v}/admin/club-config/upload-badge` && req.method === "POST") {
+      const user = await requireJWT(req, env).catch(() => null);
+      if (!user || !hasRole(user, "admin")) {
+        return json({ success: false, error: { code: "FORBIDDEN" } }, 403, corsHdrs);
+      }
+      const tenant = url.searchParams.get("tenant") || "default";
+      const ct = req.headers.get("content-type") || "";
+      if (!ct.startsWith("multipart/form-data")) {
+        return json({ success: false, error: { code: "VALIDATION", message: "multipart required" } }, 400, corsHdrs);
+      }
+
+      try {
+        const form = await req.formData();
+        const file = form.get("file");
+        if (!(file instanceof File)) {
+          return json({ success: false, error: { code: "VALIDATION", message: "file missing" } }, 400, corsHdrs);
+        }
+        const buf = await file.arrayBuffer();
+        const { uploadClubBadge } = await import("./services/clubConfig");
+        const result = await uploadClubBadge(env, tenant, buf, file.type);
+        return json({ success: true, data: result }, 200, corsHdrs);
+      } catch (e: any) {
+        return json({ success: false, error: { code: "CONFIG_ERROR", message: e.message } }, 500, corsHdrs);
+      }
+    }
+
+    // POST /api/v1/admin/club-config/upload-sponsor
+    if (url.pathname === `/api/${v}/admin/club-config/upload-sponsor` && req.method === "POST") {
+      const user = await requireJWT(req, env).catch(() => null);
+      if (!user || !hasRole(user, "admin")) {
+        return json({ success: false, error: { code: "FORBIDDEN" } }, 403, corsHdrs);
+      }
+      const tenant = url.searchParams.get("tenant") || "default";
+      const ct = req.headers.get("content-type") || "";
+      if (!ct.startsWith("multipart/form-data")) {
+        return json({ success: false, error: { code: "VALIDATION", message: "multipart required" } }, 400, corsHdrs);
+      }
+
+      try {
+        const form = await req.formData();
+        const file = form.get("file");
+        if (!(file instanceof File)) {
+          return json({ success: false, error: { code: "VALIDATION", message: "file missing" } }, 400, corsHdrs);
+        }
+        const buf = await file.arrayBuffer();
+        const { uploadSponsorLogo } = await import("./services/clubConfig");
+        const result = await uploadSponsorLogo(env, tenant, buf, file.type);
+        return json({ success: true, data: result }, 200, corsHdrs);
+      } catch (e: any) {
+        return json({ success: false, error: { code: "CONFIG_ERROR", message: e.message } }, 500, corsHdrs);
+      }
+    }
+
     // -------- Post Bus --------
     if (url.pathname === `/api/${v}/post` && req.method === "POST") {
       // 1) Auth

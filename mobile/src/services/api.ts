@@ -128,4 +128,174 @@ export const squadApi = {
   },
 };
 
+export const playerImagesApi = {
+  // Get all player images
+  listImages: async (playerId?: string, type?: 'headshot' | 'action') => {
+    const response = await api.get('/api/v1/admin/player-images', {
+      params: { tenant: TENANT_ID, playerId, type },
+    });
+    return response.data;
+  },
+
+  // Get single player image
+  getImage: async (imageId: string) => {
+    const response = await api.get(`/api/v1/admin/player-images/${imageId}`, {
+      params: { tenant: TENANT_ID },
+    });
+    return response.data;
+  },
+
+  // Create player image
+  createImage: async (data: {
+    playerId: string;
+    playerName: string;
+    type: 'headshot' | 'action';
+    imageUrl: string;
+    r2Key: string;
+    metadata?: any;
+  }) => {
+    const response = await api.post('/api/v1/admin/player-images', {
+      tenant: TENANT_ID,
+      ...data,
+    });
+    return response.data;
+  },
+
+  // Update player image
+  updateImage: async (imageId: string, updates: any) => {
+    const response = await api.patch(`/api/v1/admin/player-images/${imageId}`, {
+      tenant: TENANT_ID,
+      ...updates,
+    });
+    return response.data;
+  },
+
+  // Delete player image
+  deleteImage: async (imageId: string) => {
+    const response = await api.delete(`/api/v1/admin/player-images/${imageId}`, {
+      params: { tenant: TENANT_ID },
+    });
+    return response.data;
+  },
+};
+
+export const autoPostsMatrixApi = {
+  // Get auto-posts matrix
+  getMatrix: async () => {
+    const response = await api.get('/api/v1/admin/auto-posts-matrix', {
+      params: { tenant: TENANT_ID },
+    });
+    return response.data;
+  },
+
+  // Update auto-posts matrix
+  updateMatrix: async (matrix: any) => {
+    const response = await api.put('/api/v1/admin/auto-posts-matrix', {
+      tenant: TENANT_ID,
+      matrix,
+    });
+    return response.data;
+  },
+
+  // Reset matrix to defaults
+  resetMatrix: async () => {
+    const response = await api.post('/api/v1/admin/auto-posts-matrix/reset', {
+      tenant: TENANT_ID,
+    });
+    return response.data;
+  },
+};
+
+export const clubConfigApi = {
+  // Get club config
+  getConfig: async () => {
+    const response = await api.get('/api/v1/admin/club-config', {
+      params: { tenant: TENANT_ID },
+    });
+    return response.data;
+  },
+
+  // Update entire config
+  updateConfig: async (config: any) => {
+    const response = await api.put('/api/v1/admin/club-config', {
+      tenant: TENANT_ID,
+      config,
+    });
+    return response.data;
+  },
+
+  // Update specific section
+  updateSection: async (section: string, data: any) => {
+    const response = await api.patch(`/api/v1/admin/club-config/${section}`, {
+      tenant: TENANT_ID,
+      data,
+    });
+    return response.data;
+  },
+
+  // Upload club badge
+  uploadBadge: async (file: any) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await api.post(`/api/v1/admin/club-config/upload-badge?tenant=${TENANT_ID}`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
+
+  // Upload sponsor logo
+  uploadSponsor: async (file: any) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await api.post(`/api/v1/admin/club-config/upload-sponsor?tenant=${TENANT_ID}`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
+};
+
+export const motmApi = {
+  // Open voting for a match
+  openVoting: async (matchId: string, data: {
+    nominees: { candidateId: string; name: string }[];
+    votingWindow: { start: string; end: string };
+    autoPostEnabled: boolean;
+  }) => {
+    const response = await api.post(`/api/v1/admin/matches/${matchId}/motm/open`, {
+      tenant: TENANT_ID,
+      ...data,
+    });
+    return response.data;
+  },
+
+  // Close voting
+  closeVoting: async (matchId: string) => {
+    const response = await api.post(`/api/v1/admin/matches/${matchId}/motm/close`, {
+      tenant: TENANT_ID,
+    });
+    return response.data;
+  },
+
+  // Get vote tally
+  getTally: async (matchId: string) => {
+    const response = await api.get(`/api/v1/admin/matches/${matchId}/motm/tally`, {
+      params: { tenant: TENANT_ID },
+    });
+    return response.data;
+  },
+
+  // Cast a vote (public endpoint)
+  castVote: async (matchId: string, candidateId: string) => {
+    const response = await api.post(`/api/v1/matches/${matchId}/motm/vote`, {
+      tenant: TENANT_ID,
+      candidateId,
+    });
+    return response.data;
+  },
+};
+
 export default api;
