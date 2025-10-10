@@ -538,7 +538,7 @@ class FAWebsiteScraper {
  * Scrape fixtures from FA website (global function)
  * @returns {Array<Object>}
  */
-function scrapeFA Fixtures() {
+function scrapeFAFixtures() {
   const scraper = new FAWebsiteScraper();
   return scraper.scrapeFixtures();
 }
