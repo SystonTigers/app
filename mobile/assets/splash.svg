@@ -1,0 +1,8 @@
+<svg width="1284" height="2778" viewBox="0 0 1284 2778" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1284" height="2778" fill="#0D0F12"/>
+  <g transform="translate(0,220)">
+    <circle cx="642" cy="560" r="360" fill="#16181D" opacity="0.9"/>
+    <text x="642" y="560" text-anchor="middle" font-family="Inter, system-ui" font-size="96" fill="#FFD400" font-weight="800">FIELD DROP</text>
+    <text x="642" y="640" text-anchor="middle" font-family="Inter, system-ui" font-size="28" fill="#A8B0BD">Club media • Match control • Shop</text>
+  </g>
+</svg>

@@ -1,0 +1,354 @@
+Boom — **#3: Renderer service + template schema + example SVG**.
+This plugs straight into your Worker from #2 and gives you real PNG outputs from SVG templates (fast, cheap, Cloudflare-native).
+
+---
+
+# 📦 Where everything goes
+
+```
+app/backend/
+  src/
+    services/
+      render.ts            ← real SVG→PNG renderer (WASM)
+    templates/
+      schema.ts            ← JSON schema/types for templates
+      examples/
+        final-score-v1.svg ← sample SVG with tokens
+        final-score-v1.json← sample template meta (positions, fallbacks)
+    utils/
+      svg.ts               ← helpers for token replace, img/font embedding
+      base64.ts            ← tiny base64 helpers
+  wrangler.toml            ← add wasm module binding
+```
+
+You’ll also upload assets to **R2**:
+
+```
+R2 (bucket: syston-assets)
+  templates/
+    final-score-v1.svg
+    final-score-v1.json
+  fonts/
+    Inter-Bold.ttf
+    Urbanist-Black.ttf
+```
+
+---
+
+# 🧱 1) Add the WASM dependency
+
+Cloudflare Workers can run WASM; we’ll use **resvg-wasm** to rasterize SVG → PNG.
+
+**Install deps (in `app/backend`)**
+
+```bash
+npm i @resvg/resvg-wasm
+```
+
+**Update `wrangler.toml`** (add the wasm module)
+
+```toml
+[wasm_modules]
+RESVG_WASM = "node_modules/@resvg/resvg-wasm/index_bg.wasm"
+```
+
+Workers auto-bundle this and expose it via `env.RESVG_WASM`.
+
+---
+
+# 🧠 2) Template schema (simple, powerful)
+
+`src/templates/schema.ts`
+
+```ts
+export type TokenMap = Record<string, string>; // e.g., { TEAM:"Syston Tigers", HS:"2" }
+
+export interface TemplateMeta {
+  id: string;                         // "final-score-v1"
+  sizes: string[];                    // ["1080x1080","1080x1920"]
+  fonts?: {                           // fonts to embed (optional)
+    family: string;                   // "Inter"
+    files: { name: string; path: string; weight?: number }[]; // in R2 /fonts/
+  }[];
+  defaults?: TokenMap;                // fallback values for tokens
+  colorTokens?: string[];             // ["PRIMARY","BG","TEXT","TEXT_DIM"]
+  imageTokens?: string[];             // ["HOME_BADGE","AWAY_BADGE","SPONSOR"]
+  textTokens?: string[];              // ["HOME_NAME","AWAY_NAME","SLOGAN","HS","AS"]
+}
+```
+
+---
+
+# 🧰 3) SVG helper utilities
+
+`src/utils/base64.ts`
+
+```ts
+export const b64 = (buf: ArrayBuffer) =>
+  btoa(String.fromCharCode(...new Uint8Array(buf)));
+```
+
+`src/utils/svg.ts`
+
+```ts
+import { b64 } from './base64';
+
+export function applyTokens(svg: string, tokens: Record<string,string>) {
+  // Replace {{TOKEN}} with value (safe minimal templating)
+  return svg.replace(/\{\{([A-Z0-9_]+)\}\}/g, (_, k) => tokens[k] ?? '');
+}
+
+// Embed font as data URL @font-face inside SVG <defs>
+export function injectFont(svg: string, family: string, fontName: string, ttf: ArrayBuffer, weight=700) {
+  const data = b64(ttf);
+  const fontFace = `
+  @font-face {
+    font-family: '${family}';
+    src: url('data:font/ttf;base64,${data}') format('truetype');
+    font-weight: ${weight};
+    font-style: normal;
+  }`;
+  return svg.replace('</svg>', `<style><![CDATA[${fontFace}]]></style></svg>`);
+}
+
+// For images (badges/logos) -> base64 data URIs
+export async function fetchAsDataURI(url: string): Promise<string> {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`Failed to fetch asset ${url}`);
+  const ab = await r.arrayBuffer();
+  const ct = r.headers.get('content-type') || 'image/png';
+  return `data:${ct};base64,${b64(ab)}`;
+}
+
+// Replace xlink:href or href placeholders for images like {{HOME_BADGE_DATAURI}}
+export function applyImageDataURIs(svg: string, map: Record<string,string>) {
+  // Expect tokens like {{HOME_BADGE_DATAURI}}
+  return svg.replace(/\{\{([A-Z0-9_]+)_DATAURI\}\}/g, (_, k) => map[k] ?? '');
+}
+```
+
+---
+
+# 🧩 4) The renderer service (real implementation)
+
+`src/services/render.ts`
+
+```ts
+import initWasm, { Resvg } from '@resvg/resvg-wasm';
+import { applyTokens, injectFont, fetchAsDataURI, applyImageDataURIs } from '../utils/svg';
+import type { TemplateMeta, TokenMap } from '../templates/schema';
+
+async function loadTextFromR2(env: Env, key: string) {
+  const obj = await env.R2.get(key);
+  if (!obj) throw new Error(`R2 missing: ${key}`);
+  return await obj.text();
+}
+async function loadBufferFromR2(env: Env, key: string) {
+  const obj = await env.R2.get(key);
+  if (!obj) throw new Error(`R2 missing: ${key}`);
+  return await obj.arrayBuffer();
+}
+
+export const renderGraphic = async (req: any, env: Env) => {
+  // Body: { templateId, size, theme, data, assets }
+  const { templateId, size, theme, data, assets } = req.json || {};
+  if (!templateId || !size) {
+    return new Response(JSON.stringify({ error: 'templateId and size required' }), { status: 400 });
+  }
+
+  // 1) Load template SVG + meta from R2
+  const svgKey = `templates/${templateId}.svg`;
+  const metaKey = `templates/${templateId}.json`;
+
+  const [svgRaw, metaRaw] = await Promise.all([
+    loadTextFromR2(env, svgKey),
+    loadTextFromR2(env, metaKey)
+  ]);
+  const meta = JSON.parse(metaRaw) as TemplateMeta;
+  if (!meta.sizes.includes(size)) {
+    return new Response(JSON.stringify({ error: `Unsupported size ${size}` }), { status: 400 });
+  }
+
+  // 2) Prepare token map (defaults → theme → data)
+  const tokens: TokenMap = { ...(meta.defaults || {}), ...(theme || {}), ...(data || {}) };
+
+  // 3) Preload images and create DATAURI tokens for *_DATAURI
+  const imageMap: Record<string,string> = {};
+  for (const t of meta.imageTokens || []) {
+    const url = assets?.[t] || tokens[t];
+    if (url) {
+      const dataUri = await fetchAsDataURI(url);
+      imageMap[t] = dataUri;
+      // set DATAURI variant
+      tokens[`${t}_DATAURI`] = dataUri;
+    }
+  }
+
+  // 4) Apply tokens to SVG
+  let svg = applyTokens(svgRaw, tokens);
+  svg = applyImageDataURIs(svg, imageMap);
+
+  // 5) Embed fonts (optional)
+  if (meta.fonts?.length) {
+    for (const fam of meta.fonts) {
+      for (const file of fam.files) {
+        const buf = await loadBufferFromR2(env, `fonts/${file.path}`);
+        svg = injectFont(svg, fam.family, file.name, buf, file.weight ?? 700);
+      }
+    }
+  }
+
+  // 6) Init WASM and render
+  // @ts-ignore - bound in wrangler.toml
+  await initWasm((env as any).RESVG_WASM);
+  const resvg = new Resvg(svg, {
+    fitTo: { mode: 'original' } // SVG has explicit width/height for size variant
+  });
+
+  const png = resvg.render().asPng();
+
+  // 7) Write to R2 and return CDN URL
+  const id = crypto.randomUUID();
+  const outKey = `renders/${templateId}/${id}.png`;
+  await env.R2.put(outKey, png, { httpMetadata: { contentType: 'image/png', cacheControl: 'public, max-age=31536000, immutable' } });
+
+  const cdnBase = 'https://cdn.yourdomain.com'; // behind Cloudflare R2 public bucket or CDN mapping
+  const url = `${cdnBase}/${outKey}`;
+
+  return new Response(JSON.stringify({ id, url, bytes: png.byteLength }), {
+    headers: { 'content-type': 'application/json' }
+  });
+};
+```
+
+---
+
+# 🧪 5) Example template (SVG + JSON)
+
+**Design goals:** sharp, modern, tokens for colours/text, and image DATAURIs for badges.
+SVG uses `{{TOKEN}}` placeholders you can replace.
+
+`src/templates/examples/final-score-v1.svg`  *(also upload same file to R2 `templates/final-score-v1.svg`)*
+
+```svg
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1080" height="1080" viewBox="0 0 1080 1080" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect x="0" y="0" width="1080" height="1080" fill="{{BG}}"/>
+
+  <!-- Subtle grid -->
+  <g opacity="0.05">
+    <path d="M0 120H1080 M0 240H1080 M0 360H1080 M0 480H1080 M0 600H1080 M0 720H1080 M0 840H1080 M0 960H1080" stroke="{{TEXT}}" />
+  </g>
+
+  <!-- Title -->
+  <text x="60" y="120" font-family="Inter" font-size="44" fill="{{TEXT}}" font-weight="700">FULL TIME</text>
+  <text x="60" y="170" font-family="Inter" font-size="22" fill="{{TEXT_DIM}}">{{COMPETITION}} • {{DATE_STR}}</text>
+
+  <!-- Home badge -->
+  <image x="120" y="260" width="160" height="160" href="{{HOME_BADGE_DATAURI}}" />
+  <!-- Away badge -->
+  <image x="800" y="260" width="160" height="160" href="{{AWAY_BADGE_DATAURI}}" />
+
+  <!-- Names -->
+  <text x="60" y="500" font-family="Inter" font-size="40" fill="{{TEXT}}" font-weight="700">{{HOME_NAME}}</text>
+  <text x="60" y="560" font-family="Inter" font-size="40" fill="{{TEXT}}" font-weight="700">{{AWAY_NAME}}</text>
+
+  <!-- Score -->
+  <text x="540" y="520" text-anchor="middle" font-family="Urbanist" font-size="160" fill="{{PRIMARY}}" font-weight="900">{{HS}}–{{AS}}</text>
+
+  <!-- Footer -->
+  <text x="540" y="980" text-anchor="middle" font-family="Inter" font-size="24" fill="{{TEXT_DIM}}">{{SLOGAN}}</text>
+</svg>
+```
+
+`src/templates/examples/final-score-v1.json`  *(also upload to R2 `templates/final-score-v1.json`)*
+
+```json
+{
+  "id": "final-score-v1",
+  "sizes": ["1080x1080"],
+  "fonts": [
+    { "family": "Inter", "files": [{ "name": "Inter-Bold", "path": "Inter-Bold.ttf", "weight": 700 }] },
+    { "family": "Urbanist", "files": [{ "name": "Urbanist-Black", "path": "Urbanist-Black.ttf", "weight": 900 }] }
+  ],
+  "colorTokens": ["BG","PRIMARY","TEXT","TEXT_DIM"],
+  "imageTokens": ["HOME_BADGE","AWAY_BADGE"],
+  "textTokens": ["HOME_NAME","AWAY_NAME","HS","AS","SLOGAN","COMPETITION","DATE_STR"],
+  "defaults": {
+    "BG": "#0D0F12",
+    "PRIMARY": "#FFD400",
+    "TEXT": "#F5F7FA",
+    "TEXT_DIM": "#A8B0BD",
+    "SLOGAN": "Built Different"
+  }
+}
+```
+
+> Fonts: add `Inter-Bold.ttf` and `Urbanist-Black.ttf` to R2 `fonts/`.
+
+---
+
+# ▶️ 6) Example request (from app or Make)
+
+POST `https://api.yourdomain.com/render`
+
+```json
+{
+  "templateId": "final-score-v1",
+  "size": "1080x1080",
+  "theme": {
+    "BG": "#0D0F12",
+    "PRIMARY": "#FFD400",
+    "TEXT": "#F5F7FA",
+    "TEXT_DIM": "#A8B0BD"
+  },
+  "data": {
+    "HOME_NAME": "Syston Tigers",
+    "AWAY_NAME": "Melton Colts",
+    "HS": "2",
+    "AS": "1",
+    "COMPETITION": "U12 League",
+    "DATE_STR": "12 Oct 2025",
+    "SLOGAN": "All Syston. All Heart."
+  },
+  "assets": {
+    "HOME_BADGE": "https://cdn.yourdomain.com/badges/syston.png",
+    "AWAY_BADGE": "https://cdn.yourdomain.com/badges/melton.png"
+  }
+}
+```
+
+**Response**
+
+```json
+{ "id": "6f0e…", "url": "https://cdn.yourdomain.com/renders/final-score-v1/6f0e… .png", "bytes": 185432 }
+```
+
+---
+
+# 🧪 7) Quick test checklist
+
+* [ ] `wrangler deploy` succeeds with WASM binding.
+* [ ] `POST /render` returns `url` and PNG opens in browser.
+* [ ] Change theme colours → image updates.
+* [ ] Pass different badges → they render correctly.
+* [ ] Network throttled? Still fine (we embed fonts + images).
+* [ ] Output cached with `immutable` and served via your CDN domain.
+
+---
+
+# 💸 Cost + performance notes
+
+* Rendering is **wasm-only**; no headless Chrome, no servers.
+* Each render: a few ms to 100ms depending on size.
+* Storage: R2 free tier more than enough for images.
+* Egress: behind Cloudflare CDN → peanuts.
+
+---
+
+# 🧱 Bonus: Adding a 1080×1920 size
+
+Duplicate the SVG with its own layout (tall) as `final-score-v1-1080x1920.svg` **OR** keep one SVG and control layout with tokens. Easiest path: separate SVG per size, and list both in `sizes`.
+
+---

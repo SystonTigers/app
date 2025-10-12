@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1080" height="1350" viewBox="0 0 1080 1350" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect x="0" y="0" width="1080" height="1350" fill="{{BG}}"/>
+
+  <!-- Header -->
+  <rect x="0" y="0" width="1080" height="200" fill="{{PRIMARY}}" opacity="0.1"/>
+  <text x="60" y="100" font-family="Inter" font-size="56" fill="{{TEXT}}" font-weight="900">STARTING XI</text>
+  <text x="60" y="150" font-family="Inter" font-size="28" fill="{{TEXT_DIM}}">{{MATCH_TITLE}}</text>
+
+  <!-- Team Badge -->
+  <image x="890" y="40" width="120" height="120" href="{{TEAM_BADGE_DATAURI}}" />
+
+  <!-- Formation Display -->
+  <text x="540" y="270" text-anchor="middle" font-family="Urbanist" font-size="80" fill="{{PRIMARY}}" font-weight="900">{{FORMATION}}</text>
+
+  <!-- Player slots (11 players) -->
+  <g id="players">
+    <!-- GK -->
+    <rect x="60" y="340" width="960" height="80" fill="{{PLAYER_BG}}" rx="12"/>
+    <text x="90" y="390" font-family="Inter" font-size="32" fill="{{TEXT}}" font-weight="700">1</text>
+    <text x="180" y="390" font-family="Inter" font-size="32" fill="{{TEXT}}" font-weight="600">{{P1_NAME}}</text>
+
+    <!-- Defenders -->
+    <rect x="60" y="440" width="960" height="80" fill="{{PLAYER_BG}}" rx="12"/>
+    <text x="90" y="490" font-family="Inter" font-size="32" fill="{{TEXT}}" font-weight="700">2</text>
+    <text x="180" y="490" font-family="Inter" font-size="32" fill="{{TEXT}}" font-weight="600">{{P2_NAME}}</text>
+
+    <rect x="60" y="540" width="960" height="80" fill="{{PLAYER_BG}}" rx="12"/>
+    <text x="90" y="590" font-family="Inter" font-size="32" fill="{{TEXT}}" font-weight="700">3</text>
+    <text x="180" y="590" font-family="Inter" font-size="32" fill="{{TEXT}}" font-weight="600">{{P3_NAME}}</text>
+
+    <rect x="60" y="640" width="960" height="80" fill="{{PLAYER_BG}}" rx="12"/>
+    <text x="90" y="690" font-family="Inter" font-size="32" fill="{{TEXT}}" font-weight="700">4</text>
+    <text x="180" y="690" font-family="Inter" font-size="32" fill="{{TEXT}}" font-weight="600">{{P4_NAME}}</text>
+
+    <rect x="60" y="740" width="960" height="80" fill="{{PLAYER_BG}}" rx="12"/>
+    <text x="90" y="790" font-family="Inter" font-size="32" fill="{{TEXT}}" font-weight="700">5</text>
+    <text x="180" y="790" font-family="Inter" font-size="32" fill="{{TEXT}}" font-weight="600">{{P5_NAME}}</text>
+
+    <!-- Midfielders -->
+    <rect x="60" y="840" width="960" height="80" fill="{{PLAYER_BG}}" rx="12"/>
+    <text x="90" y="890" font-family="Inter" font-size="32" fill="{{TEXT}}" font-weight="700">6</text>
+    <text x="180" y="890" font-family="Inter" font-size="32" fill="{{TEXT}}" font-weight="600">{{P6_NAME}}</text>
+
+    <rect x="60" y="940" width="960" height="80" fill="{{PLAYER_BG}}" rx="12"/>
+    <text x="90" y="990" font-family="Inter" font-size="32" fill="{{TEXT}}" font-weight="700">7</text>
+    <text x="180" y="990" font-family="Inter" font-size="32" fill="{{TEXT}}" font-weight="600">{{P7_NAME}}</text>
+
+    <rect x="60" y="1040" width="960" height="80" fill="{{PLAYER_BG}}" rx="12"/>
+    <text x="90" y="1090" font-family="Inter" font-size="32" fill="{{TEXT}}" font-weight="700">8</text>
+    <text x="180" y="1090" font-family="Inter" font-size="32" fill="{{TEXT}}" font-weight="600">{{P8_NAME}}</text>
+
+    <!-- Forwards -->
+    <rect x="60" y="1140" width="960" height="80" fill="{{PLAYER_BG}}" rx="12"/>
+    <text x="90" y="1190" font-family="Inter" font-size="32" fill="{{TEXT}}" font-weight="700">9</text>
+    <text x="180" y="1190" font-family="Inter" font-size="32" fill="{{TEXT}}" font-weight="600">{{P9_NAME}}</text>
+
+    <rect x="60" y="1240" width="960" height="80" fill="{{PLAYER_BG}}" rx="12"/>
+    <text x="90" y="1290" font-family="Inter" font-size="32" fill="{{TEXT}}" font-weight="700">10</text>
+    <text x="180" y="1290" font-family="Inter" font-size="32" fill="{{TEXT}}" font-weight="600">{{P10_NAME}}</text>
+
+    <rect x="60" y="1340" width="960" height="80" fill="{{PLAYER_BG}}" rx="12"/>
+    <text x="90" y="1390" font-family="Inter" font-size="32" fill="{{TEXT}}" font-weight="700">11</text>
+    <text x="180" y="1390" font-family="Inter" font-size="32" fill="{{TEXT}}" font-weight="600">{{P11_NAME}}</text>
+  </g>
+
+  <!-- Footer -->
+  <text x="540" y="1500" text-anchor="middle" font-family="Inter" font-size="24" fill="{{TEXT_DIM}}">{{SLOGAN}}</text>
+</svg>

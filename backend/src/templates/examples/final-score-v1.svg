@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1080" height="1080" viewBox="0 0 1080 1080" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect x="0" y="0" width="1080" height="1080" fill="{{BG}}"/>
+
+  <!-- Subtle grid -->
+  <g opacity="0.05">
+    <path d="M0 120H1080 M0 240H1080 M0 360H1080 M0 480H1080 M0 600H1080 M0 720H1080 M0 840H1080 M0 960H1080" stroke="{{TEXT}}" />
+  </g>
+
+  <!-- Title -->
+  <text x="60" y="120" font-family="Inter" font-size="44" fill="{{TEXT}}" font-weight="700">FULL TIME</text>
+  <text x="60" y="170" font-family="Inter" font-size="22" fill="{{TEXT_DIM}}">{{COMPETITION}} • {{DATE_STR}}</text>
+
+  <!-- Home badge -->
+  <image x="120" y="260" width="160" height="160" href="{{HOME_BADGE_DATAURI}}" />
+  <!-- Away badge -->
+  <image x="800" y="260" width="160" height="160" href="{{AWAY_BADGE_DATAURI}}" />
+
+  <!-- Names -->
+  <text x="60" y="500" font-family="Inter" font-size="40" fill="{{TEXT}}" font-weight="700">{{HOME_NAME}}</text>
+  <text x="60" y="560" font-family="Inter" font-size="40" fill="{{TEXT}}" font-weight="700">{{AWAY_NAME}}</text>
+
+  <!-- Score -->
+  <text x="540" y="520" text-anchor="middle" font-family="Urbanist" font-size="160" fill="{{PRIMARY}}" font-weight="900">{{HS}}–{{AS}}</text>
+
+  <!-- Footer -->
+  <text x="540" y="980" text-anchor="middle" font-family="Inter" font-size="24" fill="{{TEXT_DIM}}">{{SLOGAN}}</text>
+</svg>

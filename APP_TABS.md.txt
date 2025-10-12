@@ -418,7 +418,7 @@ export interface ResultEvent {
 
 ### CI/CD Expectations
 
-* PRs must update docs + IA when routes/components change.
+* PRs must update docs + IA when routes/components change.t
 * Lint, typecheck, unit tests for utilities; integration test hooks for posting.
 * Deploy gates: staging preview (Pages/Workers), then promote to prod.
 

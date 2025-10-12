@@ -1,20 +1,27 @@
 {
+  "name": "syston-backend",
+  "private": true,
   "type": "module",
   "version": "0.0.0",
   "scripts": {
     "build": "esbuild src/index.ts --bundle --format=esm --outdir=dist --out-extension:.js=.mjs --define:APP_VERSION=\\\"${npm_package_version}\\\" && esbuild src/queue-consumer.ts --bundle --format=esm --outdir=dist --out-extension:.js=.mjs --define:APP_VERSION=\\\"${npm_package_version}\\\"",
-    "dev": "wrangler dev",
-    "deploy": "wrangler deploy"
+    "dev": "wrangler dev --local",
+    "deploy": "wrangler deploy",
+    "d1:prep": "wrangler d1 execute DB --file ./src/schema/d1.sql"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20240919.0",
+    "@cloudflare/workers-types": "^4.20241022.0",
     "esbuild": "^0.23.0",
-    "typescript": "^5.6.0",
-    "wrangler": "^3.80.0"
+    "typescript": "^5.6.2",
+    "wrangler": "^4.42.2"
   },
   "dependencies": {
+    "@resvg/resvg-wasm": "^2.6.0",
+    "itty-router": "^4.0.23",
     "jose": "^6.1.0",
+    "luxon": "^3.5.0",
     "node-fetch": "^3.3.2",
+    "uuid": "^9.0.1",
     "zod": "^3.25.76"
   }
 }

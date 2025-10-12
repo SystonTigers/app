@@ -1,0 +1,24 @@
+{
+  "id": "lineup-v1",
+  "sizes": ["1080x1350"],
+  "fonts": [
+    { "family": "Inter", "files": [{ "name": "Inter-Bold", "path": "Inter-Bold.ttf", "weight": 700 }] },
+    { "family": "Urbanist", "files": [{ "name": "Urbanist-Black", "path": "Urbanist-Black.ttf", "weight": 900 }] }
+  ],
+  "colorTokens": ["BG","PRIMARY","TEXT","TEXT_DIM","PLAYER_BG"],
+  "imageTokens": ["TEAM_BADGE"],
+  "textTokens": [
+    "MATCH_TITLE","FORMATION","SLOGAN",
+    "P1_NAME","P2_NAME","P3_NAME","P4_NAME","P5_NAME","P6_NAME",
+    "P7_NAME","P8_NAME","P9_NAME","P10_NAME","P11_NAME"
+  ],
+  "defaults": {
+    "BG": "#0D0F12",
+    "PRIMARY": "#FFD400",
+    "TEXT": "#F5F7FA",
+    "TEXT_DIM": "#A8B0BD",
+    "PLAYER_BG": "rgba(255,255,255,0.05)",
+    "SLOGAN": "Built Different",
+    "FORMATION": "4-3-3"
+  }
+}

@@ -114,6 +114,7 @@ export { TenantRateLimiter } from "./do/rateLimiter";
 export { VotingRoom } from "./do/votingRoom";
 export { MatchRoom } from "./do/matchRoom";
 export { ChatRoom } from "./do/chatRoom";
+export { GeoFenceManager } from "./do/geoFenceManager";
 
 export default {
   async fetch(req: Request, env: any, _ctx: ExecutionContext): Promise<Response> {
@@ -1509,6 +1510,298 @@ export default {
       const stub = env.MatchRoom.get(id);
       const r = await stub.fetch("https://do/tally");
       return json(await r.json(), r.status, corsHdrs);
+    }
+
+    // -------- Push Notifications & Geo-Fencing --------
+
+    // POST /api/v1/push/register - Register push notification token
+    if (url.pathname === `/api/${v}/push/register` && req.method === "POST") {
+      const body = await req.json().catch(() => ({}));
+      const tenant = body.tenant || "default";
+      const token = body.token;
+      const platform = body.platform; // 'ios' or 'android'
+
+      if (!token) {
+        return json({ success: false, error: { code: "MISSING_TOKEN", message: "Push token required" } }, 400, corsHdrs);
+      }
+
+      // Store push token in KV
+      const tokensKey = `tenants:${tenant}:push:tokens`;
+      const tokens = ((await env.KV_IDEMP.get(tokensKey, "json")) as string[]) || [];
+
+      // Add token if not already present
+      if (!tokens.includes(token)) {
+        tokens.push(token);
+        await env.KV_IDEMP.put(tokensKey, JSON.stringify(tokens));
+      }
+
+      // Store token metadata
+      const tokenMetaKey = `tenants:${tenant}:push:token:${token}`;
+      await env.KV_IDEMP.put(tokenMetaKey, JSON.stringify({
+        token,
+        platform,
+        registered: Date.now()
+      }));
+
+      return json({ success: true, data: { registered: true } }, 200, corsHdrs);
+    }
+
+    // POST /api/v1/push/location - Update user location for geo-fencing
+    if (url.pathname === `/api/${v}/push/location` && req.method === "POST") {
+      const body = await req.json().catch(() => ({}));
+      const tenant = body.tenant || "default";
+      const token = body.token;
+      const latitude = body.latitude;
+      const longitude = body.longitude;
+      const timestamp = body.timestamp || Date.now();
+
+      if (!token || latitude === undefined || longitude === undefined) {
+        return json({ success: false, error: { code: "MISSING_DATA", message: "Token and location required" } }, 400, corsHdrs);
+      }
+
+      // Store location in KV (expires after 30 minutes)
+      const locationKey = `tenants:${tenant}:push:location:${token}`;
+      await env.KV_IDEMP.put(locationKey, JSON.stringify({
+        latitude,
+        longitude,
+        timestamp
+      }), {
+        expirationTtl: 1800 // 30 minutes
+      });
+
+      return json({ success: true, data: { updated: true } }, 200, corsHdrs);
+    }
+
+    // POST /api/v1/geo/:matchId/init - Initialize geo-fence for match
+    if (url.pathname.match(new RegExp(`^/api/${v}/geo/[^/]+/init$`)) && req.method === "POST") {
+      const matchId = url.pathname.split("/")[4];
+      const body = await req.json().catch(() => ({}));
+      const tenant = body.tenant || "default";
+      const venueLatitude = body.venueLatitude;
+      const venueLongitude = body.venueLongitude;
+
+      const id = env.GeoFenceManager.idFromName(`${tenant}::${matchId}`);
+      const stub = env.GeoFenceManager.get(id);
+      const geoBody = { tenant, matchId, venueLatitude, venueLongitude };
+      const r = await stub.fetch("https://do/init", { method: "POST", body: JSON.stringify(geoBody) });
+      return json(await r.json(), r.status, corsHdrs);
+    }
+
+    // POST /api/v1/geo/:matchId/venue - Set venue location
+    if (url.pathname.match(new RegExp(`^/api/${v}/geo/[^/]+/venue$`)) && req.method === "POST") {
+      const matchId = url.pathname.split("/")[4];
+      const body = await req.json().catch(() => ({}));
+      const tenant = body.tenant || "default";
+      const latitude = body.latitude;
+      const longitude = body.longitude;
+
+      if (latitude === undefined || longitude === undefined) {
+        return json({ success: false, error: { code: "MISSING_LOCATION", message: "Latitude and longitude required" } }, 400, corsHdrs);
+      }
+
+      const id = env.GeoFenceManager.idFromName(`${tenant}::${matchId}`);
+      const stub = env.GeoFenceManager.get(id);
+      const geoBody = { latitude, longitude };
+      const r = await stub.fetch("https://do/venue", { method: "POST", body: JSON.stringify(geoBody) });
+      return json(await r.json(), r.status, corsHdrs);
+    }
+
+    // GET /api/v1/geo/:matchId/tokens - Get notification tokens (excluding users at venue)
+    if (url.pathname.match(new RegExp(`^/api/${v}/geo/[^/]+/tokens$`)) && req.method === "GET") {
+      const matchId = url.pathname.split("/")[4];
+      const tenant = url.searchParams.get("tenant") || "default";
+
+      const id = env.GeoFenceManager.idFromName(`${tenant}::${matchId}`);
+      const stub = env.GeoFenceManager.get(id);
+      const r = await stub.fetch("https://do/tokens");
+      return json(await r.json(), r.status, corsHdrs);
+    }
+
+    // GET /api/v1/geo/:matchId/state - Get geo-fence state (debug)
+    if (url.pathname.match(new RegExp(`^/api/${v}/geo/[^/]+/state$`)) && req.method === "GET") {
+      const matchId = url.pathname.split("/")[4];
+      const tenant = url.searchParams.get("tenant") || "default";
+
+      const id = env.GeoFenceManager.idFromName(`${tenant}::${matchId}`);
+      const stub = env.GeoFenceManager.get(id);
+      const r = await stub.fetch("https://do/state");
+      return json(await r.json(), r.status, corsHdrs);
+    }
+
+    // -------- Video Routes --------
+
+    // POST /api/v1/videos/upload - Upload video from mobile app
+    if (url.pathname === `/api/${v}/videos/upload` && req.method === "POST") {
+      const formData = await req.formData();
+      const tenant = formData.get("tenant") || "default";
+      const userId = formData.get("user_id") || "anonymous";
+      const videoFile = formData.get("video");
+
+      if (!videoFile || !(videoFile instanceof File)) {
+        return json({ success: false, error: { code: "MISSING_VIDEO", message: "Video file required" } }, 400, corsHdrs);
+      }
+
+      // Generate video ID
+      const videoId = `vid-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+
+      // Store in R2
+      const r2Key = `videos/${tenant}/uploads/${videoId}.mp4`;
+      const arrayBuffer = await videoFile.arrayBuffer();
+      await env.R2_MEDIA.put(r2Key, arrayBuffer, {
+        httpMetadata: {
+          contentType: "video/mp4",
+        },
+        customMetadata: {
+          tenant,
+          userId,
+          uploadedAt: new Date().toISOString(),
+        },
+      });
+
+      // Store metadata in KV
+      const videoMetadata = {
+        id: videoId,
+        tenant,
+        userId,
+        filename: videoFile.name,
+        size: videoFile.size,
+        r2Key,
+        uploadTimestamp: Date.now(),
+        status: "uploaded",
+        processingProgress: 0,
+      };
+
+      await env.KV_IDEMP.put(`video:${tenant}:${videoId}`, JSON.stringify(videoMetadata));
+
+      // Add to tenant's video list
+      const videoListKey = `video_list:${tenant}`;
+      const videoList = ((await env.KV_IDEMP.get(videoListKey, "json")) as string[]) || [];
+      videoList.unshift(videoId);
+      await env.KV_IDEMP.put(videoListKey, JSON.stringify(videoList.slice(0, 100))); // Keep last 100
+
+      return json({ success: true, data: { videoId, status: "uploaded" } }, 200, corsHdrs);
+    }
+
+    // GET /api/v1/videos - List videos for tenant
+    if (url.pathname === `/api/${v}/videos` && req.method === "GET") {
+      const tenant = url.searchParams.get("tenant") || "default";
+      const limit = parseInt(url.searchParams.get("limit") || "20");
+      const offset = parseInt(url.searchParams.get("offset") || "0");
+
+      const videoListKey = `video_list:${tenant}`;
+      const videoList = ((await env.KV_IDEMP.get(videoListKey, "json")) as string[]) || [];
+
+      const videoIds = videoList.slice(offset, offset + limit);
+      const videos = [];
+
+      for (const videoId of videoIds) {
+        const metadata = await env.KV_IDEMP.get(`video:${tenant}:${videoId}`, "json");
+        if (metadata) {
+          videos.push(metadata);
+        }
+      }
+
+      return json({ success: true, data: { videos, total: videoList.length } }, 200, corsHdrs);
+    }
+
+    // GET /api/v1/videos/:id - Get video details
+    if (url.pathname.match(new RegExp(`^/api/${v}/videos/[^/]+$`)) && req.method === "GET") {
+      const videoId = url.pathname.split("/")[4];
+      const tenant = url.searchParams.get("tenant") || "default";
+
+      const metadata = await env.KV_IDEMP.get(`video:${tenant}:${videoId}`, "json");
+
+      if (!metadata) {
+        return json({ success: false, error: { code: "VIDEO_NOT_FOUND", message: "Video not found" } }, 404, corsHdrs);
+      }
+
+      return json({ success: true, data: metadata }, 200, corsHdrs);
+    }
+
+    // GET /api/v1/videos/:id/status - Get processing status
+    if (url.pathname.match(new RegExp(`^/api/${v}/videos/[^/]+/status$`)) && req.method === "GET") {
+      const videoId = url.pathname.split("/")[4];
+      const tenant = url.searchParams.get("tenant") || "default";
+
+      const metadata = await env.KV_IDEMP.get(`video:${tenant}:${videoId}`, "json") as any;
+
+      if (!metadata) {
+        return json({ success: false, error: { code: "VIDEO_NOT_FOUND", message: "Video not found" } }, 404, corsHdrs);
+      }
+
+      return json({
+        success: true,
+        data: {
+          videoId,
+          status: metadata.status || "uploaded",
+          progress: metadata.processingProgress || 0,
+          clips: metadata.clips || [],
+        },
+      }, 200, corsHdrs);
+    }
+
+    // POST /api/v1/videos/:id/process - Trigger AI processing
+    if (url.pathname.match(new RegExp(`^/api/${v}/videos/[^/]+/process$`)) && req.method === "POST") {
+      const videoId = url.pathname.split("/")[4];
+      const body = await req.json().catch(() => ({}));
+      const tenant = body.tenant || "default";
+
+      const metadata = await env.KV_IDEMP.get(`video:${tenant}:${videoId}`, "json") as any;
+
+      if (!metadata) {
+        return json({ success: false, error: { code: "VIDEO_NOT_FOUND", message: "Video not found" } }, 404, corsHdrs);
+      }
+
+      // Update status to processing
+      metadata.status = "processing";
+      metadata.processingProgress = 0;
+      await env.KV_IDEMP.put(`video:${tenant}:${videoId}`, JSON.stringify(metadata));
+
+      // TODO: Trigger video processing worker (Queue or Durable Object)
+      // For now, just update status
+
+      return json({ success: true, data: { videoId, status: "processing" } }, 200, corsHdrs);
+    }
+
+    // DELETE /api/v1/videos/:id - Delete video
+    if (url.pathname.match(new RegExp(`^/api/${v}/videos/[^/]+$`)) && req.method === "DELETE") {
+      const videoId = url.pathname.split("/")[4];
+      const body = await req.json().catch(() => ({}));
+      const tenant = body.tenant || "default";
+
+      const metadata = await env.KV_IDEMP.get(`video:${tenant}:${videoId}`, "json") as any;
+
+      if (!metadata) {
+        return json({ success: false, error: { code: "VIDEO_NOT_FOUND", message: "Video not found" } }, 404, corsHdrs);
+      }
+
+      // Delete from R2
+      await env.R2_MEDIA.delete(metadata.r2Key);
+
+      // Delete metadata
+      await env.KV_IDEMP.delete(`video:${tenant}:${videoId}`);
+
+      // Remove from video list
+      const videoListKey = `video_list:${tenant}`;
+      const videoList = ((await env.KV_IDEMP.get(videoListKey, "json")) as string[]) || [];
+      const updatedList = videoList.filter((id) => id !== videoId);
+      await env.KV_IDEMP.put(videoListKey, JSON.stringify(updatedList));
+
+      return json({ success: true, data: { deleted: true } }, 200, corsHdrs);
+    }
+
+    // GET /api/v1/videos/:id/clips - List generated clips
+    if (url.pathname.match(new RegExp(`^/api/${v}/videos/[^/]+/clips$`)) && req.method === "GET") {
+      const videoId = url.pathname.split("/")[4];
+      const tenant = url.searchParams.get("tenant") || "default";
+
+      const metadata = await env.KV_IDEMP.get(`video:${tenant}:${videoId}`, "json") as any;
+
+      if (!metadata) {
+        return json({ success: false, error: { code: "VIDEO_NOT_FOUND", message: "Video not found" } }, 404, corsHdrs);
+      }
+
+      return json({ success: true, data: { clips: metadata.clips || [] } }, 200, corsHdrs);
     }
 
     // -------- Chat Routes --------

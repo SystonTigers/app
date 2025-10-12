@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1080" height="1080" viewBox="0 0 1080 1080" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect x="0" y="0" width="1080" height="1080" fill="{{BG}}"/>
+
+  <!-- Radial Glow -->
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="40%">
+      <stop offset="0%" style="stop-color:{{PRIMARY}};stop-opacity:0.3" />
+      <stop offset="100%" style="stop-color:{{PRIMARY}};stop-opacity:0" />
+    </radialGradient>
+  </defs>
+  <circle cx="540" cy="400" r="400" fill="url(#glow)"/>
+
+  <!-- Star Badge -->
+  <g transform="translate(540, 150)">
+    <path d="M0,-60 L15,-20 L60,-20 L25,5 L40,45 L0,20 L-40,45 L-25,5 L-60,-20 L-15,-20 Z"
+          fill="{{PRIMARY}}" opacity="0.9"/>
+    <text x="0" y="10" text-anchor="middle" font-family="Inter" font-size="32" fill="{{BG}}" font-weight="900">★</text>
+  </g>
+
+  <!-- Title -->
+  <text x="540" y="280" text-anchor="middle" font-family="Urbanist" font-size="48" fill="{{PRIMARY}}" font-weight="900">MAN OF THE MATCH</text>
+
+  <!-- Player Photo -->
+  <image x="390" y="320" width="300" height="300" href="{{PLAYER_PHOTO_DATAURI}}" clip-path="circle(150px at 150px 150px)"/>
+
+  <!-- Player Name -->
+  <text x="540" y="700" text-anchor="middle" font-family="Inter" font-size="56" fill="{{TEXT}}" font-weight="900">{{PLAYER_NAME}}</text>
+
+  <!-- Player Number Badge -->
+  <rect x="460" y="720" width="160" height="60" fill="{{PRIMARY}}" rx="8"/>
+  <text x="540" y="765" text-anchor="middle" font-family="Urbanist" font-size="40" fill="{{BG}}" font-weight="900">#{{PLAYER_NUMBER}}</text>
+
+  <!-- Stats -->
+  <g id="stats">
+    <text x="240" y="850" text-anchor="middle" font-family="Inter" font-size="48" fill="{{PRIMARY}}" font-weight="900">{{GOALS}}</text>
+    <text x="240" y="895" text-anchor="middle" font-family="Inter" font-size="20" fill="{{TEXT_DIM}}">GOALS</text>
+
+    <text x="540" y="850" text-anchor="middle" font-family="Inter" font-size="48" fill="{{PRIMARY}}" font-weight="900">{{ASSISTS}}</text>
+    <text x="540" y="895" text-anchor="middle" font-family="Inter" font-size="20" fill="{{TEXT_DIM}}">ASSISTS</text>
+
+    <text x="840" y="850" text-anchor="middle" font-family="Inter" font-size="48" fill="{{PRIMARY}}" font-weight="900">{{RATING}}</text>
+    <text x="840" y="895" text-anchor="middle" font-family="Inter" font-size="20" fill="{{TEXT_DIM}}">RATING</text>
+  </g>
+
+  <!-- Match Info -->
+  <text x="540" y="970" text-anchor="middle" font-family="Inter" font-size="24" fill="{{TEXT_DIM}}">{{MATCH_RESULT}} • {{DATE_STR}}</text>
+
+  <!-- Footer -->
+  <text x="540" y="1040" text-anchor="middle" font-family="Inter" font-size="24" fill="{{TEXT_DIM}}">{{SLOGAN}}</text>
+</svg>

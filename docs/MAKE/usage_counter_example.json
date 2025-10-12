@@ -1,0 +1,1 @@
+﻿{ "name": "Usage Counter", "triggers": ["webhook"], "actions": ["kv_increment","kv_get"] }

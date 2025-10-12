@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1080" height="1080" viewBox="0 0 1080 1080" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect x="0" y="0" width="1080" height="1080" fill="{{BG}}"/>
+
+  <!-- Confetti Effect -->
+  <g opacity="0.6">
+    <circle cx="200" cy="150" r="12" fill="{{PRIMARY}}"/>
+    <circle cx="880" cy="200" r="10" fill="{{ACCENT}}"/>
+    <circle cx="150" cy="400" r="8" fill="{{PRIMARY}}"/>
+    <circle cx="920" cy="500" r="14" fill="{{ACCENT}}"/>
+    <circle cx="100" cy="700" r="10" fill="{{PRIMARY}}"/>
+    <circle cx="950" cy="800" r="12" fill="{{ACCENT}}"/>
+    <rect x="300" y="100" width="16" height="16" fill="{{PRIMARY}}" transform="rotate(45 308 108)"/>
+    <rect x="700" y="250" width="14" height="14" fill="{{ACCENT}}" transform="rotate(30 707 257)"/>
+    <rect x="250" y="600" width="18" height="18" fill="{{PRIMARY}}" transform="rotate(60 259 609)"/>
+    <rect x="800" y="900" width="16" height="16" fill="{{ACCENT}}" transform="rotate(15 808 908)"/>
+  </g>
+
+  <!-- Birthday Banner -->
+  <rect x="180" y="180" width="720" height="140" fill="{{PRIMARY}}" rx="20"/>
+  <text x="540" y="270" text-anchor="middle" font-family="Urbanist" font-size="64" fill="{{BG}}" font-weight="900">HAPPY BIRTHDAY!</text>
+
+  <!-- Player Photo Circle -->
+  <circle cx="540" cy="540" r="180" fill="{{PRIMARY}}" opacity="0.2"/>
+  <image x="380" y="380" width="320" height="320" href="{{PLAYER_PHOTO_DATAURI}}" clip-path="circle(160px at 160px 160px)"/>
+
+  <!-- Player Name -->
+  <text x="540" y="800" text-anchor="middle" font-family="Inter" font-size="56" fill="{{TEXT}}" font-weight="900">{{PLAYER_NAME}}</text>
+
+  <!-- Age Badge -->
+  <circle cx="540" cy="880" r="60" fill="{{PRIMARY}}"/>
+  <text x="540" y="900" text-anchor="middle" font-family="Urbanist" font-size="48" fill="{{BG}}" font-weight="900">{{AGE}}</text>
+
+  <!-- Message -->
+  <text x="540" y="990" text-anchor="middle" font-family="Inter" font-size="28" fill="{{TEXT_DIM}}">Wishing you an amazing year ahead!</text>
+
+  <!-- Footer -->
+  <text x="540" y="1050" text-anchor="middle" font-family="Inter" font-size="24" fill="{{TEXT_DIM}}">{{TEAM_NAME}}</text>
+</svg>

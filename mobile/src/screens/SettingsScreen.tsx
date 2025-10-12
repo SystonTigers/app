@@ -3,6 +3,7 @@ import { View, ScrollView, StyleSheet, Alert } from 'react-native';
 import { Card, Title, Paragraph, Switch, List, Chip, TextInput, Button, Divider, SegmentedButtons } from 'react-native-paper';
 import * as Location from 'expo-location';
 import { COLORS } from '../config';
+// import { useAuth } from '../context/AuthContext'; // Temporarily disabled
 
 interface NotificationPreferences {
   masterToggle: boolean;
@@ -66,6 +67,10 @@ const RADIUS_OPTIONS = [
 ];
 
 export default function SettingsScreen() {
+  // const { user, logout } = useAuth(); // Temporarily disabled - using mock data
+  const user = { role: 'player' }; // Mock user
+  const logout = async () => { Alert.alert('Logout', 'Logout functionality coming soon!'); };
+
   const [profile, setProfile] = useState<UserProfile>({
     name: 'John Smith',
     email: 'john.smith@example.com',
@@ -186,6 +191,26 @@ export default function SettingsScreen() {
   const handleSave = () => {
     // TODO: Save to backend
     Alert.alert('Settings Saved', 'Your preferences have been updated successfully.', [{ text: 'OK' }]);
+  };
+
+  const handleLogout = () => {
+    Alert.alert(
+      'Logout',
+      'Are you sure you want to logout?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Logout',
+          style: 'destructive',
+          onPress: () => {
+            logout();
+          },
+        },
+      ]
+    );
   };
 
   const toggleSection = (section: string) => {
@@ -595,6 +620,28 @@ export default function SettingsScreen() {
         </Button>
       </View>
 
+      {/* Account Section */}
+      <Card style={styles.card}>
+        <Card.Content>
+          <Title style={styles.cardTitle}>🔐 Account</Title>
+          <Paragraph style={styles.cardDescription}>
+            {user ? `Logged in as: ${user.role}` : 'Manage your account settings'}
+          </Paragraph>
+          <Divider style={styles.divider} />
+
+          <Button
+            mode="outlined"
+            onPress={handleLogout}
+            style={styles.logoutButton}
+            buttonColor="transparent"
+            textColor={COLORS.error}
+            icon="logout"
+          >
+            Logout
+          </Button>
+        </Card.Content>
+      </Card>
+
       <View style={styles.footer}>
         <Paragraph style={styles.footerText}>
           Your notification preferences are stored securely and can be changed at any time.
@@ -708,6 +755,10 @@ const styles = StyleSheet.create({
   },
   saveButton: {
     paddingVertical: 8,
+  },
+  logoutButton: {
+    marginTop: 8,
+    borderColor: COLORS.error,
   },
   footer: {
     padding: 20,

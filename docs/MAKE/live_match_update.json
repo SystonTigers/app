@@ -1,0 +1,1 @@
+﻿{ "name": "Live Match Update", "triggers": ["webhook"], "actions": ["append_to_sheet","post_push"] }

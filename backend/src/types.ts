@@ -91,6 +91,7 @@ export interface Env {
   VotingRoom: DurableObjectNamespace;
   ChatRoom: DurableObjectNamespace;
   MatchRoom: DurableObjectNamespace;
+  GeoFenceManager: DurableObjectNamespace;
   JWT_SECRET: string;
   ADMIN_JWT: string;
   YT_CLIENT_ID?: string;

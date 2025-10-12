@@ -1,0 +1,243 @@
+nice — let’s button this up. here are the **exact files** you asked for so the whole thing actually runs without hunting for missing deps or secrets.
+
+i’m giving you:
+
+* mobile **package.json** (deps pinned), **app.json**, **babel.config.js**, **eas.json**
+* mobile **.env.example** (Expo style, safe to commit as example)
+* backend **secrets checklist** (wrangler)
+* tiny **README quick-start** so Future You doesn’t swear at Present You
+
+drop these in exactly as shown.
+
+---
+
+# 📦 `app/mobile/package.json`
+
+```json
+{
+  "name": "fielddrop-mobile",
+  "private": true,
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "web": "expo start --web",
+    "lint": "eslint . --ext .ts,.tsx"
+  },
+  "dependencies": {
+    "expo": "~51.0.22",
+    "expo-status-bar": "~1.12.1",
+    "expo-image-picker": "~15.0.6",
+    "expo-localization": "~16.0.1",
+    "@react-navigation/native": "^6.1.17",
+    "@react-navigation/native-stack": "^6.9.26",
+    "react": "18.2.0",
+    "react-native": "0.74.5",
+    "react-native-safe-area-context": "4.10.5",
+    "react-native-screens": "~3.31.1",
+    "@supabase/supabase-js": "^2.45.3"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.25.2",
+    "babel-plugin-module-resolver": "^5.0.0",
+    "typescript": "^5.6.2",
+    "@types/react": "^18.3.5",
+    "@types/react-native": "^0.73.0"
+  }
+}
+```
+
+> these match the code you’ve got (navigation, image picker, supabase, localization).
+
+---
+
+# ⚙️ `app/mobile/app.json`
+
+```json
+{
+  "expo": {
+    "name": "Field Drop",
+    "slug": "fielddrop",
+    "scheme": "fielddrop",
+    "owner": "systontowntigersfc",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "cover",
+      "backgroundColor": "#0D0F12"
+    },
+    "updates": { "enabled": false },
+    "ios": { "supportsTablet": false },
+    "android": {
+      "adaptiveIcon": { "foregroundImage": "./assets/adaptive-icon.png", "backgroundColor": "#0D0F12" },
+      "package": "uk.co.fielddrop.app",
+      "permissions": []
+    },
+    "web": { "bundler": "metro" },
+    "plugins": [
+      [
+        "expo-image-picker",
+        { "photosPermission": "We need access to your photos to upload badges and player images." }
+      ]
+    ],
+    "extra": {
+      "eas": { "projectId": "REPLACE_WITH_EAS_PROJECT_ID" }
+    }
+  }
+}
+```
+
+> `updates.enabled=false` so OTA can’t overwrite your shiny new UI.
+
+---
+
+# 🧠 `app/mobile/babel.config.js`
+
+```js
+module.exports = function (api) {
+  api.cache(true);
+  return {
+    presets: ['babel-preset-expo'],
+    plugins: [
+      ['module-resolver', { alias: { '@': './src' } }]
+    ],
+  };
+};
+```
+
+---
+
+# 🛠️ `app/mobile/eas.json`
+
+```json
+{
+  "cli": { "version": ">= 14.0.0" },
+  "build": {
+    "preview": {
+      "developmentClient": false,
+      "android": { "gradleCommand": ":app:assembleRelease" },
+      "env": {
+        "EXPO_PUBLIC_API_BASE": "https://api.yourdomain.com",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://REPLACE.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "REPLACE"
+      }
+    },
+    "production": {
+      "env": {
+        "EXPO_PUBLIC_API_BASE": "https://api.yourdomain.com",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://REPLACE.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "REPLACE"
+      }
+    }
+  },
+  "submit": { "production": {} }
+}
+```
+
+---
+
+# 🔐 `app/mobile/.env.example`  (commit this as example; don’t commit the real one)
+
+```
+# Expo reads ONLY variables prefixed with EXPO_PUBLIC_ at runtime
+EXPO_PUBLIC_API_BASE=https://api.yourdomain.com
+EXPO_PUBLIC_SUPABASE_URL=https://YOUR_SUPABASE.supabase.co
+EXPO_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.REPLACE
+```
+
+> in your code, you can access `process.env.EXPO_PUBLIC_*` directly.
+
+---
+
+# 🧾 quick code tweaks to use envs
+
+* `mobile/src/api.ts`
+
+```ts
+export const API = process.env.EXPO_PUBLIC_API_BASE!;
+export const tenantHeader = (tenant: string) => ({ 'X-Tenant': tenant });
+```
+
+* `mobile/src/auth/supabase.ts`
+
+```ts
+import { createClient } from '@supabase/supabase-js';
+export const supabase = createClient(
+  process.env.EXPO_PUBLIC_SUPABASE_URL!,
+  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!
+);
+```
+
+---
+
+# 🌩 backend secrets (Cloudflare)
+
+set these once (no need for a `.env` file in backend):
+
+```bash
+cd app/backend
+wrangler secret put SUPABASE_URL
+wrangler secret put SUPABASE_ANON_KEY
+wrangler secret put GITHUB_TOKEN        # only if you use GitHub writes
+wrangler secret put EXPO_ACCESS_TOKEN  # optional, if you hit Expo APIs
+```
+
+and ensure `wrangler.toml` already has your KV/R2/D1 bindings (from the earlier skeleton).
+
+---
+
+# 🧹 `.gitignore` additions (top-level)
+
+```
+# Expo / build
+app/mobile/.expo/
+app/mobile/.expo-shared/
+app/mobile/node_modules/
+app/mobile/android/
+app/mobile/ios/
+
+# env
+app/mobile/.env
+```
+
+---
+
+# 🚀 minimal mobile README (drop at `app/mobile/README.md`)
+
+```md
+# Field Drop Mobile
+
+## Run
+1. Copy `.env.example` → `.env` and set values.
+2. `npm i`
+3. `npm run start` (or `expo start`)
+
+## Build (EAS)
+- `eas build --platform android --profile preview`
+- Make sure the repo version is the one you’re building (no stray standalone folders).
+
+## Env
+- `EXPO_PUBLIC_API_BASE` — your Cloudflare Worker API base
+- `EXPO_PUBLIC_SUPABASE_URL` / `EXPO_PUBLIC_SUPABASE_ANON_KEY` — Supabase Auth
+
+## Notes
+- OTA updates are **disabled**. Rebuild when you change UI/logic.
+- Imports use alias `@` → `./src`.
+```
+
+---
+
+# ✅ sanity checklist (do these once)
+
+* [ ] Put **these files** in your repo in the exact paths.
+* [ ] Run backend deploy (you’ve got the code already): `npm i && npm run d1:prep && wrangler deploy`.
+* [ ] In `app/mobile`, `npm i` then `expo start` to check screens render.
+* [ ] Fill `eas.json` envs and `app.json.extra.eas.projectId`, then build.
+* [ ] Uninstall old app from device, install new APK.
+* [ ] Onboard a team → upload badge → watch theme flip (chef’s kiss).
+

@@ -1,11 +1,15 @@
 name = "syston-backend"
 main = "dist/index.mjs"
 compatibility_date = "2025-09-01"
+node_compat = true
 minify = true
 workers_dev = true
 
 [observability]
 enabled = true
+
+[wasm_modules]
+RESVG_WASM = "node_modules/@resvg/resvg-wasm/index_bg.wasm"
 
 [vars]
 API_VERSION = "v1"
@@ -85,6 +89,10 @@ class_name = "ChatRoom"
 name = "MatchRoom"
 class_name = "MatchRoom"
 
+[[durable_objects.bindings]]
+name = "GeoFenceManager"
+class_name = "GeoFenceManager"
+
 # --- DO migrations
 [[migrations]]
 tag = "v1"
@@ -97,6 +105,10 @@ new_classes = [ "VotingRoom" ]
 [[migrations]]
 tag = "v3"
 new_classes = [ "ChatRoom", "MatchRoom" ]
+
+[[migrations]]
+tag = "v4"
+new_classes = [ "GeoFenceManager" ]
 
 # --- Cron triggers (event reminders)
 [triggers]
