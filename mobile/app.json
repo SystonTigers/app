@@ -13,8 +13,12 @@
       "resizeMode": "cover",
       "backgroundColor": "#0D0F12"
     },
-    "updates": { "enabled": false },
-    "ios": { "supportsTablet": false },
+    "updates": {
+      "enabled": false
+    },
+    "ios": {
+      "supportsTablet": false
+    },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
@@ -23,15 +27,23 @@
       "package": "uk.co.fielddrop.app",
       "permissions": []
     },
-    "web": { "bundler": "metro" },
+    "web": {
+      "bundler": "metro"
+    },
     "plugins": [
       [
         "expo-image-picker",
-        { "photosPermission": "We need access to your photos to upload badges and player images." }
-      ]
+        {
+          "photosPermission": "We need access to your photos to upload badges and player images."
+        }
+      ],
+      "expo-localization",
+      "expo-secure-store"
     ],
     "extra": {
-      "eas": { "projectId": "05f04ea9-60c7-4821-8aff-348cccfc1786" }
+      "eas": {
+        "projectId": "05f04ea9-60c7-4821-8aff-348cccfc1786"
+      }
     }
   }
 }

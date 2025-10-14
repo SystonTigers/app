@@ -1,11 +1,11 @@
-import React from 'react';
+﻿import React from 'react';
 import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { createDrawerNavigator, DrawerContentScrollView, DrawerItem } from '@react-navigation/drawer';
 import { StatusBar } from 'expo-status-bar';
 import { View, Text, Platform } from 'react-native';
 import { PaperProvider } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { colors } from './src/theme';
+import { colors } from '@/theme';
 
 // Screens
 import HomeScreen from './src/screens/HomeScreen';
