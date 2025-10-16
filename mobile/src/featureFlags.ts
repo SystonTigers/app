@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL, TENANT_ID, IS_DEV } from './config';
 
@@ -339,16 +339,16 @@ export function FeatureGate({
   fallback = null,
 }: {
   flag: keyof FeatureFlags;
-  children: React.ReactNode;
-  fallback?: React.ReactNode;
-}) {
+  children: ReactNode;
+  fallback?: ReactNode;
+}): ReactNode {
   const { isEnabled } = useFeatureFlags();
 
   if (isEnabled(flag)) {
-    return <>{children}</>;
+    return children ?? null;
   }
 
-  return <>{fallback}</>;
+  return fallback ?? null;
 }
 
 /**
