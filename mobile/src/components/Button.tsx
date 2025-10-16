@@ -1,6 +1,6 @@
 import React, { ReactNode } from 'react';
 import { Text, StyleSheet, Pressable, ViewStyle, ActivityIndicator } from 'react-native';
-import { useTheme } from '../theme';
+import { useTheme } from '../theme/';
 
 interface ButtonProps {
   children: ReactNode;

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, StyleSheet, Alert, TextInput as RNTextInput, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Picker } from '@react-native-picker/picker';
-import { useTheme } from '../theme';
+import { useTheme } from '../theme/';
 import { Card, SectionHeader, Button, Badge, Divider, EmptyState, LoadingSpinner } from '../components';
 import { API_BASE_URL, TENANT_ID, API_ENDPOINTS } from '../config';
 import axios from 'axios';

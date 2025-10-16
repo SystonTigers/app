@@ -1,7 +1,7 @@
 // components/ui/Pills.tsx
 import React from 'react';
 import { Pressable, Text, View, StyleSheet } from 'react-native';
-import { colors, radii, spacing, fonts } from '../../theme';
+import { colors, radii, spacing, fonts } from '../../theme/';
 
 interface PillsProps {
   items: string[];

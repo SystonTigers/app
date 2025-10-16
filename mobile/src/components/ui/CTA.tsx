@@ -1,7 +1,7 @@
 // components/ui/CTA.tsx
 import React from 'react';
 import { Pressable, Text, StyleSheet } from 'react-native';
-import { colors, radii, shadow, spacing, fonts } from '../../theme';
+import { colors, radii, shadow, spacing, fonts } from '../../theme/';
 
 interface CTAProps {
   label: string;

@@ -1,7 +1,7 @@
 // components/ui/SectionHeader.tsx
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { colors, fonts, spacing } from '../../theme';
+import { colors, fonts, spacing } from '../../theme/';
 
 interface SectionHeaderProps {
   title: string;

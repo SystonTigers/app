@@ -376,4 +376,64 @@ export const motmApi = {
   },
 };
 
+export const liveMatchApi = {
+  // Get live match data
+  getLiveMatch: async (matchId: string) => {
+    const response = await api.get(`/api/v1/matches/${matchId}/live`, {
+      params: { tenant: TENANT_ID },
+    });
+    return response.data;
+  },
+
+  // Update live match event (admin)
+  updateLiveMatch: async (matchId: string, event: any) => {
+    const response = await api.post(`/api/v1/admin/matches/${matchId}/live`, {
+      tenant: TENANT_ID,
+      ...event,
+    });
+    return response.data;
+  },
+
+  // Get live match events
+  getLiveEvents: async (matchId: string) => {
+    const response = await api.get(`/api/v1/matches/${matchId}/live/events`, {
+      params: { tenant: TENANT_ID },
+    });
+    return response.data;
+  },
+
+  // Get live match tally/stats
+  getTally: async (matchId: string) => {
+    const response = await api.get(`/api/v1/admin/matches/${matchId}/live/tally`, {
+      params: { tenant: TENANT_ID },
+    });
+    return response.data;
+  },
+
+  // Open live match (admin)
+  openMatch: async (matchId: string) => {
+    const response = await api.post(`/api/v1/admin/matches/${matchId}/live/open`, {
+      tenant: TENANT_ID,
+    });
+    return response.data;
+  },
+
+  // Record live match event (admin)
+  recordEvent: async (matchId: string, event: any) => {
+    const response = await api.post(`/api/v1/admin/matches/${matchId}/live/event`, {
+      tenant: TENANT_ID,
+      ...event,
+    });
+    return response.data;
+  },
+
+  // Close live match (admin)
+  closeMatch: async (matchId: string) => {
+    const response = await api.post(`/api/v1/admin/matches/${matchId}/live/close`, {
+      tenant: TENANT_ID,
+    });
+    return response.data;
+  },
+};
+
 export default api;

@@ -1,6 +1,6 @@
 import React, { ReactNode } from 'react';
 import { View, StyleSheet, ViewStyle, Pressable } from 'react-native';
-import { useTheme } from '../theme';
+import { useTheme } from '../theme/';
 import { createElevation } from '../theme/utils';
 
 interface CardProps {

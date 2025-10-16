@@ -3,7 +3,7 @@ import React from 'react';
 import { View, Text, StyleSheet, FlatList, ScrollView, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { colors, spacing, radii, fonts } from '../theme';
+import { colors, spacing, radii, fonts } from '../theme/';
 import { Card, SectionHeader, CTA } from '../components/ui';
 
 // Mock data - replace with real API calls

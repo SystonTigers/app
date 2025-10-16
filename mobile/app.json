@@ -36,6 +36,10 @@
       "expo-av",
       "expo-image-picker"
     ],
+    "updates": {
+      "enabled": false,
+      "fallbackToCacheTimeout": 0
+    },
     "extra": {
       "eas": { "projectId": "dev-placeholder" }
     }

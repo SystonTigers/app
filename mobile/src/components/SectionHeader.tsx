@@ -1,6 +1,6 @@
 import React, { ReactNode } from 'react';
 import { View, Text, StyleSheet, Pressable, ViewStyle } from 'react-native';
-import { useTheme } from '../theme';
+import { useTheme } from '../theme/';
 
 interface SectionHeaderProps {
   title: string;

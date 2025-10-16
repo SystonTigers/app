@@ -1,7 +1,7 @@
 // components/ui/Card.tsx
 import React from 'react';
 import { View, StyleSheet, ViewStyle } from 'react-native';
-import { colors, radii } from '../../theme';
+import { colors, radii } from '../../theme/';
 
 interface CardProps {
   children: React.ReactNode;
