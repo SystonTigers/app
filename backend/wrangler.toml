@@ -1,15 +1,16 @@
 name = "syston-backend"
 main = "dist/index.mjs"
 compatibility_date = "2025-09-01"
-node_compat = true
+compatibility_flags = ["nodejs_compat"]
 minify = true
 workers_dev = true
 
 [observability]
 enabled = true
 
-[wasm_modules]
-RESVG_WASM = "node_modules/@resvg/resvg-wasm/index_bg.wasm"
+# [wasm_modules]
+# RESVG_WASM = "node_modules/@resvg/resvg-wasm/index_bg.wasm"
+# NOTE: wasm_modules not compatible with ES modules - import directly in code if needed
 
 [vars]
 API_VERSION = "v1"

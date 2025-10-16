@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, ScrollView, StyleSheet, Image, TouchableOpacity } from 'react-native';
+import { View, ScrollView, StyleSheet, Image, TouchableOpacity, Alert } from 'react-native';
 import {
   Card,
   Title,
@@ -11,6 +11,7 @@ import {
   Divider,
 } from 'react-native-paper';
 import { COLORS } from '../config';
+import { feedApi } from '../services/api';
 
 const socialChannels = [
   { id: 'feed', name: 'App Feed', icon: '📱', color: '#FFD700' },
@@ -43,21 +44,26 @@ export default function CreatePostScreen({ navigation }: any) {
     alert('Image picker coming soon!');
   };
 
-  const handlePost = () => {
+  const handlePost = async () => {
     if (!content.trim()) {
-      alert('Please enter some content');
+      Alert.alert('Error', 'Please enter some content');
       return;
     }
 
     if (selectedChannels.length === 0) {
-      alert('Please select at least one channel');
+      Alert.alert('Error', 'Please select at least one channel');
       return;
     }
 
-    // TODO: Send to API
-    console.log('Posting:', { content, channels: selectedChannels, mediaUrls });
-    alert('Post created successfully!');
-    navigation.goBack();
+    try {
+      await feedApi.createPost(content, selectedChannels, mediaUrls);
+      Alert.alert('Success', 'Post created successfully!', [
+        { text: 'OK', onPress: () => navigation.goBack() }
+      ]);
+    } catch (error) {
+      console.error('Failed to create post:', error);
+      Alert.alert('Error', 'Failed to create post. Please try again.');
+    }
   };
 
   const getChannelLimit = () => {

@@ -57,6 +57,32 @@ export const eventsApi = {
     return response.data;
   },
 
+  // Create event (admin)
+  createEvent: async (event: any) => {
+    const response = await api.post('/api/v1/events', {
+      tenant: TENANT_ID,
+      ...event,
+    });
+    return response.data;
+  },
+
+  // Update event (admin)
+  updateEvent: async (id: string, updates: any) => {
+    const response = await api.put(`/api/v1/events/${id}`, {
+      tenant: TENANT_ID,
+      ...updates,
+    });
+    return response.data;
+  },
+
+  // Delete event (admin)
+  deleteEvent: async (id: string) => {
+    const response = await api.delete(`/api/v1/events/${id}`, {
+      params: { tenant: TENANT_ID },
+    });
+    return response.data;
+  },
+
   // Get event details
   getEvent: async (eventId: string) => {
     const response = await api.get(`/api/v1/events/${eventId}`, {
@@ -93,6 +119,32 @@ export const fixturesApi = {
     return response.data;
   },
 
+  // Create fixture (admin)
+  createFixture: async (fixture: any) => {
+    const response = await api.post('/api/v1/admin/fixtures', {
+      tenant: TENANT_ID,
+      ...fixture,
+    });
+    return response.data;
+  },
+
+  // Update fixture (admin)
+  updateFixture: async (id: string, updates: any) => {
+    const response = await api.put(`/api/v1/admin/fixtures/${id}`, {
+      tenant: TENANT_ID,
+      ...updates,
+    });
+    return response.data;
+  },
+
+  // Delete fixture (admin)
+  deleteFixture: async (id: string) => {
+    const response = await api.delete(`/api/v1/admin/fixtures/${id}`, {
+      params: { tenant: TENANT_ID },
+    });
+    return response.data;
+  },
+
   // Get results
   getResults: async () => {
     const response = await api.get('/api/v1/results', {
@@ -114,6 +166,32 @@ export const squadApi = {
   // Get squad list
   getSquad: async () => {
     const response = await api.get('/api/v1/squad', {
+      params: { tenant: TENANT_ID },
+    });
+    return response.data;
+  },
+
+  // Create player (admin)
+  createPlayer: async (player: any) => {
+    const response = await api.post('/api/v1/admin/squad', {
+      tenant: TENANT_ID,
+      ...player,
+    });
+    return response.data;
+  },
+
+  // Update player (admin)
+  updatePlayer: async (id: string, updates: any) => {
+    const response = await api.put(`/api/v1/admin/squad/${id}`, {
+      tenant: TENANT_ID,
+      ...updates,
+    });
+    return response.data;
+  },
+
+  // Delete player (admin)
+  deletePlayer: async (id: string) => {
+    const response = await api.delete(`/api/v1/admin/squad/${id}`, {
       params: { tenant: TENANT_ID },
     });
     return response.data;

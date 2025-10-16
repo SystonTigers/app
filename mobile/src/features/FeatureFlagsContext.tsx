@@ -26,12 +26,16 @@ export const FeatureFlagsProvider: React.FC<FeatureFlagsProviderProps> = ({ chil
     loadCachedFlags();
   }, []);
 
-  // Fetch fresh flags after loading cache
+  // Fetch fresh flags after loading cache (non-blocking)
   useEffect(() => {
     if (!isLoading) {
-      refreshFlags();
+      // Delay API call slightly to allow UI to render first
+      const timer = setTimeout(() => {
+        refreshFlags();
+      }, 100);
+      return () => clearTimeout(timer);
     }
-  }, []);
+  }, [isLoading]);
 
   // Load cached flags from storage
   const loadCachedFlags = async () => {
@@ -74,7 +78,7 @@ export const FeatureFlagsProvider: React.FC<FeatureFlagsProviderProps> = ({ chil
 
       const response = await axios.get(`${API_BASE_URL}${API_ENDPOINTS.TENANT_CONFIG}`, {
         params: { tenant: TENANT_ID },
-        timeout: 10000,
+        timeout: 5000, // Reduced timeout for faster fallback
       });
 
       if (response.data) {

@@ -7,7 +7,7 @@ const getEnvVar = (key: string, fallback: string = ''): string => {
 };
 
 // API Configuration
-export const API_BASE_URL = getEnvVar('EXPO_PUBLIC_API_BASE', 'https://syston-backend.syston-tigers.workers.dev');
+export const API_BASE_URL = getEnvVar('EXPO_PUBLIC_API_BASE', 'https://syston-postbus.team-platform-2025.workers.dev');
 export const TENANT_ID = getEnvVar('EXPO_PUBLIC_TENANT_ID', 'syston-tigers');
 
 // Supabase Configuration

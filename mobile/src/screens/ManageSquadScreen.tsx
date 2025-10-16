@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, ScrollView, StyleSheet, Image } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, ScrollView, StyleSheet, Image, ActivityIndicator, Alert } from 'react-native';
 import {
   Card,
   Title,
@@ -14,6 +14,7 @@ import {
   IconButton,
 } from 'react-native-paper';
 import { COLORS } from '../config';
+import { squadApi } from '../services/api';
 
 interface Player {
   id: string;
@@ -62,7 +63,8 @@ const positionColors: { [key: string]: string } = {
 };
 
 export default function ManageSquadScreen() {
-  const [players, setPlayers] = useState<Player[]>(mockPlayers);
+  const [players, setPlayers] = useState<Player[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingPlayer, setEditingPlayer] = useState<Player | null>(null);
   const [formData, setFormData] = useState({
@@ -75,6 +77,24 @@ export default function ManageSquadScreen() {
     yellowCards: '0',
     redCards: '0',
   });
+
+  useEffect(() => {
+    loadPlayers();
+  }, []);
+
+  const loadPlayers = async () => {
+    try {
+      setLoading(true);
+      const response = await squadApi.getSquad();
+      setPlayers(response.data || []);
+    } catch (error) {
+      console.error('Failed to load squad:', error);
+      Alert.alert('Error', 'Failed to load squad. Using local data.');
+      setPlayers(mockPlayers);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const openAddModal = () => {
     setEditingPlayer(null);
@@ -106,30 +126,57 @@ export default function ManageSquadScreen() {
     setShowModal(true);
   };
 
-  const handleSave = () => {
-    const newPlayer: Player = {
-      id: editingPlayer?.id || Date.now().toString(),
-      name: formData.name,
-      number: parseInt(formData.number),
-      position: formData.position,
-      goals: parseInt(formData.goals),
-      assists: parseInt(formData.assists),
-      appearances: parseInt(formData.appearances),
-      yellowCards: parseInt(formData.yellowCards),
-      redCards: parseInt(formData.redCards),
-    };
+  const handleSave = async () => {
+    try {
+      const playerData = {
+        name: formData.name,
+        number: formData.number,
+        position: formData.position,
+        goals: formData.goals,
+        assists: formData.assists,
+        appearances: formData.appearances,
+        yellowCards: formData.yellowCards,
+        redCards: formData.redCards,
+      };
 
-    if (editingPlayer) {
-      setPlayers(players.map((p) => (p.id === editingPlayer.id ? newPlayer : p)));
-    } else {
-      setPlayers([...players, newPlayer]);
+      if (editingPlayer) {
+        await squadApi.updatePlayer(editingPlayer.id, playerData);
+        Alert.alert('Success', 'Player updated successfully!');
+      } else {
+        await squadApi.createPlayer(playerData);
+        Alert.alert('Success', 'Player added successfully!');
+      }
+
+      setShowModal(false);
+      loadPlayers();
+    } catch (error) {
+      console.error('Failed to save player:', error);
+      Alert.alert('Error', 'Failed to save player. Please try again.');
     }
-
-    setShowModal(false);
   };
 
-  const handleDelete = (id: string) => {
-    setPlayers(players.filter((p) => p.id !== id));
+  const handleDelete = async (id: string) => {
+    Alert.alert(
+      'Confirm Delete',
+      'Are you sure you want to remove this player from the squad?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await squadApi.deletePlayer(id);
+              Alert.alert('Success', 'Player removed successfully!');
+              loadPlayers();
+            } catch (error) {
+              console.error('Failed to delete player:', error);
+              Alert.alert('Error', 'Failed to delete player. Please try again.');
+            }
+          },
+        },
+      ]
+    );
   };
 
   const getInitials = (name: string) => {
@@ -139,6 +186,15 @@ export default function ManageSquadScreen() {
       .join('')
       .toUpperCase();
   };
+
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.centerContent]}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+        <Paragraph style={styles.loadingText}>Loading squad...</Paragraph>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -151,7 +207,17 @@ export default function ManageSquadScreen() {
         </View>
 
         <View style={styles.playersContainer}>
-          {players.map((player) => (
+          {players.length === 0 ? (
+            <Card style={styles.emptyCard}>
+              <Card.Content>
+                <Title style={styles.emptyTitle}>No Players Yet</Title>
+                <Paragraph style={styles.emptyText}>
+                  Tap the + button to add your first player
+                </Paragraph>
+              </Card.Content>
+            </Card>
+          ) : (
+            players.map((player) => (
             <Card key={player.id} style={styles.playerCard}>
               <Card.Content>
                 <View style={styles.playerHeader}>
@@ -222,7 +288,8 @@ export default function ManageSquadScreen() {
                 </Button>
               </Card.Content>
             </Card>
-          ))}
+            ))
+          )}
         </View>
       </ScrollView>
 
@@ -355,6 +422,29 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
+  },
+  centerContent: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    color: COLORS.textLight,
+  },
+  emptyCard: {
+    margin: 16,
+    borderRadius: 12,
+    elevation: 2,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  emptyText: {
+    textAlign: 'center',
+    color: COLORS.textLight,
   },
   scrollView: {
     flex: 1,

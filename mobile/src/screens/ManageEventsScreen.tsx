@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, ScrollView, StyleSheet } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, ScrollView, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import {
   Card,
   Title,
@@ -13,6 +13,7 @@ import {
   Divider,
 } from 'react-native-paper';
 import { COLORS } from '../config';
+import { eventsApi } from '../services/api';
 
 interface Event {
   id: string;
@@ -55,7 +56,8 @@ const eventTypes = [
 ];
 
 export default function ManageEventsScreen() {
-  const [events, setEvents] = useState<Event[]>(mockEvents);
+  const [events, setEvents] = useState<Event[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
   const [formData, setFormData] = useState({
@@ -66,6 +68,24 @@ export default function ManageEventsScreen() {
     location: '',
     description: '',
   });
+
+  useEffect(() => {
+    loadEvents();
+  }, []);
+
+  const loadEvents = async () => {
+    try {
+      setLoading(true);
+      const response = await eventsApi.getEvents();
+      setEvents(response.data || []);
+    } catch (error) {
+      console.error('Failed to load events:', error);
+      Alert.alert('Error', 'Failed to load events. Using local data.');
+      setEvents(mockEvents);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const openAddModal = () => {
     setEditingEvent(null);
@@ -93,29 +113,69 @@ export default function ManageEventsScreen() {
     setShowModal(true);
   };
 
-  const handleSave = () => {
-    const newEvent: Event = {
-      id: editingEvent?.id || Date.now().toString(),
-      ...formData,
-      rsvpCount: editingEvent?.rsvpCount || 0,
-    };
+  const handleSave = async () => {
+    try {
+      const eventData = {
+        title: formData.title,
+        type: formData.type,
+        date: formData.date,
+        time: formData.time,
+        location: formData.location,
+        description: formData.description,
+      };
 
-    if (editingEvent) {
-      setEvents(events.map((e) => (e.id === editingEvent.id ? newEvent : e)));
-    } else {
-      setEvents([...events, newEvent]);
+      if (editingEvent) {
+        await eventsApi.updateEvent(editingEvent.id, eventData);
+        Alert.alert('Success', 'Event updated successfully!');
+      } else {
+        await eventsApi.createEvent(eventData);
+        Alert.alert('Success', 'Event created successfully!');
+      }
+
+      setShowModal(false);
+      loadEvents();
+    } catch (error) {
+      console.error('Failed to save event:', error);
+      Alert.alert('Error', 'Failed to save event. Please try again.');
     }
-
-    setShowModal(false);
   };
 
-  const handleDelete = (id: string) => {
-    setEvents(events.filter((e) => e.id !== id));
+  const handleDelete = async (id: string) => {
+    Alert.alert(
+      'Confirm Delete',
+      'Are you sure you want to delete this event?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await eventsApi.deleteEvent(id);
+              Alert.alert('Success', 'Event deleted successfully!');
+              loadEvents();
+            } catch (error) {
+              console.error('Failed to delete event:', error);
+              Alert.alert('Error', 'Failed to delete event. Please try again.');
+            }
+          },
+        },
+      ]
+    );
   };
 
   const getEventTypeInfo = (type: string) => {
     return eventTypes.find((t) => t.value === type) || eventTypes[0];
   };
+
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.centerContent]}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+        <Paragraph style={styles.loadingText}>Loading events...</Paragraph>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -128,7 +188,17 @@ export default function ManageEventsScreen() {
         </View>
 
         <View style={styles.eventsContainer}>
-          {events.map((event) => {
+          {events.length === 0 ? (
+            <Card style={styles.emptyCard}>
+              <Card.Content>
+                <Title style={styles.emptyTitle}>No Events Yet</Title>
+                <Paragraph style={styles.emptyText}>
+                  Tap the + button to create your first event
+                </Paragraph>
+              </Card.Content>
+            </Card>
+          ) : (
+            events.map((event) => {
             const typeInfo = getEventTypeInfo(event.type);
             return (
               <Card key={event.id} style={styles.eventCard}>
@@ -190,7 +260,8 @@ export default function ManageEventsScreen() {
                 </Card.Content>
               </Card>
             );
-          })}
+            })
+          )}
         </View>
       </ScrollView>
 
@@ -313,6 +384,29 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
+  },
+  centerContent: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    color: COLORS.textLight,
+  },
+  emptyCard: {
+    margin: 16,
+    borderRadius: 12,
+    elevation: 2,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  emptyText: {
+    textAlign: 'center',
+    color: COLORS.textLight,
   },
   scrollView: {
     flex: 1,

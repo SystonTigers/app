@@ -61,6 +61,52 @@ router.put('/matches/:id', requireAuth, withTenant, withJSON, (req, env) =>
   import('./services/matches').then(m => m.updateMatch ? m.updateMatch(req, env) : ok({ error: 'Not implemented' }))
 );
 
+// Admin - Fixtures Management
+router.get('/api/v1/fixtures', withTenant, (req, env) =>
+  import('./services/matches').then(m => m.listFixtures ? m.listFixtures(req, env) : ok({ error: 'Not implemented' }))
+);
+
+// TODO: RESTORE AUTH BEFORE PRODUCTION - Currently disabled for testing
+router.post('/api/v1/admin/fixtures', requireAuth, withTenant, withJSON, (req, env) =>
+  import('./services/matches').then(m => m.createFixture ? m.createFixture(req, env) : ok({ error: 'Not implemented' }))
+);
+
+router.put('/api/v1/admin/fixtures/:id', requireAuth, withTenant, withJSON, (req, env) =>
+  import('./services/matches').then(m => m.updateFixture ? m.updateFixture(req, env) : ok({ error: 'Not implemented' }))
+);
+
+router.delete('/api/v1/admin/fixtures/:id', requireAuth, withTenant, (req, env) =>
+  import('./services/matches').then(m => m.deleteFixture ? m.deleteFixture(req, env) : ok({ error: 'Not implemented' }))
+);
+
+// Admin - Squad Management
+router.get('/api/v1/squad', withTenant, (req, env) =>
+  import('./services/matches').then(m => m.listSquad ? m.listSquad(req, env) : ok({ error: 'Not implemented' }))
+);
+
+// TODO: RESTORE AUTH BEFORE PRODUCTION - Currently disabled for testing
+router.post('/api/v1/admin/squad', requireAuth, withTenant, withJSON, (req, env) =>
+  import('./services/matches').then(m => m.createPlayer ? m.createPlayer(req, env) : ok({ error: 'Not implemented' }))
+);
+
+router.put('/api/v1/admin/squad/:id', requireAuth, withTenant, withJSON, (req, env) =>
+  import('./services/matches').then(m => m.updatePlayer ? m.updatePlayer(req, env) : ok({ error: 'Not implemented' }))
+);
+
+router.delete('/api/v1/admin/squad/:id', requireAuth, withTenant, (req, env) =>
+  import('./services/matches').then(m => m.deletePlayer ? m.deletePlayer(req, env) : ok({ error: 'Not implemented' }))
+);
+
+// Feed / Posts
+router.get('/api/v1/feed', withTenant, (req, env) =>
+  import('./services/matches').then(m => m.listPosts ? m.listPosts(req, env) : ok({ error: 'Not implemented' }))
+);
+
+// TODO: RESTORE AUTH BEFORE PRODUCTION - Currently disabled for testing
+router.post('/api/v1/feed/create', requireAuth, withTenant, withJSON, (req, env) =>
+  import('./services/matches').then(m => m.createPost ? m.createPost(req, env) : ok({ error: 'Not implemented' }))
+);
+
 // Match events (goals, cards, subs, etc.)
 router.post('/matches/:id/events', requireAuth, withTenant, withJSON, (req, env) =>
   import('./services/events').then(m => m.addEvent ? m.addEvent(req, env) : ok({ error: 'Not implemented' }))
@@ -171,6 +217,7 @@ router.get('/events/:id', withTenant, (req, env) =>
   import('./services/events').then(m => m.getEvent ? m.getEvent(env, req.tenant, req.params.id) : ok({ error: 'Not implemented' }))
 );
 
+// TODO: RESTORE AUTH BEFORE PRODUCTION - Currently disabled for testing
 router.post('/events', requireAuth, withTenant, withJSON, (req, env) =>
   import('./services/events').then(m => m.putEvent ? m.putEvent(env, req.tenant, req.json) : ok({ error: 'Not implemented' }))
 );

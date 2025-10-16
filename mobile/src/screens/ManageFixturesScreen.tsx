@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, ScrollView, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import {
   Card,
   Title,
@@ -14,6 +14,7 @@ import {
   IconButton,
 } from 'react-native-paper';
 import { COLORS } from '../config';
+import { fixturesApi } from '../services/api';
 
 interface Fixture {
   id: string;
@@ -49,7 +50,8 @@ const mockFixtures: Fixture[] = [
 ];
 
 export default function ManageFixturesScreen() {
-  const [fixtures, setFixtures] = useState<Fixture[]>(mockFixtures);
+  const [fixtures, setFixtures] = useState<Fixture[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingFixture, setEditingFixture] = useState<Fixture | null>(null);
   const [formData, setFormData] = useState({
@@ -62,6 +64,25 @@ export default function ManageFixturesScreen() {
     homeScore: '',
     awayScore: '',
   });
+
+  // Load fixtures from API on mount
+  useEffect(() => {
+    loadFixtures();
+  }, []);
+
+  const loadFixtures = async () => {
+    try {
+      setLoading(true);
+      const response = await fixturesApi.getFixtures();
+      setFixtures(response.data || []);
+    } catch (error) {
+      console.error('Failed to load fixtures:', error);
+      Alert.alert('Error', 'Failed to load fixtures. Using local data.');
+      setFixtures(mockFixtures); // Fallback to mock data
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const openAddModal = () => {
     setEditingFixture(null);
@@ -93,31 +114,69 @@ export default function ManageFixturesScreen() {
     setShowModal(true);
   };
 
-  const handleSave = () => {
-    const newFixture: Fixture = {
-      id: editingFixture?.id || Date.now().toString(),
-      opponent: formData.opponent,
-      date: formData.date,
-      time: formData.time,
-      venue: formData.venue,
-      competition: formData.competition,
-      homeAway: formData.homeAway,
-      homeScore: formData.homeScore ? parseInt(formData.homeScore) : undefined,
-      awayScore: formData.awayScore ? parseInt(formData.awayScore) : undefined,
-    };
+  const handleSave = async () => {
+    try {
+      const fixtureData = {
+        opponent: formData.opponent,
+        date: formData.date,
+        time: formData.time,
+        venue: formData.venue,
+        competition: formData.competition,
+        homeAway: formData.homeAway,
+        homeScore: formData.homeScore ? parseInt(formData.homeScore) : undefined,
+        awayScore: formData.awayScore ? parseInt(formData.awayScore) : undefined,
+      };
 
-    if (editingFixture) {
-      setFixtures(fixtures.map((f) => (f.id === editingFixture.id ? newFixture : f)));
-    } else {
-      setFixtures([...fixtures, newFixture]);
+      if (editingFixture) {
+        // Update existing fixture
+        await fixturesApi.updateFixture(editingFixture.id, fixtureData);
+        Alert.alert('Success', 'Fixture updated successfully!');
+      } else {
+        // Create new fixture
+        await fixturesApi.createFixture(fixtureData);
+        Alert.alert('Success', 'Fixture created successfully!');
+      }
+
+      setShowModal(false);
+      loadFixtures(); // Reload fixtures from server
+    } catch (error) {
+      console.error('Failed to save fixture:', error);
+      Alert.alert('Error', 'Failed to save fixture. Please try again.');
     }
-
-    setShowModal(false);
   };
 
-  const handleDelete = (id: string) => {
-    setFixtures(fixtures.filter((f) => f.id !== id));
+  const handleDelete = async (id: string) => {
+    Alert.alert(
+      'Confirm Delete',
+      'Are you sure you want to delete this fixture?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await fixturesApi.deleteFixture(id);
+              Alert.alert('Success', 'Fixture deleted successfully!');
+              loadFixtures(); // Reload fixtures from server
+            } catch (error) {
+              console.error('Failed to delete fixture:', error);
+              Alert.alert('Error', 'Failed to delete fixture. Please try again.');
+            }
+          },
+        },
+      ]
+    );
   };
+
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.centerContent]}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+        <Paragraph style={styles.loadingText}>Loading fixtures...</Paragraph>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -130,7 +189,17 @@ export default function ManageFixturesScreen() {
         </View>
 
         <View style={styles.fixturesContainer}>
-          {fixtures.map((fixture) => (
+          {fixtures.length === 0 ? (
+            <Card style={styles.emptyCard}>
+              <Card.Content>
+                <Title style={styles.emptyTitle}>No Fixtures Yet</Title>
+                <Paragraph style={styles.emptyText}>
+                  Tap the + button to add your first fixture
+                </Paragraph>
+              </Card.Content>
+            </Card>
+          ) : (
+            fixtures.map((fixture) => (
             <Card key={fixture.id} style={styles.fixtureCard}>
               <Card.Content>
                 <View style={styles.fixtureHeader}>
@@ -199,7 +268,8 @@ export default function ManageFixturesScreen() {
                 </View>
               </Card.Content>
             </Card>
-          ))}
+            ))
+          )}
         </View>
       </ScrollView>
 
@@ -343,6 +413,29 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
+  },
+  centerContent: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    color: COLORS.textLight,
+  },
+  emptyCard: {
+    margin: 16,
+    borderRadius: 12,
+    elevation: 2,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  emptyText: {
+    textAlign: 'center',
+    color: COLORS.textLight,
   },
   scrollView: {
     flex: 1,
