@@ -15,7 +15,9 @@
       "Bash(curl:*)",
       "Bash(taskkill:*)",
       "Bash(cat:*)",
-      "Bash(ipconfig:*)"
+      "Bash(ipconfig:*)",
+      "Bash(timeout 5 curl:*)",
+      "Bash(git checkout:*)"
     ],
     "deny": [],
     "ask": []

@@ -1,10 +1,10 @@
 // src/screens/PaymentsScreen.tsx - Premium redesign
 import React from 'react';
-import { View, Text, StyleSheet, FlatList, ScrollView, Linking } from 'react-native';
+import { View, Text, StyleSheet, FlatList, ScrollView, Linking, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Card } from 'react-native-paper';
 
-import { colors, spacing, radii, fonts } from '../theme/';
-import { Card, SectionHeader, CTA } from '../components/ui';
+import { COLORS } from '../config';
 
 // Mock data - replace with real API calls
 const MOCK = {
@@ -33,65 +33,75 @@ export default function PaymentsScreen() {
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.container}>
-        <SectionHeader title="Payments" subtitle="Season fees & sponsors" />
+        <Text style={styles.header}>Payments</Text>
+        <Text style={styles.subtitle}>Season fees & sponsors</Text>
 
         {/* Summary Card */}
-        <Card inset>
-          <SectionHeader title="Season Fees 2024/25" />
-          <View style={styles.metricsRow}>
-            <Metric label="Collected" value={`£${MOCK.collected}`} tone="good" />
-            <Metric label="Expected" value={`£${MOCK.expected}`} />
-            <Metric label="Players Paid" value={`${MOCK.playersPaid}/${MOCK.totalPlayers}`} />
-          </View>
+        <Card style={styles.card}>
+          <Card.Content>
+            <Text style={styles.cardTitle}>Season Fees 2024/25</Text>
+            <View style={styles.metricsRow}>
+              <Metric label="Collected" value={`£${MOCK.collected}`} tone="good" />
+              <Metric label="Expected" value={`£${MOCK.expected}`} />
+              <Metric label="Players Paid" value={`${MOCK.playersPaid}/${MOCK.totalPlayers}`} />
+            </View>
 
-          {/* Progress Bar */}
-          <View style={styles.progressTrack}>
-            <View style={[styles.progressFill, { width: `${pct * 100}%` }]} />
-          </View>
-          <Text style={styles.progressText}>{Math.round(pct * 100)}% complete</Text>
+            {/* Progress Bar */}
+            <View style={styles.progressTrack}>
+              <View style={[styles.progressFill, { width: `${pct * 100}%` }]} />
+            </View>
+            <Text style={styles.progressText}>{Math.round(pct * 100)}% complete</Text>
 
-          <CTA label="Pay Season Fees" onPress={openPaymentPortal} />
+            <TouchableOpacity style={styles.button} onPress={openPaymentPortal}>
+              <Text style={styles.buttonText}>Pay Season Fees</Text>
+            </TouchableOpacity>
+          </Card.Content>
         </Card>
 
         {/* Individual Status */}
-        <View style={{ height: spacing(2) }} />
-        <SectionHeader
-          title="Individual Status"
-          subtitle="Read-only · Contact treasurer to update"
-        />
-        <Card inset>
-          <FlatList
-            data={MOCK.people}
-            keyExtractor={(x) => x.name}
-            ItemSeparatorComponent={() => <View style={styles.separator} />}
-            renderItem={({ item }) => <PersonRow {...item} />}
-            scrollEnabled={false}
-          />
+        <View style={{ height: 20 }} />
+        <Text style={styles.sectionHeader}>Individual Status</Text>
+        <Text style={styles.sectionSubtitle}>Read-only · Contact treasurer to update</Text>
+        <Card style={styles.card}>
+          <Card.Content>
+            <FlatList
+              data={MOCK.people}
+              keyExtractor={(x) => x.name}
+              ItemSeparatorComponent={() => <View style={styles.separator} />}
+              renderItem={({ item }) => <PersonRow {...item} />}
+              scrollEnabled={false}
+            />
+          </Card.Content>
         </Card>
 
         {/* Payment Info */}
-        <View style={{ height: spacing(2) }} />
-        <Card inset>
-          <Text style={styles.infoTitle}>Payment Information</Text>
-          <Text style={styles.infoText}>
-            • Season fees: £150 per player{'\n'}
-            • Payment deadline: 1st October 2025{'\n'}
-            • Late payments subject to £10 admin fee{'\n'}
-            • Financial assistance available
-          </Text>
+        <View style={{ height: 20 }} />
+        <Card style={styles.card}>
+          <Card.Content>
+            <Text style={styles.infoTitle}>Payment Information</Text>
+            <Text style={styles.infoText}>
+              • Season fees: £150 per player{'\n'}
+              • Payment deadline: 1st October 2025{'\n'}
+              • Late payments subject to £10 admin fee{'\n'}
+              • Financial assistance available
+            </Text>
+          </Card.Content>
         </Card>
 
         {/* Sponsors Section (Placeholder) */}
-        <View style={{ height: spacing(2) }} />
-        <SectionHeader title="Sponsors" subtitle="Supporting our team" />
-        <Card inset>
-          <Text style={styles.placeholderText}>
-            No sponsors yet — coming soon
-          </Text>
+        <View style={{ height: 20 }} />
+        <Text style={styles.sectionHeader}>Sponsors</Text>
+        <Text style={styles.sectionSubtitle}>Supporting our team</Text>
+        <Card style={styles.card}>
+          <Card.Content>
+            <Text style={styles.placeholderText}>
+              No sponsors yet — coming soon
+            </Text>
+          </Card.Content>
         </Card>
 
         {/* Bottom spacing */}
-        <View style={{ height: spacing(3) }} />
+        <View style={{ height: 30 }} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -110,10 +120,10 @@ function Metric({
 }) {
   const color =
     tone === 'good'
-      ? colors.brand.success
+      ? COLORS.success
       : tone === 'warn'
-      ? colors.brand.warning
-      : colors.text;
+      ? COLORS.warning
+      : COLORS.text;
 
   return (
     <View style={styles.metric}>
@@ -132,7 +142,7 @@ function PersonRow({
   amount: number;
   status: 'paid' | 'due';
 }) {
-  const chipColor = status === 'paid' ? colors.brand.success : colors.brand.warning;
+  const chipColor = status === 'paid' ? COLORS.success : COLORS.warning;
   const chipText = status === 'paid' ? 'Paid' : 'Due';
 
   return (
@@ -151,19 +161,54 @@ function PersonRow({
 
 /* ==== Styles ==== */
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.bg },
+  screen: { flex: 1, backgroundColor: COLORS.background },
   scrollView: { flex: 1 },
-  container: { padding: spacing(2) },
+  container: { padding: 16 },
+
+  header: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: COLORS.text,
+    marginBottom: 4,
+  },
+  subtitle: {
+    fontSize: 14,
+    color: COLORS.textLight,
+    marginBottom: 16,
+  },
+
+  card: {
+    marginBottom: 16,
+    backgroundColor: COLORS.surface,
+  },
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: COLORS.text,
+    marginBottom: 12,
+  },
+
+  sectionHeader: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: COLORS.text,
+    marginBottom: 4,
+  },
+  sectionSubtitle: {
+    fontSize: 12,
+    color: COLORS.textLight,
+    marginBottom: 8,
+  },
 
   metricsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    gap: spacing(1.5),
-    marginBottom: spacing(2),
+    gap: 12,
+    marginBottom: 16,
   },
   metric: { flex: 1 },
-  metricValue: { fontSize: 22, fontWeight: '800' },
-  metricLabel: { color: colors.textDim, marginTop: 2, fontSize: fonts.sizes.xs },
+  metricValue: { fontSize: 22, fontWeight: '800', color: COLORS.text },
+  metricLabel: { color: COLORS.textLight, marginTop: 2, fontSize: 11 },
 
   progressTrack: {
     height: 10,
@@ -171,36 +216,49 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: '#333',
   },
   progressFill: {
     height: '100%',
-    backgroundColor: colors.brand.yellow,
+    backgroundColor: COLORS.primary,
   },
   progressText: {
-    color: colors.textDim,
-    marginTop: spacing(1),
+    color: COLORS.textLight,
+    marginTop: 8,
     fontSize: 12,
+    marginBottom: 16,
+  },
+
+  button: {
+    backgroundColor: COLORS.primary,
+    padding: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  buttonText: {
+    color: '#000',
+    fontWeight: 'bold',
+    fontSize: 16,
   },
 
   separator: {
     height: 1,
-    backgroundColor: colors.border,
-    marginVertical: spacing(1),
+    backgroundColor: '#333',
+    marginVertical: 8,
   },
 
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing(1),
-    paddingVertical: spacing(1),
+    gap: 8,
+    paddingVertical: 8,
   },
-  personName: { color: colors.text, fontWeight: '700' },
-  personSub: { color: colors.textDim, fontSize: 12, marginTop: 2 },
+  personName: { color: COLORS.text, fontWeight: '700' },
+  personSub: { color: COLORS.textLight, fontSize: 12, marginTop: 2 },
   amount: {
-    color: colors.text,
+    color: COLORS.text,
     fontWeight: '700',
-    marginRight: spacing(1),
+    marginRight: 8,
   },
   chip: {
     borderWidth: 1,
@@ -210,25 +268,25 @@ const styles = StyleSheet.create({
   },
   chipText: {
     fontWeight: '700',
-    fontSize: fonts.sizes.xs,
+    fontSize: 11,
   },
 
   infoTitle: {
-    color: colors.text,
-    fontSize: fonts.sizes.lg,
+    color: COLORS.text,
+    fontSize: 16,
     fontWeight: '700',
-    marginBottom: spacing(1),
+    marginBottom: 8,
   },
   infoText: {
-    color: colors.textDim,
-    fontSize: fonts.sizes.sm,
+    color: COLORS.textLight,
+    fontSize: 14,
     lineHeight: 20,
   },
 
   placeholderText: {
-    color: colors.textDim,
-    fontSize: fonts.sizes.md,
+    color: COLORS.textLight,
+    fontSize: 14,
     textAlign: 'center',
-    paddingVertical: spacing(2),
+    paddingVertical: 16,
   },
 });
