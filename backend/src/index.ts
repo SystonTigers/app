@@ -2544,6 +2544,40 @@ export default {
       }
     }
 
+    // -------- Brand API (White-Label Multi-Tenant) --------
+
+    // GET /api/v1/brand - Public endpoint for frontends to get brand kit
+    if (url.pathname === `/api/${v}/brand` && req.method === "GET") {
+      const tenant = url.searchParams.get("tenant") || req.headers.get("x-tenant") || "default";
+
+      try {
+        const { getBrand } = await import("./services/brand");
+        const brand = await getBrand(env, tenant);
+        return json({ success: true, data: brand }, 200, corsHdrs);
+      } catch (e: any) {
+        return json({ success: false, error: { code: "BRAND_ERROR", message: e.message } }, 500, corsHdrs);
+      }
+    }
+
+    // POST /api/v1/brand - Admin endpoint to update brand kit
+    if (url.pathname === `/api/${v}/brand` && req.method === "POST") {
+      const user = await requireJWT(req, env).catch(() => null);
+      if (!user || !hasRole(user, "admin")) {
+        return json({ success: false, error: { code: "FORBIDDEN" } }, 403, corsHdrs);
+      }
+
+      const body = await req.json().catch(() => ({}));
+      const tenant = body.tenant || req.headers.get("x-tenant") || url.searchParams.get("tenant") || "default";
+
+      try {
+        const { setBrand } = await import("./services/brand");
+        const brand = await setBrand(env, tenant, body);
+        return json({ success: true, data: brand }, 200, corsHdrs);
+      } catch (e: any) {
+        return json({ success: false, error: { code: "BRAND_ERROR", message: e.message } }, 400, corsHdrs);
+      }
+    }
+
     // -------- Club Config (Admin) --------
 
     // GET /api/v1/admin/club-config

@@ -63,23 +63,23 @@ const shadows = {
   xl: '0 20px 25px rgba(0, 0, 0, 0.15)',
 };
 
-// Light theme (default)
+// Light theme (default - neutral base)
 export const lightTheme: Theme = {
   colors: {
-    // Primary brand colors (Yellow/Gold)
-    primary: '#FFD700',
-    primaryLight: '#FFE44D',
-    primaryDark: '#FFC700',
+    // Primary brand colors (Neutral blue)
+    primary: '#6CC5FF',
+    primaryLight: '#8FD4FF',
+    primaryDark: '#49B7FF',
 
-    // Secondary brand colors (Black)
-    secondary: '#000000',
-    secondaryLight: '#333333',
-    secondaryDark: '#000000',
+    // Secondary brand colors (Muted gray)
+    secondary: '#9AA1AC',
+    secondaryLight: '#B4BCC7',
+    secondaryDark: '#808891',
 
-    // Accent colors (White)
-    accent: '#FFFFFF',
-    accentLight: '#FFFFFF',
-    accentDark: '#F5F5F5',
+    // Accent colors (Neutral green)
+    accent: '#A0FF9C',
+    accentLight: '#B8FFB4',
+    accentDark: '#88FF84',
 
     // Background colors
     background: '#FFFFFF',
@@ -135,23 +135,23 @@ export const lightTheme: Theme = {
   isDark: false,
 };
 
-// Dark theme
+// Dark theme (neutral base)
 export const darkTheme: Theme = {
   colors: {
-    // Primary brand colors (Yellow/Gold)
-    primary: '#FFD700',
-    primaryLight: '#FFE44D',
-    primaryDark: '#FFC700',
+    // Primary brand colors (Neutral blue)
+    primary: '#6CC5FF',
+    primaryLight: '#8FD4FF',
+    primaryDark: '#49B7FF',
 
-    // Secondary brand colors (White/Gray in dark mode)
-    secondary: '#FFFFFF',
-    secondaryLight: '#FFFFFF',
-    secondaryDark: '#CCCCCC',
+    // Secondary brand colors (Light gray in dark mode)
+    secondary: '#E6E8EB',
+    secondaryLight: '#F5F7FA',
+    secondaryDark: '#D1D5DA',
 
     // Accent colors
-    accent: '#FFD700',
-    accentLight: '#FFE44D',
-    accentDark: '#FFC700',
+    accent: '#A0FF9C',
+    accentLight: '#B8FFB4',
+    accentDark: '#88FF84',
 
     // Background colors (Dark grays/blacks)
     background: '#0D0F12',

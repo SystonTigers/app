@@ -10,10 +10,14 @@ const api = axios.create({
   },
 });
 
-// Add tenant ID to all requests
+// Add tenant ID and auth headers to all requests
 api.interceptors.request.use((config) => {
+  // Add x-tenant header for multi-tenant identification
+  config.headers['x-tenant'] = TENANT_ID;
+
   // TODO: Add JWT token when authentication is implemented
   // config.headers.Authorization = `Bearer ${token}`;
+
   return config;
 });
 

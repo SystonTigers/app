@@ -108,8 +108,8 @@ export function getDefaultClubConfig(clubName: string, shortName: string): ClubC
       phone: "",
     },
     branding: {
-      primaryColor: "#1a237e",
-      secondaryColor: "#ffd700",
+      primaryColor: "#6CC5FF",
+      secondaryColor: "#9AA1AC",
       clubBadge: undefined,
       sponsorLogos: [],
     },

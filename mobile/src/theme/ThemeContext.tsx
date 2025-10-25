@@ -3,6 +3,7 @@ import { useColorScheme } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Theme, ColorScheme, TenantThemeConfig, ThemeContextValue } from './types';
 import { lightTheme, darkTheme, createCustomTheme } from './defaultThemes';
+import { fetchBrand, brandToTheme } from '../services/brandService';
 
 const THEME_STORAGE_KEY = '@theme_preference';
 const TENANT_THEME_STORAGE_KEY = '@tenant_theme_config';
@@ -22,11 +23,32 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   // Determine if dark mode should be active
   const isDark = colorScheme === 'dark' || (colorScheme === 'auto' && systemColorScheme === 'dark');
 
-  // Load saved theme preference on mount
+  // Load saved theme preference and fetch brand from API on mount
   useEffect(() => {
     loadThemePreference();
     loadTenantThemeConfig();
+    fetchBrandFromAPI();
   }, []);
+
+  // Fetch brand from API and apply to theme
+  const fetchBrandFromAPI = async () => {
+    try {
+      const brand = await fetchBrand();
+      if (brand) {
+        const themeColors = brandToTheme(brand);
+        const tenantConfig: TenantThemeConfig = {
+          primaryColor: brand.primaryColor,
+          secondaryColor: brand.secondaryColor,
+          accentColor: themeColors.accent,
+          customColors: themeColors,
+        };
+        await loadTenantTheme(tenantConfig);
+      }
+    } catch (error) {
+      console.error('Failed to fetch brand from API:', error);
+      // Continue with default theme if fetch fails
+    }
+  };
 
   // Update theme when color scheme or tenant config changes
   useEffect(() => {

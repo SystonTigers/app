@@ -1,0 +1,66 @@
+name: Web CI
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'web/**'
+      - 'packages/sdk/**'
+      - '.github/workflows/ci-web.yml'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'web/**'
+      - 'packages/sdk/**'
+
+jobs:
+  build-and-test:
+    name: Build & Test Web App
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: |
+            web/package-lock.json
+            packages/sdk/package-lock.json
+
+      - name: Install SDK dependencies
+        working-directory: ./packages/sdk
+        run: npm ci
+
+      - name: Build SDK
+        working-directory: ./packages/sdk
+        run: npm run build
+
+      - name: Install web dependencies
+        working-directory: ./web
+        run: npm ci
+
+      - name: Type check
+        working-directory: ./web
+        run: npm run type-check
+
+      - name: Lint
+        working-directory: ./web
+        run: npm run lint
+
+      - name: Build
+        working-directory: ./web
+        run: npm run build
+        env:
+          NEXT_PUBLIC_API_BASE_URL: ${{ secrets.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8787' }}
+          NEXT_PUBLIC_DEFAULT_TENANT: demo
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-build
+          path: web/.next
+          retention-days: 7

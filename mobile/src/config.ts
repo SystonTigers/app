@@ -26,12 +26,12 @@ export const ENABLE_DEBUG_MODE = getEnvVar('EXPO_PUBLIC_DEBUG_MODE', 'false') ==
 export const IS_DEV = getEnvVar('NODE_ENV', 'development') === 'development';
 export const IS_PROD = getEnvVar('NODE_ENV', 'development') === 'production';
 
-// Colors (Syston Tigers - Yellow & Black)
-// These can be overridden by theme loaded from API
+// Colors (Neutral defaults - overridden by brand API at runtime)
+// These provide a professional base until club branding is loaded
 export const COLORS = {
-  primary: '#FFD700',      // Yellow
-  secondary: '#000000',    // Black
-  accent: '#FFFFFF',       // White
+  primary: '#6CC5FF',      // Neutral blue
+  secondary: '#9AA1AC',    // Muted gray
+  accent: '#A0FF9C',       // Neutral accent
   background: '#F5F5F5',   // Light gray
   surface: '#FFFFFF',
   text: '#000000',
