@@ -1,4 +1,4 @@
-name = "syston-backend"
+name = "syston-postbus"
 main = "dist/index.mjs"
 compatibility_date = "2025-09-01"
 compatibility_flags = ["nodejs_compat"]
@@ -16,6 +16,7 @@ enabled = true
 API_VERSION = "v1"
 JWT_ISSUER = "syston.app"
 JWT_AUDIENCE = "syston-mobile"
+ENVIRONMENT = "development"
 # Fixtures refresh endpoint
 FIXTURES_REFRESH_URL = "https://syston-fixtures.team-platform-2025.workers.dev/refresh"
 # Allowlist of hosts for BYO-Make webhooks (comma-separated)

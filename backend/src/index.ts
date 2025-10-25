@@ -1,6 +1,7 @@
 // src/index.ts
 
 import { z } from "zod";
+import { SignJWT } from "jose";
 import { PostReqSchema, json, readIdempotencyKey } from "./services/util";
 import { requireJWT, hasRole, requireAdmin } from "./services/auth";
 import { ensureIdempotent, setFinalIdempotent } from "./services/idempotency";
@@ -21,6 +22,10 @@ import { rateLimit } from "./middleware/rateLimit";
 import { newRequestId, logJSON } from "./lib/log";
 import { parse, isValidationError } from "./lib/validate";
 import { healthz, readyz } from "./routes/health";
+// --- Self-serve signup / usage / admin (Phase 3) ---
+import { registerSignupRoutes } from './routes/signup';
+import { registerUsageRoutes }  from './routes/usage';
+import { registerAdminRoutes, getAdminStats }  from './routes/admin';
 declare const APP_VERSION: string;
 
 const DEV_DEFAULT_CORS = new Set([
@@ -141,6 +146,80 @@ export default {
         return respondWithCors(res, corsHdrs);
       }
 
+      // Introspection endpoint for debugging
+      if (url.pathname === '/__meta/ping') {
+        return new Response(JSON.stringify({
+          ok: true,
+          method: req.method,
+          pathname: url.pathname,
+          search: url.search,
+          fullUrl: url.href,
+          apiVersion: env.API_VERSION || "v1"
+        }), {
+          status: 200,
+          headers: { 'content-type': 'application/json', ...corsHdrs }
+        });
+      }
+
+      // -------- DEV-ONLY: Admin Token Minting --------
+      // POST /internal/dev/admin-token - Mint admin JWT for development
+      if (url.pathname === '/internal/dev/admin-token' && req.method === 'POST') {
+        const environment = env.ENVIRONMENT || 'development';
+
+        // Block in production
+        if (environment === 'production') {
+          return json({
+            success: false,
+            error: { code: 'FORBIDDEN', message: 'This endpoint is disabled in production' }
+          }, 403, corsHdrs);
+        }
+
+        try {
+          const body = await req.json().catch(() => ({}));
+          const schema = z.object({
+            email: z.string().email()
+          });
+          const data = schema.parse(body);
+
+          // Mint JWT with owner role
+          const secret = new TextEncoder().encode(env.JWT_SECRET || '');
+          if (!env.JWT_SECRET) {
+            throw new Error('JWT_SECRET not configured');
+          }
+
+          const now = Math.floor(Date.now() / 1000);
+          const exp = now + (7 * 24 * 60 * 60); // 7 days
+
+          const token = await new SignJWT({
+            sub: data.email,
+            roles: ['admin']
+          })
+            .setProtectedHeader({ alg: 'HS256' })
+            .setIssuer(env.JWT_ISSUER || 'syston.app')
+            .setAudience(env.JWT_AUDIENCE || 'syston-mobile')
+            .setIssuedAt(now)
+            .setExpirationTime(exp)
+            .sign(secret);
+
+          return json({
+            success: true,
+            token,
+            expiresAt: new Date(exp * 1000).toISOString()
+          }, 200, corsHdrs);
+        } catch (err: any) {
+          if (err.errors) {
+            return json({
+              success: false,
+              error: { code: 'VALIDATION', details: err.errors }
+            }, 400, corsHdrs);
+          }
+          return json({
+            success: false,
+            error: { code: 'TOKEN_MINT_FAILED', message: String(err?.message || err) }
+          }, 500, corsHdrs);
+        }
+      }
+
       const v = env.API_VERSION || "v1";
 
       const method = req.method.toUpperCase();
@@ -202,6 +281,175 @@ export default {
         }
         return json({ success: false, error: { code: "SIGNUP_FAILED", message: err.message } }, 500, corsHdrs);
       }
+    }
+    // -------- Phase 3: Self-Serve Signup (Public) --------
+
+    // POST /public/signup/start
+    // Creates tenant config via existing provisionTenant() and accepts an optional promoCode
+    if (url.pathname === `/public/signup/start` && req.method === "POST") {
+      try {
+        const body = await req.json().catch(() => ({}));
+        // expected: { name, email, slug, plan: 'starter'|'pro', promoCode? }
+        const schema = z.object({
+          name: z.string().min(1),
+          email: z.string().email(),
+          slug: z.string().min(2),
+          plan: z.enum(['starter','pro']),
+          promoCode: z.string().optional()
+        });
+        const data = schema.parse(body);
+
+        // Map to your existing provisionTenant shape
+        const result = await provisionTenant(env, {
+          clubName: data.name,
+          clubShortName: data.slug,
+          contactEmail: data.email,
+          contactName: data.name,
+          plan: data.plan === 'pro' ? 'managed' : 'free', // reuse your existing plans: managed=pro, free=starter
+          promoCode: data.promoCode
+        });
+
+        if (!result?.success) {
+          return json({ success: false, error: result?.error || { code:'SIGNUP_FAILED' } }, 400, corsHdrs);
+        }
+
+        // Ensure flags match tier
+        const tenantId = result.tenant?.id || data.slug;
+        if (data.plan === 'starter') {
+          await setTenantFlags(env, tenantId, { managed: { yt: false } });
+        } else {
+          await setTenantFlags(env, tenantId, { managed: { yt: true } });
+        }
+
+        return json({ success: true, data: { tenant: tenantId, plan: data.plan } }, 200, corsHdrs);
+      } catch (err:any) {
+        if (err.errors) {
+          return json({ success:false, error:{ code:'VALIDATION', details: err.errors } }, 400, corsHdrs);
+        }
+        return json({ success:false, error:{ code:'SIGNUP_FAILED', message:String(err?.message||err) } }, 500, corsHdrs);
+      }
+    }
+
+    // POST /public/signup/brand
+    // Stores badge/colors using your existing brand service
+    if (url.pathname === `/public/signup/brand` && req.method === "POST") {
+      try {
+        const body = await req.json().catch(() => ({}));
+        // expected: { tenant, badgeUrl, primary?, secondary? }
+        const schema = z.object({
+          tenant: z.string().min(1),
+          badgeUrl: z.string().url(),
+          primary: z.string().optional(),
+          secondary: z.string().optional()
+        });
+        const p = schema.parse(body);
+
+        const { setBrand } = await import("./services/brand");
+        const brand = await setBrand(env, p.tenant, {
+          badgeUrl: p.badgeUrl,
+          colors: {
+            primary: p.primary || undefined,
+            secondary: p.secondary || undefined
+          }
+        });
+
+        return json({ success:true, data: brand }, 200, corsHdrs);
+      } catch (err:any) {
+        if (err.errors) {
+          return json({ success:false, error:{ code:'VALIDATION', details: err.errors } }, 400, corsHdrs);
+        }
+        return json({ success:false, error:{ code:'BRAND_SAVE_FAILED', message:String(err?.message||err) } }, 500, corsHdrs);
+      }
+    }
+
+    // POST /public/signup/starter/make
+    // Starter plan: BYO Make — save webhook + mark flags accordingly
+    if (url.pathname === `/public/signup/starter/make` && req.method === "POST") {
+      try {
+        const body = await req.json().catch(() => ({}));
+        // expected: { tenant, scenarioId, webhookUrl }
+        const schema = z.object({
+          tenant: z.string().min(1),
+          scenarioId: z.string().min(1),
+          webhookUrl: z.string().url()
+        });
+        const p = schema.parse(body);
+
+        // enforce allowed host (adds .make.com automatically)
+        const u = new URL(p.webhookUrl);
+        const allowedCsv = (env.ALLOWED_WEBHOOK_HOSTS || "") + ",.make.com";
+        if (!isAllowedWebhookHost(u.host, allowedCsv)) {
+          return json({ success:false, error:{ code:'VALIDATION', message:`Host ${u.host} not allowed` } }, 400, corsHdrs);
+        }
+
+        await setMakeWebhook(env, p.tenant, u.toString());
+        await setTenantFlags(env, p.tenant, { managed: { yt: false } });
+
+        return json({ success:true, data:{ saved:true } }, 200, corsHdrs);
+      } catch (err:any) {
+        if (err.errors) {
+          return json({ success:false, error:{ code:'VALIDATION', details: err.errors } }, 400, corsHdrs);
+        }
+        return json({ success:false, error:{ code:'STARTER_CONFIG_FAILED', message:String(err?.message||err) } }, 500, corsHdrs);
+      }
+    }
+
+    // POST /public/signup/pro/confirm
+    // Pro plan: mark as managed (we run automations on Cloudflare)
+    if (url.pathname === `/public/signup/pro/confirm` && req.method === "POST") {
+      try {
+        const body = await req.json().catch(() => ({}));
+        // expected: { tenant }
+        const schema = z.object({ tenant: z.string().min(1) });
+        const p = schema.parse(body);
+
+        await setTenantFlags(env, p.tenant, { managed: { yt: true } });
+        return json({ success:true, data:{ confirmed:true } }, 200, corsHdrs);
+      } catch (err:any) {
+        if (err.errors) {
+          return json({ success:false, error:{ code:'VALIDATION', details: err.errors } }, 400, corsHdrs);
+        }
+        return json({ success:false, error:{ code:'PRO_CONFIRM_FAILED', message:String(err?.message||err) } }, 500, corsHdrs);
+      }
+    }
+    // -------- Phase 3: Usage Tracking --------
+    // Simple monthly counters in KV: key = usage:<tenant>:<YYYY-MM>
+
+    // GET /api/v1/usage
+    if (url.pathname === `/api/${v}/usage` && req.method === "GET") {
+      const tenant = (req.headers.get("x-tenant") || url.searchParams.get("tenant") || "default").toString();
+      const now = new Date();
+      const ym = `${now.getUTCFullYear()}-${String(now.getUTCMonth()+1).padStart(2,'0')}`;
+      const kvKey = `usage:${tenant}:${ym}`;
+      const value = (await env.KV_IDEMP.get(kvKey, "json")) as any || { count: 0, month: ym };
+      return json({ success:true, data:{ tenant, month: ym, count: Number(value.count||0) } }, 200, corsHdrs);
+    }
+
+    // POST /api/v1/usage/increment
+    if (url.pathname === `/api/${v}/usage/increment` && req.method === "POST") {
+      const tenant = (req.headers.get("x-tenant") || "default").toString();
+      const now = new Date();
+      const ym = `${now.getUTCFullYear()}-${String(now.getUTCMonth()+1).padStart(2,'0')}`;
+      const kvKey = `usage:${tenant}:${ym}`;
+      const planKey = `tenant:${tenant}:plan`; // optional hint; fallback to cap if not present
+
+      // Read current
+      const current = (await env.KV_IDEMP.get(kvKey, "json")) as any || { count: 0, month: ym };
+      let count = Number(current.count || 0) + 1;
+
+      // Enforce 1,000/mo cap for Starter (non-managed) unless comped
+      // We infer "managed" from flags (managed.yt = true => Pro)
+      const cfg = await ensureTenant(env, tenant);
+      const isPro = !!cfg?.flags?.managed?.yt;
+      const comped = !!cfg?.flags?.comped;
+
+      if (!isPro && !comped && count > 1000) {
+        // do not increment beyond the cap
+        return json({ success:false, error:{ code:'USAGE_CAP', message:'Monthly cap reached (1,000).' }, data:{ tenant, month: ym, count: count-1 } }, 402, corsHdrs);
+      }
+
+      await env.KV_IDEMP.put(kvKey, JSON.stringify({ count, month: ym }));
+      return json({ success:true, data:{ tenant, month: ym, count } }, 200, corsHdrs);
     }
 
     // -------- Apps Script Integration --------
@@ -324,6 +572,11 @@ export default {
     }
 
     // -------- Admin endpoints --------
+
+    // GET /api/v1/admin/stats - Dashboard statistics
+    if (url.pathname === `/api/${v}/admin/stats` && req.method === "GET") {
+      return await getAdminStats(req, env, requestId, corsHdrs);
+    }
 
     // POST /api/v1/admin/tenant/create
     if (url.pathname === `/api/${v}/admin/tenant/create` && req.method === "POST") {
@@ -702,6 +955,262 @@ export default {
       }
     }
 
+// Live Match Routes - Insert after line 703 in index.ts
+
+    // -------- Live Match API --------
+
+    // GET /api/v1/fixtures/next - Get next fixture with YouTube livestream metadata
+    if (url.pathname === `/api/${v}/fixtures/next` && req.method === "GET") {
+      try {
+        const result = await env.DB.prepare(`
+          SELECT
+            id,
+            fixture_date || 'T' || COALESCE(kick_off_time, '00:00:00') || 'Z' as kickoffIso,
+            COALESCE(home_team, 'Home Team') as homeTeam,
+            COALESCE(away_team, opponent) as awayTeam,
+            opponent,
+            CASE
+              WHEN home_team IS NOT NULL THEN 'H'
+              ELSE 'A'
+            END as homeAway,
+            venue,
+            competition,
+            COALESCE(match_status, status) as status,
+            home_score,
+            away_score,
+            current_minute as minute,
+            youtube_live_id as youtubeLiveId,
+            youtube_status as youtubeStatus,
+            youtube_scheduled_start as youtubeScheduledStart
+          FROM fixtures
+          WHERE fixture_date >= DATE('now')
+            AND status != 'postponed'
+          ORDER BY fixture_date ASC, kick_off_time ASC
+          LIMIT 1
+        `).first();
+
+        if (result) {
+          // Transform to NextFixture format
+          const nextFixture = {
+            id: result.id,
+            kickoffIso: result.kickoffIso,
+            homeTeam: result.homeTeam,
+            awayTeam: result.awayTeam,
+            opponent: result.opponent,
+            homeAway: result.homeAway,
+            venue: result.venue || null,
+            competition: result.competition || null,
+            status: result.status || 'scheduled',
+            score: (result.home_score !== null && result.away_score !== null) ? {
+              home: result.home_score,
+              away: result.away_score
+            } : null,
+            minute: result.minute || 0,
+            youtubeLiveId: result.youtubeLiveId || null,
+            youtubeStatus: result.youtubeStatus || null,
+            youtubeScheduledStart: result.youtubeScheduledStart || null,
+          };
+
+          return json({ success: true, data: nextFixture }, 200, corsHdrs);
+        } else {
+          return json({ success: true, data: null }, 200, corsHdrs);
+        }
+      } catch (err) {
+        logJSON("error", requestId, { message: "Get next fixture failed", error: String(err) });
+        return json({ success: false, error: { code: "INTERNAL", message: "Failed to fetch next fixture" } }, 500, corsHdrs);
+      }
+    }
+
+    // GET /api/v1/live-updates - Get live text updates for a match
+    if (url.pathname === `/api/${v}/live-updates` && req.method === "GET") {
+      try {
+        const matchId = url.searchParams.get('matchId');
+
+        if (!matchId) {
+          return json({ success: false, error: { code: "INVALID_REQUEST", message: "matchId parameter required" } }, 400, corsHdrs);
+        }
+
+        const result = await env.DB.prepare(`
+          SELECT
+            id,
+            match_id as matchId,
+            minute,
+            type,
+            text,
+            scorer,
+            assist,
+            card,
+            player,
+            score_so_far as scoreSoFar,
+            created_at as createdAt
+          FROM live_updates
+          WHERE match_id = ?
+          ORDER BY created_at ASC
+        `).bind(matchId).all();
+
+        return json({ success: true, data: result.results || [] }, 200, corsHdrs);
+      } catch (err) {
+        logJSON("error", requestId, { message: "Get live updates failed", error: String(err) });
+        return json({ success: false, error: { code: "INTERNAL", message: "Failed to fetch live updates" } }, 500, corsHdrs);
+      }
+    }
+
+    // POST /api/v1/live-updates - Post a live update (goal, card, sub, info)
+    if (url.pathname === `/api/${v}/live-updates` && req.method === "POST") {
+      try {
+        const body = await req.json().catch(() => ({}));
+
+        // Validate required fields
+        if (!body.matchId || typeof body.minute !== 'number' || !body.type || !body.text) {
+          return json({
+            success: false,
+            error: { code: "INVALID_REQUEST", message: "matchId, minute, type, and text are required" }
+          }, 400, corsHdrs);
+        }
+
+        // Validate type
+        const validTypes = ['goal', 'card', 'subs', 'info'];
+        if (!validTypes.includes(body.type)) {
+          return json({
+            success: false,
+            error: { code: "INVALID_REQUEST", message: "type must be one of: goal, card, subs, info" }
+          }, 400, corsHdrs);
+        }
+
+        // Validate card type if present
+        if (body.card) {
+          const validCards = ['yellow', 'red', 'sinbin'];
+          if (!validCards.includes(body.card)) {
+            return json({
+              success: false,
+              error: { code: "INVALID_REQUEST", message: "card must be one of: yellow, red, sinbin" }
+            }, 400, corsHdrs);
+          }
+        }
+
+        // Generate ID
+        const updateId = `update-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+        const createdAt = new Date().toISOString();
+
+        // Insert update
+        await env.DB.prepare(`
+          INSERT INTO live_updates (
+            id, match_id, minute, type, text, scorer, assist, card, player, score_so_far, created_at
+          )
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).bind(
+          updateId,
+          body.matchId,
+          body.minute,
+          body.type,
+          body.text,
+          body.scorer || null,
+          body.assist || null,
+          body.card || null,
+          body.player || null,
+          body.scoreSoFar || null,
+          createdAt
+        ).run();
+
+        // Return created update
+        const liveUpdate = {
+          id: updateId,
+          matchId: body.matchId,
+          minute: body.minute,
+          type: body.type,
+          text: body.text,
+          scorer: body.scorer || null,
+          assist: body.assist || null,
+          card: body.card || null,
+          player: body.player || null,
+          scoreSoFar: body.scoreSoFar || null,
+          createdAt,
+        };
+
+        logJSON("info", requestId, { message: "Live update posted", updateId, matchId: body.matchId, type: body.type });
+        return json({ success: true, data: liveUpdate }, 201, corsHdrs);
+      } catch (err) {
+        logJSON("error", requestId, { message: "Post live update failed", error: String(err) });
+        return json({ success: false, error: { code: "INTERNAL", message: "Failed to post live update" } }, 500, corsHdrs);
+      }
+    }
+
+    // POST /api/v1/matches/:id/state - Set match state (kickoff, halftime, fulltime)
+    if (url.pathname.match(new RegExp(`^/api/${v}/matches/([^/]+)/state$`)) && req.method === "POST") {
+      try {
+        const matchId = url.pathname.split('/').slice(-2, -1)[0];
+        const body = await req.json().catch(() => ({}));
+
+        // Validate status
+        const validStatuses = ['scheduled', 'live', 'halftime', 'ft'];
+        if (!body.status || !validStatuses.includes(body.status)) {
+          return json({
+            success: false,
+            error: { code: "INVALID_REQUEST", message: "status must be one of: scheduled, live, halftime, ft" }
+          }, 400, corsHdrs);
+        }
+
+        // Build update query
+        let query = 'UPDATE fixtures SET match_status = ?, updated_at = CURRENT_TIMESTAMP';
+        const params: any[] = [body.status];
+
+        if (typeof body.minute === 'number') {
+          query += ', current_minute = ?';
+          params.push(body.minute);
+        }
+
+        if (body.score && typeof body.score.home === 'number' && typeof body.score.away === 'number') {
+          query += ', home_score = ?, away_score = ?';
+          params.push(body.score.home, body.score.away);
+        }
+
+        query += ' WHERE id = ?';
+        params.push(matchId);
+
+        await env.DB.prepare(query).bind(...params).run();
+
+        logJSON("info", requestId, { message: "Match state updated", matchId, status: body.status });
+        return json({ success: true, data: { ok: true } }, 200, corsHdrs);
+      } catch (err) {
+        logJSON("error", requestId, { message: "Set match state failed", error: String(err) });
+        return json({ success: false, error: { code: "INTERNAL", message: "Failed to set match state" } }, 500, corsHdrs);
+      }
+    }
+
+    // POST /api/v1/live-updates/cleanup - Clean up stale live updates
+    if (url.pathname === `/api/${v}/live-updates/cleanup` && req.method === "POST") {
+      try {
+        const body = await req.json().catch(() => ({}));
+        const matchId = body.matchId;
+
+        let removed = 0;
+
+        if (matchId) {
+          // Remove all updates for specific match
+          const result = await env.DB.prepare('DELETE FROM live_updates WHERE match_id = ?')
+            .bind(matchId).run();
+          removed = result.meta?.changes || 0;
+          logJSON("info", requestId, { message: "Cleaned up match updates", matchId, removed });
+        } else {
+          // Remove updates older than 90 minutes after FT for completed matches
+          const result = await env.DB.prepare(`
+            DELETE FROM live_updates
+            WHERE match_id IN (
+              SELECT id FROM fixtures
+              WHERE match_status = 'ft'
+                AND updated_at < datetime('now', '-90 minutes')
+            )
+          `).run();
+          removed = result.meta?.changes || 0;
+          logJSON("info", requestId, { message: "Cleaned up stale updates", removed });
+        }
+
+        return json({ success: true, data: { removed } }, 200, corsHdrs);
+      } catch (err) {
+        logJSON("error", requestId, { message: "Cleanup failed", error: String(err) });
+        return json({ success: false, error: { code: "INTERNAL", message: "Failed to cleanup live updates" } }, 500, corsHdrs);
+      }
+    }
     // -------- League Table API --------
 
     // POST /api/v1/league/sync - Sync league standings from Apps Script
@@ -2722,7 +3231,13 @@ export default {
       return json(resp, 202, corsHdrs);
     }
 
-    // Fallback
+    // Fallback - log for debugging
+    logJSON("warn", requestId, {
+      message: "Route not found",
+      method: req.method,
+      pathname: url?.pathname,
+      search: url?.search
+    });
     return json({ success: false, error: { code: "NOT_FOUND", message: "Route not found" } }, 404, corsHdrs);
     } catch (err: any) {
       const ms = Date.now() - t0;
