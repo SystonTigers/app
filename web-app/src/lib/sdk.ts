@@ -81,3 +81,33 @@ export async function getAdminOverview(tenantId: string) {
     };
   }>(`${API_BASE}/api/v1/tenants/${encodeURIComponent(tenantId)}/overview`);
 }
+// --- TEMPORARY STUBS TO UNBLOCK BUILD ---
+// These exist only so pages that still import them keep compiling.
+// They will throw if actually called. Refactor pages to use the
+// explicit functions (getProvisionStatus, startMagicLogin, etc.)
+
+export function getServerSDK(_tenant?: string) {
+  return new Proxy(
+    {},
+    {
+      get() {
+        throw new Error(
+          'getServerSDK stub called. Refactor this page to call functions from src/lib/sdk directly.'
+        );
+      },
+    }
+  ) as any;
+}
+
+export function createClientSDK(_tenant?: string) {
+  return new Proxy(
+    {},
+    {
+      get() {
+        throw new Error(
+          'createClientSDK stub called. Refactor this component to call functions from src/lib/sdk directly.'
+        );
+      },
+    }
+  ) as any;
+}
