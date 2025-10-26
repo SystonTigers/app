@@ -1,5 +1,11 @@
 import { getServerSDK } from '@/lib/sdk';
-import type { Fixture, FeedPost, LeagueTableRow, NextFixture, LiveUpdate } from '@team-platform/sdk';
+// Local type shims to avoid the external SDK
+type Fixture = any;
+type FeedPost = any;
+type LeagueTableRow = any;
+type NextFixture = any;
+type LiveUpdate = any;
+
 
 interface HomePageProps {
   params: { tenant: string };

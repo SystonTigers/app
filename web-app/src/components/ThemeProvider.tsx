@@ -2,7 +2,14 @@
 
 import { useEffect, useState } from 'react';
 import { createClientSDK } from '@/lib/sdk';
-import type { BrandKit } from '@team-platform/sdk';
+// Local type shim
+type BrandKit = {
+  primaryColor?: string;
+  secondaryColor?: string;
+  logoUrl?: string;
+  [key: string]: any;
+};
+
 
 interface ThemeProviderProps {
   children: React.ReactNode;

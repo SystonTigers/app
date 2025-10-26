@@ -3,9 +3,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
-import Link from 'next/link';
+import { getProvisionStatus, startMagicLogin } from '@/lib/sdk';
 
 type Step = 1 | 2 | 3 | 4;
 type Plan = 'starter' | 'pro';
