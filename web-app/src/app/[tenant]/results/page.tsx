@@ -10,7 +10,7 @@ export default async function ResultsPage({ params }: { params: { tenant: string
 
       {results.length > 0 ? (
         <div style={{ display: 'grid', gap: 'var(--spacing-md)' }}>
-          {results.map((result) => (
+          {results.map((result: any) => (
             <div key={result.id} className="card">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ flex: 1 }}>

@@ -23,31 +23,31 @@ export default async function StatsPage({ params }: { params: { tenant: string }
             <div style={{ display: 'grid', gap: 'var(--spacing-sm)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: 'var(--spacing-sm)', background: 'var(--bg)', borderRadius: 'var(--radius-sm)' }}>
                 <span>Played:</span>
-                <strong>{stats.played}</strong>
+                <strong>{(stats as any).played}</strong>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: 'var(--spacing-sm)', background: 'var(--bg)', borderRadius: 'var(--radius-sm)' }}>
                 <span>Won:</span>
-                <strong style={{ color: 'var(--success)' }}>{stats.won}</strong>
+                <strong style={{ color: 'var(--success)' }}>{(stats as any).won}</strong>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: 'var(--spacing-sm)', background: 'var(--bg)', borderRadius: 'var(--radius-sm)' }}>
                 <span>Drawn:</span>
-                <strong>{stats.drawn}</strong>
+                <strong>{(stats as any).drawn}</strong>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: 'var(--spacing-sm)', background: 'var(--bg)', borderRadius: 'var(--radius-sm)' }}>
                 <span>Lost:</span>
-                <strong style={{ color: 'var(--error)' }}>{stats.lost}</strong>
+                <strong style={{ color: 'var(--error)' }}>{(stats as any).lost}</strong>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: 'var(--spacing-sm)', background: 'var(--bg)', borderRadius: 'var(--radius-sm)' }}>
                 <span>Goals For:</span>
-                <strong>{stats.goalsFor}</strong>
+                <strong>{(stats as any).goalsFor}</strong>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: 'var(--spacing-sm)', background: 'var(--bg)', borderRadius: 'var(--radius-sm)' }}>
                 <span>Goals Against:</span>
-                <strong>{stats.goalsAgainst}</strong>
+                <strong>{(stats as any).goalsAgainst}</strong>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: 'var(--spacing-sm)', background: 'var(--bg)', borderRadius: 'var(--radius-sm)' }}>
                 <span>Clean Sheets:</span>
-                <strong>{stats.cleanSheets}</strong>
+                <strong>{(stats as any).cleanSheets}</strong>
               </div>
             </div>
           ) : (
@@ -60,7 +60,7 @@ export default async function StatsPage({ params }: { params: { tenant: string }
           <h2 style={{ marginBottom: 'var(--spacing-md)', color: 'var(--brand)' }}>Top Scorers</h2>
           {scorers.length > 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-sm)' }}>
-              {scorers.map((player, index) => (
+              {scorers.map((player: any, index: number) => (
                 <div
                   key={player.id}
                   style={{

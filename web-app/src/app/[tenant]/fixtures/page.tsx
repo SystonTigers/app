@@ -10,7 +10,7 @@ export default async function FixturesPage({ params }: { params: { tenant: strin
 
       {fixtures.length > 0 ? (
         <div style={{ display: 'grid', gap: 'var(--spacing-md)' }}>
-          {fixtures.map((fixture) => (
+          {fixtures.map((fixture: any) => (
             <div key={fixture.id} className="card">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>

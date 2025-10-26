@@ -1,9 +1,10 @@
 'use client';
-import { useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { getSDK } from '@/lib/sdk';
 
-export default function Onboard() {
+import { Suspense, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { verifyMagicToken } from '@/lib/sdk';
+
+function OnboardContent() {
   const router = useRouter();
   const params = useSearchParams();
 
@@ -16,8 +17,7 @@ export default function Onboard() {
 
     (async () => {
       try {
-        const sdk = getSDK();
-        const res = await sdk.verifyMagicToken(token);
+        const res = await verifyMagicToken(token);
         if (res?.success) {
           router.replace('/admin');
         } else {
@@ -36,5 +36,19 @@ export default function Onboard() {
         <p className="text-gray-700">Setting up your secure session...</p>
       </div>
     </div>
+  );
+}
+
+export default function Onboard() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="p-8 bg-white rounded-lg shadow">
+          <p className="text-gray-700">Loading...</p>
+        </div>
+      </div>
+    }>
+      <OnboardContent />
+    </Suspense>
   );
 }

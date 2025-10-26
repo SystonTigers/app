@@ -1,11 +1,4 @@
 import { getServerSDK } from '@/lib/sdk';
-// Local type shims to avoid the external SDK
-type Fixture = any;
-type FeedPost = any;
-type LeagueTableRow = any;
-type NextFixture = any;
-type LiveUpdate = any;
-
 
 interface HomePageProps {
   params: { tenant: string };
@@ -29,10 +22,10 @@ export default async function TenantHomePage({ params }: HomePageProps) {
   const leagueTable = (table.status === 'fulfilled' ? table.value : []).slice(0, 5);
 
   // Fetch live updates if we have a next fixture
-  let liveUpdates: LiveUpdate[] = [];
+  let liveUpdates: Array<Record<string, unknown>> = [];
   if (next?.id) {
     try {
-      liveUpdates = await sdk.listLiveUpdates(next.id);
+      liveUpdates = await sdk.listLiveUpdates(next.id as string);
     } catch (error) {
       console.error('Failed to fetch live updates:', error);
     }
@@ -55,11 +48,11 @@ export default async function TenantHomePage({ params }: HomePageProps) {
   const renderLiveMatch = () => {
     if (!next) return null;
 
-    const { youtubeLiveId, youtubeStatus, status, score, minute, homeTeam, awayTeam } = next;
+    const { youtubeLiveId, youtubeStatus, status, score, minute, homeTeam, awayTeam } = next as any;
 
     // State window rule: show YouTube within 24h before and 3h after kickoff
     const now = Date.now();
-    const kickoff = new Date(next.kickoffIso).getTime();
+    const kickoff = new Date((next as any).kickoffIso).getTime();
     const withinWindow = now >= kickoff - 24*60*60*1000 && now <= kickoff + 3*60*60*1000;
 
     const showYouTube = withinWindow && youtubeLiveId && (youtubeStatus === 'live' || youtubeStatus === 'upcoming');
@@ -156,7 +149,7 @@ export default async function TenantHomePage({ params }: HomePageProps) {
                 </div>
                 {status === 'live' && minute !== undefined && (
                   <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#0F1419' }}>
-                    {minute}'
+                    {minute}&apos;
                   </div>
                 )}
               </div>
@@ -181,7 +174,7 @@ export default async function TenantHomePage({ params }: HomePageProps) {
                 Latest Events
               </h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {liveUpdates.slice(-5).reverse().map((update) => (
+                {liveUpdates.slice(-5).reverse().map((update: any) => (
                   <div key={update.id} style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
                     <span style={{ fontSize: '22px', lineHeight: 1 }}>
                       {getEventIcon(update.type, update.card)}
@@ -199,7 +192,7 @@ export default async function TenantHomePage({ params }: HomePageProps) {
                         fontSize: '13px',
                         color: '#6B7280',
                       }}>
-                        {update.minute}' {update.scoreSoFar && `• ${update.scoreSoFar}`}
+                        {update.minute}&apos; {update.scoreSoFar && `• ${update.scoreSoFar}`}
                       </p>
                     </div>
                   </div>
@@ -212,11 +205,11 @@ export default async function TenantHomePage({ params }: HomePageProps) {
             {!isActive && (
               <>
                 <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: 'var(--spacing-xs)' }}>
-                  {next.homeAway === 'H' ? 'vs' : '@'} {next.opponent}
+                  {(next as any).homeAway === 'H' ? 'vs' : '@'} {(next as any).opponent}
                 </h2>
-                {next.competition && (
+                {(next as any).competition && (
                   <p style={{ color: 'var(--text-muted)', marginBottom: 'var(--spacing-md)' }}>
-                    {next.competition}
+                    {(next as any).competition}
                   </p>
                 )}
               </>
@@ -250,6 +243,7 @@ export default async function TenantHomePage({ params }: HomePageProps) {
 
     // Priority 2: Show latest text update if available
     if (latestUpdate) {
+      const update = latestUpdate as any;
       return (
         <section className="card" style={{
           marginBottom: 'var(--spacing-xl)',
@@ -267,15 +261,15 @@ export default async function TenantHomePage({ params }: HomePageProps) {
               LIVE UPDATE
             </div>
             <div style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>
-              {latestUpdate.minute}'
+              {update.minute}&apos;
             </div>
           </div>
 
           <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: 'var(--spacing-md)', color: '#FFFFFF' }}>
-            {latestUpdate.text}
+            {update.text}
           </h2>
 
-          {latestUpdate.scoreSoFar && (
+          {update.scoreSoFar && (
             <div style={{
               backgroundColor: 'rgba(255,255,255,0.2)',
               padding: 'var(--spacing-sm) var(--spacing-md)',
@@ -284,20 +278,20 @@ export default async function TenantHomePage({ params }: HomePageProps) {
               marginBottom: 'var(--spacing-sm)',
             }}>
               <span style={{ fontSize: '1.125rem', fontWeight: 'bold' }}>
-                Score: {latestUpdate.scoreSoFar}
+                Score: {update.scoreSoFar}
               </span>
             </div>
           )}
 
-          {latestUpdate.scorer && (
+          {update.scorer && (
             <p style={{ fontSize: '1rem', marginBottom: 'var(--spacing-sm)' }}>
-              ⚽ {latestUpdate.scorer}
-              {latestUpdate.assist && ` (assist: ${latestUpdate.assist})`}
+              ⚽ {update.scorer}
+              {update.assist && ` (assist: ${update.assist})`}
             </p>
           )}
 
           <p style={{ fontSize: '0.875rem', opacity: 0.8, marginTop: 'var(--spacing-md)' }}>
-            {new Date(latestUpdate.createdAt).toLocaleTimeString()}
+            {new Date(update.createdAt).toLocaleTimeString()}
           </p>
         </section>
       );
@@ -323,7 +317,7 @@ export default async function TenantHomePage({ params }: HomePageProps) {
           </h2>
           {nextFixtures.length > 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-sm)' }}>
-              {nextFixtures.map((fixture) => (
+              {nextFixtures.map((fixture: any) => (
                 <div
                   key={fixture.id}
                   style={{
@@ -362,7 +356,7 @@ export default async function TenantHomePage({ params }: HomePageProps) {
                 </tr>
               </thead>
               <tbody>
-                {leagueTable.map((row) => (
+                {leagueTable.map((row: any) => (
                   <tr key={row.position}>
                     <td style={{ padding: 'var(--spacing-xs)' }}>{row.position}</td>
                     <td style={{ padding: 'var(--spacing-xs)' }}>{row.team}</td>
@@ -386,7 +380,7 @@ export default async function TenantHomePage({ params }: HomePageProps) {
           </h2>
           {latestPosts.length > 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-md)' }}>
-              {latestPosts.map((post) => (
+              {latestPosts.map((post: any) => (
                 <article
                   key={post.id}
                   style={{

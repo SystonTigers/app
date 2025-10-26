@@ -4,121 +4,37 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-
-interface AdminStats {
-  byStatus: Array<{ status: string; count: number }>;
-  byPlan: Array<{ plan: string; count: number }>;
-  recentSignups: number;
-  monthlyUsage: number;
-}
+import { getAdminStats, type AdminStats } from '@/lib/sdk';
 
 export default function AdminDashboard() {
+  const router = useRouter();
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [adminJwt, setAdminJwt] = useState<string>('');
-  const [tokenInput, setTokenInput] = useState<string>('');
-  const [showTokenInput, setShowTokenInput] = useState(false);
 
   useEffect(() => {
     fetchStats();
   }, []);
 
-  const handleSaveToken = () => {
-    if (tokenInput.trim()) {
-      localStorage.setItem('admin_jwt', tokenInput.trim());
-      setAdminJwt(tokenInput.trim());
-      setShowTokenInput(false);
-      setTokenInput('');
-      setError('');
-      setLoading(true);
-      fetchStats();
-    }
-  };
-
   const fetchStats = async () => {
-    const API_BASE = process.env.NEXT_PUBLIC_API_BASE!;
-    const fromEnv = process.env.NEXT_PUBLIC_ADMIN_JWT || '';
-    const fromStore = typeof window !== 'undefined' ? localStorage.getItem('admin_jwt') || '' : '';
-    const token = fromStore || fromEnv;
-
-    if (!token) {
-      setLoading(false);
-      setShowTokenInput(true);
-      setError('No admin token found. Paste a token or set NEXT_PUBLIC_ADMIN_JWT.');
-      return;
-    }
-
-    setAdminJwt(token);
-
     try {
-      const res = await fetch(`${API_BASE}/api/v1/admin/stats`, {
-        headers: { 'Authorization': `Bearer ${token}` },
-      });
-
-      if (!res.ok) {
-        const text = await res.text();
-        console.warn('Admin stats fetch failed:', res.status, text);
-        throw new Error(`Failed to fetch stats (${res.status})`);
-      }
-
-      const data = await res.json();
-      if (data?.success) {
-        setStats(data.stats);
-        setError('');
-      } else {
-        throw new Error(data?.error?.message || 'Stats returned success=false');
-      }
+      const data = await getAdminStats();
+      setStats(data.stats);
+      setError('');
     } catch (err: any) {
       console.error('Admin stats error:', err);
-      setError(err?.message || 'Failed to fetch stats');
+      // If unauthorized, redirect to login
+      if (err?.message?.includes('401') || err?.message?.includes('Unauthorized')) {
+        router.push('/admin/login');
+      } else {
+        setError(err?.message || 'Failed to fetch stats');
+      }
     } finally {
       setLoading(false);
     }
   };
-
-  if (showTokenInput) {
-    return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Admin Access</h2>
-          <p className="text-gray-600 mb-6">
-            Enter your admin token to access the dashboard. You can generate a token using the dev endpoint.
-          </p>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Admin JWT Token
-              </label>
-              <textarea
-                value={tokenInput}
-                onChange={(e) => setTokenInput(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-xs"
-                placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-                rows={4}
-              />
-            </div>
-            <button
-              onClick={handleSaveToken}
-              disabled={!tokenInput.trim()}
-              className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Save Token
-            </button>
-          </div>
-          <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <p className="text-sm text-blue-800 mb-2 font-semibold">To generate a token:</p>
-            <pre className="text-xs text-blue-700 overflow-x-auto whitespace-pre-wrap">
-{`curl -X POST ${process.env.NEXT_PUBLIC_API_BASE}/internal/dev/admin-token \\
-  -H "Content-Type: application/json" \\
-  -d '{"email":"you@example.com"}'`}
-            </pre>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   if (loading) {
     return (
@@ -135,17 +51,12 @@ export default function AdminDashboard() {
           <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
             {error}
           </div>
-          <button
-            onClick={() => {
-              localStorage.removeItem('admin_jwt');
-              setAdminJwt('');
-              setShowTokenInput(true);
-              setError('');
-            }}
-            className="w-full bg-gray-600 text-white py-2 px-4 rounded-lg font-semibold hover:bg-gray-700 transition-colors"
+          <Link
+            href="/admin/login"
+            className="block w-full bg-blue-600 text-white py-2 px-4 rounded-lg font-semibold hover:bg-blue-700 transition-colors text-center"
           >
-            Change Token
-          </button>
+            Go to Login
+          </Link>
         </div>
       </div>
     );
@@ -157,17 +68,10 @@ export default function AdminDashboard() {
       <header className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex justify-between items-center">
-            <h1 className="text-2xl font-bold text-gray-900">Owner Console</h1>
-            <button
-              onClick={() => {
-                localStorage.removeItem('admin_jwt');
-                setAdminJwt('');
-                setShowTokenInput(true);
-              }}
-              className="text-sm text-gray-600 hover:text-gray-900"
-            >
-              Change Token
-            </button>
+            <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
+            <div className="text-sm text-gray-600">
+              Platform Admin
+            </div>
           </div>
         </div>
       </header>
@@ -262,7 +166,7 @@ export default function AdminDashboard() {
           <div className="bg-white rounded-lg shadow p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Tenants by Status</h3>
             <div className="space-y-3">
-              {stats?.byStatus.map((item) => (
+              {stats?.byStatus.map((item: any) => (
                 <div key={item.status} className="flex items-center justify-between">
                   <div className="flex items-center">
                     <div className={`w-3 h-3 rounded-full mr-3 ${
@@ -284,7 +188,7 @@ export default function AdminDashboard() {
           <div className="bg-white rounded-lg shadow p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Tenants by Plan</h3>
             <div className="space-y-3">
-              {stats?.byPlan.map((item) => (
+              {stats?.byPlan.map((item: any) => (
                 <div key={item.plan} className="flex items-center justify-between">
                   <div className="flex items-center">
                     <div className={`w-3 h-3 rounded-full mr-3 ${

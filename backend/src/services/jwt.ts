@@ -49,14 +49,19 @@ function getJwtSecret(env: any): Uint8Array {
 }
 
 // Verify and normalize JWT claims
-export async function verifyAndNormalize(token: string, env: any): Promise<Claims> {
+export async function verifyAndNormalize(token: string, env: any, audience?: string): Promise<Claims> {
   const secret = getJwtSecret(env);
   const { payload } = await jwtVerify(token, secret, {
     issuer: env.JWT_ISSUER,
-    audience: env.JWT_AUDIENCE,
+    audience: audience || env.JWT_AUDIENCE,
     clockTolerance: 300, // 5 minutes skew
   });
   return normalizeClaims(payload as RawClaims);
+}
+
+// Verify admin JWT (uses syston-admin audience)
+export async function verifyAdminJWT(token: string, env: any): Promise<Claims> {
+  return verifyAndNormalize(token, env, 'syston-admin');
 }
 
 // Helper to require admin claims

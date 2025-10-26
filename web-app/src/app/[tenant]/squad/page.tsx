@@ -10,7 +10,7 @@ export default async function SquadPage({ params }: { params: { tenant: string }
 
       {squad.length > 0 ? (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 'var(--spacing-md)' }}>
-          {squad.map((player) => (
+          {squad.map((player: any) => (
             <div key={player.id} className="card">
               <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-md)', marginBottom: 'var(--spacing-sm)' }}>
                 {player.number && (

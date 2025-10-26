@@ -5,6 +5,7 @@ const DEFAULT_ALLOWED = new Set<string>([
   "https://setup.systontigers.co.uk",
   "https://admin-console.team-platform-2025.workers.dev",
   "https://setup-console.team-platform-2025.workers.dev",
+  "https://*.vercel.app", // Allow all Vercel deployments
 ]);
 
 // Development origins (localhost)
@@ -36,8 +37,24 @@ export function corsHeaders(origin: string | null, env?: { CORS_ALLOWED?: string
     });
   }
 
-  // Check if origin is allowed
-  const allow = origin && allowed.has(origin) ? origin : "";
+  // Check if origin is allowed (exact match or wildcard)
+  let allow = "";
+  if (origin) {
+    if (allowed.has(origin)) {
+      allow = origin;
+    } else {
+      // Check for wildcard patterns like https://*.vercel.app
+      for (const pattern of allowed) {
+        if (pattern.includes('*')) {
+          const regex = new RegExp('^' + pattern.replace(/\./g, '\\.').replace(/\*/g, '.*') + '$');
+          if (regex.test(origin)) {
+            allow = origin;
+            break;
+          }
+        }
+      }
+    }
+  }
 
   if (allow) {
     h.set("Access-Control-Allow-Origin", allow);

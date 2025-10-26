@@ -4,24 +4,26 @@ import { json } from '../lib/validate';
 import { SignJWT, jwtVerify } from 'jose';
 import { sendMagicLinkEmail } from '../lib/email';
 
-// POST /auth/magic/start  { email, tenantId }
-export async function handleMagicStart(req: Request, env: Env): Promise<Response> {
+// POST /auth/magic/start  { email, tenantId? }
+export async function handleMagicStart(req: Request, env: Env, corsHdrs?: Headers): Promise<Response> {
   const body = await req.json().catch(()=>({}));
   const email = (body.email || '').toString().trim().toLowerCase();
-  const tenantId = (body.tenantId || '').toString().trim();
-  if (!email || !tenantId) return json({ success:false, error:'email and tenantId required' }, 400);
+  const tenantId = (body.tenantId || 'platform').toString().trim(); // Default to 'platform' for admin login
+  if (!email) return json({ success:false, error:'email required' }, 400);
 
   // Get tenant name from database for personalized email
-  let clubName = tenantId; // fallback to tenantId
-  try {
-    const row = await env.DB.prepare('SELECT name FROM tenants WHERE id = ?')
-      .bind(tenantId)
-      .first<{ name: string }>();
-    if (row?.name) {
-      clubName = row.name;
+  let clubName = 'Platform Admin'; // Default for platform admin
+  if (tenantId && tenantId !== 'platform') {
+    try {
+      const row = await env.DB.prepare('SELECT name FROM tenants WHERE id = ?')
+        .bind(tenantId)
+        .first<{ name: string }>();
+      if (row?.name) {
+        clubName = row.name;
+      }
+    } catch (error) {
+      console.warn('[Magic] Could not fetch tenant name:', error);
     }
-  } catch (error) {
-    console.warn('[Magic] Could not fetch tenant name:', error);
   }
 
   // Generate token (24h)
@@ -47,13 +49,13 @@ export async function handleMagicStart(req: Request, env: Env): Promise<Response
     // Don't fail the request - link is still logged and can be manually shared
   }
 
-  return json({ success:true });
+  return json({ success:true }, 200, corsHdrs);
 }
 
 // GET /auth/magic/verify?token=...
-export async function handleMagicVerify(req: Request, env: Env): Promise<Response> {
+export async function handleMagicVerify(req: Request, env: Env, corsHdrs?: Headers): Promise<Response> {
   const token = new URL(req.url).searchParams.get('token') || '';
-  if (!token) return json({ success:false, error:'token required' }, 400);
+  if (!token) return json({ success:false, error:'token required' }, 400, corsHdrs);
 
   const { payload } = await jwtVerify(token, new TextEncoder().encode(env.JWT_SECRET), {
     issuer: env.JWT_ISSUER || 'syston.app',
@@ -75,7 +77,8 @@ export async function handleMagicVerify(req: Request, env: Env): Promise<Respons
     .setExpirationTime(now + 7*24*3600)
     .sign(new TextEncoder().encode(env.JWT_SECRET));
 
-  const hdrs = new Headers({ 'content-type': 'application/json' });
+  const hdrs = new Headers(corsHdrs || {});
+  hdrs.set('content-type', 'application/json');
   // HttpOnly cookie for browser
   hdrs.append('Set-Cookie', `owner_session=${session}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${7*24*3600}`);
   return new Response(JSON.stringify({ success:true, tenantId: payload.tenantId }), { status:200, headers: hdrs });

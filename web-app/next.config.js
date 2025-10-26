@@ -21,6 +21,21 @@ const nextConfig = {
   // Output config for Cloudflare Pages
   output: 'standalone',
 
+  // Security headers
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' }
+          // Add CSP later once routes are stable
+        ]
+      }
+    ];
+  },
+
   // Webpack config for Axios browser/node compatibility
   webpack: (config, { isServer }) => {
     config.resolve = config.resolve || {};

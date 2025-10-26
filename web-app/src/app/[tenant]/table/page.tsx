@@ -26,7 +26,7 @@ export default async function TablePage({ params }: { params: { tenant: string }
               </tr>
             </thead>
             <tbody>
-              {table.map((row, index) => (
+              {table.map((row: any, index: number) => (
                 <tr
                   key={row.position}
                   style={{

@@ -260,6 +260,95 @@ export async function createPromoCode(req: Request, env: any, requestId: string,
   }
 }
 
+// POST /api/v1/admin/tenants/:id/deactivate - Deactivate tenant (soft delete)
+export async function deactivateTenant(req: Request, env: any, requestId: string, corsHdrs: Headers, tenantId: string): Promise<Response> {
+  try {
+    await requireAdmin(req, env);
+
+    // Never deactivate Syston production tenant
+    const current = await env.DB.prepare(`SELECT slug FROM tenants WHERE id = ?`).bind(tenantId).first();
+    if (!current) {
+      return json({ success: false, error: { code: "NOT_FOUND", message: "Tenant not found" } }, 404, corsHdrs);
+    }
+
+    const protectedSlugs = ["syston-town-tigers", "syston", "syston-tigers"];
+    if (protectedSlugs.includes(current.slug as string)) {
+      return json({ success: false, error: { code: "PROTECTED_TENANT", message: "Cannot deactivate protected tenant" } }, 403, corsHdrs);
+    }
+
+    await env.DB.prepare(`UPDATE tenants SET status = 'deactivated', updated_at = unixepoch() WHERE id = ?`).bind(tenantId).run();
+
+    logJSON("info", requestId, { message: "TENANT_DEACTIVATED", tenantId, slug: current.slug });
+    return json({ success: true }, 200, corsHdrs);
+
+  } catch (err: any) {
+    if (err instanceof Response) throw err;
+    logJSON("error", requestId, { message: "DEACTIVATE_TENANT_ERROR", error: err.message });
+    return json({ success: false, error: { code: "SERVER_ERROR", message: err.message } }, 500, corsHdrs);
+  }
+}
+
+// DELETE /api/v1/admin/tenants/:id - Delete tenant (hard delete)
+export async function deleteTenant(req: Request, env: any, requestId: string, corsHdrs: Headers, tenantId: string): Promise<Response> {
+  try {
+    await requireAdmin(req, env);
+
+    // Never delete Syston production tenant
+    const current = await env.DB.prepare(`SELECT slug FROM tenants WHERE id = ?`).bind(tenantId).first();
+    if (!current) {
+      return json({ success: false, error: { code: "NOT_FOUND", message: "Tenant not found" } }, 404, corsHdrs);
+    }
+
+    const protectedSlugs = ["syston-town-tigers", "syston", "syston-tigers"];
+    if (protectedSlugs.includes(current.slug as string)) {
+      return json({ success: false, error: { code: "PROTECTED_TENANT", message: "Cannot delete protected tenant" } }, 403, corsHdrs);
+    }
+
+    // Cascade deletes - delete related data first, then tenant
+    await env.DB.batch([
+      env.DB.prepare(`DELETE FROM promo_redemptions WHERE tenant_id = ?`).bind(tenantId),
+      env.DB.prepare(`DELETE FROM feed_posts WHERE tenant_id = ?`).bind(tenantId),
+      env.DB.prepare(`DELETE FROM make_connections WHERE tenant_id = ?`).bind(tenantId),
+      env.DB.prepare(`DELETE FROM tenant_brand WHERE tenant_id = ?`).bind(tenantId),
+      env.DB.prepare(`DELETE FROM pro_automation WHERE tenant_id = ?`).bind(tenantId),
+      env.DB.prepare(`DELETE FROM usage_counters WHERE tenant_id = ?`).bind(tenantId),
+      env.DB.prepare(`DELETE FROM tenants WHERE id = ?`).bind(tenantId),
+    ]);
+
+    logJSON("info", requestId, { message: "TENANT_DELETED", tenantId, slug: current.slug });
+    return json({ success: true }, 200, corsHdrs);
+
+  } catch (err: any) {
+    if (err instanceof Response) throw err;
+    logJSON("error", requestId, { message: "DELETE_TENANT_ERROR", error: err.message });
+    return json({ success: false, error: { code: "SERVER_ERROR", message: err.message } }, 500, corsHdrs);
+  }
+}
+
+// POST /api/v1/admin/promo-codes/:code/deactivate - Deactivate promo code
+export async function deactivatePromoCode(req: Request, env: any, requestId: string, corsHdrs: Headers, code: string): Promise<Response> {
+  try {
+    await requireAdmin(req, env);
+
+    const existing = await env.DB.prepare("SELECT id FROM promo_codes WHERE code = ?").bind(code).first();
+    if (!existing) {
+      return json({ success: false, error: { code: "NOT_FOUND", message: "Promo code not found" } }, 404, corsHdrs);
+    }
+
+    await env.DB.prepare(`
+      UPDATE promo_codes SET active = 0 WHERE code = ?
+    `).bind(code).run();
+
+    logJSON("info", requestId, { message: "PROMO_CODE_DEACTIVATED", code });
+    return json({ success: true }, 200, corsHdrs);
+
+  } catch (err: any) {
+    if (err instanceof Response) throw err;
+    logJSON("error", requestId, { message: "DEACTIVATE_PROMO_CODE_ERROR", error: err.message });
+    return json({ success: false, error: { code: "SERVER_ERROR", message: err.message } }, 500, corsHdrs);
+  }
+}
+
 // GET /api/v1/admin/stats - Dashboard statistics
 export async function getAdminStats(req: Request, env: any, requestId: string, corsHdrs: Headers): Promise<Response> {
   try {

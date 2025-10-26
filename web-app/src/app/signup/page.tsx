@@ -3,6 +3,9 @@
 
 'use client';
 
+import { Suspense, useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { getProvisionStatus, startMagicLogin } from '@/lib/sdk';
 
 type Step = 1 | 2 | 3 | 4;
@@ -29,7 +32,7 @@ interface ProvisionState {
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'https://syston-postbus.team-platform-2025.workers.dev';
 
-export default function SignupPage() {
+function SignupPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [step, setStep] = useState<Step>(1);
@@ -41,6 +44,7 @@ export default function SignupPage() {
   const [provisionState, setProvisionState] = useState<ProvisionState | null>(null);
   const [resendingEmail, setResendingEmail] = useState(false);
   const [emailResent, setEmailResent] = useState(false);
+  const [slugDirty, setSlugDirty] = useState(false);
 
   const [formData, setFormData] = useState<SignupData>({
     clubName: '',
@@ -100,6 +104,7 @@ export default function SignupPage() {
       const response = await fetch(`${API_BASE}/public/signup/start`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           clubName: formData.clubName,
           clubSlug: formData.clubSlug,
@@ -108,6 +113,11 @@ export default function SignupPage() {
           promoCode: formData.promoCode || undefined,
         }),
       });
+
+      if (!response.ok) {
+        const text = await response.text().catch(() => '');
+        throw new Error(text || `Request failed with status ${response.status}`);
+      }
 
       const data = await response.json();
 
@@ -120,7 +130,13 @@ export default function SignupPage() {
       setDiscount(data.discount);
       setStep(2);
     } catch (err: any) {
-      setError(err.message || 'Failed to create account');
+      console.error('SIGNUP_START_ERROR', err);
+      // Show user-friendly error message
+      if (err.message?.includes('fetch')) {
+        setError('We could not reach the server. Please check your internet connection and try again.');
+      } else {
+        setError(err.message || 'Failed to create account. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -166,7 +182,7 @@ export default function SignupPage() {
     setError('');
 
     try {
-      const response = await fetch('https://syston-postbus.team-platform-2025.workers.dev/public/signup/starter/make', {
+      const response = await fetch(`${API_BASE}/public/signup/starter/make`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -198,7 +214,7 @@ export default function SignupPage() {
     setError('');
 
     try {
-      const response = await fetch('https://syston-postbus.team-platform-2025.workers.dev/public/signup/pro/confirm', {
+      const response = await fetch(`${API_BASE}/public/signup/pro/confirm`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -220,16 +236,23 @@ export default function SignupPage() {
     }
   };
 
-  // Generate slug from club name
+  // Robust slugify function
+  const slugify = (input: string) => {
+    return input
+      .toLowerCase()
+      .trim()
+      .replace(/[^\p{Letter}\p{Number}\s-]/gu, '') // keep letters/numbers/spaces/hyphen
+      .replace(/\s+/g, '-')                         // spaces → hyphens
+      .replace(/-+/g, '-')                          // collapse ---
+      .replace(/^-+|-+$/g, '');                     // trim hyphens
+  };
+
+  // Generate slug from club name (only if user hasn't manually edited it)
   useEffect(() => {
-    if (step === 1 && formData.clubName && !formData.clubSlug) {
-      const slug = formData.clubName
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-|-$/g, '');
-      updateField('clubSlug', slug);
+    if (step === 1 && formData.clubName && !slugDirty) {
+      updateField('clubSlug', slugify(formData.clubName));
     }
-  }, [formData.clubName]);
+  }, [formData.clubName, slugDirty]);
 
   // Poll provision status on step 4
   useEffect(() => {
@@ -238,7 +261,7 @@ export default function SignupPage() {
     const pollStatus = async () => {
       try {
         const response = await fetch(
-          `https://syston-postbus.team-platform-2025.workers.dev/api/v1/tenants/${tenantId}/provision-status`
+          `${API_BASE}/api/v1/tenants/${tenantId}/provision-status`
         );
         const data = await response.json();
 
@@ -331,19 +354,22 @@ export default function SignupPage() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    URL Slug
+                    Web address
                   </label>
                   <input
                     type="text"
                     value={formData.clubSlug}
-                    onChange={(e) => updateField('clubSlug', e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    onChange={(e) => {
+                      setSlugDirty(true);
+                      updateField('clubSlug', slugify(e.target.value));
+                    }}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono"
                     placeholder="syston-tigers"
                     pattern="[a-z0-9-]+"
                     required
                   />
                   <p className="mt-1 text-xs text-gray-500">
-                    Your app will be at: yourapp.com/{formData.clubSlug}
+                    Lowercase, numbers and hyphens only. Your app will be at: <span className="font-mono">yourapp.com/{formData.clubSlug || 'your-team'}</span>
                   </p>
                 </div>
 
@@ -783,5 +809,17 @@ export default function SignupPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-gray-600">Loading...</div>
+      </div>
+    }>
+      <SignupPageContent />
+    </Suspense>
   );
 }

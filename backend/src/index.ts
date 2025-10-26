@@ -27,6 +27,7 @@ import { signupStart, signupBrand, signupStarterMake, signupProConfirm } from '.
 import { handleMagicStart, handleMagicVerify } from './routes/magic';
 import { handleProvisionQueue, handleProvisionStatus, handleTenantOverview, handleProvisionRetry } from './routes/provisioning';
 import { handleDevAdminJWT, handleDevMagicLink, handleDevInfo } from './routes/devAuth';
+import { getAdminStats, listTenants, getTenant, updateTenant, deactivateTenant, deleteTenant, listPromoCodes, createPromoCode, deactivatePromoCode } from './routes/admin';
 declare const APP_VERSION: string;
 
 const DEV_DEFAULT_CORS = new Set([
@@ -302,12 +303,12 @@ export default {
     // -------- Magic Link Authentication --------
     // POST /auth/magic/start - Send magic link email
     if (url.pathname === '/auth/magic/start' && req.method === 'POST') {
-      return await handleMagicStart(req, env);
+      return await handleMagicStart(req, env, corsHdrs);
     }
 
     // GET /auth/magic/verify - Verify magic link token
     if (url.pathname === '/auth/magic/verify' && req.method === 'GET') {
-      return await handleMagicVerify(req, env);
+      return await handleMagicVerify(req, env, corsHdrs);
     }
 
     // -------- Dev Authentication (Development Only) --------
@@ -517,6 +518,56 @@ export default {
     // GET /api/v1/admin/stats - Dashboard statistics
     if (url.pathname === `/api/${v}/admin/stats` && req.method === "GET") {
       return await getAdminStats(req, env, requestId, corsHdrs);
+    }
+
+    // GET /api/v1/admin/tenants - List all tenants
+    if (url.pathname === `/api/${v}/admin/tenants` && req.method === "GET") {
+      return await listTenants(req, env, requestId, corsHdrs);
+    }
+
+    // GET /api/v1/admin/tenants/:id - Get tenant details
+    const getTenantMatch = url.pathname.match(new RegExp(`^/api/${v}/admin/tenants/([^/]+)$`));
+    if (getTenantMatch && req.method === "GET") {
+      const tenantId = getTenantMatch[1];
+      return await getTenant(req, env, requestId, corsHdrs, tenantId);
+    }
+
+    // PATCH /api/v1/admin/tenants/:id - Update tenant
+    const updateTenantMatch = url.pathname.match(new RegExp(`^/api/${v}/admin/tenants/([^/]+)$`));
+    if (updateTenantMatch && req.method === "PATCH") {
+      const tenantId = updateTenantMatch[1];
+      return await updateTenant(req, env, requestId, corsHdrs, tenantId);
+    }
+
+    // POST /api/v1/admin/tenants/:id/deactivate - Deactivate tenant
+    const deactivateTenantMatch = url.pathname.match(new RegExp(`^/api/${v}/admin/tenants/([^/]+)/deactivate$`));
+    if (deactivateTenantMatch && req.method === "POST") {
+      const tenantId = deactivateTenantMatch[1];
+      return await deactivateTenant(req, env, requestId, corsHdrs, tenantId);
+    }
+
+    // DELETE /api/v1/admin/tenants/:id - Delete tenant
+    const deleteTenantMatch = url.pathname.match(new RegExp(`^/api/${v}/admin/tenants/([^/]+)$`));
+    if (deleteTenantMatch && req.method === "DELETE") {
+      const tenantId = deleteTenantMatch[1];
+      return await deleteTenant(req, env, requestId, corsHdrs, tenantId);
+    }
+
+    // GET /api/v1/admin/promo-codes - List promo codes
+    if (url.pathname === `/api/${v}/admin/promo-codes` && req.method === "GET") {
+      return await listPromoCodes(req, env, requestId, corsHdrs);
+    }
+
+    // POST /api/v1/admin/promo-codes - Create promo code
+    if (url.pathname === `/api/${v}/admin/promo-codes` && req.method === "POST") {
+      return await createPromoCode(req, env, requestId, corsHdrs);
+    }
+
+    // POST /api/v1/admin/promo-codes/:code/deactivate - Deactivate promo code
+    const deactivatePromoMatch = url.pathname.match(new RegExp(`^/api/${v}/admin/promo-codes/([^/]+)/deactivate$`));
+    if (deactivatePromoMatch && req.method === "POST") {
+      const code = deactivatePromoMatch[1];
+      return await deactivatePromoCode(req, env, requestId, corsHdrs, code);
     }
 
     // POST /api/v1/admin/tenant/create
