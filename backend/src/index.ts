@@ -23,9 +23,10 @@ import { newRequestId, logJSON } from "./lib/log";
 import { parse, isValidationError } from "./lib/validate";
 import { healthz, readyz } from "./routes/health";
 // --- Self-serve signup / usage / admin (Phase 3) ---
-import { registerSignupRoutes } from './routes/signup';
-import { registerUsageRoutes }  from './routes/usage';
-import { registerAdminRoutes, getAdminStats }  from './routes/admin';
+import { signupStart, signupBrand, signupStarterMake, signupProConfirm } from './routes/signup';
+import { handleMagicStart, handleMagicVerify } from './routes/magic';
+import { handleProvisionQueue, handleProvisionStatus, handleTenantOverview, handleProvisionRetry } from './routes/provisioning';
+import { handleDevAdminJWT, handleDevMagicLink, handleDevInfo } from './routes/devAuth';
 declare const APP_VERSION: string;
 
 const DEV_DEFAULT_CORS = new Set([
@@ -62,28 +63,20 @@ function buildRateLimitScope(pathname: string) {
 }
 
 function buildCorsHeaders(origin: string | null, env: any, requestId: string, release: string) {
-  const headers = corsHeaders(origin);
-  const envAllowed = typeof env?.CORS_ALLOWED === "string"
-    ? String(env.CORS_ALLOWED)
-        .split(",")
-        .map((o: string) => o.trim())
-        .filter(Boolean)
-    : [];
+  // Use the enhanced CORS middleware with env-aware origin checking
+  const headers = corsHeaders(origin, env);
 
-  const allowList = new Set<string>([...DEV_DEFAULT_CORS, ...envAllowed]);
-  if (origin && allowList.has(origin)) {
-    headers.set("Access-Control-Allow-Origin", origin);
-  }
-
+  // Add additional allowed headers for S3/R2 uploads
+  const existingHeaders = headers.get("Access-Control-Allow-Headers") || "";
   const allowHeaders = new Set(
-    (headers.get("Access-Control-Allow-Headers") || "")
+    existingHeaders
       .split(",")
       .map((h) => h.trim())
       .filter(Boolean)
   );
+
+  // Add S3/R2 specific headers and idempotency
   for (const hdr of [
-    "authorization",
-    "content-type",
     "Idempotency-Key",
     "idempotency-key",
     "x-amz-content-sha256",
@@ -93,6 +86,7 @@ function buildCorsHeaders(origin: string | null, env: any, requestId: string, re
   ]) {
     if (hdr) allowHeaders.add(hdr);
   }
+
   headers.set("Access-Control-Allow-Headers", Array.from(allowHeaders).join(","));
   headers.set("Access-Control-Expose-Headers", "X-Request-Id, X-Release");
   headers.set("X-Request-Id", requestId);
@@ -120,6 +114,7 @@ export { VotingRoom } from "./do/votingRoom";
 export { MatchRoom } from "./do/matchRoom";
 export { ChatRoom } from "./do/chatRoom";
 export { GeoFenceManager } from "./do/geoFenceManager";
+export { Provisioner } from "./do/provisioner";
 
 export default {
   async fetch(req: Request, env: any, _ctx: ExecutionContext): Promise<Response> {
@@ -284,134 +279,80 @@ export default {
     }
     // -------- Phase 3: Self-Serve Signup (Public) --------
 
-    // POST /public/signup/start
-    // Creates tenant config via existing provisionTenant() and accepts an optional promoCode
+    // POST /public/signup/start - Create new tenant account
     if (url.pathname === `/public/signup/start` && req.method === "POST") {
-      try {
-        const body = await req.json().catch(() => ({}));
-        // expected: { name, email, slug, plan: 'starter'|'pro', promoCode? }
-        const schema = z.object({
-          name: z.string().min(1),
-          email: z.string().email(),
-          slug: z.string().min(2),
-          plan: z.enum(['starter','pro']),
-          promoCode: z.string().optional()
-        });
-        const data = schema.parse(body);
-
-        // Map to your existing provisionTenant shape
-        const result = await provisionTenant(env, {
-          clubName: data.name,
-          clubShortName: data.slug,
-          contactEmail: data.email,
-          contactName: data.name,
-          plan: data.plan === 'pro' ? 'managed' : 'free', // reuse your existing plans: managed=pro, free=starter
-          promoCode: data.promoCode
-        });
-
-        if (!result?.success) {
-          return json({ success: false, error: result?.error || { code:'SIGNUP_FAILED' } }, 400, corsHdrs);
-        }
-
-        // Ensure flags match tier
-        const tenantId = result.tenant?.id || data.slug;
-        if (data.plan === 'starter') {
-          await setTenantFlags(env, tenantId, { managed: { yt: false } });
-        } else {
-          await setTenantFlags(env, tenantId, { managed: { yt: true } });
-        }
-
-        return json({ success: true, data: { tenant: tenantId, plan: data.plan } }, 200, corsHdrs);
-      } catch (err:any) {
-        if (err.errors) {
-          return json({ success:false, error:{ code:'VALIDATION', details: err.errors } }, 400, corsHdrs);
-        }
-        return json({ success:false, error:{ code:'SIGNUP_FAILED', message:String(err?.message||err) } }, 500, corsHdrs);
-      }
+      return await signupStart(req, env, requestId, corsHdrs);
     }
 
-    // POST /public/signup/brand
-    // Stores badge/colors using your existing brand service
+    // POST /public/signup/brand - Customize brand colors
     if (url.pathname === `/public/signup/brand` && req.method === "POST") {
-      try {
-        const body = await req.json().catch(() => ({}));
-        // expected: { tenant, badgeUrl, primary?, secondary? }
-        const schema = z.object({
-          tenant: z.string().min(1),
-          badgeUrl: z.string().url(),
-          primary: z.string().optional(),
-          secondary: z.string().optional()
-        });
-        const p = schema.parse(body);
-
-        const { setBrand } = await import("./services/brand");
-        const brand = await setBrand(env, p.tenant, {
-          badgeUrl: p.badgeUrl,
-          colors: {
-            primary: p.primary || undefined,
-            secondary: p.secondary || undefined
-          }
-        });
-
-        return json({ success:true, data: brand }, 200, corsHdrs);
-      } catch (err:any) {
-        if (err.errors) {
-          return json({ success:false, error:{ code:'VALIDATION', details: err.errors } }, 400, corsHdrs);
-        }
-        return json({ success:false, error:{ code:'BRAND_SAVE_FAILED', message:String(err?.message||err) } }, 500, corsHdrs);
-      }
+      return await signupBrand(req, env, requestId, corsHdrs);
     }
 
-    // POST /public/signup/starter/make
-    // Starter plan: BYO Make — save webhook + mark flags accordingly
+    // POST /public/signup/starter/make - Configure Make.com webhook (Starter plan)
     if (url.pathname === `/public/signup/starter/make` && req.method === "POST") {
-      try {
-        const body = await req.json().catch(() => ({}));
-        // expected: { tenant, scenarioId, webhookUrl }
-        const schema = z.object({
-          tenant: z.string().min(1),
-          scenarioId: z.string().min(1),
-          webhookUrl: z.string().url()
-        });
-        const p = schema.parse(body);
-
-        // enforce allowed host (adds .make.com automatically)
-        const u = new URL(p.webhookUrl);
-        const allowedCsv = (env.ALLOWED_WEBHOOK_HOSTS || "") + ",.make.com";
-        if (!isAllowedWebhookHost(u.host, allowedCsv)) {
-          return json({ success:false, error:{ code:'VALIDATION', message:`Host ${u.host} not allowed` } }, 400, corsHdrs);
-        }
-
-        await setMakeWebhook(env, p.tenant, u.toString());
-        await setTenantFlags(env, p.tenant, { managed: { yt: false } });
-
-        return json({ success:true, data:{ saved:true } }, 200, corsHdrs);
-      } catch (err:any) {
-        if (err.errors) {
-          return json({ success:false, error:{ code:'VALIDATION', details: err.errors } }, 400, corsHdrs);
-        }
-        return json({ success:false, error:{ code:'STARTER_CONFIG_FAILED', message:String(err?.message||err) } }, 500, corsHdrs);
-      }
+      return await signupStarterMake(req, env, requestId, corsHdrs);
     }
 
-    // POST /public/signup/pro/confirm
-    // Pro plan: mark as managed (we run automations on Cloudflare)
+    // POST /public/signup/pro/confirm - Confirm Pro plan setup
     if (url.pathname === `/public/signup/pro/confirm` && req.method === "POST") {
-      try {
-        const body = await req.json().catch(() => ({}));
-        // expected: { tenant }
-        const schema = z.object({ tenant: z.string().min(1) });
-        const p = schema.parse(body);
-
-        await setTenantFlags(env, p.tenant, { managed: { yt: true } });
-        return json({ success:true, data:{ confirmed:true } }, 200, corsHdrs);
-      } catch (err:any) {
-        if (err.errors) {
-          return json({ success:false, error:{ code:'VALIDATION', details: err.errors } }, 400, corsHdrs);
-        }
-        return json({ success:false, error:{ code:'PRO_CONFIRM_FAILED', message:String(err?.message||err) } }, 500, corsHdrs);
-      }
+      return await signupProConfirm(req, env, requestId, corsHdrs);
     }
+
+    // -------- Magic Link Authentication --------
+    // POST /auth/magic/start - Send magic link email
+    if (url.pathname === '/auth/magic/start' && req.method === 'POST') {
+      return await handleMagicStart(req, env);
+    }
+
+    // GET /auth/magic/verify - Verify magic link token
+    if (url.pathname === '/auth/magic/verify' && req.method === 'GET') {
+      return await handleMagicVerify(req, env);
+    }
+
+    // -------- Dev Authentication (Development Only) --------
+    // POST /dev/auth/admin-jwt - Generate admin JWT for testing
+    if (url.pathname === '/dev/auth/admin-jwt' && req.method === 'POST') {
+      return await handleDevAdminJWT(req, env);
+    }
+
+    // POST /dev/auth/magic-link - Generate magic link for testing
+    if (url.pathname === '/dev/auth/magic-link' && req.method === 'POST') {
+      return await handleDevMagicLink(req, env);
+    }
+
+    // GET /dev/info - Get development environment info
+    if (url.pathname === '/dev/info' && req.method === 'GET') {
+      return await handleDevInfo(req, env);
+    }
+
+    // -------- Provisioning Routes (Internal) --------
+    // POST /internal/provision/queue - Queue provisioning
+    if (url.pathname === '/internal/provision/queue' && req.method === 'POST') {
+      return await handleProvisionQueue(req, env);
+    }
+
+    // POST /internal/provision/retry - Retry failed provisioning
+    if (url.pathname === '/internal/provision/retry' && req.method === 'POST') {
+      return await handleProvisionRetry(req, env);
+    }
+
+    // GET /api/v1/tenants/:id/provision-status - Get provisioning status
+    const provisionStatusMatch = url.pathname.match(/^\/api\/v1\/tenants\/([^/]+)\/provision-status$/);
+    if (provisionStatusMatch && req.method === 'GET') {
+      const tenantId = provisionStatusMatch[1];
+      // TODO: Add auth check for owner session or admin
+      return await handleProvisionStatus(req, env, tenantId);
+    }
+
+    // GET /api/v1/tenants/:id/overview - Get tenant overview
+    const overviewMatch = url.pathname.match(/^\/api\/v1\/tenants\/([^/]+)\/overview$/);
+    if (overviewMatch && req.method === 'GET') {
+      const tenantId = overviewMatch[1];
+      // TODO: Add auth check for owner session or admin
+      return await handleTenantOverview(req, env, tenantId);
+    }
+
     // -------- Phase 3: Usage Tracking --------
     // Simple monthly counters in KV: key = usage:<tenant>:<YYYY-MM>
 

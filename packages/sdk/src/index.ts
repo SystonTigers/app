@@ -31,6 +31,15 @@ import type {
 
 export * from './types';
 
+export type ProvisionState = {
+  tenantId: string;
+  plan: 'starter'|'pro';
+  status: 'idle'|'running'|'completed'|'failed';
+  currentStep: string|null;
+  checkpoints: Record<string, { status: string; error?: string }>;
+  startedAt?: number; completedAt?: number; error?: string;
+};
+
 export interface SDKOptions {
   tenant?: string;
   token?: string;
@@ -590,6 +599,58 @@ export class TeamPlatformSDK {
       throw new Error('Failed to create promo code');
     }
     return response.data.promoCode;
+  }
+
+  // ==================== PROVISIONING & MAGIC LINKS ====================
+
+  /**
+   * Get provisioning status for a tenant
+   */
+  async getProvisionStatus(tenantId: string): Promise<ProvisionState | null> {
+    const response = await this.client.get<{ success: boolean; data?: { status: string; currentStep: string | null; checkpoints: Record<string, { status: string; error?: string }>; error?: string } }>(
+      `/api/v1/tenants/${tenantId}/provision-status`
+    );
+    if (!response.data.success || !response.data.data) {
+      return null;
+    }
+    return response.data.data as ProvisionState;
+  }
+
+  /**
+   * Start magic link login flow
+   */
+  async startMagicLogin(email: string, tenantId: string): Promise<{ success: boolean }> {
+    const response = await this.client.post<{ success: boolean }>(
+      '/auth/magic/start',
+      { email, tenantId }
+    );
+    return response.data;
+  }
+
+  /**
+   * Verify magic token and get session
+   */
+  async verifyMagicToken(token: string): Promise<{ success: boolean; tenantId?: string }> {
+    const response = await this.client.get<{ success: boolean; tenantId?: string }>(
+      `/auth/magic/verify?token=${encodeURIComponent(token)}`,
+      {
+        withCredentials: true, // Allow cookies
+      }
+    );
+    return response.data;
+  }
+
+  /**
+   * Get admin overview/dashboard data
+   */
+  async getAdminOverview(tenantId: string): Promise<any> {
+    const response = await this.client.get(
+      `/api/v1/tenants/${tenantId}/overview`,
+      {
+        withCredentials: true, // Allow cookies for admin auth
+      }
+    );
+    return response.data;
   }
 }
 

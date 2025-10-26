@@ -43,3 +43,12 @@ export function parse<T>(schema: z.ZodType<T>, value: unknown): T {
   }
   return result.data;
 }
+
+/**
+ * Helper to create JSON responses
+ */
+export function json(data: any, status: number = 200, headers?: HeadersInit): Response {
+  const hdrs = new Headers(headers || {});
+  hdrs.set('Content-Type', 'application/json');
+  return new Response(JSON.stringify(data), { status, headers: hdrs });
+}

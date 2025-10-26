@@ -22,6 +22,15 @@ interface SignupData {
   webhookSecret: string;
 }
 
+interface ProvisionState {
+  status: 'idle' | 'running' | 'completed' | 'failed';
+  currentStep: string | null;
+  checkpoints: Record<string, { status: string; error?: string }>;
+  error?: string;
+}
+
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'https://syston-postbus.team-platform-2025.workers.dev';
+
 export default function SignupPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -31,6 +40,9 @@ export default function SignupPage() {
   const [jwt, setJwt] = useState('');
   const [tenantId, setTenantId] = useState('');
   const [discount, setDiscount] = useState(0);
+  const [provisionState, setProvisionState] = useState<ProvisionState | null>(null);
+  const [resendingEmail, setResendingEmail] = useState(false);
+  const [emailResent, setEmailResent] = useState(false);
 
   const [formData, setFormData] = useState<SignupData>({
     clubName: '',
@@ -49,6 +61,37 @@ export default function SignupPage() {
     setError('');
   };
 
+  // Resend magic link email
+  const handleResendEmail = async () => {
+    if (!formData.email || !tenantId) return;
+
+    setResendingEmail(true);
+    setEmailResent(false);
+
+    try {
+      const response = await fetch(`${API_BASE}/auth/magic/start`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: formData.email,
+          tenantId: tenantId,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to resend email');
+      }
+
+      setEmailResent(true);
+      setTimeout(() => setEmailResent(false), 5000); // Clear success message after 5s
+    } catch (err) {
+      console.error('Error resending email:', err);
+      alert('Failed to resend email. Please try again.');
+    } finally {
+      setResendingEmail(false);
+    }
+  };
+
   // Step 1: Create account
   const handleStep1Submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,7 +99,7 @@ export default function SignupPage() {
     setError('');
 
     try {
-      const response = await fetch('https://syston-postbus.team-platform-2025.workers.dev/public/signup/start', {
+      const response = await fetch(`${API_BASE}/public/signup/start`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -92,7 +135,7 @@ export default function SignupPage() {
     setError('');
 
     try {
-      const response = await fetch('https://syston-postbus.team-platform-2025.workers.dev/public/signup/brand', {
+      const response = await fetch(`${API_BASE}/public/signup/brand`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -189,6 +232,36 @@ export default function SignupPage() {
       updateField('clubSlug', slug);
     }
   }, [formData.clubName]);
+
+  // Poll provision status on step 4
+  useEffect(() => {
+    if (step !== 4 || !tenantId) return;
+
+    const pollStatus = async () => {
+      try {
+        const response = await fetch(
+          `https://syston-postbus.team-platform-2025.workers.dev/api/v1/tenants/${tenantId}/provision-status`
+        );
+        const data = await response.json();
+
+        if (data.success && data.data) {
+          setProvisionState(data.data);
+        }
+      } catch (err) {
+        console.error('Failed to fetch provision status:', err);
+      }
+    };
+
+    // Poll immediately
+    pollStatus();
+
+    // Then poll every 2.5 seconds until completed
+    const interval = setInterval(() => {
+      pollStatus();
+    }, 2500);
+
+    return () => clearInterval(interval);
+  }, [step, tenantId]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center px-4 py-12">
@@ -583,52 +656,130 @@ export default function SignupPage() {
             </div>
           )}
 
-          {/* Step 4: Complete */}
+          {/* Step 4: Complete / Provisioning */}
           {step === 4 && (
             <div className="text-center">
-              <div className="mb-6">
-                <svg
-                  className="mx-auto h-16 w-16 text-green-500"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-              </div>
+              {/* Show provisioning progress */}
+              {provisionState?.status !== 'completed' ? (
+                <>
+                  <div className="mb-6">
+                    <div className="mx-auto h-16 w-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
+                  </div>
 
-              <h2 className="text-3xl font-bold text-gray-900 mb-4">
-                All Set! 🎉
-              </h2>
+                  <h2 className="text-3xl font-bold text-gray-900 mb-4">
+                    Finishing Setup...
+                  </h2>
 
-              <p className="text-lg text-gray-600 mb-8">
-                Your account has been created successfully. <br />
-                {formData.plan === 'starter'
-                  ? 'Your Make.com automation is now connected.'
-                  : 'We\'ll deploy your Pro automations within 24 hours.'}
-              </p>
+                  <p className="text-lg text-gray-600 mb-8">
+                    {provisionState?.currentStep
+                      ? `Setting up: ${provisionState.currentStep.replace(/([A-Z])/g, ' $1').trim()}`
+                      : 'Initializing your platform...'}
+                  </p>
 
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-8 text-left">
-                <h3 className="font-semibold text-blue-900 mb-3">Next Steps:</h3>
-                <ol className="space-y-2 text-sm text-blue-800 list-decimal list-inside">
-                  <li>Check your email for login credentials</li>
-                  <li>Download the mobile app (iOS & Android)</li>
-                  <li>Visit your dashboard to complete profile setup</li>
-                  <li>Invite your team members</li>
-                </ol>
-              </div>
+                  {provisionState?.error && (
+                    <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                      {provisionState.error}
+                    </div>
+                  )}
 
-              <Link
-                href={`/${formData.clubSlug}`}
-                className="inline-block bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
-              >
-                Go to Dashboard
-              </Link>
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 mb-8 text-left">
+                    <h3 className="font-semibold text-gray-900 mb-3">Progress:</h3>
+                    <div className="space-y-2 text-sm">
+                      {Object.entries(provisionState?.checkpoints || {}).map(([stepName, checkpoint]) => (
+                        <div key={stepName} className="flex items-center justify-between">
+                          <span className="text-gray-700">
+                            {stepName.replace(/([A-Z])/g, ' $1').trim()}
+                          </span>
+                          <span className={`text-xs font-medium ${
+                            checkpoint.status === 'completed' ? 'text-green-600' :
+                            checkpoint.status === 'running' ? 'text-blue-600' :
+                            checkpoint.status === 'failed' ? 'text-red-600' :
+                            'text-gray-400'
+                          }`}>
+                            {checkpoint.status === 'completed' ? '✓ Done' :
+                             checkpoint.status === 'running' ? '⟳ Running' :
+                             checkpoint.status === 'failed' ? '✗ Failed' :
+                             '○ Pending'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <p className="text-sm text-gray-500">
+                    This usually takes 10-30 seconds. Please don't close this page.
+                  </p>
+                </>
+              ) : (
+                /* Provisioning completed */
+                <>
+                  <div className="mb-6">
+                    <svg
+                      className="mx-auto h-16 w-16 text-green-500"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
+                    </svg>
+                  </div>
+
+                  <h2 className="text-3xl font-bold text-gray-900 mb-4">
+                    All Set! 🎉
+                  </h2>
+
+                  <p className="text-lg text-gray-600 mb-8">
+                    Your platform is ready to go! <br />
+                    We've sent a magic login link to <strong>{formData.email}</strong>
+                  </p>
+
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-8 text-left">
+                    <h3 className="font-semibold text-blue-900 mb-3">Next Steps:</h3>
+                    <ol className="space-y-2 text-sm text-blue-800 list-decimal list-inside">
+                      <li>Check your email for the magic login link</li>
+                      <li>Click the link to access your admin console</li>
+                      <li>Download the mobile app (iOS & Android)</li>
+                      <li>Invite your team members</li>
+                    </ol>
+                  </div>
+
+                  {emailResent && (
+                    <div className="mb-4 p-3 bg-green-100 border border-green-300 rounded-lg text-green-800 text-sm">
+                      ✓ Email sent! Check your inbox.
+                    </div>
+                  )}
+
+                  <div className="flex flex-col gap-4 items-center mb-6">
+                    <div className="flex gap-4 justify-center">
+                      <Link
+                        href={`/${formData.clubSlug}`}
+                        className="inline-block bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+                      >
+                        View Your Site
+                      </Link>
+                      <a
+                        href={`mailto:${formData.email}`}
+                        className="inline-block bg-gray-200 text-gray-700 px-8 py-3 rounded-lg font-semibold hover:bg-gray-300 transition-colors"
+                      >
+                        Open Email
+                      </a>
+                    </div>
+
+                    <button
+                      onClick={handleResendEmail}
+                      disabled={resendingEmail}
+                      className="text-sm text-blue-600 hover:text-blue-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed underline"
+                    >
+                      {resendingEmail ? 'Sending...' : 'Didn\'t receive the email? Send link again'}
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           )}
         </div>

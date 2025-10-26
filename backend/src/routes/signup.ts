@@ -4,7 +4,7 @@
 import { z } from "zod";
 import { json, parse, isValidationError } from "../lib/validate";
 import { requireJWT } from "../services/auth";
-import { issueTenantAdminJWT } from "../services/jwt";
+import { issueTenantAdminJWT, generateServiceJWT } from "../services/jwt";
 import { isAllowedWebhookHost } from "../services/tenants";
 import { logJSON } from "../lib/log";
 
@@ -25,6 +25,30 @@ const MakeSchema = z.object({
   webhookUrl: z.string().url(),
   webhookSecret: z.string().min(16, "Secret must be at least 16 characters")
 });
+
+// Helper function to queue provisioning
+async function queueProvisioning(env: any, tenantId: string): Promise<void> {
+  try {
+    // Generate short-lived service JWT
+    const serviceJWT = await generateServiceJWT(env, 30);
+
+    // Call internal provisioning endpoint
+    const baseUrl = env.BACKEND_URL || 'http://localhost:8787';
+    await fetch(`${baseUrl}/internal/provision/queue`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${serviceJWT}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ tenantId }),
+    });
+
+    console.log(`[Signup] Queued provisioning for ${tenantId}`);
+  } catch (error) {
+    console.error(`[Signup] Failed to queue provisioning for ${tenantId}:`, error);
+    // Don't fail signup if provisioning queue fails - it can be retried
+  }
+}
 
 // POST /public/signup/start - Step 1: Create tenant account
 export async function signupStart(req: Request, env: any, requestId: string, corsHdrs: Headers): Promise<Response> {
@@ -111,8 +135,8 @@ export async function signupStart(req: Request, env: any, requestId: string, cor
       `).bind(promoId).run();
     }
 
-    // Issue admin JWT for this tenant
-    const jwt = await issueTenantAdminJWT(env, tenantId, data.email);
+    // Issue admin JWT for this tenant (1 year TTL)
+    const jwt = await issueTenantAdminJWT(env, { tenant_id: tenantId, ttlMinutes: 525600 });
 
     return json({
       success: true,
@@ -212,6 +236,9 @@ export async function signupStarterMake(req: Request, env: any, requestId: strin
       UPDATE tenants SET status = 'active', updated_at = unixepoch() WHERE id = ?
     `).bind(tenantId).run();
 
+    // Queue provisioning in background
+    await queueProvisioning(env, tenantId);
+
     return json({ success: true }, 200, corsHdrs);
 
   } catch (err: any) {
@@ -251,6 +278,9 @@ export async function signupProConfirm(req: Request, env: any, requestId: string
     await env.DB.prepare(`
       UPDATE tenants SET status = 'active', updated_at = unixepoch() WHERE id = ?
     `).bind(tenantId).run();
+
+    // Queue provisioning in background
+    await queueProvisioning(env, tenantId);
 
     return json({ success: true }, 200, corsHdrs);
 
