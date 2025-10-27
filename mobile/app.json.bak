@@ -1,0 +1,47 @@
+﻿{
+  "expo": {
+    "name": "Field Drop",
+    "slug": "field-drop",
+    "scheme": "fielddrop",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "jsEngine": "hermes",
+    "newArchEnabled": true,
+
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0B1220"
+    },
+
+    "android": {
+      "package": "com.yourorg.fielddrop",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0B1220"
+      }
+    },
+    "ios": {
+      "bundleIdentifier": "com.yourorg.fielddrop",
+      "buildNumber": "1.0.0",
+      "supportsTablet": false
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static",
+      "favicon": "./assets/icon.png"
+    },
+    "plugins": [
+      "expo-localization",
+      "expo-secure-store",
+      "expo-notifications",
+      "expo-av",
+      "expo-image-picker"
+    ],
+    "extra": {
+      "eas": { "projectId": "dev-placeholder" }
+    }
+  }
+}

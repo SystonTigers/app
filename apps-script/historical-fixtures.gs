@@ -302,7 +302,7 @@ class HistoricalFixturesManager {
    * Build payload for Make.com with historical data
    */
   buildHistoricalPayload(fixture, historicalData) {
-    const clubName = getConfigValue('SYSTEM.CLUB_NAME', 'Syston Tigers');
+    const clubName = getConfigValue('SYSTEM.CLUB_NAME', 'Your Football Club');
     const stats = historicalData.stats;
     const lastMeeting = historicalData.lastMeeting;
 

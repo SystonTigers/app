@@ -473,9 +473,79 @@ SHARED AI PROCESSING
 
 ---
 
-## 🔔 Phase 2: Smart Push Notifications (NEW)
+## 🔔 Phase 1.5: Live Match Features & Smart Push Notifications (COMPLETED!)
 
-**Status**: Not started | **Priority**: P1 | **Timeline**: 2-3 weeks
+**Status**: ✅ **COMPLETE** | **Priority**: P0 | **Completed**: 2025-10-10
+
+### What We Built:
+
+#### 1. Live Match Input Screen (Coaches)
+- ✅ Start/stop matches from fixtures
+- ✅ Record goals, yellow/red cards, substitutions
+- ✅ Half-time and full-time tracking
+- ✅ Real-time scoreboard with auto-timer
+- ✅ Match timeline showing all events
+- ✅ Auto-refresh every 10 seconds
+- ✅ Pull-to-refresh support
+
+**File**: `mobile/src/screens/LiveMatchInputScreen.tsx` (800+ lines)
+
+#### 2. Live Match Watch Screen (Fans)
+- ✅ Watch live matches in real-time
+- ✅ Pulsing "LIVE" indicator
+- ✅ Goal celebration banners (10 sec display)
+- ✅ Match stats summary (goals, cards)
+- ✅ Auto-refresh every 5 seconds
+- ✅ Special highlighting for goals
+- ✅ No matches message
+
+**File**: `mobile/src/screens/LiveMatchWatchScreen.tsx` (700+ lines)
+
+#### 3. MOTM Voting Screen (Fans/Parents)
+- ✅ Vote for Man of the Match
+- ✅ Visual nominee selection with avatars
+- ✅ Live voting standings (after voting)
+- ✅ Time remaining countdown
+- ✅ Previous results with full breakdown
+- ✅ Winner announcements with medals
+- ✅ Progress bars showing percentages
+
+**File**: `mobile/src/screens/MOTMVotingScreen.tsx` (900+ lines)
+
+### 4. Smart Push Notifications with Geo-Fencing
+
+#### Mobile Notification Service
+- ✅ Expo push notification registration
+- ✅ Location tracking (updates every 30s)
+- ✅ Distance calculation (Haversine formula)
+- ✅ Venue proximity check (500m radius)
+- ✅ Notification handlers (received & tapped)
+- ✅ Local notification scheduling
+
+**File**: `mobile/src/services/notifications.ts` (450+ lines)
+
+#### Backend GeoFenceManager (Durable Object)
+- ✅ Per-match geo-fence tracking
+- ✅ Venue location storage
+- ✅ User location tracking (token → location)
+- ✅ Smart filtering (only send to users >500m away)
+- ✅ Automatic stale location cleanup (10 min)
+- ✅ Distance calculation using Haversine
+
+**File**: `backend/src/do/geoFenceManager.ts` (350+ lines)
+
+#### Backend API Routes (Added)
+- ✅ `POST /api/v1/push/register` - Register push token
+- ✅ `POST /api/v1/push/location` - Update user location
+- ✅ `POST /api/v1/geo/:matchId/init` - Initialize geo-fence
+- ✅ `POST /api/v1/geo/:matchId/venue` - Set venue location
+- ✅ `GET /api/v1/geo/:matchId/tokens` - Get notification tokens (filtered)
+- ✅ `GET /api/v1/geo/:matchId/state` - Debug geo-fence state
+
+**Updated Files**:
+- `backend/src/index.ts` - Added 6 new routes
+- `backend/src/types.ts` - Added GeoFenceManager binding
+- `backend/wrangler.toml` - Added DO binding + v4 migration
 
 ### Geo-Location Based Match Notifications
 

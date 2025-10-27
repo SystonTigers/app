@@ -1,0 +1,302 @@
+Absolutely — let’s wire **full role management** properly: promote, demote, remove… with the guardrails so nobody bricks the team by “accidentally” nuking the boss.
+
+I’ll give you:
+
+1. **Supabase policies** (update + demote protection + remove)
+2. Optional **“transfer ownership”** function (so you can move manager role safely)
+3. **App UI** updates (role picker with confirm; hides controls for self/manager)
+4. Tiny **audit log** (optional) so you know who changed what
+
+---
+
+## 1) Supabase — RLS & helpers
+
+Add these to your existing `supabase/schema.sql` (after the earlier RLS you added):
+
+### Helpers
+
+```sql
+-- Is current user a manager for the given team?
+create or replace function public.is_manager(team uuid)
+returns boolean language sql stable as $$
+  select exists(
+    select 1 from public.team_memberships m
+    where m.team_id = team
+      and m.user_id = public.current_profile_id()
+      and m.role = 'manager'
+  )
+$$;
+```
+
+### Update policy (promote/demote)
+
+Rules we want:
+
+* Only **managers** can change roles.
+* **Managers cannot edit their own membership** (no self-demote).
+* **Managers cannot demote other managers** (use “transfer ownership” flow instead).
+* New role must be one of `'coach' | 'parent' | 'player'`.
+
+```sql
+-- Update membership role (manager-only), with protections
+drop policy if exists "memberships_update_if_manager" on public.team_memberships;
+
+create policy "memberships_update_if_manager"
+on public.team_memberships
+for update
+using (
+  public.is_manager(team_id)         -- editor is a manager
+  and user_id <> public.current_profile_id()  -- not editing self
+  and role <> 'manager'               -- target row is not a manager currently
+)
+with check (
+  public.is_manager(team_id)
+  and user_id <> public.current_profile_id()
+  and role in ('coach','parent','player')     -- new role is allowed (no elevating to manager here)
+);
+```
+
+### Delete policy (remove member)
+
+```sql
+-- Remove a member (manager-only), not allowed to remove self or managers
+drop policy if exists "memberships_delete_if_manager" on public.team_memberships;
+
+create policy "memberships_delete_if_manager"
+on public.team_memberships
+for delete
+using (
+  public.is_manager(team_id)
+  and user_id <> public.current_profile_id()
+  and role <> 'manager'
+);
+```
+
+> You already had a “staff” policy earlier; this tightens it specifically for **role changes** and **removal** with the safety checks we want.
+
+### (Optional) Transfer ownership function
+
+Only call this when you really need to hand the “manager” mantle to someone else:
+
+```sql
+create or replace function public.transfer_team_manager(team uuid, new_manager uuid)
+returns boolean
+language plpgsql
+security definer
+as $$
+begin
+  -- Only a current manager can run this
+  if not public.is_manager(team) then
+    return false;
+  end if;
+
+  -- Demote all current managers (except the caller) to coach
+  update public.team_memberships
+     set role = 'coach'
+   where team_id = team
+     and role = 'manager'
+     and user_id <> public.current_profile_id();
+
+  -- Promote target to manager (insert if they aren't a member yet)
+  insert into public.team_memberships (user_id, team_id, role)
+  values (new_manager, team, 'manager')
+  on conflict (user_id, team_id) do update set role = EXCLUDED.role;
+
+  return true;
+end $$;
+```
+
+> You can expose this via Supabase RPC or trigger it from your Cloudflare Worker if you want to keep it server-side only.
+
+---
+
+## 2) App — Role picker with Promote/Demote/Remove
+
+Replace your `TeamMembers` screen with a small **role-picker**. It hides controls for:
+
+* Yourself
+* Anyone currently a **manager**
+
+```tsx
+// mobile/src/screens/TeamMembers.tsx
+import React, { useEffect, useState } from 'react';
+import { View, Text, Pressable, FlatList, Alert, ActionSheetIOS, Platform } from 'react-native';
+import { supabase } from '../auth/supabase';
+import { colors, spacing } from '../theme';
+import Card from '../components/ui/Card';
+import { SectionHeader } from '../components/ui/SectionHeader';
+
+export default function TeamMembers({ route, navigation }: any) {
+  const { teamId } = route.params;
+  const [members, setMembers] = useState<any[]>([]);
+  const [me, setMe] = useState<string | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      const u = (await supabase.auth.getUser()).data.user;
+      setMe(u?.id || null);
+      await fetchMembers();
+    })();
+  }, []);
+
+  async function fetchMembers() {
+    const { data, error } = await supabase
+      .from('team_memberships')
+      .select('user_id, role, profiles ( id, auth_id, email )')
+      .eq('team_id', teamId);
+    if (!error) setMembers(data || []);
+  }
+
+  function openRolePicker(m: any) {
+    const options = [
+      'Make Coach',
+      'Make Parent',
+      'Make Player',
+      'Remove from Team',
+      'Cancel'
+    ];
+    const roles = ['coach','parent','player'] as const;
+
+    const handle = (index: number) => {
+      if (index === 4) return; // cancel
+      if (index <= 2) return setRole(m.user_id, roles[index]);
+      if (index === 3) return removeMember(m.user_id);
+    };
+
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options,
+          destructiveButtonIndex: 3,
+          cancelButtonIndex: 4,
+          userInterfaceStyle: 'dark'
+        },
+        handle
+      );
+    } else {
+      Alert.alert(
+        'Change Role',
+        m.profiles?.email || '',
+        [
+          { text: 'Coach', onPress: () => setRole(m.user_id, 'coach') },
+          { text: 'Parent', onPress: () => setRole(m.user_id, 'parent') },
+          { text: 'Player', onPress: () => setRole(m.user_id, 'player') },
+          { text: 'Remove', style: 'destructive', onPress: () => removeMember(m.user_id) },
+          { text: 'Cancel', style: 'cancel' },
+        ]
+      );
+    }
+  }
+
+  async function setRole(userId: string, role: 'coach'|'parent'|'player') {
+    const { error } = await supabase
+      .from('team_memberships')
+      .update({ role })
+      .eq('user_id', userId)
+      .eq('team_id', teamId);
+    if (error) Alert.alert('Failed', error.message);
+    else {
+      await audit('role_change', { target: userId, role });
+      fetchMembers();
+    }
+  }
+
+  async function removeMember(userId: string) {
+    const { error } = await supabase
+      .from('team_memberships')
+      .delete()
+      .eq('user_id', userId)
+      .eq('team_id', teamId);
+    if (error) Alert.alert('Failed', error.message);
+    else {
+      await audit('member_removed', { target: userId });
+      fetchMembers();
+    }
+  }
+
+  async function audit(action: string, details: any) {
+    // optional: call your Worker to keep a simple audit log
+    try {
+      await fetch(`${process.env.EXPO_PUBLIC_API_BASE}/audit`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ teamId, action, details })
+      });
+    } catch {}
+  }
+
+  return (
+    <View style={{ flex: 1, backgroundColor: colors.bg, padding: spacing(2) }}>
+      <SectionHeader title="Team Members" subtitle="Promote, demote, remove" />
+      <FlatList
+        data={members}
+        keyExtractor={(m) => m.user_id}
+        ItemSeparatorComponent={() => <View style={{ height: spacing(1) }} />}
+        renderItem={({ item }) => {
+          const email = item.profiles?.email ?? 'unknown';
+          const isSelf = item.profiles?.auth_id === me;
+          const isManager = item.role === 'manager';
+          const canEdit = !isSelf && !isManager; // per policy
+
+          return (
+            <Card inset>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <View>
+                  <Text style={{ color: colors.text }}>{email}</Text>
+                  <Text style={{ color: colors.textDim }}>{item.role}</Text>
+                </View>
+                {canEdit ? (
+                  <Pressable onPress={() => openRolePicker(item)}>
+                    <Text style={{ color: colors.brand.primary, fontWeight: '700' }}>Change</Text>
+                  </Pressable>
+                ) : null}
+              </View>
+            </Card>
+          );
+        }}
+      />
+    </View>
+  );
+}
+```
+
+> This respects the RLS: controls won’t show for self/manager; even if someone hacks the UI, the database will still block it.
+
+---
+
+## 3) (Optional) Tiny audit endpoint (Cloudflare)
+
+If you want a breadcrumb trail of changes:
+
+```ts
+// backend/src/router.ts
+router.post('/audit', withJSON, (req, env) => import('./services/audit').then(m => m.write(req, env)));
+
+// backend/src/services/audit.ts
+export const write = async (req:any, env:Env) => {
+  const { teamId, action, details } = req.json || {};
+  const key = `audit:${teamId}:${Date.now()}`;
+  await env.KV.put(key, JSON.stringify({ action, details, ts: Date.now() }), { expirationTtl: 60*60*24*90 });
+  return new Response(JSON.stringify({ ok:true }), { headers:{'content-type':'application/json'}});
+};
+```
+
+---
+
+## 4) (Optional) Manager-only “Transfer Ownership” UI
+
+If you want to support changing who the manager is (rare but useful), add a “Transfer Manager” button next to a coach:
+
+* Call Supabase RPC: `select public.transfer_team_manager(:teamId, :newManager)`.
+* After success, **log the manager out** and refresh memberships.
+
+I’d keep this behind an extra confirm (“This will make X the new team owner”).
+
+---
+
+### TL;DR
+
+* You already had the schema to treat **coach == manager** for access.
+* We added **safe policies** so only managers can change roles, can’t demote themselves or other managers.
+* App now has a **role picker** (promote/demote/remove) that respects those rules.
+* Optional audit + transfer ownership if/when you need it.

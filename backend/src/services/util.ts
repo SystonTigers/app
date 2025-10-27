@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { withSecurity } from "../middleware/securityHeaders";
 
 export const PostReqSchema = z.object({
   tenant: z.string().min(1),
@@ -7,8 +8,53 @@ export const PostReqSchema = z.object({
   data: z.record(z.any())
 });
 
-export function json(body: unknown, status = 200, headers: Record<string, string> = {}) {
-  return new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json", ...headers } });
+export function json(body: unknown, status = 200, headers: HeadersInit = {}) {
+  const finalHeaders = new Headers({ "content-type": "application/json" });
+  const extra = new Headers(headers);
+  extra.forEach((value, key) => finalHeaders.set(key, value));
+
+  const requestId = finalHeaders.get("X-Request-Id") || undefined;
+  const release = finalHeaders.get("X-Release") || undefined;
+
+  let payload = body;
+  if (payload && typeof payload === "object") {
+    const original = payload as Record<string, any>;
+    let changed = false;
+    const updated: Record<string, any> = { ...original };
+
+    if (requestId && updated.success === false) {
+      const err = updated.error;
+      const normalizedError =
+        err && typeof err === "object" && !Array.isArray(err)
+          ? { ...err }
+          : { code: "INTERNAL", message: typeof err === "string" ? err : "Unexpected error" };
+      if (!normalizedError.requestId) {
+        normalizedError.requestId = requestId;
+      }
+      updated.error = normalizedError;
+      changed = true;
+    }
+
+    if (release) {
+      const meta = updated.meta;
+      const normalizedMeta = meta && typeof meta === "object" && !Array.isArray(meta) ? { ...meta } : {};
+      if (!normalizedMeta.release) {
+        normalizedMeta.release = release;
+        updated.meta = normalizedMeta;
+        changed = true;
+      } else if (updated.meta !== normalizedMeta) {
+        updated.meta = normalizedMeta;
+      }
+    }
+
+    if (changed) {
+      payload = updated;
+    }
+  }
+
+  const bodyText = typeof payload === "string" ? payload : JSON.stringify(payload);
+  return new Response(bodyText, withSecurity({ status, headers: finalHeaders }));
+  return new Response(JSON.stringify(body), withSecurity({ status, headers: finalHeaders }));
 }
 
 export function cors(originList: string[] | null, reqOrigin: string | null) {

@@ -1,0 +1,122 @@
+{
+  "common": {
+    "loading": "Chargement...",
+    "error": "Erreur",
+    "success": "Succès",
+    "cancel": "Annuler",
+    "save": "Enregistrer",
+    "delete": "Supprimer",
+    "edit": "Modifier",
+    "close": "Fermer",
+    "back": "Retour",
+    "next": "Suivant",
+    "done": "Terminé",
+    "yes": "Oui",
+    "no": "Non",
+    "ok": "OK",
+    "retry": "Réessayer",
+    "refresh": "Actualiser"
+  },
+  "nav": {
+    "home": "Accueil",
+    "calendar": "Calendrier",
+    "fixtures": "Matchs",
+    "squad": "Équipe",
+    "videos": "Vidéos",
+    "shop": "Boutique",
+    "settings": "Paramètres",
+    "manage": "Gérer"
+  },
+  "home": {
+    "title": "Accueil",
+    "nextEvent": "Prochain Événement",
+    "noEvents": "Aucun événement à venir",
+    "feed": "Actualités",
+    "noFeed": "Aucune publication"
+  },
+  "calendar": {
+    "title": "Calendrier",
+    "upcoming": "Événements à Venir",
+    "rsvp": {
+      "going": "J'y vais",
+      "maybe": "Peut-être",
+      "notGoing": "Je ne peux pas"
+    },
+    "eventTypes": {
+      "match": "Match",
+      "training": "Entraînement",
+      "social": "Social"
+    }
+  },
+  "fixtures": {
+    "title": "Matchs",
+    "upcoming": "Matchs à Venir",
+    "results": "Résultats Récents",
+    "table": "Classement",
+    "noFixtures": "Aucun match programmé",
+    "homeAway": {
+      "home": "Domicile",
+      "away": "Extérieur"
+    }
+  },
+  "squad": {
+    "title": "Équipe",
+    "players": "Joueurs",
+    "stats": {
+      "goals": "Buts",
+      "assists": "Passes Décisives",
+      "appearances": "Matchs",
+      "yellowCards": "Cartons Jaunes",
+      "redCards": "Cartons Rouges"
+    },
+    "positions": {
+      "goalkeeper": "Gardien",
+      "defender": "Défenseur",
+      "midfielder": "Milieu",
+      "forward": "Attaquant"
+    }
+  },
+  "videos": {
+    "title": "Vidéos",
+    "record": "Enregistrer une Vidéo",
+    "select": "Sélectionner depuis la Galerie",
+    "upload": "Télécharger",
+    "recent": "Moments Forts Récents",
+    "noVideos": "Aucune vidéo pour le moment"
+  },
+  "shop": {
+    "title": "Boutique",
+    "products": "Produits",
+    "cart": "Panier",
+    "checkout": "Passer Commande",
+    "noProducts": "Aucun produit disponible"
+  },
+  "settings": {
+    "title": "Paramètres",
+    "profile": "Profil",
+    "notifications": "Notifications",
+    "language": "Langue",
+    "theme": "Thème",
+    "about": "À Propos",
+    "logout": "Déconnexion"
+  },
+  "liveMatch": {
+    "title": "Match en Direct",
+    "start": "Démarrer le Match",
+    "record": "Enregistrer un Événement",
+    "events": {
+      "goal": "But",
+      "yellow": "Carton Jaune",
+      "red": "Carton Rouge",
+      "sub": "Remplacement",
+      "halftime": "Mi-temps",
+      "fulltime": "Fin du Match"
+    }
+  },
+  "errors": {
+    "network": "Erreur réseau. Veuillez vérifier votre connexion.",
+    "notFound": "Non trouvé",
+    "unauthorized": "Non autorisé. Veuillez vous connecter.",
+    "unknown": "Une erreur inconnue s'est produite"
+  }
+}

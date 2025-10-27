@@ -1,0 +1,18 @@
+{
+  "id": "birthday-v1",
+  "sizes": ["1080x1080"],
+  "fonts": [
+    { "family": "Inter", "files": [{ "name": "Inter-Bold", "path": "Inter-Bold.ttf", "weight": 700 }] },
+    { "family": "Urbanist", "files": [{ "name": "Urbanist-Black", "path": "Urbanist-Black.ttf", "weight": 900 }] }
+  ],
+  "colorTokens": ["BG","PRIMARY","ACCENT","TEXT","TEXT_DIM"],
+  "imageTokens": ["PLAYER_PHOTO"],
+  "textTokens": ["PLAYER_NAME","AGE","TEAM_NAME"],
+  "defaults": {
+    "BG": "#0D0F12",
+    "PRIMARY": "#FFD400",
+    "ACCENT": "#FFA500",
+    "TEXT": "#F5F7FA",
+    "TEXT_DIM": "#A8B0BD"
+  }
+}

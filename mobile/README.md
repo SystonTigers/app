@@ -25,7 +25,7 @@ App will load on your phone instantly! No build needed.
 
 ---
 
-## 📱 Features (5 Tabs)
+## 📱 Features (6 Tabs)
 
 ### ✅ 1. Home Screen
 - **Next Event Widget** (top)
@@ -73,7 +73,7 @@ App will load on your phone instantly! No build needed.
   - 🔴 Forward
 - Tap player for full profile
 
-### ✅ 5. Videos Screen (NEW!)
+### ✅ 5. Videos Screen
 - **📹 Record Video** directly in app
 - **📁 Select Video** from phone library
 - **🤖 AI-Powered Processing**:
@@ -84,6 +84,47 @@ App will load on your phone instantly! No build needed.
 - **Recent Highlights** with status tracking
 - **Video Preview** with controls
 - **Pro Tips** for best quality
+
+### ✅ 6. Management Screen (NEW! ⚙️)
+**For team managers to control everything from the app!**
+
+#### Management Dashboard
+- Beautiful card-based navigation
+- Quick stats overview
+- 6 management sections
+
+#### Manage Fixtures ⚽
+- Add/edit/delete matches
+- Competition badges (League/Cup/Friendly)
+- Home/Away indicators
+- Score tracking
+- Date/time/venue management
+- Modal forms with validation
+
+#### Manage Squad 👥
+- Add/edit/delete players
+- Player cards with avatars
+- Color-coded positions
+- Track goals, assists, appearances, cards
+- Jersey number badges
+- Stats management
+
+#### Manage Events 📅
+- Create training sessions
+- Create matches
+- Create social events
+- RSVP counter
+- Date/time/location
+- Event descriptions
+
+#### Create Posts 📝
+- Multi-channel posting (App/X/Instagram/Facebook)
+- Character counter with platform limits
+- Live preview
+- Media upload ready
+- Channel selection chips
+
+**Team managers can do EVERYTHING from the mobile app - no spreadsheets needed!**
 
 ---
 
@@ -123,7 +164,8 @@ Upload Full Match → AI Detection → Auto-Edit → YouTube → Social Media
 
 - **Syston Tigers colors**: Yellow (#FFD700) & Black
 - **Material Design 3** (React Native Paper)
-- **Bottom Tab Navigation** (5 tabs)
+- **Bottom Tab Navigation** (6 tabs: Home, Calendar, Fixtures, Squad, Videos, Manage)
+- **Stack Navigation** (Management section with sub-screens)
 - **Mock data** (ready for API connection)
 
 ---
@@ -131,15 +173,18 @@ Upload Full Match → AI Detection → Auto-Edit → YouTube → Social Media
 ## 🔧 Tech Stack
 
 ### Frontend
-- **Framework**: React Native (Expo)
+- **Framework**: React Native (Expo SDK 54)
 - **UI Library**: React Native Paper (Material Design 3)
-- **Navigation**: React Navigation (bottom tabs)
-- **State**: Zustand
+- **Navigation**:
+  - React Navigation (bottom tabs + stack)
+  - @react-navigation/bottom-tabs
+  - @react-navigation/stack
+- **State**: Zustand (ready to add)
 - **API**: Axios
-- **Video**: expo-av, expo-image-picker, expo-video-thumbnails
+- **Video**: expo-av@16.x, expo-image-picker@17.x, expo-video-thumbnails@10.x
 - **Calendar**: react-native-calendars
-- **Notifications**: expo-notifications
-- **Location**: expo-location (for geo-fencing)
+- **Notifications**: expo-notifications (ready to add)
+- **Location**: expo-location (for geo-fencing, ready to add)
 
 ### Backend (Server-Side Video Processing)
 - **Python AI Bot**: highlights_bot (AI detection + editing)
@@ -154,18 +199,24 @@ Upload Full Match → AI Detection → Auto-Edit → YouTube → Social Media
 ```
 mobile/
 ├── src/
-│   ├── config.ts                 # API URL, colors, constants
+│   ├── config.ts                      # API URL, colors, constants
 │   ├── services/
-│   │   └── api.ts                # API client (axios)
+│   │   └── api.ts                     # API client (axios)
 │   └── screens/
-│       ├── HomeScreen.tsx        # Next event + news feed
-│       ├── CalendarScreen.tsx    # Events + RSVP
-│       ├── FixturesScreen.tsx    # Matches + results
-│       ├── SquadScreen.tsx       # Squad roster
-│       └── VideoScreen.tsx       # Video recording/upload
-├── App.tsx                        # Navigation + theme
+│       ├── HomeScreen.tsx             # Home: Next event + news feed
+│       ├── CalendarScreen.tsx         # Calendar: Events + RSVP
+│       ├── FixturesScreen.tsx         # Fixtures: Matches + results
+│       ├── SquadScreen.tsx            # Squad: Team roster
+│       ├── VideoScreen.tsx            # Videos: Recording/upload
+│       ├── ManageScreen.tsx           # Management: Dashboard (NEW!)
+│       ├── ManageFixturesScreen.tsx   # Manage: Add/edit fixtures (NEW!)
+│       ├── ManageSquadScreen.tsx      # Manage: Add/edit players (NEW!)
+│       ├── ManageEventsScreen.tsx     # Manage: Create events (NEW!)
+│       └── CreatePostScreen.tsx       # Manage: Create posts (NEW!)
+├── App.tsx                             # Navigation (tabs + stack) + theme
 ├── package.json
-└── README.md                      # This file
+├── README.md                           # This file
+└── ADMIN_SCREENS_ADDED.md              # Management screens documentation
 ```
 
 ---
@@ -178,10 +229,12 @@ cd mobile
 npm install
 ```
 
-### Install Video Dependencies (if needed)
-```bash
-npx expo install expo-av expo-image-picker expo-video-thumbnails expo-media-library
-```
+**All dependencies are already installed and configured!**
+- Expo SDK 54
+- React Navigation (tabs + stack)
+- React Native Paper (Material Design 3)
+- Video libraries (expo-av, expo-image-picker, expo-video-thumbnails)
+- Calendar library
 
 ### Start Dev Server
 ```bash
@@ -241,26 +294,35 @@ POST /api/v1/videos/upload  # Upload video (NEW)
 ## 📋 Current Status
 
 ### ✅ Completed
-- [x] Project setup (Expo + TypeScript)
-- [x] 5 main screens built
+- [x] Project setup (Expo SDK 54 + TypeScript)
+- [x] 6 main tabs built (Home, Calendar, Fixtures, Squad, Videos, Manage)
+- [x] 10 total screens built
 - [x] Bottom tab navigation
+- [x] Stack navigation (Management section)
 - [x] API integration layer
 - [x] Mock data for development
 - [x] Video recording/upload UI
 - [x] Material Design 3 theme
 - [x] Syston Tigers branding
+- [x] **Management screens** (NEW!):
+  - [x] Management Dashboard
+  - [x] Manage Fixtures (add/edit/delete)
+  - [x] Manage Squad (add/edit/delete)
+  - [x] Manage Events (add/edit/delete)
+  - [x] Create Posts (multi-channel)
 
 ### 🚧 In Progress
-- [ ] Connect to backend API
-- [ ] Add authentication (login screen)
+- [ ] Connect management screens to backend API
+- [ ] Add authentication (login screen with role-based access)
 - [ ] Replace mock data with real data
 
 ### ⏳ Planned
 - [ ] Push notifications (geo-aware)
-- [ ] Gallery screen
+- [ ] Gallery screen (photo management)
 - [ ] Chat/messaging
 - [ ] Training tools (coaches)
-- [ ] Team store (Printify)
+- [ ] Team store (Printify integration)
+- [ ] Settings screen
 
 ---
 

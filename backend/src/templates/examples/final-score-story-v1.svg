@@ -1,0 +1,20 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1080" height="1920" viewBox="0 0 1080 1920" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1080" height="1920" fill="{{BG}}"/>
+  <g opacity="0.06">
+    <path d="M0 180H1080 M0 360H1080 M0 540H1080 M0 720H1080 M0 900H1080 M0 1080H1080 M0 1260H1080 M0 1440H1080 M0 1620H1080" stroke="{{TEXT}}"/>
+  </g>
+
+  <text x="60" y="180" font-family="Inter" font-size="64" fill="{{TEXT}}" font-weight="900">{{HOME_NAME}} vs {{AWAY_NAME}}</text>
+  <text x="60" y="250" font-family="Inter" font-size="28" fill="{{TEXT_DIM}}">{{COMPETITION}} • {{DATE_STR}}</text>
+
+  <g transform="translate(0,360)">
+    <circle cx="270" cy="240" r="180" fill="{{PRIMARY}}" opacity="0.20"/>
+    <image href="{{HOME_BADGE_DATAURI}}" x="150" y="120" width="240" height="240" preserveAspectRatio="xMidYMid slice"/>
+    <circle cx="810" cy="240" r="180" fill="{{PRIMARY}}" opacity="0.20"/>
+    <image href="{{AWAY_BADGE_DATAURI}}" x="690" y="120" width="240" height="240" preserveAspectRatio="xMidYMid slice"/>
+    <text x="540" y="540" text-anchor="middle" font-family="Urbanist" font-size="220" fill="{{TEXT}}" font-weight="900">{{HS}}–{{AS}}</text>
+  </g>
+
+  <text x="60" y="1740" font-family="Inter" font-size="24" fill="{{TEXT_DIM}}">{{SLOGAN}}</text>
+</svg>

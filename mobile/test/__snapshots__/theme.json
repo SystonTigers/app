@@ -1,0 +1,215 @@
+{
+  "defaultRamp": {
+    "50": "#dfffff",
+    "100": "#c5ffff",
+    "200": "#acffff",
+    "300": "#92ebff",
+    "400": "#7ed7ff",
+    "500": "#6CC5FF",
+    "600": "#5ab3ed",
+    "700": "#469fd9",
+    "800": "#2c85bf",
+    "900": "#136ca6"
+  },
+  "tenantTheme": {
+    "colors": {
+      "primary": "#1F6FEB",
+      "primaryLight": "#52a2ff",
+      "primaryDark": "#003cb8",
+      "secondary": "#152A56",
+      "secondaryLight": "#485d89",
+      "secondaryDark": "#000023",
+      "accent": "#F97316",
+      "accentLight": "#ffa649",
+      "accentDark": "#c64000",
+      "background": "#FFFFFF",
+      "backgroundSecondary": "#F5F5F5",
+      "backgroundTertiary": "#EEEEEE",
+      "surface": "#FFFFFF",
+      "surfaceSecondary": "#F9F9F9",
+      "surfaceTertiary": "#F0F0F0",
+      "text": "#000000",
+      "textSecondary": "#666666",
+      "textTertiary": "#999999",
+      "textDisabled": "#CCCCCC",
+      "textInverse": "#FFFFFF",
+      "border": "#E0E0E0",
+      "borderLight": "#F0F0F0",
+      "borderDark": "#CCCCCC",
+      "success": "#4CAF50",
+      "successLight": "#81C784",
+      "successDark": "#388E3C",
+      "warning": "#FF9800",
+      "warningLight": "#FFB74D",
+      "warningDark": "#F57C00",
+      "error": "#F44336",
+      "errorLight": "#E57373",
+      "errorDark": "#D32F2F",
+      "info": "#2196F3",
+      "infoLight": "#64B5F6",
+      "infoDark": "#1976D2",
+      "overlay": "rgba(0, 0, 0, 0.5)",
+      "overlayLight": "rgba(0, 0, 0, 0.3)",
+      "overlayDark": "rgba(0, 0, 0, 0.7)",
+      "shadow": "rgba(0, 0, 0, 0.1)"
+    },
+    "ramps": {
+      "primary": {
+        "50": "#92e2ff",
+        "100": "#78c8ff",
+        "200": "#5fafff",
+        "300": "#4595ff",
+        "400": "#3181fd",
+        "500": "#1F6FEB",
+        "600": "#0d5dd9",
+        "700": "#0049c5",
+        "800": "#002fab",
+        "900": "#001692"
+      },
+      "secondary": {
+        "50": "#889dc9",
+        "100": "#6e83af",
+        "200": "#556a96",
+        "300": "#3b507c",
+        "400": "#273c68",
+        "500": "#152A56",
+        "600": "#031844",
+        "700": "#000430",
+        "800": "#000016",
+        "900": "#000000"
+      },
+      "accent": {
+        "50": "#ffe689",
+        "100": "#ffcc6f",
+        "200": "#ffb356",
+        "300": "#ff993c",
+        "400": "#ff8528",
+        "500": "#F97316",
+        "600": "#e76104",
+        "700": "#d34d00",
+        "800": "#b93300",
+        "900": "#a01a00"
+      },
+      "neutral": {
+        "50": "#d9d9d9",
+        "100": "#bfbfbf",
+        "200": "#a6a6a6",
+        "300": "#8c8c8c",
+        "400": "#787878",
+        "500": "#666666",
+        "600": "#545454",
+        "700": "#404040",
+        "800": "#262626",
+        "900": "#0d0d0d"
+      },
+      "success": {
+        "50": "#bfffc3",
+        "100": "#a5ffa9",
+        "200": "#8cef90",
+        "300": "#72d576",
+        "400": "#5ec162",
+        "500": "#4CAF50",
+        "600": "#3a9d3e",
+        "700": "#26892a",
+        "800": "#0c6f10",
+        "900": "#005600"
+      },
+      "warning": {
+        "50": "#ffff73",
+        "100": "#fff159",
+        "200": "#ffd840",
+        "300": "#ffbe26",
+        "400": "#ffaa12",
+        "500": "#FF9800",
+        "600": "#ed8600",
+        "700": "#d97200",
+        "800": "#bf5800",
+        "900": "#a63f00"
+      },
+      "info": {
+        "50": "#94ffff",
+        "100": "#7aefff",
+        "200": "#61d6ff",
+        "300": "#47bcff",
+        "400": "#33a8ff",
+        "500": "#2196F3",
+        "600": "#0f84e1",
+        "700": "#0070cd",
+        "800": "#0056b3",
+        "900": "#003d9a"
+      },
+      "error": {
+        "50": "#ffb6a9",
+        "100": "#ff9c8f",
+        "200": "#ff8376",
+        "300": "#ff695c",
+        "400": "#ff5548",
+        "500": "#F44336",
+        "600": "#e23124",
+        "700": "#ce1d10",
+        "800": "#b40300",
+        "900": "#9b0000"
+      }
+    },
+    "spacingScale": {
+      "3xs": 2,
+      "2xs": 3,
+      "xs": 4,
+      "sm": 8,
+      "md": 16,
+      "lg": 24,
+      "xl": 32,
+      "2xl": 48,
+      "3xl": 64,
+      "4xl": 72
+    },
+    "typographyScale": {
+      "display": {
+        "fontSize": 36,
+        "lineHeight": 40,
+        "fontWeight": "bold"
+      },
+      "headline": {
+        "fontSize": 30,
+        "lineHeight": 36,
+        "fontWeight": "bold"
+      },
+      "title": {
+        "fontSize": 24,
+        "lineHeight": 30,
+        "fontWeight": "semibold"
+      },
+      "subtitle": {
+        "fontSize": 20,
+        "lineHeight": 26,
+        "fontWeight": "medium"
+      },
+      "body": {
+        "fontSize": 16,
+        "lineHeight": 24,
+        "fontWeight": "regular"
+      },
+      "bodySm": {
+        "fontSize": 14,
+        "lineHeight": 20,
+        "fontWeight": "regular"
+      },
+      "caption": {
+        "fontSize": 12,
+        "lineHeight": 17,
+        "fontWeight": "medium",
+        "letterSpacing": 0.2
+      },
+      "overline": {
+        "fontSize": 10,
+        "lineHeight": 14,
+        "fontWeight": "medium",
+        "letterSpacing": 0.4
+      }
+    },
+    "metadata": {
+      "source": "tenant",
+      "brandName": "Snapshot FC"
+    }
+  }
+}

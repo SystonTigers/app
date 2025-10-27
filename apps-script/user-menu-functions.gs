@@ -1,5 +1,5 @@
 /**
- * @fileoverview User Menu Functions for Syston Tigers Football Automation
+ * @fileoverview User Menu Functions for configurable football automation
  * @version 6.2.0
  * @author Senior Software Architect
  * @description Simple user menu functions to add to main.gs

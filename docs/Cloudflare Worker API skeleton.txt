@@ -1,0 +1,506 @@
+Awesome — here’s **#2: Cloudflare Worker API skeleton** you can paste straight into your repo. It matches the v7.0 plan, is **tenant-aware**, **tiered (starter/premium)**, and wired for **KV + R2 + D1 + cron**. I’ve kept it tight but production-ready.
+
+---
+
+# 📦 Where to put everything
+
+```
+app/backend/
+  wrangler.toml
+  package.json
+  tsconfig.json
+  src/
+    index.ts
+    env.d.ts
+    router.ts
+    middleware/
+      auth.ts
+      tenant.ts
+      json.ts
+      errors.ts
+    services/
+      teams.ts
+      matches.ts
+      events.ts
+      stats.ts
+      slogans.ts
+      weather.ts
+      fx.ts
+      locale.ts
+      render.ts
+      usage.ts
+      shop.ts
+      push.ts
+    utils/
+      response.ts
+      time.ts
+      featureFlags.ts
+      github.ts
+      hash.ts
+    cron/
+      daily.ts
+      league.ts
+      throwback.ts
+      cleanup.ts
+    schema/
+      d1.sql
+```
+
+---
+
+# 🧩 `wrangler.toml` (bindings + routes)
+
+```toml
+name = "syston-backend"
+main = "src/index.ts"
+compatibility_date = "2025-01-15"
+node_compat = true
+
+# HTTP routes
+routes = [
+  { pattern = "api.yourdomain.com/*", zone_name = "yourdomain.com" }
+]
+
+# KV / R2 / D1 / Queues
+[[kv_namespaces]]
+binding = "KV"
+id = "kv_prod_id"
+
+[[r2_buckets]]
+binding = "R2"
+bucket_name = "syston-assets"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "syston-db"
+database_id = "d1_prod_id"
+
+# CRON jobs (Premium)
+[[triggers]]
+crons = ["0 6 * * *", "0 8 * * *", "0 */6 * * *", "0 19 * * 4", "*/5 * * * *"]
+
+[vars]
+ALLOW_PUBLIC_APIS = "1"
+
+# Secrets you must set:
+# wrangler secret put SUPABASE_URL
+# wrangler secret put SUPABASE_ANON_KEY
+# wrangler secret put GITHUB_TOKEN
+# wrangler secret put EXPO_ACCESS_TOKEN (if needed)
+```
+
+---
+
+# 📜 `package.json`
+
+```json
+{
+  "name": "syston-backend",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --local",
+    "deploy": "wrangler deploy",
+    "d1:prep": "wrangler d1 execute DB --file ./src/schema/d1.sql"
+  },
+  "dependencies": {
+    "itty-router": "^4.0.23",
+    "luxon": "^3.5.0",
+    "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.2",
+    "@cloudflare/workers-types": "^4.20241022.0"
+  }
+}
+```
+
+---
+
+# 🧠 `src/env.d.ts` (typed bindings)
+
+```ts
+export interface Env {
+  KV: KVNamespace;
+  R2: R2Bucket;
+  DB: D1Database;
+
+  SUPABASE_URL: string;
+  SUPABASE_ANON_KEY: string;
+  GITHUB_TOKEN: string;
+
+  ALLOW_PUBLIC_APIS?: string; // "1" to enable weather/fx/locale proxies
+}
+```
+
+---
+
+# 🧭 `src/index.ts` (entry)
+
+```ts
+import { router } from './router';
+import { jsonError } from './middleware/errors';
+
+export default {
+  fetch: (req: Request, env: Env, ctx: ExecutionContext) =>
+    router
+      .handle(req, env, ctx)
+      .catch((err) => jsonError(err)),
+  scheduled: async (event: ScheduledEvent, env: Env, ctx: ExecutionContext) => {
+    // Map cron specs to jobs
+    // 06:00 daily → birthdays + quotes
+    // 08:00 daily → countdowns
+    // */6h → league table refresh
+    // Thu 19:00 → throwback
+    // */5m → live update cleanup
+    const spec = event.cron;
+    const { runDaily } = await import('./cron/daily');
+    const { runLeague } = await import('./cron/league');
+    const { runThrowback } = await import('./cron/throwback');
+    const { runCleanup } = await import('./cron/cleanup');
+
+    if (spec === '0 6 * * *') return runDaily(env, ctx);
+    if (spec === '0 8 * * *') return runDaily(env, ctx, { countdownsOnly: true });
+    if (spec === '0 */6 * * *') return runLeague(env, ctx);
+    if (spec === '0 19 * * 4') return runThrowback(env, ctx);
+    if (spec === '*/5 * * * *') return runCleanup(env, ctx);
+  }
+} satisfies ExportedHandler<Env>;
+```
+
+---
+
+# 🛣️ `src/router.ts` (routes)
+
+```ts
+import { Router } from 'itty-router';
+import { withJSON } from './middleware/json';
+import { withTenant } from './middleware/tenant';
+import { requireAuth } from './middleware/auth';
+import { ok } from './utils/response';
+
+export const router = Router();
+
+// Health
+router.get('/health', (req, env) => ok({ api: 'ok', time: Date.now() }));
+
+// Public proxies (toggle with ALLOW_PUBLIC_APIS)
+router.get('/weather', withTenant, withJSON, (req, env) => import('./services/weather').then(m => m.getWeather(req, env)));
+router.get('/fx', withTenant, withJSON, (req, env) => import('./services/fx').then(m => m.getFX(req, env)));
+router.get('/locale', withTenant, withJSON, (req, env) => import('./services/locale').then(m => m.getLocale(req, env)));
+router.get('/maplink', withTenant, withJSON, (req) => import('./utils/time').then(m => m.mapLink(req)));
+
+// Auth (Supabase proxied if you like; or call Supabase directly from app)
+router.post('/auth/signup', withJSON, (req, env) => import('./services/teams').then(m => m.signup(req, env)));
+router.post('/team/create', requireAuth, withTenant, withJSON, (req, env) => import('./services/teams').then(m => m.createTeam(req, env)));
+router.post('/team/invite', requireAuth, withTenant, withJSON, (req, env) => import('./services/teams').then(m => m.invite(req, env)));
+
+// Tenant config / feature flags
+router.get('/tenant/config', withTenant, (req, env) => import('./utils/featureFlags').then(m => m.getConfig(req, env)));
+
+// Matches / Events / Stats
+router.get('/fixtures/next', withTenant, (req, env) => import('./services/matches').then(m => m.getNextFixture(req, env)));
+router.post('/matches/:id/events', requireAuth, withTenant, withJSON, (req, env) => import('./services/events').then(m => m.addEvent(req, env)));
+router.get('/stats/team', withTenant, (req, env) => import('./services/stats').then(m => m.teamStats(req, env)));
+router.get('/stats/players', withTenant, (req, env) => import('./services/stats').then(m => m.playerStats(req, env)));
+
+// Live updates
+router.get('/events/live', withTenant, (req, env) => import('./services/events').then(m => m.getLive(req, env)));
+router.post('/events/live', withTenant, withJSON, (req, env) => import('./services/events').then(m => m.postLive(req, env)));
+
+// League table
+router.get('/league/table', withTenant, (req, env) => import('./services/matches').then(m => m.getLeagueTable(req, env)));
+router.post('/league/table', requireAuth, withTenant, withJSON, (req, env) => import('./services/matches').then(m => m.upsertLeagueTable(req, env)));
+
+// Slogans (static generator)
+router.get('/slogan', withTenant, (req, env) => import('./services/slogans').then(m => m.getSlogans(req)));
+
+// Render (SVG→PNG)
+router.post('/render', withTenant, withJSON, (req, env) => import('./services/render').then(m => m.renderGraphic(req, env)));
+
+// Usage (Make.com)
+router.get('/usage/make/allowed', withTenant, (req, env) => import('./services/usage').then(m => m.allowed(req, env)));
+router.post('/usage/make/increment', withTenant, withJSON, (req, env) => import('./services/usage').then(m => m.increment(req, env)));
+
+// Shop
+router.post('/shop/customize', withTenant, withJSON, (req, env) => import('./services/shop').then(m => m.customize(req, env)));
+
+// Push
+router.post('/push/register', withTenant, withJSON, (req, env) => import('./services/push').then(m => m.register(req, env)));
+router.post('/push/send', withTenant, withJSON, (req, env) => import('./services/push').then(m => m.send(req, env)));
+
+router.all('*', () => new Response('Not Found', { status: 404 }));
+```
+
+---
+
+# 🧱 Middleware
+
+`src/middleware/json.ts`
+
+```ts
+export const withJSON = async (req: any) => {
+  if (req.method === 'POST' || req.method === 'PUT' || req.method === 'PATCH') {
+    try { req.json = await req.json(); } catch { req.json = {}; }
+  }
+};
+```
+
+`src/middleware/tenant.ts`
+
+```ts
+export const withTenant = (req: any) => {
+  req.tenant = req.headers.get('x-tenant') || new URL(req.url).searchParams.get('tenant') || 'default';
+};
+```
+
+`src/middleware/auth.ts`
+
+```ts
+export const requireAuth = (req: any) => {
+  const auth = req.headers.get('authorization');
+  if (!auth) throw new Error('Unauthorized');
+  // Optionally verify Supabase JWT here.
+};
+```
+
+`src/middleware/errors.ts`
+
+```ts
+export const jsonError = (err: any) =>
+  new Response(JSON.stringify({ error: err.message || 'Internal error' }), {
+    status: err.message === 'Unauthorized' ? 401 : 500,
+    headers: { 'content-type': 'application/json' }
+  });
+```
+
+---
+
+# 🔧 Utils
+
+`src/utils/response.ts`
+
+```ts
+export const ok = (data: any, status = 200) =>
+  new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json' } });
+```
+
+`src/utils/hash.ts`
+
+```ts
+export const md5 = async (input: string) => {
+  const enc = new TextEncoder().encode(input);
+  const buf = await crypto.subtle.digest('MD5', enc);
+  return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2,'0')).join('');
+};
+```
+
+`src/utils/time.ts`
+
+```ts
+import { DateTime } from 'luxon';
+export const nowUTC = () => DateTime.utc();
+
+export const mapLink = (req: any) => {
+  const url = new URL(req.url);
+  const lat = url.searchParams.get('lat');
+  const lon = url.searchParams.get('lon');
+  const q = url.searchParams.get('q') || '';
+  const g = lat && lon ? `https://maps.google.com/?q=${lat},${lon}` : `https://maps.google.com/?q=${encodeURIComponent(q)}`;
+  return new Response(JSON.stringify({ url: g }), { headers: { 'content-type': 'application/json' } });
+};
+```
+
+`src/utils/featureFlags.ts`
+
+```ts
+export const getConfig = async (req: any, env: Env) => {
+  const key = `team:${req.tenant}:config`;
+  const cfg = await env.KV.get(key, 'json');
+  return new Response(JSON.stringify(cfg || { plan: 'starter', features: {} }), { headers: { 'content-type':'application/json' } });
+};
+```
+
+---
+
+# 🗂️ Services (high-impact ones)
+
+`src/services/slogans.ts` — **offline generator**
+
+```ts
+const TPL = [
+  "{TEAM} — Built Different",
+  "All {CITY}. All Heart.",
+  "{TEAM}: Grit. Pride. Relentless.",
+  "No Fear. Just {TEAM}.",
+  "Born to Roar — {TEAM}"
+];
+export const getSlogans = async (req: any) => {
+  const u = new URL(req.url);
+  const team = u.searchParams.get('team') || 'Your Team';
+  const city = u.searchParams.get('city') || team.split(' ')[0];
+  const picks = Array.from({length:5}).map((_,i)=> TPL[(Math.random()*TPL.length)|0]
+    .replaceAll('{TEAM}', team).replaceAll('{CITY}', city));
+  return new Response(JSON.stringify({ options: picks }), { headers:{'content-type':'application/json'}});
+};
+```
+
+`src/services/usage.ts` — **Starter ops guard**
+
+```ts
+const monthKey = (tenant:string) => {
+  const d = new Date();
+  return `usage:${tenant}:${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}`;
+};
+
+export const allowed = async (req:any, env:Env) => {
+  const cap = 1000;
+  const used = +(await env.KV.get(monthKey(req.tenant)) || 0);
+  return new Response(JSON.stringify({ allowed: used < cap, used, cap }), { headers:{'content-type':'application/json'}});
+};
+
+export const increment = async (req:any, env:Env) => {
+  const key = monthKey(req.tenant);
+  const used = +(await env.KV.get(key) || 0) + 1;
+  await env.KV.put(key, String(used), { expirationTtl: 60*60*24*45 });
+  return new Response(JSON.stringify({ used }), { headers:{'content-type':'application/json'}});
+};
+```
+
+`src/services/weather.ts` — **Open-Meteo proxy**
+
+```ts
+export const getWeather = async (req:any) => {
+  const u = new URL(req.url);
+  const lat = u.searchParams.get('lat'); const lon = u.searchParams.get('lon');
+  if (!lat || !lon) return new Response(JSON.stringify({error:'lat/lon required'}), {status:400});
+  const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m,precipitation_probability&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=auto`);
+  return new Response(await r.text(), { headers: { 'content-type':'application/json' } });
+};
+```
+
+`src/services/fx.ts` — **exchangerate.host proxy**
+
+```ts
+export const getFX = async (req:any) => {
+  const u = new URL(req.url);
+  const from = u.searchParams.get('from') || 'GBP';
+  const to = u.searchParams.get('to') || 'EUR';
+  const r = await fetch(`https://api.exchangerate.host/convert?from=${from}&to=${to}`);
+  return new Response(await r.text(), { headers: { 'content-type':'application/json' } });
+};
+```
+
+`src/services/locale.ts` — **ipinfo (optional)**
+
+```ts
+export const getLocale = async (req:any, env:Env) => {
+  if (env.ALLOW_PUBLIC_APIS !== '1') return new Response(JSON.stringify({error:'disabled'}), {status:403});
+  const ip = req.headers.get('cf-connecting-ip') || '';
+  const r = await fetch(`https://ipinfo.io/${ip}/json`);
+  return new Response(await r.text(), { headers: { 'content-type':'application/json' } });
+};
+```
+
+`src/services/render.ts` — **SVG→PNG stub (wire in your renderer later)**
+
+```ts
+export const renderGraphic = async (req:any, env:Env) => {
+  const body = req.json || {};
+  // TODO: implement real SVG templating -> PNG and put to R2
+  // For now, just echo a fake URL:
+  const id = crypto.randomUUID();
+  const url = `https://cdn.yourdomain.com/renders/${id}.png`;
+  return new Response(JSON.stringify({ id, url, received: body }), { headers: { 'content-type':'application/json' } });
+};
+```
+
+`src/services/events.ts` — **live updates**
+
+```ts
+const LIVE_KEY = (tenant:string) => `live:${tenant}`;
+export const postLive = async (req:any, env:Env) => {
+  const update = req.json?.update || req.json;
+  await env.KV.put(LIVE_KEY(req.tenant), JSON.stringify({ ...update, ts: Date.now() }), { expirationTtl: 60*120 });
+  return new Response(JSON.stringify({ ok: true }), { headers:{'content-type':'application/json'}});
+};
+export const getLive = async (req:any, env:Env) => {
+  const v = await env.KV.get(LIVE_KEY(req.tenant), 'json');
+  return new Response(JSON.stringify(v || null), { headers:{'content-type':'application/json'}});
+};
+```
+
+`src/cron/cleanup.ts` — **TTL safety**
+
+```ts
+export const runCleanup = async (env:Env) => {
+  // If you later use D1 for live logs, expire >100min items here.
+};
+```
+
+> The remaining stubs (`teams/matches/stats/push/shop/league`) follow same pattern—read/write KV/D1, return JSON.
+
+---
+
+# 🗄️ `src/schema/d1.sql` (minimal tables to start)
+
+```sql
+-- Teams & Users
+CREATE TABLE IF NOT EXISTS teams (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  badge_url TEXT,
+  colors_json TEXT,
+  slogan TEXT,
+  timezone TEXT NOT NULL DEFAULT 'Europe/London',
+  plan TEXT NOT NULL DEFAULT 'starter',
+  team_code TEXT UNIQUE
+);
+
+CREATE TABLE IF NOT EXISTS users (
+  id TEXT PRIMARY KEY,
+  email TEXT UNIQUE,
+  role TEXT NOT NULL, -- manager/parent/player
+  team_id TEXT,
+  FOREIGN KEY(team_id) REFERENCES teams(id)
+);
+
+-- Matches & Events
+CREATE TABLE IF NOT EXISTS matches (
+  id TEXT PRIMARY KEY,
+  team_id TEXT NOT NULL,
+  date_utc INTEGER NOT NULL,
+  venue TEXT,
+  lat REAL, lon REAL,
+  status TEXT DEFAULT 'scheduled',
+  FOREIGN KEY(team_id) REFERENCES teams(id)
+);
+
+CREATE TABLE IF NOT EXISTS events (
+  id TEXT PRIMARY KEY,
+  match_id TEXT NOT NULL,
+  type TEXT NOT NULL, -- goal/assist/card_yellow/card_red/sin_bin/sub/note
+  minute INTEGER,
+  player_id TEXT,
+  assist_id TEXT,
+  payload_json TEXT,
+  ts INTEGER NOT NULL,
+  FOREIGN KEY(match_id) REFERENCES matches(id)
+);
+```
+
+Run:
+
+```bash
+cd app/backend
+npm i
+npm run d1:prep
+wrangler secret put SUPABASE_URL
+wrangler secret put SUPABASE_ANON_KEY
+wrangler secret put GITHUB_TOKEN
+npm run deploy
+```
+
+---
+
+## 

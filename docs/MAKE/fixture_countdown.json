@@ -1,0 +1,1 @@
+﻿{ "name": "Fixture Countdown", "schedule": "0 8 * * *", "actions": ["next_fixture","render_countdown"] }

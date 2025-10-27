@@ -1,0 +1,122 @@
+{
+  "common": {
+    "loading": "Cargando...",
+    "error": "Error",
+    "success": "Éxito",
+    "cancel": "Cancelar",
+    "save": "Guardar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "close": "Cerrar",
+    "back": "Atrás",
+    "next": "Siguiente",
+    "done": "Hecho",
+    "yes": "Sí",
+    "no": "No",
+    "ok": "OK",
+    "retry": "Reintentar",
+    "refresh": "Actualizar"
+  },
+  "nav": {
+    "home": "Inicio",
+    "calendar": "Calendario",
+    "fixtures": "Partidos",
+    "squad": "Plantilla",
+    "videos": "Vídeos",
+    "shop": "Tienda",
+    "settings": "Ajustes",
+    "manage": "Administrar"
+  },
+  "home": {
+    "title": "Inicio",
+    "nextEvent": "Próximo Evento",
+    "noEvents": "No hay eventos próximos",
+    "feed": "Noticias",
+    "noFeed": "No hay publicaciones"
+  },
+  "calendar": {
+    "title": "Calendario",
+    "upcoming": "Próximos Eventos",
+    "rsvp": {
+      "going": "Asistiré",
+      "maybe": "Quizás",
+      "notGoing": "No puedo"
+    },
+    "eventTypes": {
+      "match": "Partido",
+      "training": "Entrenamiento",
+      "social": "Social"
+    }
+  },
+  "fixtures": {
+    "title": "Partidos",
+    "upcoming": "Próximos Partidos",
+    "results": "Resultados Recientes",
+    "table": "Tabla de Clasificación",
+    "noFixtures": "No hay partidos programados",
+    "homeAway": {
+      "home": "Local",
+      "away": "Visitante"
+    }
+  },
+  "squad": {
+    "title": "Plantilla",
+    "players": "Jugadores",
+    "stats": {
+      "goals": "Goles",
+      "assists": "Asistencias",
+      "appearances": "Partidos",
+      "yellowCards": "Tarjetas Amarillas",
+      "redCards": "Tarjetas Rojas"
+    },
+    "positions": {
+      "goalkeeper": "Portero",
+      "defender": "Defensa",
+      "midfielder": "Centrocampista",
+      "forward": "Delantero"
+    }
+  },
+  "videos": {
+    "title": "Vídeos",
+    "record": "Grabar Vídeo",
+    "select": "Seleccionar de la Galería",
+    "upload": "Subir",
+    "recent": "Momentos Destacados Recientes",
+    "noVideos": "No hay vídeos aún"
+  },
+  "shop": {
+    "title": "Tienda",
+    "products": "Productos",
+    "cart": "Carrito",
+    "checkout": "Finalizar Compra",
+    "noProducts": "No hay productos disponibles"
+  },
+  "settings": {
+    "title": "Ajustes",
+    "profile": "Perfil",
+    "notifications": "Notificaciones",
+    "language": "Idioma",
+    "theme": "Tema",
+    "about": "Acerca de",
+    "logout": "Cerrar Sesión"
+  },
+  "liveMatch": {
+    "title": "Partido en Vivo",
+    "start": "Iniciar Partido",
+    "record": "Registrar Evento",
+    "events": {
+      "goal": "Gol",
+      "yellow": "Tarjeta Amarilla",
+      "red": "Tarjeta Roja",
+      "sub": "Sustitución",
+      "halftime": "Descanso",
+      "fulltime": "Final"
+    }
+  },
+  "errors": {
+    "network": "Error de red. Por favor verifica tu conexión.",
+    "notFound": "No encontrado",
+    "unauthorized": "No autorizado. Por favor inicia sesión.",
+    "unknown": "Ocurrió un error desconocido"
+  }
+}

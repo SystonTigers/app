@@ -930,6 +930,102 @@ suite('Regression Testing', function() {
   });
 });
 
+// ==================== CONFIGURATION OVERRIDE TESTS ====================
+
+suite('Configuration Overrides', function() {
+
+  test('should hydrate script property overrides before defaults', function() {
+    const originalGetScriptProperties = PropertiesService.getScriptProperties;
+    const store = {};
+    const fakeScriptProperties = {
+      getProperties: function() { return Object.assign({}, store); },
+      getProperty: function(key) { return Object.prototype.hasOwnProperty.call(store, key) ? store[key] : null; },
+      setProperty: function(key, value) { store[key] = value; },
+      setProperties: function(values) { Object.assign(store, values); },
+      deleteProperty: function(key) { delete store[key]; }
+    };
+
+    PropertiesService.getScriptProperties = function() {
+      return fakeScriptProperties;
+    };
+
+    const originalConfigSnapshot = JSON.parse(JSON.stringify(SYSTEM_CONFIG));
+
+    try {
+      if (typeof invalidateRuntimeConfigCache_ === 'function') {
+        invalidateRuntimeConfigCache_();
+      }
+
+      fakeScriptProperties.setProperty('SYSTEM.CLUB_NAME', 'Script Prop United');
+
+      const value = getConfigValue('SYSTEM.CLUB_NAME');
+      equal(value, 'Script Prop United', 'Should return hydrated script property override');
+    } finally {
+      PropertiesService.getScriptProperties = originalGetScriptProperties;
+      Object.keys(SYSTEM_CONFIG).forEach(function(key) { delete SYSTEM_CONFIG[key]; });
+      Object.assign(SYSTEM_CONFIG, JSON.parse(JSON.stringify(originalConfigSnapshot)));
+      if (typeof invalidateRuntimeConfigCache_ === 'function') {
+        invalidateRuntimeConfigCache_();
+      }
+    }
+  });
+
+  test('applyBuyerProfileToSystem should persist overrides for fresh executions', function() {
+    const originalGetScriptProperties = PropertiesService.getScriptProperties;
+    const store = {};
+    const fakeScriptProperties = {
+      getProperties: function() { return Object.assign({}, store); },
+      getProperty: function(key) { return Object.prototype.hasOwnProperty.call(store, key) ? store[key] : null; },
+      setProperty: function(key, value) { store[key] = value; },
+      setProperties: function(values) { Object.assign(store, values); },
+      deleteProperty: function(key) { delete store[key]; }
+    };
+
+    PropertiesService.getScriptProperties = function() {
+      return fakeScriptProperties;
+    };
+
+    const originalConfigSnapshot = JSON.parse(JSON.stringify(SYSTEM_CONFIG));
+
+    try {
+      if (typeof invalidateRuntimeConfigCache_ === 'function') {
+        invalidateRuntimeConfigCache_();
+      }
+
+      const profile = {
+        clubName: 'Hydration FC',
+        clubShortName: 'HFC',
+        league: 'Super League',
+        ageGroup: 'U18',
+        primaryColor: '#123456',
+        secondaryColor: '#654321',
+        badgeUrl: 'https://example.com/badge.png'
+      };
+
+      const result = applyBuyerProfileToSystem(profile);
+      ok(result.success, 'Should apply buyer profile successfully');
+
+      equal(fakeScriptProperties.getProperty('SYSTEM.CLUB_NAME'), 'Hydration FC', 'Script property should persist club name');
+      equal(fakeScriptProperties.getProperty('BRANDING.PRIMARY_COLOR'), '#123456', 'Script property should persist primary colour');
+
+      if (typeof invalidateRuntimeConfigCache_ === 'function') {
+        invalidateRuntimeConfigCache_();
+      }
+
+      const hydratedClubName = getConfigValue('SYSTEM.CLUB_NAME');
+      equal(hydratedClubName, 'Hydration FC', 'Hydrated config should reflect persisted club name');
+      equal(getConfigValue('BRANDING.PRIMARY_COLOR'), '#123456', 'Hydrated config should reflect persisted primary colour');
+    } finally {
+      PropertiesService.getScriptProperties = originalGetScriptProperties;
+      Object.keys(SYSTEM_CONFIG).forEach(function(key) { delete SYSTEM_CONFIG[key]; });
+      Object.assign(SYSTEM_CONFIG, JSON.parse(JSON.stringify(originalConfigSnapshot)));
+      if (typeof invalidateRuntimeConfigCache_ === 'function') {
+        invalidateRuntimeConfigCache_();
+      }
+    }
+  });
+});
+
 // ==================== TEST RUNNER FUNCTIONS ====================
 
 /**

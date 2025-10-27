@@ -1,0 +1,251 @@
+Perfect — having paid Cloudflare opens up **Workers KV, D1, R2, Queues, and cron triggers** without worrying about free-tier ceilings.
+Here’s your **Final Master Plan v7.0 — Global, Tiered, Fully Automated Football-Club Platform**.
+Everything below fits your goals: 100 % app-driven, minimal cost, scalable, and visually elite.
+
+---
+
+# 🧭 1.  Core Vision
+
+A single **mobile app** that lets any grassroots club run like a pro:
+
+* Manager signs up, creates team, adds badge/colours/slogan.
+* App auto-skins itself in team colours and shows badge everywhere.
+* Handles fixtures, live match events, results, league tables, media, and merch.
+* Two tiers:
+  **Starter:** free, Make.com powered, capped at ≤ 1 000 ops / month.
+  **Premium:** all features, Cloudflare backend, zero Make dependency.
+
+---
+
+# 🏗️ 2.  Architecture
+
+| Layer                            | Role                                | Tech                                                      |
+| -------------------------------- | ----------------------------------- | --------------------------------------------------------- |
+| **App (Expo RN)**                | UI + logic                          | React Native / Expo + Supabase Auth + i18n JSON           |
+| **Backend (Cloudflare Workers)** | All APIs, automation, rendering     | Workers + KV + R2 + D1 + Queues + Cron                    |
+| **Automation (Starter)**         | Low-tier workflows                  | Make.com                                                  |
+| **Automation (Premium)**         | Native cron jobs                    | Cloudflare cron                                           |
+| **Storage**                      | Assets → R2  •  Video → YouTube IDs |                                                           |
+| **Payments / Shop**              | Merch & subs                        | Shopify + Stripe                                          |
+| **External APIs**                | Weather / FX / Locale / Maps        | Open-Meteo  •  Exchangerate.host  •  ipinfo  •  Maps URLs |
+
+---
+
+# 📲 3.  App Feature Matrix
+
+| Module                                            | Starter               | Premium            | Notes                                  |
+| ------------------------------------------------- | --------------------- | ------------------ | -------------------------------------- |
+| **Dynamic Theme + Badge**                         | ✅                     | ✅                  | Auto-detect colours from crest         |
+| **Team Creation & Invites**                       | ✅                     | ✅                  | Code + email combo flow                |
+| **Fixtures & Calendar**                           | ✅                     | ✅                  | Weather + Map deep-links               |
+| **Live Match Control**                            | ✅                     | ✅                  | Goals / Assists / Cards / Subs / Notes |
+| **League Table**                                  | ✅ (Make 6 h sync)     | ✅ (real-time)      |                                        |
+| **Player Stats & Cards**                          | ⚠️ (aggregated daily) | ✅ (live)           |                                        |
+| **Quotes / Birthdays / Count-downs / Throwbacks** | ✅ via Make cron       | ✅ via Workers cron |                                        |
+| **Goal of Month / Montage**                       | ❌                     | ✅                  |                                        |
+| **Shop (Team-themed)**                            | ✅                     | ✅ + premium packs  |                                        |
+| **Push Notifications**                            | ❌                     | ✅                  | Expo Push                              |
+| **Usage Counter (Starter)**                       | ✅                     | ❌                  | `/usage/make` endpoint                 |
+| **Language / Currency / Timezone**                | ✅                     | ✅                  | Global-ready                           |
+
+---
+
+# ⚙️ 4.  Backend Endpoints (Cloudflare)
+
+| Endpoint                                        | Purpose                              |
+| ----------------------------------------------- | ------------------------------------ |
+| `POST /auth/signup` `/login`                    | Supabase Auth wrapper                |
+| `POST /team/create`                             | Create team + generate teamCode      |
+| `POST /team/invite`                             | Send email invites                   |
+| `GET/POST /events/live`                         | Live match updates + TTL auto-expire |
+| `POST /matches/:id/events`                      | Log goals, cards, subs, notes        |
+| `GET /league/table`                             | Read table JSON                      |
+| `POST /league/table`                            | Update table (admin)                 |
+| `GET /weather`                                  | Proxy Open-Meteo                     |
+| `GET /fx`                                       | Proxy Exchangerate.host              |
+| `GET /locale`                                   | Proxy ipinfo                         |
+| `GET /maplink`                                  | Return Google/Apple maps deep-link   |
+| `GET /slogan`                                   | Return 5 static-generated slogans    |
+| `GET /usage/make`  `POST /usage/make/increment` | Track starter ops                    |
+| `POST /render`                                  | Render SVG→PNG template              |
+| `POST /shop/customize`                          | Shopify proxy with team theme        |
+| `POST /push/register`  `POST /push/send`        | Notifications                        |
+| `GET /health`                                   | Heartbeat + fallback switch          |
+
+All Workers use KV for config + R2 for assets + D1 for relational tables.
+
+---
+
+# 🔄 5.  Data Model Highlights
+
+| Table / KV       | Key Fields                                                    |
+| ---------------- | ------------------------------------------------------------- |
+| **teams**        | id · name · badgeUrl · colors · slogan · timezone · plan      |
+| **users**        | id · email · role (manager/parent/player) · teamId            |
+| **matches**      | id · teamId · date · venue · lat/lon · status                 |
+| **events**       | id · matchId · type (goal/card/sub/note) · playerIds · minute |
+| **stats**        | playerId · goals · assists · cards                            |
+| **usage**        | tenant · month · count                                        |
+| **shop_packs**   | id · name · tier · templates[]                                |
+| **entitlements** | teamId · packIds[]                                            |
+
+---
+
+# 🔁 6.  Automation Blueprints (Starter via Make)
+
+**Scenario 1 – Live Match Webhook**
+Trigger on Sheet edit → POST `/events/live` → GitHub/R2 write → mark row Posted.
+
+**Scenario 2 – League Table Sync**
+Every 6 h → pull table → hash compare → if changed, update R2 file + tweet.
+
+**Scenario 3 – Daily Posts**
+06:00 → fetch birthdays/quotes → compose payload → POST `/render` → auto-post.
+
+**Scenario 4 – Fixture Countdown**
+08:00 → filter fixtures within 24 h → POST `/render`.
+
+**Scenario 5 – Throwback Thursday**
+Thu 19:00 → pick old photo → POST `/render`.
+
+**Scenario 6 – Usage Counter**
+First module = `/usage/make/increment`; run stops if over limit.
+
+**Total ≈ 250 ops/month**.
+
+---
+
+# 🌍 7.  Internationalisation
+
+* **Languages:** JSON files in `/lang/`.
+
+  * `en.json`, `cy.json`, `fr.json`, `es.json` …
+  * Strings loaded via `expo-localization`.
+* **Currencies:** convert via exchangerate.host daily cache.
+* **Timezones:** stored per team; luxon converts cron to local.
+* **IP info:** used once on signup to auto-suggest locale.
+
+---
+
+# 🛍️ 8.  Shop System
+
+* Central Shopify store = **your** inventory.
+* App passes theme:
+
+  ```
+  ?team=Syston&color=FFD400&badge=abc.png&slogan=Built%20Different
+  ```
+* Shopify theme app extension or Cloudflare edge middleware recolours mockups.
+* Premium users → all packs unlocked; Starter → basic + upsell.
+
+---
+
+# ⚽ 9.  AI & Static Generation
+
+* Static slogan generator in app: 40 templates × 6 word banks ≈ 10 k unique lines.
+* Optional AI refresh endpoint if you ever enable OpenAI (≈ $0.001 / call).
+* Templates stored locally; no runtime cost.
+
+---
+
+# 🔔 10.  Notifications
+
+* Expo Push Service.
+* Triggers: new fixture, goal event, final score, GOTM voting open, merch sale.
+* Opt-in per scope; token registered with `/push/register`.
+
+---
+
+# 📅 11.  Cron Jobs (Premium)
+
+| Schedule UTC      | Job                        |
+| ----------------- | -------------------------- |
+| 06:00             | Birthdays + Quotes         |
+| 08:00             | Fixture Countdowns         |
+| 09:00             | League Table refresh       |
+| 18:00 Thu         | Throwback post             |
+| 00:00 1st monthly | GOTM candidate aggregation |
+| Every 5 min       | Live update cleanup TTL    |
+
+---
+
+# 💰 12.  Monetisation & Tiers
+
+| Tier        | Monthly Cost        | Backend                            | Features                                     |
+| ----------- | ------------------- | ---------------------------------- | -------------------------------------------- |
+| **Starter** | Free / £4.99 pm     | User Make account + R2 public read | Basic automation, limited posts              |
+| **Premium** | £19.99 pm           | Your Cloudflare                    | All features, push, video montage, analytics |
+| **Upsells** | per pack (£2–£5 ea) | Shopify                            | Graphic packs, pro templates                 |
+
+---
+
+# 🧭 13.  Roll-out Order
+
+**Phase 1 (MVP)**
+
+* Auth / Teams / Theme / Badge / Slogan gen
+* Fixtures + Calendar + Weather + Maps
+* Live Match input & Stats
+* League Table display
+* Basic Shop view
+
+**Phase 2 (Automation)**
+
+* Make blueprint + usage counter
+* Worker crons for Premium
+* Starter/Premium switcher
+
+**Phase 3 (Media & Monetisation)**
+
+* Renderer (SVG→PNG) + R2 storage
+* Pack store + entitlements
+* Shopify integration
+
+**Phase 4 (Global Polish)**
+
+* i18n + currency + timezone
+* Push notifications
+* GOTM & montage
+
+---
+
+# 🧱 14.  Immediate Setup Checklist
+
+1. **Create** R2 buckets (`badges`, `renders`, `templates`).
+2. **Enable** KV (`teams`, `usage`, `features`).
+3. **Deploy** Workers API skeleton.
+4. **Add** Supabase project + service keys.
+5. **Integrate** Open-Meteo / FX / ipinfo proxies.
+6. **Clone** Make blueprint v7.0 (six scenarios).
+7. **Build** Expo mobile app v7.0 UI with dynamic theme.
+8. **Link** Shopify store + test customisation endpoint.
+9. **QA Checklist** (30 min smoke tests).
+10. **Publish** Premium & Starter plans.
+
+---
+
+# 🎯 15.  “Wow” Finishing Touches
+
+* **Animated badge intro** (Framer Motion splash).
+* **Dynamic card shadows + 3D badge reflection.**
+* **In-app usage bar** for Starter showing ops left.
+* **Auto-theme banners** per club in shop & media.
+* **Offline slogans + “Refresh until you smile” button.**
+* **Manager Dashboard** = live events + stats + shop sales.
+
+---
+
+✅ **Cloudflare Paid Plan = massive advantage**
+No limits on KV/D1/R2/cron, private API tokens, Workers Queues for retry/backoff.
+You can host the whole platform globally with near-zero latency and pennies of cost.
+
+---
+
+That’s the finished **Field Drop / Syston Platform v7.0 Blueprint** — production-ready and future-proof.
+
+If you’d like, I can now:
+
+1. Generate the **Make.com Blueprint JSON** (6 scenarios + usage counter)
+2. Output the **Cloudflare Worker API skeleton** (folder + index.ts)
+
+Which do you want first?

@@ -1,16 +1,22 @@
 name = "syston-postbus"
-main = "dist/index.js"
-compatibility_date = "2025-09-30"
+main = "src/index.ts"
+compatibility_date = "2025-09-01"
+compatibility_flags = ["nodejs_compat"]
 minify = true
 workers_dev = true
 
 [observability]
 enabled = true
 
+# [wasm_modules]
+# RESVG_WASM = "node_modules/@resvg/resvg-wasm/index_bg.wasm"
+# NOTE: wasm_modules not compatible with ES modules - import directly in code if needed
+
 [vars]
 API_VERSION = "v1"
 JWT_ISSUER = "syston.app"
 JWT_AUDIENCE = "syston-mobile"
+ENVIRONMENT = "development"
 # Fixtures refresh endpoint
 FIXTURES_REFRESH_URL = "https://syston-fixtures.team-platform-2025.workers.dev/refresh"
 # Allowlist of hosts for BYO-Make webhooks (comma-separated)
@@ -33,15 +39,25 @@ RL_UPLOADS_PER_MIN = "20"
 APPS_SCRIPT_AUTO_DEPLOY = "true"  # Set to "true" to enable
 BACKEND_URL = "https://syston-postbus.team-platform-2025.workers.dev"
 ADMIN_CONSOLE_URL = "https://admin-console.team-platform-2025.workers.dev"
-# NOTE: GOOGLE_SERVICE_ACCOUNT_KEY and APPS_SCRIPT_TEMPLATE_ID are secrets
-# Set them using: wrangler secret put GOOGLE_SERVICE_ACCOUNT_KEY
-#                 wrangler secret put APPS_SCRIPT_TEMPLATE_ID
+# Email configuration (Resend)
+RESEND_FROM_EMAIL = "onboarding@syston.app"
+# NOTE: Secrets must be set using wrangler secret put:
+# - GOOGLE_SERVICE_ACCOUNT_KEY (Apps Script automation)
+# - APPS_SCRIPT_TEMPLATE_ID (Apps Script template)
+# - RESEND_API_KEY (Email sending via Resend)
+# Example: wrangler secret put RESEND_API_KEY
 
 
 
 [[kv_namespaces]]
 binding = "KV_IDEMP"
 id = "5948d4a91ac04b50904a06c923221994"   # <-- replace after Step 3 (if regenerated)
+
+# --- D1 Database (SQLite)
+[[d1_databases]]
+binding = "DB"
+database_name = "syston-db"
+database_id = "3031c292-6290-4906-947d-ab9a145538ed"
 
 # --- Queues
 [[queues.producers]]
@@ -79,6 +95,14 @@ class_name = "ChatRoom"
 name = "MatchRoom"
 class_name = "MatchRoom"
 
+[[durable_objects.bindings]]
+name = "GeoFenceManager"
+class_name = "GeoFenceManager"
+
+[[durable_objects.bindings]]
+name = "PROVISIONER"
+class_name = "Provisioner"
+
 # --- DO migrations
 [[migrations]]
 tag = "v1"
@@ -91,6 +115,14 @@ new_classes = [ "VotingRoom" ]
 [[migrations]]
 tag = "v3"
 new_classes = [ "ChatRoom", "MatchRoom" ]
+
+[[migrations]]
+tag = "v4"
+new_classes = [ "GeoFenceManager" ]
+
+[[migrations]]
+tag = "v5"
+new_classes = [ "Provisioner" ]
 
 # --- Cron triggers (event reminders)
 [triggers]

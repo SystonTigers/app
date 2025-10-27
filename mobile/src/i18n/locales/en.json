@@ -1,0 +1,122 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "close": "Close",
+    "back": "Back",
+    "next": "Next",
+    "done": "Done",
+    "yes": "Yes",
+    "no": "No",
+    "ok": "OK",
+    "retry": "Retry",
+    "refresh": "Refresh"
+  },
+  "nav": {
+    "home": "Home",
+    "calendar": "Calendar",
+    "fixtures": "Fixtures",
+    "squad": "Squad",
+    "videos": "Videos",
+    "shop": "Shop",
+    "settings": "Settings",
+    "manage": "Manage"
+  },
+  "home": {
+    "title": "Home",
+    "nextEvent": "Next Event",
+    "noEvents": "No upcoming events",
+    "feed": "News Feed",
+    "noFeed": "No posts yet"
+  },
+  "calendar": {
+    "title": "Calendar",
+    "upcoming": "Upcoming Events",
+    "rsvp": {
+      "going": "Going",
+      "maybe": "Maybe",
+      "notGoing": "Can't Go"
+    },
+    "eventTypes": {
+      "match": "Match",
+      "training": "Training",
+      "social": "Social"
+    }
+  },
+  "fixtures": {
+    "title": "Fixtures",
+    "upcoming": "Upcoming Matches",
+    "results": "Recent Results",
+    "table": "League Table",
+    "noFixtures": "No fixtures scheduled",
+    "homeAway": {
+      "home": "Home",
+      "away": "Away"
+    }
+  },
+  "squad": {
+    "title": "Squad",
+    "players": "Players",
+    "stats": {
+      "goals": "Goals",
+      "assists": "Assists",
+      "appearances": "Apps",
+      "yellowCards": "Yellow Cards",
+      "redCards": "Red Cards"
+    },
+    "positions": {
+      "goalkeeper": "Goalkeeper",
+      "defender": "Defender",
+      "midfielder": "Midfielder",
+      "forward": "Forward"
+    }
+  },
+  "videos": {
+    "title": "Videos",
+    "record": "Record Video",
+    "select": "Select from Library",
+    "upload": "Upload",
+    "recent": "Recent Highlights",
+    "noVideos": "No videos yet"
+  },
+  "shop": {
+    "title": "Shop",
+    "products": "Products",
+    "cart": "Cart",
+    "checkout": "Checkout",
+    "noProducts": "No products available"
+  },
+  "settings": {
+    "title": "Settings",
+    "profile": "Profile",
+    "notifications": "Notifications",
+    "language": "Language",
+    "theme": "Theme",
+    "about": "About",
+    "logout": "Logout"
+  },
+  "liveMatch": {
+    "title": "Live Match",
+    "start": "Start Match",
+    "record": "Record Event",
+    "events": {
+      "goal": "Goal",
+      "yellow": "Yellow Card",
+      "red": "Red Card",
+      "sub": "Substitution",
+      "halftime": "Half-time",
+      "fulltime": "Full-time"
+    }
+  },
+  "errors": {
+    "network": "Network error. Please check your connection.",
+    "notFound": "Not found",
+    "unauthorized": "Unauthorized. Please log in.",
+    "unknown": "An unknown error occurred"
+  }
+}

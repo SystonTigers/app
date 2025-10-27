@@ -1,30 +1,47 @@
-{
+﻿{
   "expo": {
-    "name": "syston-mobile",
-    "slug": "syston-mobile",
+    "name": "Field Drop",
+    "slug": "field-drop",
+    "scheme": "fielddrop",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
-    "newArchEnabled": true,
+    "jsEngine": "hermes",
+    "newArchEnabled": false,
+
     "splash": {
-      "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#0B1220"
+    },
+
+    "android": {
+      "package": "com.yourorg.fielddrop",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "backgroundColor": "#0B1220"
+      }
     },
     "ios": {
-      "supportsTablet": true
-    },
-    "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
-      },
-      "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "bundleIdentifier": "com.yourorg.fielddrop",
+      "buildNumber": "1.0.0",
+      "supportsTablet": false
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "bundler": "metro",
+      "output": "single"
+    },
+    "plugins": [
+      "expo-localization",
+      "expo-secure-store",
+      "expo-notifications",
+      "expo-av",
+      "expo-image-picker"
+    ],
+    "updates": {
+      "enabled": false,
+      "fallbackToCacheTimeout": 0
+    },
+    "extra": {
+      "eas": { "projectId": "dev-placeholder" }
     }
   }
 }

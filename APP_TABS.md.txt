@@ -1,0 +1,437 @@
+# APP_TABS.md
+
+> Master information architecture and feature checklist for the Syston Tigers app. Use this as the source of truth when building routes, components, and automations.
+
+---
+
+## Table of Contents
+
+* [Public App](#public-app)
+
+  * [Homepage](#homepage)
+  * [News Feed](#news-feed)
+  * [Fixtures / Results](#fixtures--results)
+  * [League Table](#league-table)
+  * [Stats](#stats)
+  * [Images / Gallery](#images--gallery)
+  * [Highlights](#highlights)
+  * [Payments](#payments)
+  * [Previous Seasons (Archive)](#previous-seasons-archive)
+  * [Shop](#shop)
+  * [Settings (User)](#settings-user)
+* [Coaches / Admin Dashboard](#coaches--admin-dashboard)
+
+  * [Manage Fixtures & Results](#manage-fixtures--results)
+  * [Manage Squad](#manage-squad)
+  * [Manage Player Images](#manage-player-images)
+  * [Manage Payments](#manage-payments)
+  * [Manage Events](#manage-events)
+  * [Create Posts](#create-posts)
+  * [Video Editor](#video-editor)
+  * [MOTM Vote](#motm-vote)
+  * [Training Plans / Tactic Board](#training-plans--tactic-board)
+  * [End-of-Season Awards Voting](#end-of-season-awards-voting)
+  * [Config (Club/Admin)](#config-clubadmin)
+* [Automations, Data & Integrations](#automations-data--integrations)
+
+  * [Auto-Posts Control Matrix](#auto-posts-control-matrix)
+  * [Google Sheets (Control Panel)](#google-sheets-control-panel)
+  * [Apps Script (Standalone)](#apps-script-standalone)
+  * [Make.com / n8n](#makecom--n8n)
+  * [Cloudflare Workers + Queues](#cloudflare-workers--queues)
+  * [GitHub Pages (Website)](#github-pages-website)
+  * [Hardware / Media](#hardware--media)
+* [Schedulers & Cadence](#schedulers--cadence)
+* [Roles & Access](#roles--access)
+* [Compliance & Safety](#compliance--safety)
+* [Backlog / Nice-to-Have](#backlog--nice-to-have)
+* [Implementation Notes](#implementation-notes)
+
+  * [Route Map](#route-map)
+  * [Key Data Models](#key-data-models)
+  * [Environment & Secrets](#environment--secrets)
+  * [CI/CD Expectations](#cicd-expectations)
+  * [QA Checklist](#qa-checklist)
+
+---
+
+## Public App
+
+### Homepage
+
+* Next Fixture card: opponent, comp, venue, KO, badges, countdown.
+* Quick actions: Mark Attendance, News Feed, Watch Live (visible only during live match).
+* Live Match Update ticker: most recent event only; auto-expires ~90 mins after FT.
+* Styled League Table: top 10 (configurable), last-updated time.
+* Team photo + sponsor badge; background badge watermark.
+* CTAs: Fixtures, Results, Gallery, Shop.
+
+### News Feed
+
+* Unified stream of Auto + Manual posts.
+* Filters: Matchday, Results, Quotes, Birthdays, Highlights, Club News.
+* Post detail view (share, copy link); deep-link anchors for socials.
+
+### Fixtures / Results
+
+* Team fixtures & results (friendlies from app; league/cup via FA Full-Time snippet).
+* Toggle: Whole league vs Our team.
+* Indicators: postponed/rescheduled; HT/FT; aggregated scorers + assisters.
+* Filters: Competition, Home/Away, Month; calendar download (.ics).
+
+### League Table
+
+* Generated: League Raw → League Sorted → League Canva Map.
+* Columns: P, W, D, L, GF, GA, GD, Pts; team badges via Badge Map.
+* Manual refresh (coaches), timestamp, data-source note.
+
+### Stats
+
+* Squad cards: headshot, shirt number, positions.
+* Player pages: appearances, minutes, goals, assists, cards, recent form (last 5).
+* Leaderboards (goals/assists/G+A, clean sheets, cards); MOTM history.
+
+### Images / Gallery
+
+* Albums by match/event; Throwback Thursday tag.
+* Upload guidelines & consent notice; request removal link.
+
+### Highlights
+
+* Clip playlists per match; YouTube links; inline playback.
+* Goal of the Month: nominees, voting window, winners archive.
+
+### Payments
+
+* Link/embed to payment platform; status widget (read-only if external).
+* Sponsor thank-yous.
+
+### Previous Seasons (Archive)
+
+* Season picker; archived fixtures/results, table, stats, galleries, posts.
+
+### Shop
+
+* Printify storefront (embed/link).
+* Image Post Template explainer (how graphics auto-generate).
+
+### Settings (User)
+
+#### Profile
+
+* Name, contact preferences, child/guardian link, language/timezone.
+
+#### Notifications (**location-aware**)
+
+* Master toggle: Allow notifications.
+* Teams followed (multi-select; defaults to your team).
+* Match alerts (per-event): Pre-match (24h / 3h / 1h), KO, HT, FT, goals, cards, POTM result, clips posted.
+* Location-aware alerts:
+
+  * Use my location (permission prompt).
+  * Notify only when I’m near the venue (toggle).
+  * Radius: 1 km / 5 km / 10 km / custom.
+  * While travelling to venue (ETA reminder).
+* Venue preferences: favourites (boost), muted venues.
+* Channels: In-app push, Email, SMS (if enabled).
+* Quiet hours: e.g., 22:00–07:00 (urgent types can bypass if enabled).
+
+---
+
+## Coaches / Admin Dashboard
+
+### Manage Fixtures & Results
+
+* **Add Match (wizard)** — friendlies or other non-FA events created inside the app:
+
+  * Match type: Friendly / Tournament / Charity / Other.
+  * Opponent (free text + suggestions), Date & KO time.
+  * Venue: map search / saved venue / paste address; Home/Away.
+  * Options: Create attendance poll, Auto-generate graphics, Schedule teaser.
+  * Save → writes to Friendlies sheet; posts to site (respecting auto-post toggles).
+* Edit / Postpone / Cancel with automatic site + social updates.
+* Result entry: FT score, scorers, assisters, cards, notes; HT/FT posts.
+
+### Manage Squad
+
+* CRUD players: name, shirt number, positions, DOB, preferred foot, photo.
+* Availability overview; birthday list; status overrides.
+
+### Manage Player Images
+
+* Upload/replace headshots & action shots; bulk import from Drive/folder.
+
+### Manage Payments
+
+* Read-only status from payment platform; export CSV.
+
+### Manage Events
+
+* Training sessions, socials, fundraisers.
+* Attendance list; WhatsApp poll link; reminders (24h / 3h).
+
+### Create Posts
+
+* Composers: Fixture teaser, HT, FT, Postponement, Quotes, Birthdays, GOTM, Highlights.
+* Canva mapping preview; per-channel toggles (see Matrix below).
+* Schedule vs Send now; sponsor overlay toggle.
+
+### Video Editor
+
+* Event EDLs from Sheet (start/end or match event rows).
+* Variants: 16:9 / 1:1 / 9:16; scoreboard overlay + stinger.
+* Auto-upload to YouTube; URL write-back to Sheet.
+
+### MOTM Vote
+
+* Create vote (window, nominees); live tally; result publish.
+
+### Training Plans / Tactic Board
+
+* Whiteboard with saved boards; attach to session.
+
+### End-of-Season Awards Voting
+
+* Categories, nominees, open/close, publish winners.
+
+### Config (Club/Admin)
+
+* Club details, colours, badges, sponsor logos; nav/footer links.
+* Feature flags (enable/disable modules).
+* External IDs/keys (FA Full-Time, YouTube, Printify).
+* Quiet-hour policy; rate limits & retry/backoff.
+
+---
+
+## Automations, Data & Integrations
+
+### Auto-Posts Control Matrix
+
+**Post types**
+
+* Fixture countdowns (T-3/T-2/T-1/Matchday)
+* Live match updates
+* Half-time
+* Full-time
+* League fixtures batch
+* Results summary
+* Table update
+* Postponements
+* Birthdays
+* Quotes
+* MOTM result
+* Highlights/Clips
+
+**Channel toggles per post type**
+
+* App News Feed: On/Off
+* Socials (per-platform): X, Instagram, Facebook Page, TikTok — each On/Off
+* Optional defaults: scheduled time (e.g., 07:30 local), Sponsor overlay On/Off
+
+**Inheritance**
+
+1. Global defaults (club-wide) — Config.
+2. Team overrides — Manage Team → Auto-posts (deviations marked “custom”).
+3. One-off overrides — per composer at send time.
+
+**Data shape**
+
+```json
+{
+  "autoPosts": {
+    "FT": { "app": true, "channels": { "x": true, "ig": true, "fb": true, "tiktok": false } },
+    "Quotes": { "app": true, "channels": { "x": true, "ig": true, "fb": false, "tiktok": false } }
+  }
+}
+```
+
+### Google Sheets (Control Panel)
+
+* Live Match Updates: Match Date, Opponent, KO, Venue, H/A, Scorer, Assister, Minute, Cards, Score So Far, Notes, Posted.
+* League Raw → League Sorted → League Canva Map.
+* Badge Map: Team → HOME_BADGE_URL / AWAY_BADGE_URL.
+* Player_Events: goals/assists/cards/minutes.
+* Quotes: {{QUOTE}}, {{AUTHOR}}.
+* Canva mappings: `{{DATE}}, {{P1..P10}}, {{TEAM_1..10}}, {{PL1..10}}, {{W1..10}}, {{D1..10}}, {{L1..10}}, {{GF1..10}}, {{GA1..10}}, {{GD1..10}}, {{PTS1..10}}`.
+* Results placeholders: `{{DATE}}, {{HOME_TEAM}}, {{AWAY_TEAM}}, {{HS}}/{{AS}}, {{HOME_SCORERS}}, {{AWAY_SCORERS}}`.
+* Frames: 150×150 square badges, locked.
+
+### Apps Script (Standalone)
+
+* Auto-install triggers (time-based + onEdit).
+* Key functions:
+
+  * `refreshAndMapLeague()`
+  * `postLeagueFixturesBatch()`
+  * `processLiveEdit()` → site + socials
+  * `birthdayScheduler()`, `quoteScheduler()`, `matchdayCountdowns()`
+  * `exportEventsJson()` for backend/video
+* Secrets via Properties; single Web App deployment target (CI updates only this one).
+
+### Make.com / n8n
+
+* Webhooks from Sheet edits; router per post type; applies channel toggles.
+* Canva Replace Media (HomeBadge/AwayBadge) for graphics.
+* Social posting (X/IG/FB/TikTok where supported).
+* Retry/backoff; error logging/alerts.
+
+### Cloudflare Workers + Queues
+
+* `/live/update` (sanitize + fan-out), `/clips/build` (EDL → FFmpeg), `/status`.
+* Queue consumers for posting and clip render jobs.
+* CORS for your domain(s); Admin JWT protects admin routes.
+
+### GitHub Pages (Website)
+
+* Yellow/black theme; consistent nav.
+* Pages: league fixtures, team fixtures, league results, team results, league table, gallery, player stats, sponsors, archive.
+* Live update include: latest only; auto-clears on expiry.
+* `table.html` generated from League Canva Map.
+
+### Hardware / Media
+
+* XbotGo integration (optional scoreboard feed); retry/backoff for device pushes.
+* Clip timestamps sourced from Sheet events.
+
+---
+
+## Schedulers & Cadence
+
+* Monthly fixtures post: 1st of month (Syston fixtures only).
+* Weekly cadence: Mon stats/recap, Tue quote, Wed gallery, Thu #TBT, Fri/Sat countdowns, Sun results + table.
+* Matchday: T-3/2/1/0, live updates, HT/FT, POTM, highlight clip(s).
+* Birthdays at 07:30 local.
+* GOTM: collect nominees end-of-month → 1-week vote → publish.
+
+---
+
+## Roles & Access
+
+* Public: read-only.
+* Parents/Players: notifications, consent, profile.
+* Coaches/Admin: dashboard & posting.
+* Super Admin: config, feature flags, secrets.
+
+---
+
+## Compliance & Safety
+
+* GDPR/consent tracking for images/video of minors.
+* No public comments on galleries; report/removal flow.
+* Audit log for edits/posts; IP/time metadata (minimal, lawful basis).
+
+---
+
+## Backlog / Nice-to-Have
+
+* Cards & sin-bin workflow (icons 🟨/🟥/🟧; never counted as goals).
+* Sponsor overlays on graphics.
+* Player numbers in templates (goal graphics background).
+* Monthly montage builder.
+* GOTM voting microsite.
+* TeamFeePay fixtures/attendance read API (if feasible).
+
+---
+
+## Implementation Notes
+
+### Route Map
+
+```
+/
+  /news
+  /fixtures (team)
+  /fixtures/league (league)
+  /results (team)
+  /results/league (league)
+  /table
+  /stats
+  /gallery
+  /highlights
+  /payments
+  /seasons/:year
+  /shop
+  /settings
+
+/admin
+  /admin/fixtures
+  /admin/squad
+  /admin/images
+  /admin/payments
+  /admin/events
+  /admin/posts
+  /admin/video
+  /admin/motm
+  /admin/board
+  /admin/awards
+  /admin/config
+```
+
+### Key Data Models (TypeScript-style)
+
+```ts
+export type ChannelKey = "x" | "ig" | "fb" | "tiktok";
+export type PostType =
+  | "COUNTDOWN" | "LIVE" | "HT" | "FT" | "LEAGUE_FIXTURES" | "RESULTS_SUMMARY"
+  | "TABLE_UPDATE" | "POSTPONEMENT" | "BIRTHDAY" | "QUOTE" | "MOTM" | "HIGHLIGHT";
+
+export interface AutoPostConfig {
+  app: boolean;
+  channels: Record<ChannelKey, boolean>;
+  scheduleTime?: string; // HH:mm local, optional
+  sponsorOverlay?: boolean;
+}
+
+export type AutoPostsMatrix = Record<PostType, AutoPostConfig>;
+
+export interface Venue {
+  id: string;
+  name: string;
+  address?: string;
+  lat?: number; lng?: number;
+}
+
+export interface MatchBase {
+  id: string;
+  type: "Friendly" | "Tournament" | "Charity" | "Other" | "League" | "Cup";
+  opponent: string;
+  date: string; // ISO
+  koTime: string; // HH:mm
+  venue: Venue;
+  homeAway: "H" | "A";
+}
+
+export interface ResultEvent {
+  minute?: number;
+  type: "GOAL" | "ASSIST" | "CARD_Y" | "CARD_R" | "SIN_BIN";
+  player?: string;
+  assister?: string;
+  notes?: string;
+}
+```
+
+### Environment & Secrets
+
+* Apps Script: Script Properties (service keys, web app URL, Make webhook URLs).
+* Cloudflare Workers: `ADMIN_JWT`, Make API, YouTube keys; CORS allowlist (your domains).
+* GitHub Actions: `CLASPRC_JSON` only; updates a **single** Web App deployment.
+
+### CI/CD Expectations
+
+* PRs must update docs + IA when routes/components change.t
+* Lint, typecheck, unit tests for utilities; integration test hooks for posting.
+* Deploy gates: staging preview (Pages/Workers), then promote to prod.
+
+### QA Checklist
+
+* [ ] Location-aware notifications: geofence distance logic & permissions.
+* [ ] Add Friendly wizard writes correctly; edit/postpone/cancel flows propagate to site + socials.
+* [ ] Auto-posts matrix: Global → Team → One-off precedence.
+* [ ] Quiet hours respected except urgent types when enabled.
+* [ ] Table mapping pipeline produces valid `table.html`.
+* [ ] Live ticker shows latest only; expires after FT window.
+* [ ] GDPR/consent variations verified in gallery uploads.
+* [ ] Retry/backoff on all outbound social/media calls.
+
+```
+```

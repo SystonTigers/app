@@ -1,0 +1,284 @@
+Awesome — here are **three production-ready template packs** you can drop straight into R2 and use with your `/render` endpoint from #2/#3.
+
+I’m giving you: **Line-up**, **Countdown**, and **Birthday** — each with SVG + JSON meta, tokens, sensible defaults, and a sample request. Copy the files as-is to:
+
+```
+R2 (bucket: syston-assets)
+  templates/
+    lineup-v1.svg
+    lineup-v1.json
+    countdown-v1.svg
+    countdown-v1.json
+    birthday-v1.svg
+    birthday-v1.json
+  fonts/
+    Inter-Bold.ttf
+    Inter-Regular.ttf
+    Urbanist-Black.ttf
+```
+
+(They reuse the same fonts you already added.)
+
+---
+
+# 1) Line-up (Starting XI + Subs)
+
+## `templates/lineup-v1.svg` (1080×1080)
+
+```svg
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1080" height="1080" viewBox="0 0 1080 1080" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1080" height="1080" fill="{{BG}}"/>
+  <!-- Header -->
+  <text x="60" y="120" font-family="Inter" font-size="44" fill="{{TEXT}}" font-weight="700">STARTING XI</text>
+  <text x="60" y="170" font-family="Inter" font-size="22" fill="{{TEXT_DIM}}">{{COMPETITION}} • {{DATE_STR}}</text>
+
+  <!-- Badges -->
+  <image x="120" y="210" width="140" height="140" href="{{HOME_BADGE_DATAURI}}"/>
+  <image x="820" y="210" width="140" height="140" href="{{AWAY_BADGE_DATAURI}}"/>
+
+  <!-- Teams -->
+  <text x="60" y="390" font-family="Inter" font-size="40" fill="{{TEXT}}" font-weight="700">{{HOME_NAME}}</text>
+  <text x="60" y="440" font-family="Inter" font-size="28" fill="{{TEXT_DIM}}">vs {{AWAY_NAME}}</text>
+
+  <!-- Pitch block -->
+  <rect x="60" y="480" width="960" height="420" rx="20" fill="{{SURFACE}}"/>
+  <g opacity="0.08" stroke="{{TEXT}}" stroke-width="2">
+    <rect x="60" y="480" width="960" height="420" rx="20" fill="none"/>
+    <line x1="540" y1="480" x2="540" y2="900"/>
+    <circle cx="540" cy="690" r="60" fill="none"/>
+  </g>
+
+  <!-- XI (three columns) -->
+  <text x="120" y="540" font-family="Inter" font-size="26" fill="{{TEXT}}">{{XI1}}</text>
+  <text x="420" y="540" font-family="Inter" font-size="26" fill="{{TEXT}}">{{XI2}}</text>
+  <text x="720" y="540" font-family="Inter" font-size="26" fill="{{TEXT}}">{{XI3}}</text>
+
+  <text x="120" y="590" font-family="Inter" font-size="26" fill="{{TEXT}}">{{XI4}}</text>
+  <text x="420" y="590" font-family="Inter" font-size="26" fill="{{TEXT}}">{{XI5}}</text>
+  <text x="720" y="590" font-family="Inter" font-size="26" fill="{{TEXT}}">{{XI6}}</text>
+
+  <text x="120" y="640" font-family="Inter" font-size="26" fill="{{TEXT}}">{{XI7}}</text>
+  <text x="420" y="640" font-family="Inter" font-size="26" fill="{{TEXT}}">{{XI8}}</text>
+  <text x="720" y="640" font-family="Inter" font-size="26" fill="{{TEXT}}">{{XI9}}</text>
+
+  <text x="120" y="690" font-family="Inter" font-size="26" fill="{{TEXT}}">{{XI10}}</text>
+  <text x="420" y="690" font-family="Inter" font-size="26" fill="{{TEXT}}">{{XI11}}</text>
+
+  <!-- Subs -->
+  <text x="60" y="940" font-family="Inter" font-size="24" fill="{{TEXT_DIM}}">Subs: {{SUBS}}</text>
+
+  <!-- Footer slogan -->
+  <text x="540" y="1000" text-anchor="middle" font-family="Inter" font-size="24" fill="{{TEXT_DIM}}">{{SLOGAN}}</text>
+</svg>
+```
+
+## `templates/lineup-v1.json`
+
+```json
+{
+  "id": "lineup-v1",
+  "sizes": ["1080x1080"],
+  "fonts": [
+    { "family": "Inter", "files": [
+      { "name": "Inter-Bold", "path": "Inter-Bold.ttf", "weight": 700 },
+      { "name": "Inter-Regular", "path": "Inter-Regular.ttf", "weight": 400 }
+    ] }
+  ],
+  "colorTokens": ["BG","SURFACE","TEXT","TEXT_DIM"],
+  "imageTokens": ["HOME_BADGE","AWAY_BADGE"],
+  "textTokens": ["COMPETITION","DATE_STR","HOME_NAME","AWAY_NAME","SLOGAN",
+    "XI1","XI2","XI3","XI4","XI5","XI6","XI7","XI8","XI9","XI10","XI11","SUBS"],
+  "defaults": {
+    "BG": "#0D0F12",
+    "SURFACE": "#16181D",
+    "TEXT": "#F5F7FA",
+    "TEXT_DIM": "#A8B0BD",
+    "SLOGAN": "Built Different",
+    "SUBS": "-"
+  }
+}
+```
+
+**Sample request**
+
+```json
+{
+  "templateId":"lineup-v1","size":"1080x1080",
+  "theme":{"BG":"#0D0F12","SURFACE":"#16181D","TEXT":"#F5F7FA","TEXT_DIM":"#A8B0BD"},
+  "data":{
+    "COMPETITION":"U12 League","DATE_STR":"12 Oct 2025",
+    "HOME_NAME":"Syston Tigers","AWAY_NAME":"Melton Colts",
+    "XI1":"GK — J. Hall","XI2":"RB — L. Adams","XI3":"CB — T. Reed",
+    "XI4":"CB — M. Cole","XI5":"LB — K. Shaw","XI6":"CM — R. Patel",
+    "XI7":"CM — O. Bennett","XI8":"RW — S. Khan","XI9":"LW — D. Gray",
+    "XI10":"ST — A. Turner","XI11":"ST — C. Smith",
+    "SUBS":"E. Wood, J. Price, B. Hunt",
+    "SLOGAN":"All Syston. All Heart."
+  },
+  "assets":{"HOME_BADGE":"https://cdn.yourdomain.com/badges/syston.png","AWAY_BADGE":"https://cdn.yourdomain.com/badges/melton.png"}
+}
+```
+
+---
+
+# 2) Countdown (Matchday hype)
+
+## `templates/countdown-v1.svg` (1080×1080)
+
+```svg
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1080" height="1080" viewBox="0 0 1080 1080" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="{{BG}}"/><stop offset="1" stop-color="{{BG_DARK}}"/>
+    </linearGradient>
+  </defs>
+  <rect width="1080" height="1080" fill="url(#g)"/>
+  <text x="60" y="120" font-family="Inter" font-size="44" fill="{{TEXT}}" font-weight="700">MATCHDAY</text>
+  <text x="60" y="170" font-family="Inter" font-size="22" fill="{{TEXT_DIM}}">{{DATE_STR}} • {{VENUE}}</text>
+
+  <image x="120" y="240" width="160" height="160" href="{{HOME_BADGE_DATAURI}}"/>
+  <image x="800" y="240" width="160" height="160" href="{{AWAY_BADGE_DATAURI}}"/>
+
+  <text x="60" y="460" font-family="Inter" font-size="40" fill="{{TEXT}}" font-weight="700">{{HOME_NAME}}</text>
+  <text x="60" y="520" font-family="Inter" font-size="40" fill="{{TEXT}}" font-weight="700">{{AWAY_NAME}}</text>
+
+  <text x="540" y="620" text-anchor="middle" font-family="Urbanist" font-size="120" fill="{{PRIMARY}}" font-weight="900">{{COUNTDOWN}}</text>
+  <text x="540" y="700" text-anchor="middle" font-family="Inter" font-size="28" fill="{{TEXT_DIM}}">{{KICKOFF_STR}}</text>
+
+  <text x="540" y="980" text-anchor="middle" font-family="Inter" font-size="24" fill="{{TEXT_DIM}}">{{SLOGAN}}</text>
+</svg>
+```
+
+## `templates/countdown-v1.json`
+
+```json
+{
+  "id": "countdown-v1",
+  "sizes": ["1080x1080"],
+  "fonts": [
+    { "family": "Inter", "files": [
+      { "name": "Inter-Bold", "path": "Inter-Bold.ttf", "weight": 700 }
+    ] },
+    { "family": "Urbanist", "files": [
+      { "name": "Urbanist-Black", "path": "Urbanist-Black.ttf", "weight": 900 }
+    ] }
+  ],
+  "colorTokens": ["BG","BG_DARK","PRIMARY","TEXT","TEXT_DIM"],
+  "imageTokens": ["HOME_BADGE","AWAY_BADGE"],
+  "textTokens": ["HOME_NAME","AWAY_NAME","COUNTDOWN","KICKOFF_STR","DATE_STR","VENUE","SLOGAN"],
+  "defaults": {
+    "BG": "#0D0F12",
+    "BG_DARK": "#0A0B0D",
+    "PRIMARY": "#FFD400",
+    "TEXT": "#F5F7FA",
+    "TEXT_DIM": "#A8B0BD",
+    "SLOGAN": "Built Different",
+    "COUNTDOWN": "Kick-off in 3h 20m"
+  }
+}
+```
+
+**Sample request**
+
+```json
+{
+  "templateId":"countdown-v1","size":"1080x1080",
+  "theme":{"BG":"#0D0F12","BG_DARK":"#0A0B0D","PRIMARY":"#FFD400","TEXT":"#F5F7FA","TEXT_DIM":"#A8B0BD"},
+  "data":{
+    "HOME_NAME":"Syston Tigers","AWAY_NAME":"Melton Colts",
+    "COUNTDOWN":"Kick-off in 2h 05m","KICKOFF_STR":"KO 10:30 • Local Time",
+    "DATE_STR":"Sun 12 Oct 2025","VENUE":"Syston Rec",
+    "SLOGAN":"Pride. Passion. Syston."
+  },
+  "assets":{"HOME_BADGE":"https://cdn.yourdomain.com/badges/syston.png","AWAY_BADGE":"https://cdn.yourdomain.com/badges/melton.png"}
+}
+```
+
+---
+
+# 3) Birthday (player shout-out)
+
+## `templates/birthday-v1.svg` (1080×1080)
+
+```svg
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1080" height="1080" viewBox="0 0 1080 1080" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1080" height="1080" fill="{{BG}}"/>
+  <!-- confetti-ish dots -->
+  <g opacity="0.12" fill="{{PRIMARY}}">
+    <circle cx="120" cy="140" r="6"/><circle cx="220" cy="200" r="4"/><circle cx="320" cy="120" r="5"/>
+    <circle cx="960" cy="180" r="6"/><circle cx="880" cy="120" r="4"/><circle cx="760" cy="220" r="5"/>
+  </g>
+
+  <text x="60" y="160" font-family="Inter" font-size="44" fill="{{TEXT}}" font-weight="700">HAPPY BIRTHDAY</text>
+  <text x="60" y="210" font-family="Inter" font-size="22" fill="{{TEXT_DIM}}">{{DATE_STR}}</text>
+
+  <image x="120" y="260" width="180" height="180" href="{{PLAYER_IMG_DATAURI}}"/>
+  <image x="820" y="260" width="140" height="140" href="{{HOME_BADGE_DATAURI}}"/>
+
+  <text x="60" y="520" font-family="Inter" font-size="56" fill="{{PRIMARY}}" font-weight="800">{{PLAYER_NAME}}</text>
+  <text x="60" y="580" font-family="Inter" font-size="28" fill="{{TEXT_DIM}}">{{PLAYER_ROLE}}</text>
+
+  <rect x="60" y="640" width="960" height="260" rx="20" fill="{{SURFACE}}"/>
+  <text x="90" y="700" font-family="Inter" font-size="28" fill="{{TEXT}}">From everyone at {{TEAM_NAME}} — have a great day!</text>
+  <text x="90" y="760" font-family="Inter" font-size="24" fill="{{TEXT_DIM}}">{{SLOGAN}}</text>
+
+  <text x="540" y="1000" text-anchor="middle" font-family="Inter" font-size="22" fill="{{TEXT_DIM}}">#{{TAG}}</text>
+</svg>
+```
+
+## `templates/birthday-v1.json`
+
+```json
+{
+  "id": "birthday-v1",
+  "sizes": ["1080x1080"],
+  "fonts": [
+    { "family": "Inter", "files": [
+      { "name": "Inter-Bold", "path": "Inter-Bold.ttf", "weight": 700 },
+      { "name": "Inter-Regular", "path": "Inter-Regular.ttf", "weight": 400 }
+    ] }
+  ],
+  "colorTokens": ["BG","SURFACE","PRIMARY","TEXT","TEXT_DIM"],
+  "imageTokens": ["PLAYER_IMG","HOME_BADGE"],
+  "textTokens": ["PLAYER_NAME","PLAYER_ROLE","TEAM_NAME","DATE_STR","SLOGAN","TAG"],
+  "defaults": {
+    "BG": "#0D0F12",
+    "SURFACE": "#16181D",
+    "PRIMARY": "#FFD400",
+    "TEXT": "#F5F7FA",
+    "TEXT_DIM": "#A8B0BD",
+    "SLOGAN": "Built Different",
+    "TAG": "HappyBirthday"
+  }
+}
+```
+
+**Sample request**
+
+```json
+{
+  "templateId":"birthday-v1","size":"1080x1080",
+  "theme":{"BG":"#0D0F12","SURFACE":"#16181D","PRIMARY":"#FFD400","TEXT":"#F5F7FA","TEXT_DIM":"#A8B0BD"},
+  "data":{
+    "PLAYER_NAME":"Leo Adams","PLAYER_ROLE":"Forward",
+    "TEAM_NAME":"Syston Tigers","DATE_STR":"12 Oct 2025",
+    "SLOGAN":"All Syston. All Heart.","TAG":"SystonFamily"
+  },
+  "assets":{
+    "PLAYER_IMG":"https://cdn.yourdomain.com/players/leo.png",
+    "HOME_BADGE":"https://cdn.yourdomain.com/badges/syston.png"
+  }
+}
+```
+
+---
+
+## Upload & test (quick)
+
+1. Upload each **SVG** & **JSON** to R2 `templates/`.
+2. Hit `POST /render` with the sample payloads.
+3. Confirm returned PNG URLs load (and colours/badges apply).
+4. Wire Make/cron to call `/render` with these `templateId`s.

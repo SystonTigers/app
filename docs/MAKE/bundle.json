@@ -1,0 +1,1 @@
+﻿{ "": "make-bundle", "version": 1, "blueprints": ["live_match_update.json","league_table_sync.json","daily_posts.json","fixture_countdown.json","throwback_thursday.json","usage_counter_example.json"] }

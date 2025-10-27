@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1080" height="1080" viewBox="0 0 1080 1080" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect x="0" y="0" width="1080" height="1080" fill="{{BG}}"/>
+
+  <!-- Diagonal accent -->
+  <path d="M0 0L1080 1080L1080 0Z" fill="{{PRIMARY}}" opacity="0.05"/>
+
+  <!-- Match Day Badge -->
+  <circle cx="540" cy="300" r="180" fill="{{PRIMARY}}" opacity="0.2"/>
+  <circle cx="540" cy="300" r="140" fill="{{PRIMARY}}" opacity="0.3"/>
+
+  <!-- Time Display -->
+  <text x="540" y="250" text-anchor="middle" font-family="Urbanist" font-size="120" fill="{{PRIMARY}}" font-weight="900">{{HOURS}}</text>
+  <text x="540" y="340" text-anchor="middle" font-family="Inter" font-size="32" fill="{{TEXT}}" font-weight="700">HOURS TO GO</text>
+
+  <!-- Match Details -->
+  <text x="540" y="540" text-anchor="middle" font-family="Inter" font-size="48" fill="{{TEXT}}" font-weight="900">MATCH DAY</text>
+
+  <!-- Team Badges -->
+  <image x="330" y="600" width="120" height="120" href="{{HOME_BADGE_DATAURI}}" />
+  <text x="540" y="680" text-anchor="middle" font-family="Urbanist" font-size="60" fill="{{TEXT_DIM}}" font-weight="700">VS</text>
+  <image x="630" y="600" width="120" height="120" href="{{AWAY_BADGE_DATAURI}}" />
+
+  <!-- Team Names -->
+  <text x="540" y="800" text-anchor="middle" font-family="Inter" font-size="36" fill="{{TEXT}}" font-weight="700">{{HOME_NAME}}</text>
+  <text x="540" y="850" text-anchor="middle" font-family="Inter" font-size="36" fill="{{TEXT}}" font-weight="700">{{AWAY_NAME}}</text>
+
+  <!-- Match Info -->
+  <text x="540" y="920" text-anchor="middle" font-family="Inter" font-size="24" fill="{{TEXT_DIM}}">{{COMPETITION}}</text>
+  <text x="540" y="960" text-anchor="middle" font-family="Inter" font-size="24" fill="{{TEXT_DIM}}">{{DATE_STR}} • {{TIME_STR}}</text>
+
+  <!-- Footer -->
+  <text x="540" y="1040" text-anchor="middle" font-family="Inter" font-size="24" fill="{{TEXT_DIM}}">{{SLOGAN}}</text>
+</svg>

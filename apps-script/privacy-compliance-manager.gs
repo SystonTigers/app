@@ -1205,14 +1205,15 @@ class PrivacyComplianceManager {
 
         if (recipients && typeof MailApp !== 'undefined') {
           const emailBody = this.buildExpiryEmailHtml(expiring, generatedAt, windowDays);
+          const clubName = getConfigValue('SYSTEM.CLUB_NAME', 'Your Football Club');
 
           try {
             // @testHook(consent_expiry_email_start)
             MailApp.sendEmail({
               to: recipients,
-              subject: 'Syston Tigers – Consent expiry report',
+              subject: `${clubName} – Consent expiry report`,
               htmlBody: emailBody,
-              name: 'Syston Tigers Automation'
+              name: `${clubName} Automation`
             });
             // @testHook(consent_expiry_email_complete)
             emailResult = { sent: true, recipients };

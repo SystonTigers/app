@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls:*)",
+      "Bash(npx expo start:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npm install:*)",
+      "Bash(for file in components/Badge.tsx components/Button.tsx components/Card.tsx components/CTA.tsx components/Divider.tsx components/EmptyState.tsx components/LoadingSpinner.tsx components/SectionHeader.tsx components/UsageBar.tsx screens/PaymentsScreen.tsx screens/TeamMembersScreen.tsx)",
+      "Bash(do sed -i \"s|from ''\\.\\./theme''|from ''../theme/''|g\" \"$file\")",
+      "Bash(echo:*)",
+      "Bash(done)",
+      "Bash(for file in components/ui/Card.tsx components/ui/CTA.tsx components/ui/Pills.tsx components/ui/SectionHeader.tsx)",
+      "Bash(do sed -i \"s|from ''\\.\\./\\.\\./theme''|from ''../../theme/''|g\" \"$file\")",
+      "Bash(timeout 30 npx expo start:*)",
+      "Bash(curl:*)",
+      "Bash(taskkill:*)",
+      "Bash(cat:*)",
+      "Bash(ipconfig:*)",
+      "Bash(timeout 5 curl:*)",
+      "Bash(git checkout:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
