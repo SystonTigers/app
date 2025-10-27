@@ -24,6 +24,10 @@ const CONFIG_LOGGER = typeof logger !== 'undefined' && logger && typeof logger.s
     error() {}
   };
 
+const CONFIG_SCRIPT_PROPERTY_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+let CONFIG_SCRIPT_PROPERTY_CACHE = null;
+let CONFIG_SCRIPT_PROPERTY_CACHE_EXPIRES_AT = 0;
+
 /**
  * Lazy accessor for configured sheet ID
  * Only resolves when actually needed, allows installer to run first
@@ -1919,6 +1923,59 @@ function getHydratedConfig_(forceRefresh = false) {
 
 // ==================== CONFIGURATION UTILITIES ====================
 
+function clearConfigOverrideCache_() {
+  CONFIG_SCRIPT_PROPERTY_CACHE = null;
+  CONFIG_SCRIPT_PROPERTY_CACHE_EXPIRES_AT = 0;
+}
+
+function getScriptPropertyOverrides_() {
+  if (typeof PropertiesService === 'undefined' || !PropertiesService.getScriptProperties) {
+    return {};
+  }
+
+  const now = Date.now();
+  if (CONFIG_SCRIPT_PROPERTY_CACHE && now < CONFIG_SCRIPT_PROPERTY_CACHE_EXPIRES_AT) {
+    return CONFIG_SCRIPT_PROPERTY_CACHE;
+  }
+
+  try {
+    const properties = PropertiesService.getScriptProperties().getProperties() || {};
+    CONFIG_SCRIPT_PROPERTY_CACHE = properties;
+    CONFIG_SCRIPT_PROPERTY_CACHE_EXPIRES_AT = now + CONFIG_SCRIPT_PROPERTY_CACHE_TTL_MS;
+    return CONFIG_SCRIPT_PROPERTY_CACHE;
+  } catch (error) {
+    CONFIG_LOGGER.error('Failed to load script property overrides', error);
+    clearConfigOverrideCache_();
+    return {};
+  }
+}
+
+function coerceConfigOverrideValue_(value) {
+  if (typeof value !== 'string') {
+    return value;
+  }
+
+  const trimmed = value.trim();
+  if (trimmed === '') {
+    return '';
+  }
+
+  if (trimmed === 'true' || trimmed === 'false') {
+    return trimmed === 'true';
+  }
+
+  if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+    try {
+      return JSON.parse(trimmed);
+    } catch (error) {
+      CONFIG_LOGGER.error('Failed to parse JSON config override', { value: trimmed, error });
+      return trimmed;
+    }
+  }
+
+  return trimmed;
+}
+
 /**
  * Get configuration value by path
  * @param {string} path - Dot notation path (e.g., 'SYSTEM.VERSION')
@@ -1927,6 +1984,18 @@ function getHydratedConfig_(forceRefresh = false) {
  */
 function getConfigValue(path, defaultValue = null) {
   try {
+    const overrides = getScriptPropertyOverrides_();
+    if (Object.prototype.hasOwnProperty.call(overrides, path)) {
+      return coerceConfigOverrideValue_(overrides[path]);
+    }
+
+    const legacyKey = path.replace(/\./g, '_');
+    if (Object.prototype.hasOwnProperty.call(overrides, legacyKey)) {
+      return coerceConfigOverrideValue_(overrides[legacyKey]);
+    }
+
+    const parts = path.split('.');
+    let value = SYSTEM_CONFIG;
     const hydratedConfig = getHydratedConfig_();
     const parts = path.split('.');
     let value = hydratedConfig;
@@ -1938,7 +2007,7 @@ function getConfigValue(path, defaultValue = null) {
         return defaultValue;
       }
     }
-    
+
     return value;
   } catch (error) {
     console.error(`Failed to get config for path: ${path}`, error);
@@ -2180,6 +2249,46 @@ function applyBuyerProfileToSystem(profile) {
     registerOverride('BRANDING.BADGE_URL', resolvedProfile.badgeUrl, ['CUSTOMER.BADGE_URL']);
     registerOverride('BRANDING.LAST_ASSET_UPDATE', nowIso);
 
+  if (typeof PropertiesService !== 'undefined' && PropertiesService.getScriptProperties) {
+    try {
+      const updates = {};
+      if (resolvedProfile.clubName) {
+        updates['SYSTEM.CLUB_NAME'] = String(resolvedProfile.clubName);
+        updates.CLUB_NAME = String(resolvedProfile.clubName); // legacy alias
+      }
+      if (resolvedProfile.clubShortName) {
+        updates['SYSTEM.CLUB_SHORT_NAME'] = String(resolvedProfile.clubShortName);
+      }
+      if (resolvedProfile.league) {
+        updates['SYSTEM.LEAGUE'] = String(resolvedProfile.league);
+        updates['SYSTEM.LEAGUE_NAME'] = String(resolvedProfile.league);
+      }
+      if (resolvedProfile.ageGroup) {
+        updates['SYSTEM.AGE_GROUP'] = String(resolvedProfile.ageGroup);
+      }
+      if (resolvedProfile.primaryColor) {
+        updates['BRANDING.PRIMARY_COLOR'] = String(resolvedProfile.primaryColor);
+      }
+      if (resolvedProfile.secondaryColor) {
+        updates['BRANDING.SECONDARY_COLOR'] = String(resolvedProfile.secondaryColor);
+      }
+      if (resolvedProfile.badgeUrl) {
+        updates['BRANDING.BADGE_URL'] = String(resolvedProfile.badgeUrl);
+      }
+
+      if (Object.keys(updates).length) {
+        PropertiesService.getScriptProperties().setProperties(updates, false);
+        clearConfigOverrideCache_();
+      }
+    } catch (error) {
+      CONFIG_LOGGER.error('Failed to persist buyer profile overrides to script properties', error);
+    }
+  }
+
+  return {
+    success: true,
+    profile: resolvedProfile
+  };
     if (resolvedProfile.homeVenue) {
       scriptPropertyUpdates['CUSTOMER.HOME_VENUE'] = resolvedProfile.homeVenue;
     }

@@ -12,6 +12,15 @@ function runQuickSetup() {
   const ui = SpreadsheetApp.getUi();
 
   try {
+    const defaultProfile = getConfigValue('CUSTOMER.DEFAULT_PROFILE', {});
+    const systemName = getConfigValue('SYSTEM.NAME', 'Football Club Automation System');
+    const defaultClubName = getConfigValue('SYSTEM.CLUB_NAME', defaultProfile && defaultProfile.clubName ? defaultProfile.clubName : 'Your Football Club');
+    const existingShortName = getConfigValue('SYSTEM.CLUB_SHORT_NAME', defaultProfile && defaultProfile.clubShortName ? defaultProfile.clubShortName : '');
+
+    // Welcome message
+    const welcome = ui.alert(
+      `⚙️ ${systemName} Quick Setup`,
+      `Welcome to the ${defaultClubName} automation setup!\n\n` +
     const existingClubName = (typeof getConfigValue === 'function')
       ? getConfigValue('SYSTEM.CLUB_NAME', 'Your Club')
       : 'Your Club';
@@ -61,6 +70,14 @@ function runQuickSetup() {
       return;
     }
 
+    // Collect club name for white-label branding
+    const clubNameResponse = ui.prompt(
+      'Step 2: Club Name',
+      `Enter the name of your club (current: ${defaultClubName})`,
+      ui.ButtonSet.OK_CANCEL
+    );
+
+    if (clubNameResponse.getSelectedButton() !== ui.Button.OK) {
     // Get club name
     const clubResponse = ui.prompt(
       'Step 2: Club Details',
@@ -73,6 +90,9 @@ function runQuickSetup() {
       return;
     }
 
+    const resolvedClubName = (clubNameResponse.getResponseText() || '').trim() || defaultClubName;
+    const derivedShortName = generateClubShortName_(resolvedClubName);
+    const resolvedShortName = existingShortName && existingShortName !== 'YFC' ? existingShortName : derivedShortName;
     const clubNameInput = clubResponse.getResponseText().trim();
     const clubName = clubNameInput || existingClubName || 'Your Football Club';
 
@@ -96,11 +116,26 @@ function runQuickSetup() {
 
     // Save properties
     const properties = PropertiesService.getScriptProperties();
-    properties.setProperties({
+    const propertiesToSet = {
       'SPREADSHEET_ID': spreadsheetId,
+      'SYSTEM.SPREADSHEET_ID': spreadsheetId,
       'MAKE_WEBHOOK_URL': webhookUrl || '',
+      'MAKE.WEBHOOK_URL': webhookUrl || '',
       'SETUP_COMPLETED': 'true',
       'SETUP_DATE': new Date().toISOString(),
+      'SYSTEM.CLUB_NAME': resolvedClubName,
+      'CLUB_NAME': resolvedClubName
+    };
+
+    if (resolvedShortName) {
+      propertiesToSet['SYSTEM.CLUB_SHORT_NAME'] = resolvedShortName;
+    }
+
+    properties.setProperties(propertiesToSet, false);
+
+    if (typeof clearConfigOverrideCache_ === 'function') {
+      clearConfigOverrideCache_();
+    }
       'CLUB_NAME': clubName,
       'SYSTEM.CLUB_NAME': clubName
     });
@@ -108,6 +143,7 @@ function runQuickSetup() {
     // Success message
     ui.alert(
       '🎉 Setup Complete!',
+      `${resolvedClubName} automation is now configured!\n\n` +
       `${clubName} automation is now configured!\n\n` +
       '✅ Google Sheets: Connected\n' +
       `${webhookUrl ? '✅' : '⏭️'} Make.com: ${webhookUrl ? 'Connected' : 'Skipped'}\n\n` +
@@ -142,6 +178,7 @@ function checkConfiguration() {
       webhookUrl: properties.getProperty('MAKE_WEBHOOK_URL'),
       setupCompleted: properties.getProperty('SETUP_COMPLETED'),
       setupDate: properties.getProperty('SETUP_DATE'),
+      clubName: properties.getProperty('SYSTEM.CLUB_NAME') || properties.getProperty('CLUB_NAME')
       clubName: properties.getProperty('CLUB_NAME') || (typeof getConfigValue === 'function' ? getConfigValue('SYSTEM.CLUB_NAME') : '')
     };
 
@@ -168,6 +205,25 @@ function checkConfiguration() {
       error: error.toString()
     };
   }
+}
+
+function generateClubShortName_(clubName) {
+  if (!clubName) {
+    return '';
+  }
+
+  const initials = clubName
+    .split(/\s+/)
+    .filter(Boolean)
+    .map(segment => segment.charAt(0).toUpperCase())
+    .join('');
+
+  if (initials.length >= 2 && initials.length <= 6) {
+    return initials;
+  }
+
+  const sanitized = clubName.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+  return sanitized.substring(0, 6) || sanitized || initials;
 }
 
 /**
@@ -396,6 +452,8 @@ function quickFixWebApp(spreadsheetId) {
   try {
     // Test the spreadsheet ID
     const sheet = SpreadsheetApp.openById(spreadsheetId);
+    const defaultProfile = getConfigValue('CUSTOMER.DEFAULT_PROFILE', {});
+    const clubName = String(getConfigValue('SYSTEM.CLUB_NAME', defaultProfile && defaultProfile.clubName ? defaultProfile.clubName : 'Your Football Club'));
     const fallbackClubName = (typeof getConfigValue === 'function')
       ? getConfigValue('SYSTEM.CLUB_NAME', 'Your Football Club')
       : 'Your Football Club';
@@ -404,9 +462,15 @@ function quickFixWebApp(spreadsheetId) {
     PropertiesService.getScriptProperties().setProperties({
       'SPREADSHEET_ID': spreadsheetId,
       'SETUP_COMPLETED': 'true',
+      'SYSTEM.CLUB_NAME': clubName,
+      'CLUB_NAME': clubName
       'CLUB_NAME': fallbackClubName,
       'SYSTEM.CLUB_NAME': fallbackClubName
     });
+
+    if (typeof clearConfigOverrideCache_ === 'function') {
+      clearConfigOverrideCache_();
+    }
 
     console.log('✅ Quick fix completed - Web app should now work');
     console.log(`✅ Connected to spreadsheet: "${sheet.getName()}"`);
