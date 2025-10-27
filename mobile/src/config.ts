@@ -10,6 +10,10 @@ const getEnvVar = (key: string, fallback: string = ''): string => {
 export const API_BASE_URL = getEnvVar('EXPO_PUBLIC_API_BASE', 'https://syston-postbus.team-platform-2025.workers.dev');
 export const TENANT_ID = getEnvVar('EXPO_PUBLIC_TENANT_ID', 'syston-tigers');
 
+// Club Branding Defaults
+export const DEFAULT_CLUB_NAME = getEnvVar('EXPO_PUBLIC_CLUB_NAME', 'Home Club');
+export const DEFAULT_CLUB_SHORT_NAME = getEnvVar('EXPO_PUBLIC_CLUB_SHORT_NAME', '');
+
 // Supabase Configuration
 export const SUPABASE_URL = getEnvVar('EXPO_PUBLIC_SUPABASE_URL', '');
 export const SUPABASE_ANON_KEY = getEnvVar('EXPO_PUBLIC_SUPABASE_ANON_KEY', '');
