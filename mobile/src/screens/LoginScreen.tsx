@@ -1,8 +1,18 @@
-import React, { useState } from 'react';
-import { View, ScrollView, StyleSheet, Image, KeyboardAvoidingView, Platform } from 'react-native';
-import { Text, TextInput, Button, Card, IconButton } from 'react-native-paper';
-import { COLORS, TENANT_ID } from '../config';
+import React, { useMemo, useState } from 'react';
+import {
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import { TextInput } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Button, Card } from '../components';
+import { useTheme } from '../theme';
+import type { Theme } from '../theme';
+import { APP_VERSION, TENANT_ID } from '../config';
 
 interface LoginScreenProps {
   onLogin: (userId: string, role: string, token: string) => void;
@@ -10,15 +20,30 @@ interface LoginScreenProps {
   onForgotPassword?: () => void;
 }
 
-export default function LoginScreen({ onLogin, onNavigateToRegister, onForgotPassword }: LoginScreenProps) {
+const DEMO_ACCOUNTS = [
+  { label: 'Admin', email: 'admin@systontigers.co.uk', password: 'admin123' },
+  { label: 'Coach', email: 'coach@systontigers.co.uk', password: 'coach123' },
+  { label: 'Player', email: 'player@systontigers.co.uk', password: 'player123' },
+  { label: 'Parent', email: 'parent@systontigers.co.uk', password: 'parent123' },
+];
+
+export default function LoginScreen({
+  onLogin,
+  onNavigateToRegister,
+  onForgotPassword,
+}: LoginScreenProps) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  const brandTitle = theme.metadata.brandName ?? 'Field Drop';
+
   const handleLogin = async () => {
-    // Basic validation
     if (!email.trim() || !password.trim()) {
       setError('Please enter email and password');
       return;
@@ -33,24 +58,6 @@ export default function LoginScreen({ onLogin, onNavigateToRegister, onForgotPas
     setError('');
 
     try {
-      // TODO: Replace with real API call
-      // const response = await api.post('/api/v1/auth/login', {
-      //   tenant: TENANT_ID,
-      //   email: email.trim().toLowerCase(),
-      //   password,
-      // });
-      //
-      // if (response.data.success) {
-      //   const { userId, role, token } = response.data.data;
-      //   await AsyncStorage.setItem('auth_token', token);
-      //   await AsyncStorage.setItem('user_id', userId);
-      //   await AsyncStorage.setItem('user_role', role);
-      //   onLogin(userId, role, token);
-      // } else {
-      //   setError(response.data.error?.message || 'Login failed');
-      // }
-
-      // Mock login for development
       setTimeout(() => {
         if (email === 'admin@systontigers.co.uk' && password === 'admin123') {
           onLogin('user-001', 'admin', 'mock-jwt-token-admin');
@@ -76,27 +83,39 @@ export default function LoginScreen({ onLogin, onNavigateToRegister, onForgotPas
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Logo/Header */}
+      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
         <View style={styles.header}>
-          <MaterialCommunityIcons name="shield-account" size={80} color={COLORS.primary} />
-          <Text style={styles.title}>Syston Tigers</Text>
-          <Text style={styles.subtitle}>Team Management Platform</Text>
+          <View style={styles.iconBadge}>
+            <MaterialCommunityIcons
+              name="shield-account"
+              size={36}
+              color={theme.ramps.primary['600']}
+            />
+          </View>
+          <Text style={styles.title}>{brandTitle}</Text>
+          <Text style={styles.subtitle}>
+            Sign in to manage fixtures, comms, and player availability.
+          </Text>
         </View>
 
-        {/* Login Card */}
-        <Card style={styles.card}>
-          <Card.Content>
+        <Card variant="elevated" padding="lg" style={styles.card}>
+          <View style={styles.cardHeader}>
             <Text style={styles.cardTitle}>Sign In</Text>
+            <Text style={styles.cardSubtitle}>Join the control room for {TENANT_ID}.</Text>
+          </View>
 
-            {error ? (
-              <View style={styles.errorContainer}>
-                <MaterialCommunityIcons name="alert-circle" size={20} color={COLORS.error} />
-                <Text style={styles.errorText}>{error}</Text>
-              </View>
-            ) : null}
+          {error ? (
+            <View style={styles.errorContainer} accessibilityRole="alert">
+              <MaterialCommunityIcons
+                name="alert-circle"
+                size={20}
+                color={theme.ramps.error['600']}
+              />
+              <Text style={styles.errorText}>{error}</Text>
+            </View>
+          ) : null}
 
-            {/* Email Input */}
+          <View style={styles.fieldStack}>
             <TextInput
               label="Email"
               value={email}
@@ -112,9 +131,23 @@ export default function LoginScreen({ onLogin, onNavigateToRegister, onForgotPas
               left={<TextInput.Icon icon="email" />}
               style={styles.input}
               disabled={loading}
+              outlineColor={theme.colors.border}
+              activeOutlineColor={theme.colors.primary}
+              textColor={theme.colors.text}
+              selectionColor={theme.ramps.primary['200']}
+              theme={{
+                colors: {
+                  primary: theme.colors.primary,
+                  onSurface: theme.colors.text,
+                  onSurfaceVariant: theme.colors.textSecondary,
+                  outline: theme.colors.border,
+                  surfaceVariant: theme.colors.surface,
+                  background: theme.colors.surface,
+                  placeholder: theme.colors.placeholder,
+                },
+              }}
             />
 
-            {/* Password Input */}
             <TextInput
               label="Password"
               value={password}
@@ -131,174 +164,213 @@ export default function LoginScreen({ onLogin, onNavigateToRegister, onForgotPas
               right={
                 <TextInput.Icon
                   icon={showPassword ? 'eye-off' : 'eye'}
-                  onPress={() => setShowPassword(!showPassword)}
+                  onPress={() => setShowPassword((prev) => !prev)}
                 />
               }
               style={styles.input}
               disabled={loading}
               onSubmitEditing={handleLogin}
+              outlineColor={theme.colors.border}
+              activeOutlineColor={theme.colors.primary}
+              textColor={theme.colors.text}
+              selectionColor={theme.ramps.primary['200']}
+              theme={{
+                colors: {
+                  primary: theme.colors.primary,
+                  onSurface: theme.colors.text,
+                  onSurfaceVariant: theme.colors.textSecondary,
+                  outline: theme.colors.border,
+                  surfaceVariant: theme.colors.surface,
+                  background: theme.colors.surface,
+                  placeholder: theme.colors.placeholder,
+                },
+              }}
             />
+          </View>
 
-            {/* Forgot Password */}
-            <Button
-              mode="text"
-              onPress={onForgotPassword || (() => alert('Password reset feature coming soon!'))}
-              style={styles.forgotButton}
-              labelStyle={styles.forgotButtonText}
-              disabled={loading}
-            >
-              Forgot Password?
-            </Button>
-
-            {/* Login Button */}
-            <Button
-              mode="contained"
-              onPress={handleLogin}
-              loading={loading}
-              disabled={loading}
-              style={styles.loginButton}
-              buttonColor={COLORS.primary}
-              textColor="#000"
-            >
-              {loading ? 'Signing In...' : 'Sign In'}
-            </Button>
-          </Card.Content>
-        </Card>
-
-        {/* Demo Accounts */}
-        <Card style={styles.demoCard}>
-          <Card.Content>
-            <Text style={styles.demoTitle}>Demo Accounts (Development Only)</Text>
-            <Text style={styles.demoText}>• Admin: admin@systontigers.co.uk / admin123</Text>
-            <Text style={styles.demoText}>• Coach: coach@systontigers.co.uk / coach123</Text>
-            <Text style={styles.demoText}>• Player: player@systontigers.co.uk / player123</Text>
-            <Text style={styles.demoText}>• Parent: parent@systontigers.co.uk / parent123</Text>
-          </Card.Content>
-        </Card>
-
-        {/* Register Link */}
-        <View style={styles.registerContainer}>
-          <Text style={styles.registerText}>Don't have an account? </Text>
           <Button
-            mode="text"
+            variant="ghost"
+            size="small"
+            onPress={
+              onForgotPassword || (() => alert('Password reset feature coming soon!'))
+            }
+            style={styles.forgotButton}
+            disabled={loading}
+          >
+            Forgot password?
+          </Button>
+
+          <Button
+            variant="primary"
+            onPress={handleLogin}
+            loading={loading}
+            disabled={loading}
+            style={styles.loginButton}
+            fullWidth
+          >
+            {loading ? 'Signing In…' : 'Sign In'}
+          </Button>
+        </Card>
+
+        <Card variant="outlined" padding="md" style={styles.demoCard}>
+          <Text style={styles.demoTitle}>Demo Accounts (Development Only)</Text>
+          {DEMO_ACCOUNTS.map((account) => (
+            <Text key={account.label} style={styles.demoText}>
+              • {account.label}: {account.email} / {account.password}
+            </Text>
+          ))}
+        </Card>
+
+        <View style={styles.registerContainer}>
+          <Text style={styles.registerText}>Don&apos;t have an account?</Text>
+          <Button
+            variant="ghost"
+            size="small"
             onPress={onNavigateToRegister}
-            labelStyle={styles.registerButtonText}
+            style={styles.registerButton}
             disabled={loading}
           >
             Sign Up
           </Button>
         </View>
 
-        {/* Footer */}
-        <Text style={styles.footer}>Version 1.0.0 • {TENANT_ID}</Text>
+        <Text style={styles.footer}>Version {APP_VERSION} • {TENANT_ID}</Text>
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    padding: 20,
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: 32,
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: COLORS.text,
-    marginTop: 16,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: COLORS.textLight,
-    marginTop: 4,
-  },
-  card: {
-    backgroundColor: COLORS.surface,
-    elevation: 4,
-    marginBottom: 16,
-  },
-  cardTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: COLORS.text,
-    marginBottom: 16,
-  },
-  errorContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: `${COLORS.error}15`,
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 16,
-  },
-  errorText: {
-    fontSize: 14,
-    color: COLORS.error,
-    marginLeft: 8,
-    flex: 1,
-  },
-  input: {
-    marginBottom: 16,
-    backgroundColor: COLORS.background,
-  },
-  forgotButton: {
-    alignSelf: 'flex-end',
-    marginTop: -8,
-    marginBottom: 8,
-  },
-  forgotButtonText: {
-    fontSize: 13,
-    color: COLORS.primary,
-  },
-  loginButton: {
-    marginTop: 8,
-    paddingVertical: 6,
-  },
-  demoCard: {
-    backgroundColor: `${COLORS.primary}10`,
-    elevation: 0,
-    marginBottom: 16,
-  },
-  demoTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.text,
-    marginBottom: 8,
-  },
-  demoText: {
-    fontSize: 12,
-    color: COLORS.textLight,
-    marginBottom: 4,
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
-  },
-  registerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 8,
-  },
-  registerText: {
-    fontSize: 14,
-    color: COLORS.textLight,
-  },
-  registerButtonText: {
-    fontSize: 14,
-    color: COLORS.primary,
-    fontWeight: '600',
-  },
-  footer: {
-    fontSize: 12,
-    color: COLORS.textLight,
-    textAlign: 'center',
-    marginTop: 24,
-  },
-});
+function createStyles(theme: Theme) {
+  const spacing = theme.spacingScale;
+  const colors = theme.colors;
+  const borderRadius = theme.borderRadius;
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    scrollContent: {
+      flexGrow: 1,
+      justifyContent: 'center',
+      paddingHorizontal: spacing.lg,
+      paddingVertical: spacing['3xl'],
+    },
+    header: {
+      alignItems: 'center',
+      marginBottom: spacing['2xl'],
+    },
+    iconBadge: {
+      width: spacing['4xl'],
+      height: spacing['4xl'],
+      borderRadius: spacing['4xl'] / 2,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: theme.ramps.primary['50'],
+      marginBottom: spacing.sm,
+    },
+    title: {
+      fontSize: theme.typographyScale.headline.fontSize,
+      lineHeight: theme.typographyScale.headline.lineHeight,
+      fontWeight: theme.typography.fontWeight.bold,
+      color: colors.text,
+      textAlign: 'center',
+    },
+    subtitle: {
+      marginTop: spacing['2xs'],
+      fontSize: theme.typographyScale.body.fontSize,
+      lineHeight: theme.typographyScale.body.lineHeight,
+      color: colors.textSecondary,
+      textAlign: 'center',
+    },
+    card: {
+      marginBottom: spacing.lg,
+    },
+    cardHeader: {
+      marginBottom: spacing.md,
+    },
+    cardTitle: {
+      fontSize: theme.typographyScale.title.fontSize,
+      lineHeight: theme.typographyScale.title.lineHeight,
+      fontWeight: theme.typography.fontWeight.semibold,
+      color: colors.text,
+    },
+    cardSubtitle: {
+      marginTop: spacing['2xs'],
+      fontSize: theme.typographyScale.bodySm.fontSize,
+      lineHeight: theme.typographyScale.bodySm.lineHeight,
+      color: colors.textSecondary,
+    },
+    fieldStack: {
+      marginBottom: spacing.md,
+    },
+    input: {
+      marginBottom: spacing.sm,
+      backgroundColor: colors.surfaceSecondary,
+    },
+    forgotButton: {
+      alignSelf: 'flex-end',
+      marginBottom: spacing.sm,
+    },
+    loginButton: {
+      marginTop: spacing.xs,
+    },
+    errorContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: theme.ramps.error['50'],
+      borderWidth: 1,
+      borderColor: theme.ramps.error['200'],
+      borderRadius: borderRadius.md,
+      paddingHorizontal: spacing.sm,
+      paddingVertical: spacing['2xs'],
+      marginBottom: spacing.md,
+    },
+    errorText: {
+      flex: 1,
+      color: theme.ramps.error['700'],
+      fontSize: theme.typographyScale.bodySm.fontSize,
+      lineHeight: theme.typographyScale.bodySm.lineHeight,
+      marginLeft: spacing.xs,
+    },
+    demoCard: {
+      backgroundColor: theme.ramps.primary['50'],
+      borderColor: theme.ramps.primary['200'],
+      marginBottom: spacing.lg,
+    },
+    demoTitle: {
+      fontSize: theme.typographyScale.body.fontSize,
+      lineHeight: theme.typographyScale.body.lineHeight,
+      fontWeight: theme.typography.fontWeight.semibold,
+      color: colors.text,
+      marginBottom: spacing['2xs'],
+    },
+    demoText: {
+      fontSize: theme.typographyScale.bodySm.fontSize,
+      lineHeight: theme.typographyScale.bodySm.lineHeight,
+      color: colors.textSecondary,
+      fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+      marginBottom: spacing['2xs'],
+    },
+    registerContainer: {
+      flexDirection: 'row',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    registerText: {
+      fontSize: theme.typographyScale.bodySm.fontSize,
+      lineHeight: theme.typographyScale.bodySm.lineHeight,
+      color: colors.textSecondary,
+      marginRight: spacing['2xs'],
+    },
+    registerButton: {
+      paddingHorizontal: spacing.xs,
+    },
+    footer: {
+      marginTop: spacing['2xl'],
+      textAlign: 'center',
+      color: colors.textSecondary,
+      fontSize: theme.typographyScale.caption.fontSize,
+      lineHeight: theme.typographyScale.caption.lineHeight,
+    },
+  });
+}
