@@ -9,6 +9,8 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "lint": "eslint . --ext .ts,.tsx",
+    "test:snapshots": "node test/theme.snapshot.test.js",
+    "test": "npm run test:snapshots"
     "build:test": "tsc --project tsconfig.test.json",
     "test": "npm run build:test && node --test $(find dist-tests -name '*.test.js')"
   },
