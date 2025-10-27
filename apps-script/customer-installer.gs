@@ -265,6 +265,10 @@ function setupScriptProperties(config) {
 
     console.log(`📝 Set ${Object.keys(validProperties).length} script properties`);
 
+    if (typeof clearConfigOverrideCache_ === 'function') {
+      clearConfigOverrideCache_();
+    }
+
   } catch (error) {
     throw new Error(`Failed to set up script properties: ${error.toString()}`);
   }

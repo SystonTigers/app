@@ -1,0 +1,28 @@
+{
+  "compilerOptions": {
+    "target": "ES2019",
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "outDir": "./dist-tests",
+    "noEmit": false,
+    "allowJs": false,
+    "jsx": "react-jsx",
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"]
+    },
+    "resolveJsonModule": true
+  },
+  "files": [
+    "src/config.ts",
+    "src/services/api.ts",
+    "src/screens/authController.ts",
+    "src/screens/LoginScreen.tsx",
+    "src/screens/RegisterScreen.tsx",
+    "src/services/__tests__/authApi.test.ts",
+    "src/screens/__tests__/authController.test.ts"
+  ]
+}

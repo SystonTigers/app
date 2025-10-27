@@ -1,26 +1,80 @@
 /**
  * Comprehensive Web App - Full Admin Interface
- * Complete management system for Syston Tigers via web interface
+ * Complete management system for tenant-specific football automation via web interface
+ * Complete management system for the configured club via web interface
  * @version 6.2.0
  */
 
 // Disabled functions removed - routing handled in main.gs
 
+function sanitizeHtml_(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+/**
+ * Helper to load club context values from dynamic config / static config fallback
+ * @returns {{clubName: string, clubShortName: string, leagueName: string, motto: string, primaryColor: string, secondaryColor: string, badgeUrl: string, ageGroup: string}}
+ */
+function getClubContext_() {
+  const dynamicConfig = (typeof getDynamicConfig === 'function') ? getDynamicConfig() : {};
+  const fallback = (path, defaultValue = '') => (typeof getConfigValue === 'function')
+    ? getConfigValue(path, defaultValue)
+    : defaultValue;
+
+  const clubName = dynamicConfig.TEAM_NAME || fallback('SYSTEM.CLUB_NAME', 'Your Football Club');
+  const clubShortName = dynamicConfig.TEAM_SHORT || fallback('SYSTEM.CLUB_SHORT_NAME', clubName);
+  const leagueName = dynamicConfig.LEAGUE_NAME || fallback('SYSTEM.LEAGUE', '');
+  const motto = dynamicConfig.MOTTO || fallback('BRANDING.TAGLINE', '');
+  const primaryColor = dynamicConfig.PRIMARY_COLOR || fallback('BRANDING.PRIMARY_COLOR', '#667eea');
+  const secondaryColor = dynamicConfig.SECONDARY_COLOR || fallback('BRANDING.SECONDARY_COLOR', '#764ba2');
+  const badgeUrl = dynamicConfig.BADGE_URL || fallback('BRANDING.BADGE_URL', '');
+  const ageGroup = dynamicConfig.AGE_GROUP || fallback('SYSTEM.AGE_GROUP', '');
+
+  return {
+    clubName,
+    clubShortName,
+    leagueName,
+    motto,
+    primaryColor,
+    secondaryColor,
+    badgeUrl,
+    ageGroup
+  };
+}
+
 /**
  * Create main admin dashboard
  */
 function createMainDashboard() {
+  const rawClubName = getConfigValue('SYSTEM.CLUB_NAME', 'Your Football Club');
+  const rawSystemName = getConfigValue('SYSTEM.NAME', 'Football Club Automation System');
+  const sanitizedClubName = sanitizeHtml_(rawClubName);
+  const sanitizedSystemName = sanitizeHtml_(rawSystemName);
+  const club = getClubContext_();
+  const subtitleParts = [club.leagueName, club.ageGroup].filter(Boolean);
+  const subtitle = subtitleParts.length ? subtitleParts.join(' • ') : 'Complete Admin Dashboard';
+  const mottoLine = club.motto ? `<p>${club.motto}</p>` : '';
+  const badgeImage = club.badgeUrl
+    ? `<img src="${club.badgeUrl}" alt="${club.clubName} badge" class="club-badge" loading="lazy" />`
+    : '';
+
   const html = `
 <!DOCTYPE html>
 <html>
 <head>
-  <title>🏈 Syston Tigers - Admin Dashboard</title>
+  <title>🏈 ${sanitizedClubName} - Admin Dashboard</title>
+  <title>🏈 ${club.clubName} - Admin Dashboard</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: linear-gradient(135deg, ${club.primaryColor} 0%, ${club.secondaryColor} 100%);
       min-height: 100vh; color: #333;
     }
     .dashboard {
@@ -30,6 +84,12 @@ function createMainDashboard() {
       text-align: center; margin-bottom: 40px;
       background: rgba(255,255,255,0.95); padding: 30px; border-radius: 20px;
       box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    }
+    .club-badge {
+      width: 120px;
+      height: 120px;
+      object-fit: contain;
+      margin-bottom: 15px;
     }
     .cards {
       display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -56,9 +116,13 @@ function createMainDashboard() {
 <body>
   <div class="dashboard">
     <div class="header">
-      <h1>🏈 Syston Tigers</h1>
+      <h1>🏈 ${sanitizedClubName}</h1>
       <h2>Complete Admin Dashboard</h2>
-      <p>Manage everything from one place - no technical skills required!</p>
+      <p>Manage everything for ${sanitizedClubName} in ${sanitizedSystemName} - no technical skills required!</p>
+      ${badgeImage}
+      <h1>🏈 ${club.clubName}</h1>
+      <h2>${subtitle}</h2>
+      ${mottoLine || '<p>Manage everything from one place - no technical skills required!</p>'}
     </div>
 
     <div class="cards">
@@ -159,13 +223,13 @@ function createMainDashboard() {
     }
 
     loadStats();
-    console.log('🏈 ' + getConfigValue('SYSTEM.CLUB_NAME') + ' Admin Dashboard Ready!');
+    console.log('🏈 ${club.clubName} Admin Dashboard Ready!');
   </script>
 </body>
 </html>`;
 
   return HtmlService.createHtmlOutput(html)
-    .setTitle(getConfigValue('SYSTEM.CLUB_NAME') + ' - Admin Dashboard')
+    .setTitle(club.clubName + ' - Admin Dashboard')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
@@ -173,11 +237,15 @@ function createMainDashboard() {
  * Create player management interface
  */
 function createPlayerManagementInterface() {
+  const clubName = sanitizeHtml_(getConfigValue('SYSTEM.CLUB_NAME', 'Your Football Club'));
+
+  const club = getClubContext_();
   const html = `
 <!DOCTYPE html>
 <html>
 <head>
-  <title>👥 Player Management - Syston Tigers</title>
+  <title>👥 Player Management - ${clubName}</title>
+  <title>👥 Player Management - ${club.clubName}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -388,13 +456,13 @@ function createPlayerManagementInterface() {
     }
 
     loadPlayers();
-    console.log('👥 Player Management Interface Ready!');
+    console.log('👥 ${club.clubName} Player Management Interface Ready!');
   </script>
 </body>
 </html>`;
 
   return HtmlService.createHtmlOutput(html)
-    .setTitle('Player Management - ' + getConfigValue('SYSTEM.CLUB_NAME'))
+    .setTitle('Player Management - ' + club.clubName)
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
@@ -463,12 +531,20 @@ function handleAddPlayer(params) {
 /**
  * Create fixture management interface
  */
-function createFixtureManagementInterface() {
+function createFixtureManagementInterface() {t
+  const rawClubName = getConfigValue('SYSTEM.CLUB_NAME', 'Your Football Club');
+  const rawClubShortName = getConfigValue('SYSTEM.CLUB_SHORT_NAME', rawClubName);
+  const clubName = sanitizeHtml_(rawClubName);
+  const hashtagSeed = (rawClubShortName || rawClubName || 'Club').replace(/\s+/g, '');
+  const hashtagPlaceholder = sanitizeHtml_(`#${hashtagSeed || 'Club'} #FootballClub #LocalFootball`);
+
+  const club = getClubContext_();
   const html = `
 <!DOCTYPE html>
 <html>
 <head>
-  <title>📅 Fixture Management - Syston Tigers</title>
+  <title>📅 Fixture Management - ${clubName}</title>
+  <title>📅 Fixture Management - ${club.clubName}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -564,7 +640,8 @@ function createFixtureManagementInterface() {
           <div class="form-group">
             <label for="venueDetails">Venue Details</label>
             <input type="text" id="venueDetails" name="venueDetails"
-                   placeholder="e.g. Syston Sports Park">
+                   placeholder="e.g. Home Stadium">
+                   placeholder="e.g. ${club.clubName} Stadium">
           </div>
 
           <div class="form-group">
@@ -693,13 +770,13 @@ function createFixtureManagementInterface() {
     document.getElementById('matchDate').min = new Date().toISOString().split('T')[0];
 
     loadFixtures();
-    console.log('📅 Fixture Management Interface Ready!');
+    console.log('📅 ${club.clubName} Fixture Management Interface Ready!');
   </script>
 </body>
 </html>`;
 
   return HtmlService.createHtmlOutput(html)
-    .setTitle('Fixture Management - ' + getConfigValue('SYSTEM.CLUB_NAME'))
+    .setTitle('Fixture Management - ' + club.clubName)
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
@@ -764,11 +841,19 @@ function handleAddFixture(params) {
  * Create Season Setup interface
  */
 function createSeasonSetupInterface() {
+  const rawClubName = getConfigValue('SYSTEM.CLUB_NAME', 'Your Football Club');
+  const clubName = sanitizeHtml_(rawClubName);
+
+  const club = getClubContext_();
+  const defaultHashtags = club.clubShortName
+    ? '#'+club.clubShortName.replace(/\s+/g, '') + ' #FootballClub #LocalFootball'
+    : '#FootballClub #LocalFootball';
   const html = `
 <!DOCTYPE html>
 <html>
 <head>
-  <title>🏆 Season Setup - Syston Tigers</title>
+  <title>🏆 Season Setup - ${clubName}</title>
+  <title>🏆 Season Setup - ${club.clubName}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -867,7 +952,8 @@ function createSeasonSetupInterface() {
 
       <div class="form-group">
         <label for="homeVenue">Home Venue</label>
-        <input type="text" id="homeVenue" name="homeVenue" placeholder="e.g., Syston Sports Ground">
+        <input type="text" id="homeVenue" name="homeVenue" placeholder="e.g., Home Ground">
+        <input type="text" id="homeVenue" name="homeVenue" placeholder="e.g., ${club.clubName} Ground">
       </div>
 
       <div class="form-group">
@@ -924,7 +1010,8 @@ function createSeasonSetupInterface() {
 
     <div class="form-group">
       <label for="socialHashtags">Social Media Hashtags</label>
-      <input type="text" id="socialHashtags" name="socialHashtags" placeholder="#SystonTigers #FootballClub #LocalFootball">
+      <input type="text" id="socialHashtags" name="socialHashtags" placeholder="${hashtagPlaceholder}">
+      <input type="text" id="socialHashtags" name="socialHashtags" placeholder="${defaultHashtags}">
     </div>
   </div>
 
@@ -993,13 +1080,13 @@ function createSeasonSetupInterface() {
       }
     }
 
-    console.log('🏆 Season Setup Interface Ready!');
+    console.log('🏆 ${club.clubName} Season Setup Interface Ready!');
   </script>
 </body>
 </html>`;
 
   return HtmlService.createHtmlOutput(html)
-    .setTitle('Season Setup - ' + getConfigValue('SYSTEM.CLUB_NAME'))
+    .setTitle('Season Setup - ' + club.clubName)
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
@@ -1007,11 +1094,16 @@ function createSeasonSetupInterface() {
  * Create Historical Data Entry interface
  */
 function createHistoricalDataInterface() {
+  const rawClubName = getConfigValue('SYSTEM.CLUB_NAME', 'Your Football Club');
+  const clubName = sanitizeHtml_(rawClubName);
+
+  const club = getClubContext_();
   const html = `
 <!DOCTYPE html>
 <html>
 <head>
-  <title>📊 Historical Data Import - Syston Tigers</title>
+  <title>📊 Historical Data Import - ${clubName}</title>
+  <title>📊 Historical Data Import - ${club.clubName}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -1103,7 +1195,8 @@ function createHistoricalDataInterface() {
 
       <div class="grid">
         <div class="form-group">
-          <label for="homeScore">Syston Tigers Score</label>
+          <label for="homeScore">${clubName} Score</label>
+          <label for="homeScore">${club.clubName} Score</label>
           <input type="number" id="homeScore" name="homeScore" min="0" max="20" required>
         </div>
         <div class="form-group">
@@ -1219,12 +1312,12 @@ function createHistoricalDataInterface() {
     }
 
     document.getElementById('matchDate').max = new Date().toISOString().split('T')[0];
-    console.log('📊 Historical Data Interface Ready!');
+    console.log('📊 ${club.clubName} Historical Data Interface Ready!');
   </script>
 </body>
 </html>`;
 
   return HtmlService.createHtmlOutput(html)
-    .setTitle('Historical Data Import - ' + getConfigValue('SYSTEM.CLUB_NAME'))
+    .setTitle('Historical Data Import - ' + club.clubName)
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }

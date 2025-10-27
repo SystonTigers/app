@@ -632,8 +632,11 @@ function testFAEmailParsing() {
 
   try {
     // Test data
+    const clubName = (typeof getConfigValue === 'function')
+      ? getConfigValue('SYSTEM.CLUB_NAME', 'Your Football Club')
+      : 'Your Football Club';
     const testEmail = {
-      subject: 'Fixture Confirmation: Syston Tigers vs Local Rivals FC',
+      subject: `Fixture Confirmation: ${clubName} vs Local Rivals FC`,
       body: `
         Fixture Details:
         Date: 25/12/2024

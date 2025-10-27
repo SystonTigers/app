@@ -5,11 +5,30 @@ import { SignJWT } from "jose";
 import { PostReqSchema, json, readIdempotencyKey } from "./services/util";
 import { requireJWT, hasRole, requireAdmin } from "./services/auth";
 import { ensureIdempotent, setFinalIdempotent } from "./services/idempotency";
-import { ensureTenant, setMakeWebhook, updateFlags, putTenantConfig, getTenantConfig, setTenantFlags, setChannelWebhook, setYouTubeBYOGoogle, isAllowedWebhookHost } from "./services/tenants";
+import {
+  ensureTenant,
+  setMakeWebhook,
+  updateFlags,
+  putTenantConfig,
+  getTenantConfig,
+  setTenantFlags,
+  setChannelWebhook,
+  setYouTubeBYOGoogle,
+  isAllowedWebhookHost
+} from "./services/tenants";
 import { issueTenantAdminJWT } from "./services/jwt";
 import type { TenantConfig, PostJob } from "./types";
 import queueWorker from "./queue-consumer";
-import { putEvent, getEvent, deleteEvent, listEvents, setRsvp, getRsvp, addCheckin, listCheckins } from "./services/events";
+import {
+  putEvent,
+  getEvent,
+  deleteEvent,
+  listEvents,
+  setRsvp,
+  getRsvp,
+  addCheckin,
+  listCheckins
+} from "./services/events";
 import { registerDevice, sendToUser } from "./services/push";
 import * as Invites from "./services/invites";
 import * as Teams from "./services/teams";
@@ -22,12 +41,41 @@ import { rateLimit } from "./middleware/rateLimit";
 import { newRequestId, logJSON } from "./lib/log";
 import { parse, isValidationError } from "./lib/validate";
 import { healthz, readyz } from "./routes/health";
+
 // --- Self-serve signup / usage / admin (Phase 3) ---
-import { signupStart, signupBrand, signupStarterMake, signupProConfirm } from './routes/signup';
-import { handleMagicStart, handleMagicVerify } from './routes/magic';
-import { handleProvisionQueue, handleProvisionStatus, handleTenantOverview, handleProvisionRetry } from './routes/provisioning';
-import { handleDevAdminJWT, handleDevMagicLink, handleDevInfo } from './routes/devAuth';
-import { getAdminStats, listTenants, getTenant, updateTenant, deactivateTenant, deleteTenant, listPromoCodes, createPromoCode, deactivatePromoCode } from './routes/admin';
+import {
+  signupStart,
+  signupBrand,
+  signupStarterMake,
+  signupProConfirm
+} from "./routes/signup";
+import { handleMagicStart, handleMagicVerify } from "./routes/magic";
+import {
+  handleProvisionQueue,
+  handleProvisionStatus,
+  handleTenantOverview,
+  handleProvisionRetry
+} from "./routes/provisioning";
+import {
+  handleDevAdminJWT,
+  handleDevMagicLink,
+  handleDevInfo
+} from "./routes/devAuth";
+import {
+  getAdminStats,
+  listTenants,
+  getTenant,
+  updateTenant,
+  deactivateTenant,
+  deleteTenant,
+  listPromoCodes,
+  createPromoCode,
+  deactivatePromoCode
+} from "./routes/admin";
+
+// Auth routes (from other branch)
+import { handleAuthRegister, handleAuthLogin } from "./routes/auth";
+
 declare const APP_VERSION: string;
 
 const DEV_DEFAULT_CORS = new Set([
@@ -248,6 +296,14 @@ export default {
         if (typeof limitResult.remaining === "number") {
           corsHdrs.set("X-RateLimit-Remaining", String(Math.max(limitResult.remaining, 0)));
         }
+      }
+
+      if (url.pathname === `/api/${v}/auth/register` && req.method === "POST") {
+        return await handleAuthRegister(req, env, corsHdrs);
+      }
+
+      if (url.pathname === `/api/${v}/auth/login` && req.method === "POST") {
+        return await handleAuthLogin(req, env, corsHdrs);
       }
 
     // -------- Public signup endpoint --------
