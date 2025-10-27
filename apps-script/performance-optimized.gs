@@ -210,11 +210,15 @@ class OptimizedPerformanceManager extends PerformanceCacheManager {
         }
 
         // Execute webhook call
+        const clubIdentifier = String(
+          getConfigValue('SYSTEM.CLUB_SHORT_NAME', getConfigValue('SYSTEM.CLUB_NAME', 'Club'))
+        ).replace(/\s+/g, '') || 'Club';
+
         const response = UrlFetchApp.fetch(webhook.url, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'User-Agent': 'SystonTigers-Automation/6.0'
+            'User-Agent': `${clubIdentifier}-Automation/${getConfigValue('SYSTEM.VERSION', '6.0')}`
           },
           payload: JSON.stringify(webhook.payload),
           muteHttpExceptions: true
@@ -478,7 +482,7 @@ class OptimizedPerformanceManager extends PerformanceCacheManager {
   preloadTeamData() {
     try {
       const teamData = {
-        clubName: getConfigValue('SYSTEM.CLUB_NAME', 'Syston Tigers'),
+        clubName: getConfigValue('SYSTEM.CLUB_NAME', 'Your Football Club'),
         season: getConfigValue('SYSTEM.SEASON', '2024-25'),
         league: getConfigValue('SYSTEM.LEAGUE', 'Local League'),
         colors: getConfigValue('SYSTEM.TEAM_COLORS', { primary: '#blue', secondary: '#white' }),

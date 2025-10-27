@@ -1,5 +1,5 @@
 /**
- * @fileoverview Player Minutes Tracking Functions for Syston Tigers Football Automation
+ * @fileoverview Player Minutes Tracking Functions for configurable football automation
  * @version 6.2.0
  * @author Senior Software Architect
  * @description Additional player minutes tracking functions to add to player-management-svc.gs

@@ -4,15 +4,46 @@
  * @version 6.2.0
  */
 
+function getUiClubContext_() {
+  if (typeof getClubContext_ === 'function') {
+    return getClubContext_();
+  }
+
+  const fallbackName = (typeof getConfigValue === 'function')
+    ? getConfigValue('SYSTEM.CLUB_NAME', 'Your Football Club')
+    : 'Your Football Club';
+
+  const fallbackShort = (typeof getConfigValue === 'function')
+    ? getConfigValue('SYSTEM.CLUB_SHORT_NAME', fallbackName)
+    : fallbackName;
+
+  const primary = (typeof getConfigValue === 'function')
+    ? getConfigValue('BRANDING.PRIMARY_COLOR', '#dc143c')
+    : '#dc143c';
+
+  const secondary = (typeof getConfigValue === 'function')
+    ? getConfigValue('BRANDING.SECONDARY_COLOR', '#b91c3c')
+    : '#b91c3c';
+
+  return {
+    clubName: fallbackName,
+    clubShortName: fallbackShort,
+    primaryColor: primary,
+    secondaryColor: secondary
+  };
+}
+
 /**
  * Create Enhanced Live Match interface
  */
 function createEnhancedLiveMatchInterface() {
+  const club = getUiClubContext_();
+  const homeGoalLabel = `🥅 ${club.clubShortName || club.clubName} Goal`;
   const html = `
 <!DOCTYPE html>
 <html>
 <head>
-  <title>⚽ Enhanced Live Match Console - Syston Tigers</title>
+  <title>⚽ Enhanced Live Match Console - ${club.clubName}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -23,7 +54,7 @@ function createEnhancedLiveMatchInterface() {
     }
     .header {
       text-align: center; margin-bottom: 30px;
-      background: linear-gradient(135deg, #dc143c, #b91c3c); color: white;
+      background: linear-gradient(135deg, ${club.primaryColor}, ${club.secondaryColor}); color: white;
       padding: 25px; border-radius: 15px;
     }
     .live-indicator {
@@ -37,7 +68,7 @@ function createEnhancedLiveMatchInterface() {
     }
     .scoreboard {
       background: #2d2d2d; padding: 30px; border-radius: 20px;
-      text-align: center; margin: 20px 0; border: 3px solid #dc143c;
+      text-align: center; margin: 20px 0; border: 3px solid ${club.primaryColor};
     }
     .score-display {
       font-size: 64px; font-weight: bold; margin: 20px 0;
@@ -49,7 +80,7 @@ function createEnhancedLiveMatchInterface() {
     }
     .section {
       background: #2d2d2d; margin: 20px 0; padding: 25px;
-      border-radius: 12px; border-left: 4px solid #dc143c;
+      border-radius: 12px; border-left: 4px solid ${club.primaryColor};
     }
     .btn {
       padding: 15px 25px; margin: 8px; font-size: 16px; font-weight: bold;
@@ -105,7 +136,7 @@ function createEnhancedLiveMatchInterface() {
   <div class="scoreboard">
     <div style="display: flex; justify-content: space-between; align-items: center;">
       <div style="flex: 1;">
-        <h3>Syston Tigers</h3>
+        <h3>${club.clubName}</h3>
         <div class="score-display" id="homeScore">0</div>
       </div>
       <div style="flex: 1;">
@@ -142,7 +173,7 @@ function createEnhancedLiveMatchInterface() {
   <div class="section">
     <h2>⚽ Goal Events</h2>
     <div class="grid">
-      <button class="btn btn-goal" onclick="addGoal('home')">🥅 Syston Goal</button>
+      <button class="btn btn-goal" onclick="addGoal('home')">${homeGoalLabel}</button>
       <button class="btn btn-goal" onclick="addGoal('away')">😔 Opposition Goal</button>
       <button class="btn btn-goal" onclick="addGoal('own')">⚽ Own Goal</button>
       <button class="btn btn-goal" onclick="addGoal('penalty')">⚽ Penalty Goal</button>
@@ -379,13 +410,13 @@ function createEnhancedLiveMatchInterface() {
 
     // Initialize
     updateDisplay();
-    console.log('⚽ Enhanced Live Match Console Ready!');
+    console.log('⚽ ${club.clubName} Enhanced Live Match Console Ready!');
   </script>
 </body>
 </html>`;
 
   return HtmlService.createHtmlOutput(html)
-    .setTitle('Enhanced Live Match Console - Syston Tigers')
+    .setTitle('Enhanced Live Match Console - ' + club.clubName)
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
@@ -393,11 +424,12 @@ function createEnhancedLiveMatchInterface() {
  * Create Statistics Dashboard
  */
 function createStatisticsInterface() {
+  const club = getUiClubContext_();
   const html = `
 <!DOCTYPE html>
 <html>
 <head>
-  <title>📊 Statistics Dashboard - Syston Tigers</title>
+  <title>📊 Statistics Dashboard - ${club.clubName}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -408,7 +440,7 @@ function createStatisticsInterface() {
     }
     .header {
       text-align: center; margin-bottom: 30px;
-      background: linear-gradient(135deg, #007bff, #0056b3); color: white;
+      background: linear-gradient(135deg, ${club.primaryColor}, ${club.secondaryColor}); color: white;
       padding: 25px; border-radius: 15px;
     }
     .stats-grid {
@@ -418,10 +450,10 @@ function createStatisticsInterface() {
     .stat-card {
       background: white; padding: 25px; border-radius: 12px;
       box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: center;
-      border-left: 4px solid #007bff;
+      border-left: 4px solid ${club.primaryColor};
     }
     .stat-number {
-      font-size: 36px; font-weight: bold; color: #007bff; margin: 10px 0;
+      font-size: 36px; font-weight: bold; color: ${club.primaryColor}; margin: 10px 0;
     }
     .stat-label {
       font-size: 14px; color: #666; text-transform: uppercase; letter-spacing: 1px;
@@ -737,13 +769,13 @@ function createStatisticsInterface() {
     // Auto-refresh stats every 5 minutes
     setInterval(refreshStats, 300000);
 
-    console.log('📊 Statistics Dashboard Ready!');
+    console.log('📊 ${club.clubName} Statistics Dashboard Ready!');
   </script>
 </body>
 </html>`;
 
   return HtmlService.createHtmlOutput(html)
-    .setTitle('Statistics Dashboard - Syston Tigers')
+    .setTitle('Statistics Dashboard - ' + club.clubName)
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
@@ -912,6 +944,9 @@ function handleLiveEvent(params) {
     // Trigger Make.com webhook for social media automation
     const webhookUrl = PropertiesService.getScriptProperties().getProperty('MAKE_WEBHOOK_URL');
     if (webhookUrl) {
+      const clubName = (typeof getConfigValue === 'function')
+        ? getConfigValue('SYSTEM.CLUB_NAME', 'Your Football Club')
+        : 'Your Football Club';
       const payload = {
         timestamp: new Date().toISOString(),
         event_type: eventData.eventType,
@@ -920,7 +955,7 @@ function handleLiveEvent(params) {
         home_score: eventData.homeScore,
         away_score: eventData.awayScore,
         source: 'enhanced_live_console',
-        club_name: 'Syston Tigers'
+        club_name: clubName
       };
 
       try {

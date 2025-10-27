@@ -197,10 +197,13 @@ class HttpClient {
    * @returns {Object} Prepared options
    */
   prepareRequestOptions(options) {
+    const clubIdentifier = String(
+      getConfigValue('SYSTEM.CLUB_SHORT_NAME', getConfigValue('SYSTEM.CLUB_NAME', 'Club'))
+    ).replace(/\s+/g, '') || 'Club';
     const prepared = {
       method: options.method || 'GET',
       headers: {
-        'User-Agent': `SystonTigersAutomation/${getConfigValue('SYSTEM.VERSION', '6.2.0')}`,
+        'User-Agent': `${clubIdentifier}Automation/${getConfigValue('SYSTEM.VERSION', '6.2.0')}`,
         'Accept': 'application/json, text/plain, */*',
         'Accept-Encoding': 'gzip, deflate',
         ...options.headers

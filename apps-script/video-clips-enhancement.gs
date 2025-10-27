@@ -1,5 +1,5 @@
 /**
- * @fileoverview Video Clip Metadata Enhancement for Syston Tigers Football Automation
+ * @fileoverview Video Clip Metadata Enhancement for configurable club automation
  * @version 6.2.0
  * @author Senior Software Architect
  * @description Additional video clip functions to add to video-clips.gs
@@ -10,6 +10,37 @@
  * @param {Object} goalData - Goal event data
  * @returns {Object} Processing result
  */
+
+function getVideoClipHashtags_(context = '') {
+  if (typeof getDynamicConfig === 'function') {
+    const dynamicConfig = getDynamicConfig();
+    if (dynamicConfig) {
+      if (dynamicConfig.SOCIAL_HASHTAGS) {
+        return dynamicConfig.SOCIAL_HASHTAGS;
+      }
+      const teamShort = dynamicConfig.TEAM_SHORT || dynamicConfig.TEAM_NAME;
+      if (teamShort) {
+        return `#${String(teamShort).replace(/\s+/g, '')} #FootballClub #LocalFootball${context === 'goal' ? ' #Goal' : ''}`;
+      }
+    }
+  }
+
+  if (typeof getConfigValue === 'function') {
+    const configuredHashtags = getConfigValue('BRANDING.SOCIAL_HASHTAGS', '');
+    if (configuredHashtags) {
+      return configuredHashtags;
+    }
+    const shortName = getConfigValue('SYSTEM.CLUB_SHORT_NAME', getConfigValue('SYSTEM.CLUB_NAME', 'Club'));
+    if (shortName) {
+      return `#${String(shortName).replace(/\s+/g, '')} #FootballClub #LocalFootball${context === 'goal' ? ' #Goal' : ''}`;
+    }
+  }
+
+  return context === 'goal'
+    ? '#FootballClub #LocalFootball #Goal'
+    : '#FootballClub #LocalFootball';
+}
+
 function createGoalVideoClip(goalData) {
   logger.enterFunction('createGoalVideoClip', {
     player: goalData.player,
@@ -30,9 +61,10 @@ function createGoalVideoClip(goalData) {
     // Create clip title and caption
     const assistText = assist ? ` (assist: ${assist})` : '';
     const clipTitle = `Goal - ${player} - ${minute}' vs ${opposition || 'Opposition'}`;
+    const hashtags = getVideoClipHashtags_('goal');
     const clipCaption = `⚽ GOAL! ${player} scores in the ${minute}' minute${assistText}
 
-#SystonTigers #NonLeagueFootball #LocalFootball #Goal`;
+${hashtags}`;
 
     // Get Video Clips sheet
     const videoClipsColumns = [
@@ -130,6 +162,7 @@ function createEventVideoClip(eventData, eventType) {
 
     // Create event-specific title and caption
     let clipTitle, clipCaption;
+    const hashtags = getVideoClipHashtags_();
 
     switch (eventType.toLowerCase()) {
       case 'card':
@@ -138,21 +171,21 @@ function createEventVideoClip(eventData, eventType) {
         clipTitle = `${eventData.cardType || 'Card'} - ${player} - ${minute}' vs ${opposition || 'Opposition'}`;
         clipCaption = `📟 ${eventData.cardType || 'Card'} card for ${player} in the ${minute}' minute
 
-#SystonTigers #NonLeagueFootball #LocalFootball`;
+${hashtags}`;
         break;
 
       case 'substitution':
         clipTitle = `Substitution - ${minute}' vs ${opposition || 'Opposition'}`;
         clipCaption = `🔄 Substitution in the ${minute}' minute: ${eventData.playerOff} ➡️ ${eventData.playerOn}
 
-#SystonTigers #NonLeagueFootball #LocalFootball`;
+${hashtags}`;
         break;
 
       default:
         clipTitle = `${eventType} - ${minute}' vs ${opposition || 'Opposition'}`;
         clipCaption = `⚽ ${eventType} in the ${minute}' minute
 
-#SystonTigers #NonLeagueFootball #LocalFootball`;
+${hashtags}`;
     }
 
     // Get Video Clips sheet
