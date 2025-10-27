@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { ApiError, signupTenant } from '@/lib/api';
 
 export default function OnboardPage() {
   const router = useRouter();
@@ -23,6 +24,9 @@ export default function OnboardPage() {
     enablePayments: false,
     enableHighlights: true,
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [status, setStatus] = useState<string | null>(null);
 
   const handleNext = () => {
     if (step < 4) setStep(step + 1);
@@ -33,15 +37,41 @@ export default function OnboardPage() {
   };
 
   const handleSubmit = async () => {
-    try {
-      // TODO: Call API to create tenant
-      console.log('Creating tenant with data:', formData);
+    if (isSubmitting) return;
 
-      // For now, just redirect to the new tenant
-      router.push(`/${formData.clubSlug}`);
-    } catch (error) {
-      console.error('Failed to create tenant:', error);
-      alert('Failed to create club. Please try again.');
+    const clubName = formData.clubName.trim();
+    const clubSlug = (formData.clubSlug || generateSlug(formData.clubName)).trim();
+    const contactEmail = formData.contactEmail.trim();
+    const contactName = formData.contactName.trim();
+
+    if (!clubName || !clubSlug || !contactEmail || !contactName) {
+      setError('Please complete all required fields before creating your club.');
+      setStep(1);
+      return;
+    }
+
+    setError(null);
+    setStatus(null);
+    setIsSubmitting(true);
+
+    try {
+      const tenant = await signupTenant({
+        clubName,
+        clubShortName: clubSlug,
+        contactEmail,
+        contactName,
+        makeWebhookUrl: formData.makeWebhookUrl.trim() || undefined,
+      });
+
+      const destination = tenant.adminConsoleUrl || tenant.setupUrl || `/admin/${tenant.id}`;
+
+      setStatus('Club created successfully. Redirecting to your admin console…');
+      router.push(destination);
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : (err as Error)?.message || 'Failed to create club.';
+      setError(message);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -90,6 +120,36 @@ export default function OnboardPage() {
         </div>
 
         <div className="card" style={{ padding: 'var(--spacing-xl)' }}>
+          {error && (
+            <div
+              role="alert"
+              style={{
+                marginBottom: 'var(--spacing-lg)',
+                padding: 'var(--spacing-md)',
+                borderRadius: 'var(--radius-md)',
+                background: 'rgba(255,0,0,0.06)',
+                color: 'var(--error)',
+              }}
+            >
+              {error}
+            </div>
+          )}
+
+          {status && !error && (
+            <div
+              role="status"
+              style={{
+                marginBottom: 'var(--spacing-lg)',
+                padding: 'var(--spacing-md)',
+                borderRadius: 'var(--radius-md)',
+                background: 'rgba(0,128,0,0.08)',
+                color: 'var(--success)',
+              }}
+            >
+              {status}
+            </div>
+          )}
+
           {/* Step 1: Club Details */}
           {step === 1 && (
             <div>
@@ -442,17 +502,17 @@ export default function OnboardPage() {
 
           {/* Navigation */}
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 'var(--spacing-xl)', paddingTop: 'var(--spacing-xl)', borderTop: '1px solid var(--border)' }}>
-            <button onClick={handlePrev} disabled={step === 1} className="btn btn-outline">
+            <button onClick={handlePrev} disabled={step === 1 || isSubmitting} className="btn btn-outline">
               Previous
             </button>
 
             {step < 4 ? (
-              <button onClick={handleNext} className="btn btn-primary">
+              <button onClick={handleNext} className="btn btn-primary" disabled={isSubmitting}>
                 Next
               </button>
             ) : (
-              <button onClick={handleSubmit} className="btn btn-primary">
-                Create Club
+              <button onClick={handleSubmit} className="btn btn-primary" disabled={isSubmitting}>
+                {isSubmitting ? 'Creating…' : 'Create Club'}
               </button>
             )}
           </div>
