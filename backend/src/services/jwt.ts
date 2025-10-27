@@ -89,3 +89,24 @@ export async function issueTenantAdminJWT(env: any, args: { tenant_id: string; t
 
   return token;
 }
+
+export async function issueTenantMemberJWT(env: any, args: { tenant_id: string; user_id: string; roles?: string[]; ttlMinutes?: number }) {
+  const secret = getJwtSecret(env);
+  const now = Math.floor(Date.now() / 1000);
+  const exp = now + (args.ttlMinutes ?? 60) * 60;
+  const roles = Array.isArray(args.roles) && args.roles.length ? args.roles : ["tenant_member"];
+
+  const token = await new SignJWT({
+    sub: args.user_id,
+    roles,
+    tenant_id: args.tenant_id,
+  })
+    .setProtectedHeader({ alg: "HS256", typ: "JWT" })
+    .setIssuer(env.JWT_ISSUER)
+    .setAudience(env.JWT_AUDIENCE)
+    .setIssuedAt(now)
+    .setExpirationTime(exp)
+    .sign(secret);
+
+  return token;
+}

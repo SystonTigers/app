@@ -21,6 +21,7 @@ import { rateLimit } from "./middleware/rateLimit";
 import { newRequestId, logJSON } from "./lib/log";
 import { parse, isValidationError } from "./lib/validate";
 import { healthz, readyz } from "./routes/health";
+import { handleAuthRegister, handleAuthLogin } from "./routes/auth";
 declare const APP_VERSION: string;
 
 const DEV_DEFAULT_CORS = new Set([
@@ -173,6 +174,14 @@ export default {
         if (typeof limitResult.remaining === "number") {
           corsHdrs.set("X-RateLimit-Remaining", String(Math.max(limitResult.remaining, 0)));
         }
+      }
+
+      if (url.pathname === `/api/${v}/auth/register` && req.method === "POST") {
+        return await handleAuthRegister(req, env, corsHdrs);
+      }
+
+      if (url.pathname === `/api/${v}/auth/login` && req.method === "POST") {
+        return await handleAuthLogin(req, env, corsHdrs);
       }
 
     // -------- Public signup endpoint --------
