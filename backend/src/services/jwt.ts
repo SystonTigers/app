@@ -77,7 +77,7 @@ export async function issueTenantAdminJWT(env: any, args: { tenant_id: string; t
   const exp = now + args.ttlMinutes * 60;
 
   const token = await new SignJWT({
-    roles: ["tenant_admin"],
+    roles: ["admin", "tenant_admin"],
     tenant_id: args.tenant_id,
   })
     .setProtectedHeader({ alg: "HS256", typ: "JWT" })
