@@ -3,6 +3,7 @@ import { View, ScrollView, StyleSheet, KeyboardAvoidingView, Platform } from 're
 import { Text, TextInput, Button, Card, RadioButton, Chip } from 'react-native-paper';
 import { COLORS, TENANT_ID } from '../config';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { submitRegistration } from './authController';
 
 interface RegisterScreenProps {
   onRegister: (userId: string, role: string, token: string) => void;
@@ -88,38 +89,36 @@ export default function RegisterScreen({ onRegister, onNavigateToLogin }: Regist
     }
 
     setLoading(true);
+    setErrors({});
 
     try {
-      // TODO: Replace with real API call
-      // const response = await api.post('/api/v1/auth/register', {
-      //   tenant: TENANT_ID,
-      //   firstName: formData.firstName.trim(),
-      //   lastName: formData.lastName.trim(),
-      //   email: formData.email.trim().toLowerCase(),
-      //   password: formData.password,
-      //   role: formData.role,
-      //   phone: formData.phone.trim(),
-      //   playerName: formData.playerName.trim() || undefined,
-      // });
-      //
-      // if (response.data.success) {
-      //   const { userId, role, token } = response.data.data;
-      //   await AsyncStorage.setItem('auth_token', token);
-      //   await AsyncStorage.setItem('user_id', userId);
-      //   await AsyncStorage.setItem('user_role', role);
-      //   onRegister(userId, role, token);
-      // } else {
-      //   setErrors({ form: response.data.error?.message || 'Registration failed' });
-      // }
+      const outcome = await submitRegistration({
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        password: formData.password,
+        role: formData.role,
+        phone: formData.phone,
+        playerName: formData.role === 'parent' ? formData.playerName : undefined,
+        promoCode: formData.promoCode,
+      });
 
-      // Mock registration for development
-      setTimeout(() => {
-        const mockUserId = `user-${Date.now()}`;
-        const mockToken = `mock-jwt-token-${mockUserId}`;
-        onRegister(mockUserId, formData.role, mockToken);
-      }, 1500);
+      if ('error' in outcome) {
+        const fieldErrors = { ...((outcome.fieldErrors as Record<string, string> | undefined) ?? {}) };
+        if (!fieldErrors.form) {
+          fieldErrors.form = outcome.error;
+        }
+        setErrors(fieldErrors);
+      } else {
+        onRegister(outcome.result.user.id, outcome.result.user.role, outcome.result.token);
+      }
     } catch (err) {
-      setErrors({ form: 'Network error. Please try again.' });
+      if (err instanceof Error) {
+        setErrors({ form: err.message || 'Registration failed. Please try again.' });
+      } else {
+        setErrors({ form: 'Registration failed. Please try again.' });
+      }
+    } finally {
       setLoading(false);
     }
   };

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, ScrollView, StyleSheet, Image, KeyboardAvoidingView, Platform } from 'react-native';
 import { Text, TextInput, Button, Card, IconButton } from 'react-native-paper';
 import { COLORS, TENANT_ID } from '../config';
+import { submitLogin } from './authController';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 interface LoginScreenProps {
@@ -33,40 +34,23 @@ export default function LoginScreen({ onLogin, onNavigateToRegister, onForgotPas
     setError('');
 
     try {
-      // TODO: Replace with real API call
-      // const response = await api.post('/api/v1/auth/login', {
-      //   tenant: TENANT_ID,
-      //   email: email.trim().toLowerCase(),
-      //   password,
-      // });
-      //
-      // if (response.data.success) {
-      //   const { userId, role, token } = response.data.data;
-      //   await AsyncStorage.setItem('auth_token', token);
-      //   await AsyncStorage.setItem('user_id', userId);
-      //   await AsyncStorage.setItem('user_role', role);
-      //   onLogin(userId, role, token);
-      // } else {
-      //   setError(response.data.error?.message || 'Login failed');
-      // }
+      const outcome = await submitLogin({
+        email: email.trim().toLowerCase(),
+        password,
+      });
 
-      // Mock login for development
-      setTimeout(() => {
-        if (email === 'admin@systontigers.co.uk' && password === 'admin123') {
-          onLogin('user-001', 'admin', 'mock-jwt-token-admin');
-        } else if (email === 'coach@systontigers.co.uk' && password === 'coach123') {
-          onLogin('user-002', 'coach', 'mock-jwt-token-coach');
-        } else if (email === 'player@systontigers.co.uk' && password === 'player123') {
-          onLogin('user-003', 'player', 'mock-jwt-token-player');
-        } else if (email === 'parent@systontigers.co.uk' && password === 'parent123') {
-          onLogin('user-004', 'parent', 'mock-jwt-token-parent');
-        } else {
-          setError('Invalid email or password');
-        }
-        setLoading(false);
-      }, 1500);
+      if ('error' in outcome) {
+        setError(outcome.error);
+      } else {
+        onLogin(outcome.result.user.id, outcome.result.user.role, outcome.result.token);
+      }
     } catch (err) {
-      setError('Network error. Please try again.');
+      if (err instanceof Error) {
+        setError(err.message || 'Unable to sign in. Please try again.');
+      } else {
+        setError('Unable to sign in. Please try again.');
+      }
+    } finally {
       setLoading(false);
     }
   };
