@@ -8,7 +8,9 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
-    "lint": "eslint . --ext .ts,.tsx"
+    "lint": "eslint . --ext .ts,.tsx",
+    "build:test": "tsc --project tsconfig.test.json",
+    "test": "npm run build:test && node --test $(find dist-tests -name '*.test.js')"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.2",
