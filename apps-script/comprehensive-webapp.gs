@@ -1,20 +1,34 @@
 /**
  * Comprehensive Web App - Full Admin Interface
- * Complete management system for Syston Tigers via web interface
+ * Complete management system for tenant-specific football automation via web interface
  * @version 6.2.0
  */
 
 // Disabled functions removed - routing handled in main.gs
 
+function sanitizeHtml_(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 /**
  * Create main admin dashboard
  */
 function createMainDashboard() {
+  const rawClubName = getConfigValue('SYSTEM.CLUB_NAME', 'Your Football Club');
+  const rawSystemName = getConfigValue('SYSTEM.NAME', 'Football Club Automation System');
+  const sanitizedClubName = sanitizeHtml_(rawClubName);
+  const sanitizedSystemName = sanitizeHtml_(rawSystemName);
+
   const html = `
 <!DOCTYPE html>
 <html>
 <head>
-  <title>🏈 Syston Tigers - Admin Dashboard</title>
+  <title>🏈 ${sanitizedClubName} - Admin Dashboard</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -56,9 +70,9 @@ function createMainDashboard() {
 <body>
   <div class="dashboard">
     <div class="header">
-      <h1>🏈 Syston Tigers</h1>
+      <h1>🏈 ${sanitizedClubName}</h1>
       <h2>Complete Admin Dashboard</h2>
-      <p>Manage everything from one place - no technical skills required!</p>
+      <p>Manage everything for ${sanitizedClubName} in ${sanitizedSystemName} - no technical skills required!</p>
     </div>
 
     <div class="cards">
@@ -173,11 +187,13 @@ function createMainDashboard() {
  * Create player management interface
  */
 function createPlayerManagementInterface() {
+  const clubName = sanitizeHtml_(getConfigValue('SYSTEM.CLUB_NAME', 'Your Football Club'));
+
   const html = `
 <!DOCTYPE html>
 <html>
 <head>
-  <title>👥 Player Management - Syston Tigers</title>
+  <title>👥 Player Management - ${clubName}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -464,11 +480,17 @@ function handleAddPlayer(params) {
  * Create fixture management interface
  */
 function createFixtureManagementInterface() {
+  const rawClubName = getConfigValue('SYSTEM.CLUB_NAME', 'Your Football Club');
+  const rawClubShortName = getConfigValue('SYSTEM.CLUB_SHORT_NAME', rawClubName);
+  const clubName = sanitizeHtml_(rawClubName);
+  const hashtagSeed = (rawClubShortName || rawClubName || 'Club').replace(/\s+/g, '');
+  const hashtagPlaceholder = sanitizeHtml_(`#${hashtagSeed || 'Club'} #FootballClub #LocalFootball`);
+
   const html = `
 <!DOCTYPE html>
 <html>
 <head>
-  <title>📅 Fixture Management - Syston Tigers</title>
+  <title>📅 Fixture Management - ${clubName}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -564,7 +586,7 @@ function createFixtureManagementInterface() {
           <div class="form-group">
             <label for="venueDetails">Venue Details</label>
             <input type="text" id="venueDetails" name="venueDetails"
-                   placeholder="e.g. Syston Sports Park">
+                   placeholder="e.g. Home Stadium">
           </div>
 
           <div class="form-group">
@@ -764,11 +786,14 @@ function handleAddFixture(params) {
  * Create Season Setup interface
  */
 function createSeasonSetupInterface() {
+  const rawClubName = getConfigValue('SYSTEM.CLUB_NAME', 'Your Football Club');
+  const clubName = sanitizeHtml_(rawClubName);
+
   const html = `
 <!DOCTYPE html>
 <html>
 <head>
-  <title>🏆 Season Setup - Syston Tigers</title>
+  <title>🏆 Season Setup - ${clubName}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -867,7 +892,7 @@ function createSeasonSetupInterface() {
 
       <div class="form-group">
         <label for="homeVenue">Home Venue</label>
-        <input type="text" id="homeVenue" name="homeVenue" placeholder="e.g., Syston Sports Ground">
+        <input type="text" id="homeVenue" name="homeVenue" placeholder="e.g., Home Ground">
       </div>
 
       <div class="form-group">
@@ -924,7 +949,7 @@ function createSeasonSetupInterface() {
 
     <div class="form-group">
       <label for="socialHashtags">Social Media Hashtags</label>
-      <input type="text" id="socialHashtags" name="socialHashtags" placeholder="#SystonTigers #FootballClub #LocalFootball">
+      <input type="text" id="socialHashtags" name="socialHashtags" placeholder="${hashtagPlaceholder}">
     </div>
   </div>
 
@@ -1007,11 +1032,14 @@ function createSeasonSetupInterface() {
  * Create Historical Data Entry interface
  */
 function createHistoricalDataInterface() {
+  const rawClubName = getConfigValue('SYSTEM.CLUB_NAME', 'Your Football Club');
+  const clubName = sanitizeHtml_(rawClubName);
+
   const html = `
 <!DOCTYPE html>
 <html>
 <head>
-  <title>📊 Historical Data Import - Syston Tigers</title>
+  <title>📊 Historical Data Import - ${clubName}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -1103,7 +1131,7 @@ function createHistoricalDataInterface() {
 
       <div class="grid">
         <div class="form-group">
-          <label for="homeScore">Syston Tigers Score</label>
+          <label for="homeScore">${clubName} Score</label>
           <input type="number" id="homeScore" name="homeScore" min="0" max="20" required>
         </div>
         <div class="form-group">

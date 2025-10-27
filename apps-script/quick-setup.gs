@@ -12,10 +12,15 @@ function runQuickSetup() {
   const ui = SpreadsheetApp.getUi();
 
   try {
+    const defaultProfile = getConfigValue('CUSTOMER.DEFAULT_PROFILE', {});
+    const systemName = getConfigValue('SYSTEM.NAME', 'Football Club Automation System');
+    const defaultClubName = getConfigValue('SYSTEM.CLUB_NAME', defaultProfile && defaultProfile.clubName ? defaultProfile.clubName : 'Your Football Club');
+    const existingShortName = getConfigValue('SYSTEM.CLUB_SHORT_NAME', defaultProfile && defaultProfile.clubShortName ? defaultProfile.clubShortName : '');
+
     // Welcome message
     const welcome = ui.alert(
-      '🏈 Syston Tigers Setup',
-      'Welcome to the Syston Tigers Football Automation Setup!\n\n' +
+      `⚙️ ${systemName} Quick Setup`,
+      `Welcome to the ${defaultClubName} automation setup!\n\n` +
       'This will configure your system with the required settings.\n\n' +
       'Ready to start?',
       ui.ButtonSet.YES_NO
@@ -57,9 +62,25 @@ function runQuickSetup() {
       return;
     }
 
+    // Collect club name for white-label branding
+    const clubNameResponse = ui.prompt(
+      'Step 2: Club Name',
+      `Enter the name of your club (current: ${defaultClubName})`,
+      ui.ButtonSet.OK_CANCEL
+    );
+
+    if (clubNameResponse.getSelectedButton() !== ui.Button.OK) {
+      ui.alert('Setup cancelled.');
+      return;
+    }
+
+    const resolvedClubName = (clubNameResponse.getResponseText() || '').trim() || defaultClubName;
+    const derivedShortName = generateClubShortName_(resolvedClubName);
+    const resolvedShortName = existingShortName && existingShortName !== 'YFC' ? existingShortName : derivedShortName;
+
     // Get Make.com webhook (optional)
     const webhookResponse = ui.prompt(
-      'Step 2: Make.com Webhook (Optional)',
+      'Step 3: Make.com Webhook (Optional)',
       'Enter your Make.com webhook URL (or leave blank to skip):\n\n' +
       'Example: https://hook.integromat.com/abc123...',
       ui.ButtonSet.OK_CANCEL
@@ -72,18 +93,31 @@ function runQuickSetup() {
 
     // Save properties
     const properties = PropertiesService.getScriptProperties();
-    properties.setProperties({
+    const propertiesToSet = {
       'SPREADSHEET_ID': spreadsheetId,
+      'SYSTEM.SPREADSHEET_ID': spreadsheetId,
       'MAKE_WEBHOOK_URL': webhookUrl || '',
+      'MAKE.WEBHOOK_URL': webhookUrl || '',
       'SETUP_COMPLETED': 'true',
       'SETUP_DATE': new Date().toISOString(),
-      'CLUB_NAME': 'Syston Tigers'
-    });
+      'SYSTEM.CLUB_NAME': resolvedClubName,
+      'CLUB_NAME': resolvedClubName
+    };
+
+    if (resolvedShortName) {
+      propertiesToSet['SYSTEM.CLUB_SHORT_NAME'] = resolvedShortName;
+    }
+
+    properties.setProperties(propertiesToSet, false);
+
+    if (typeof clearConfigOverrideCache_ === 'function') {
+      clearConfigOverrideCache_();
+    }
 
     // Success message
     ui.alert(
       '🎉 Setup Complete!',
-      'Your Syston Tigers automation is now configured!\n\n' +
+      `${resolvedClubName} automation is now configured!\n\n` +
       '✅ Google Sheets: Connected\n' +
       `${webhookUrl ? '✅' : '⏭️'} Make.com: ${webhookUrl ? 'Connected' : 'Skipped'}\n\n` +
       'Your web app should now work correctly.',
@@ -117,7 +151,7 @@ function checkConfiguration() {
       webhookUrl: properties.getProperty('MAKE_WEBHOOK_URL'),
       setupCompleted: properties.getProperty('SETUP_COMPLETED'),
       setupDate: properties.getProperty('SETUP_DATE'),
-      clubName: properties.getProperty('CLUB_NAME')
+      clubName: properties.getProperty('SYSTEM.CLUB_NAME') || properties.getProperty('CLUB_NAME')
     };
 
     console.log('Current Configuration:', JSON.stringify(config, null, 2));
@@ -143,6 +177,25 @@ function checkConfiguration() {
       error: error.toString()
     };
   }
+}
+
+function generateClubShortName_(clubName) {
+  if (!clubName) {
+    return '';
+  }
+
+  const initials = clubName
+    .split(/\s+/)
+    .filter(Boolean)
+    .map(segment => segment.charAt(0).toUpperCase())
+    .join('');
+
+  if (initials.length >= 2 && initials.length <= 6) {
+    return initials;
+  }
+
+  const sanitized = clubName.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+  return sanitized.substring(0, 6) || sanitized || initials;
 }
 
 /**
@@ -371,13 +424,20 @@ function quickFixWebApp(spreadsheetId) {
   try {
     // Test the spreadsheet ID
     const sheet = SpreadsheetApp.openById(spreadsheetId);
+    const defaultProfile = getConfigValue('CUSTOMER.DEFAULT_PROFILE', {});
+    const clubName = String(getConfigValue('SYSTEM.CLUB_NAME', defaultProfile && defaultProfile.clubName ? defaultProfile.clubName : 'Your Football Club'));
 
     // Set minimum properties
     PropertiesService.getScriptProperties().setProperties({
       'SPREADSHEET_ID': spreadsheetId,
       'SETUP_COMPLETED': 'true',
-      'CLUB_NAME': 'Syston Tigers'
+      'SYSTEM.CLUB_NAME': clubName,
+      'CLUB_NAME': clubName
     });
+
+    if (typeof clearConfigOverrideCache_ === 'function') {
+      clearConfigOverrideCache_();
+    }
 
     console.log('✅ Quick fix completed - Web app should now work');
     console.log(`✅ Connected to spreadsheet: "${sheet.getName()}"`);
