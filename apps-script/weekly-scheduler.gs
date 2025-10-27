@@ -766,7 +766,7 @@ class WeeklyScheduler {
       this.logger.error('Failed to get rotated quote', { error: error.toString() });
       return {
         text: "Every match is a new opportunity to show what we're made of.",
-        author: "Syston Tigers",
+        author: getConfigValue('SYSTEM.CLUB_NAME', 'Your Football Club'),
         category: "motivation"
       };
     }

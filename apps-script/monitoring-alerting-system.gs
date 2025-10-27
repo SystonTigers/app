@@ -885,6 +885,9 @@ class MonitoringAlertingSystem {
    * @returns {string} Email body
    */
   formatAlertEmail(alert) {
+    const clubName = (typeof getConfigValue === 'function')
+      ? getConfigValue('SYSTEM.CLUB_NAME', 'Your Football Club')
+      : 'Your Football Club';
     return `
 System Alert: ${alert.type}
 Severity: ${alert.severity.toUpperCase()}
@@ -896,7 +899,7 @@ Metrics: ${JSON.stringify(alert.metrics, null, 2)}
 
 Please investigate this issue immediately.
 
-Syston Tigers Automation System
+${clubName} Automation System
     `.trim();
   }
 

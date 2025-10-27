@@ -872,6 +872,9 @@ class MakeIntegration {
   executeWebhookCall(webhookUrl, payload, options = {}) {
     const maxRetries = options.maxRetries || getConfigValue('MAKE.WEBHOOK_RETRY_ATTEMPTS', 3);
     const retryDelay = options.retryDelay || getConfigValue('MAKE.WEBHOOK_RETRY_DELAY_MS', 2000);
+    const clubIdentifier = String(
+      getConfigValue('SYSTEM.CLUB_SHORT_NAME', getConfigValue('SYSTEM.CLUB_NAME', 'Club'))
+    ).replace(/\s+/g, '') || 'Club';
     
     let lastError = null;
     
@@ -889,7 +892,7 @@ class MakeIntegration {
         // Build headers with optional signature
         const headers = {
           'Content-Type': 'application/json',
-          'User-Agent': `SystonTigersAutomation/${getConfigValue('SYSTEM.VERSION')}`,
+          'User-Agent': `${clubIdentifier}Automation/${getConfigValue('SYSTEM.VERSION')}`,
           'X-Attempt': attempt.toString(),
           'X-Event-Type': payload.event_type,
           'X-Make-Timestamp': timestamp
@@ -1758,12 +1761,13 @@ class MakeIntegration {
     try {
       // @testHook(webhook_connectivity_test_start)
       
+      const clubName = getConfigValue('SYSTEM.CLUB_NAME', 'Your Football Club');
       const testPayload = {
         event_type: 'system_test',
         timestamp: DateUtils.formatISO(DateUtils.now()),
         test: true,
         test_data: {
-          message: 'Connectivity test from Syston Tigers automation',
+          message: `Connectivity test from ${clubName} automation`,
           system_version: getConfigValue('SYSTEM.VERSION'),
           test_id: StringUtils.generateId('test')
         }
