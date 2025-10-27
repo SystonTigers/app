@@ -151,11 +151,14 @@ class EnterpriseOperations {
    * @returns {Object} Response data
    */
   static async makeSecureHttpRequest(url, payload, options = {}) {
+    const clubIdentifier = String(
+      getConfigValue('SYSTEM.CLUB_SHORT_NAME', getConfigValue('SYSTEM.CLUB_NAME', 'Club'))
+    ).replace(/\s+/g, '') || 'Club';
     const requestOptions = {
       method: options.method || 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'User-Agent': 'SystonTigers-Automation/6.2.0',
+        'User-Agent': `${clubIdentifier}-Automation/${getConfigValue('SYSTEM.VERSION', '6.2.0')}`,
         ...options.headers
       },
       payload: JSON.stringify(payload),

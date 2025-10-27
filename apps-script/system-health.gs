@@ -1,5 +1,5 @@
 /**
- * @fileoverview Full system health check for Syston Tigers automation.
+ * @fileoverview Full system health check for configurable club automation.
  * @version 1.0
  * @author ChatGPT
  * @description Validates sheet structure, triggers, key functions, and live data flows.

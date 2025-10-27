@@ -458,10 +458,18 @@ class FAWebsiteScraper {
    * @returns {string}
    */
   getOurTeamName() {
-    if (typeof getConfigValue === 'function') {
-      return getConfigValue('TEAM_NAME', 'Syston Town Juniors U16 Tigers');
+    if (typeof getDynamicConfig === 'function') {
+      const dynamicConfig = getDynamicConfig();
+      if (dynamicConfig && dynamicConfig.TEAM_NAME) {
+        return dynamicConfig.TEAM_NAME;
+      }
     }
-    return 'Syston Town Juniors U16 Tigers';
+
+    if (typeof getConfigValue === 'function') {
+      return getConfigValue('SYSTEM.CLUB_NAME', 'Your Football Club');
+    }
+
+    return 'Your Football Club';
   }
 
   /**
