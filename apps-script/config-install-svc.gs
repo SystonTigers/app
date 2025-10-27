@@ -215,17 +215,43 @@ class CustomerInstaller {
     const properties = PropertiesService.getScriptProperties();
     const propertiesToSet = {};
 
+    const assignProperty = (key, value) => {
+      if (value === undefined || value === null || value === '') {
+        return;
+      }
+      propertiesToSet[key] = String(value).trim();
+    };
+
     this.getConfigKeys().nonSecrets.forEach(key => {
       if (configMap[key]) {
-        propertiesToSet[`CUSTOMER.${key}`] = configMap[key];
+        assignProperty(`CUSTOMER.${key}`, configMap[key]);
       }
     });
 
     // Add system properties
-    propertiesToSet['SPREADSHEET_ID'] = SpreadsheetApp.getActiveSpreadsheet().getId();
-    propertiesToSet['SYSTEM.CLUB_NAME'] = configMap['TEAM_NAME'] || 'Football Club';
+    assignProperty('SPREADSHEET_ID', SpreadsheetApp.getActiveSpreadsheet().getId());
+    assignProperty('SYSTEM.CLUB_NAME', configMap['TEAM_NAME'] || 'Football Club');
+    assignProperty('CUSTOMER.TEAM_NAME', configMap['TEAM_NAME']);
+    assignProperty('SYSTEM.CLUB_SHORT_NAME', configMap['TEAM_SHORT'] || configMap['TEAM_NAME']);
+    assignProperty('CUSTOMER.TEAM_SHORT', configMap['TEAM_SHORT'] || configMap['TEAM_NAME']);
+    assignProperty('SYSTEM.LEAGUE', configMap['LEAGUE_NAME']);
+    assignProperty('CUSTOMER.LEAGUE_NAME', configMap['LEAGUE_NAME']);
+    assignProperty('SYSTEM.AGE_GROUP', configMap['AGE_GROUP']);
+    assignProperty('CUSTOMER.AGE_GROUP', configMap['AGE_GROUP']);
+    assignProperty('SYSTEM.SEASON', configMap['SEASON']);
+    assignProperty('CUSTOMER.SEASON', configMap['SEASON']);
+    assignProperty('BRANDING.PRIMARY_COLOR', configMap['HOME_COLOUR']);
+    assignProperty('BRANDING.SECONDARY_COLOR', configMap['AWAY_COLOUR']);
+    assignProperty('BRANDING.BADGE_URL', configMap['BADGE_URL']);
+    assignProperty('CUSTOMER.BADGE_URL', configMap['BADGE_URL']);
+    assignProperty('CUSTOMER.HOME_VENUE', configMap['HOME_VENUE']);
+    assignProperty('CUSTOMER.CONTACT_EMAIL', configMap['CONTACT_EMAIL']);
+    assignProperty('SYSTEM.TIMEZONE', configMap['TIMEZONE']);
 
-    properties.setProperties(propertiesToSet);
+    properties.setProperties(propertiesToSet, false);
+    if (typeof invalidateRuntimeConfigCache_ === 'function') {
+      invalidateRuntimeConfigCache_();
+    }
     console.log(`✅ Installed ${Object.keys(propertiesToSet).length} configuration properties`);
   }
 
