@@ -8,6 +8,11 @@ import {
   View,
 } from 'react-native';
 import { TextInput } from 'react-native-paper';
+import React, { useState } from 'react';
+import { View, ScrollView, StyleSheet, Image, KeyboardAvoidingView, Platform } from 'react-native';
+import { Text, TextInput, Button, Card, IconButton } from 'react-native-paper';
+import { COLORS, TENANT_ID } from '../config';
+import { submitLogin } from './authController';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Button, Card } from '../components';
 import { useTheme } from '../theme';
@@ -72,8 +77,23 @@ export default function LoginScreen({
         }
         setLoading(false);
       }, 1500);
+      const outcome = await submitLogin({
+        email: email.trim().toLowerCase(),
+        password,
+      });
+
+      if ('error' in outcome) {
+        setError(outcome.error);
+      } else {
+        onLogin(outcome.result.user.id, outcome.result.user.role, outcome.result.token);
+      }
     } catch (err) {
-      setError('Network error. Please try again.');
+      if (err instanceof Error) {
+        setError(err.message || 'Unable to sign in. Please try again.');
+      } else {
+        setError('Unable to sign in. Please try again.');
+      }
+    } finally {
       setLoading(false);
     }
   };

@@ -1,5 +1,313 @@
-import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import axios, { AxiosError } from 'axios';
 import { API_BASE_URL, TENANT_ID } from '../config';
+
+export const AUTH_STORAGE_KEYS = {
+  token: 'auth_token',
+  refreshToken: 'auth_refresh_token',
+  userId: 'user_id',
+  role: 'user_role',
+  firstName: 'user_firstName',
+  lastName: 'user_lastName',
+  email: 'user_email',
+} as const;
+
+export interface AuthUser {
+  id: string;
+  role: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+}
+
+export interface AuthResult {
+  token: string;
+  refreshToken?: string;
+  user: AuthUser;
+}
+
+export class AuthError extends Error {
+  fieldErrors: Record<string, string>;
+
+  constructor(message: string, fieldErrors: Record<string, string> = {}) {
+    super(message);
+    this.name = 'AuthError';
+    this.fieldErrors = fieldErrors;
+  }
+}
+
+const sanitizeString = (value?: string | null) => {
+  if (typeof value !== 'string') {
+    return undefined;
+  }
+  const trimmed = value.trim();
+  return trimmed.length ? trimmed : undefined;
+};
+
+const persistAuthResult = async ({ token, refreshToken, user }: AuthResult) => {
+  const entries: [string, string][] = [
+    [AUTH_STORAGE_KEYS.token, token],
+    [AUTH_STORAGE_KEYS.userId, user.id],
+    [AUTH_STORAGE_KEYS.role, user.role],
+  ];
+
+  if (user.firstName) {
+    entries.push([AUTH_STORAGE_KEYS.firstName, user.firstName]);
+  }
+
+  if (user.lastName) {
+    entries.push([AUTH_STORAGE_KEYS.lastName, user.lastName]);
+  }
+
+  if (user.email) {
+    entries.push([AUTH_STORAGE_KEYS.email, user.email]);
+  }
+
+  if (refreshToken) {
+    entries.push([AUTH_STORAGE_KEYS.refreshToken, refreshToken]);
+  }
+
+  await AsyncStorage.multiSet(entries);
+
+  if (!refreshToken) {
+    await AsyncStorage.removeItem(AUTH_STORAGE_KEYS.refreshToken);
+  }
+};
+
+const clearAuthStorage = async () => {
+  await AsyncStorage.multiRemove([
+    AUTH_STORAGE_KEYS.token,
+    AUTH_STORAGE_KEYS.refreshToken,
+    AUTH_STORAGE_KEYS.userId,
+    AUTH_STORAGE_KEYS.role,
+    AUTH_STORAGE_KEYS.firstName,
+    AUTH_STORAGE_KEYS.lastName,
+    AUTH_STORAGE_KEYS.email,
+  ]);
+};
+
+const extractAuthResult = (responseData: any): AuthResult => {
+  if (!responseData) {
+    throw new AuthError('Empty response from authentication service');
+  }
+
+  if (typeof responseData.success === 'boolean') {
+    if (!responseData.success) {
+      const errorPayload = responseData.error ?? {};
+      const message =
+        typeof errorPayload === 'string'
+          ? errorPayload
+          : sanitizeString(errorPayload.message) ?? 'Authentication failed';
+      const fieldErrors =
+        errorPayload && typeof errorPayload === 'object' && errorPayload.fields
+          ? (errorPayload.fields as Record<string, string>)
+          : {};
+      throw new AuthError(message, fieldErrors);
+    }
+    responseData = responseData.data ?? responseData.result ?? responseData;
+  }
+
+  const token =
+    sanitizeString(responseData.token) ||
+    sanitizeString(responseData.jwt) ||
+    sanitizeString(responseData.accessToken) ||
+    sanitizeString(responseData.idToken);
+
+  if (!token) {
+    throw new AuthError('Authentication token missing from response');
+  }
+
+  const refreshToken =
+    sanitizeString(responseData.refreshToken) ||
+    sanitizeString(responseData.refresh_token) ||
+    sanitizeString(responseData.refresh);
+
+  const userData = responseData.user ?? responseData.profile ?? responseData;
+  const userId =
+    sanitizeString(userData?.id) ||
+    sanitizeString(userData?.userId) ||
+    sanitizeString(responseData.userId);
+
+  if (!userId) {
+    throw new AuthError('User identifier missing from response');
+  }
+
+  const role =
+    sanitizeString(userData?.role) ||
+    sanitizeString(responseData.role) ||
+    sanitizeString(userData?.userRole) ||
+    'member';
+
+  const firstName = sanitizeString(userData?.firstName ?? userData?.givenName ?? responseData.firstName);
+  const lastName = sanitizeString(userData?.lastName ?? userData?.familyName ?? responseData.lastName);
+  const email = sanitizeString(userData?.email ?? responseData.email);
+
+  return {
+    token,
+    refreshToken: refreshToken ?? undefined,
+    user: {
+      id: userId,
+      role,
+      firstName,
+      lastName,
+      email,
+    },
+  };
+};
+
+const handleAuthError = (error: unknown, fallbackMessage: string): never => {
+  if (axios.isAxiosError(error)) {
+    const axiosError = error as AxiosError<any>;
+    const errorData = axiosError.response?.data;
+
+    if (errorData) {
+      const candidate =
+        typeof errorData?.success === 'boolean' || errorData?.error
+          ? errorData
+          : { success: false, error: errorData };
+
+      try {
+        extractAuthResult(candidate);
+      } catch (err) {
+        if (err instanceof AuthError) {
+          throw err;
+        }
+      }
+    }
+
+    const message =
+      sanitizeString((axiosError.response?.data as any)?.error?.message) ||
+      sanitizeString((axiosError.response?.data as any)?.error) ||
+      sanitizeString((axiosError.response?.data as any)?.message) ||
+      sanitizeString(axiosError.message);
+
+    throw new AuthError(message ?? fallbackMessage);
+  }
+
+  if (error instanceof AuthError) {
+    throw error;
+  }
+
+  throw new AuthError(fallbackMessage);
+};
+
+export interface LoginParams {
+  email: string;
+  password: string;
+}
+
+export interface RegisterParams {
+  firstName: string;
+  lastName: string;
+  email: string;
+  password: string;
+  role: string;
+  phone?: string;
+  playerName?: string;
+  promoCode?: string;
+}
+
+const readAuthFromStorage = async (): Promise<AuthResult | null> => {
+  const entries = await AsyncStorage.multiGet([
+    AUTH_STORAGE_KEYS.token,
+    AUTH_STORAGE_KEYS.refreshToken,
+    AUTH_STORAGE_KEYS.userId,
+    AUTH_STORAGE_KEYS.role,
+    AUTH_STORAGE_KEYS.firstName,
+    AUTH_STORAGE_KEYS.lastName,
+    AUTH_STORAGE_KEYS.email,
+  ]);
+
+  const map = Object.fromEntries(entries) as Record<string, string | null>;
+  const token = sanitizeString(map[AUTH_STORAGE_KEYS.token]);
+  const userId = sanitizeString(map[AUTH_STORAGE_KEYS.userId]);
+  const role = sanitizeString(map[AUTH_STORAGE_KEYS.role]);
+
+  if (!token || !userId || !role) {
+    return null;
+  }
+
+  return {
+    token,
+    refreshToken: sanitizeString(map[AUTH_STORAGE_KEYS.refreshToken]) ?? undefined,
+    user: {
+      id: userId,
+      role,
+      firstName: sanitizeString(map[AUTH_STORAGE_KEYS.firstName]),
+      lastName: sanitizeString(map[AUTH_STORAGE_KEYS.lastName]),
+      email: sanitizeString(map[AUTH_STORAGE_KEYS.email]),
+    },
+  };
+};
+
+export const authApi = {
+  login: async ({ email, password }: LoginParams): Promise<AuthResult> => {
+    const payload = {
+      tenant: TENANT_ID,
+      email: email.trim().toLowerCase(),
+      password,
+    };
+
+    try {
+      const response = await api.post('/api/v1/auth/login', payload);
+      const authResult = extractAuthResult(response.data);
+      await persistAuthResult(authResult);
+      return authResult;
+    } catch (error) {
+      handleAuthError(error, 'Unable to sign in. Please check your credentials.');
+    }
+  },
+
+  register: async (params: RegisterParams): Promise<AuthResult> => {
+    const payload: Record<string, string> = {
+      tenant: TENANT_ID,
+      firstName: params.firstName.trim(),
+      lastName: params.lastName.trim(),
+      email: params.email.trim().toLowerCase(),
+      password: params.password,
+      role: params.role,
+    };
+
+    const phone = sanitizeString(params.phone);
+    const playerName = sanitizeString(params.playerName);
+    const promoCode = sanitizeString(params.promoCode);
+
+    if (phone) {
+      payload.phone = phone;
+    }
+
+    if (playerName) {
+      payload.playerName = playerName;
+    }
+
+    if (promoCode) {
+      payload.promoCode = promoCode;
+    }
+
+    try {
+      const response = await api.post('/api/v1/auth/register', payload);
+      const authResult = extractAuthResult(response.data);
+      await persistAuthResult(authResult);
+      return authResult;
+    } catch (error) {
+      handleAuthError(error, 'Unable to complete registration.');
+    }
+  },
+
+  logout: async ({ revokeRemote = false } = {}): Promise<void> => {
+    if (revokeRemote) {
+      try {
+        await api.post('/api/v1/auth/logout', { tenant: TENANT_ID });
+      } catch (error) {
+        console.warn('Failed to revoke session on server', error);
+      }
+    }
+
+    await clearAuthStorage();
+  },
+
+  getStoredAuth: async (): Promise<AuthResult | null> => readAuthFromStorage(),
+};
 
 // API Client
 const api = axios.create({
@@ -11,15 +319,24 @@ const api = axios.create({
 });
 
 // Add tenant ID and auth headers to all requests
-api.interceptors.request.use((config) => {
-  // Add x-tenant header for multi-tenant identification
-  config.headers['x-tenant'] = TENANT_ID;
+api.interceptors.request.use(async (config) => {
+  const headers = config.headers ?? {};
+  (headers as Record<string, string>)['x-tenant'] = TENANT_ID;
 
-  // TODO: Add JWT token when authentication is implemented
-  // config.headers.Authorization = `Bearer ${token}`;
+  try {
+    const token = await AsyncStorage.getItem(AUTH_STORAGE_KEYS.token);
+    if (token) {
+      (headers as Record<string, string>).Authorization = `Bearer ${token}`;
+    }
+  } catch (error) {
+    console.warn('Failed to read auth token from storage', error);
+  }
 
+  config.headers = headers as typeof config.headers;
   return config;
 });
+
+export const apiClient = api;
 
 // API Functions
 
