@@ -1,0 +1,73 @@
+name: Render Highlights
+
+on:
+  workflow_dispatch:
+    inputs:
+      payload:
+        description: JSON payload from orchestrator worker
+        required: true
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    env:
+      PAYLOAD: ${{ github.event.inputs.payload }}
+      R2_BUCKET: ${{ secrets.R2_BUCKET }}
+      R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      FFMPEG_CONCURRENCY: 2
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Parse payload
+        id: payload
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const payload = JSON.parse(process.env.PAYLOAD || '{}');
+          if (!payload.payloadKey) {
+            throw new Error('payloadKey missing in workflow payload');
+          }
+          fs.writeFileSync('payload.json', JSON.stringify(payload, null, 2));
+          fs.mkdirSync('video-processing', { recursive: true });
+          fs.writeFileSync('video-processing/payload.json', JSON.stringify(payload, null, 2));
+          const sceneDetect = payload.sceneDetect === true || payload.sceneDetect === 'true';
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, `scene-detect=${sceneDetect}\n`);
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, `payload-key=${payload.payloadKey}\n`);
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, `match-id=${payload.matchId || ''}\n`);
+          NODE
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Setup FFmpeg
+        uses: FedericoCarboni/setup-ffmpeg@v3
+
+      - name: Setup Python for PySceneDetect
+        if: steps.payload.outputs.scene-detect == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install PySceneDetect
+        if: steps.payload.outputs.scene-detect == 'true'
+        run: pip install --upgrade scenedetect
+
+      - name: Install render dependencies
+        run: npm install
+        working-directory: video-processing
+
+      - name: Run render pipeline
+        working-directory: video-processing
+        env:
+          PAYLOAD: ${{ github.event.inputs.payload }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          FFMPEG_CONCURRENCY: 2
+        run: npx tsx render-highlights.ts

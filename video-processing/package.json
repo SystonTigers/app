@@ -1,0 +1,15 @@
+{
+  "name": "@syston/video-processing",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "render": "tsx render-highlights.ts"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.684.0",
+    "@aws-sdk/lib-storage": "^3.684.0",
+    "p-limit": "^4.0.0",
+    "tsx": "^4.19.1"
+  }
+}

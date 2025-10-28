@@ -1,0 +1,36 @@
+name = "syston-highlights-orchestrator"
+main = "index.ts"
+compatibility_date = "2025-09-30"
+workers_dev = true
+
+[observability]
+enabled = true
+
+[vars]
+R2_BUCKET = "stt-video"
+R2_PUBLIC_BASE = "https://public.example.com"
+SHEETS_SPREADSHEET_ID = "your-sheet-id"
+SHEETS_RANGE = "Live Match Updates!A:Z"
+YT_HIGHLIGHTS_PLAYLIST_ID = "PLxxxx"
+OVERLAY_SCOREBAR_KEY = "overlays/scorebar.png"
+OVERLAY_SPONSOR_KEY = "overlays/sponsor.png"
+OVERLAY_FONT_KEY = "overlays/Inter-Bold.ttf"
+GH_WORKFLOW_REPO = "SystonTigers/Automation_script"
+GH_WORKFLOW_REF = "main"
+UPLOADER_URL = "https://highlights-uploader.example.com/api/video/upload"
+CLIP_PAD_BEFORE_S = "10"
+CLIP_PAD_AFTER_S = "12"
+CLIP_MIN_LEN_S = "6"
+SCENEDETECT_ENABLED = "false"
+
+[[kv_namespaces]]
+binding = "KV_IDEMP"
+id = "00000000000000000000000000000000"
+
+[[r2_buckets]]
+binding = "R2_VIDEO"
+bucket_name = "stt-video"
+
+# Secrets to set via wrangler
+# wrangler secret put GOOGLE_SERVICE_ACCOUNT_KEY
+# wrangler secret put GH_WORKFLOW_TOKEN

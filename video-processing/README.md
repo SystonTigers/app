@@ -1,5 +1,32 @@
 # 🎬 Video Processing & Highlights System
 
+> **New:** Automated render pipeline driven by GitHub Actions + R2 storage. Cloudflare Workers orchestrate timelines and uploads while the action hosts FFmpeg/PySceneDetect.
+
+## Quick Start (Highlights Automation)
+
+1. **Configure Secrets / Vars**
+   - `R2_BUCKET`, `R2_PUBLIC_BASE`, `OVERLAY_SCOREBAR_KEY`, `OVERLAY_SPONSOR_KEY`, `OVERLAY_FONT_KEY`
+   - `SHEETS_SPREADSHEET_ID`, `SHEETS_RANGE`
+   - `YT_CLIENT_ID`, `YT_CLIENT_SECRET`, `YT_REFRESH_TOKEN`, `YT_HIGHLIGHTS_PLAYLIST_ID`
+2. **Deploy Workers**
+   - `workers/highlights-orchestrator` – builds clip timelines from Google Sheets and fires the workflow dispatch.
+   - `workers/highlights-uploader` – streams rendered files from R2 to YouTube and appends highlights to the private playlist.
+3. **Run the GitHub Action** (`render-highlights.yml`)
+   - Downloads source footage from R2, optionally runs PySceneDetect, renders clips/full match with overlays via `ffmpeg/build-command.ts`, uploads results back to R2, then calls the uploader worker.
+
+📁 Key modules:
+
+| Path | Purpose |
+| --- | --- |
+| `video-processing/timeline/build-clips-from-sheet.ts` | Converts Google Sheet events into padded clip windows. |
+| `video-processing/timeline/scenedetect.ts` | Optional PySceneDetect integration to snap cuts to scene boundaries. |
+| `video-processing/ffmpeg/overlay-presets.ts` | Central layout definitions for overlays (16:9 & 9:16). |
+| `video-processing/ffmpeg/build-command.ts` | Generates FFmpeg args + text overlays for clips and full match renders. |
+
+`video-processing/README.md` below retains the historical overview of legacy tooling for reference.
+
+---
+
 **Complete video processing infrastructure with TWO MODES: Mobile App + Server-Side Automation**
 
 ---
