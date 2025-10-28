@@ -1,4 +1,31 @@
 {
+  "name": "@team-platform/sdk",
+  "version": "1.0.0",
+  "description": "Shared TypeScript SDK for multi-tenant team platform API",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "team-platform",
+    "multi-tenant",
+    "api-client",
+    "white-label"
+  ],
+  "author": "Team Platform",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.6.0",
+    "googleapis": "^131.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.3.0"
+  }
+}
     "name":  "@team-platform/sdk",
     "version":  "1.0.0",
     "description":  "Shared TypeScript SDK for multi-tenant team platform API",

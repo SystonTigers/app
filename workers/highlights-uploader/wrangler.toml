@@ -1,0 +1,26 @@
+name = "syston-highlights-uploader"
+main = "index.ts"
+compatibility_date = "2025-09-30"
+compatibility_flags = ["nodejs_compat"]
+workers_dev = true
+
+[observability]
+enabled = true
+
+[vars]
+R2_BUCKET = "stt-video"
+R2_PUBLIC_BASE = "https://public.example.com"
+YT_HIGHLIGHTS_PLAYLIST_ID = "PLxxxx"
+
+[[kv_namespaces]]
+binding = "KV_IDEMP"
+id = "00000000000000000000000000000000"
+
+[[r2_buckets]]
+binding = "R2_VIDEO"
+bucket_name = "stt-video"
+
+# Secrets required:
+# wrangler secret put YT_CLIENT_ID
+# wrangler secret put YT_CLIENT_SECRET
+# wrangler secret put YT_REFRESH_TOKEN
