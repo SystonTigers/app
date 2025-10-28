@@ -1,14 +1,34 @@
 // src/index.ts
 
 import { z } from "zod";
+import { SignJWT } from "jose";
 import { PostReqSchema, json, readIdempotencyKey } from "./services/util";
 import { requireJWT, hasRole, requireAdmin } from "./services/auth";
 import { ensureIdempotent, setFinalIdempotent } from "./services/idempotency";
-import { ensureTenant, setMakeWebhook, updateFlags, putTenantConfig, getTenantConfig, setTenantFlags, setChannelWebhook, setYouTubeBYOGoogle, isAllowedWebhookHost } from "./services/tenants";
+import {
+  ensureTenant,
+  setMakeWebhook,
+  updateFlags,
+  putTenantConfig,
+  getTenantConfig,
+  setTenantFlags,
+  setChannelWebhook,
+  setYouTubeBYOGoogle,
+  isAllowedWebhookHost
+} from "./services/tenants";
 import { issueTenantAdminJWT } from "./services/jwt";
 import type { TenantConfig, PostJob } from "./types";
 import queueWorker from "./queue-consumer";
-import { putEvent, getEvent, deleteEvent, listEvents, setRsvp, getRsvp, addCheckin, listCheckins } from "./services/events";
+import {
+  putEvent,
+  getEvent,
+  deleteEvent,
+  listEvents,
+  setRsvp,
+  getRsvp,
+  addCheckin,
+  listCheckins
+} from "./services/events";
 import { registerDevice, sendToUser } from "./services/push";
 import * as Invites from "./services/invites";
 import * as Teams from "./services/teams";
@@ -21,7 +41,41 @@ import { rateLimit } from "./middleware/rateLimit";
 import { newRequestId, logJSON } from "./lib/log";
 import { parse, isValidationError } from "./lib/validate";
 import { healthz, readyz } from "./routes/health";
+
+// --- Self-serve signup / usage / admin (Phase 3) ---
+import {
+  signupStart,
+  signupBrand,
+  signupStarterMake,
+  signupProConfirm
+} from "./routes/signup";
+import { handleMagicStart, handleMagicVerify } from "./routes/magic";
+import {
+  handleProvisionQueue,
+  handleProvisionStatus,
+  handleTenantOverview,
+  handleProvisionRetry
+} from "./routes/provisioning";
+import {
+  handleDevAdminJWT,
+  handleDevMagicLink,
+  handleDevInfo
+} from "./routes/devAuth";
+import {
+  getAdminStats,
+  listTenants,
+  getTenant,
+  updateTenant,
+  deactivateTenant,
+  deleteTenant,
+  listPromoCodes,
+  createPromoCode,
+  deactivatePromoCode
+} from "./routes/admin";
+
+// Auth routes (from other branch)
 import { handleAuthRegister, handleAuthLogin } from "./routes/auth";
+
 declare const APP_VERSION: string;
 
 const DEV_DEFAULT_CORS = new Set([
@@ -58,28 +112,20 @@ function buildRateLimitScope(pathname: string) {
 }
 
 function buildCorsHeaders(origin: string | null, env: any, requestId: string, release: string) {
-  const headers = corsHeaders(origin);
-  const envAllowed = typeof env?.CORS_ALLOWED === "string"
-    ? String(env.CORS_ALLOWED)
-        .split(",")
-        .map((o: string) => o.trim())
-        .filter(Boolean)
-    : [];
+  // Use the enhanced CORS middleware with env-aware origin checking
+  const headers = corsHeaders(origin, env);
 
-  const allowList = new Set<string>([...DEV_DEFAULT_CORS, ...envAllowed]);
-  if (origin && allowList.has(origin)) {
-    headers.set("Access-Control-Allow-Origin", origin);
-  }
-
+  // Add additional allowed headers for S3/R2 uploads
+  const existingHeaders = headers.get("Access-Control-Allow-Headers") || "";
   const allowHeaders = new Set(
-    (headers.get("Access-Control-Allow-Headers") || "")
+    existingHeaders
       .split(",")
       .map((h) => h.trim())
       .filter(Boolean)
   );
+
+  // Add S3/R2 specific headers and idempotency
   for (const hdr of [
-    "authorization",
-    "content-type",
     "Idempotency-Key",
     "idempotency-key",
     "x-amz-content-sha256",
@@ -89,6 +135,7 @@ function buildCorsHeaders(origin: string | null, env: any, requestId: string, re
   ]) {
     if (hdr) allowHeaders.add(hdr);
   }
+
   headers.set("Access-Control-Allow-Headers", Array.from(allowHeaders).join(","));
   headers.set("Access-Control-Expose-Headers", "X-Request-Id, X-Release");
   headers.set("X-Request-Id", requestId);
@@ -116,6 +163,7 @@ export { VotingRoom } from "./do/votingRoom";
 export { MatchRoom } from "./do/matchRoom";
 export { ChatRoom } from "./do/chatRoom";
 export { GeoFenceManager } from "./do/geoFenceManager";
+export { Provisioner } from "./do/provisioner";
 
 export default {
   async fetch(req: Request, env: any, _ctx: ExecutionContext): Promise<Response> {
@@ -140,6 +188,80 @@ export default {
       if (req.method === "GET" && url.pathname === "/readyz") {
         const res = await readyz(env);
         return respondWithCors(res, corsHdrs);
+      }
+
+      // Introspection endpoint for debugging
+      if (url.pathname === '/__meta/ping') {
+        return new Response(JSON.stringify({
+          ok: true,
+          method: req.method,
+          pathname: url.pathname,
+          search: url.search,
+          fullUrl: url.href,
+          apiVersion: env.API_VERSION || "v1"
+        }), {
+          status: 200,
+          headers: { 'content-type': 'application/json', ...corsHdrs }
+        });
+      }
+
+      // -------- DEV-ONLY: Admin Token Minting --------
+      // POST /internal/dev/admin-token - Mint admin JWT for development
+      if (url.pathname === '/internal/dev/admin-token' && req.method === 'POST') {
+        const environment = env.ENVIRONMENT || 'development';
+
+        // Block in production
+        if (environment === 'production') {
+          return json({
+            success: false,
+            error: { code: 'FORBIDDEN', message: 'This endpoint is disabled in production' }
+          }, 403, corsHdrs);
+        }
+
+        try {
+          const body = await req.json().catch(() => ({}));
+          const schema = z.object({
+            email: z.string().email()
+          });
+          const data = schema.parse(body);
+
+          // Mint JWT with owner role
+          const secret = new TextEncoder().encode(env.JWT_SECRET || '');
+          if (!env.JWT_SECRET) {
+            throw new Error('JWT_SECRET not configured');
+          }
+
+          const now = Math.floor(Date.now() / 1000);
+          const exp = now + (7 * 24 * 60 * 60); // 7 days
+
+          const token = await new SignJWT({
+            sub: data.email,
+            roles: ['admin']
+          })
+            .setProtectedHeader({ alg: 'HS256' })
+            .setIssuer(env.JWT_ISSUER || 'syston.app')
+            .setAudience(env.JWT_AUDIENCE || 'syston-mobile')
+            .setIssuedAt(now)
+            .setExpirationTime(exp)
+            .sign(secret);
+
+          return json({
+            success: true,
+            token,
+            expiresAt: new Date(exp * 1000).toISOString()
+          }, 200, corsHdrs);
+        } catch (err: any) {
+          if (err.errors) {
+            return json({
+              success: false,
+              error: { code: 'VALIDATION', details: err.errors }
+            }, 400, corsHdrs);
+          }
+          return json({
+            success: false,
+            error: { code: 'TOKEN_MINT_FAILED', message: String(err?.message || err) }
+          }, 500, corsHdrs);
+        }
       }
 
       const v = env.API_VERSION || "v1";
@@ -211,6 +333,121 @@ export default {
         }
         return json({ success: false, error: { code: "SIGNUP_FAILED", message: err.message } }, 500, corsHdrs);
       }
+    }
+    // -------- Phase 3: Self-Serve Signup (Public) --------
+
+    // POST /public/signup/start - Create new tenant account
+    if (url.pathname === `/public/signup/start` && req.method === "POST") {
+      return await signupStart(req, env, requestId, corsHdrs);
+    }
+
+    // POST /public/signup/brand - Customize brand colors
+    if (url.pathname === `/public/signup/brand` && req.method === "POST") {
+      return await signupBrand(req, env, requestId, corsHdrs);
+    }
+
+    // POST /public/signup/starter/make - Configure Make.com webhook (Starter plan)
+    if (url.pathname === `/public/signup/starter/make` && req.method === "POST") {
+      return await signupStarterMake(req, env, requestId, corsHdrs);
+    }
+
+    // POST /public/signup/pro/confirm - Confirm Pro plan setup
+    if (url.pathname === `/public/signup/pro/confirm` && req.method === "POST") {
+      return await signupProConfirm(req, env, requestId, corsHdrs);
+    }
+
+    // -------- Magic Link Authentication --------
+    // POST /auth/magic/start - Send magic link email
+    if (url.pathname === '/auth/magic/start' && req.method === 'POST') {
+      return await handleMagicStart(req, env, corsHdrs);
+    }
+
+    // GET /auth/magic/verify - Verify magic link token
+    if (url.pathname === '/auth/magic/verify' && req.method === 'GET') {
+      return await handleMagicVerify(req, env, corsHdrs);
+    }
+
+    // -------- Dev Authentication (Development Only) --------
+    // POST /dev/auth/admin-jwt - Generate admin JWT for testing
+    if (url.pathname === '/dev/auth/admin-jwt' && req.method === 'POST') {
+      return await handleDevAdminJWT(req, env);
+    }
+
+    // POST /dev/auth/magic-link - Generate magic link for testing
+    if (url.pathname === '/dev/auth/magic-link' && req.method === 'POST') {
+      return await handleDevMagicLink(req, env);
+    }
+
+    // GET /dev/info - Get development environment info
+    if (url.pathname === '/dev/info' && req.method === 'GET') {
+      return await handleDevInfo(req, env);
+    }
+
+    // -------- Provisioning Routes (Internal) --------
+    // POST /internal/provision/queue - Queue provisioning
+    if (url.pathname === '/internal/provision/queue' && req.method === 'POST') {
+      return await handleProvisionQueue(req, env);
+    }
+
+    // POST /internal/provision/retry - Retry failed provisioning
+    if (url.pathname === '/internal/provision/retry' && req.method === 'POST') {
+      return await handleProvisionRetry(req, env);
+    }
+
+    // GET /api/v1/tenants/:id/provision-status - Get provisioning status
+    const provisionStatusMatch = url.pathname.match(/^\/api\/v1\/tenants\/([^/]+)\/provision-status$/);
+    if (provisionStatusMatch && req.method === 'GET') {
+      const tenantId = provisionStatusMatch[1];
+      // TODO: Add auth check for owner session or admin
+      return await handleProvisionStatus(req, env, tenantId);
+    }
+
+    // GET /api/v1/tenants/:id/overview - Get tenant overview
+    const overviewMatch = url.pathname.match(/^\/api\/v1\/tenants\/([^/]+)\/overview$/);
+    if (overviewMatch && req.method === 'GET') {
+      const tenantId = overviewMatch[1];
+      // TODO: Add auth check for owner session or admin
+      return await handleTenantOverview(req, env, tenantId);
+    }
+
+    // -------- Phase 3: Usage Tracking --------
+    // Simple monthly counters in KV: key = usage:<tenant>:<YYYY-MM>
+
+    // GET /api/v1/usage
+    if (url.pathname === `/api/${v}/usage` && req.method === "GET") {
+      const tenant = (req.headers.get("x-tenant") || url.searchParams.get("tenant") || "default").toString();
+      const now = new Date();
+      const ym = `${now.getUTCFullYear()}-${String(now.getUTCMonth()+1).padStart(2,'0')}`;
+      const kvKey = `usage:${tenant}:${ym}`;
+      const value = (await env.KV_IDEMP.get(kvKey, "json")) as any || { count: 0, month: ym };
+      return json({ success:true, data:{ tenant, month: ym, count: Number(value.count||0) } }, 200, corsHdrs);
+    }
+
+    // POST /api/v1/usage/increment
+    if (url.pathname === `/api/${v}/usage/increment` && req.method === "POST") {
+      const tenant = (req.headers.get("x-tenant") || "default").toString();
+      const now = new Date();
+      const ym = `${now.getUTCFullYear()}-${String(now.getUTCMonth()+1).padStart(2,'0')}`;
+      const kvKey = `usage:${tenant}:${ym}`;
+      const planKey = `tenant:${tenant}:plan`; // optional hint; fallback to cap if not present
+
+      // Read current
+      const current = (await env.KV_IDEMP.get(kvKey, "json")) as any || { count: 0, month: ym };
+      let count = Number(current.count || 0) + 1;
+
+      // Enforce 1,000/mo cap for Starter (non-managed) unless comped
+      // We infer "managed" from flags (managed.yt = true => Pro)
+      const cfg = await ensureTenant(env, tenant);
+      const isPro = !!cfg?.flags?.managed?.yt;
+      const comped = !!cfg?.flags?.comped;
+
+      if (!isPro && !comped && count > 1000) {
+        // do not increment beyond the cap
+        return json({ success:false, error:{ code:'USAGE_CAP', message:'Monthly cap reached (1,000).' }, data:{ tenant, month: ym, count: count-1 } }, 402, corsHdrs);
+      }
+
+      await env.KV_IDEMP.put(kvKey, JSON.stringify({ count, month: ym }));
+      return json({ success:true, data:{ tenant, month: ym, count } }, 200, corsHdrs);
     }
 
     // -------- Apps Script Integration --------
@@ -333,6 +570,61 @@ export default {
     }
 
     // -------- Admin endpoints --------
+
+    // GET /api/v1/admin/stats - Dashboard statistics
+    if (url.pathname === `/api/${v}/admin/stats` && req.method === "GET") {
+      return await getAdminStats(req, env, requestId, corsHdrs);
+    }
+
+    // GET /api/v1/admin/tenants - List all tenants
+    if (url.pathname === `/api/${v}/admin/tenants` && req.method === "GET") {
+      return await listTenants(req, env, requestId, corsHdrs);
+    }
+
+    // GET /api/v1/admin/tenants/:id - Get tenant details
+    const getTenantMatch = url.pathname.match(new RegExp(`^/api/${v}/admin/tenants/([^/]+)$`));
+    if (getTenantMatch && req.method === "GET") {
+      const tenantId = getTenantMatch[1];
+      return await getTenant(req, env, requestId, corsHdrs, tenantId);
+    }
+
+    // PATCH /api/v1/admin/tenants/:id - Update tenant
+    const updateTenantMatch = url.pathname.match(new RegExp(`^/api/${v}/admin/tenants/([^/]+)$`));
+    if (updateTenantMatch && req.method === "PATCH") {
+      const tenantId = updateTenantMatch[1];
+      return await updateTenant(req, env, requestId, corsHdrs, tenantId);
+    }
+
+    // POST /api/v1/admin/tenants/:id/deactivate - Deactivate tenant
+    const deactivateTenantMatch = url.pathname.match(new RegExp(`^/api/${v}/admin/tenants/([^/]+)/deactivate$`));
+    if (deactivateTenantMatch && req.method === "POST") {
+      const tenantId = deactivateTenantMatch[1];
+      return await deactivateTenant(req, env, requestId, corsHdrs, tenantId);
+    }
+
+    // DELETE /api/v1/admin/tenants/:id - Delete tenant
+    const deleteTenantMatch = url.pathname.match(new RegExp(`^/api/${v}/admin/tenants/([^/]+)$`));
+    if (deleteTenantMatch && req.method === "DELETE") {
+      const tenantId = deleteTenantMatch[1];
+      return await deleteTenant(req, env, requestId, corsHdrs, tenantId);
+    }
+
+    // GET /api/v1/admin/promo-codes - List promo codes
+    if (url.pathname === `/api/${v}/admin/promo-codes` && req.method === "GET") {
+      return await listPromoCodes(req, env, requestId, corsHdrs);
+    }
+
+    // POST /api/v1/admin/promo-codes - Create promo code
+    if (url.pathname === `/api/${v}/admin/promo-codes` && req.method === "POST") {
+      return await createPromoCode(req, env, requestId, corsHdrs);
+    }
+
+    // POST /api/v1/admin/promo-codes/:code/deactivate - Deactivate promo code
+    const deactivatePromoMatch = url.pathname.match(new RegExp(`^/api/${v}/admin/promo-codes/([^/]+)/deactivate$`));
+    if (deactivatePromoMatch && req.method === "POST") {
+      const code = deactivatePromoMatch[1];
+      return await deactivatePromoCode(req, env, requestId, corsHdrs, code);
+    }
 
     // POST /api/v1/admin/tenant/create
     if (url.pathname === `/api/${v}/admin/tenant/create` && req.method === "POST") {
@@ -711,6 +1003,262 @@ export default {
       }
     }
 
+// Live Match Routes - Insert after line 703 in index.ts
+
+    // -------- Live Match API --------
+
+    // GET /api/v1/fixtures/next - Get next fixture with YouTube livestream metadata
+    if (url.pathname === `/api/${v}/fixtures/next` && req.method === "GET") {
+      try {
+        const result = await env.DB.prepare(`
+          SELECT
+            id,
+            fixture_date || 'T' || COALESCE(kick_off_time, '00:00:00') || 'Z' as kickoffIso,
+            COALESCE(home_team, 'Home Team') as homeTeam,
+            COALESCE(away_team, opponent) as awayTeam,
+            opponent,
+            CASE
+              WHEN home_team IS NOT NULL THEN 'H'
+              ELSE 'A'
+            END as homeAway,
+            venue,
+            competition,
+            COALESCE(match_status, status) as status,
+            home_score,
+            away_score,
+            current_minute as minute,
+            youtube_live_id as youtubeLiveId,
+            youtube_status as youtubeStatus,
+            youtube_scheduled_start as youtubeScheduledStart
+          FROM fixtures
+          WHERE fixture_date >= DATE('now')
+            AND status != 'postponed'
+          ORDER BY fixture_date ASC, kick_off_time ASC
+          LIMIT 1
+        `).first();
+
+        if (result) {
+          // Transform to NextFixture format
+          const nextFixture = {
+            id: result.id,
+            kickoffIso: result.kickoffIso,
+            homeTeam: result.homeTeam,
+            awayTeam: result.awayTeam,
+            opponent: result.opponent,
+            homeAway: result.homeAway,
+            venue: result.venue || null,
+            competition: result.competition || null,
+            status: result.status || 'scheduled',
+            score: (result.home_score !== null && result.away_score !== null) ? {
+              home: result.home_score,
+              away: result.away_score
+            } : null,
+            minute: result.minute || 0,
+            youtubeLiveId: result.youtubeLiveId || null,
+            youtubeStatus: result.youtubeStatus || null,
+            youtubeScheduledStart: result.youtubeScheduledStart || null,
+          };
+
+          return json({ success: true, data: nextFixture }, 200, corsHdrs);
+        } else {
+          return json({ success: true, data: null }, 200, corsHdrs);
+        }
+      } catch (err) {
+        logJSON("error", requestId, { message: "Get next fixture failed", error: String(err) });
+        return json({ success: false, error: { code: "INTERNAL", message: "Failed to fetch next fixture" } }, 500, corsHdrs);
+      }
+    }
+
+    // GET /api/v1/live-updates - Get live text updates for a match
+    if (url.pathname === `/api/${v}/live-updates` && req.method === "GET") {
+      try {
+        const matchId = url.searchParams.get('matchId');
+
+        if (!matchId) {
+          return json({ success: false, error: { code: "INVALID_REQUEST", message: "matchId parameter required" } }, 400, corsHdrs);
+        }
+
+        const result = await env.DB.prepare(`
+          SELECT
+            id,
+            match_id as matchId,
+            minute,
+            type,
+            text,
+            scorer,
+            assist,
+            card,
+            player,
+            score_so_far as scoreSoFar,
+            created_at as createdAt
+          FROM live_updates
+          WHERE match_id = ?
+          ORDER BY created_at ASC
+        `).bind(matchId).all();
+
+        return json({ success: true, data: result.results || [] }, 200, corsHdrs);
+      } catch (err) {
+        logJSON("error", requestId, { message: "Get live updates failed", error: String(err) });
+        return json({ success: false, error: { code: "INTERNAL", message: "Failed to fetch live updates" } }, 500, corsHdrs);
+      }
+    }
+
+    // POST /api/v1/live-updates - Post a live update (goal, card, sub, info)
+    if (url.pathname === `/api/${v}/live-updates` && req.method === "POST") {
+      try {
+        const body = await req.json().catch(() => ({}));
+
+        // Validate required fields
+        if (!body.matchId || typeof body.minute !== 'number' || !body.type || !body.text) {
+          return json({
+            success: false,
+            error: { code: "INVALID_REQUEST", message: "matchId, minute, type, and text are required" }
+          }, 400, corsHdrs);
+        }
+
+        // Validate type
+        const validTypes = ['goal', 'card', 'subs', 'info'];
+        if (!validTypes.includes(body.type)) {
+          return json({
+            success: false,
+            error: { code: "INVALID_REQUEST", message: "type must be one of: goal, card, subs, info" }
+          }, 400, corsHdrs);
+        }
+
+        // Validate card type if present
+        if (body.card) {
+          const validCards = ['yellow', 'red', 'sinbin'];
+          if (!validCards.includes(body.card)) {
+            return json({
+              success: false,
+              error: { code: "INVALID_REQUEST", message: "card must be one of: yellow, red, sinbin" }
+            }, 400, corsHdrs);
+          }
+        }
+
+        // Generate ID
+        const updateId = `update-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+        const createdAt = new Date().toISOString();
+
+        // Insert update
+        await env.DB.prepare(`
+          INSERT INTO live_updates (
+            id, match_id, minute, type, text, scorer, assist, card, player, score_so_far, created_at
+          )
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).bind(
+          updateId,
+          body.matchId,
+          body.minute,
+          body.type,
+          body.text,
+          body.scorer || null,
+          body.assist || null,
+          body.card || null,
+          body.player || null,
+          body.scoreSoFar || null,
+          createdAt
+        ).run();
+
+        // Return created update
+        const liveUpdate = {
+          id: updateId,
+          matchId: body.matchId,
+          minute: body.minute,
+          type: body.type,
+          text: body.text,
+          scorer: body.scorer || null,
+          assist: body.assist || null,
+          card: body.card || null,
+          player: body.player || null,
+          scoreSoFar: body.scoreSoFar || null,
+          createdAt,
+        };
+
+        logJSON("info", requestId, { message: "Live update posted", updateId, matchId: body.matchId, type: body.type });
+        return json({ success: true, data: liveUpdate }, 201, corsHdrs);
+      } catch (err) {
+        logJSON("error", requestId, { message: "Post live update failed", error: String(err) });
+        return json({ success: false, error: { code: "INTERNAL", message: "Failed to post live update" } }, 500, corsHdrs);
+      }
+    }
+
+    // POST /api/v1/matches/:id/state - Set match state (kickoff, halftime, fulltime)
+    if (url.pathname.match(new RegExp(`^/api/${v}/matches/([^/]+)/state$`)) && req.method === "POST") {
+      try {
+        const matchId = url.pathname.split('/').slice(-2, -1)[0];
+        const body = await req.json().catch(() => ({}));
+
+        // Validate status
+        const validStatuses = ['scheduled', 'live', 'halftime', 'ft'];
+        if (!body.status || !validStatuses.includes(body.status)) {
+          return json({
+            success: false,
+            error: { code: "INVALID_REQUEST", message: "status must be one of: scheduled, live, halftime, ft" }
+          }, 400, corsHdrs);
+        }
+
+        // Build update query
+        let query = 'UPDATE fixtures SET match_status = ?, updated_at = CURRENT_TIMESTAMP';
+        const params: any[] = [body.status];
+
+        if (typeof body.minute === 'number') {
+          query += ', current_minute = ?';
+          params.push(body.minute);
+        }
+
+        if (body.score && typeof body.score.home === 'number' && typeof body.score.away === 'number') {
+          query += ', home_score = ?, away_score = ?';
+          params.push(body.score.home, body.score.away);
+        }
+
+        query += ' WHERE id = ?';
+        params.push(matchId);
+
+        await env.DB.prepare(query).bind(...params).run();
+
+        logJSON("info", requestId, { message: "Match state updated", matchId, status: body.status });
+        return json({ success: true, data: { ok: true } }, 200, corsHdrs);
+      } catch (err) {
+        logJSON("error", requestId, { message: "Set match state failed", error: String(err) });
+        return json({ success: false, error: { code: "INTERNAL", message: "Failed to set match state" } }, 500, corsHdrs);
+      }
+    }
+
+    // POST /api/v1/live-updates/cleanup - Clean up stale live updates
+    if (url.pathname === `/api/${v}/live-updates/cleanup` && req.method === "POST") {
+      try {
+        const body = await req.json().catch(() => ({}));
+        const matchId = body.matchId;
+
+        let removed = 0;
+
+        if (matchId) {
+          // Remove all updates for specific match
+          const result = await env.DB.prepare('DELETE FROM live_updates WHERE match_id = ?')
+            .bind(matchId).run();
+          removed = result.meta?.changes || 0;
+          logJSON("info", requestId, { message: "Cleaned up match updates", matchId, removed });
+        } else {
+          // Remove updates older than 90 minutes after FT for completed matches
+          const result = await env.DB.prepare(`
+            DELETE FROM live_updates
+            WHERE match_id IN (
+              SELECT id FROM fixtures
+              WHERE match_status = 'ft'
+                AND updated_at < datetime('now', '-90 minutes')
+            )
+          `).run();
+          removed = result.meta?.changes || 0;
+          logJSON("info", requestId, { message: "Cleaned up stale updates", removed });
+        }
+
+        return json({ success: true, data: { removed } }, 200, corsHdrs);
+      } catch (err) {
+        logJSON("error", requestId, { message: "Cleanup failed", error: String(err) });
+        return json({ success: false, error: { code: "INTERNAL", message: "Failed to cleanup live updates" } }, 500, corsHdrs);
+      }
+    }
     // -------- League Table API --------
 
     // POST /api/v1/league/sync - Sync league standings from Apps Script
@@ -2731,7 +3279,13 @@ export default {
       return json(resp, 202, corsHdrs);
     }
 
-    // Fallback
+    // Fallback - log for debugging
+    logJSON("warn", requestId, {
+      message: "Route not found",
+      method: req.method,
+      pathname: url?.pathname,
+      search: url?.search
+    });
     return json({ success: false, error: { code: "NOT_FOUND", message: "Route not found" } }, 404, corsHdrs);
     } catch (err: any) {
       const ms = Date.now() - t0;

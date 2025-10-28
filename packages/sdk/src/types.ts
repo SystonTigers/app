@@ -196,3 +196,6 @@ export interface ApiResponse<T> {
     message: string;
   };
 }
+
+// Export Phase 3 types
+export * from './types-phase3';

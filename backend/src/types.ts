@@ -79,6 +79,7 @@ export interface FallbackResponse {
 
 // Env interface for Workers
 export interface Env {
+  DB: D1Database;
   KV_IDEMP: KVNamespace;
   POST_QUEUE: Queue;
   DLQ: Queue;
@@ -92,7 +93,10 @@ export interface Env {
   ChatRoom: DurableObjectNamespace;
   MatchRoom: DurableObjectNamespace;
   GeoFenceManager: DurableObjectNamespace;
+  PROVISIONER: DurableObjectNamespace;
   JWT_SECRET: string;
+  JWT_ISSUER?: string;
+  JWT_AUDIENCE?: string;
   ADMIN_JWT: string;
   YT_CLIENT_ID?: string;
   YT_CLIENT_SECRET?: string;
@@ -105,12 +109,14 @@ export interface Env {
   GALLERY_ALLOWED?: string;
   API_VERSION: string;
   CORS_ALLOWED?: string;
+  ALLOWED_WEBHOOK_HOSTS?: string;
   // Apps Script automation
   GOOGLE_SERVICE_ACCOUNT_KEY?: string;
   APPS_SCRIPT_TEMPLATE_ID?: string;
   APPS_SCRIPT_AUTO_DEPLOY?: string;
   BACKEND_URL?: string;
   RESEND_API_KEY?: string;
+  RESEND_FROM_EMAIL?: string;
   SENDGRID_API_KEY?: string;
   ADMIN_CONSOLE_URL?: string;
   ENVIRONMENT?: string;

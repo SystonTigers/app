@@ -16,10 +16,37 @@ import type {
   UsageStats,
   TenantConfig,
   ApiResponse,
+  SignupStartRequest,
+  SignupStartResponse,
+  BrandUpdateRequest,
+  MakeConnectionRequest,
+  UsageResponse,
+  AdminStatsResponse,
+  TenantListResponse,
+  TenantDetailResponse,
+  PromoCode,
+  CreatePromoCodeRequest,
+  UpdateTenantRequest,
 } from './types';
 
 export * from './types';
 
+export type ProvisionState = {
+  tenantId: string;
+  plan: 'starter'|'pro';
+  status: 'idle'|'running'|'completed'|'failed';
+  currentStep: string|null;
+  checkpoints: Record<string, { status: string; error?: string }>;
+  startedAt?: number; completedAt?: number; error?: string;
+};
+
+export interface SDKOptions {
+  tenant?: string;
+  token?: string;
+  timeout?: number;
+}
+
+// Legacy interface for backward compatibility
 export interface TeamPlatformSDKConfig {
   apiBaseUrl: string;
   tenantId: string;
@@ -29,28 +56,50 @@ export interface TeamPlatformSDKConfig {
 
 export class TeamPlatformSDK {
   private client: AxiosInstance;
-  private tenantId: string;
+  private baseURL: string;
+  private tenant?: string;
+  private token?: string;
 
-  constructor(config: TeamPlatformSDKConfig) {
-    this.tenantId = config.tenantId;
+  constructor(baseURL: string | TeamPlatformSDKConfig, opts: SDKOptions = {}) {
+    // Support both new and legacy constructor signatures
+    if (typeof baseURL === 'string') {
+      // New signature: TeamPlatformSDK(baseURL, opts)
+      this.baseURL = baseURL.replace(/\/+$/, '');
+      this.tenant = opts.tenant;
+      this.token = opts.token;
 
-    this.client = axios.create({
-      baseURL: config.apiBaseUrl,
-      timeout: config.timeout || 30000,
-      headers: {
-        'Content-Type': 'application/json',
-        'x-tenant': config.tenantId,
-      },
-    });
+      this.client = axios.create({
+        baseURL: this.baseURL,
+        timeout: opts.timeout || 30000,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+    } else {
+      // Legacy signature: TeamPlatformSDK(config)
+      const config = baseURL as TeamPlatformSDKConfig;
+      this.baseURL = config.apiBaseUrl.replace(/\/+$/, '');
+      this.tenant = config.tenantId;
+      this.token = config.authToken;
 
-    // Add auth token if provided
-    if (config.authToken) {
-      this.setAuthToken(config.authToken);
+      this.client = axios.create({
+        baseURL: this.baseURL,
+        timeout: config.timeout || 30000,
+        headers: {
+          'Content-Type': 'application/json',
+          'x-tenant': config.tenantId,
+        },
+      });
     }
 
-    // Add request interceptor for tenant header
+    // Add request interceptor for auth
     this.client.interceptors.request.use((config) => {
-      config.headers['x-tenant'] = this.tenantId;
+      if (this.token) {
+        config.headers['Authorization'] = `Bearer ${this.token}`;
+      }
+      if (this.tenant) {
+        config.headers['x-tenant'] = this.tenant;
+      }
       return config;
     });
   }
@@ -58,22 +107,45 @@ export class TeamPlatformSDK {
   /**
    * Set authentication token
    */
+  setToken(token?: string): void {
+    this.token = token;
+  }
+
+  /**
+   * Set authentication token (legacy alias)
+   */
   setAuthToken(token: string): void {
-    this.client.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    this.setToken(token);
   }
 
   /**
    * Clear authentication token
    */
   clearAuthToken(): void {
-    delete this.client.defaults.headers.common['Authorization'];
+    this.token = undefined;
   }
 
   /**
    * Update tenant ID
    */
-  setTenant(tenantId: string): void {
-    this.tenantId = tenantId;
+  setTenant(tenant?: string): void {
+    this.tenant = tenant;
+  }
+
+  /**
+   * Helper to get auth headers
+   */
+  private authHeaders() {
+    return this.token ? { Authorization: `Bearer ${this.token}` } : {};
+  }
+
+  /**
+   * Helper to require tenant
+   */
+  private requireTenant(tenant?: string): string {
+    const t = tenant ?? this.tenant;
+    if (!t) throw new Error('Tenant slug is required');
+    return t;
   }
 
   // ==================== BRAND API ====================
@@ -100,15 +172,87 @@ export class TeamPlatformSDK {
     return response.data.data;
   }
 
-  // ==================== FIXTURES & RESULTS ====================
+  // ==================== PUBLIC PAGES API (tenant) ====================
 
   /**
-   * Get upcoming fixtures
+   * Get next upcoming fixture (public)
    */
-  async listFixtures(): Promise<Fixture[]> {
+  async getNextFixture(tenant?: string): Promise<Fixture | null> {
+    const t = this.requireTenant(tenant);
+    try {
+      const response = await this.client.get(`/public/${t}/fixtures/next`);
+      return response.data?.fixture || response.data || null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * List fixtures (public)
+   */
+  async listFixtures(tenant?: string, limit: number = 20): Promise<Fixture[]> {
+    // Check if being called with tenant parameter (new signature)
+    if (tenant && typeof tenant === 'string' && !tenant.includes('/')) {
+      const t = tenant;
+      try {
+        const response = await this.client.get(`/public/${t}/fixtures`, {
+          params: { limit },
+        });
+        return response.data?.fixtures || response.data || [];
+      } catch {
+        return [];
+      }
+    }
+
+    // Legacy signature or no tenant - use private API
     const response = await this.client.get('/api/v1/fixtures');
     return response.data?.fixtures || response.data || [];
   }
+
+  /**
+   * List feed posts (public)
+   */
+  async listFeed(page: number = 1, pageSize: number = 10, tenant?: string): Promise<FeedPost[]> {
+    // If tenant is provided as third parameter, use public API
+    if (tenant) {
+      try {
+        const response = await this.client.get(`/public/${tenant}/feed`, {
+          params: { page, pageSize },
+        });
+        return response.data?.posts || response.data || [];
+      } catch {
+        return [];
+      }
+    }
+
+    // Legacy signature - use private API
+    const response = await this.client.get(`/api/v1/feed`, {
+      params: { page, limit: pageSize },
+    });
+    return response.data?.posts || response.data || [];
+  }
+
+  /**
+   * Get league table (public)
+   */
+  async getLeagueTable(tenant?: string): Promise<LeagueTableRow[]> {
+    // If tenant provided, use public API
+    if (tenant && typeof tenant === 'string' && !tenant.includes('/')) {
+      try {
+        const response = await this.client.get(`/public/${tenant}/table`);
+        return response.data?.table || response.data || [];
+      } catch {
+        return [];
+      }
+    }
+
+    // Legacy signature - use private API
+    const params: any = {};
+    const response = await this.client.get('/api/v1/table', { params });
+    return response.data?.table || response.data || [];
+  }
+
+  // ==================== FIXTURES & RESULTS (Private API) ====================
 
   /**
    * Get past results
@@ -116,18 +260,6 @@ export class TeamPlatformSDK {
   async listResults(): Promise<Result[]> {
     const response = await this.client.get('/api/v1/results');
     return response.data?.results || response.data || [];
-  }
-
-  /**
-   * Get league table
-   */
-  async getLeagueTable(league?: string, season?: string): Promise<LeagueTableRow[]> {
-    const params: any = {};
-    if (league) params.league = league;
-    if (season) params.season = season;
-
-    const response = await this.client.get('/api/v1/table', { params });
-    return response.data?.table || response.data || [];
   }
 
   // ==================== SQUAD ====================
@@ -176,16 +308,6 @@ export class TeamPlatformSDK {
   }
 
   // ==================== FEED/POSTS ====================
-
-  /**
-   * Get news feed posts
-   */
-  async listFeed(page: number = 1, limit: number = 20): Promise<FeedPost[]> {
-    const response = await this.client.get('/api/v1/feed', {
-      params: { page, limit },
-    });
-    return response.data?.posts || response.data || [];
-  }
 
   /**
    * Create a new post (admin only)
@@ -315,6 +437,220 @@ export class TeamPlatformSDK {
   async getTenantConfig(): Promise<TenantConfig> {
     const response = await this.client.get('/api/v1/tenant/config');
     return response.data?.config || response.data;
+  }
+
+  // ==================== PHASE 3: SELF-SERVE SIGNUP ====================
+
+  /**
+   * Step 1: Create tenant account (PUBLIC - no auth required)
+   */
+  async signupStart(request: SignupStartRequest): Promise<SignupStartResponse> {
+    const response = await this.client.post<{ success: boolean; tenant: any; discount: number; jwt: string }>(
+      '/public/signup/start',
+      request
+    );
+    if (!response.data.success) {
+      throw new Error('Signup failed');
+    }
+    return {
+      tenant: response.data.tenant,
+      discount: response.data.discount,
+      jwt: response.data.jwt,
+    };
+  }
+
+  /**
+   * Step 2: Customize brand colors (requires JWT from step 1)
+   */
+  async signupBrand(colors: BrandUpdateRequest): Promise<void> {
+    const response = await this.client.post<ApiResponse<void>>('/public/signup/brand', colors);
+    if (!response.data.success) {
+      throw new Error(response.data.error?.message || 'Brand update failed');
+    }
+  }
+
+  /**
+   * Step 3a: Configure Make.com webhook (Starter plan only)
+   */
+  async signupStarterMake(connection: MakeConnectionRequest): Promise<void> {
+    const response = await this.client.post<ApiResponse<void>>('/public/signup/starter/make', connection);
+    if (!response.data.success) {
+      throw new Error(response.data.error?.message || 'Make.com setup failed');
+    }
+  }
+
+  /**
+   * Step 3b: Confirm Pro plan setup
+   */
+  async signupProConfirm(): Promise<void> {
+    const response = await this.client.post<ApiResponse<void>>('/public/signup/pro/confirm');
+    if (!response.data.success) {
+      throw new Error(response.data.error?.message || 'Pro confirmation failed');
+    }
+  }
+
+  // ==================== PHASE 3: USAGE TRACKING ====================
+
+  /**
+   * Get current month's usage stats
+   */
+  async getUsageStats(): Promise<UsageResponse> {
+    const response = await this.client.get<{ success: boolean; usage: UsageResponse }>('/api/v1/usage');
+    if (!response.data.success || !response.data.usage) {
+      throw new Error('Failed to get usage stats');
+    }
+    return response.data.usage;
+  }
+
+  /**
+   * Increment usage counter (called by automation systems)
+   */
+  async incrementUsage(): Promise<UsageResponse> {
+    const response = await this.client.post<{ success: boolean; usage: UsageResponse }>('/api/v1/usage/increment');
+    if (!response.data.success || !response.data.usage) {
+      throw new Error('Failed to increment usage');
+    }
+    return response.data.usage;
+  }
+
+  // ==================== PHASE 3: ADMIN/OWNER CONSOLE ====================
+
+  /**
+   * Get dashboard statistics (admin only)
+   */
+  async getAdminStats(): Promise<AdminStatsResponse> {
+    const response = await this.client.get<{ success: boolean; stats: AdminStatsResponse }>('/api/v1/admin/stats');
+    if (!response.data.success || !response.data.stats) {
+      throw new Error('Failed to get admin stats');
+    }
+    return response.data.stats;
+  }
+
+  /**
+   * List all tenants (admin only)
+   */
+  async listTenants(filters?: {
+    status?: string;
+    plan?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<TenantListResponse> {
+    const params = new URLSearchParams();
+    if (filters?.status) params.append('status', filters.status);
+    if (filters?.plan) params.append('plan', filters.plan);
+    if (filters?.limit) params.append('limit', filters.limit.toString());
+    if (filters?.offset) params.append('offset', filters.offset.toString());
+
+    const response = await this.client.get<{ success: boolean } & TenantListResponse>(
+      `/api/v1/admin/tenants?${params.toString()}`
+    );
+    if (!response.data.success) {
+      throw new Error('Failed to list tenants');
+    }
+    return {
+      tenants: response.data.tenants,
+      pagination: response.data.pagination,
+    };
+  }
+
+  /**
+   * Get tenant details (admin only)
+   */
+  async getTenantDetail(tenantId: string): Promise<TenantDetailResponse> {
+    const response = await this.client.get<{ success: boolean; tenant: TenantDetailResponse }>(
+      `/api/v1/admin/tenants/${tenantId}`
+    );
+    if (!response.data.success || !response.data.tenant) {
+      throw new Error('Failed to get tenant details');
+    }
+    return response.data.tenant;
+  }
+
+  /**
+   * Update tenant (admin only)
+   */
+  async updateTenant(tenantId: string, updates: UpdateTenantRequest): Promise<void> {
+    const response = await this.client.patch<ApiResponse<void>>(`/api/v1/admin/tenants/${tenantId}`, updates);
+    if (!response.data.success) {
+      throw new Error(response.data.error?.message || 'Failed to update tenant');
+    }
+  }
+
+  /**
+   * List promo codes (admin only)
+   */
+  async listPromoCodes(): Promise<PromoCode[]> {
+    const response = await this.client.get<{ success: boolean; promoCodes: PromoCode[] }>('/api/v1/admin/promo-codes');
+    if (!response.data.success) {
+      throw new Error('Failed to list promo codes');
+    }
+    return response.data.promoCodes || [];
+  }
+
+  /**
+   * Create promo code (admin only)
+   */
+  async createPromoCode(request: CreatePromoCodeRequest): Promise<PromoCode> {
+    const response = await this.client.post<{ success: boolean; promoCode: PromoCode }>(
+      '/api/v1/admin/promo-codes',
+      request
+    );
+    if (!response.data.success || !response.data.promoCode) {
+      throw new Error('Failed to create promo code');
+    }
+    return response.data.promoCode;
+  }
+
+  // ==================== PROVISIONING & MAGIC LINKS ====================
+
+  /**
+   * Get provisioning status for a tenant
+   */
+  async getProvisionStatus(tenantId: string): Promise<ProvisionState | null> {
+    const response = await this.client.get<{ success: boolean; data?: { status: string; currentStep: string | null; checkpoints: Record<string, { status: string; error?: string }>; error?: string } }>(
+      `/api/v1/tenants/${tenantId}/provision-status`
+    );
+    if (!response.data.success || !response.data.data) {
+      return null;
+    }
+    return response.data.data as ProvisionState;
+  }
+
+  /**
+   * Start magic link login flow
+   */
+  async startMagicLogin(email: string, tenantId: string): Promise<{ success: boolean }> {
+    const response = await this.client.post<{ success: boolean }>(
+      '/auth/magic/start',
+      { email, tenantId }
+    );
+    return response.data;
+  }
+
+  /**
+   * Verify magic token and get session
+   */
+  async verifyMagicToken(token: string): Promise<{ success: boolean; tenantId?: string }> {
+    const response = await this.client.get<{ success: boolean; tenantId?: string }>(
+      `/auth/magic/verify?token=${encodeURIComponent(token)}`,
+      {
+        withCredentials: true, // Allow cookies
+      }
+    );
+    return response.data;
+  }
+
+  /**
+   * Get admin overview/dashboard data
+   */
+  async getAdminOverview(tenantId: string): Promise<any> {
+    const response = await this.client.get(
+      `/api/v1/tenants/${tenantId}/overview`,
+      {
+        withCredentials: true, // Allow cookies for admin auth
+      }
+    );
+    return response.data;
   }
 }
 

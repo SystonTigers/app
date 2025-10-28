@@ -49,14 +49,19 @@ function getJwtSecret(env: any): Uint8Array {
 }
 
 // Verify and normalize JWT claims
-export async function verifyAndNormalize(token: string, env: any): Promise<Claims> {
+export async function verifyAndNormalize(token: string, env: any, audience?: string): Promise<Claims> {
   const secret = getJwtSecret(env);
   const { payload } = await jwtVerify(token, secret, {
     issuer: env.JWT_ISSUER,
-    audience: env.JWT_AUDIENCE,
+    audience: audience || env.JWT_AUDIENCE,
     clockTolerance: 300, // 5 minutes skew
   });
   return normalizeClaims(payload as RawClaims);
+}
+
+// Verify admin JWT (uses syston-admin audience)
+export async function verifyAdminJWT(token: string, env: any): Promise<Claims> {
+  return verifyAndNormalize(token, env, 'syston-admin');
 }
 
 // Helper to require admin claims
@@ -109,4 +114,42 @@ export async function issueTenantMemberJWT(env: any, args: { tenant_id: string; 
     .sign(secret);
 
   return token;
+}
+
+// Generate short-lived service JWT for internal API calls
+export async function generateServiceJWT(env: any, ttlSeconds = 30): Promise<string> {
+  const secret = getJwtSecret(env);
+  const now = Math.floor(Date.now() / 1000);
+  const exp = now + ttlSeconds;
+
+  const token = await new SignJWT({
+    roles: ["service"],
+    type: "service",
+  })
+    .setProtectedHeader({ alg: "HS256", typ: "JWT" })
+    .setIssuer(env.JWT_ISSUER || "syston.app")
+    .setAudience("internal")
+    .setIssuedAt(now)
+    .setExpirationTime(exp)
+    .sign(secret);
+
+  return token;
+}
+
+// Verify service JWT
+export async function verifyServiceJWT(env: any, token: string): Promise<boolean> {
+  try {
+    const secret = getJwtSecret(env);
+    const { payload } = await jwtVerify(token, secret, {
+      issuer: env.JWT_ISSUER || "syston.app",
+      audience: "internal",
+      clockTolerance: 10, // 10 seconds skew
+    });
+
+    const claims = normalizeClaims(payload as RawClaims);
+    return claims.roles.includes("service");
+  } catch (error) {
+    console.error('[Service JWT] Verification failed:', error);
+    return false;
+  }
 }

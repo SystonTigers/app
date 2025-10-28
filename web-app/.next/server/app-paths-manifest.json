@@ -1,0 +1,7 @@
+{
+  "/[tenant]/fixtures/page": "app/[tenant]/fixtures/page.js",
+  "/[tenant]/squad/page": "app/[tenant]/squad/page.js",
+  "/[tenant]/results/page": "app/[tenant]/results/page.js",
+  "/[tenant]/stats/page": "app/[tenant]/stats/page.js",
+  "/[tenant]/table/page": "app/[tenant]/table/page.js"
+}
