@@ -22,6 +22,7 @@ backend/dist/
 backend/.wrangler/
 backend/.dev.vars
 backend/.tmp/
+backend/nul
 
 # OS / editors
 .DS_Store
