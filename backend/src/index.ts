@@ -70,7 +70,8 @@ import {
   deleteTenant,
   listPromoCodes,
   createPromoCode,
-  deactivatePromoCode
+  deactivatePromoCode,
+  listUsers
 } from "./routes/admin";
 
 // Auth routes (from other branch)
@@ -574,6 +575,11 @@ export default {
     // GET /api/v1/admin/stats - Dashboard statistics
     if (url.pathname === `/api/${v}/admin/stats` && req.method === "GET") {
       return await getAdminStats(req, env, requestId, corsHdrs);
+    }
+
+    // GET /api/v1/admin/users - List all users for a tenant
+    if (url.pathname === `/api/${v}/admin/users` && req.method === "GET") {
+      return await listUsers(req, env, requestId, corsHdrs);
     }
 
     // GET /api/v1/admin/tenants - List all tenants

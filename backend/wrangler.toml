@@ -65,6 +65,10 @@ binding = "POST_QUEUE"
 queue = "post-queue"
 
 [[queues.producers]]
+binding = "HIGHLIGHTS_QUEUE"
+queue = "highlights-queue"
+
+[[queues.producers]]
 binding = "DLQ"
 queue = "dead-letter"
 
@@ -77,6 +81,14 @@ queue = "post-queue"
 [[r2_buckets]]
 binding = "R2_MEDIA"
 bucket_name = "syston-media"
+
+[[r2_buckets]]
+binding = "VIDEOS_BUCKET"
+bucket_name = "oa-videos"
+
+[[r2_buckets]]
+binding = "HIGHLIGHTS_BUCKET"
+bucket_name = "oa-highlights"
 
 # --- Durable Objects
 [[durable_objects.bindings]]

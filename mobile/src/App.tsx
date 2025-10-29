@@ -23,6 +23,7 @@ import ManageScreen from './screens/ManageScreen';
 import SettingsScreen from './screens/SettingsScreen';
 import TrainingScreen from './screens/TrainingScreen';
 import ChatScreen from './screens/ChatScreen';
+import ManageUsersScreen from './screens/ManageUsersScreen';
 import { ErrorBoundary } from './ErrorBoundary';
 
 const Drawer = createDrawerNavigator();
@@ -89,6 +90,16 @@ function AppNavigator() {
         <Drawer.Screen name="Chat" component={ChatScreen} options={{ title: '💬 Chat', drawerLabel: 'Chat' }} />
         <Drawer.Screen name="Manage" component={ManageScreen} options={{ title: '⚙️ Manage', drawerLabel: 'Manage' }} />
         <Drawer.Screen name="Settings" component={SettingsScreen} options={{ title: '🔧 Settings', drawerLabel: 'Settings' }} />
+
+        {/* Hidden Manage Screens - only accessible from Manage hub */}
+        <Drawer.Screen
+          name="ManageUsers"
+          component={ManageUsersScreen}
+          options={{
+            title: '👤 User Management',
+            drawerItemStyle: { display: 'none' } // Hide from drawer menu
+          }}
+        />
       </Drawer.Navigator>
     </NavigationContainer>
   );

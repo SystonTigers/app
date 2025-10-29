@@ -1,9 +1,33 @@
 /**
+ * ============================================================================
+ * DEPRECATED: This file is being phased out in favor of modular config files
+ * ============================================================================
+ *
+ * NEW LOCATION: Use config/index.gs instead
+ *
+ * This file has been split into modular components:
+ * - config/tenant.gs    → Tenant IDs, sheet IDs, folder IDs
+ * - config/features.gs  → Feature flags
+ * - config/api.gs       → API endpoints and keys
+ * - config/youtube.gs   → YouTube settings
+ * - config/webhooks.gs  → Make.com webhooks
+ * - config/index.gs     → Central export + helper functions
+ *
+ * Migration Guide: See CONFIG_MIGRATION_GUIDE.md
+ *
+ * TODO: Update all references to use new helper functions from config/index.gs
+ * TODO: Remove this file after all references are updated (target: 2 weeks)
+ *
+ * For now, this file remains to ensure existing code doesn't break.
+ * ============================================================================
+ */
+
+/**
  * @fileoverview Centralized configuration for Football Club Automation System
  * @version 6.2.0
  * @author Senior Software Architect
  * @description All system configuration in one place - no globals elsewhere
- * 
+ *
  * CRITICAL: This is the single source of truth for all configuration.
  * No hard-coded values anywhere else in the system.
  * Test: GitHub Actions deployment configured

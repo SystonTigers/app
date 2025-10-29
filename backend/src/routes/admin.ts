@@ -393,3 +393,81 @@ export async function getAdminStats(req: Request, env: any, requestId: string, c
     return json({ success: false, error: { code: "SERVER_ERROR", message: err.message } }, 500, corsHdrs);
   }
 }
+
+// GET /api/v1/admin/users - List all users for a tenant
+export async function listUsers(req: Request, env: any, requestId: string, corsHdrs: Headers): Promise<Response> {
+  try {
+    // Require admin authentication
+    await requireAdmin(req, env);
+
+    const url = new URL(req.url);
+    const tenantId = url.searchParams.get("tenantId");  // filter by tenant
+    const role = url.searchParams.get("role");  // filter by role
+    const limit = parseInt(url.searchParams.get("limit") || "100");
+    const offset = parseInt(url.searchParams.get("offset") || "0");
+
+    if (!tenantId) {
+      return json({
+        success: false,
+        error: { code: "TENANT_REQUIRED", message: "tenantId query parameter is required" }
+      }, 400, corsHdrs);
+    }
+
+    let query = `
+      SELECT
+        id, tenant_id, email, roles, profile, created_at, updated_at
+      FROM auth_users
+      WHERE tenant_id = ?
+    `;
+    const params: any[] = [tenantId];
+
+    if (role) {
+      // Filter by role (roles is stored as JSON array string)
+      query += " AND roles LIKE ?";
+      params.push(`%"${role}"%`);
+    }
+
+    query += " ORDER BY created_at DESC LIMIT ? OFFSET ?";
+    params.push(limit, offset);
+
+    const stmt = env.DB.prepare(query);
+    const results = await stmt.bind(...params).all();
+
+    // Get total count
+    let countQuery = "SELECT COUNT(*) as total FROM auth_users WHERE tenant_id = ?";
+    const countParams: any[] = [tenantId];
+    if (role) {
+      countQuery += " AND roles LIKE ?";
+      countParams.push(`%"${role}"%`);
+    }
+    const countResult = await env.DB.prepare(countQuery).bind(...countParams).first();
+    const total = countResult ? countResult.total : 0;
+
+    // Parse roles and profile JSON for each user
+    const users = (results.results || []).map((user: any) => ({
+      id: user.id,
+      tenant_id: user.tenant_id,
+      email: user.email,
+      roles: JSON.parse(user.roles || '[]'),
+      profile: user.profile ? JSON.parse(user.profile) : null,
+      created_at: user.created_at,
+      updated_at: user.updated_at
+    }));
+
+    return json({
+      success: true,
+      users,
+      pagination: {
+        total,
+        limit,
+        offset,
+        hasMore: offset + limit < total
+      }
+    }, 200, corsHdrs);
+
+  } catch (err: any) {
+    if (err instanceof Response) throw err;
+    logJSON("error", requestId, { message: "LIST_USERS_ERROR", error: err.message });
+    return json({ success: false, error: { code: "SERVER_ERROR", message: err.message } }, 500, corsHdrs);
+  }
+}

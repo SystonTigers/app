@@ -29,7 +29,7 @@ export interface RegisterUserInput {
   profile?: Record<string, unknown> | null;
 }
 
-export interface RegisterUserResult {
+export type RegisterUserResult = {
   success: true;
   user: UserProfile;
 } | {
