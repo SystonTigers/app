@@ -1,7 +1,7 @@
 // src/services/provisioning.ts
 
 import { issueTenantAdminJWT } from "./jwt";
-import { putTenantConfig } from "./tenants";
+import { putTenantConfig } from "./tenantConfig";
 import type { TenantConfig, Env } from "../types";
 
 /**

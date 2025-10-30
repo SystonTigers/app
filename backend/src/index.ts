@@ -212,7 +212,7 @@ export function normalizeFixtureRow(row: any) {
   return {
     id: String(row.id),
     date: String(row.date ?? row.fixture_date ?? ""),
-    time: row.time ?? row.kickOffTime ?? row.kick_off_time || undefined,
+    time: (row.time ?? row.kickOffTime ?? row.kick_off_time) || undefined,
     venue: row.venue || undefined,
     competition: row.competition || undefined,
     status,
@@ -775,7 +775,7 @@ export default {
       url = new URL(req.url);
 
       if (req.method === "GET" && url.pathname === "/healthz") {
-        const res = await healthz();
+        const res = await healthz(env);
         return respondWithCors(res, corsHdrs);
       }
       if (req.method === "GET" && url.pathname === "/readyz") {
@@ -1529,7 +1529,7 @@ export default {
           params.push(statusFilter);
         }
 
-        query += ' ORDER BY fixture_date DESC, COALESCE(kick_off_time, '') DESC LIMIT ?';
+        query += " ORDER BY fixture_date DESC, COALESCE(kick_off_time, '') DESC LIMIT ?";
         params.push(limit);
 
         const result = await env.DB.prepare(query).bind(...params).all();
