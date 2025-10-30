@@ -16,7 +16,14 @@ enabled = true
 API_VERSION = "v1"
 JWT_ISSUER = "syston.app"
 JWT_AUDIENCE = "syston-mobile"
-ENVIRONMENT = "development"
+WORKER_BASE_URL = "https://your-worker.example.workers.dev"
+ENVIRONMENT = "production"
+APP_VERSION = "7.0.0"
+BACKEND_API_KEY = "replace-with-secret-api-key"
+GAS_WEBAPP_URL = "https://script.google.com/macros/s/REPLACE/exec"
+GAS_HMAC_SECRET = "replace-with-long-random-string"
+TEMPLATE_SPREADSHEET_ID = "1YourTemplateSpreadsheetId"
+YOUTUBE_API_KEY = "AIzaSyREPLACE"
 # Fixtures refresh endpoint
 FIXTURES_REFRESH_URL = "https://syston-fixtures.team-platform-2025.workers.dev/refresh"
 # Allowlist of hosts for BYO-Make webhooks (comma-separated)
@@ -52,6 +59,11 @@ RESEND_FROM_EMAIL = "onboarding@syston.app"
 [[kv_namespaces]]
 binding = "KV_IDEMP"
 id = "5948d4a91ac04b50904a06c923221994"   # <-- replace after Step 3 (if regenerated)
+
+[[kv_namespaces]]
+binding = "TENANTS"
+id = "your_prod_kv_id"
+preview_id = "your_preview_kv_id"
 
 # --- D1 Database (SQLite)
 [[d1_databases]]
