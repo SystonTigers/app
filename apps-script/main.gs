@@ -21,9 +21,9 @@ function SA_Version() {
       // REMOVED: installedBy (privacy leak)
       // REMOVED: specific user emails or identifying information
       last_check: new Date().toISOString(),
-      system_id: this.getSystemFingerprint(), // Anonymous system identifier
+      system_id: getSystemFingerprint(), // Anonymous system identifier
       api_version: 'v1',
-      uptime_check: this.calculateUptimeStatus()
+      uptime_check: calculateUptimeStatus()
     };
 
     return versionInfo;
