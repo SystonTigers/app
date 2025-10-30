@@ -1,0 +1,11 @@
+{
+  "name": "automation-script-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "test": "npm run test:backend && npm run test:web && npm run test:apps",
+    "test:backend": "npm --prefix backend test",
+    "test:web": "npm --prefix web test && npm --prefix web run test:e2e",
+    "test:apps": "npm --prefix apps-script test"
+  }
+}

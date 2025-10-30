@@ -1,0 +1,10 @@
+{
+  "name": "automation-script-tests",
+  "private": true,
+  "scripts": {
+    "test": "clasp run runAll --nondev"
+  },
+  "devDependencies": {
+    "@google/clasp": "^2.4.0"
+  }
+}
