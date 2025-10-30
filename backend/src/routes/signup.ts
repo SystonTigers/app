@@ -5,7 +5,7 @@ import { z } from "zod";
 import { json, parse, isValidationError } from "../lib/validate";
 import { requireJWT } from "../services/auth";
 import { issueTenantAdminJWT, generateServiceJWT } from "../services/jwt";
-import { isAllowedWebhookHost } from "../services/tenants";
+import { isAllowedWebhookHost } from "../services/tenantConfig";
 import { logJSON } from "../lib/log";
 
 const StartSchema = z.object({

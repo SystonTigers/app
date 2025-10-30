@@ -4,7 +4,7 @@ import { z } from "zod";
 import { PostReqSchema, json, readIdempotencyKey } from "./services/util";
 import { requireJWT, hasRole, requireAdmin } from "./services/auth";
 import { ensureIdempotent, setFinalIdempotent } from "./services/idempotency";
-import { ensureTenant, setMakeWebhook, updateFlags, putTenantConfig, getTenantConfig, setTenantFlags, setChannelWebhook, setYouTubeBYOGoogle, isAllowedWebhookHost } from "./services/tenants";
+import { ensureTenant, setMakeWebhook, updateFlags, putTenantConfig, getTenantConfig, setTenantFlags, setChannelWebhook, setYouTubeBYOGoogle, isAllowedWebhookHost } from "./services/tenantConfig";
 import { issueTenantAdminJWT } from "./services/jwt";
 import type { TenantConfig, PostJob } from "./types";
 import queueWorker from "./queue-consumer";

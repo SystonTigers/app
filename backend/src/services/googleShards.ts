@@ -1,4 +1,4 @@
-import { getTenantConfig } from "./tenants";
+import { getTenantConfig } from "./tenantConfig";
 
 export interface Shard {
   client_id: string;
