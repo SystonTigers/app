@@ -1,6 +1,6 @@
-name = "syston-postbus"
+name = "app"
 main = "src/index.ts"
-compatibility_date = "2025-09-01"
+compatibility_date = "2024-11-01"
 compatibility_flags = ["nodejs_compat"]
 minify = true
 workers_dev = true
@@ -8,149 +8,215 @@ workers_dev = true
 [observability]
 enabled = true
 
-# [wasm_modules]
-# RESVG_WASM = "node_modules/@resvg/resvg-wasm/index_bg.wasm"
-# NOTE: wasm_modules not compatible with ES modules - import directly in code if needed
+# ─────────────────────────────────────────────────────────
+# PRODUCTION ENVIRONMENT
+# ─────────────────────────────────────────────────────────
+[env.production]
 
-[vars]
+[env.production.vars]
+# Global vars
 API_VERSION = "v1"
 JWT_ISSUER = "syston.app"
 JWT_AUDIENCE = "syston-mobile"
-WORKER_BASE_URL = "https://your-worker.example.workers.dev"
-ENVIRONMENT = "production"
 APP_VERSION = "7.0.0"
+TEMPLATE_SPREADSHEET_ID = "1YourTemplateSpreadsheetId"
+YOUTUBE_API_KEY = "AIzaSyREPLACE"
+FIXTURES_REFRESH_URL = "https://syston-fixtures.team-platform-2025.workers.dev/refresh"
+ALLOWED_WEBHOOK_HOSTS = "hook.make.com,hook.eu2.make.com,hook.us1.make.com,*.make.com,webhook.site"
+SETUP_URL = "https://setup-console.team-platform-2025.workers.dev"
+GALLERY_ALLOWED = "image/jpeg,image/png,image/webp"
+GALLERY_MAX_BYTES = "10485760"
+YT_REDIRECT_URL = "https://syston-postbus.team-platform-2025.workers.dev/api/v1/admin/yt/callback"
+RL_POSTS_PER_MIN = "60"
+RL_UPLOADS_PER_MIN = "20"
+APPS_SCRIPT_AUTO_DEPLOY = "true"
+BACKEND_URL = "https://syston-postbus.team-platform-2025.workers.dev"
+ADMIN_CONSOLE_URL = "https://admin-console.team-platform-2025.workers.dev"
+RESEND_FROM_EMAIL = "onboarding@syston.app"
+# Environment-specific vars
+WORKER_BASE_URL = "https://app.team-platform-2025.workers.dev"
+ENVIRONMENT = "production"
 BACKEND_API_KEY = "replace-with-secret-api-key"
 GAS_WEBAPP_URL = "https://script.google.com/macros/s/REPLACE/exec"
 GAS_HMAC_SECRET = "replace-with-long-random-string"
-TEMPLATE_SPREADSHEET_ID = "1YourTemplateSpreadsheetId"
-YOUTUBE_API_KEY = "AIzaSyREPLACE"
-# Fixtures refresh endpoint
-FIXTURES_REFRESH_URL = "https://syston-fixtures.team-platform-2025.workers.dev/refresh"
-# Allowlist of hosts for BYO-Make webhooks (comma-separated)
-ALLOWED_WEBHOOK_HOSTS = "hook.make.com,hook.eu2.make.com,hook.us1.make.com,*.make.com,webhook.site"
-# Public URL for tenant setup page (invite flow)
-SETUP_URL = "https://setup-console.team-platform-2025.workers.dev"
-# Gallery settings
-GALLERY_ALLOWED = "image/jpeg,image/png,image/webp"
-GALLERY_MAX_BYTES = "10485760"
-# YouTube OAuth redirect URL (update with your domain when ready)
-YT_REDIRECT_URL = "https://syston-postbus.team-platform-2025.workers.dev/api/v1/admin/yt/callback"
-# CORS allowed origins (comma-separated, optional - defaults include localhost)
-# CORS_ALLOWED = "https://app.yourbrand.com,https://admin.yourbrand.com"
-# DLQ alert webhook (optional - notifies on queue failures)
-# DLQ_ALERT_URL = "https://hooks.slack.com/services/YOUR/WEBHOOK/URL"
-# Rate limits (requests per minute, per tenant)
-RL_POSTS_PER_MIN = "60"
-RL_UPLOADS_PER_MIN = "20"
-# Apps Script automation (optional - enables auto-deployment)
-APPS_SCRIPT_AUTO_DEPLOY = "true"  # Set to "true" to enable
-BACKEND_URL = "https://syston-postbus.team-platform-2025.workers.dev"
-ADMIN_CONSOLE_URL = "https://admin-console.team-platform-2025.workers.dev"
-# Email configuration (Resend)
-RESEND_FROM_EMAIL = "onboarding@syston.app"
-# NOTE: Secrets must be set using wrangler secret put:
-# - GOOGLE_SERVICE_ACCOUNT_KEY (Apps Script automation)
-# - APPS_SCRIPT_TEMPLATE_ID (Apps Script template)
-# - RESEND_API_KEY (Email sending via Resend)
-# Example: wrangler secret put RESEND_API_KEY
+SUPABASE_URL = "https://prod-supabase.example.com"
+SUPABASE_ANON_KEY = "prod-anon-key"
+SUPABASE_SERVICE_ROLE = "prod-service-role"
+EBAY_CLIENT_ID = "prod-ebay-client-id"
+EBAY_CLIENT_SECRET = "prod-ebay-client-secret"
+SENTRY_DSN = "https://prod-sentry.example.com/1"
+DRY_RUN = "false"
 
-
-[env.preview]
-vars = {
-  SUPABASE_URL = "https://preview-supabase.example.com",
-  SUPABASE_ANON_KEY = "preview-anon-key",
-  SUPABASE_SERVICE_ROLE = "preview-service-role",
-  EBAY_CLIENT_ID = "preview-ebay-client-id",
-  EBAY_CLIENT_SECRET = "preview-ebay-client-secret",
-  SENTRY_DSN = "https://preview-sentry.example.com/1",
-  DRY_RUN = "true"
-}
-
-[env.production]
-vars = {
-  SUPABASE_URL = "https://prod-supabase.example.com",
-  SUPABASE_ANON_KEY = "prod-anon-key",
-  SUPABASE_SERVICE_ROLE = "prod-service-role",
-  EBAY_CLIENT_ID = "prod-ebay-client-id",
-  EBAY_CLIENT_SECRET = "prod-ebay-client-secret",
-  SENTRY_DSN = "https://prod-sentry.example.com/1",
-  DRY_RUN = "false"
-}
-
-
-
-[[kv_namespaces]]
-binding = "KV_IDEMP"
-id = "5948d4a91ac04b50904a06c923221994"   # <-- replace after Step 3 (if regenerated)
-
-[[kv_namespaces]]
+[[env.production.kv_namespaces]]
 binding = "TENANTS"
-id = "your_prod_kv_id"
-preview_id = "your_preview_kv_id"
+id = "71b9f158fb2c4e1a8858dded2633ff5b"
 
-# --- D1 Database (SQLite)
-[[d1_databases]]
+[[env.production.kv_namespaces]]
+binding = "KV_IDEMP"
+id = "5948d4a91ac04b50904a06c923221994"
+
+[[env.production.d1_databases]]
 binding = "DB"
 database_name = "syston-db"
 database_id = "3031c292-6290-4906-947d-ab9a145538ed"
 
-# --- Queues
-[[queues.producers]]
+[[env.production.queues.producers]]
 binding = "POST_QUEUE"
 queue = "post-queue"
 
-[[queues.producers]]
+[[env.production.queues.producers]]
 binding = "HIGHLIGHTS_QUEUE"
 queue = "highlights-queue"
 
-[[queues.producers]]
+[[env.production.queues.producers]]
 binding = "DLQ"
 queue = "dead-letter"
 
-[[queues.consumers]]
+[[env.production.queues.consumers]]
 queue = "post-queue"
 
-# --- R2 Storage (Media/Gallery)
-# NOTE: R2 must be enabled in Cloudflare Dashboard first
-# Uncomment after enabling R2 and running: wrangler r2 bucket create syston-media
-[[r2_buckets]]
+[[env.production.r2_buckets]]
 binding = "R2_MEDIA"
 bucket_name = "syston-media"
 
-[[r2_buckets]]
+[[env.production.r2_buckets]]
 binding = "VIDEOS_BUCKET"
 bucket_name = "oa-videos"
 
-[[r2_buckets]]
+[[env.production.r2_buckets]]
 binding = "HIGHLIGHTS_BUCKET"
 bucket_name = "oa-highlights"
 
-# --- Durable Objects
-[[durable_objects.bindings]]
+[[env.production.durable_objects.bindings]]
 name = "TenantRateLimiter"
 class_name = "TenantRateLimiter"
 
-[[durable_objects.bindings]]
+[[env.production.durable_objects.bindings]]
 name = "VotingRoom"
 class_name = "VotingRoom"
 
-[[durable_objects.bindings]]
+[[env.production.durable_objects.bindings]]
 name = "ChatRoom"
 class_name = "ChatRoom"
 
-[[durable_objects.bindings]]
+[[env.production.durable_objects.bindings]]
 name = "MatchRoom"
 class_name = "MatchRoom"
 
-[[durable_objects.bindings]]
+[[env.production.durable_objects.bindings]]
 name = "GeoFenceManager"
 class_name = "GeoFenceManager"
 
-[[durable_objects.bindings]]
+[[env.production.durable_objects.bindings]]
 name = "PROVISIONER"
 class_name = "Provisioner"
 
-# --- DO migrations
+# ─────────────────────────────────────────────────────────
+# PREVIEW ENVIRONMENT
+# ─────────────────────────────────────────────────────────
+[env.preview]
+
+[env.preview.vars]
+# Global vars
+API_VERSION = "v1"
+JWT_ISSUER = "syston.app"
+JWT_AUDIENCE = "syston-mobile"
+APP_VERSION = "7.0.0"
+TEMPLATE_SPREADSHEET_ID = "1YourTemplateSpreadsheetId"
+YOUTUBE_API_KEY = "AIzaSyREPLACE"
+FIXTURES_REFRESH_URL = "https://syston-fixtures.team-platform-2025.workers.dev/refresh"
+ALLOWED_WEBHOOK_HOSTS = "hook.make.com,hook.eu2.make.com,hook.us1.make.com,*.make.com,webhook.site"
+SETUP_URL = "https://setup-console.team-platform-2025.workers.dev"
+GALLERY_ALLOWED = "image/jpeg,image/png,image/webp"
+GALLERY_MAX_BYTES = "10485760"
+YT_REDIRECT_URL = "https://syston-postbus.team-platform-2025.workers.dev/api/v1/admin/yt/callback"
+RL_POSTS_PER_MIN = "60"
+RL_UPLOADS_PER_MIN = "20"
+APPS_SCRIPT_AUTO_DEPLOY = "true"
+BACKEND_URL = "https://syston-postbus.team-platform-2025.workers.dev"
+ADMIN_CONSOLE_URL = "https://admin-console.team-platform-2025.workers.dev"
+RESEND_FROM_EMAIL = "onboarding@syston.app"
+# Environment-specific vars
+WORKER_BASE_URL = "https://app-preview.team-platform-2025.workers.dev"
+ENVIRONMENT = "preview"
+BACKEND_API_KEY = "replace-with-secret-api-key"
+GAS_WEBAPP_URL = "https://script.google.com/macros/s/REPLACE/exec"
+GAS_HMAC_SECRET = "replace-with-long-random-string"
+SUPABASE_URL = "https://preview-supabase.example.com"
+SUPABASE_ANON_KEY = "preview-anon-key"
+SUPABASE_SERVICE_ROLE = "preview-service-role"
+EBAY_CLIENT_ID = "preview-ebay-client-id"
+EBAY_CLIENT_SECRET = "preview-ebay-client-secret"
+SENTRY_DSN = "https://preview-sentry.example.com/1"
+DRY_RUN = "true"
+
+[[env.preview.kv_namespaces]]
+binding = "TENANTS"
+id = "ed3084ae6a9b46e7bbb5e1798831f331"
+
+[[env.preview.kv_namespaces]]
+binding = "KV_IDEMP"
+id = "5948d4a91ac04b50904a06c923221994"
+
+[[env.preview.d1_databases]]
+binding = "DB"
+database_name = "syston-db"
+database_id = "3031c292-6290-4906-947d-ab9a145538ed"
+
+[[env.preview.queues.producers]]
+binding = "POST_QUEUE"
+queue = "post-queue"
+
+[[env.preview.queues.producers]]
+binding = "HIGHLIGHTS_QUEUE"
+queue = "highlights-queue"
+
+[[env.preview.queues.producers]]
+binding = "DLQ"
+queue = "dead-letter"
+
+[[env.preview.queues.consumers]]
+queue = "post-queue"
+
+[[env.preview.r2_buckets]]
+binding = "R2_MEDIA"
+bucket_name = "syston-media"
+
+[[env.preview.r2_buckets]]
+binding = "VIDEOS_BUCKET"
+bucket_name = "oa-videos"
+
+[[env.preview.r2_buckets]]
+binding = "HIGHLIGHTS_BUCKET"
+bucket_name = "oa-highlights"
+
+[[env.preview.durable_objects.bindings]]
+name = "TenantRateLimiter"
+class_name = "TenantRateLimiter"
+
+[[env.preview.durable_objects.bindings]]
+name = "VotingRoom"
+class_name = "VotingRoom"
+
+[[env.preview.durable_objects.bindings]]
+name = "ChatRoom"
+class_name = "ChatRoom"
+
+[[env.preview.durable_objects.bindings]]
+name = "MatchRoom"
+class_name = "MatchRoom"
+
+[[env.preview.durable_objects.bindings]]
+name = "GeoFenceManager"
+class_name = "GeoFenceManager"
+
+[[env.preview.durable_objects.bindings]]
+name = "PROVISIONER"
+class_name = "Provisioner"
+
+# ─────────────────────────────────────────────────────────
+# DURABLE OBJECT MIGRATIONS (Global)
+# ─────────────────────────────────────────────────────────
 [[migrations]]
 tag = "v1"
 new_classes = [ "TenantRateLimiter" ]
@@ -171,13 +237,31 @@ new_classes = [ "GeoFenceManager" ]
 tag = "v5"
 new_classes = [ "Provisioner" ]
 
-# --- Cron triggers (event reminders)
+# ─────────────────────────────────────────────────────────
+# CRON TRIGGERS (Global)
+# ─────────────────────────────────────────────────────────
 [triggers]
 crons = [ "*/5 * * * *" ]
 
-# Custom domain routes (update zone_name with your actual domain)
-# routes = [
-#   { pattern = "api.YOURBRAND.com/*", zone_name = "YOURBRAND.com" }
-# ]
-
-
+# ─────────────────────────────────────────────────────────
+# NOTES ON SECRETS
+# ─────────────────────────────────────────────────────────
+# Secrets must be set using wrangler secret put for each environment:
+#
+# Production:
+#   wrangler secret put GAS_WEBAPP_URL --env production
+#   wrangler secret put GAS_HMAC_SECRET --env production
+#   wrangler secret put SUPABASE_URL --env production
+#   wrangler secret put SUPABASE_SERVICE_ROLE --env production
+#   wrangler secret put GOOGLE_SERVICE_ACCOUNT_KEY --env production
+#   wrangler secret put APPS_SCRIPT_TEMPLATE_ID --env production
+#   wrangler secret put RESEND_API_KEY --env production
+#
+# Preview:
+#   wrangler secret put GAS_WEBAPP_URL --env preview
+#   wrangler secret put GAS_HMAC_SECRET --env preview
+#   wrangler secret put SUPABASE_URL --env preview
+#   wrangler secret put SUPABASE_SERVICE_ROLE --env preview
+#   wrangler secret put GOOGLE_SERVICE_ACCOUNT_KEY --env preview
+#   wrangler secret put APPS_SCRIPT_TEMPLATE_ID --env preview
+#   wrangler secret put RESEND_API_KEY --env preview
