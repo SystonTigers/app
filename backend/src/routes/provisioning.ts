@@ -7,6 +7,7 @@
 import type { Env } from '../types';
 import { verifyServiceJWT, generateServiceJWT } from '../services/jwt';
 import { retryWithBackoff } from '../lib/retry';
+import { requireTenantAdminOrPlatform } from '../services/auth';
 
 /**
  * POST /internal/provision/queue
@@ -143,6 +144,8 @@ export async function handleProvisionStatus(
   tenantId: string
 ): Promise<Response> {
   try {
+    await requireTenantAdminOrPlatform(request, env, tenantId);
+
     // Get tenant to verify it exists and get plan
     const tenant = await env.DB.prepare(
       `SELECT id, plan, status, provisioned_at FROM tenants WHERE id = ?`
@@ -226,6 +229,8 @@ export async function handleTenantOverview(
   tenantId: string
 ): Promise<Response> {
   try {
+    await requireTenantAdminOrPlatform(request, env, tenantId);
+
     // Overview for a single tenant (fixes tenant_id reference)
     // Note: fixtures table is legacy single-tenant, so excluded from counts
     const row = await env.DB.prepare(

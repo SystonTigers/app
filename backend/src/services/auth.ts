@@ -33,8 +33,15 @@ function getToken(req: Request): string {
 /**
  * Helper to create forbidden response
  */
-function forbidden(): Response {
-  return new Response(JSON.stringify({ success: false, error: { code: "FORBIDDEN" } }), {
+function forbidden(message?: string): Response {
+  const body: { success: false; error: { code: string; message?: string } } = {
+    success: false,
+    error: { code: "FORBIDDEN" },
+  };
+  if (message) {
+    body.error.message = message;
+  }
+  return new Response(JSON.stringify(body), {
     status: 403,
     headers: { "content-type": "application/json" }
   });
@@ -81,6 +88,41 @@ export async function requireAdmin(req: Request, env: any): Promise<Claims> {
       claims, // safe: just decoded payload
     });
     throw forbidden();
+  }
+}
+
+export async function requireTenantAdminOrPlatform(
+  req: Request,
+  env: any,
+  tenantId: string
+): Promise<{ claims: Claims; scope: "platform_admin" | "tenant_admin" }> {
+  let adminFailure: Response | null = null;
+  try {
+    const claims = await requireAdmin(req, env);
+    return { claims, scope: "platform_admin" };
+  } catch (err) {
+    if (err instanceof Response) {
+      adminFailure = err;
+    } else {
+      throw err;
+    }
+  }
+
+  try {
+    const claims = await requireJWT(req, env);
+    const allowedRoles = new Set(["admin", "tenant_admin", "owner"]);
+    const tenant = claims.tenantId;
+    if (!tenant || tenant !== tenantId) {
+      throw forbidden("tenant_mismatch");
+    }
+    const hasAllowed = claims.roles.some((role) => allowedRoles.has(role));
+    if (!hasAllowed) {
+      throw forbidden("requires tenant_admin role");
+    }
+    return { claims, scope: "tenant_admin" };
+  } catch (err) {
+    if (err instanceof Response) throw err;
+    throw adminFailure ?? forbidden();
   }
 }
 
