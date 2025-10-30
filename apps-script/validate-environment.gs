@@ -14,12 +14,41 @@ function validateEnvironment() {
 
   const scriptPropsService = PropertiesService.getScriptProperties();
   const scriptProps = scriptPropsService.getProperties();
-  const requiredProps = ['SHEET_ID', 'ENV', 'SYSTEM_VERSION', 'WEBHOOK_MAKE_URL'];
+  const requiredPropChecks = [
+    {
+      key: 'SYSTEM.SPREADSHEET_ID',
+      resolver: function() {
+        return resolveScriptPropertyValue_(scriptProps, 'SYSTEM.SPREADSHEET_ID', ['SHEET_ID', 'SPREADSHEET_ID']);
+      }
+    },
+    {
+      key: 'SYSTEM.ENVIRONMENT',
+      resolver: function() {
+        return resolveScriptPropertyValue_(scriptProps, 'SYSTEM.ENVIRONMENT', ['ENVIRONMENT', 'ENV', 'SYSTEM_ENVIRONMENT']);
+      }
+    },
+    {
+      key: 'SYSTEM.VERSION',
+      resolver: function() {
+        return resolveScriptPropertyValue_(scriptProps, 'SYSTEM.VERSION', ['SYSTEM_VERSION', 'VERSION']);
+      }
+    },
+    {
+      key: 'MAKE.WEBHOOK_URL',
+      resolver: function() {
+        return resolveScriptPropertyValue_(scriptProps, 'MAKE.WEBHOOK_URL', ['WEBHOOK_MAKE_URL', 'MAKE_WEBHOOK_URL']);
+      }
+    }
+  ];
   const optionalProps = ['CACHE_TTL_MINUTES', 'ALLOWED_TRIGGERS', 'VIDEO_DRIVE_ROOT_ID'];
 
-  const missingRequiredProps = requiredProps.filter(function(key) {
-    return !scriptProps[key];
-  });
+  const missingRequiredProps = requiredPropChecks.reduce(function(acc, check) {
+    const value = check.resolver();
+    if (!hasScriptPropertyValue_(value)) {
+      acc.push(check.key);
+    }
+    return acc;
+  }, []);
   const missingOptionalProps = optionalProps.filter(function(key) {
     return !scriptProps[key];
   });
@@ -57,16 +86,17 @@ function validateEnvironment() {
 }
 
 function validateConfigSheet_(scriptProps) {
-  if (!scriptProps.SHEET_ID) {
+  const sheetId = resolveScriptPropertyValue_(scriptProps, 'SYSTEM.SPREADSHEET_ID', ['SHEET_ID', 'SPREADSHEET_ID']);
+  if (!hasScriptPropertyValue_(sheetId)) {
     return {
       name: 'Config Sheet',
       status: 'FAIL',
-      details: { message: 'SHEET_ID Script Property not set.' }
+      details: { message: 'SYSTEM.SPREADSHEET_ID Script Property not set.' }
     };
   }
 
   try {
-    const spreadsheet = SpreadsheetApp.openById(scriptProps.SHEET_ID);
+    const spreadsheet = SpreadsheetApp.openById(sheetId);
     const sheet = spreadsheet.getSheetByName('CONFIG');
     if (!sheet) {
       return {
@@ -166,12 +196,12 @@ function validateTriggers_() {
 
 function validateEnvironmentTag_(scriptProps) {
   var allowedEnvs = ['production', 'staging', 'development'];
-  var envValue = scriptProps.ENV || '';
-  if (!envValue) {
+  var envValue = resolveScriptPropertyValue_(scriptProps, 'SYSTEM.ENVIRONMENT', ['ENVIRONMENT', 'ENV', 'SYSTEM_ENVIRONMENT']);
+  if (!hasScriptPropertyValue_(envValue)) {
     return {
       name: 'Environment Tag',
       status: 'FAIL',
-      details: { message: 'ENV Script Property not set.' }
+      details: { message: 'SYSTEM.ENVIRONMENT Script Property not set.' }
     };
   }
 
@@ -194,4 +224,38 @@ function validateEnvironmentTag_(scriptProps) {
       env: normalizedEnv
     }
   };
+}
+
+function resolveScriptPropertyValue_(scriptProps, canonicalKey, aliases) {
+  if (typeof getConfigValue === 'function') {
+    var configValue = getConfigValue(canonicalKey, null);
+    if (hasScriptPropertyValue_(configValue)) {
+      return configValue;
+    }
+  }
+
+  if (hasScriptPropertyValue_(scriptProps[canonicalKey])) {
+    return scriptProps[canonicalKey];
+  }
+
+  for (var i = 0; i < aliases.length; i++) {
+    var alias = aliases[i];
+    if (hasScriptPropertyValue_(scriptProps[alias])) {
+      return scriptProps[alias];
+    }
+  }
+
+  return '';
+}
+
+function hasScriptPropertyValue_(value) {
+  if (value === null || value === undefined) {
+    return false;
+  }
+
+  if (typeof value === 'string') {
+    return value.trim() !== '';
+  }
+
+  return true;
 }

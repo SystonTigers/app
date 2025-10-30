@@ -248,6 +248,10 @@ function setupScriptProperties(config) {
       'INSTALL.VERSION': '6.2.0',
 
       // Legacy compatibility keys (TODO: Remove in v7.0)
+      'ENV': config.ENVIRONMENT || 'production',
+      'SYSTEM_VERSION': config.SYSTEM_VERSION || '6.2.0',
+      'WEBHOOK_MAKE_URL': config.MAKE_WEBHOOK_URL,
+      'MAKE_WEBHOOK_URL': config.MAKE_WEBHOOK_URL,
       'SPREADSHEET_ID': config.SHEET_ID, // Legacy alias
       'SHEET_ID': config.SHEET_ID,       // Legacy alias
       'SHEET_URL': config.SHEET_URL      // Legacy alias
