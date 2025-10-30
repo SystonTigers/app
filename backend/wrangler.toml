@@ -1,6 +1,6 @@
-name = "syston-postbus"
+name = "app"
 main = "src/index.ts"
-compatibility_date = "2025-09-01"
+compatibility_date = "2024-11-01"
 compatibility_flags = ["nodejs_compat"]
 minify = true
 workers_dev = true
@@ -59,11 +59,6 @@ RESEND_FROM_EMAIL = "onboarding@syston.app"
 [[kv_namespaces]]
 binding = "KV_IDEMP"
 id = "5948d4a91ac04b50904a06c923221994"   # <-- replace after Step 3 (if regenerated)
-
-[[kv_namespaces]]
-binding = "TENANTS"
-id = "your_prod_kv_id"
-preview_id = "your_preview_kv_id"
 
 # --- D1 Database (SQLite)
 [[d1_databases]]
@@ -157,4 +152,13 @@ crons = [ "*/5 * * * *" ]
 #   { pattern = "api.YOURBRAND.com/*", zone_name = "YOURBRAND.com" }
 # ]
 
+[env.production]
+kv_namespaces = [
+  { binding = "TENANTS", id = "71b9f158fb2c4e1a8858dded2633ff5b" }
+]
+
+[env.preview]
+kv_namespaces = [
+  { binding = "TENANTS", id = "ed3084ae6a9b46e7bbb5e1798831f331" }
+]
 
