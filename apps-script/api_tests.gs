@@ -143,6 +143,94 @@ suite('API Helpers - Idempotency', function() {
   });
 });
 
+suite('Fixture Consolidator - Backend payload contract', function() {
+  function stubFixtureConsolidatorConfig_(overrides) {
+    var original = {
+      loadConfig: FixtureConsolidator.prototype.loadConfig_,
+      getSheet: FixtureConsolidator.prototype.getFixturesSheet_
+    };
+
+    FixtureConsolidator.prototype.loadConfig_ = function() {
+      return Object.assign({
+        backendUrl: 'https://example.test',
+        backendToken: 'token',
+        tenantId: 'tenant-abc',
+        teamName: 'Our Club',
+        sheetName: 'Fixtures'
+      }, overrides || {});
+    };
+
+    FixtureConsolidator.prototype.getFixturesSheet_ = function() {
+      return {
+        getLastRow: function() { return 1; }
+      };
+    };
+
+    return original;
+  }
+
+  function restoreFixtureConsolidatorConfig_(original) {
+    FixtureConsolidator.prototype.loadConfig_ = original.loadConfig;
+    FixtureConsolidator.prototype.getFixturesSheet_ = original.getSheet;
+  }
+
+  test('buildBackendPayload_ includes tenant slug and home metadata', function() {
+    var original = stubFixtureConsolidatorConfig_({ tenantId: 'tenant-xyz', teamName: 'Example FC' });
+    try {
+      var consolidator = new FixtureConsolidator();
+      var payload = consolidator.buildBackendPayload_([
+        {
+          date: new Date(Date.UTC(2025, 0, 10)),
+          opponent: 'Rivals FC',
+          venue: 'Home',
+          competition: 'League',
+          kickOffTime: '10:00',
+          status: 'scheduled',
+          source: 'email'
+        }
+      ]);
+
+      equal(payload.tenantSlug, 'tenant-xyz', 'Tenant slug should reflect config tenant');
+      equal(payload.fixtures.length, 1, 'Should include one fixture');
+      var fixture = payload.fixtures[0];
+      equal(fixture.homeTeam, 'Example FC', 'Home fixtures should map club as home team');
+      equal(fixture.awayTeam, 'Rivals FC', 'Opponent should map to away team');
+      equal(fixture.status, 'scheduled', 'Status should normalise to scheduled');
+      ok(fixture.time === '10:00', 'Kick-off time should be preserved');
+    } finally {
+      restoreFixtureConsolidatorConfig_(original);
+    }
+  });
+
+  test('buildBackendPayload_ flips teams for away fixtures', function() {
+    var original = stubFixtureConsolidatorConfig_({ tenantId: 'tenant-xyz', teamName: 'Example FC' });
+    try {
+      var consolidator = new FixtureConsolidator();
+      var payload = consolidator.buildBackendPayload_([
+        {
+          date: new Date(Date.UTC(2025, 0, 17)),
+          opponent: 'Rivals FC',
+          venue: 'Away',
+          competition: 'League',
+          kickOffTime: '11:30',
+          status: 'completed',
+          source: 'website',
+          homeScore: 2,
+          awayScore: 1
+        }
+      ]);
+
+      var fixture = payload.fixtures[0];
+      equal(fixture.homeTeam, 'Rivals FC', 'Away fixtures should set opponent as home team');
+      equal(fixture.awayTeam, 'Example FC', 'Club should become away team when venue is Away');
+      equal(fixture.status, 'completed', 'Completed status should be preserved');
+      ok(fixture.homeScore === 2 && fixture.awayScore === 1, 'Scores should be passed through when provided');
+    } finally {
+      restoreFixtureConsolidatorConfig_(original);
+    }
+  });
+});
+
 suite('Make Integration - Backend headers', function() {
   test('scopes idempotency key per tenant and sets headers', function() {
     var props = PropertiesService.getScriptProperties();

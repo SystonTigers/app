@@ -336,6 +336,56 @@ class FixtureConsolidator {
     return 'scheduled';
   }
 
+  normalizeStatus_(status) {
+    const allowed = ['scheduled', 'live', 'completed', 'postponed', 'cancelled'];
+    const candidate = String(status || '').toLowerCase().trim();
+    return allowed.indexOf(candidate) !== -1 ? candidate : 'scheduled';
+  }
+
+  toScore_(value) {
+    if (value === null || value === undefined || value === '') return null;
+    const numberValue = Number(value);
+    if (Number.isFinite(numberValue)) {
+      return Math.max(0, Math.floor(numberValue));
+    }
+    return null;
+  }
+
+  buildBackendPayload_(fixtures) {
+    const tenantSlug = this.config.tenantId || this.config.tenantSlug || 'default';
+    const clubName = this.config.teamName || 'Home Team';
+
+    const payloadFixtures = fixtures.map(fixture => {
+      const venueValue = String(fixture.venue || '').toLowerCase();
+      const isAway = venueValue === 'away' || venueValue === 'a';
+
+      const opponent = fixture.opponent || '';
+      const homeTeam = isAway ? (opponent || clubName) : clubName;
+      const awayTeam = isAway ? clubName : (opponent || clubName);
+
+      const normalized = {
+        date: this.formatDate_(fixture.date),
+        homeTeam: homeTeam,
+        awayTeam: awayTeam,
+        opponent: opponent || awayTeam,
+        venue: fixture.venue || '',
+        competition: fixture.competition || '',
+        time: fixture.kickOffTime || '',
+        status: this.normalizeStatus_(fixture.status),
+        source: fixture.source || 'automation',
+        homeScore: this.toScore_(fixture.homeScore),
+        awayScore: this.toScore_(fixture.awayScore)
+      };
+
+      return normalized;
+    });
+
+    return {
+      tenantSlug: tenantSlug,
+      fixtures: payloadFixtures
+    };
+  }
+
   /**
    * Merge sources
    */
@@ -389,16 +439,11 @@ class FixtureConsolidator {
     }
 
     try {
+      const payloadDetails = this.buildBackendPayload_(fixtures);
       const payload = {
-        fixtures: fixtures.map(f => ({
-          date: this.formatDate_(f.date),
-          opponent: f.opponent,
-          venue: f.venue,
-          competition: f.competition,
-          time: f.kickOffTime,
-          status: f.status,
-          source: f.source
-        }))
+        tenantSlug: payloadDetails.tenantSlug,
+        tenantId: payloadDetails.tenantSlug,
+        fixtures: payloadDetails.fixtures
       };
 
       const options = {
