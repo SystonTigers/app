@@ -106,6 +106,143 @@ const PostEventSchema = z.object({
   template: z.string().optional()
 });
 
+const ValidFixtureStatuses = new Set([
+  "scheduled",
+  "live",
+  "completed",
+  "postponed",
+  "cancelled"
+]);
+
+const FixtureSyncItemSchema = z.object({
+  date: z.string().min(1, "date required"),
+  homeTeam: z.string().min(1, "homeTeam required"),
+  awayTeam: z.string().min(1, "awayTeam required"),
+  opponent: z.string().min(1).optional(),
+  venue: z.string().optional(),
+  competition: z.string().optional(),
+  time: z.string().optional(),
+  status: z.enum([
+    "scheduled",
+    "live",
+    "completed",
+    "postponed",
+    "cancelled"
+  ]).optional(),
+  source: z.string().optional(),
+  homeScore: z.union([z.number(), z.string()]).nullable().optional(),
+  awayScore: z.union([z.number(), z.string()]).nullable().optional()
+});
+
+export const FixtureSyncSchema = z
+  .object({
+    tenantId: z.string().min(1).optional(),
+    tenantSlug: z.string().min(1).optional(),
+    fixtures: z.array(FixtureSyncItemSchema)
+  })
+  .superRefine((value, ctx) => {
+    if (!value.tenantId && !value.tenantSlug) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "tenantId or tenantSlug is required"
+      });
+    }
+  })
+  .transform((value) => ({
+    tenantId: value.tenantId ?? value.tenantSlug!,
+    fixtures: value.fixtures
+  }));
+
+function normalizeFixtureStatus(status?: string | null) {
+  const candidate = String(status || "")
+    .toLowerCase()
+    .trim();
+  return ValidFixtureStatuses.has(candidate) ? candidate : "scheduled";
+}
+
+function toScore(value: unknown): number | null {
+  if (value === null || value === undefined || value === "") return null;
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return Math.trunc(value);
+  }
+  const asNumber = Number(value);
+  return Number.isFinite(asNumber) ? Math.trunc(asNumber) : null;
+}
+
+function parseScorersField(value: unknown): string[] {
+  if (!value) return [];
+  if (Array.isArray(value)) {
+    return value
+      .map((entry) => String(entry || "").trim())
+      .filter(Boolean);
+  }
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return [];
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) {
+        return parsed
+          .map((entry) => String(entry || "").trim())
+          .filter(Boolean);
+      }
+    } catch (err) {
+      // Ignore JSON parse errors and fall back to string splitting
+    }
+    return trimmed
+      .split(/[,;\n]/)
+      .map((entry) => entry.trim())
+      .filter(Boolean);
+  }
+
+  return [];
+}
+
+export function normalizeFixtureRow(row: any) {
+  const status = normalizeFixtureStatus(row.status ?? row.match_status);
+  const homeScore = toScore(row.homeScore ?? row.home_score);
+  const awayScore = toScore(row.awayScore ?? row.away_score);
+
+  return {
+    id: String(row.id),
+    date: String(row.date ?? row.fixture_date ?? ""),
+    time: row.time ?? row.kickOffTime ?? row.kick_off_time || undefined,
+    venue: row.venue || undefined,
+    competition: row.competition || undefined,
+    status,
+    homeTeam: String(row.homeTeam ?? row.home_team ?? ""),
+    awayTeam: String(row.awayTeam ?? row.away_team ?? ""),
+    homeScore: homeScore ?? undefined,
+    awayScore: awayScore ?? undefined,
+    source: row.source || undefined
+  };
+}
+
+export function normalizeResultRow(row: any) {
+  const homeScore = toScore(row.homeScore ?? row.home_score) ?? 0;
+  const awayScore = toScore(row.awayScore ?? row.away_score) ?? 0;
+  const combinedScorers = [
+    ...parseScorersField(row.home_scorers),
+    ...parseScorersField(row.away_scorers)
+  ];
+  const legacyScorers = parseScorersField(row.scorers);
+  const scorers = combinedScorers.length ? combinedScorers : legacyScorers;
+
+  return {
+    id: String(row.id),
+    homeTeam: String(row.homeTeam ?? row.home_team ?? ""),
+    awayTeam: String(row.awayTeam ?? row.away_team ?? ""),
+    date: String(row.date ?? row.match_date ?? ""),
+    venue: row.venue || undefined,
+    competition: row.competition || undefined,
+    status: "completed" as const,
+    homeScore,
+    awayScore,
+    scorers: scorers.length ? scorers : undefined
+  };
+}
+
 function buildRateLimitScope(pathname: string) {
   const segments = pathname.split("/").filter(Boolean);
   if (!segments.length) return "root";
@@ -725,36 +862,83 @@ export default {
     if (url.pathname === `/api/${v}/fixtures/sync` && req.method === "POST") {
       try {
         const body = await req.json().catch(() => ({}));
-        const { fixtures } = body;
+        const parsed = FixtureSyncSchema.safeParse(body);
 
-        if (!Array.isArray(fixtures)) {
-          return json({ success: false, error: { code: "INVALID_DATA", message: "fixtures must be an array" } }, 400, corsHdrs);
+        if (!parsed.success) {
+          return json(
+            {
+              success: false,
+              error: { code: "INVALID_DATA", message: parsed.error.issues[0]?.message || "Invalid payload" }
+            },
+            400,
+            corsHdrs
+          );
+        }
+
+        const { tenantId, fixtures } = parsed.data;
+
+        if (!fixtures.length) {
+          return json({ success: true, synced: 0 }, 200, corsHdrs);
         }
 
         let synced = 0;
         for (const fixture of fixtures) {
           try {
+            const trimmedHome = fixture.homeTeam.trim();
+            const trimmedAway = fixture.awayTeam.trim();
+            let opponent = fixture.opponent?.trim() || '';
+            if (!opponent) {
+              opponent = trimmedAway || trimmedHome;
+            }
+
+            const status = normalizeFixtureStatus(fixture.status);
+            const homeScore = toScore(fixture.homeScore);
+            const awayScore = toScore(fixture.awayScore);
+            const matchStatus = status === 'completed' ? 'ft' : status === 'live' ? 'live' : status;
+
             await env.DB.prepare(`
               INSERT INTO fixtures (
-                fixture_date, opponent, venue, competition, kick_off_time, status, source, updated_at
+                tenant_id,
+                fixture_date,
+                opponent,
+                venue,
+                competition,
+                kick_off_time,
+                status,
+                source,
+                home_team,
+                away_team,
+                home_score,
+                away_score,
+                match_status,
+                updated_at
               )
-              VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-              ON CONFLICT(fixture_date, opponent)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+              ON CONFLICT(tenant_id, fixture_date, home_team, away_team)
               DO UPDATE SET
                 venue = excluded.venue,
                 competition = excluded.competition,
                 kick_off_time = excluded.kick_off_time,
                 status = excluded.status,
                 source = excluded.source,
+                home_score = excluded.home_score,
+                away_score = excluded.away_score,
+                match_status = excluded.match_status,
                 updated_at = CURRENT_TIMESTAMP
             `).bind(
+              tenantId,
               fixture.date,
-              fixture.opponent,
+              opponent,
               fixture.venue || '',
               fixture.competition || '',
               fixture.time || '',
-              fixture.status || 'scheduled',
-              fixture.source || 'unknown'
+              status,
+              fixture.source || 'automation',
+              trimmedHome,
+              trimmedAway,
+              homeScore ?? null,
+              awayScore ?? null,
+              matchStatus
             ).run();
             synced++;
           } catch (err) {
@@ -772,18 +956,40 @@ export default {
     // GET /api/v1/fixtures/upcoming - Get upcoming fixtures
     if (url.pathname === `/api/${v}/fixtures/upcoming` && req.method === "GET") {
       try {
+        const tenantId =
+          url.searchParams.get('tenant_id') ||
+          url.searchParams.get('tenant') ||
+          url.searchParams.get('tenantSlug') ||
+          'default';
+
         const result = await env.DB.prepare(`
           SELECT
-            id, fixture_date as date, opponent, venue, competition,
-            kick_off_time as kickOffTime, status, source
+            id,
+            fixture_date,
+            kick_off_time,
+            venue,
+            competition,
+            status,
+            source,
+            home_team,
+            away_team,
+            home_score,
+            away_score
           FROM fixtures
-          WHERE fixture_date >= DATE('now')
+          WHERE tenant_id = ?
+            AND fixture_date >= DATE('now')
             AND status != 'postponed'
-          ORDER BY fixture_date ASC
+          ORDER BY fixture_date ASC, COALESCE(kick_off_time, '') ASC
           LIMIT 10
-        `).all();
+        `)
+          .bind(tenantId)
+          .all();
 
-        return json({ success: true, data: result.results || [] }, 200, corsHdrs);
+        const fixtures = (result.results || []).map((row) =>
+          normalizeFixtureRow(row)
+        );
+
+        return json({ success: true, data: fixtures }, 200, corsHdrs);
       } catch (err) {
         logJSON("error", requestId, { message: "Get fixtures failed", error: String(err) });
         return json({ success: false, error: { code: "INTERNAL" } }, 500, corsHdrs);
@@ -793,29 +999,73 @@ export default {
     // GET /api/v1/fixtures/all - Get all fixtures
     if (url.pathname === `/api/${v}/fixtures/all` && req.method === "GET") {
       try {
-        const limit = parseInt(url.searchParams.get('limit') || '50');
-        const status = url.searchParams.get('status');
+        const tenantId =
+          url.searchParams.get('tenant_id') ||
+          url.searchParams.get('tenant') ||
+          url.searchParams.get('tenantSlug') ||
+          'default';
+
+        const limitParam = url.searchParams.get('limit') || '50';
+        const limit = Number.parseInt(limitParam, 10);
+        if (!Number.isFinite(limit) || limit <= 0) {
+          return json(
+            { success: false, error: { code: "INVALID_LIMIT", message: "limit must be a positive integer" } },
+            400,
+            corsHdrs
+          );
+        }
+
+        const statusParam = url.searchParams.get('status');
+        let statusFilter: string | null = null;
+        if (statusParam) {
+          const lowered = statusParam.toLowerCase();
+          if (!ValidFixtureStatuses.has(lowered)) {
+            return json(
+              {
+                success: false,
+                error: {
+                  code: "INVALID_STATUS",
+                  message: "status must be one of scheduled, live, completed, postponed, cancelled"
+                }
+              },
+              400,
+              corsHdrs
+            );
+          }
+          statusFilter = lowered;
+        }
 
         let query = `
           SELECT
-            id, fixture_date as date, opponent, venue, competition,
-            kick_off_time as kickOffTime, status, source
+            id,
+            fixture_date,
+            kick_off_time,
+            venue,
+            competition,
+            status,
+            source,
+            home_team,
+            away_team,
+            home_score,
+            away_score
           FROM fixtures
+          WHERE tenant_id = ?
         `;
 
-        const params: string[] = [];
+        const params: unknown[] = [tenantId];
 
-        if (status) {
-          query += ' WHERE status = ?';
-          params.push(status);
+        if (statusFilter) {
+          query += ' AND status = ?';
+          params.push(statusFilter);
         }
 
-        query += ' ORDER BY fixture_date DESC LIMIT ?';
-        params.push(limit.toString());
+        query += ' ORDER BY fixture_date DESC, COALESCE(kick_off_time, '') DESC LIMIT ?';
+        params.push(limit);
 
         const result = await env.DB.prepare(query).bind(...params).all();
+        const fixtures = (result.results || []).map((row) => normalizeFixtureRow(row));
 
-        return json({ success: true, data: result.results || [] }, 200, corsHdrs);
+        return json({ success: true, data: fixtures }, 200, corsHdrs);
       } catch (err) {
         logJSON("error", requestId, { message: "Get all fixtures failed", error: String(err) });
         return json({ success: false, error: { code: "INTERNAL" } }, 500, corsHdrs);
@@ -825,18 +1075,47 @@ export default {
     // GET /api/v1/fixtures/results - Get recent results
     if (url.pathname === `/api/${v}/fixtures/results` && req.method === "GET") {
       try {
-        const limit = parseInt(url.searchParams.get('limit') || '10');
+        const tenantId =
+          url.searchParams.get('tenant_id') ||
+          url.searchParams.get('tenant') ||
+          url.searchParams.get('tenantSlug') ||
+          'default';
+
+        const limitParam = url.searchParams.get('limit') || '10';
+        const limit = Number.parseInt(limitParam, 10);
+        if (!Number.isFinite(limit) || limit <= 0) {
+          return json(
+            { success: false, error: { code: "INVALID_LIMIT", message: "limit must be a positive integer" } },
+            400,
+            corsHdrs
+          );
+        }
 
         const result = await env.DB.prepare(`
           SELECT
-            id, match_date as date, opponent, home_score as homeScore,
-            away_score as awayScore, venue, competition, scorers
+            id,
+            match_date,
+            opponent,
+            home_team,
+            away_team,
+            home_score,
+            away_score,
+            venue,
+            competition,
+            scorers,
+            home_scorers,
+            away_scorers
           FROM results
+          WHERE tenant_id = ?
           ORDER BY match_date DESC
           LIMIT ?
-        `).bind(limit).all();
+        `)
+          .bind(tenantId, limit)
+          .all();
 
-        return json({ success: true, data: result.results || [] }, 200, corsHdrs);
+        const results = (result.results || []).map((row) => normalizeResultRow(row));
+
+        return json({ success: true, data: results }, 200, corsHdrs);
       } catch (err) {
         logJSON("error", requestId, { message: "Get results failed", error: String(err) });
         return json({ success: false, error: { code: "INTERNAL" } }, 500, corsHdrs);
@@ -846,28 +1125,82 @@ export default {
     // POST /api/v1/fixtures/results - Add a match result
     if (url.pathname === `/api/${v}/fixtures/results` && req.method === "POST") {
       try {
-        const result = await req.json().catch(() => ({}));
+        const payload = await req.json().catch(() => ({}));
+
+        const tenantId = String(payload.tenantId || payload.tenantSlug || '').trim();
+        const matchDate = String(payload.date || payload.matchDate || '').trim();
+        const homeTeam = String(payload.homeTeam || '').trim();
+        const awayTeam = String(payload.awayTeam || '').trim();
+
+        if (!tenantId || !matchDate || !homeTeam || !awayTeam) {
+          return json(
+            {
+              success: false,
+              error: {
+                code: "INVALID_DATA",
+                message: "tenantId, date, homeTeam, and awayTeam are required"
+              }
+            },
+            400,
+            corsHdrs
+          );
+        }
+
+        const opponent = String(payload.opponent || awayTeam || homeTeam).trim();
+        const homeScore = toScore(payload.homeScore) ?? 0;
+        const awayScore = toScore(payload.awayScore) ?? 0;
+        const homeScorersJson = JSON.stringify(parseScorersField(payload.homeScorers));
+        const awayScorersJson = JSON.stringify(parseScorersField(payload.awayScorers));
+        const combinedLegacy = parseScorersField(payload.scorers);
+        if (!combinedLegacy.length) {
+          combinedLegacy.push(
+            ...parseScorersField(payload.homeScorers),
+            ...parseScorersField(payload.awayScorers)
+          );
+        }
+        const scorersText = combinedLegacy.join(', ');
 
         await env.DB.prepare(`
           INSERT INTO results (
-            match_date, opponent, home_score, away_score, venue, competition, scorers
+            tenant_id,
+            match_date,
+            opponent,
+            home_team,
+            away_team,
+            home_score,
+            away_score,
+            venue,
+            competition,
+            scorers,
+            home_scorers,
+            away_scorers,
+            updated_at
           )
-          VALUES (?, ?, ?, ?, ?, ?, ?)
-          ON CONFLICT(match_date, opponent)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+          ON CONFLICT(tenant_id, match_date, home_team, away_team)
           DO UPDATE SET
+            opponent = excluded.opponent,
             home_score = excluded.home_score,
             away_score = excluded.away_score,
             venue = excluded.venue,
             competition = excluded.competition,
-            scorers = excluded.scorers
+            scorers = excluded.scorers,
+            home_scorers = excluded.home_scorers,
+            away_scorers = excluded.away_scorers,
+            updated_at = CURRENT_TIMESTAMP
         `).bind(
-          result.date,
-          result.opponent,
-          result.homeScore || 0,
-          result.awayScore || 0,
-          result.venue || '',
-          result.competition || '',
-          result.scorers || ''
+          tenantId,
+          matchDate,
+          opponent,
+          homeTeam,
+          awayTeam,
+          homeScore,
+          awayScore,
+          payload.venue || '',
+          payload.competition || '',
+          scorersText,
+          homeScorersJson,
+          awayScorersJson
         ).run();
 
         return json({ success: true }, 200, corsHdrs);
