@@ -55,6 +55,29 @@ RESEND_FROM_EMAIL = "onboarding@syston.app"
 # Example: wrangler secret put RESEND_API_KEY
 
 
+[env.preview]
+vars = {
+  SUPABASE_URL = "https://preview-supabase.example.com",
+  SUPABASE_ANON_KEY = "preview-anon-key",
+  SUPABASE_SERVICE_ROLE = "preview-service-role",
+  EBAY_CLIENT_ID = "preview-ebay-client-id",
+  EBAY_CLIENT_SECRET = "preview-ebay-client-secret",
+  SENTRY_DSN = "https://preview-sentry.example.com/1",
+  DRY_RUN = "true"
+}
+
+[env.production]
+vars = {
+  SUPABASE_URL = "https://prod-supabase.example.com",
+  SUPABASE_ANON_KEY = "prod-anon-key",
+  SUPABASE_SERVICE_ROLE = "prod-service-role",
+  EBAY_CLIENT_ID = "prod-ebay-client-id",
+  EBAY_CLIENT_SECRET = "prod-ebay-client-secret",
+  SENTRY_DSN = "https://prod-sentry.example.com/1",
+  DRY_RUN = "false"
+}
+
+
 
 [[kv_namespaces]]
 binding = "KV_IDEMP"
