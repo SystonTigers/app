@@ -56,26 +56,32 @@ RESEND_FROM_EMAIL = "onboarding@syston.app"
 
 
 [env.preview]
-vars = {
-  SUPABASE_URL = "https://preview-supabase.example.com",
-  SUPABASE_ANON_KEY = "preview-anon-key",
-  SUPABASE_SERVICE_ROLE = "preview-service-role",
-  EBAY_CLIENT_ID = "preview-ebay-client-id",
-  EBAY_CLIENT_SECRET = "preview-ebay-client-secret",
-  SENTRY_DSN = "https://preview-sentry.example.com/1",
-  DRY_RUN = "true"
-}
+[[env.preview.kv_namespaces]]
+binding = "TENANTS"
+id = "ed3084ae6a9b46e7bbb5e1798831f331"
+
+[env.preview.vars]
+SUPABASE_URL = "https://preview-supabase.example.com"
+SUPABASE_ANON_KEY = "preview-anon-key"
+SUPABASE_SERVICE_ROLE = "preview-service-role"
+EBAY_CLIENT_ID = "preview-ebay-client-id"
+EBAY_CLIENT_SECRET = "preview-ebay-client-secret"
+SENTRY_DSN = "https://preview-sentry.example.com/1"
+DRY_RUN = "true"
 
 [env.production]
-vars = {
-  SUPABASE_URL = "https://prod-supabase.example.com",
-  SUPABASE_ANON_KEY = "prod-anon-key",
-  SUPABASE_SERVICE_ROLE = "prod-service-role",
-  EBAY_CLIENT_ID = "prod-ebay-client-id",
-  EBAY_CLIENT_SECRET = "prod-ebay-client-secret",
-  SENTRY_DSN = "https://prod-sentry.example.com/1",
-  DRY_RUN = "false"
-}
+[[env.production.kv_namespaces]]
+binding = "TENANTS"
+id = "71b9f158fb2c4e1a8858dded2633ff5b"
+
+[env.production.vars]
+SUPABASE_URL = "https://prod-supabase.example.com"
+SUPABASE_ANON_KEY = "prod-anon-key"
+SUPABASE_SERVICE_ROLE = "prod-service-role"
+EBAY_CLIENT_ID = "prod-ebay-client-id"
+EBAY_CLIENT_SECRET = "prod-ebay-client-secret"
+SENTRY_DSN = "https://prod-sentry.example.com/1"
+DRY_RUN = "false"
 
 
 
@@ -174,14 +180,4 @@ crons = [ "*/5 * * * *" ]
 # routes = [
 #   { pattern = "api.YOURBRAND.com/*", zone_name = "YOURBRAND.com" }
 # ]
-
-[env.production]
-kv_namespaces = [
-  { binding = "TENANTS", id = "71b9f158fb2c4e1a8858dded2633ff5b" }
-]
-
-[env.preview]
-kv_namespaces = [
-  { binding = "TENANTS", id = "ed3084ae6a9b46e7bbb5e1798831f331" }
-]
 
