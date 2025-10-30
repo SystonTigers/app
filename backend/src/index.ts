@@ -775,7 +775,7 @@ export default {
       url = new URL(req.url);
 
       if (req.method === "GET" && url.pathname === "/healthz") {
-        const res = await healthz();
+        const res = await healthz(env);
         return respondWithCors(res, corsHdrs);
       }
       if (req.method === "GET" && url.pathname === "/readyz") {
