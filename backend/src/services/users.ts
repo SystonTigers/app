@@ -1,4 +1,4 @@
-import { getTenantConfig } from "./tenants";
+import { getTenantConfig } from "./tenantConfig";
 
 export interface UserProfile {
   id: string;

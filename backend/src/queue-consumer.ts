@@ -6,7 +6,7 @@ import { publishInstagram } from "./adapters/instagram";
 import { publishTikTok } from "./adapters/tiktok";
 import { publishX } from "./adapters/x";
 import { setFinalIdempotent } from "./services/idempotency";
-import { getTenantConfig } from "./services/tenants";
+import { getTenantConfig } from "./services/tenantConfig";
 import { shouldDefer, incrementCounter } from "./services/rateAware";
 
 export default {

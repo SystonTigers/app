@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import { SignJWT } from "jose";
+import { Router } from "itty-router";
 import { PostReqSchema, json, readIdempotencyKey } from "./services/util";
 import { requireJWT, hasRole, requireAdmin } from "./services/auth";
 import { ensureIdempotent, setFinalIdempotent } from "./services/idempotency";
@@ -15,7 +16,7 @@ import {
   setChannelWebhook,
   setYouTubeBYOGoogle,
   isAllowedWebhookHost
-} from "./services/tenants";
+} from "./services/tenantConfig";
 import { issueTenantAdminJWT } from "./services/jwt";
 import type { TenantConfig, PostJob } from "./types";
 import queueWorker from "./queue-consumer";
@@ -56,6 +57,7 @@ import {
   handleTenantOverview,
   handleProvisionRetry
 } from "./routes/provisioning";
+import { registerTenantRoutes } from "./routes/tenants";
 import {
   handleDevAdminJWT,
   handleDevMagicLink,
@@ -78,6 +80,9 @@ import {
 import { handleAuthRegister, handleAuthLogin } from "./routes/auth";
 
 declare const APP_VERSION: string;
+
+const router = Router();
+registerTenantRoutes(router);
 
 const DEV_DEFAULT_CORS = new Set([
   "https://localhost:5173",
@@ -781,6 +786,16 @@ export default {
       if (req.method === "GET" && url.pathname.startsWith("/public/")) {
         const res = await handlePublicTenantRequest(req, env, url, corsHdrs, requestId);
         if (res) return res;
+      }
+
+      const routed = await router
+        .handle(req, env, corsHdrs, requestId)
+        .catch((err: unknown) => {
+          if (err instanceof Response) return err;
+          throw err;
+        });
+      if (routed instanceof Response) {
+        return respondWithCors(routed, corsHdrs);
       }
 
       // Introspection endpoint for debugging
