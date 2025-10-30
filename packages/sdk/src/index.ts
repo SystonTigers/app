@@ -1,7 +1,7 @@
 // packages/sdk/src/index.ts
 // Shared SDK client for team platform API
 
-import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
+import axios, { AxiosInstance, AxiosRequestConfig } from './axios';
 import type {
   BrandKit,
   Fixture,
@@ -93,7 +93,10 @@ export class TeamPlatformSDK {
     }
 
     // Add request interceptor for auth
-    this.client.interceptors.request.use((config) => {
+    this.client.interceptors.request.use((config: AxiosRequestConfig) => {
+      if (!config.headers) {
+        config.headers = {};
+      }
       if (this.token) {
         config.headers['Authorization'] = `Bearer ${this.token}`;
       }
@@ -180,8 +183,9 @@ export class TeamPlatformSDK {
   async getNextFixture(tenant?: string): Promise<Fixture | null> {
     const t = this.requireTenant(tenant);
     try {
-      const response = await this.client.get(`/public/${t}/fixtures/next`);
-      return response.data?.fixture || response.data || null;
+      const response = await this.client.get<ApiResponse<Fixture | null>>(`/public/${t}/fixtures/next`);
+      if (!response.data.success) return null;
+      return response.data.data ?? null;
     } catch {
       return null;
     }
@@ -190,66 +194,57 @@ export class TeamPlatformSDK {
   /**
    * List fixtures (public)
    */
-  async listFixtures(tenant?: string, limit: number = 20): Promise<Fixture[]> {
-    // Check if being called with tenant parameter (new signature)
-    if (tenant && typeof tenant === 'string' && !tenant.includes('/')) {
-      const t = tenant;
-      try {
-        const response = await this.client.get(`/public/${t}/fixtures`, {
-          params: { limit },
-        });
-        return response.data?.fixtures || response.data || [];
-      } catch {
+  async listFixtures(tenantOrLimit?: string | number, limit: number = 20): Promise<Fixture[]> {
+    const hasNumericFirstArg = typeof tenantOrLimit === 'number';
+    const t = this.requireTenant(hasNumericFirstArg ? undefined : tenantOrLimit as string | undefined);
+    const finalLimit = hasNumericFirstArg ? (tenantOrLimit as number) : limit;
+    try {
+      const response = await this.client.get<ApiResponse<Fixture[]>>(`/public/${t}/fixtures`, {
+        params: { limit: finalLimit },
+      });
+      if (!response.data.success) {
         return [];
       }
+      return response.data.data ?? [];
+    } catch {
+      return [];
     }
-
-    // Legacy signature or no tenant - use private API
-    const response = await this.client.get('/api/v1/fixtures');
-    return response.data?.fixtures || response.data || [];
   }
 
   /**
    * List feed posts (public)
    */
   async listFeed(page: number = 1, pageSize: number = 10, tenant?: string): Promise<FeedPost[]> {
-    // If tenant is provided as third parameter, use public API
-    if (tenant) {
-      try {
-        const response = await this.client.get(`/public/${tenant}/feed`, {
-          params: { page, pageSize },
-        });
-        return response.data?.posts || response.data || [];
-      } catch {
+    const t = this.requireTenant(tenant);
+    try {
+      const response = await this.client.get<ApiResponse<FeedPost[]>>(`/public/${t}/feed`, {
+        params: { page, pageSize },
+      });
+      if (!response.data.success) {
         return [];
       }
+      return response.data.data ?? [];
+    } catch {
+      return [];
     }
-
-    // Legacy signature - use private API
-    const response = await this.client.get(`/api/v1/feed`, {
-      params: { page, limit: pageSize },
-    });
-    return response.data?.posts || response.data || [];
   }
 
   /**
    * Get league table (public)
    */
-  async getLeagueTable(tenant?: string): Promise<LeagueTableRow[]> {
-    // If tenant provided, use public API
-    if (tenant && typeof tenant === 'string' && !tenant.includes('/')) {
-      try {
-        const response = await this.client.get(`/public/${tenant}/table`);
-        return response.data?.table || response.data || [];
-      } catch {
+  async getLeagueTable(tenant?: string, competition?: string): Promise<LeagueTableRow[]> {
+    const t = this.requireTenant(tenant);
+    try {
+      const response = await this.client.get<ApiResponse<LeagueTableRow[]>>(`/public/${t}/table`, {
+        params: competition ? { competition } : undefined,
+      });
+      if (!response.data.success) {
         return [];
       }
+      return response.data.data ?? [];
+    } catch {
+      return [];
     }
-
-    // Legacy signature - use private API
-    const params: any = {};
-    const response = await this.client.get('/api/v1/table', { params });
-    return response.data?.table || response.data || [];
   }
 
   // ==================== FIXTURES & RESULTS (Private API) ====================
@@ -257,9 +252,21 @@ export class TeamPlatformSDK {
   /**
    * Get past results
    */
-  async listResults(): Promise<Result[]> {
-    const response = await this.client.get('/api/v1/results');
-    return response.data?.results || response.data || [];
+  async listResults(tenantOrLimit?: string | number, limit: number = 10): Promise<Result[]> {
+    const hasNumericFirstArg = typeof tenantOrLimit === 'number';
+    const t = this.requireTenant(hasNumericFirstArg ? undefined : tenantOrLimit as string | undefined);
+    const finalLimit = hasNumericFirstArg ? (tenantOrLimit as number) : limit;
+    try {
+      const response = await this.client.get<ApiResponse<Result[]>>(`/public/${t}/fixtures`, {
+        params: { status: 'completed', limit: finalLimit },
+      });
+      if (!response.data.success) {
+        return [];
+      }
+      return response.data.data ?? [];
+    } catch {
+      return [];
+    }
   }
 
   // ==================== SQUAD ====================
@@ -267,9 +274,17 @@ export class TeamPlatformSDK {
   /**
    * Get team squad
    */
-  async getSquad(): Promise<Player[]> {
-    const response = await this.client.get('/api/v1/squad');
-    return response.data?.squad || response.data || [];
+  async getSquad(tenant?: string): Promise<Player[]> {
+    const t = this.requireTenant(tenant);
+    try {
+      const response = await this.client.get<ApiResponse<Player[]>>(`/public/${t}/squad`);
+      if (!response.data.success) {
+        return [];
+      }
+      return response.data.data ?? [];
+    } catch {
+      return [];
+    }
   }
 
   /**
@@ -294,9 +309,13 @@ export class TeamPlatformSDK {
   /**
    * Get team statistics
    */
-  async getTeamStats(): Promise<TeamStats> {
-    const response = await this.client.get('/api/v1/stats/team');
-    return response.data?.stats || response.data;
+  async getTeamStats(tenant?: string): Promise<TeamStats> {
+    const t = this.requireTenant(tenant);
+    const response = await this.client.get<ApiResponse<TeamStats>>(`/public/${t}/stats`);
+    if (!response.data.success || !response.data.data) {
+      throw new Error(response.data.error?.message || 'Failed to fetch team stats');
+    }
+    return response.data.data;
   }
 
   /**
