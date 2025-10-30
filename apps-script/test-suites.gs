@@ -283,6 +283,42 @@ suite('Payments and Subscriptions', function() {
     };
   }
 
+  test('should fetch Printify catalog with minimal configuration', function() {
+    const restoreProps = stubProperties({
+      PRINTIFY_API_BASE_URL: 'https://printify.example.com',
+      PRINTIFY_SHOP_ID: 'shop_123',
+      PRINTIFY_API_KEY: 'printify_test'
+    });
+    const restoreFetch = stubFetch(function(url, options) {
+      equal(url, 'https://printify.example.com/v1/shops/shop_123/products.json', 'Should target Printify catalog endpoint');
+      ok(options.headers && String(options.headers.Authorization).indexOf('printify_test') !== -1,
+        'Should include Printify API key');
+      return {
+        getResponseCode: () => 200,
+        getContentText: () => JSON.stringify({
+          data: [{
+            id: 'prod_1',
+            title: 'Example Product',
+            description: '',
+            variants: [],
+            images: []
+          }],
+          meta: { page: 1 }
+        }),
+        getAllHeaders: () => ({})
+      };
+    });
+
+    try {
+      const result = ShopOperationsService.fetchCatalog();
+      equal(result.products.length, 1, 'Should return Printify products');
+      equal(result.pagination.page, 1, 'Should include pagination metadata');
+    } finally {
+      restoreFetch();
+      restoreProps();
+    }
+  });
+
   test('should create Stripe checkout session', function() {
     const restoreProps = stubProperties(baseConfig());
     const restoreFetch = stubFetch(function(url, options) {
@@ -314,6 +350,69 @@ suite('Payments and Subscriptions', function() {
       ok(result.checkoutUrl, 'Should return Stripe hosted checkout URL');
     } finally {
       restoreFetch();
+      restoreProps();
+    }
+  });
+
+  test('should fail fast when Stripe configuration is missing', function() {
+    const restoreProps = stubProperties({
+      PRINTIFY_API_BASE_URL: 'https://printify.example.com',
+      PRINTIFY_SHOP_ID: 'shop_123',
+      PRINTIFY_API_KEY: 'printify_test',
+      STRIPE_API_BASE_URL: 'https://stripe.example.com'
+    });
+
+    try {
+      let error;
+      try {
+        ShopOperationsService.createHostedCheckout({
+          provider: 'stripe',
+          priceId: 'price_123',
+          quantity: 1,
+          successUrl: 'https://example.com/success',
+          cancelUrl: 'https://example.com/cancel'
+        });
+      } catch (err) {
+        error = err;
+      }
+
+      ok(error, 'Should throw when Stripe config missing');
+      const message = error && error.message ? error.message : String(error);
+      ok(message.indexOf('Missing Stripe configuration') !== -1, 'Should mention Stripe configuration');
+      ok(message.indexOf('STRIPE_SECRET_KEY') !== -1, 'Should identify missing Stripe key');
+    } finally {
+      restoreProps();
+    }
+  });
+
+  test('should fail fast when PayPal configuration is missing', function() {
+    const restoreProps = stubProperties({
+      PRINTIFY_API_BASE_URL: 'https://printify.example.com',
+      PRINTIFY_SHOP_ID: 'shop_123',
+      PRINTIFY_API_KEY: 'printify_test',
+      PAYPAL_API_BASE_URL: 'https://paypal.example.com'
+    });
+
+    try {
+      let error;
+      try {
+        ShopOperationsService.createHostedCheckout({
+          provider: 'paypal',
+          amount: '10.00',
+          currency: 'USD',
+          successUrl: 'https://example.com/success',
+          cancelUrl: 'https://example.com/cancel'
+        });
+      } catch (err) {
+        error = err;
+      }
+
+      ok(error, 'Should throw when PayPal config missing');
+      const message = error && error.message ? error.message : String(error);
+      ok(message.indexOf('Missing PayPal configuration') !== -1, 'Should mention PayPal configuration');
+      ok(message.indexOf('PAYPAL_CLIENT_ID') !== -1 && message.indexOf('PAYPAL_SECRET') !== -1,
+        'Should identify missing PayPal keys');
+    } finally {
       restoreProps();
     }
   });

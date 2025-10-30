@@ -28,32 +28,66 @@ class ShopOperationsService {
     return this.httpClientInstance_;
   }
 
-  static getRequiredConfig_() {
+  static getPrintifyConfig_() {
     const properties = PropertiesService.getScriptProperties();
     const config = {
-      printifyApiBaseUrl: properties.getProperty('PRINTIFY_API_BASE_URL'),
-      printifyShopId: properties.getProperty('PRINTIFY_SHOP_ID'),
-      printifyApiKey: properties.getProperty('PRINTIFY_API_KEY'),
-      stripeApiBaseUrl: properties.getProperty('STRIPE_API_BASE_URL'),
-      stripeSecretKey: properties.getProperty('STRIPE_SECRET_KEY'),
-      payPalApiBaseUrl: properties.getProperty('PAYPAL_API_BASE_URL'),
-      payPalClientId: properties.getProperty('PAYPAL_CLIENT_ID'),
-      payPalSecret: properties.getProperty('PAYPAL_SECRET')
+      printifyApiBaseUrl: this.getPropertyValue_(properties, 'PRINTIFY_API_BASE_URL'),
+      printifyShopId: this.getPropertyValue_(properties, 'PRINTIFY_SHOP_ID'),
+      printifyApiKey: this.getPropertyValue_(properties, 'PRINTIFY_API_KEY')
     };
 
-    const missing = Object.entries(config)
-      .filter(([, value]) => !value || String(value).trim() === '')
-      .map(([key]) => key);
+    const missing = [];
+    if (!config.printifyApiBaseUrl) missing.push('PRINTIFY_API_BASE_URL');
+    if (!config.printifyShopId) missing.push('PRINTIFY_SHOP_ID');
+    if (!config.printifyApiKey) missing.push('PRINTIFY_API_KEY');
 
     if (missing.length > 0) {
-      throw new Error(`Missing payment configuration: ${missing.join(', ')}`);
+      throw new Error(`Missing Printify configuration: ${missing.join(', ')}`);
+    }
+
+    return config;
+  }
+
+  static getStripeConfig_() {
+    const properties = PropertiesService.getScriptProperties();
+    const config = {
+      stripeApiBaseUrl: this.getPropertyValue_(properties, 'STRIPE_API_BASE_URL'),
+      stripeSecretKey: this.getPropertyValue_(properties, 'STRIPE_SECRET_KEY')
+    };
+
+    const missing = [];
+    if (!config.stripeApiBaseUrl) missing.push('STRIPE_API_BASE_URL');
+    if (!config.stripeSecretKey) missing.push('STRIPE_SECRET_KEY');
+
+    if (missing.length > 0) {
+      throw new Error(`Missing Stripe configuration: ${missing.join(', ')}`);
+    }
+
+    return config;
+  }
+
+  static getPayPalConfig_() {
+    const properties = PropertiesService.getScriptProperties();
+    const config = {
+      payPalApiBaseUrl: this.getPropertyValue_(properties, 'PAYPAL_API_BASE_URL'),
+      payPalClientId: this.getPropertyValue_(properties, 'PAYPAL_CLIENT_ID'),
+      payPalSecret: this.getPropertyValue_(properties, 'PAYPAL_SECRET')
+    };
+
+    const missing = [];
+    if (!config.payPalApiBaseUrl) missing.push('PAYPAL_API_BASE_URL');
+    if (!config.payPalClientId) missing.push('PAYPAL_CLIENT_ID');
+    if (!config.payPalSecret) missing.push('PAYPAL_SECRET');
+
+    if (missing.length > 0) {
+      throw new Error(`Missing PayPal configuration: ${missing.join(', ')}`);
     }
 
     return config;
   }
 
   static fetchCatalog(options = {}) {
-    const config = this.getRequiredConfig_();
+    const config = this.getPrintifyConfig_();
     const query = this.buildQueryString_({
       page: options.page,
       limit: options.limit
@@ -92,7 +126,7 @@ class ShopOperationsService {
       throw new Error('Product ID is required');
     }
 
-    const config = this.getRequiredConfig_();
+    const config = this.getPrintifyConfig_();
     const url = `${config.printifyApiBaseUrl.replace(/\/$/, '')}/v1/shops/${encodeURIComponent(config.printifyShopId)}/products/${encodeURIComponent(productId)}.json`;
 
     this.logger.enterFunction('fetchProduct', { productId });
@@ -127,13 +161,11 @@ class ShopOperationsService {
       throw new Error('Checkout provider is required');
     }
 
-    const config = this.getRequiredConfig_();
-
     switch (provider) {
       case 'stripe':
-        return this.createStripeCheckout_(request, config);
+        return this.createStripeCheckout_(request, this.getStripeConfig_());
       case 'paypal':
-        return this.createPayPalCheckout_(request, config);
+        return this.createPayPalCheckout_(request, this.getPayPalConfig_());
       default:
         throw new Error(`Unsupported checkout provider: ${provider}`);
     }
@@ -332,6 +364,11 @@ class ShopOperationsService {
       this.logger.error('Failed to parse JSON', { context, error: error.toString() });
       throw new Error(`Invalid JSON response for ${context}`);
     }
+  }
+
+  static getPropertyValue_(properties, key) {
+    const value = properties.getProperty(key);
+    return value === null || value === undefined ? '' : String(value).trim();
   }
 
   static mapPrintifyProduct_(product) {
