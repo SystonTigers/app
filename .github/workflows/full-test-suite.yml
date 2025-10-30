@@ -1,0 +1,98 @@
+name: Full Test Suite
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  backend:
+    name: Backend (Workers)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install
+      - name: Run vitest in Workers runtime
+        run: npm test
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID || '' }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN || '' }}
+
+  web-unit:
+    name: Web (Vitest)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install
+      - name: Run unit tests
+        run: npm test
+
+  web-e2e:
+    name: Web (Playwright)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+      - name: Build application
+        run: npm run build
+      - name: Start application
+        run: |
+          npm run start -- --hostname 0.0.0.0 --port 3000 &
+          echo $! > /tmp/next.pid
+          sleep 5
+      - name: Run e2e tests
+        env:
+          WEB_BASE_URL: http://127.0.0.1:3000
+        run: npm run test:e2e
+      - name: Stop application
+        if: always()
+        run: |
+          kill $(cat /tmp/next.pid) || true
+
+  apps-script:
+    name: Apps Script (clasp run)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps-script
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install
+      - name: Configure clasp auth
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: |
+          test -n "$CLASPRC_JSON"
+          printf '%s' "$CLASPRC_JSON" > "$HOME/.clasprc.json"
+          node -e "JSON.parse(require('fs').readFileSync(process.env.HOME + '/.clasprc.json', 'utf8'))"
+      - name: Verify clasp project
+        run: npx clasp status
+      - name: Run Apps Script tests
+        run: npm test

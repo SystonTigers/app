@@ -9,6 +9,8 @@ dist/
 build/
 .cache/
 coverage/
+playwright-report/
+test-results/
 
 # Mobile
 mobile/.expo/
