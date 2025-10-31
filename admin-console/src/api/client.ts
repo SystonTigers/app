@@ -77,7 +77,7 @@ export const platformApi = {
   },
 
   async updateTenant(id: string, data: Partial<Tenant>): Promise<Tenant> {
-    const response = await api.put<ApiResponse<Tenant>>(`/api/v1/admin/tenants/${id}`, data);
+    const response = await api.patch<ApiResponse<Tenant>>(`/api/v1/admin/tenants/${id}`, data);
     return response.data.data!;
   },
 
