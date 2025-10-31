@@ -25,7 +25,12 @@ export default function CreateTenantPage() {
     setLoading(true);
 
     try {
-      const newTenant = await platformApi.createTenant(formData);
+      const newTenant = await platformApi.createTenant({
+        clubName: formData.name,
+        clubSlug: formData.slug,
+        email: formData.email,
+        plan: formData.plan,
+      });
       navigate(`/tenants/${newTenant.id}`);
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to create tenant');
