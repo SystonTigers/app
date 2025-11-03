@@ -64,6 +64,63 @@ detection:
   dedupe_window_s: 15       # merge with guided events if within this window
   scorebug_ocr: false       # keep false unless OCR is implemented
 
+  # Phase 1: Multi-Signal Detection (NEW)
+  multi_signal:
+    enabled: true
+    bucket_size: 1.0        # Time bucket size in seconds
+    min_confidence: 0.3     # Minimum score to keep event
+
+    # Signal weights for fusion
+    weights:
+      json: 5.0             # Ground truth (Apps Script)
+      yolo: 2.0             # Visual object detection
+      audio: 1.5            # Crowd reactions (energy spikes)
+      whistle: 1.0          # Referee whistles
+      flow: 1.0             # Optical flow bursts
+      scene_cut: 0.5        # Production cuts
+      commentary: 1.2       # ASR keywords (if enabled)
+
+    # Audio detection settings
+    audio:
+      enabled: true
+      threshold: 0.75       # Energy threshold (normalized)
+      min_duration: 1.0     # Minimum spike duration (seconds)
+
+    # Whistle detection settings
+    whistle:
+      enabled: true
+      freq_range: [3500, 4500]  # Frequency range in Hz
+      threshold: 0.7        # Detection confidence threshold
+
+    # Optical flow settings
+    flow:
+      enabled: true
+      roi: goal_area        # Region of interest: goal_area, center, full_frame
+      threshold: 2.5        # Flow magnitude threshold
+      sample_rate: 2        # Process every Nth frame (for speed)
+
+    # Scene cut detection
+    scene_cut:
+      enabled: true
+      threshold: 30.0       # Histogram difference threshold
+      sample_rate: 1        # Process every Nth frame
+
+    # ASR commentary detection (optional, requires Whisper)
+    commentary:
+      enabled: false        # Set to true if you have Whisper installed
+      model: tiny           # Whisper model: tiny, base, small, medium, large
+      keywords:
+        - goal
+        - save
+        - penalty
+        - foul
+        - card
+        - yellow
+        - red
+        - corner
+        - shot
+        - miss
+
 limits:
   max_clips: 40
   min_clip_len_s: 6

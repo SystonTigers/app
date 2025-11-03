@@ -14,6 +14,8 @@ import {
   FixturesApiError,
 } from '../services/fixturesApi';
 import { feedApi } from '../services/api';
+import MatchWidget from '../components/MatchWidget';
+import type { NextFixture, LiveUpdate } from '@team-platform/sdk';
 
 const FEED_PAGE_SIZE = 10;
 
@@ -167,6 +169,10 @@ export default function HomeScreen() {
   const [feedPage, setFeedPage] = useState(1);
   const [hasMoreFeed, setHasMoreFeed] = useState(true);
 
+  // MatchWidget state (TODO: Replace with real SDK calls)
+  const [nextFixture, setNextFixture] = useState<NextFixture | null>(null);
+  const [liveUpdates, setLiveUpdates] = useState<LiveUpdate[]>([]);
+
   const loadNextEvent = useCallback(async () => {
     setEventLoading(true);
     setEventError(null);
@@ -299,6 +305,13 @@ export default function HomeScreen() {
         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
       }
     >
+      {/* Live Match Widget */}
+      <MatchWidget
+        nextFixture={nextFixture}
+        liveUpdates={liveUpdates}
+        onRefresh={onRefresh}
+      />
+
       {/* Next Event Widget */}
       <Card style={styles.eventCard}>
         <Card.Content>

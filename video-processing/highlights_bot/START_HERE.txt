@@ -1,0 +1,191 @@
+
+🎬 HIGHLIGHTS BOT - READY TO USE!
+===================================
+
+✅ SETUP COMPLETE! All dependencies installed.
+
+📋 NEXT STEPS (10 minutes to create your highlights):
+
+──────────────────────────────────────────────
+STEP 1: Add Your Match Video (1 minute)
+──────────────────────────────────────────────
+
+Copy your 80-minute match video into the "in" folder and rename it to "match.mp4"
+
+Windows Command:
+  copy "C:\path\to\your\video.mp4" "in\match.mp4"
+
+Or just drag and drop your video file into:
+  C:\Users\clayt\syston-app\video-processing\highlights_bot\in\
+
+Then rename it to: match.mp4
+
+──────────────────────────────────────────────
+STEP 2: Create Your Events List (5 minutes)
+──────────────────────────────────────────────
+
+Edit the template file with your match details:
+
+1. Copy the template:
+   copy "in\events.json.template" "in\events.json"
+
+2. Open it in Notepad:
+   notepad in\events.json
+
+3. Fill in YOUR match information:
+   - Match teams (homeTeam, awayTeam)
+   - Final score (homeScore, awayScore)
+   - All events with minutes and player names
+
+   Example event:
+   {
+     "minute": 25,
+     "type": "goal",
+     "team": "home",
+     "player": "Your Player Name"
+   }
+
+EVENT TYPES YOU CAN USE:
+   • goal          - Goals (automatic slow-motion replay!)
+   • yellow_card   - Yellow cards
+   • red_card      - Red cards
+   • save          - Goalkeeper saves
+   • big_save      - Amazing saves (gets replay too!)
+   • chance        - Near misses, shots on target
+   • corner        - Corner kicks
+   • penalty       - Penalties
+   • foul          - Fouls
+
+TIP: You don't need EVERY event - just the highlights you want!
+     The AI will find extra moments automatically.
+
+──────────────────────────────────────────────
+STEP 3: Run The Bot! (10-20 minutes automatic)
+──────────────────────────────────────────────
+
+Open Command Prompt in this folder and run:
+
+   python main.py --match in\match.mp4 --events in\events.json
+
+Or if you have team logos:
+
+   python main.py --match in\match.mp4 --events in\events.json --home-badge assets\syston-logo.png
+
+WHAT WILL HAPPEN:
+  1. ⏳ Loading video (30 seconds)
+  2. 🔍 AI scanning for highlights (2-3 minutes)
+  3. ✂️ Creating clips (5-10 minutes)
+  4. 🎬 Rendering 3 formats (3-5 minutes)
+  5. ✅ DONE! Check the "out" folder
+
+──────────────────────────────────────────────
+STEP 4: Get Your Highlights!
+──────────────────────────────────────────────
+
+After processing completes, your highlights will be in:
+
+   out\renders\highlights_169.mp4    ← YouTube (16:9 widescreen)
+   out\renders\highlights_11.mp4     ← Instagram feed (1:1 square)
+   out\renders\highlights_916.mp4    ← Stories/TikTok (9:16 vertical)
+
+Individual clips for each event will be in:
+   out\clips\
+
+All 3 formats (16:9, 1:1, 9:16) for every single clip!
+
+──────────────────────────────────────────────
+📊 WHAT TO EXPECT FROM YOUR 80-MINUTE VIDEO:
+──────────────────────────────────────────────
+
+Processing Time: 10-20 minutes
+Output Files: 30-60 video files (clips + highlights reels)
+Total Size: ~500MB-1GB
+Highlight Duration: 8-12 minutes (depending on events)
+
+Features Applied Automatically:
+  ✅ Slow-motion replays for goals
+  ✅ Text overlays (team names, scores, times)
+  ✅ Smart padding (shows build-up and celebrations)
+  ✅ Multiple formats for all social platforms
+  ✅ AI-detected extra moments
+  ✅ Professional transitions
+
+──────────────────────────────────────────────
+🚨 TROUBLESHOOTING:
+──────────────────────────────────────────────
+
+"Can't find video file"
+  → Make sure video is at: in\match.mp4
+  → Check the file name is exactly "match.mp4"
+
+"Can't find events.json"
+  → Make sure you copied and edited: in\events.json
+  → Check it's valid JSON (commas, brackets, quotes)
+
+"Out of memory"
+  → Close other programs
+  → Or edit config.yaml and set preset: ultrafast
+
+"Processing is slow"
+  → Normal for 80-minute videos!
+  → First run is always slower
+  → Go make a coffee ☕
+
+──────────────────────────────────────────────
+💡 PRO TIPS:
+──────────────────────────────────────────────
+
+1. First Time? Test with a 5-minute clip first to see how it works
+
+2. Want Better Quality? Edit config.yaml:
+   render:
+     preset: slow        # Better quality, slower
+     crf: 18            # Lower = better quality
+
+3. Want Faster Processing? Edit config.yaml:
+   render:
+     preset: ultrafast   # Faster, bigger files
+     crf: 23            # Higher = smaller files
+
+4. Add Team Logos:
+   - Save your logo as: assets\home.png
+   - Save opponent logo as: assets\away.png
+   - They'll appear in the overlays!
+
+5. Not Happy With A Clip? Just delete it from out\clips\
+   The highlights reel will be recreated without it
+
+──────────────────────────────────────────────
+📚 NEED HELP?
+──────────────────────────────────────────────
+
+See the detailed guide:
+  - README.md (in this folder)
+  - ..\VIDEO_SYSTEM_STATUS.md (comprehensive)
+
+Or run the test:
+  python test_installation.py
+
+──────────────────────────────────────────────
+✅ QUICK COMMAND REFERENCE:
+──────────────────────────────────────────────
+
+# Basic run
+python main.py --match in\match.mp4 --events in\events.json
+
+# With team badges
+python main.py --match in\match.mp4 --events in\events.json --home-badge assets\home.png --away-badge assets\away.png
+
+# Test installation
+python test_installation.py
+
+# Check output
+explorer out\renders\
+
+──────────────────────────────────────────────
+
+🎉 YOU'RE READY!
+
+Just add your video and events, then run the command!
+
+──────────────────────────────────────────────

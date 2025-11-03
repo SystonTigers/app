@@ -43,3 +43,16 @@ desktop.ini
 Thumbs.db
 desktop.ini
 Thumbs.db
+# --- local only / big stuff ---
+.git_backup/
+video-processing/highlights_bot/in/
+*.mp4
+*.mov
+*.mkv
+*.avi
+*.zip
+*.7z
+*.tar
+*.gz
+Thumbs.db
+desktop.ini

@@ -15,6 +15,7 @@
   "dependencies": {
     "@expo/vector-icons": "^15.0.2",
     "@react-native-async-storage/async-storage": "2.2.0",
+    "@team-platform/sdk": "file:../packages/sdk",
     "@react-native-picker/picker": "2.11.1",
     "@react-navigation/bottom-tabs": "^7.4.9",
     "@react-navigation/drawer": "^7.5.10",
@@ -44,6 +45,7 @@
     "react-native-safe-area-context": "~5.6.0",
     "react-native-screens": "~4.16.0",
     "react-native-web": "^0.21.1",
+    "react-native-webview": "^13.16.0",
     "react-native-worklets": "0.5.1",
     "react-refresh": "^0.18.0",
     "zustand": "^5.0.8"
