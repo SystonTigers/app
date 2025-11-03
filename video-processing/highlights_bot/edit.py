@@ -6,6 +6,8 @@ Handles FFmpeg filtergraphs for cutting, tracked zoom, overlays, slo-mo, freeze,
 import os
 import json
 import subprocess
+import tempfile
+import shutil
 from pathlib import Path
 from typing import Dict, List, Tuple, Optional, Union
 import numpy as np
@@ -13,6 +15,7 @@ import cv2
 
 from util import HighlightsLogger, FileUtils, FFmpegRunner, TimeCodeUtils
 from edl import Event
+from effects import stabilize_clip, smart_zoom_on_action, add_slowmo_replay
 
 class TrackingUtils:
     """Utilities for object tracking and zoom region calculation"""
@@ -472,6 +475,52 @@ class ClipRenderer:
         except Exception as e:
             self.logger.log_error(f"Replay addition failed: {str(e)}")
             return False
+
+def apply_pro_effects(clip_path: str, event: Event, config: Dict, brand_assets: Dict) -> str:
+    """
+    Apply professional effects to a clip based on event type.
+
+    Returns: Path to enhanced clip
+    """
+    output_path = clip_path.replace('.mp4', '_enhanced.mp4')
+    current_input = clip_path
+
+    # 1. Stabilization (if enabled)
+    if config.get('editing', {}).get('stabilize', False):
+        print(f"  ├─ Stabilizing...")
+        temp_stable = tempfile.NamedTemporaryFile(suffix='.mp4', delete=False).name
+        stabilize_clip(current_input, temp_stable, shakiness=5, smoothing=10)
+        current_input = temp_stable
+
+    # 2. Smart zoom (for goals and chances)
+    if event.type in ['goal', 'chance'] and config.get('editing', {}).get('smart_zoom', False):
+        print(f"  ├─ Applying smart zoom...")
+        temp_zoom = tempfile.NamedTemporaryFile(suffix='.mp4', delete=False).name
+        bbox_data = getattr(event, 'bbox_data', [])
+        if bbox_data:
+            smart_zoom_on_action(current_input, temp_zoom, bbox_data, max_zoom=1.25)
+            current_input = temp_zoom
+
+    # 3. Slow-mo replay (for goals)
+    if event.type == 'goal' and config.get('editing', {}).get('replays', False):
+        print(f"  ├─ Adding slow-mo replay...")
+        # Find best replay window (3s before peak)
+        peak_time = event.abs_ts
+        replay_start = max(0, peak_time - 3)
+        replay_end = min(peak_time + 3, getattr(event, 'duration', peak_time + 6))
+
+        stinger_path = brand_assets.get('stinger_path')
+        add_slowmo_replay(current_input, output_path, replay_start, replay_end,
+                         slowmo_factor=0.65, stinger_path=stinger_path)
+        current_input = output_path
+    else:
+        # Just copy if no replay
+        import shutil
+        shutil.copy(current_input, output_path)
+
+    print(f"  └─ Effects applied")
+    return output_path
+
 
 class VariantGenerator:
     """Generates 1:1 and 9:16 variants from 16:9 master"""

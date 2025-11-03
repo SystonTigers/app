@@ -1,3 +1,403 @@
+# ============================================
+# ENHANCED HIGHLIGHTS BOT CONFIGURATION
+# World-Class Grassroots Sports Video Platform
+# ============================================
+
+# Input/Output Directories
+input_dir: ./in
+output_dir: ./out
+temp_dir: ./temp
+
+# ============================================
+# DETECTION (Multi-Signal Fusion)
+# ============================================
+detection:
+  # Primary model
+  model: yolov8
+  confidence: 0.7
+
+  # Enable signals
+  signals:
+    - yolo           # Object detection (ball, players)
+    - audio_energy   # Crowd reactions
+    - whistle        # Referee whistles
+    - optical_flow   # Movement bursts
+    - ocr            # Scoreboard changes (if visible)
+    # - asr          # Commentary keywords (requires Whisper, optional)
+
+  # Signal weights for fusion
+  weights:
+    json: 5.0        # Ground truth from Apps Script
+    yolo: 2.0
+    audio_energy: 1.5
+    whistle: 1.0
+    optical_flow: 1.0
+    ocr: 3.0
+    asr: 2.0
+
+  # Event time windows (seconds before/after detected moment)
+  windows:
+    goal:
+      pre: 8
+      post: 10
+    chance:
+      pre: 6
+      post: 6
+    save:
+      pre: 5
+      post: 5
+    skill:
+      pre: 5
+      post: 5
+    foul:
+      pre: 4
+      post: 6
+    card:
+      pre: 4
+      post: 6
+    build_up:
+      pre: 10
+      post: 5
+
+  # OCR settings (if enabled)
+  ocr_enabled: false
+  ocr_region: [0.8, 0.0, 1.0, 0.2]  # Top-right 20% of frame
+
+  # ASR settings (if enabled)
+  asr_enabled: false
+  asr_model: whisper-base
+  asr_keywords:
+    - goal
+    - chance
+    - save
+    - penalty
+    - free kick
+    - corner
+    - offside
+    - red card
+    - yellow card
+
+# ============================================
+# EDITING (Professional Effects)
+# ============================================
+editing:
+  # Basic settings
+  target_duration: 480  # 8 minutes (seconds)
+  transition: stinger   # stinger, fade, dip, or cut
+
+  # Video stabilization
+  stabilize: true
+  stabilize_shakiness: 5    # 1-10 (higher = more correction)
+  stabilize_smoothing: 10   # 0-100 (higher = smoother)
+
+  # Smart zoom
+  smart_zoom: true
+  zoom_factor_max: 1.25     # 1.25 = 25% zoom
+  zoom_events: [goal, chance, save]
+
+  # Slow-motion replays
+  replays: true
+  replay_slowmo: 0.65        # 0.65 = 65% speed (35% slower)
+  replay_events: [goal, save]
+  replay_duration_before: 3  # Seconds before peak moment
+  replay_duration_after: 3   # Seconds after peak moment
+
+  # Audio
+  audio_normalize: true
+  audio_lufs: -14            # Broadcast standard
+  audio_true_peak: -1.5      # Peak limiter
+  audio_ducking: true        # Duck during overlays
+  audio_duck_amount_db: -3   # Reduce by 3 dB
+
+  # Color grading
+  color_lut: null            # Path to .cube LUT file (optional)
+  color_sharpen: mild        # null, mild, medium, strong
+  color_saturation: 1.0      # 1.0 = unchanged, 1.2 = +20%
+
+  # Filters (applied in order)
+  filters:
+    - stabilize
+    - smart_zoom
+    - color_grade
+
+# ============================================
+# OVERLAYS (Broadcast Graphics)
+# ============================================
+overlays:
+  # Persistent scorebug
+  scorebug:
+    enabled: true
+    position: top-left
+    update_on_goals: true
+    show_time: true
+
+  # Goal/event lower-thirds
+  lower_thirds:
+    enabled: true
+    duration: 3.0
+    fade_in: 0.3
+    fade_out: 0.3
+    events: [goal, chance, card]
+    position: bottom
+
+  # Opening slate
+  opening_slate:
+    enabled: true
+    duration: 2.5
+    show_badges: true
+    show_competition: true
+    show_date: true
+    show_venue: true
+    show_sponsor: true
+
+  # Closing slate
+  closing_slate:
+    enabled: true
+    duration: 3.0
+    show_final_score: true
+    show_motm: true
+    show_cta: true
+    cta_text: "Subscribe for more highlights!"
+
+  # Sponsor watermark
+  sponsor:
+    enabled: false
+    position: bottom-right
+    opacity: 0.6
+    size: [150, 75]
+    exclude_during_replays: true
+
+# ============================================
+# BRAND ASSETS
+# ============================================
+brand:
+  # Directories
+  badges_dir: ./brand/badges/
+  fonts_dir: ./brand/fonts/
+  templates_dir: ./brand/templates/
+  luts_dir: ./brand/luts/
+
+  # Specific assets
+  club_badge: ./brand/badges/club_badge.png
+  home_badge: ./brand/badges/home_team.png
+  away_badge: ./brand/badges/away_team.png
+  sponsor_logo: ./brand/sponsor.png
+
+  # Fonts
+  font_bold: ./brand/fonts/Inter-Bold.ttf
+  font_regular: ./brand/fonts/Inter-Regular.ttf
+
+  # Templates
+  scorebug_template: ./brand/templates/scorebug_template.png
+  lower_third_template: ./brand/templates/lower_third_template.png
+  opening_slate_bg: ./brand/templates/opening_slate_bg.png
+  closing_slate_bg: ./brand/templates/closing_slate_bg.png
+
+  # Transitions
+  stinger_path: ./brand/stinger.mov
+
+  # Color grading
+  lut_file: null  # ./brand/luts/club_lut.cube
+
+# ============================================
+# AUDIO PROCESSING
+# ============================================
+audio:
+  # Loudness normalization
+  normalize: true
+  target_lufs: -14.0           # Broadcast standard
+
+  # Audio enhancement
+  apply_limiter: true
+  peak_limit: -1.0             # dBFS
+
+  # Audio ducking
+  duck_during_overlays: true
+  duck_amount: 0.5             # Reduce to 50% during overlays
+
+  # Fades
+  fade_in: 0.5                 # Seconds
+  fade_out: 1.0                # Seconds
+
+  # Audio cleanup
+  remove_silence: false
+  silence_threshold: -40       # dB
+
+  # Commentary
+  commentary_boost: false
+  boost_amount: 3.0            # dB
+
+# ============================================
+# VERTICAL SHORTS (Social Media)
+# ============================================
+shorts:
+  enabled: true
+  output_dir: ./out/shorts/
+
+  # Selection
+  count: 10                # Top N moments
+  min_score: 2.0           # Minimum event score
+
+  # Format
+  resolution: [1080, 1920] # 9:16 vertical
+  max_duration: 60         # Max 60 seconds per short
+
+  # AI-Powered Smart Cropping
+  ai_cropping:
+    enabled: true            # Use AI for automatic action tracking
+    model: yolov8n.pt        # yolov8n.pt (fastest), yolov8s.pt (balanced), yolov8m.pt (accurate)
+    smoothing: 0.3           # EMA smoothing factor (0.2-0.4, lower = smoother)
+    priority: ball           # Tracking priority: 'ball', 'players', 'center_of_mass'
+    fallback_to_center: true # If no detections, use center crop
+
+  # Overlays (vertical-optimized)
+  overlays:
+    show_badge: true
+    show_title: true
+    show_minute: true
+    show_cta: true
+    cta_text: "Follow for more!"
+
+  # Platform-specific exports
+  platforms:
+    tiktok:
+      enabled: true
+      max_duration: 60
+    instagram:
+      enabled: true
+      max_duration: 90
+    youtube:
+      enabled: true
+      max_duration: 60
+
+# ============================================
+# CAPTIONS (SRT)
+# ============================================
+captions:
+  generate_srt: true
+  output_path: ./out/captions.srt
+
+  # Burn-in options
+  burn_in_highlights: false  # Burn captions into main highlights
+  burn_in_shorts: true       # Burn captions into vertical shorts
+
+  # Formatting
+  font_size: 48
+  font_color: white
+  border_color: black
+  border_width: 3
+  position: bottom           # top, bottom, center
+
+  # Content
+  include_emojis: true
+  include_assists: true
+  include_minute: true
+
+# ============================================
+# EXPORT
+# ============================================
+export:
+  # Video
+  format: mp4
+  codec: h264
+  profile: high
+  crf: 18                    # 18-21 for high quality
+  preset: slow               # slow = better quality, slower encoding
+  pix_fmt: yuv420p
+
+  # Audio
+  audio_codec: aac
+  audio_bitrate: 192k
+  audio_sample_rate: 48000
+
+  # Optimization
+  faststart: true            # Move moov atom to start (web streaming)
+  two_pass: false            # Two-pass encoding (slower, better quality)
+
+# ============================================
+# LOGGING & DEBUGGING
+# ============================================
+logging:
+  level: info                # debug, info, warn, error
+
+  # FFmpeg command logging
+  ffmpeg_commands: true
+  log_dir: ./ffmpeg_logs/
+
+  # Reproducibility
+  reproduce_md: true
+  save_command_json: true
+  save_individual_scripts: true
+
+  # Performance metrics
+  track_processing_time: true
+  track_file_sizes: true
+
+# ============================================
+# PERFORMANCE
+# ============================================
+performance:
+  # Threading
+  max_workers: 4             # Parallel processing workers
+
+  # Memory
+  max_memory_gb: 8           # Maximum RAM usage
+
+  # Temp files
+  cleanup_temp: true         # Delete temp files after processing
+  keep_intermediate: false   # Keep intermediate clips for debugging
+
+  # Optimization
+  use_gpu: false             # Use GPU acceleration (if available)
+  gpu_device: 0
+
+# ============================================
+# INTEGRATION
+# ============================================
+integration:
+  # Apps Script
+  apps_script:
+    enabled: true
+    json_input: true         # Accept JSON from Apps Script
+    trust_ground_truth: true # Always include JSON events
+
+  # YouTube
+  youtube:
+    auto_upload: true
+    description_template: |
+      Match highlights: {home} vs {away}
+      {competition} | {date}
+      Final Score: {final_score}
+
+      ⚽ Goals:
+      {goals_list}
+
+      📺 Subscribe for more highlights!
+    tags:
+      - football
+      - highlights
+      - grassroots
+
+  # Make.com
+  make:
+    enabled: true
+    webhook_url: null        # Set via environment variable
+    send_completion: true
+    send_metadata: true
+
+# ============================================
+# DEFAULTS (Fallbacks)
+# ============================================
+defaults:
+  match_duration: 90         # Minutes
+  home_team: "Home"
+  away_team: "Away"
+  competition: "Friendly Match"
+  venue: "Local Ground"
+
+# ============================================
+# LEGACY SETTINGS (For backward compatibility)
+# ============================================
 match:
   # default half length for this team; EDL can override per match
   default_half_minutes: 49
@@ -54,72 +454,6 @@ zoom:
   max_zoom: 1.30
   smoothing: 0.15           # EMA smoothing for bbox
   edge_margin_pct: 0.18     # padding around tracked box
-
-detection:
-  audio_peak_sigma: 3.0
-  scene_cut_threshold: 30   # histogram diff, tune on samples
-  goal_area_grid: 3         # thirds; count players in attacking third
-  celebration_window_s: 6
-  promote_if_signals: 2     # promote candidate if ≥2 signals overlap ±4s
-  dedupe_window_s: 15       # merge with guided events if within this window
-  scorebug_ocr: false       # keep false unless OCR is implemented
-
-  # Phase 1: Multi-Signal Detection (NEW)
-  multi_signal:
-    enabled: true
-    bucket_size: 1.0        # Time bucket size in seconds
-    min_confidence: 0.3     # Minimum score to keep event
-
-    # Signal weights for fusion
-    weights:
-      json: 5.0             # Ground truth (Apps Script)
-      yolo: 2.0             # Visual object detection
-      audio: 1.5            # Crowd reactions (energy spikes)
-      whistle: 1.0          # Referee whistles
-      flow: 1.0             # Optical flow bursts
-      scene_cut: 0.5        # Production cuts
-      commentary: 1.2       # ASR keywords (if enabled)
-
-    # Audio detection settings
-    audio:
-      enabled: true
-      threshold: 0.75       # Energy threshold (normalized)
-      min_duration: 1.0     # Minimum spike duration (seconds)
-
-    # Whistle detection settings
-    whistle:
-      enabled: true
-      freq_range: [3500, 4500]  # Frequency range in Hz
-      threshold: 0.7        # Detection confidence threshold
-
-    # Optical flow settings
-    flow:
-      enabled: true
-      roi: goal_area        # Region of interest: goal_area, center, full_frame
-      threshold: 2.5        # Flow magnitude threshold
-      sample_rate: 2        # Process every Nth frame (for speed)
-
-    # Scene cut detection
-    scene_cut:
-      enabled: true
-      threshold: 30.0       # Histogram difference threshold
-      sample_rate: 1        # Process every Nth frame
-
-    # ASR commentary detection (optional, requires Whisper)
-    commentary:
-      enabled: false        # Set to true if you have Whisper installed
-      model: tiny           # Whisper model: tiny, base, small, medium, large
-      keywords:
-        - goal
-        - save
-        - penalty
-        - foul
-        - card
-        - yellow
-        - red
-        - corner
-        - shot
-        - miss
 
 limits:
   max_clips: 40

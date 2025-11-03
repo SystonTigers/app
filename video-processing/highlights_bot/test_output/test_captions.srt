@@ -1,0 +1,21 @@
+1
+00:00:00,000 --> 00:00:05,000
+⚽ GOAL! John Striker (Syston) 23'
+Assist: Mike Midfielder
+
+2
+00:00:00,000 --> 00:00:05,000
+Big_Save - 34'
+
+3
+00:00:00,000 --> 00:00:05,000
+⚽ GOAL! Goal (Opposition) 58'
+
+4
+00:00:00,000 --> 00:00:05,000
+🟨 Opposition Player 67'
+
+5
+00:00:00,000 --> 00:00:05,000
+🎯 Big chance for Syston
+

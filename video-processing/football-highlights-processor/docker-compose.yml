@@ -1,6 +1,7 @@
 version: '3.8'
 
 services:
+  # Main application server
   app:
     build: .
     ports:
@@ -10,11 +11,26 @@ services:
       - PORT=8080
       - REDIS_URL=redis://redis:6379
       - LOG_LEVEL=info
+      - MAX_MEMORY=2GB
+      - MAX_CONCURRENT_JOBS=3
+      # Enhanced pipeline settings
+      - PYTHONUNBUFFERED=1
+      - ENABLE_MULTI_SIGNAL=true
+      - ENABLE_PRO_EFFECTS=true
+      - ENABLE_OVERLAYS=true
+      - ENABLE_SHORTS=true
+      - ENABLE_CAPTIONS=true
     volumes:
       - ./logs:/app/logs
       - temp_uploads:/tmp/uploads
       - temp_downloads:/tmp/downloads
       - temp_output:/tmp/output
+      # Enhanced pipeline volumes
+      - ./highlights_bot/brand:/app/highlights_bot/brand
+      - ./highlights_bot/config.yaml:/app/highlights_bot/config.yaml
+      - highlights_output:/app/highlights_bot/out
+      - highlights_temp:/app/highlights_bot/temp
+      - ffmpeg_logs:/app/highlights_bot/ffmpeg_logs
     depends_on:
       - redis
     restart: unless-stopped
@@ -24,6 +40,7 @@ services:
           memory: 4G
           cpus: '2.0'
 
+  # Redis for job queue
   redis:
     image: redis:7-alpine
     ports:
@@ -38,6 +55,7 @@ services:
           memory: 512M
           cpus: '0.5'
 
+  # Worker processes for video processing
   worker:
     build: .
     environment:
@@ -45,11 +63,28 @@ services:
       - REDIS_URL=redis://redis:6379
       - LOG_LEVEL=info
       - WORKER_MODE=true
+      - WORKER_CONCURRENCY=2
+      # Enhanced pipeline settings
+      - PYTHONUNBUFFERED=1
+      - PYTHONPATH=/app/highlights_bot
+      - ENABLE_MULTI_SIGNAL=true
+      - ENABLE_PRO_EFFECTS=true
+      - ENABLE_OVERLAYS=true
+      - ENABLE_SHORTS=true
+      - ENABLE_CAPTIONS=true
+      - MAX_MEMORY_GB=8
+      - USE_GPU=false
     volumes:
       - ./logs:/app/logs
       - temp_uploads:/tmp/uploads
       - temp_downloads:/tmp/downloads
       - temp_output:/tmp/output
+      # Enhanced pipeline volumes
+      - ./highlights_bot/brand:/app/highlights_bot/brand
+      - ./highlights_bot/config.yaml:/app/highlights_bot/config.yaml
+      - highlights_output:/app/highlights_bot/out
+      - highlights_temp:/app/highlights_bot/temp
+      - ffmpeg_logs:/app/highlights_bot/ffmpeg_logs
     depends_on:
       - redis
     restart: unless-stopped
@@ -57,12 +92,38 @@ services:
       replicas: 2
       resources:
         limits:
-          memory: 6G
+          memory: 8G
           cpus: '4.0'
+        reservations:
+          memory: 4G
+          cpus: '2.0'
     command: ["node", "src/worker.js"]
+
+  # Optional: Monitoring with Grafana (uncomment to enable)
+  # monitor:
+  #   image: grafana/grafana:latest
+  #   ports:
+  #     - "3000:3000"
+  #   volumes:
+  #     - grafana_data:/var/lib/grafana
+  #   environment:
+  #     - GF_SECURITY_ADMIN_PASSWORD=admin
+  #     - GF_USERS_ALLOW_SIGN_UP=false
+  #   depends_on:
+  #     - app
+  #   restart: unless-stopped
 
 volumes:
   redis_data:
   temp_uploads:
   temp_downloads:
   temp_output:
+  # Enhanced pipeline volumes
+  highlights_output:
+  highlights_temp:
+  ffmpeg_logs:
+  # grafana_data:  # Uncomment if enabling monitoring
+
+networks:
+  default:
+    name: highlights-network

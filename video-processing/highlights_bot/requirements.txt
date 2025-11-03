@@ -1,15 +1,33 @@
+# ============================================
+# ENHANCED HIGHLIGHTS BOT - Python Dependencies
+# ============================================
+
+# Core dependencies
 opencv-python>=4.8.0
 numpy>=1.24.0
 scipy>=1.10.0
 PyYAML>=6.0
-ultralytics>=8.0.0
 requests>=2.31.0
 Pillow>=10.0.0
-scikit-learn>=1.3.0
-matplotlib>=3.7.0
-moviepy>=1.0.3
+
+# Computer Vision & AI
+ultralytics>=8.0.0       # YOLOv8 for object detection
+scikit-learn>=1.3.0      # Machine learning utilities
+matplotlib>=3.7.0        # Plotting and visualization
+
+# Video processing
+moviepy>=1.0.3           # Video editing and manipulation
 
 # Phase 1: Multi-Signal Detection
 librosa>=0.10.0          # Audio analysis (energy, whistle detection)
 soundfile>=0.12.0        # Audio file I/O for librosa
-# openai-whisper>=20230918  # ASR commentary detection (optional, large dependency)
+
+# Phase 3: Overlays (OCR for scoreboard detection)
+pytesseract>=0.3.10      # OCR for scoreboard reading
+
+# Optional: ASR commentary detection (large dependency ~1GB, uncomment if needed)
+# openai-whisper>=20230918  # Automatic speech recognition for commentary
+
+# Optional: GPU acceleration (uncomment if using NVIDIA GPU)
+# torch>=2.0.0            # PyTorch with CUDA support
+# torchvision>=0.15.0     # Computer vision models for PyTorch

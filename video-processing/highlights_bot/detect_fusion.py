@@ -374,3 +374,71 @@ if __name__ == '__main__':
         print(f"  {je['minute']}min - {je['type']} (confidence: {je['confidence']:.2f})")
 
     print("\n✅ Signal fusion tests complete!\n")
+
+
+def detect_events_multimodal(video_path: str, json_events: Optional[List[Dict]] = None, config: Optional[Dict] = None) -> List[Dict]:
+    """
+    Main entry point for multi-signal event detection.
+    This is the function called by main.py integration pipeline.
+
+    Args:
+        video_path: Path to video file
+        json_events: Optional pre-existing JSON events (ground truth)
+        config: Optional configuration dictionary
+
+    Returns:
+        List of detected events with scores and metadata
+    """
+    from detect_audio import detect_audio_spikes, detect_whistle_tones
+    from detect_flow import detect_flow_bursts, detect_scene_cuts
+
+    # Initialize signals dictionary
+    signals = {}
+
+    # Add JSON events as a signal
+    if json_events:
+        signals['json'] = json_events
+
+    # Get detection config
+    det_config = config.get('detection', {}) if config else {}
+    enabled_signals = det_config.get('signals', ['yolo', 'audio_energy', 'whistle', 'optical_flow'])
+
+    # Audio energy detection
+    if 'audio_energy' in enabled_signals or 'audio' in enabled_signals:
+        try:
+            signals['audio'] = detect_audio_spikes(video_path, threshold=0.75, min_duration=1.0)
+        except Exception as e:
+            print(f"⚠️  Audio detection failed: {e}")
+            signals['audio'] = []
+
+    # Whistle detection
+    if 'whistle' in enabled_signals:
+        try:
+            signals['whistle'] = detect_whistle_tones(video_path, freq_range=(3500, 4500), threshold=0.7)
+        except Exception as e:
+            print(f"⚠️  Whistle detection failed: {e}")
+            signals['whistle'] = []
+
+    # Optical flow detection
+    if 'optical_flow' in enabled_signals or 'flow' in enabled_signals:
+        try:
+            signals['flow'] = detect_flow_bursts(video_path, threshold=3.0, min_duration=0.5)
+        except Exception as e:
+            print(f"⚠️  Flow detection failed: {e}")
+            signals['flow'] = []
+
+    # Scene cut detection
+    if 'scene_cuts' in enabled_signals:
+        try:
+            signals['scene_cuts'] = detect_scene_cuts(video_path, threshold=30.0)
+        except Exception as e:
+            print(f"⚠️  Scene cut detection failed: {e}")
+            signals['scene_cuts'] = []
+
+    # Create fusion engine and process signals
+    fusion = SignalFusion(config)
+    fused_events = fusion.fuse_signals(signals)
+    ranked_events = fusion.rank_events(fused_events)
+
+    # Convert to JSON events format for pipeline
+    return fusion.export_to_json_events(ranked_events)
