@@ -1,5 +1,6 @@
 // backend/src/do/chatRoom.ts
 import type { Env } from "../types";
+import { sanitizers } from "../lib/sanitize";
 
 type ChatMessage = {
   id: string;
@@ -85,11 +86,13 @@ export class ChatRoom {
     await this.load(data.tenant, data.roomId);
     if (!this.chatState) throw new Error("chat not initialized");
 
+    // SECURITY: Sanitize HTML to prevent XSS attacks
+    let sanitized = sanitizers.comment(data.text);
+
     // Simple bad-words filter (optional)
     const badWords = ["badword1", "badword2"]; // extend as needed
-    let filtered = data.text;
     for (const word of badWords) {
-      filtered = filtered.replace(new RegExp(word, "gi"), "***");
+      sanitized = sanitized.replace(new RegExp(word, "gi"), "***");
     }
 
     const id = `msg_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
@@ -98,7 +101,7 @@ export class ChatRoom {
       id,
       ts,
       userId: data.userId,
-      text: filtered,
+      text: sanitized,
       media: data.mediaIds,
     };
 

@@ -14,4 +14,10 @@ export default defineWorkersConfig({
       reporter: ["text", "html"],
     },
   },
+  resolve: {
+    alias: {
+      // Mock isomorphic-dompurify for tests since it requires DOM
+      'isomorphic-dompurify': new URL('./src/__mocks__/dompurify.ts', import.meta.url).pathname,
+    },
+  },
 });

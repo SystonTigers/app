@@ -1,4 +1,5 @@
 import { verifyAndNormalize, verifyAdminJWT, requireAdminClaims, type Claims } from "./jwt";
+import { isTokenRevoked } from "./jwtRevocation";
 
 /**
  * Helper to extract Bearer token from request
@@ -49,11 +50,30 @@ function forbidden(message?: string): Response {
 
 /**
  * Verify JWT and return normalized claims
+ * Includes revocation check
  */
 export async function requireJWT(req: Request, env: any): Promise<Claims> {
   const token = getBearer(req);
   try {
-    return await verifyAndNormalize(token, env);
+    const claims = await verifyAndNormalize(token, env);
+
+    // Check if token has been revoked
+    const revoked = await isTokenRevoked(env, {
+      jti: (claims as any).jti,
+      sub: claims.sub,
+      tenantId: claims.tenantId,
+    });
+
+    if (revoked) {
+      console.warn("JWT_REVOKED", {
+        path: new URL(req.url).pathname,
+        sub: claims.sub,
+        tenantId: claims.tenantId,
+      });
+      throw new Response("Unauthorized - Token revoked", { status: 401 });
+    }
+
+    return claims;
   } catch (e: any) {
     console.warn("JWT_VERIFY_FAIL", {
       path: new URL(req.url).pathname,
@@ -75,6 +95,23 @@ export async function requireAdmin(req: Request, env: any): Promise<Claims> {
     claims = await verifyAdminJWT(token, env);
     // sub can be 'admin' or 'admin-user'; don't hard-reject on sub value
     requireAdminClaims(claims);
+
+    // Check if token has been revoked
+    const revoked = await isTokenRevoked(env, {
+      jti: (claims as any).jti,
+      sub: claims.sub,
+      tenantId: claims.tenantId,
+    });
+
+    if (revoked) {
+      console.warn("JWT_REVOKED", {
+        path: new URL(req.url).pathname,
+        sub: claims.sub,
+        tenantId: claims.tenantId,
+      });
+      throw new Error("Token revoked");
+    }
+
     // Optional: If you enforce system tenant for platform admin:
     // if (!isSystemTenant(claims)) throw new Error("admin must be system tenant");
     return claims;

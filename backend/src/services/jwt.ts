@@ -87,7 +87,7 @@ export async function issueTenantAdminJWT(env: any, args: { tenant_id: string; t
   })
     .setProtectedHeader({ alg: "HS256", typ: "JWT" })
     .setIssuer(env.JWT_ISSUER)
-    .setAudience(env.JWT_AUDIENCE)
+    .setAudience('syston-admin') // Admin tokens use syston-admin audience
     .setIssuedAt(now)
     .setExpirationTime(exp)
     .sign(secret);

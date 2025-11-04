@@ -1,3 +1,4 @@
+import { describe, test, expect, beforeAll } from "vitest";
 import { webcrypto } from "node:crypto";
 import { handleAuthLogin, handleAuthRegister } from "../auth";
 

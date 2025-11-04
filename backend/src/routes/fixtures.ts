@@ -1,19 +1,54 @@
 import { Hono } from 'hono';
 import type { Context } from 'hono';
+import { z } from 'zod';
+import { requireJWT } from '../services/auth';
 
 type Env = {
   DB: D1Database;
+  JWT_SECRET?: string;
+  JWT_ISSUER?: string;
+  JWT_AUDIENCE?: string;
 };
 
 const app = new Hono<{ Bindings: Env }>();
 
+// Zod validation schemas
+const FixtureSyncSchema = z.object({
+  fixtures: z.array(z.object({
+    date: z.string(),
+    opponent: z.string(),
+    venue: z.string().optional(),
+    competition: z.string().optional(),
+    time: z.string().optional(),
+    status: z.string().optional(),
+    source: z.string().optional(),
+  }))
+});
+
+const ResultSchema = z.object({
+  date: z.string(),
+  opponent: z.string(),
+  homeScore: z.number().optional(),
+  awayScore: z.number().optional(),
+  venue: z.string().optional(),
+  competition: z.string().optional(),
+  scorers: z.string().optional(),
+});
+
 /**
  * POST /sync - Sync fixtures from Google Apps Script
  * Receives fixture data from consolidator and stores in D1
+ * SECURITY: Requires JWT authentication (admin or service token)
  */
 app.post('/sync', async (c: Context) => {
   try {
-    const { fixtures } = await c.req.json();
+    // Require JWT authentication
+    const request = c.req.raw;
+    await requireJWT(request, c.env);
+
+    const body = await c.req.json();
+    const validated = FixtureSyncSchema.parse(body);
+    const { fixtures } = validated;
 
     if (!Array.isArray(fixtures)) {
       return c.json({ error: 'Invalid fixtures data' }, 400);
@@ -78,9 +113,14 @@ app.post('/sync', async (c: Context) => {
 /**
  * GET /upcoming - Get upcoming fixtures
  * Returns next 10 scheduled fixtures for mobile app
+ * SECURITY: Requires JWT authentication
  */
 app.get('/upcoming', async (c: Context) => {
   try {
+    // Require JWT authentication
+    const request = c.req.raw;
+    await requireJWT(request, c.env);
+
     const db = c.env.DB as D1Database;
 
     const result = await db.prepare(`
@@ -114,9 +154,14 @@ app.get('/upcoming', async (c: Context) => {
 /**
  * GET /all - Get all fixtures (upcoming and past)
  * Optional query params: status, limit
+ * SECURITY: Requires JWT authentication
  */
 app.get('/all', async (c: Context) => {
   try {
+    // Require JWT authentication
+    const request = c.req.raw;
+    await requireJWT(request, c.env);
+
     const status = c.req.query('status');
     const limit = parseInt(c.req.query('limit') || '50');
     const db = c.env.DB as D1Database;
@@ -160,9 +205,14 @@ app.get('/all', async (c: Context) => {
 /**
  * GET /results - Get recent match results
  * Returns last 10 completed matches
+ * SECURITY: Requires JWT authentication
  */
 app.get('/results', async (c: Context) => {
   try {
+    // Require JWT authentication
+    const request = c.req.raw;
+    await requireJWT(request, c.env);
+
     const limit = parseInt(c.req.query('limit') || '10');
     const db = c.env.DB as D1Database;
 
@@ -195,10 +245,16 @@ app.get('/results', async (c: Context) => {
 /**
  * POST /results - Add a match result
  * Stores completed match result in D1
+ * SECURITY: Requires JWT authentication
  */
 app.post('/results', async (c: Context) => {
   try {
-    const result = await c.req.json();
+    // Require JWT authentication
+    const request = c.req.raw;
+    await requireJWT(request, c.env);
+
+    const body = await c.req.json();
+    const result = ResultSchema.parse(body);
     const db = c.env.DB as D1Database;
 
     await db.prepare(`
@@ -242,9 +298,14 @@ app.post('/results', async (c: Context) => {
 
 /**
  * DELETE /fixtures/:id - Delete a fixture by ID
+ * SECURITY: Requires JWT authentication
  */
 app.delete('/:id', async (c: Context) => {
   try {
+    // Require JWT authentication
+    const request = c.req.raw;
+    await requireJWT(request, c.env);
+
     const id = c.req.param('id');
     const db = c.env.DB as D1Database;
 

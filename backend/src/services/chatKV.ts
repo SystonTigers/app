@@ -1,6 +1,7 @@
 // backend/src/services/chatKV.ts
 import { kvGetJSON, kvPutJSON, kvListJSON, assert, id } from "./util";
 import type { Env } from "../types";
+import { sanitizers } from "../lib/sanitize";
 
 export type RoomType = "parents" | "coaches";
 
@@ -63,7 +64,11 @@ export async function addMessage(
   }
 ) {
   assert(args.text && args.text.trim(), "empty text");
-  const msg: Message = { msgId: id(), userId: args.userId, text: args.text.trim(), ts: Date.now() };
+
+  // SECURITY: Sanitize HTML to prevent XSS attacks
+  const sanitizedText = sanitizers.comment(args.text.trim());
+
+  const msg: Message = { msgId: id(), userId: args.userId, text: sanitizedText, ts: Date.now() };
   const key = `${MSG_PREFIX(args.tenant, args.roomId)}${msg.msgId}`;
   await env.KV_IDEMP.put(key, JSON.stringify(msg));
   return msg;

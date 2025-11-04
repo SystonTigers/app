@@ -1,22 +1,47 @@
 // routes/videos.ts
 // Video upload, processing, and management routes
 
+import { z } from "zod";
 import { json } from "../services/util";
+import { parse } from "../lib/validate";
+import { requireJWT } from "../services/auth";
 import type { VideoJob } from "../video-queue-consumer";
 import { logJSON } from "../lib/log";
+import { fileValidators, getValidationErrorResponse } from "../lib/fileValidation";
+
+// Zod validation schemas
+const VideoUploadMetadataSchema = z.object({
+  user_id: z.string().optional(),
+});
+
+const VideoProcessSchema = z.object({
+  // No additional fields needed - videoId comes from URL param, tenant from JWT
+});
 
 /**
  * POST /api/v1/videos/upload
  * Upload video from mobile app
+ * SECURITY: Requires JWT authentication, tenant extracted from JWT claims
  */
 export async function handleVideoUpload(
   req: Request,
   env: any,
   corsHdrs: Headers
 ): Promise<Response> {
+  // Require JWT authentication
+  const claims = await requireJWT(req, env);
+  const tenant = claims.tenantId;
+  const userId = claims.userId || claims.sub || "anonymous";
+
+  if (!tenant) {
+    return json(
+      { success: false, error: { code: "MISSING_TENANT", message: "Tenant ID not found in JWT" } },
+      400,
+      corsHdrs
+    );
+  }
+
   const formData = await req.formData();
-  const tenant = formData.get("tenant") || "default";
-  const userId = formData.get("user_id") || "anonymous";
   const videoFile = formData.get("video");
 
   if (!videoFile || !(videoFile instanceof File)) {
@@ -25,6 +50,13 @@ export async function handleVideoUpload(
       400,
       corsHdrs
     );
+  }
+
+  // SECURITY: Validate file type, size, and signature
+  const validationResult = await fileValidators.video(videoFile);
+  if (!validationResult.valid) {
+    const errorResponse = getValidationErrorResponse(validationResult);
+    return json(errorResponse, 400, corsHdrs);
   }
 
   // Generate video ID
@@ -96,14 +128,26 @@ export async function handleVideoUpload(
 /**
  * GET /api/v1/videos
  * List videos for tenant
+ * SECURITY: Requires JWT authentication, tenant extracted from JWT claims
  */
 export async function handleVideoList(
   req: Request,
   env: any,
   corsHdrs: Headers
 ): Promise<Response> {
+  // Require JWT authentication
+  const claims = await requireJWT(req, env);
+  const tenant = claims.tenantId;
+
+  if (!tenant) {
+    return json(
+      { success: false, error: { code: "MISSING_TENANT", message: "Tenant ID not found in JWT" } },
+      400,
+      corsHdrs
+    );
+  }
+
   const url = new URL(req.url);
-  const tenant = url.searchParams.get("tenant") || "default";
   const limit = parseInt(url.searchParams.get("limit") || "20");
   const offset = parseInt(url.searchParams.get("offset") || "0");
 
@@ -126,6 +170,7 @@ export async function handleVideoList(
 /**
  * GET /api/v1/videos/:id
  * Get video details
+ * SECURITY: Requires JWT authentication, tenant extracted from JWT claims
  */
 export async function handleVideoGet(
   req: Request,
@@ -133,8 +178,17 @@ export async function handleVideoGet(
   corsHdrs: Headers,
   videoId: string
 ): Promise<Response> {
-  const url = new URL(req.url);
-  const tenant = url.searchParams.get("tenant") || "default";
+  // Require JWT authentication
+  const claims = await requireJWT(req, env);
+  const tenant = claims.tenantId;
+
+  if (!tenant) {
+    return json(
+      { success: false, error: { code: "MISSING_TENANT", message: "Tenant ID not found in JWT" } },
+      400,
+      corsHdrs
+    );
+  }
 
   const metadata = await env.KV_IDEMP.get(`video:${tenant}:${videoId}`, "json");
 
@@ -152,6 +206,7 @@ export async function handleVideoGet(
 /**
  * GET /api/v1/videos/:id/status
  * Get processing status
+ * SECURITY: Requires JWT authentication, tenant extracted from JWT claims
  */
 export async function handleVideoStatus(
   req: Request,
@@ -159,8 +214,17 @@ export async function handleVideoStatus(
   corsHdrs: Headers,
   videoId: string
 ): Promise<Response> {
-  const url = new URL(req.url);
-  const tenant = url.searchParams.get("tenant") || "default";
+  // Require JWT authentication
+  const claims = await requireJWT(req, env);
+  const tenant = claims.tenantId;
+
+  if (!tenant) {
+    return json(
+      { success: false, error: { code: "MISSING_TENANT", message: "Tenant ID not found in JWT" } },
+      400,
+      corsHdrs
+    );
+  }
 
   const metadata = (await env.KV_IDEMP.get(`video:${tenant}:${videoId}`, "json")) as any;
 
@@ -196,6 +260,7 @@ export async function handleVideoStatus(
 /**
  * POST /api/v1/videos/:id/process
  * Trigger AI processing (manual trigger, usually auto-queued on upload)
+ * SECURITY: Requires JWT authentication, tenant extracted from JWT claims
  */
 export async function handleVideoProcess(
   req: Request,
@@ -203,8 +268,17 @@ export async function handleVideoProcess(
   corsHdrs: Headers,
   videoId: string
 ): Promise<Response> {
-  const body = await req.json().catch(() => ({}));
-  const tenant = body.tenant || "default";
+  // Require JWT authentication
+  const claims = await requireJWT(req, env);
+  const tenant = claims.tenantId;
+
+  if (!tenant) {
+    return json(
+      { success: false, error: { code: "MISSING_TENANT", message: "Tenant ID not found in JWT" } },
+      400,
+      corsHdrs
+    );
+  }
 
   const metadata = (await env.KV_IDEMP.get(`video:${tenant}:${videoId}`, "json")) as any;
 
@@ -264,6 +338,7 @@ export async function handleVideoProcess(
 /**
  * DELETE /api/v1/videos/:id
  * Delete video
+ * SECURITY: Requires JWT authentication, tenant extracted from JWT claims
  */
 export async function handleVideoDelete(
   req: Request,
@@ -271,8 +346,17 @@ export async function handleVideoDelete(
   corsHdrs: Headers,
   videoId: string
 ): Promise<Response> {
-  const body = await req.json().catch(() => ({}));
-  const tenant = body.tenant || "default";
+  // Require JWT authentication
+  const claims = await requireJWT(req, env);
+  const tenant = claims.tenantId;
+
+  if (!tenant) {
+    return json(
+      { success: false, error: { code: "MISSING_TENANT", message: "Tenant ID not found in JWT" } },
+      400,
+      corsHdrs
+    );
+  }
 
   const metadata = (await env.KV_IDEMP.get(`video:${tenant}:${videoId}`, "json")) as any;
 
@@ -302,6 +386,7 @@ export async function handleVideoDelete(
 /**
  * GET /api/v1/videos/:id/clips
  * List generated clips
+ * SECURITY: Requires JWT authentication, tenant extracted from JWT claims
  */
 export async function handleVideoClips(
   req: Request,
@@ -309,8 +394,17 @@ export async function handleVideoClips(
   corsHdrs: Headers,
   videoId: string
 ): Promise<Response> {
-  const url = new URL(req.url);
-  const tenant = url.searchParams.get("tenant") || "default";
+  // Require JWT authentication
+  const claims = await requireJWT(req, env);
+  const tenant = claims.tenantId;
+
+  if (!tenant) {
+    return json(
+      { success: false, error: { code: "MISSING_TENANT", message: "Tenant ID not found in JWT" } },
+      400,
+      corsHdrs
+    );
+  }
 
   const metadata = (await env.KV_IDEMP.get(`video:${tenant}:${videoId}`, "json")) as any;
 
