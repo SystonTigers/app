@@ -144,7 +144,25 @@ export async function handleProvisionStatus(
   tenantId: string
 ): Promise<Response> {
   try {
-    await requireTenantAdminOrPlatform(request, env, tenantId);
+    // Allow either tenant/platform admin OR service JWT (for internal provisioning system)
+    const authHeader = request.headers.get('authorization');
+    let isServiceAuth = false;
+
+    if (authHeader) {
+      const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
+      if (token) {
+        // Check if it's a service JWT
+        const isService = await verifyServiceJWT(env, token);
+        if (isService) {
+          isServiceAuth = true;
+        }
+      }
+    }
+
+    // If not service JWT, require tenant/platform admin
+    if (!isServiceAuth) {
+      await requireTenantAdminOrPlatform(request, env, tenantId);
+    }
 
     // Get tenant to verify it exists and get plan
     const tenant = await env.DB.prepare(

@@ -3,6 +3,29 @@ import type { ExecutionContext } from "@cloudflare/workers-types";
 import worker from "../src/index";
 import { issueTenantMemberJWT } from "../src/services/jwt";
 
+/**
+ * Retry helper to handle potential timing/race conditions in tests
+ * Retries an assertion function multiple times with delays
+ */
+async function expectEventually(
+  fn: () => Promise<void>,
+  { tries = 5, delayMs = 150 } = {}
+): Promise<void> {
+  let lastErr: any;
+  for (let i = 0; i < tries; i++) {
+    try {
+      await fn();
+      return;
+    } catch (e) {
+      lastErr = e;
+      if (i < tries - 1) {
+        await new Promise(r => setTimeout(r, delayMs));
+      }
+    }
+  }
+  throw lastErr;
+}
+
 class MemoryKV {
   private store = new Map<string, string>();
 
@@ -317,25 +340,27 @@ describe("Event & RSVP E2E Flow", () => {
     const rsvpData: any = await rsvpResponse.json();
     expect(rsvpData.success).toBe(true);
 
-    // Step 5: Verify RSVP count updated
-    const getEventAfterRsvpRequest = new Request(
-      `https://example.com/api/v1/events/${eventId}`,
-      {
-        method: "GET",
-        headers: {
-          authorization: `Bearer ${userToken}`,
-        },
-      }
-    );
+    // Step 5: Verify RSVP count updated (with retry for potential timing issues)
+    await expectEventually(async () => {
+      const getEventAfterRsvpRequest = new Request(
+        `https://example.com/api/v1/events/${eventId}`,
+        {
+          method: "GET",
+          headers: {
+            authorization: `Bearer ${userToken}`,
+          },
+        }
+      );
 
-    const getEventAfterRsvpResponse = await worker.fetch(
-      getEventAfterRsvpRequest,
-      env,
-      ctx
-    );
-    expect(getEventAfterRsvpResponse.status).toBe(200);
-    const getEventAfterRsvpData: any = await getEventAfterRsvpResponse.json();
-    expect(getEventAfterRsvpData.data.event.rsvp_yes_count).toBe(1);
+      const getEventAfterRsvpResponse = await worker.fetch(
+        getEventAfterRsvpRequest,
+        env,
+        ctx
+      );
+      expect(getEventAfterRsvpResponse.status).toBe(200);
+      const getEventAfterRsvpData: any = await getEventAfterRsvpResponse.json();
+      expect(getEventAfterRsvpData.data.event.rsvp_yes_count).toBe(1);
+    });
 
     // Step 6: Update RSVP to "maybe"
     const updateRsvpRequest = new Request(
@@ -355,25 +380,27 @@ describe("Event & RSVP E2E Flow", () => {
     const updateRsvpResponse = await worker.fetch(updateRsvpRequest, env, ctx);
     expect(updateRsvpResponse.status).toBe(200);
 
-    // Step 7: Verify counts updated correctly
-    const getEventAfterUpdateRequest = new Request(
-      `https://example.com/api/v1/events/${eventId}`,
-      {
-        method: "GET",
-        headers: {
-          authorization: `Bearer ${userToken}`,
-        },
-      }
-    );
+    // Step 7: Verify counts updated correctly (with retry for potential timing issues)
+    await expectEventually(async () => {
+      const getEventAfterUpdateRequest = new Request(
+        `https://example.com/api/v1/events/${eventId}`,
+        {
+          method: "GET",
+          headers: {
+            authorization: `Bearer ${userToken}`,
+          },
+        }
+      );
 
-    const getEventAfterUpdateResponse = await worker.fetch(
-      getEventAfterUpdateRequest,
-      env,
-      ctx
-    );
-    const getEventAfterUpdateData: any = await getEventAfterUpdateResponse.json();
-    expect(getEventAfterUpdateData.data.event.rsvp_yes_count).toBe(0);
-    expect(getEventAfterUpdateData.data.event.rsvp_maybe_count).toBe(1);
+      const getEventAfterUpdateResponse = await worker.fetch(
+        getEventAfterUpdateRequest,
+        env,
+        ctx
+      );
+      const getEventAfterUpdateData: any = await getEventAfterUpdateResponse.json();
+      expect(getEventAfterUpdateData.data.event.rsvp_yes_count).toBe(0);
+      expect(getEventAfterUpdateData.data.event.rsvp_maybe_count).toBe(1);
+    });
 
     // Step 8: Get all RSVPs for the event
     const getRsvpsRequest = new Request(

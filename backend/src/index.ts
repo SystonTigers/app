@@ -1162,7 +1162,20 @@ export default {
     if (url.pathname === `/api/${v}/admin/whoami` && req.method === "GET") {
       try {
         const claims = await requireJWT(req, env); // normalized claims
-        return json({ ok: true, claims }, 200, corsHdrs);
+        return json({
+          ok: true,
+          claims: {
+            sub: claims.sub,
+            aud: claims.aud,
+            iss: claims.iss,
+            roles: claims.roles,
+            tenantId: claims.tenantId,
+            iat: claims.iat,
+            exp: claims.exp,
+            expiresAt: claims.exp ? new Date(claims.exp * 1000).toISOString() : null,
+            issuedAt: claims.iat ? new Date(claims.iat * 1000).toISOString() : null,
+          }
+        }, 200, corsHdrs);
       } catch (err: any) {
         // If requireJWT throws a Response object, return it directly
         if (err instanceof Response) {
@@ -1177,6 +1190,47 @@ export default {
         });
         return json({ ok: false, error: String(err?.message || err) }, 401, corsHdrs);
       }
+    }
+
+    // GET /whoami - Public JWT introspection (accepts any valid JWT)
+    if (url.pathname === '/whoami' && req.method === 'GET') {
+      try {
+        const claims = await requireJWT(req, env);
+        return json({
+          success: true,
+          data: {
+            sub: claims.sub,
+            aud: claims.aud,
+            iss: claims.iss,
+            roles: claims.roles,
+            tenantId: claims.tenantId,
+            iat: claims.iat,
+            exp: claims.exp,
+            expiresAt: claims.exp ? new Date(claims.exp * 1000).toISOString() : null,
+            issuedAt: claims.iat ? new Date(claims.iat * 1000).toISOString() : null,
+          }
+        }, 200, corsHdrs);
+      } catch (err: any) {
+        if (err instanceof Response) {
+          return respondWithCors(err, corsHdrs);
+        }
+        return json({
+          success: false,
+          error: { code: 'UNAUTHORIZED', message: err?.message || 'Invalid or missing JWT' }
+        }, 401, corsHdrs);
+      }
+    }
+
+    // GET /health - Health check endpoint
+    if (url.pathname === '/health' && req.method === 'GET') {
+      const version = typeof APP_VERSION !== 'undefined' ? APP_VERSION : 'dev';
+      const environment = env.ENVIRONMENT || 'development';
+      return json({
+        ok: true,
+        version,
+        environment,
+        timestamp: new Date().toISOString(),
+      }, 200, corsHdrs);
     }
 
     // -------- Admin endpoints --------
@@ -1282,6 +1336,106 @@ export default {
       };
       await putTenantConfig(env, cfg);
       return json({ success: true, data: { created: true, tenant: cfg } }, 200, corsHdrs);
+    }
+
+    // POST /api/v1/admin/tenants/manual - Manual tenant provisioning for beta
+    // Creates a tenant with initial admin user (owner-only, platform-admin required)
+    if (url.pathname === `/api/${v}/admin/tenants/manual` && req.method === "POST") {
+      try {
+        // Require platform admin (not just tenant admin)
+        await requireAdmin(req, env);
+
+        const body = await req.json().catch(() => ({}));
+        const schema = z.object({
+          tenantId: z.string().min(3).max(50).regex(/^[a-z0-9-]+$/, "Tenant ID must be lowercase alphanumeric with hyphens"),
+          name: z.string().min(1, "Name required"),
+          contactEmail: z.string().email("Valid email required"),
+          contactName: z.string().min(1, "Contact name required"),
+          plan: z.enum(["starter", "pro", "enterprise"]).optional().default("starter"),
+          locale: z.string().optional().default("en"),
+          tz: z.string().optional().default("UTC"),
+          primaryColor: z.string().optional(),
+          secondaryColor: z.string().optional(),
+        });
+
+        const parsed = schema.safeParse(body);
+        if (!parsed.success) {
+          logJSON({
+            level: "warn",
+            msg: "manual_tenant_validation_failed",
+            requestId,
+            issues: parsed.error.issues,
+          });
+          return json({
+            success: false,
+            error: { code: "VALIDATION", message: "Invalid request", issues: parsed.error.issues }
+          }, 400, corsHdrs);
+        }
+
+        const { tenantId, name, contactEmail, contactName, plan, locale, tz, primaryColor, secondaryColor } = parsed.data;
+
+        // Check if tenant already exists
+        const existing = await getTenantConfig(env, tenantId);
+        if (existing) {
+          return json({
+            success: false,
+            error: { code: "CONFLICT", message: "Tenant already exists" }
+          }, 409, corsHdrs);
+        }
+
+        // Create tenant configuration
+        const cfg: TenantConfig = {
+          id: tenantId,
+          name,
+          locale,
+          tz,
+          flags: { use_make: false, direct_yt: true },
+          makeWebhookUrl: null,
+          plan,
+          colors: primaryColor && secondaryColor ? { primary: primaryColor, secondary: secondaryColor } : undefined,
+        };
+
+        await putTenantConfig(env, cfg);
+
+        // Issue an admin JWT for the new tenant (60-day expiry for beta)
+        const adminJWT = await issueTenantAdminJWT(env, {
+          tenant_id: tenantId,
+          ttlMinutes: 60 * 24 * 60, // 60 days
+        });
+
+        logJSON({
+          level: "info",
+          msg: "manual_tenant_created",
+          requestId,
+          tenantId,
+          plan,
+          contactEmail,
+        });
+
+        return json({
+          success: true,
+          data: {
+            tenant: cfg,
+            adminJWT,
+            message: "Tenant created successfully. Share this JWT with the tenant owner.",
+            expiresAt: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString(),
+          }
+        }, 201, corsHdrs);
+      } catch (e: any) {
+        if (e instanceof Response) return respondWithCors(e, corsHdrs);
+
+        logJSON({
+          level: "error",
+          msg: `manual_tenant_creation_error:${e?.message || "unknown"}`,
+          requestId,
+          path: url.pathname,
+          status: 500,
+        });
+        return json({
+          success: false,
+          error: { code: "INTERNAL", message: "Tenant creation failed" }
+        }, 500, corsHdrs);
+      }
     }
 
     // POST /api/v1/admin/tenant/webhook

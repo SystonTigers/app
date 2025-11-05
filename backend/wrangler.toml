@@ -12,6 +12,7 @@ enabled = true
 # PRODUCTION ENVIRONMENT
 # ─────────────────────────────────────────────────────────
 [env.production]
+compatibility_date = "2024-11-01"
 
 [env.production.vars]
 # Global vars
@@ -115,6 +116,7 @@ class_name = "Provisioner"
 # PREVIEW ENVIRONMENT
 # ─────────────────────────────────────────────────────────
 [env.preview]
+compatibility_date = "2024-11-01"
 
 [env.preview.vars]
 # Global vars

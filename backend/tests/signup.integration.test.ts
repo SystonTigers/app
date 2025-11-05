@@ -80,10 +80,62 @@ describe("tenant provisioning", () => {
       body: JSON.stringify({ id: "secondary-club" }),
     });
 
+    // Tenant-admin JWTs should NOT be able to call platform-admin routes
+    const adminResponse = await worker.fetch(adminRequest, env, ctx);
+    expect(adminResponse.status).toBe(403);
+  });
+
+  it("allows platform admin JWTs to create tenants", async () => {
+    const env = createEnv();
+    const ctx = createExecutionContext();
+
+    // Create a platform admin JWT (uses 'syston-admin' audience and "admin" role)
+    const platformAdminJWT = await issuePlatformAdminJWT(env, { ttlMinutes: 60 });
+
+    const adminRequest = new Request("https://example.com/api/v1/admin/tenant/create", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${platformAdminJWT}`,
+      },
+      body: JSON.stringify({ id: "platform-created-tenant" }),
+    });
+
     const adminResponse = await worker.fetch(adminRequest, env, ctx);
     expect(adminResponse.status).toBe(200);
     const adminData = await adminResponse.json();
     expect(adminData.success).toBe(true);
-    expect(adminData.data.tenant.id).toBe("secondary-club");
+    expect(adminData.data.tenant.id).toBe("platform-created-tenant");
   });
 });
+
+// Helper to issue platform admin JWT
+async function issuePlatformAdminJWT(env: any, args: { ttlMinutes: number }) {
+  const secret = getJwtSecret(env);
+  const now = Math.floor(Date.now() / 1000);
+  const exp = now + args.ttlMinutes * 60;
+
+  const { SignJWT } = await import("jose");
+
+  const token = await new SignJWT({
+    roles: ["admin"],  // Platform admin role
+    sub: "platform-admin",
+  })
+    .setProtectedHeader({ alg: "HS256", typ: "JWT" })
+    .setIssuer(env.JWT_ISSUER)
+    .setAudience("syston-admin")  // Platform admin audience
+    .setIssuedAt(now)
+    .setExpirationTime(exp)
+    .sign(secret);
+
+  return token;
+}
+
+function getJwtSecret(env: any): Uint8Array {
+  const raw = env.JWT_SECRET || "";
+  try {
+    return Uint8Array.from(atob(raw), c => c.charCodeAt(0));
+  } catch {
+    return new TextEncoder().encode(raw);
+  }
+}

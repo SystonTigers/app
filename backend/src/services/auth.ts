@@ -88,6 +88,7 @@ export async function requireJWT(req: Request, env: any): Promise<Claims> {
  * Supports both Bearer token (Authorization header) and owner_session cookie
  */
 export async function requireAdmin(req: Request, env: any): Promise<Claims> {
+  const url = new URL(req.url);
   const token = getToken(req);
   let claims: Claims | undefined;
   try {
@@ -104,26 +105,49 @@ export async function requireAdmin(req: Request, env: any): Promise<Claims> {
     });
 
     if (revoked) {
-      console.warn("JWT_REVOKED", {
-        path: new URL(req.url).pathname,
+      // Structured log for revoked token
+      console.log(JSON.stringify({
+        ts: new Date().toISOString(),
+        event: "authz_deny",
+        route: url.pathname,
         sub: claims.sub,
+        aud: claims.aud,
+        roles: claims.roles,
         tenantId: claims.tenantId,
-      });
+        decision: "deny",
+        reason: "token_revoked",
+      }));
       throw new Error("Token revoked");
     }
 
-    // Optional: If you enforce system tenant for platform admin:
-    // if (!isSystemTenant(claims)) throw new Error("admin must be system tenant");
+    // Success - log authorization grant
+    console.log(JSON.stringify({
+      ts: new Date().toISOString(),
+      event: "authz_grant",
+      route: url.pathname,
+      sub: claims.sub,
+      aud: claims.aud,
+      roles: claims.roles,
+      tenantId: claims.tenantId,
+      decision: "grant",
+    }));
+
     return claims;
   } catch (e: any) {
-    // Add VERY CLEAR logging (but do not print full token)
-    console.warn("AUTH_FAIL", {
-      path: new URL(req.url).pathname,
-      reason: e?.message || String(e),
-      hdrPrefix: (req.headers.get("authorization") || "").slice(0, 16),
+    // Structured log for authorization failure
+    console.log(JSON.stringify({
+      ts: new Date().toISOString(),
+      event: "authz_deny",
+      route: url.pathname,
+      sub: claims?.sub,
+      aud: claims?.aud,
+      roles: claims?.roles,
+      tenantId: claims?.tenantId,
+      decision: "deny",
+      reason: e?.message || "auth_failed",
+      hasAuthHeader: !!req.headers.get("authorization"),
       hasCookie: req.headers.get("cookie")?.includes("owner_session") || false,
-      claims, // safe: just decoded payload
-    });
+    }));
     throw forbidden();
   }
 }
@@ -133,9 +157,23 @@ export async function requireTenantAdminOrPlatform(
   env: any,
   tenantId: string
 ): Promise<{ claims: Claims; scope: "platform_admin" | "tenant_admin" }> {
+  const url = new URL(req.url);
   let adminFailure: Response | null = null;
+
   try {
     const claims = await requireAdmin(req, env);
+    console.log(JSON.stringify({
+      ts: new Date().toISOString(),
+      event: "authz_grant",
+      route: url.pathname,
+      sub: claims.sub,
+      aud: claims.aud,
+      roles: claims.roles,
+      tenantId: claims.tenantId,
+      requestedTenant: tenantId,
+      decision: "grant",
+      scope: "platform_admin",
+    }));
     return { claims, scope: "platform_admin" };
   } catch (err) {
     if (err instanceof Response) {
@@ -149,13 +187,54 @@ export async function requireTenantAdminOrPlatform(
     const claims = await requireJWT(req, env);
     const allowedRoles = new Set(["admin", "tenant_admin", "owner"]);
     const tenant = claims.tenantId;
+
     if (!tenant || tenant !== tenantId) {
+      console.log(JSON.stringify({
+        ts: new Date().toISOString(),
+        event: "authz_deny",
+        route: url.pathname,
+        sub: claims.sub,
+        aud: claims.aud,
+        roles: claims.roles,
+        tenantId: claims.tenantId,
+        requestedTenant: tenantId,
+        decision: "deny",
+        reason: "tenant_mismatch",
+      }));
       throw forbidden("tenant_mismatch");
     }
+
     const hasAllowed = claims.roles.some((role) => allowedRoles.has(role));
     if (!hasAllowed) {
+      console.log(JSON.stringify({
+        ts: new Date().toISOString(),
+        event: "authz_deny",
+        route: url.pathname,
+        sub: claims.sub,
+        aud: claims.aud,
+        roles: claims.roles,
+        tenantId: claims.tenantId,
+        requestedTenant: tenantId,
+        decision: "deny",
+        reason: "role_mismatch",
+        allowedRoles: Array.from(allowedRoles),
+      }));
       throw forbidden("requires tenant_admin role");
     }
+
+    console.log(JSON.stringify({
+      ts: new Date().toISOString(),
+      event: "authz_grant",
+      route: url.pathname,
+      sub: claims.sub,
+      aud: claims.aud,
+      roles: claims.roles,
+      tenantId: claims.tenantId,
+      requestedTenant: tenantId,
+      decision: "grant",
+      scope: "tenant_admin",
+    }));
+
     return { claims, scope: "tenant_admin" };
   } catch (err) {
     if (err instanceof Response) throw err;

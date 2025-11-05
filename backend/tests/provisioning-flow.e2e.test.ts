@@ -81,6 +81,7 @@ function createExecutionContext(): ExecutionContext {
 
 function createEnv() {
   const kv = new MemoryKV();
+  const tenantsKv = new MemoryKV(); // For tenant metadata
   const db = new MemoryDB();
 
   const mockProvisioner = {
@@ -122,7 +123,10 @@ function createEnv() {
     SETUP_URL: "https://setup.test",
     ADMIN_CONSOLE_URL: "https://admin.test",
     YT_REDIRECT_URL: "https://example.com/yt",
+    GAS_WEBAPP_URL: "https://mock-gas.test/exec",
+    BACKEND_URL: "https://test-backend.test",
     KV_IDEMP: kv,
+    TENANTS: tenantsKv, // Add TENANTS KV namespace
     DB: db,
     PROVISIONER: {
       idFromName: vi.fn(() => "provisioner-id"),
@@ -214,6 +218,12 @@ describe("Tenant Provisioning E2E Flow", () => {
   it("handles provisioning with service JWT authentication", async () => {
     // Generate service JWT
     const serviceToken = await generateServiceJWT(env, 30);
+
+    // Step 0: Create tenant in DB first (required for queue endpoint)
+    await env.DB.prepare(`
+      INSERT INTO tenants (id, slug, name, email, plan, status)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).bind("service-test-tenant", "service-test", "Service Test Tenant", "test@example.com", "starter", "trial").run();
 
     // Step 1: Queue provisioning via internal endpoint
     const queueRequest = new Request(
