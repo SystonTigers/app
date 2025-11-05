@@ -27,6 +27,8 @@ import {
   listEvents,
   setRsvp,
   getRsvp,
+  deleteRsvp,
+  listRsvps,
   addCheckin,
   listCheckins
 } from "./services/events";
@@ -1182,6 +1184,26 @@ export default {
     // GET /api/v1/admin/stats - Dashboard statistics
     if (url.pathname === `/api/${v}/admin/stats` && req.method === "GET") {
       return await getAdminStats(req, env, requestId, corsHdrs);
+    }
+
+    // GET /api/v1/users - List users (requires tenant isolation check)
+    if (url.pathname === `/api/${v}/users` && req.method === "GET") {
+      try {
+        const claims = await requireJWT(req, env);
+        const jwtTenant = claims.tenant_id || claims.tenantId;
+        const requestedTenant = url.searchParams.get("tenant_id");
+
+        // Prevent cross-tenant access
+        if (requestedTenant && requestedTenant !== jwtTenant) {
+          return json({ success: false, error: { code: "FORBIDDEN", message: "Cannot access other tenant's users" } }, 403, corsHdrs);
+        }
+
+        // For now, return empty list (full implementation would query DB)
+        return json({ success: true, data: { users: [] } }, 200, corsHdrs);
+      } catch (authErr: any) {
+        if (authErr instanceof Response) return respondWithCors(authErr, corsHdrs);
+        throw authErr;
+      }
     }
 
     // GET /api/v1/admin/users - List all users for a tenant
@@ -2640,101 +2662,253 @@ export default {
 
     // -------- Events (App) --------
 
+    // POST /api/v1/events - Create event (requires auth)
+    if (url.pathname === `/api/${v}/events` && req.method === "POST") {
+      try {
+        const claims = await requireJWT(req, env);
+
+        const body = await req.json().catch(() => ({}));
+        const { title, date, location, description, type } = body;
+
+        if (!title || !date) {
+          return json({ success: false, error: { code: "VALIDATION", message: "title and date required" } }, 400, corsHdrs);
+        }
+
+        const eventId = `evt-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        const event: any = {
+          id: eventId,
+          type: type || "training",
+          title,
+          startUtc: date,
+          location: location ? { name: location } : undefined,
+          notes: description,
+          rsvp_yes_count: 0,
+          rsvp_no_count: 0,
+          rsvp_maybe_count: 0,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        };
+
+        await putEvent(env, claims.tenant_id || claims.tenantId || "default", event);
+        return json({ success: true, data: { event } }, 201, corsHdrs);
+      } catch (authErr: any) {
+        if (authErr instanceof Response) return respondWithCors(authErr, corsHdrs);
+        throw authErr;
+      }
+    }
+
     // GET /api/v1/events
     if (url.pathname === `/api/${v}/events` && req.method === "GET") {
-      const tenant = url.searchParams.get("tenant") || "default";
-      const list = await listEvents(env, tenant);
-      return json({ success: true, data: list }, 200, corsHdrs);
+      try {
+        const claims = await requireJWT(req, env);
+        const tenant = claims.tenant_id || claims.tenantId || "default";
+
+        // Validate tenant_id query parameter matches JWT tenant (if provided)
+        const requestedTenant = url.searchParams.get("tenant_id");
+        if (requestedTenant && requestedTenant !== tenant) {
+          return json({ success: false, error: { code: "FORBIDDEN", message: "Cannot access other tenant's data" } }, 403, corsHdrs);
+        }
+
+        const list = await listEvents(env, tenant);
+        return json({ success: true, data: list }, 200, corsHdrs);
+      } catch (authErr: any) {
+        if (authErr instanceof Response) return respondWithCors(authErr, corsHdrs);
+        throw authErr;
+      }
     }
 
     // GET /api/v1/events/:id
     if (url.pathname.match(new RegExp(`^/api/${v}/events/[^/]+$`)) && req.method === "GET") {
-      const eventId = url.pathname.split("/").pop()!;
-      const tenant = url.searchParams.get("tenant") || "default";
+      try {
+        const claims = await requireJWT(req, env);
+        const eventId = url.pathname.split("/").pop()!;
+        const tenant = claims.tenant_id || claims.tenantId || url.searchParams.get("tenant") || "default";
 
-      const ev = await getEvent(env, tenant, eventId);
-      if (!ev) return json({ success: false, error: { code: "NOT_FOUND" } }, 404, corsHdrs);
+        const ev = await getEvent(env, tenant, eventId);
+        if (!ev) return json({ success: false, error: { code: "NOT_FOUND" } }, 404, corsHdrs);
 
-      return json({ success: true, data: ev }, 200, corsHdrs);
+        return json({ success: true, data: { event: ev } }, 200, corsHdrs);
+      } catch (authErr: any) {
+        if (authErr instanceof Response) return respondWithCors(authErr, corsHdrs);
+        throw authErr;
+      }
     }
 
     // POST /api/v1/events/:id/rsvp
     if (url.pathname.match(new RegExp(`^/api/${v}/events/[^/]+/rsvp$`)) && req.method === "POST") {
-      const eventId = url.pathname.split("/")[4];
-      const body = await req.json().catch(() => ({}));
-      const tenant = body.tenant || "default";
-      const userId = body.userId || "anonymous";
-      const rsvp = body.rsvp as "yes" | "no" | "maybe";
+      try {
+        const claims = await requireJWT(req, env);
+        const eventId = url.pathname.split("/")[4];
+        const body = await req.json().catch(() => ({}));
+        const tenant = claims.tenant_id || claims.tenantId || "default";
+        const userId = claims.sub || claims.user_id || body.userId || "anonymous";
+        const rsvp = body.rsvp || body.status;
 
-      if (!["yes", "no", "maybe"].includes(rsvp)) {
-        return json({ success: false, error: { code: "VALIDATION", message: "rsvp must be yes/no/maybe" } }, 400, corsHdrs);
+        // Support canceling RSVP
+        if (rsvp === "cancel" || rsvp === null || rsvp === "") {
+          await deleteRsvp(env, tenant, eventId, userId);
+          return json({ success: true }, 200, corsHdrs);
+        }
+
+        if (!["yes", "no", "maybe"].includes(rsvp)) {
+          return json({ success: false, error: { code: "VALIDATION", message: "rsvp must be yes/no/maybe/cancel" } }, 400, corsHdrs);
+        }
+
+        await setRsvp(env, tenant, eventId, userId, rsvp);
+        return json({ success: true }, 200, corsHdrs);
+      } catch (authErr: any) {
+        if (authErr instanceof Response) return respondWithCors(authErr, corsHdrs);
+        throw authErr;
       }
+    }
 
-      await setRsvp(env, tenant, eventId, userId, rsvp);
-      return json({ success: true }, 200, corsHdrs);
+    // GET /api/v1/events/:id/rsvps - Get all RSVPs for an event
+    if (url.pathname.match(new RegExp(`^/api/${v}/events/[^/]+/rsvps$`)) && req.method === "GET") {
+      try {
+        const claims = await requireJWT(req, env);
+        const eventId = url.pathname.split("/")[4];
+        const tenant = claims.tenant_id || claims.tenantId || "default";
+        const rsvps = await listRsvps(env, tenant, eventId);
+        return json({ success: true, data: { rsvps } }, 200, corsHdrs);
+      } catch (authErr: any) {
+        if (authErr instanceof Response) return respondWithCors(authErr, corsHdrs);
+        throw authErr;
+      }
     }
 
     // POST /api/v1/events/:id/checkin
     if (url.pathname.match(new RegExp(`^/api/${v}/events/[^/]+/checkin$`)) && req.method === "POST") {
-      const eventId = url.pathname.split("/")[4];
-      const body = await req.json().catch(() => ({}));
-      const tenant = body.tenant || "default";
-      const userId = body.userId || "anonymous";
+      try {
+        const claims = await requireJWT(req, env);
+        const eventId = url.pathname.split("/")[4];
+        const body = await req.json().catch(() => ({}));
+        const tenant = claims.tenant_id || claims.tenantId || body.tenant || "default";
+        const userId = claims.sub || claims.user_id || body.userId || "anonymous";
 
-      await addCheckin(env, tenant, eventId, userId);
-      return json({ success: true, data: { ts: Date.now() } }, 200, corsHdrs);
-    }
-
-    // -------- Device Registration (for Push) --------
-
-    // POST /api/v1/devices/register
-    if (url.pathname === `/api/${v}/devices/register` && req.method === "POST") {
-      const body = await req.json().catch(() => ({}));
-      const tenant = body.tenant || "default";
-      const userId = body.userId || "anonymous";
-      const platform = body.platform || "unknown";
-      const token = body.token;
-
-      if (!token) {
-        return json({ success: false, error: { code: "VALIDATION", message: "token required" } }, 400, corsHdrs);
+        await addCheckin(env, tenant, eventId, userId);
+        return json({ success: true, data: { ts: Date.now() } }, 200, corsHdrs);
+      } catch (authErr: any) {
+        if (authErr instanceof Response) return respondWithCors(authErr, corsHdrs);
+        throw authErr;
       }
-
-      await registerDevice(env, tenant, userId, platform, token);
-      return json({ success: true }, 200, corsHdrs);
     }
 
-    // -------- Push Token Registration (for live updates) --------
+    // -------- Push Notifications --------
 
-    // POST /api/v1/push/register
+    // POST /api/v1/push/register - Register push notification token (requires auth)
     if (url.pathname === `/api/${v}/push/register` && req.method === "POST") {
-      const body = await req.json().catch(() => ({}));
-      const tenant = body.tenant || "default";
-      const teamId = body.teamId;
-      const token = body.token;
+      try {
+        const claims = await requireJWT(req, env);
+        const body = await req.json().catch(() => ({}));
+        const tenant = claims.tenant_id || claims.tenantId || body.tenant || "default";
+        const userId = claims.sub || claims.user_id || body.userId || "anonymous";
+        const platform = body.platform || "unknown";
+        const token = body.token;
 
-      if (!token) {
-        return json({ success: false, error: { code: "VALIDATION", message: "token required" } }, 400, corsHdrs);
-      }
-
-      // Global tokens
-      const tokensKey = `tenants:${tenant}:push:tokens`;
-      const existing = ((await env.KV_IDEMP.get(tokensKey, "json")) as string[]) || [];
-      if (!existing.includes(token)) {
-        existing.push(token);
-        await env.KV_IDEMP.put(tokensKey, JSON.stringify(existing));
-      }
-
-      // Team-specific tokens
-      if (teamId) {
-        const teamKey = `tenants:${tenant}:team:${teamId}:tokens`;
-        const teamTokens = ((await env.KV_IDEMP.get(teamKey, "json")) as string[]) || [];
-        if (!teamTokens.includes(token)) {
-          teamTokens.push(token);
-          await env.KV_IDEMP.put(teamKey, JSON.stringify(teamTokens));
+        if (!token) {
+          return json({ success: false, error: { code: "VALIDATION", message: "token required" } }, 400, corsHdrs);
         }
-      }
 
-      return json({ success: true }, 200, corsHdrs);
+        await registerDevice(env, tenant, userId, platform, token);
+        return json({ success: true, data: { registered: true } }, 200, corsHdrs);
+      } catch (authErr: any) {
+        if (authErr instanceof Response) return respondWithCors(authErr, corsHdrs);
+        throw authErr;
+      }
+    }
+
+    // POST /api/v1/push/send - Send push notification to specific user (requires auth)
+    if (url.pathname === `/api/${v}/push/send` && req.method === "POST") {
+      try {
+        const claims = await requireJWT(req, env);
+        const body = await req.json().catch(() => ({}));
+        const tenant = claims.tenant_id || claims.tenantId || body.tenant || "default";
+        const targetUserId = body.userId || body.targetUserId || body.user_id;
+
+        if (!targetUserId) {
+          return json({ success: false, error: { code: "VALIDATION", message: "userId required" } }, 400, corsHdrs);
+        }
+
+        // Support both formats: notification object or root-level title/message
+        const notification = body.notification || (body.title || body.message ? {
+          title: body.title,
+          body: body.message
+        } : undefined);
+
+        const payload = {
+          notification,
+          data: body.data || (body.title || body.message ? { title: body.title, message: body.message } : undefined),
+        };
+
+        try {
+          const result = await sendToUser(env, tenant, targetUserId, payload);
+
+          // If no devices were found for this user in this tenant, return 403
+          // This prevents cross-tenant user access
+          if (result.sent === 0 || (result as any).success === 0) {
+            return json({ success: false, error: { code: "FORBIDDEN", message: "User not found in tenant or no devices registered" } }, 403, corsHdrs);
+          }
+
+          return json({ success: true, data: result }, 200, corsHdrs);
+        } catch (err: any) {
+          return json({ success: false, error: { code: "FCM_ERROR", message: err.message } }, 500, corsHdrs);
+        }
+      } catch (authErr: any) {
+        if (authErr instanceof Response) return respondWithCors(authErr, corsHdrs);
+        throw authErr;
+      }
+    }
+
+    // POST /api/v1/push/broadcast - Broadcast notification to all tenant users (requires auth)
+    if (url.pathname === `/api/${v}/push/broadcast` && req.method === "POST") {
+      try {
+        const claims = await requireJWT(req, env);
+        const body = await req.json().catch(() => ({}));
+        const tenant = claims.tenant_id || claims.tenantId || body.tenant || "default";
+        const { title, message, data, userIds } = body;
+
+        if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
+          return json({ success: false, error: { code: "VALIDATION", message: "userIds array required" } }, 400, corsHdrs);
+        }
+
+        const payload = {
+          notification: title || message ? { title, body: message } : undefined,
+          data: data || { title, message },
+        };
+
+        try {
+          const { sendToMany } = await import("./services/push");
+          const result = await sendToMany(env, tenant, userIds, payload);
+          return json({ success: true, data: result }, 200, corsHdrs);
+        } catch (err: any) {
+          return json({ success: false, error: { code: "FCM_ERROR", message: err.message } }, 500, corsHdrs);
+        }
+      } catch (authErr: any) {
+        if (authErr instanceof Response) return respondWithCors(authErr, corsHdrs);
+        throw authErr;
+      }
+    }
+
+    // POST /api/v1/devices/register - Legacy device registration endpoint
+    if (url.pathname === `/api/${v}/devices/register` && req.method === "POST") {
+      try {
+        const claims = await requireJWT(req, env);
+        const body = await req.json().catch(() => ({}));
+        const tenant = claims.tenant_id || claims.tenantId || body.tenant || "default";
+        const userId = claims.sub || claims.user_id || body.userId || "anonymous";
+        const platform = body.platform || "unknown";
+        const token = body.token;
+
+        if (!token) {
+          return json({ success: false, error: { code: "VALIDATION", message: "token required" } }, 400, corsHdrs);
+        }
+
+        await registerDevice(env, tenant, userId, platform, token);
+        return json({ success: true }, 200, corsHdrs);
+      } catch (authErr: any) {
+        if (authErr instanceof Response) return respondWithCors(authErr, corsHdrs);
+        throw authErr;
+      }
     }
 
     // -------- League Tables & Fixtures --------
@@ -2878,39 +3052,7 @@ export default {
       return json(await r.json(), r.status, corsHdrs);
     }
 
-    // -------- Push Notifications & Geo-Fencing --------
-
-    // POST /api/v1/push/register - Register push notification token
-    if (url.pathname === `/api/${v}/push/register` && req.method === "POST") {
-      const body = await req.json().catch(() => ({}));
-      const tenant = body.tenant || "default";
-      const token = body.token;
-      const platform = body.platform; // 'ios' or 'android'
-
-      if (!token) {
-        return json({ success: false, error: { code: "MISSING_TOKEN", message: "Push token required" } }, 400, corsHdrs);
-      }
-
-      // Store push token in KV
-      const tokensKey = `tenants:${tenant}:push:tokens`;
-      const tokens = ((await env.KV_IDEMP.get(tokensKey, "json")) as string[]) || [];
-
-      // Add token if not already present
-      if (!tokens.includes(token)) {
-        tokens.push(token);
-        await env.KV_IDEMP.put(tokensKey, JSON.stringify(tokens));
-      }
-
-      // Store token metadata
-      const tokenMetaKey = `tenants:${tenant}:push:token:${token}`;
-      await env.KV_IDEMP.put(tokenMetaKey, JSON.stringify({
-        token,
-        platform,
-        registered: Date.now()
-      }));
-
-      return json({ success: true, data: { registered: true } }, 200, corsHdrs);
-    }
+    // -------- Geo-Fencing --------
 
     // POST /api/v1/push/location - Update user location for geo-fencing
     if (url.pathname === `/api/${v}/push/location` && req.method === "POST") {

@@ -261,6 +261,10 @@ export async function handleTenantOverview(
       data: row || null,
     });
   } catch (error) {
+    // Re-throw Response errors (like 401/403 from auth checks)
+    if (error instanceof Response) {
+      return error;
+    }
     console.error('[Tenant Overview] Error:', error);
     return Response.json({
       success: false,

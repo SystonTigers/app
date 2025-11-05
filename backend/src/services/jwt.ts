@@ -82,12 +82,12 @@ export async function issueTenantAdminJWT(env: any, args: { tenant_id: string; t
   const exp = now + args.ttlMinutes * 60;
 
   const token = await new SignJWT({
-    roles: ["admin", "tenant_admin"],
+    roles: ["tenant_admin", "owner"],  // Tenant admin only, NOT platform admin
     tenant_id: args.tenant_id,
   })
     .setProtectedHeader({ alg: "HS256", typ: "JWT" })
     .setIssuer(env.JWT_ISSUER)
-    .setAudience('syston-admin') // Admin tokens use syston-admin audience
+    .setAudience(env.JWT_AUDIENCE) // Use mobile audience since not platform admin
     .setIssuedAt(now)
     .setExpirationTime(exp)
     .sign(secret);
