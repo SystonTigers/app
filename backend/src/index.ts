@@ -81,6 +81,10 @@ import {
 // Auth routes (from other branch)
 import { handleAuthRegister, handleAuthLogin } from "./routes/auth";
 
+// Security & Kill Switch Middleware
+import { requireSignupEnabled } from "./middleware/killswitch";
+import { addSecurityHeaders } from "./middleware/security-headers";
+
 declare const APP_VERSION: string;
 
 const router = Router();
@@ -946,24 +950,37 @@ export default {
     }
     // -------- Phase 3: Self-Serve Signup (Public) --------
 
+    // Kill switch check for all signup endpoints
+    if (url.pathname.startsWith('/public/signup/')) {
+      const killSwitchResponse = await requireSignupEnabled(req, env, corsHdrs);
+      if (killSwitchResponse) {
+        // Signups are disabled, return 503 with security headers
+        return addSecurityHeaders(killSwitchResponse, env);
+      }
+    }
+
     // POST /public/signup/start - Create new tenant account
     if (url.pathname === `/public/signup/start` && req.method === "POST") {
-      return await signupStart(req, env, requestId, corsHdrs);
+      const response = await signupStart(req, env, requestId, corsHdrs);
+      return addSecurityHeaders(response, env);
     }
 
     // POST /public/signup/brand - Customize brand colors
     if (url.pathname === `/public/signup/brand` && req.method === "POST") {
-      return await signupBrand(req, env, requestId, corsHdrs);
+      const response = await signupBrand(req, env, requestId, corsHdrs);
+      return addSecurityHeaders(response, env);
     }
 
     // POST /public/signup/starter/make - Configure Make.com webhook (Starter plan)
     if (url.pathname === `/public/signup/starter/make` && req.method === "POST") {
-      return await signupStarterMake(req, env, requestId, corsHdrs);
+      const response = await signupStarterMake(req, env, requestId, corsHdrs);
+      return addSecurityHeaders(response, env);
     }
 
     // POST /public/signup/pro/confirm - Confirm Pro plan setup
     if (url.pathname === `/public/signup/pro/confirm` && req.method === "POST") {
-      return await signupProConfirm(req, env, requestId, corsHdrs);
+      const response = await signupProConfirm(req, env, requestId, corsHdrs);
+      return addSecurityHeaders(response, env);
     }
 
     // -------- Magic Link Authentication --------
@@ -1009,7 +1026,8 @@ export default {
     if (provisionStatusMatch && req.method === 'GET') {
       const tenantId = provisionStatusMatch[1];
       // TODO: Add auth check for owner session or admin
-      return await handleProvisionStatus(req, env, tenantId);
+      const response = await handleProvisionStatus(req, env, tenantId);
+      return addSecurityHeaders(response, env);
     }
 
     // GET /api/v1/tenants/:id/overview - Get tenant overview

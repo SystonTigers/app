@@ -187,6 +187,9 @@ export interface SignupResponse {
   [key: string]: unknown;
 }
 
+/**
+ * @deprecated Use the new 3-step signup flow (signupStart, signupBrand, signupStarterMake/signupProConfirm) instead
+ */
 export async function signupTenant(request: SignupRequest): Promise<SignupResponse> {
   const payload: Record<string, unknown> = {
     clubName: request.clubName,
@@ -204,5 +207,139 @@ export async function signupTenant(request: SignupRequest): Promise<SignupRespon
   return apiFetch<SignupResponse>('/api/v1/signup', {
     method: 'POST',
     json: payload,
+  });
+}
+
+// ========================================
+// NEW 3-STEP AUTOMATED SIGNUP FLOW
+// ========================================
+
+export interface SignupStartRequest {
+  clubName: string;
+  clubSlug: string;
+  email: string;
+  plan: 'starter' | 'pro';
+  promoCode?: string;
+}
+
+export interface SignupStartResponse {
+  jwt: string;
+  tenant: {
+    id: string;
+    slug: string;
+    name: string;
+    email: string;
+    plan: string;
+    status: string;
+  };
+}
+
+export async function signupStart(request: SignupStartRequest): Promise<SignupStartResponse> {
+  const payload: Record<string, unknown> = {
+    clubName: request.clubName.trim(),
+    clubSlug: request.clubSlug.trim().toLowerCase(),
+    email: request.email.trim().toLowerCase(),
+    plan: request.plan,
+  };
+
+  if (request.promoCode) {
+    payload.promoCode = request.promoCode.trim();
+  }
+
+  return apiFetch<SignupStartResponse>('/public/signup/start', {
+    method: 'POST',
+    json: payload,
+  });
+}
+
+export interface SignupBrandRequest {
+  primaryColor: string;
+  secondaryColor: string;
+}
+
+export interface SignupBrandResponse {
+  success: boolean;
+}
+
+export async function signupBrand(
+  jwt: string,
+  request: SignupBrandRequest
+): Promise<SignupBrandResponse> {
+  const payload: Record<string, unknown> = {
+    primaryColor: request.primaryColor.trim(),
+    secondaryColor: request.secondaryColor.trim(),
+  };
+
+  return apiFetch<SignupBrandResponse>('/public/signup/brand', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${jwt}`,
+    },
+    json: payload,
+  });
+}
+
+export interface SignupStarterMakeRequest {
+  webhookUrl: string;
+  webhookSecret: string;
+}
+
+export interface SignupStarterMakeResponse {
+  success: boolean;
+}
+
+export async function signupStarterMake(
+  jwt: string,
+  request: SignupStarterMakeRequest
+): Promise<SignupStarterMakeResponse> {
+  const payload: Record<string, unknown> = {
+    webhookUrl: request.webhookUrl.trim(),
+    webhookSecret: request.webhookSecret.trim(),
+  };
+
+  return apiFetch<SignupStarterMakeResponse>('/public/signup/starter/make', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${jwt}`,
+    },
+    json: payload,
+  });
+}
+
+export interface SignupProConfirmResponse {
+  success: boolean;
+}
+
+export async function signupProConfirm(jwt: string): Promise<SignupProConfirmResponse> {
+  return apiFetch<SignupProConfirmResponse>('/public/signup/pro/confirm', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${jwt}`,
+    },
+  });
+}
+
+export interface ProvisionStatusResponse {
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  plan: string;
+  completedAt?: string;
+  error?: string;
+  steps?: {
+    name: string;
+    status: 'pending' | 'completed' | 'failed';
+    completedAt?: string;
+    error?: string;
+  }[];
+}
+
+export async function getProvisionStatus(
+  jwt: string,
+  tenantId: string
+): Promise<ProvisionStatusResponse> {
+  return apiFetch<ProvisionStatusResponse>(`/api/v1/tenants/${tenantId}/provision-status`, {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${jwt}`,
+    },
   });
 }

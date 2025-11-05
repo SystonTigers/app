@@ -47,6 +47,7 @@ EBAY_CLIENT_ID = "prod-ebay-client-id"
 EBAY_CLIENT_SECRET = "prod-ebay-client-secret"
 SENTRY_DSN = "https://prod-sentry.example.com/1"
 DRY_RUN = "false"
+MAKE_VALIDATE_STRICT = "true"
 
 [[env.production.kv_namespaces]]
 binding = "TENANTS"
@@ -55,6 +56,10 @@ id = "71b9f158fb2c4e1a8858dded2633ff5b"
 [[env.production.kv_namespaces]]
 binding = "KV_IDEMP"
 id = "5948d4a91ac04b50904a06c923221994"
+
+[[env.production.kv_namespaces]]
+binding = "FEATURE_FLAGS"
+id = "2b092164260d45d6a9a4af55555ffc09"
 
 [[env.production.d1_databases]]
 binding = "DB"
@@ -151,6 +156,7 @@ EBAY_CLIENT_ID = "preview-ebay-client-id"
 EBAY_CLIENT_SECRET = "preview-ebay-client-secret"
 SENTRY_DSN = "https://preview-sentry.example.com/1"
 DRY_RUN = "true"
+MAKE_VALIDATE_STRICT = "false"
 
 [[env.preview.kv_namespaces]]
 binding = "TENANTS"
@@ -159,6 +165,10 @@ id = "ed3084ae6a9b46e7bbb5e1798831f331"
 [[env.preview.kv_namespaces]]
 binding = "KV_IDEMP"
 id = "5948d4a91ac04b50904a06c923221994"
+
+[[env.preview.kv_namespaces]]
+binding = "FEATURE_FLAGS"
+id = "8657ad3a5cca4f069c691ddd7eaf88a7"
 
 [[env.preview.d1_databases]]
 binding = "DB"

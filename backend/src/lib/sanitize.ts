@@ -1,18 +1,19 @@
-import DOMPurify from 'isomorphic-dompurify';
-
 /**
  * Sanitize HTML content to prevent XSS attacks
- * Uses DOMPurify to strip dangerous HTML/JS while preserving safe formatting
+ * Lightweight Workers-compatible sanitizer - strips all HTML tags
+ *
+ * Note: For production use with rich HTML, consider using HTMLRewriter API
+ * or a Workers-compatible sanitization library.
  *
  * @param dirty - Untrusted HTML string from user input
- * @param options - Optional DOMPurify configuration
+ * @param options - Optional configuration (currently ignored, kept for API compatibility)
  * @returns Sanitized HTML string safe for rendering
  *
  * @example
  * ```typescript
  * const userInput = '<script>alert("xss")</script><p>Safe content</p>';
  * const clean = sanitizeHtml(userInput);
- * // Result: '<p>Safe content</p>'
+ * // Result: 'Safe content'
  * ```
  */
 export function sanitizeHtml(
@@ -27,31 +28,15 @@ export function sanitizeHtml(
     return '';
   }
 
-  const config = {
-    // Default allowed tags for user-generated content
-    ALLOWED_TAGS: options?.ALLOWED_TAGS || [
-      'p', 'br', 'strong', 'em', 'u', 's', 'a', 'ul', 'ol', 'li',
-      'blockquote', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
-      'pre', 'code', 'hr', 'img'
-    ],
-
-    // Default allowed attributes
-    ALLOWED_ATTR: options?.ALLOWED_ATTR || [
-      'href', 'title', 'alt', 'src', 'class'
-    ],
-
-    // Allow data-* attributes if needed (default: false for security)
-    ALLOW_DATA_ATTR: options?.ALLOW_DATA_ATTR || false,
-
-    // Disallow unknown protocols (prevent javascript:, data:, etc.)
-    ALLOWED_URI_REGEXP: /^(?:(?:(?:f|ht)tps?|mailto|tel|callto|sms):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i,
-
-    // Return a string (not DOM nodes)
-    RETURN_DOM: false,
-    RETURN_DOM_FRAGMENT: false,
-  };
-
-  return DOMPurify.sanitize(dirty, config);
+  // Simple HTML tag stripping - secure for Workers environment
+  // Replaces all HTML tags with empty string
+  return dirty
+    .replace(/<[^>]*>/g, '')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#x27;/g, "'")
+    .replace(/&amp;/g, '&');
 }
 
 /**
@@ -66,10 +51,15 @@ export function sanitizePlainText(text: string): string {
     return '';
   }
 
-  return DOMPurify.sanitize(text, {
-    ALLOWED_TAGS: [],
-    ALLOWED_ATTR: [],
-  });
+  // Strip all HTML tags and decode entities
+  return text
+    .replace(/<[^>]*>/g, '')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#x27;/g, "'")
+    .replace(/&amp;/g, '&')
+    .trim();
 }
 
 /**

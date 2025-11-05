@@ -85,6 +85,7 @@ export interface Env {
   DLQ: Queue;
   DLQ_ALERT_URL?: string;
   RATE_LIMIT_KV?: KVNamespace;
+  FEATURE_FLAGS?: KVNamespace;  // Kill switch and feature flags
   RL_POSTS_PER_MIN?: string;
   RL_UPLOADS_PER_MIN?: string;
   R2_MEDIA: R2Bucket;

@@ -164,14 +164,18 @@ export async function handleProvisionStatus(
       await requireTenantAdminOrPlatform(request, env, tenantId);
     }
 
-    // Get tenant to verify it exists and get plan
+    // Get tenant provision state from DB
     const tenant = await env.DB.prepare(
-      `SELECT id, plan, status, provisioned_at FROM tenants WHERE id = ?`
+      `SELECT id, plan, status, provisioned_at, provision_state, provision_reason, provision_updated_at
+       FROM tenants WHERE id = ?`
     ).bind(tenantId).first<{
       id: string;
       plan: string;
       status: string;
       provisioned_at: number | null;
+      provision_state: string | null;
+      provision_reason: string | null;
+      provision_updated_at: string | null;
     }>();
 
     if (!tenant) {
@@ -181,47 +185,15 @@ export async function handleProvisionStatus(
       }, { status: 404 });
     }
 
-    // Get Provisioner Durable Object for this tenant
-    const provisionerId = env.PROVISIONER.idFromName(tenant.id);
-    const provisioner = env.PROVISIONER.get(provisionerId);
-
-    // Get status
-    const response = await provisioner.fetch(
-      new Request(`https://provisioner/status?tenantId=${tenant.id}&plan=${tenant.plan}`)
-    );
-
-    const result = await response.json<{
-      success: boolean;
-      state?: {
-        status: string;
-        currentStep: string | null;
-        checkpoints: Record<string, {
-          step: string;
-          status: string;
-          error?: string;
-        }>;
-        error?: string;
-      };
-    }>();
-
-    if (!result.success || !result.state) {
-      return Response.json({
-        success: true,
-        data: {
-          status: tenant.provisioned_at ? 'completed' : 'pending',
-          step: null,
-          checkpoints: {},
-        },
-      });
-    }
-
+    // Return provision state from DB (set by Provisioner DO)
     return Response.json({
       success: true,
       data: {
-        status: result.state.status,
-        currentStep: result.state.currentStep,
-        checkpoints: result.state.checkpoints,
-        error: result.state.error,
+        status: tenant.provision_state || 'pending',
+        step: null, // Kept for backward compatibility
+        checkpoints: {}, // Kept for backward compatibility
+        reason: tenant.provision_reason,
+        updatedAt: tenant.provision_updated_at,
       },
     });
   } catch (error) {

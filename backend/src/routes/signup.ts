@@ -4,7 +4,7 @@
 import { z } from "zod";
 import { json, parse, isValidationError } from "../lib/validate";
 import { requireJWT } from "../services/auth";
-import { issueTenantAdminJWT, generateServiceJWT } from "../services/jwt";
+import { issueTenantAdminJWT } from "../services/jwt";
 import { isAllowedWebhookHost } from "../services/tenantConfig";
 import { logJSON } from "../lib/log";
 
@@ -29,21 +29,43 @@ const MakeSchema = z.object({
 // Helper function to queue provisioning
 async function queueProvisioning(env: any, tenantId: string): Promise<void> {
   try {
-    // Generate short-lived service JWT
-    const serviceJWT = await generateServiceJWT(env, 30);
+    // Get tenant plan
+    const tenant = await env.DB.prepare(
+      `SELECT id, plan FROM tenants WHERE id = ?`
+    ).bind(tenantId).first<{ id: string; plan: string }>();
 
-    // Call internal provisioning endpoint
-    const baseUrl = env.BACKEND_URL || 'http://localhost:8787';
-    await fetch(`${baseUrl}/internal/provision/queue`, {
+    if (!tenant) {
+      console.error(`[Signup] Tenant not found: ${tenantId}`);
+      return;
+    }
+
+    // Get Provisioner Durable Object for this tenant
+    const provisionerId = env.PROVISIONER.idFromName(tenant.id);
+    const provisioner = env.PROVISIONER.get(provisionerId);
+
+    // Queue provisioning (initialize state)
+    await provisioner.fetch(new Request('https://provisioner/queue', {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${serviceJWT}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ tenantId }),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tenantId: tenant.id,
+        plan: tenant.plan,
+      }),
+    }));
+
+    // Trigger run (fire-and-forget background execution)
+    provisioner.fetch(new Request('https://provisioner/run', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tenantId: tenant.id,
+        plan: tenant.plan,
+      }),
+    })).catch(err => {
+      console.error(`[Signup] Provisioning run failed for ${tenantId}:`, err);
     });
 
-    console.log(`[Signup] Queued provisioning for ${tenantId}`);
+    console.log(`[Signup] Queued provisioning for ${tenantId} (plan: ${tenant.plan})`);
   } catch (error) {
     console.error(`[Signup] Failed to queue provisioning for ${tenantId}:`, error);
     // Don't fail signup if provisioning queue fails - it can be retried
@@ -214,7 +236,7 @@ export async function signupStarterMake(req: Request, env: any, requestId: strin
 
     // Validate webhook host is allowed
     const webhookHost = new URL(data.webhookUrl).hostname;
-    if (!isAllowedWebhookHost(webhookHost, env)) {
+    if (!isAllowedWebhookHost(webhookHost, env.ALLOWED_WEBHOOK_HOSTS || "")) {
       return json({
         success: false,
         error: { code: "INVALID_WEBHOOK_HOST", message: "Webhook host not allowed" }
