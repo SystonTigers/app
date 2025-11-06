@@ -3,6 +3,14 @@
 import { useState, useRef, useEffect } from "react";
 import { signupStart, signupBrand, signupStarterMake, signupProConfirm, getProvisionStatus, ApiError } from "@/lib/api";
 
+interface PromoData {
+  code: string;
+  discountPercent: number;
+  lifetime: boolean;
+  usesRemaining: number | null;
+  appliedPlan?: string | null;  // Plan override from promo code
+}
+
 export default function OnboardingPage() {
   const [step, setStep] = useState(1); // 1: basic info, 2: branding, 3: plan-specific
   const [form, setForm] = useState({
@@ -15,7 +23,8 @@ export default function OnboardingPage() {
     makeWebhookUrl: "",
     webhookSecret: "",
     youtubeChannelId: "",
-    plan: "starter" as "starter" | "pro"
+    plan: "starter" as "starter" | "pro",
+    promoCode: ""
   });
   const [jwt, setJwt] = useState<string | null>(null);
   const [tenantDbId, setTenantDbId] = useState<string | null>(null);
@@ -26,6 +35,9 @@ export default function OnboardingPage() {
   const [provisioningStatus, setProvisioningStatus] = useState<"idle" | "polling" | "completed" | "failed">("idle");
   const [step3Completed, setStep3Completed] = useState(false);
   const [canRetry, setCanRetry] = useState(false);
+  const [promoData, setPromoData] = useState<PromoData | null>(null);
+  const [verifyingPromo, setVerifyingPromo] = useState(false);
+  const [promoError, setPromoError] = useState<string | null>(null);
 
   // Refs for polling control
   const isPollingRef = useRef(false);
@@ -53,6 +65,60 @@ export default function OnboardingPage() {
     return false;
   }
 
+  async function handleVerifyPromo() {
+    const code = form.promoCode.trim();
+    if (!code) {
+      setPromoError("Please enter a promo code");
+      return;
+    }
+
+    // Check if tenantId is filled for whitelist validation
+    const slug = form.tenantId.trim();
+
+    setVerifyingPromo(true);
+    setPromoError(null);
+
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/public/signup/verify-promo`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          promoCode: code,
+          tenantSlug: slug || undefined  // Pass tenant slug for whitelist validation
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        const errorMsg = data.error?.message || 'Invalid promo code';
+        setPromoError(errorMsg);
+        setPromoData(null);
+        return;
+      }
+
+      // Update promo data with new fields (appliedPlan, lifetime)
+      setPromoData(data.data);
+      setPromoError(null);
+
+      // If promo has a plan override, update the form plan
+      if (data.data.appliedPlan) {
+        setForm({ ...form, plan: data.data.appliedPlan });
+      }
+    } catch (err) {
+      setPromoError('Failed to verify promo code');
+      setPromoData(null);
+    } finally {
+      setVerifyingPromo(false);
+    }
+  }
+
+  function clearPromo() {
+    setPromoData(null);
+    setPromoError(null);
+    setForm({ ...form, promoCode: "" });
+  }
+
   async function handleStep1Submit() {
     if (!form.teamName.trim() || !form.tenantId.trim() || !form.contactEmail.trim()) {
       setError("Please fill in all required fields");
@@ -69,7 +135,8 @@ export default function OnboardingPage() {
         clubName: form.teamName.trim(),
         clubSlug: form.tenantId.trim().toLowerCase(),
         email: form.contactEmail.trim(),
-        plan: form.plan
+        plan: form.plan,
+        promoCode: promoData?.code // Use validated promo code
       });
 
       setJwt(res.jwt);
@@ -251,237 +318,400 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div className="mx-auto flex max-w-2xl flex-col gap-4 p-6">
-      <h1 className="text-3xl font-bold">Get Started</h1>
-      <p className="text-sm text-neutral-600">
-        Create your club in 3 easy steps. We'll automatically provision your workspace with all the tools you need.
-      </p>
+    <div className="min-h-screen bg-black text-white py-12 px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-4xl">
+        <header className="text-center mb-12">
+          <h1 className="text-5xl font-extrabold mb-4" style={{ fontSize: '3rem', fontWeight: 800 }}>
+            Launch Your Club Platform
+          </h1>
+          <p className="text-xl text-gray-300">
+            Choose your plan and get started in minutes
+          </p>
+        </header>
 
-      {/* Step Indicator */}
-      <div className="flex gap-2 mb-4">
-        {[1, 2, 3].map((s) => (
-          <div
-            key={s}
-            className={`flex-1 h-2 rounded ${
-              s === step ? "bg-black" : s < step ? "bg-green-600" : "bg-neutral-200"
-            }`}
-          />
-        ))}
+        {/* Step Indicator */}
+        <div className="flex gap-3 mb-12">
+          {[1, 2, 3].map((s) => (
+            <div
+              key={s}
+              className={`flex-1 h-3 rounded-full transition-colors ${
+                s === step ? "bg-yellow-400" : s < step ? "bg-yellow-600" : "bg-gray-700"
+              }`}
+              role="progressbar"
+              aria-valuenow={s}
+              aria-valuemin={1}
+              aria-valuemax={3}
+              aria-label={`Step ${s} of 3`}
+            />
+          ))}
+        </div>
+
+        {/* Step 1: Plan Selection & Basic Info */}
+        {step === 1 && (
+          <div className="space-y-8">
+            {/* Promo Code Section */}
+            <div className="bg-gray-900 rounded-2xl p-6 shadow-xl border border-gray-800">
+              <h2 className="text-2xl font-bold mb-4">Have a Promo Code?</h2>
+              <div className="flex gap-3">
+                <input
+                  type="text"
+                  placeholder="Enter promo code"
+                  value={form.promoCode}
+                  onChange={(e) => setForm({ ...form, promoCode: e.target.value.toUpperCase() })}
+                  disabled={!!promoData}
+                  className="flex-1 px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-400 disabled:opacity-50"
+                  aria-label="Promo code input"
+                />
+                {!promoData ? (
+                  <button
+                    type="button"
+                    onClick={handleVerifyPromo}
+                    disabled={verifyingPromo || !form.promoCode.trim()}
+                    className="px-6 py-3 bg-yellow-400 text-black font-bold rounded-xl hover:bg-yellow-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    aria-label="Apply promo code"
+                  >
+                    {verifyingPromo ? "Checking..." : "Apply"}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={clearPromo}
+                    className="px-6 py-3 bg-gray-700 text-white font-bold rounded-xl hover:bg-gray-600 transition-colors"
+                    aria-label="Remove promo code"
+                  >
+                    Remove
+                  </button>
+                )}
+              </div>
+              {promoError && (
+                <p className="mt-3 text-red-400 text-sm" role="alert">{promoError}</p>
+              )}
+              {promoData && (
+                <div className="mt-4 p-4 bg-green-900 border border-green-700 rounded-xl">
+                  <p className="text-green-100 font-semibold">
+                    ✓ {promoData.code} applied: {promoData.discountPercent}% off
+                    {promoData.lifetime && " (Lifetime access)"}
+                  </p>
+                  {promoData.usesRemaining && (
+                    <p className="text-green-300 text-sm mt-1">{promoData.usesRemaining} uses remaining</p>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Plan Selection */}
+            <div>
+              <h2 className="text-2xl font-bold mb-6">Select Your Plan</h2>
+              <div className="grid md:grid-cols-2 gap-6">
+                {/* Starter Plan */}
+                <button
+                  type="button"
+                  onClick={() => setForm({ ...form, plan: "starter" })}
+                  className={`p-8 rounded-2xl text-left transition-all shadow-xl border-2 ${
+                    form.plan === "starter"
+                      ? "bg-yellow-400 border-yellow-400 text-black"
+                      : "bg-gray-900 border-gray-800 text-white hover:border-gray-700"
+                  }`}
+                  aria-pressed={form.plan === "starter"}
+                  aria-label="Select Starter plan"
+                >
+                  <h3 className={`text-2xl font-bold mb-3 ${form.plan === "starter" ? "text-black" : "text-white"}`}>
+                    Starter
+                  </h3>
+                  <p className={`text-lg mb-6 ${form.plan === "starter" ? "text-black" : "text-gray-300"}`}>
+                    Perfect for getting started with Make.com integration
+                  </p>
+                  <ul className={`space-y-2 text-sm ${form.plan === "starter" ? "text-black" : "text-gray-400"}`}>
+                    <li>✓ Custom branding</li>
+                    <li>✓ Make.com webhooks</li>
+                    <li>✓ Team management</li>
+                    <li>✓ Content feeds</li>
+                  </ul>
+                </button>
+
+                {/* Pro Plan */}
+                <button
+                  type="button"
+                  onClick={() => setForm({ ...form, plan: "pro" })}
+                  className={`p-8 rounded-2xl text-left transition-all shadow-xl border-2 ${
+                    form.plan === "pro"
+                      ? "bg-yellow-400 border-yellow-400 text-black"
+                      : "bg-gray-900 border-gray-800 text-white hover:border-gray-700"
+                  }`}
+                  aria-pressed={form.plan === "pro"}
+                  aria-label="Select Pro plan"
+                >
+                  <h3 className={`text-2xl font-bold mb-3 ${form.plan === "pro" ? "text-black" : "text-white"}`}>
+                    Pro
+                  </h3>
+                  <p className={`text-lg mb-6 ${form.plan === "pro" ? "text-black" : "text-gray-300"}`}>
+                    Full automation with Google Sheets and Apps Script
+                  </p>
+                  <ul className={`space-y-2 text-sm ${form.plan === "pro" ? "text-black" : "text-gray-400"}`}>
+                    <li>✓ Everything in Starter</li>
+                    <li>✓ Auto Google Sheets setup</li>
+                    <li>✓ Apps Script automation</li>
+                    <li>✓ Advanced workflows</li>
+                  </ul>
+                </button>
+              </div>
+            </div>
+
+            {/* Basic Info Form */}
+            <div className="bg-gray-900 rounded-2xl p-8 shadow-xl border border-gray-800 space-y-6">
+              <h2 className="text-2xl font-bold mb-4">Club Details</h2>
+
+              <div>
+                <label htmlFor="teamName" className="block text-sm font-semibold mb-2 text-gray-300">
+                  Club Name *
+                </label>
+                <input
+                  id="teamName"
+                  type="text"
+                  placeholder="Syston Town Tigers"
+                  value={form.teamName}
+                  onChange={(e) => setForm({ ...form, teamName: e.target.value })}
+                  className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                  required
+                  aria-required="true"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="tenantId" className="block text-sm font-semibold mb-2 text-gray-300">
+                  Club Slug * <span className="text-gray-500 font-normal">(letters, numbers, hyphens only)</span>
+                </label>
+                <input
+                  id="tenantId"
+                  type="text"
+                  placeholder="syston-tigers"
+                  value={form.tenantId}
+                  onChange={(e) => setForm({ ...form, tenantId: e.target.value.toLowerCase() })}
+                  className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                  required
+                  aria-required="true"
+                  pattern="[a-z0-9-]+"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="contactEmail" className="block text-sm font-semibold mb-2 text-gray-300">
+                  Contact Email *
+                </label>
+                <input
+                  id="contactEmail"
+                  type="email"
+                  placeholder="admin@systontigers.com"
+                  value={form.contactEmail}
+                  onChange={(e) => setForm({ ...form, contactEmail: e.target.value })}
+                  className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                  required
+                  aria-required="true"
+                />
+              </div>
+
+              <button
+                onClick={handleStep1Submit}
+                disabled={submitting}
+                className="w-full py-4 bg-yellow-400 text-black font-bold text-lg rounded-xl hover:bg-yellow-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                aria-label="Continue to branding"
+              >
+                {submitting ? "Creating Your Club..." : "Continue to Branding"}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 2: Branding */}
+        {step === 2 && (
+          <div className="space-y-8">
+            <div className="bg-gray-900 rounded-2xl p-8 shadow-xl border border-gray-800">
+              <h2 className="text-2xl font-bold mb-6">Customize Your Brand Colors</h2>
+
+              <div className="grid md:grid-cols-2 gap-6 mb-8">
+                <div>
+                  <label htmlFor="primaryColor" className="block text-sm font-semibold mb-3 text-gray-300">
+                    Primary Color
+                  </label>
+                  <input
+                    id="primaryColor"
+                    type="color"
+                    value={form.primary}
+                    onChange={(e) => setForm({ ...form, primary: e.target.value })}
+                    className="w-full h-16 rounded-xl border-2 border-gray-700 cursor-pointer"
+                    aria-label="Select primary color"
+                  />
+                  <input
+                    type="text"
+                    value={form.primary}
+                    onChange={(e) => setForm({ ...form, primary: e.target.value })}
+                    className="w-full mt-2 px-4 py-2 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                    aria-label="Primary color hex code"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="secondaryColor" className="block text-sm font-semibold mb-3 text-gray-300">
+                    Secondary Color
+                  </label>
+                  <input
+                    id="secondaryColor"
+                    type="color"
+                    value={form.secondary}
+                    onChange={(e) => setForm({ ...form, secondary: e.target.value })}
+                    className="w-full h-16 rounded-xl border-2 border-gray-700 cursor-pointer"
+                    aria-label="Select secondary color"
+                  />
+                  <input
+                    type="text"
+                    value={form.secondary}
+                    onChange={(e) => setForm({ ...form, secondary: e.target.value })}
+                    className="w-full mt-2 px-4 py-2 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                    aria-label="Secondary color hex code"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-4">
+                <button
+                  onClick={() => setStep(1)}
+                  disabled={submitting}
+                  className="flex-1 py-4 bg-gray-700 text-white font-bold text-lg rounded-xl hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  aria-label="Go back to plan selection"
+                >
+                  Back
+                </button>
+                <button
+                  onClick={handleStep2Submit}
+                  disabled={submitting}
+                  className="flex-1 py-4 bg-yellow-400 text-black font-bold text-lg rounded-xl hover:bg-yellow-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  aria-label={`Continue to ${form.plan === "starter" ? "webhook configuration" : "finish setup"}`}
+                >
+                  {submitting ? "Saving..." : `Next: ${form.plan === "starter" ? "Webhook" : "Finish"}`}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Step 3: Plan-Specific Config */}
+        {step === 3 && (
+          <div className="space-y-8">
+            <div className="bg-gray-900 rounded-2xl p-8 shadow-xl border border-gray-800">
+              {form.plan === "starter" ? (
+                <>
+                  <h2 className="text-2xl font-bold mb-6">Configure Make.com Webhook</h2>
+
+                  <div className="space-y-6 mb-8">
+                    <div>
+                      <label htmlFor="makeWebhookUrl" className="block text-sm font-semibold mb-2 text-gray-300">
+                        Make.com Webhook URL *
+                      </label>
+                      <input
+                        id="makeWebhookUrl"
+                        type="url"
+                        placeholder="https://hook.make.com/..."
+                        value={form.makeWebhookUrl}
+                        onChange={(e) => setForm({ ...form, makeWebhookUrl: e.target.value })}
+                        className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                        required
+                        aria-required="true"
+                      />
+                    </div>
+
+                    <div>
+                      <label htmlFor="webhookSecret" className="block text-sm font-semibold mb-2 text-gray-300">
+                        Webhook Secret <span className="text-gray-500 font-normal">(optional - auto-generated)</span>
+                      </label>
+                      <input
+                        id="webhookSecret"
+                        type="text"
+                        placeholder="Will be auto-generated if not provided"
+                        value={form.webhookSecret}
+                        onChange={(e) => setForm({ ...form, webhookSecret: e.target.value })}
+                        className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                      />
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <h2 className="text-2xl font-bold mb-6">Ready to Launch</h2>
+                  <div className="p-6 bg-gray-800 rounded-xl border border-gray-700 mb-8">
+                    <h3 className="text-xl font-bold mb-4 text-yellow-400">✓ Automatic Provisioning Included</h3>
+                    <p className="text-gray-300 mb-4">Your Pro plan includes:</p>
+                    <ul className="space-y-2 text-gray-300">
+                      <li className="flex items-start">
+                        <span className="text-yellow-400 mr-2">✓</span>
+                        Automatic Google Sheets creation and setup
+                      </li>
+                      <li className="flex items-start">
+                        <span className="text-yellow-400 mr-2">✓</span>
+                        Pre-configured Apps Script automation workflows
+                      </li>
+                      <li className="flex items-start">
+                        <span className="text-yellow-400 mr-2">✓</span>
+                        Team management and content automation
+                      </li>
+                      <li className="flex items-start">
+                        <span className="text-yellow-400 mr-2">✓</span>
+                        Full integration ready in minutes
+                      </li>
+                    </ul>
+                  </div>
+                </>
+              )}
+
+              <div className="flex gap-4">
+                <button
+                  onClick={() => setStep(2)}
+                  disabled={submitting || provisioningStatus === "polling"}
+                  className="flex-1 py-4 bg-gray-700 text-white font-bold text-lg rounded-xl hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  aria-label="Go back to branding"
+                >
+                  Back
+                </button>
+                <button
+                  onClick={handleStep3Submit}
+                  disabled={submitting || provisioningStatus === "polling"}
+                  className="flex-1 py-4 bg-yellow-400 text-black font-bold text-lg rounded-xl hover:bg-yellow-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  aria-label="Complete setup and launch"
+                >
+                  {submitting ? "Launching..." : provisioningStatus === "polling" ? "Provisioning..." : "Launch My Club"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Status Messages */}
+        {status && !error && (
+          <div role="status" aria-live="polite" className="mt-6 p-4 bg-green-900 border border-green-700 rounded-xl text-green-100">
+            {status}
+          </div>
+        )}
+        {error && (
+          <div role="alert" className="mt-6 p-4 bg-red-900 border border-red-700 rounded-xl text-red-100">
+            {error}
+            {canRetry && (
+              <button
+                onClick={step === 1 ? handleStep1Submit : step === 2 ? handleStep2Submit : handleStep3Submit}
+                disabled={submitting || provisioningStatus === "polling"}
+                className="ml-3 underline hover:no-underline disabled:opacity-50"
+                aria-label="Retry action"
+              >
+                Retry
+              </button>
+            )}
+          </div>
+        )}
+        {result && provisioningStatus === "completed" && (
+          <div className="mt-6 p-6 bg-green-900 border border-green-700 rounded-xl" role="status" aria-live="polite">
+            <p className="text-xl font-bold text-green-100 mb-2">✓ Success!</p>
+            <p className="text-green-200">Your club is ready to use. Check your email for the magic link to access your admin console.</p>
+          </div>
+        )}
       </div>
-
-      {/* Step 1: Basic Info */}
-      {step === 1 && (
-        <>
-          <div className="mb-4">
-            <p className="text-sm font-semibold mb-2">Select Plan</p>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => setForm({ ...form, plan: "starter" })}
-                className={`p-3 rounded border-2 text-left ${
-                  form.plan === "starter" ? "border-black bg-neutral-50" : "border-neutral-200"
-                }`}
-              >
-                <div className="font-semibold">Starter</div>
-                <div className="text-xs text-neutral-600">Use Make.com</div>
-              </button>
-              <button
-                type="button"
-                onClick={() => setForm({ ...form, plan: "pro" })}
-                className={`p-3 rounded border-2 text-left ${
-                  form.plan === "pro" ? "border-black bg-neutral-50" : "border-neutral-200"
-                }`}
-              >
-                <div className="font-semibold">Pro</div>
-                <div className="text-xs text-neutral-600">Full automation</div>
-              </button>
-            </div>
-          </div>
-
-          <input
-            placeholder="Club name *"
-            value={form.teamName}
-            onChange={(e) => setForm({ ...form, teamName: e.target.value })}
-            className="w-full rounded border p-2"
-            required
-          />
-          <input
-            placeholder="Tenant ID (slug) *"
-            value={form.tenantId}
-            onChange={(e) => setForm({ ...form, tenantId: e.target.value })}
-            className="w-full rounded border p-2"
-            required
-          />
-          <input
-            placeholder="Contact Email *"
-            type="email"
-            value={form.contactEmail}
-            onChange={(e) => setForm({ ...form, contactEmail: e.target.value })}
-            className="w-full rounded border p-2"
-            required
-          />
-          <button
-            onClick={handleStep1Submit}
-            disabled={submitting}
-            className="rounded bg-black px-4 py-2 font-semibold text-white disabled:opacity-50"
-          >
-            {submitting ? "Creating..." : "Next: Branding"}
-          </button>
-        </>
-      )}
-
-      {/* Step 2: Branding */}
-      {step === 2 && (
-        <>
-          <p className="text-sm text-neutral-600 mb-2">Configure your club colors</p>
-          <div className="flex gap-2">
-            <div className="flex-1">
-              <label className="text-xs text-neutral-600 mb-1 block">Primary Color</label>
-              <input
-                type="color"
-                value={form.primary}
-                onChange={(e) => setForm({ ...form, primary: e.target.value })}
-                className="w-full h-12 rounded border"
-              />
-              <input
-                type="text"
-                value={form.primary}
-                onChange={(e) => setForm({ ...form, primary: e.target.value })}
-                className="w-full rounded border p-1 mt-1 text-sm"
-              />
-            </div>
-            <div className="flex-1">
-              <label className="text-xs text-neutral-600 mb-1 block">Secondary Color</label>
-              <input
-                type="color"
-                value={form.secondary}
-                onChange={(e) => setForm({ ...form, secondary: e.target.value })}
-                className="w-full h-12 rounded border"
-              />
-              <input
-                type="text"
-                value={form.secondary}
-                onChange={(e) => setForm({ ...form, secondary: e.target.value })}
-                className="w-full rounded border p-1 mt-1 text-sm"
-              />
-            </div>
-          </div>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setStep(1)}
-              disabled={submitting}
-              className="flex-1 rounded bg-neutral-200 px-4 py-2 font-semibold disabled:opacity-50"
-            >
-              Back
-            </button>
-            <button
-              onClick={handleStep2Submit}
-              disabled={submitting}
-              className="flex-1 rounded bg-black px-4 py-2 font-semibold text-white disabled:opacity-50"
-            >
-              {submitting ? "Saving..." : `Next: ${form.plan === "starter" ? "Webhook" : "Finish"}`}
-            </button>
-          </div>
-        </>
-      )}
-
-      {/* Step 3: Plan-Specific Config */}
-      {step === 3 && (
-        <>
-          {form.plan === "starter" ? (
-            <>
-              <p className="text-sm text-neutral-600 mb-2">Configure Make.com webhook for automation</p>
-              <input
-                placeholder="Make.com Webhook URL *"
-                type="url"
-                value={form.makeWebhookUrl}
-                onChange={(e) => setForm({ ...form, makeWebhookUrl: e.target.value })}
-                className="w-full rounded border p-2"
-                required
-              />
-              <input
-                placeholder="Webhook Secret (optional - will auto-generate)"
-                value={form.webhookSecret}
-                onChange={(e) => setForm({ ...form, webhookSecret: e.target.value })}
-                className="w-full rounded border p-2"
-              />
-            </>
-          ) : (
-            <div className="p-4 bg-neutral-50 rounded border">
-              <h3 className="font-semibold mb-2">✓ Automatic Provisioning</h3>
-              <p className="text-sm text-neutral-600 mb-2">Your Pro plan includes:</p>
-              <ul className="text-sm text-neutral-600 list-disc pl-5 space-y-1">
-                <li>Automatic Google Sheets creation</li>
-                <li>Pre-configured Apps Script automation</li>
-                <li>Team management spreadsheet</li>
-                <li>Content automation workflows</li>
-              </ul>
-            </div>
-          )}
-
-          <div className="flex gap-2">
-            <button
-              onClick={() => setStep(2)}
-              disabled={submitting || provisioningStatus === "polling"}
-              className="flex-1 rounded bg-neutral-200 px-4 py-2 font-semibold disabled:opacity-50"
-            >
-              Back
-            </button>
-            <button
-              onClick={handleStep3Submit}
-              disabled={submitting || provisioningStatus === "polling"}
-              className="flex-1 rounded bg-black px-4 py-2 font-semibold text-white disabled:opacity-50"
-            >
-              {submitting ? "Completing..." : provisioningStatus === "polling" ? "Provisioning..." : "Complete Setup"}
-            </button>
-          </div>
-        </>
-      )}
-
-      {/* Status Messages */}
-      {status && !error && (
-        <div role="status" aria-live="polite" className="text-sm text-green-600 font-medium">
-          {status}
-        </div>
-      )}
-      {error && (
-        <div role="alert" className="text-sm text-red-600">
-          {error}
-          {canRetry && step === 1 && (
-            <button
-              onClick={handleStep1Submit}
-              disabled={submitting}
-              className="ml-2 underline hover:no-underline disabled:opacity-50"
-            >
-              Retry
-            </button>
-          )}
-          {canRetry && step === 2 && (
-            <button
-              onClick={handleStep2Submit}
-              disabled={submitting}
-              className="ml-2 underline hover:no-underline disabled:opacity-50"
-            >
-              Retry
-            </button>
-          )}
-          {canRetry && step === 3 && (
-            <button
-              onClick={handleStep3Submit}
-              disabled={submitting || provisioningStatus === "polling"}
-              className="ml-2 underline hover:no-underline disabled:opacity-50"
-            >
-              Retry
-            </button>
-          )}
-        </div>
-      )}
-      {result && provisioningStatus === "completed" && (
-        <div className="rounded bg-green-50 border border-green-200 p-3" role="status" aria-live="polite">
-          <p className="text-sm font-semibold text-green-800">✓ Success!</p>
-          <p className="text-xs text-green-700 mt-1">Your club is ready to use.</p>
-        </div>
-      )}
     </div>
   );
 }

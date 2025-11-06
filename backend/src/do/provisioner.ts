@@ -162,6 +162,36 @@ async function deployAppsScript(env: Env, tenantId: string) {
   log('info', 'Apps Script deployment queued', { tenantId, job });
 }
 
+async function createOwnerUser(env: Env, tenantId: string, email: string) {
+  log('info', 'Creating owner user', { tenantId, email });
+
+  // Check if user already exists
+  const existing = await env.DB.prepare(
+    `SELECT id FROM auth_users WHERE tenant_id = ? AND email = ?`
+  ).bind(tenantId, email).first();
+
+  if (existing) {
+    log('info', 'Owner user already exists', { tenantId, userId: existing.id });
+    return;
+  }
+
+  // Create owner user without password (will be set after magic link login)
+  const userId = `user_${Date.now()}_${crypto.randomUUID().slice(0, 8)}`;
+  await env.DB.prepare(
+    `INSERT INTO auth_users (id, tenant_id, email, roles, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?)`
+  ).bind(
+    userId,
+    tenantId,
+    email,
+    JSON.stringify(['tenant_admin', 'owner']),
+    Date.now(),
+    Date.now()
+  ).run();
+
+  log('info', 'Owner user created', { tenantId, userId });
+}
+
 async function sendOwnerMagicLink(env: Env, tenantId: string, jwtSecret: string) {
   log('info', 'Sending owner magic link', { tenantId });
 
@@ -173,7 +203,7 @@ async function sendOwnerMagicLink(env: Env, tenantId: string, jwtSecret: string)
 
   // Generate magic token
   const token = await generateMagicToken(env, tenantId, tenant.email, jwtSecret);
-  const link = `${env.ADMIN_CONSOLE_URL}/admin/onboard?token=${token}`;
+  const link = `${env.ADMIN_CONSOLE_URL}/admin?token=${token}`;
 
   // Send email (non-blocking failure)
   const emailResult = await sendMagicLinkEmail(tenant.email, link, tenant.name, env);
@@ -310,13 +340,22 @@ export class Provisioner {
         }
       }
 
-      // 4) Send owner magic link email
+      // 4) Create owner user (without password - will be set after magic link login)
+      const tenant = await this.env.DB.prepare(`SELECT email FROM tenants WHERE id = ?`)
+        .bind(tenantId)
+        .first<{ email: string }>();
+
+      if (!tenant) throw new Error('tenant_not_found');
+
+      await createOwnerUser(this.env, tenantId, tenant.email);
+
+      // 5) Send owner magic link email
       if (!this.env.JWT_SECRET) {
         throw new Error('missing_jwt_secret');
       }
       await sendOwnerMagicLink(this.env, tenantId, this.env.JWT_SECRET);
 
-      // 5) Mark complete
+      // 6) Mark complete
       await setStatus(this.env.DB, tenantId, 'complete');
 
       const duration = Date.now() - t0;

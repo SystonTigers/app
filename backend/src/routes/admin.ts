@@ -471,3 +471,104 @@ export async function listUsers(req: Request, env: any, requestId: string, corsH
     return json({ success: false, error: { code: "SERVER_ERROR", message: err.message } }, 500, corsHdrs);
   }
 }
+
+// POST /api/v1/admin/promo/upsert - Upsert promo code with all fields
+export async function upsertPromoCode(req: Request, env: any, requestId: string, corsHdrs: Headers): Promise<Response> {
+  try {
+    await requireAdmin(req, env);
+
+    const body = await req.json().catch(() => ({}));
+
+    const UpsertPromoSchema = z.object({
+      code: z.string().min(4).max(20).regex(/^[A-Z0-9]+$/, "Code must be uppercase alphanumeric"),
+      plan: z.enum(["starter", "pro"]).optional().nullable(),
+      lifetime: z.boolean().optional(),
+      discountPercent: z.number().min(0).max(100).optional(),
+      maxUses: z.number().int().positive().optional().nullable(),
+      active: z.boolean().optional(),
+      tenantSlugWhitelist: z.string().optional().nullable(),  // CSV of allowed slugs
+      startsAt: z.string().optional().nullable(),  // ISO date string
+      expiresAt: z.number().int().optional().nullable(),  // Unix timestamp (valid_until)
+      notes: z.string().optional().nullable()
+    });
+
+    const data = parse(UpsertPromoSchema, body);
+
+    // Check if promo exists to get current used_count
+    const existing = await env.DB.prepare("SELECT used_count FROM promo_codes WHERE code = ?")
+      .bind(data.code)
+      .first();
+
+    const usedCount = existing ? existing.used_count : 0;
+
+    // Generate ID for new promos
+    const promoId = existing ? null : `promo_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+
+    // Upsert with all fields
+    await env.DB.prepare(`
+      INSERT INTO promo_codes (
+        id, code, plan, lifetime, discount_percent, max_uses, used_count,
+        active, tenant_slug_whitelist, starts_at, valid_until, notes, created_at
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch())
+      ON CONFLICT(code) DO UPDATE SET
+        plan = excluded.plan,
+        lifetime = excluded.lifetime,
+        discount_percent = excluded.discount_percent,
+        max_uses = excluded.max_uses,
+        active = excluded.active,
+        tenant_slug_whitelist = excluded.tenant_slug_whitelist,
+        starts_at = excluded.starts_at,
+        valid_until = excluded.valid_until,
+        notes = excluded.notes
+    `).bind(
+      promoId,
+      data.code,
+      data.plan || null,
+      data.lifetime ? 1 : 0,
+      data.discountPercent || 0,
+      data.maxUses || null,
+      usedCount,
+      data.active !== undefined ? (data.active ? 1 : 0) : 1,
+      data.tenantSlugWhitelist || null,
+      data.startsAt || null,
+      data.expiresAt || null,
+      data.notes || null
+    ).run();
+
+    logJSON("info", requestId, {
+      message: existing ? "PROMO_CODE_UPDATED" : "PROMO_CODE_CREATED",
+      code: data.code,
+      plan: data.plan,
+      lifetime: data.lifetime
+    });
+
+    return json({
+      success: true,
+      promoCode: {
+        code: data.code,
+        plan: data.plan,
+        lifetime: data.lifetime,
+        discountPercent: data.discountPercent,
+        maxUses: data.maxUses,
+        usedCount,
+        active: data.active !== undefined ? data.active : true,
+        tenantSlugWhitelist: data.tenantSlugWhitelist,
+        startsAt: data.startsAt,
+        expiresAt: data.expiresAt,
+        notes: data.notes
+      }
+    }, existing ? 200 : 201, corsHdrs);
+
+  } catch (err: any) {
+    if (err instanceof Response) throw err;
+    if (isValidationError(err)) {
+      return json({
+        success: false,
+        error: { code: "INVALID_REQUEST", message: "Validation failed", issues: err.issues }
+      }, 400, corsHdrs);
+    }
+    logJSON("error", requestId, { message: "UPSERT_PROMO_CODE_ERROR", error: err.message });
+    return json({ success: false, error: { code: "SERVER_ERROR", message: err.message } }, 500, corsHdrs);
+  }
+}

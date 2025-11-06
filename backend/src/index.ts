@@ -50,7 +50,8 @@ import {
   signupStart,
   signupBrand,
   signupStarterMake,
-  signupProConfirm
+  signupProConfirm,
+  signupVerifyPromo
 } from "./routes/signup";
 import { handleMagicStart, handleMagicVerify } from "./routes/magic";
 import {
@@ -75,11 +76,12 @@ import {
   listPromoCodes,
   createPromoCode,
   deactivatePromoCode,
+  upsertPromoCode,
   listUsers
 } from "./routes/admin";
 
 // Auth routes (from other branch)
-import { handleAuthRegister, handleAuthLogin } from "./routes/auth";
+import { handleAuthRegister, handleAuthLogin, handleSetPassword, handleCheckPasswordStatus } from "./routes/auth";
 
 // Security & Kill Switch Middleware
 import { requireSignupEnabled } from "./middleware/killswitch";
@@ -920,6 +922,14 @@ export default {
         return await handleAuthLogin(req, env, corsHdrs);
       }
 
+      if (url.pathname === `/api/${v}/auth/set-password` && req.method === "POST") {
+        return await handleSetPassword(req, env, corsHdrs);
+      }
+
+      if (url.pathname === `/api/${v}/auth/password-status` && req.method === "GET") {
+        return await handleCheckPasswordStatus(req, env, corsHdrs);
+      }
+
     // -------- Public signup endpoint --------
 
     // POST /api/v1/signup - Automated tenant provisioning
@@ -980,6 +990,12 @@ export default {
     // POST /public/signup/pro/confirm - Confirm Pro plan setup
     if (url.pathname === `/public/signup/pro/confirm` && req.method === "POST") {
       const response = await signupProConfirm(req, env, requestId, corsHdrs);
+      return addSecurityHeaders(response, env);
+    }
+
+    // POST /public/signup/verify-promo - Verify promo code validity
+    if (url.pathname === `/public/signup/verify-promo` && req.method === "POST") {
+      const response = await signupVerifyPromo(req, env, requestId, corsHdrs);
       return addSecurityHeaders(response, env);
     }
 
@@ -1331,6 +1347,11 @@ export default {
     if (deactivatePromoMatch && req.method === "POST") {
       const code = deactivatePromoMatch[1];
       return await deactivatePromoCode(req, env, requestId, corsHdrs, code);
+    }
+
+    // POST /api/v1/admin/promo/upsert - Upsert promo code with all fields
+    if (url.pathname === `/api/${v}/admin/promo/upsert` && req.method === "POST") {
+      return await upsertPromoCode(req, env, requestId, corsHdrs);
     }
 
     // POST /api/v1/admin/tenant/create

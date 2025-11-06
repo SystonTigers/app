@@ -26,6 +26,11 @@ const MakeSchema = z.object({
   webhookSecret: z.string().min(16, "Secret must be at least 16 characters")
 });
 
+const VerifyPromoSchema = z.object({
+  promoCode: z.string().min(1, "Promo code required"),
+  tenantSlug: z.string().optional() // For whitelist validation
+});
+
 // Helper function to queue provisioning
 async function queueProvisioning(env: any, tenantId: string): Promise<void> {
   try {
@@ -90,25 +95,44 @@ export async function signupStart(req: Request, env: any, requestId: string, cor
       return json({ success: false, error: { code: "EMAIL_EXISTS", message: "That email is already registered" } }, 400, corsHdrs);
     }
 
-    // Validate promo code if provided
+    // Validate promo code if provided (server-side validation)
     let promoId = null;
     let discount = 0;
     let comped = 0;
+    let finalPlan = data.plan;
+    let billingTier = 'standard';
 
     if (data.promoCode) {
       const promo = await env.DB.prepare(`
-        SELECT id, code, discount_percent, max_uses, used_count, valid_until
+        SELECT id, code, discount_percent, max_uses, used_count, valid_until, active,
+               plan, lifetime, tenant_slug_whitelist, starts_at
         FROM promo_codes
         WHERE code = ? COLLATE NOCASE
       `).bind(data.promoCode).first();
 
-      if (!promo) {
+      if (!promo || !promo.active) {
         return json({ success: false, error: { code: "INVALID_PROMO", message: "Invalid promo code" } }, 400, corsHdrs);
       }
 
-      // Check if promo is expired
-      if (promo.valid_until && promo.valid_until < Math.floor(Date.now() / 1000)) {
+      // Check start and expiry window
+      const now = new Date().toISOString();
+      const nowUnix = Math.floor(Date.now() / 1000);
+
+      if (promo.starts_at && promo.starts_at > now) {
+        return json({ success: false, error: { code: "PROMO_NOT_STARTED", message: "Promo code is not yet active" } }, 400, corsHdrs);
+      }
+
+      if (promo.valid_until && promo.valid_until < nowUnix) {
         return json({ success: false, error: { code: "PROMO_EXPIRED", message: "Promo code has expired" } }, 400, corsHdrs);
+      }
+
+      // Check tenant slug whitelist
+      if (promo.tenant_slug_whitelist) {
+        const allowed = String(promo.tenant_slug_whitelist).split(',').map(s => s.trim().toLowerCase());
+        const reqSlug = data.clubSlug.trim().toLowerCase();
+        if (!allowed.includes(reqSlug)) {
+          return json({ success: false, error: { code: "PROMO_NOT_ALLOWED", message: "Promo code not available for this club" } }, 400, corsHdrs);
+        }
       }
 
       // Check if promo has reached max uses
@@ -119,10 +143,26 @@ export async function signupStart(req: Request, env: any, requestId: string, cor
       promoId = promo.id;
       discount = promo.discount_percent;
 
-      // If 100% discount, mark as comped
-      if (discount === 100) {
+      // Apply plan override if promo specifies one
+      if (promo.plan) {
+        finalPlan = promo.plan;
+      }
+
+      // Set billing tier to lifetime if promo has lifetime flag
+      if (promo.lifetime) {
+        billingTier = 'lifetime';
+        comped = 1;
+      } else if (discount === 100) {
         comped = 1;
       }
+
+      logJSON("info", requestId, {
+        message: "PROMO_APPLIED",
+        code: promo.code,
+        discount,
+        finalPlan,
+        billingTier
+      });
     }
 
     // Generate tenant ID
@@ -131,11 +171,21 @@ export async function signupStart(req: Request, env: any, requestId: string, cor
     // Calculate trial end date (14 days from now)
     const trialEndsAt = Math.floor(Date.now() / 1000) + (14 * 24 * 60 * 60);
 
-    // Create tenant record
+    // Create tenant record with billing_tier and promo tracking
     await env.DB.prepare(`
-      INSERT INTO tenants (id, slug, name, email, plan, status, comped, trial_ends_at)
-      VALUES (?, ?, ?, ?, ?, 'trial', ?, ?)
-    `).bind(tenantId, data.clubSlug, data.clubName, data.email, data.plan, comped, trialEndsAt).run();
+      INSERT INTO tenants (id, slug, name, email, plan, status, comped, trial_ends_at, billing_tier, promo_code_used)
+      VALUES (?, ?, ?, ?, ?, 'trial', ?, ?, ?, ?)
+    `).bind(
+      tenantId,
+      data.clubSlug,
+      data.clubName,
+      data.email,
+      finalPlan,
+      comped,
+      trialEndsAt,
+      billingTier,
+      data.promoCode || null
+    ).run();
 
     // Create default brand
     await env.DB.prepare(`
@@ -310,5 +360,145 @@ export async function signupProConfirm(req: Request, env: any, requestId: string
     if (err instanceof Response) throw err;
     logJSON("error", requestId, { message: "PRO_CONFIRM_ERROR", error: err.message });
     return json({ success: false, error: { code: "PRO_CONFIRM_FAILED", message: err.message } }, 500, corsHdrs);
+  }
+}
+
+// POST /public/signup/verify-promo - Verify promo code validity
+export async function signupVerifyPromo(req: Request, env: any, requestId: string, corsHdrs: Headers): Promise<Response> {
+  try {
+    const body = await req.json().catch(() => ({}));
+    const data = parse(VerifyPromoSchema, body);
+
+    logJSON("info", requestId, {
+      message: "VERIFY_PROMO_REQUEST",
+      code: data.promoCode,
+      tenantSlug: data.tenantSlug
+    });
+
+    // Look up promo code (case-insensitive) with all new fields
+    const promo = await env.DB.prepare(`
+      SELECT id, code, discount_percent, max_uses, used_count, valid_until, active,
+             plan, lifetime, tenant_slug_whitelist, starts_at, notes
+      FROM promo_codes
+      WHERE code = ? COLLATE NOCASE
+    `).bind(data.promoCode).first();
+
+    if (!promo) {
+      logJSON("info", requestId, { message: "PROMO_NOT_FOUND", code: data.promoCode });
+      return json({
+        success: false,
+        error: { code: "INVALID_PROMO", message: "Invalid promo code" }
+      }, 400, corsHdrs);
+    }
+
+    // Check if promo is active
+    if (!promo.active) {
+      logJSON("info", requestId, { message: "PROMO_INACTIVE", code: data.promoCode });
+      return json({
+        success: false,
+        error: { code: "PROMO_INACTIVE", message: "Promo code is not active" }
+      }, 400, corsHdrs);
+    }
+
+    // Check start and expiry window
+    const now = new Date().toISOString();
+    const nowUnix = Math.floor(Date.now() / 1000);
+
+    if (promo.starts_at && promo.starts_at > now) {
+      logJSON("info", requestId, {
+        message: "PROMO_NOT_STARTED",
+        code: data.promoCode,
+        startsAt: promo.starts_at
+      });
+      return json({
+        success: false,
+        error: { code: "PROMO_NOT_STARTED", message: "Promo code is not yet active" }
+      }, 400, corsHdrs);
+    }
+
+    if (promo.valid_until && promo.valid_until < nowUnix) {
+      const expiryDate = new Date(promo.valid_until * 1000).toISOString();
+      logJSON("info", requestId, {
+        message: "PROMO_EXPIRED",
+        code: data.promoCode,
+        expiryDate
+      });
+      return json({
+        success: false,
+        error: { code: "PROMO_EXPIRED", message: "Promo code has expired" }
+      }, 400, corsHdrs);
+    }
+
+    // Check tenant slug whitelist
+    if (promo.tenant_slug_whitelist && data.tenantSlug) {
+      const allowed = String(promo.tenant_slug_whitelist)
+        .split(',')
+        .map(s => s.trim().toLowerCase());
+      const reqSlug = data.tenantSlug.trim().toLowerCase();
+
+      if (!allowed.includes(reqSlug)) {
+        logJSON("info", requestId, {
+          message: "PROMO_NOT_ALLOWED_FOR_TENANT",
+          code: data.promoCode,
+          tenantSlug: reqSlug,
+          whitelist: allowed
+        });
+        return json({
+          success: false,
+          error: { code: "PROMO_NOT_ALLOWED", message: "Promo code not available for this club" }
+        }, 400, corsHdrs);
+      }
+    }
+
+    // Check if promo has reached max uses
+    if (promo.max_uses && promo.used_count >= promo.max_uses) {
+      logJSON("info", requestId, {
+        message: "PROMO_MAXED",
+        code: data.promoCode,
+        maxUses: promo.max_uses,
+        usedCount: promo.used_count
+      });
+      return json({
+        success: false,
+        error: { code: "PROMO_MAXED", message: "Promo code has reached maximum uses" }
+      }, 400, corsHdrs);
+    }
+
+    // Promo is valid
+    logJSON("info", requestId, {
+      message: "PROMO_VALID",
+      code: promo.code,
+      discount: promo.discount_percent,
+      plan: promo.plan,
+      lifetime: promo.lifetime,
+      usedCount: promo.used_count,
+      maxUses: promo.max_uses
+    });
+
+    return json({
+      success: true,
+      data: {
+        code: promo.code,
+        discountPercent: promo.discount_percent,
+        appliedPlan: promo.plan || null,
+        lifetime: !!promo.lifetime,
+        usesRemaining: promo.max_uses ? promo.max_uses - promo.used_count : null
+      }
+    }, 200, corsHdrs);
+
+  } catch (err: any) {
+    if (isValidationError(err)) {
+      return json({
+        success: false,
+        error: {
+          code: "INVALID_REQUEST",
+          message: "Validation failed",
+          issues: err.issues
+        }
+      }, err.status, corsHdrs);
+    }
+    if (err instanceof Response) throw err;
+    logJSON("error", requestId, { message: "VERIFY_PROMO_ERROR", error: err.message });
+    return json({ success: false, error: { code: "VERIFY_PROMO_FAILED", message: err.message } }, 500, corsHdrs);
   }
 }

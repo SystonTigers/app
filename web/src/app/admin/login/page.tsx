@@ -28,7 +28,7 @@ function persistAdminToken(token: string, expiresAt?: string) {
 
 export default function AdminLoginPage() {
   const router = useRouter();
-  const [mode, setMode] = useState<'magic' | 'password'>('magic');
+  const [mode, setMode] = useState<'magic' | 'password'>('password');
   const [email, setEmail] = useState('');
   const [tenant, setTenant] = useState('');
   const [password, setPassword] = useState('');
