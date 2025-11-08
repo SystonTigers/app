@@ -1,0 +1,19 @@
+{
+  "id": "syston-tigers",
+  "name": "Syston Tigers U16",
+  "locale": "en-GB",
+  "tz": "Europe/London",
+  "flags": {
+    "use_make": false,
+    "direct_yt": false
+  },
+  "created_at": 1731019200000,
+  "updated_at": 1731019200000,
+  "metadata": {
+    "contactEmail": "systontowntigersfc@gmail.com",
+    "contactName": "Danny Clayton",
+    "plan": "free",
+    "createdAt": "2025-11-07T22:00:00Z",
+    "provisionedBy": "direct"
+  }
+}

@@ -796,6 +796,39 @@ export default {
         if (res) return res;
       }
 
+      // Check signup routes BEFORE router to prevent router 404 from blocking them
+      if (url.pathname.startsWith('/public/signup/')) {
+        const killSwitchResponse = await requireSignupEnabled(req, env, corsHdrs);
+        if (killSwitchResponse) {
+          return addSecurityHeaders(killSwitchResponse, env);
+        }
+
+        if (url.pathname === '/public/signup/start' && req.method === "POST") {
+          const response = await signupStart(req, env, requestId, corsHdrs);
+          return addSecurityHeaders(response, env);
+        }
+
+        if (url.pathname === `/public/signup/brand` && req.method === "POST") {
+          const response = await signupBrand(req, env, requestId, corsHdrs);
+          return addSecurityHeaders(response, env);
+        }
+
+        if (url.pathname === `/public/signup/starter/make` && req.method === "POST") {
+          const response = await signupStarterMake(req, env, requestId, corsHdrs);
+          return addSecurityHeaders(response, env);
+        }
+
+        if (url.pathname === `/public/signup/pro/confirm` && req.method === "POST") {
+          const response = await signupProConfirm(req, env, requestId, corsHdrs);
+          return addSecurityHeaders(response, env);
+        }
+
+        if (url.pathname === `/public/signup/verify-promo` && req.method === "POST") {
+          const response = await signupVerifyPromo(req, env, requestId, corsHdrs);
+          return addSecurityHeaders(response, env);
+        }
+      }
+
       const routed = await router
         .handle(req, env, corsHdrs, requestId)
         .catch((err: unknown) => {
@@ -959,45 +992,8 @@ export default {
       }
     }
     // -------- Phase 3: Self-Serve Signup (Public) --------
-
-    // Kill switch check for all signup endpoints
-    if (url.pathname.startsWith('/public/signup/')) {
-      const killSwitchResponse = await requireSignupEnabled(req, env, corsHdrs);
-      if (killSwitchResponse) {
-        // Signups are disabled, return 503 with security headers
-        return addSecurityHeaders(killSwitchResponse, env);
-      }
-    }
-
-    // POST /public/signup/start - Create new tenant account
-    if (url.pathname === `/public/signup/start` && req.method === "POST") {
-      const response = await signupStart(req, env, requestId, corsHdrs);
-      return addSecurityHeaders(response, env);
-    }
-
-    // POST /public/signup/brand - Customize brand colors
-    if (url.pathname === `/public/signup/brand` && req.method === "POST") {
-      const response = await signupBrand(req, env, requestId, corsHdrs);
-      return addSecurityHeaders(response, env);
-    }
-
-    // POST /public/signup/starter/make - Configure Make.com webhook (Starter plan)
-    if (url.pathname === `/public/signup/starter/make` && req.method === "POST") {
-      const response = await signupStarterMake(req, env, requestId, corsHdrs);
-      return addSecurityHeaders(response, env);
-    }
-
-    // POST /public/signup/pro/confirm - Confirm Pro plan setup
-    if (url.pathname === `/public/signup/pro/confirm` && req.method === "POST") {
-      const response = await signupProConfirm(req, env, requestId, corsHdrs);
-      return addSecurityHeaders(response, env);
-    }
-
-    // POST /public/signup/verify-promo - Verify promo code validity
-    if (url.pathname === `/public/signup/verify-promo` && req.method === "POST") {
-      const response = await signupVerifyPromo(req, env, requestId, corsHdrs);
-      return addSecurityHeaders(response, env);
-    }
+    // NOTE: Signup routes are handled earlier in the request flow (before router.handle())
+    // to prevent the router's 404 response from blocking them
 
     // -------- Magic Link Authentication --------
     // POST /auth/magic/start - Send magic link email

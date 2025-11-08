@@ -1,0 +1,19 @@
+{
+  "id": "syston-tigers",
+  "name": "Syston Tigers U16",
+  "locale": "en-GB",
+  "tz": "Europe/London",
+  "flags": {
+    "use_make": false,
+    "direct_yt": false
+  },
+  "created_at": 1730000000000,
+  "updated_at": 1730000000000,
+  "metadata": {
+    "contactEmail": "systontowntigersfc@gmail.com",
+    "contactName": "System Admin",
+    "plan": "free",
+    "createdAt": "2025-11-07T00:00:00Z",
+    "provisionedBy": "manual"
+  }
+}
