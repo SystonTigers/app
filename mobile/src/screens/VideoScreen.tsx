@@ -49,7 +49,7 @@ export default function VideoScreen() {
 
     try {
       const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+        mediaTypes: ['video'],
         allowsEditing: true,
         aspect: [16, 9],
         quality: 1,
@@ -72,7 +72,7 @@ export default function VideoScreen() {
 
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+        mediaTypes: ['video'],
         allowsEditing: true,
         aspect: [16, 9],
         quality: 1,

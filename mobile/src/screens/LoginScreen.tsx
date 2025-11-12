@@ -6,18 +6,12 @@ import {
   StyleSheet,
   Text,
   View,
+  Image,
 } from 'react-native';
-import { TextInput } from 'react-native-paper';
-import React, { useState } from 'react';
-import { View, ScrollView, StyleSheet, Image, KeyboardAvoidingView, Platform } from 'react-native';
-import { Text, TextInput, Button, Card, IconButton } from 'react-native-paper';
-import { COLORS, TENANT_ID } from '../config';
+import { TextInput, Button, Card, IconButton } from 'react-native-paper';
+import { COLORS, TENANT_ID, APP_VERSION } from '../config';
 import { submitLogin } from './authController';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Button, Card } from '../components';
-import { useTheme } from '../theme';
-import type { Theme } from '../theme';
-import { APP_VERSION, TENANT_ID } from '../config';
 
 interface LoginScreenProps {
   onLogin: (userId: string, role: string, token: string) => void;
@@ -37,16 +31,13 @@ export default function LoginScreen({
   onNavigateToRegister,
   onForgotPassword,
 }: LoginScreenProps) {
-  const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
-
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const brandTitle = theme.metadata.brandName ?? 'Field Drop';
+  const brandTitle = 'Syston Tigers';
 
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
@@ -109,7 +100,7 @@ export default function LoginScreen({
             <MaterialCommunityIcons
               name="shield-account"
               size={36}
-              color={theme.ramps.primary['600']}
+              color={COLORS.primary}
             />
           </View>
           <Text style={styles.title}>{brandTitle}</Text>
@@ -129,7 +120,7 @@ export default function LoginScreen({
               <MaterialCommunityIcons
                 name="alert-circle"
                 size={20}
-                color={theme.ramps.error['600']}
+                color={COLORS.error}
               />
               <Text style={styles.errorText}>{error}</Text>
             </View>
@@ -151,21 +142,6 @@ export default function LoginScreen({
               left={<TextInput.Icon icon="email" />}
               style={styles.input}
               disabled={loading}
-              outlineColor={theme.colors.border}
-              activeOutlineColor={theme.colors.primary}
-              textColor={theme.colors.text}
-              selectionColor={theme.ramps.primary['200']}
-              theme={{
-                colors: {
-                  primary: theme.colors.primary,
-                  onSurface: theme.colors.text,
-                  onSurfaceVariant: theme.colors.textSecondary,
-                  outline: theme.colors.border,
-                  surfaceVariant: theme.colors.surface,
-                  background: theme.colors.surface,
-                  placeholder: theme.colors.placeholder,
-                },
-              }}
             />
 
             <TextInput
@@ -190,21 +166,6 @@ export default function LoginScreen({
               style={styles.input}
               disabled={loading}
               onSubmitEditing={handleLogin}
-              outlineColor={theme.colors.border}
-              activeOutlineColor={theme.colors.primary}
-              textColor={theme.colors.text}
-              selectionColor={theme.ramps.primary['200']}
-              theme={{
-                colors: {
-                  primary: theme.colors.primary,
-                  onSurface: theme.colors.text,
-                  onSurfaceVariant: theme.colors.textSecondary,
-                  outline: theme.colors.border,
-                  surfaceVariant: theme.colors.surface,
-                  background: theme.colors.surface,
-                  placeholder: theme.colors.placeholder,
-                },
-              }}
             />
           </View>
 
@@ -260,116 +221,112 @@ export default function LoginScreen({
   );
 }
 
-function createStyles(theme: Theme) {
-  const spacing = theme.spacingScale;
-  const colors = theme.colors;
-  const borderRadius = theme.borderRadius;
-  return StyleSheet.create({
+const styles = StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: COLORS.background,
     },
     scrollContent: {
       flexGrow: 1,
       justifyContent: 'center',
-      paddingHorizontal: spacing.lg,
-      paddingVertical: spacing['3xl'],
+      paddingHorizontal: 20,
+      paddingVertical: 40,
     },
     header: {
       alignItems: 'center',
-      marginBottom: spacing['2xl'],
+      marginBottom: 24,
     },
     iconBadge: {
-      width: spacing['4xl'],
-      height: spacing['4xl'],
-      borderRadius: spacing['4xl'] / 2,
+      width: 64,
+      height: 64,
+      borderRadius: 32,
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: theme.ramps.primary['50'],
-      marginBottom: spacing.sm,
+      backgroundColor: `${COLORS.primary}15`,
+      marginBottom: 12,
     },
     title: {
-      fontSize: theme.typographyScale.headline.fontSize,
-      lineHeight: theme.typographyScale.headline.lineHeight,
-      fontWeight: theme.typography.fontWeight.bold,
-      color: colors.text,
+      fontSize: 28,
+      lineHeight: 36,
+      fontWeight: 'bold',
+      color: COLORS.text,
       textAlign: 'center',
     },
     subtitle: {
-      marginTop: spacing['2xs'],
-      fontSize: theme.typographyScale.body.fontSize,
-      lineHeight: theme.typographyScale.body.lineHeight,
-      color: colors.textSecondary,
+      marginTop: 8,
+      fontSize: 16,
+      lineHeight: 24,
+      color: COLORS.textLight,
       textAlign: 'center',
     },
     card: {
-      marginBottom: spacing.lg,
+      marginBottom: 16,
     },
     cardHeader: {
-      marginBottom: spacing.md,
+      marginBottom: 12,
     },
     cardTitle: {
-      fontSize: theme.typographyScale.title.fontSize,
-      lineHeight: theme.typographyScale.title.lineHeight,
-      fontWeight: theme.typography.fontWeight.semibold,
-      color: colors.text,
+      fontSize: 20,
+      lineHeight: 28,
+      fontWeight: '600',
+      color: COLORS.text,
     },
     cardSubtitle: {
-      marginTop: spacing['2xs'],
-      fontSize: theme.typographyScale.bodySm.fontSize,
-      lineHeight: theme.typographyScale.bodySm.lineHeight,
-      color: colors.textSecondary,
+      marginTop: 8,
+      fontSize: 14,
+      lineHeight: 20,
+      color: COLORS.textLight,
     },
     fieldStack: {
-      marginBottom: spacing.md,
+      marginBottom: 12,
     },
     input: {
-      marginBottom: spacing.sm,
-      backgroundColor: colors.surfaceSecondary,
+      marginBottom: 12,
+      backgroundColor: COLORS.surface,
     },
     forgotButton: {
       alignSelf: 'flex-end',
-      marginBottom: spacing.sm,
+      marginBottom: 12,
     },
     loginButton: {
-      marginTop: spacing.xs,
+      marginTop: 8,
     },
     errorContainer: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: theme.ramps.error['50'],
+      backgroundColor: `${COLORS.error}15`,
       borderWidth: 1,
-      borderColor: theme.ramps.error['200'],
-      borderRadius: borderRadius.md,
-      paddingHorizontal: spacing.sm,
-      paddingVertical: spacing['2xs'],
-      marginBottom: spacing.md,
+      borderColor: `${COLORS.error}50`,
+      borderRadius: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      marginBottom: 12,
     },
     errorText: {
       flex: 1,
-      color: theme.ramps.error['700'],
-      fontSize: theme.typographyScale.bodySm.fontSize,
-      lineHeight: theme.typographyScale.bodySm.lineHeight,
-      marginLeft: spacing.xs,
+      color: COLORS.error,
+      fontSize: 14,
+      lineHeight: 20,
+      marginLeft: 8,
     },
     demoCard: {
-      backgroundColor: theme.ramps.primary['50'],
-      borderColor: theme.ramps.primary['200'],
-      marginBottom: spacing.lg,
+      backgroundColor: `${COLORS.primary}15`,
+      borderColor: `${COLORS.primary}50`,
+      marginBottom: 16,
     },
     demoTitle: {
-      fontSize: theme.typographyScale.body.fontSize,
-      lineHeight: theme.typographyScale.body.lineHeight,
-      fontWeight: theme.typography.fontWeight.semibold,
-      color: colors.text,
-      marginBottom: spacing['2xs'],
+      fontSize: 16,
+      lineHeight: 24,
+      fontWeight: '600',
+      color: COLORS.text,
+      marginBottom: 8,
     },
     demoText: {
-      fontSize: theme.typographyScale.bodySm.fontSize,
-      lineHeight: theme.typographyScale.bodySm.lineHeight,
-      color: colors.textSecondary,
+      fontSize: 14,
+      lineHeight: 20,
+      color: COLORS.textLight,
       fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-      marginBottom: spacing['2xs'],
+      marginBottom: 8,
     },
     registerContainer: {
       flexDirection: 'row',
@@ -377,20 +334,19 @@ function createStyles(theme: Theme) {
       alignItems: 'center',
     },
     registerText: {
-      fontSize: theme.typographyScale.bodySm.fontSize,
-      lineHeight: theme.typographyScale.bodySm.lineHeight,
-      color: colors.textSecondary,
-      marginRight: spacing['2xs'],
+      fontSize: 14,
+      lineHeight: 20,
+      color: COLORS.textLight,
+      marginRight: 8,
     },
     registerButton: {
-      paddingHorizontal: spacing.xs,
+      paddingHorizontal: 8,
     },
     footer: {
-      marginTop: spacing['2xl'],
+      marginTop: 24,
       textAlign: 'center',
-      color: colors.textSecondary,
-      fontSize: theme.typographyScale.caption.fontSize,
-      lineHeight: theme.typographyScale.caption.lineHeight,
+      color: COLORS.textLight,
+      fontSize: 12,
+      lineHeight: 16,
     },
   });
-}
