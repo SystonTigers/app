@@ -56,3 +56,8 @@ video-processing/highlights_bot/in/
 *.gz
 Thumbs.db
 desktop.ini
+
+# Web App (Next.js) - added to fix lock file issues
+web-app/.next/
+web-app/out/
+web-app/.turbo/

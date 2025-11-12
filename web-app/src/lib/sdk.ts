@@ -36,6 +36,15 @@ export type ProvisionState = {
 function headers(json = true) {
   const h: Record<string, string> = {};
   if (json) h['Content-Type'] = 'application/json';
+
+  // Add admin token from localStorage if available
+  if (typeof window !== 'undefined') {
+    const token = localStorage.getItem('admin_token');
+    if (token) {
+      h['Authorization'] = `Bearer ${token}`;
+    }
+  }
+
   return h;
 }
 
@@ -44,6 +53,10 @@ async function http<T>(url: string, init?: RequestInit): Promise<T> {
   try {
     const res = await fetch(url, {
       ...init,
+      headers: {
+        ...headers(),
+        ...(init?.headers || {})
+      },
       credentials: 'include',
       cache: 'no-store',
     });
