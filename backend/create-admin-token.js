@@ -15,7 +15,7 @@ async function createToken() {
   })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuer('syston.app')
-    .setAudience('syston-mobile')
+    .setAudience('syston-admin')
     .setIssuedAt(now)
     .setExpirationTime(exp)
     .sign(secret);
