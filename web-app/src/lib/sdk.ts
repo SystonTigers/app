@@ -1,18 +1,5 @@
 // src/lib/sdk.ts
-function getApiBase(): string {
-  const base = typeof window !== 'undefined'
-    ? (process.env.NEXT_PUBLIC_API_BASE ||
-       process.env.NEXT_PUBLIC_API_BASE_URL ||
-       'https://syston-postbus.team-platform-2025.workers.dev')
-    : (process.env.NEXT_PUBLIC_API_BASE ||
-       process.env.NEXT_PUBLIC_API_BASE_URL ||
-       'https://syston-postbus.team-platform-2025.workers.dev');
-
-  console.log('[SDK] API_BASE:', base);
-  return base;
-}
-
-const API_BASE = getApiBase();
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE || '/api/admin';
 
 export type ProvisionCheckpoint =
   | 'seedDefaultContent'
@@ -33,39 +20,23 @@ export type ProvisionState = {
   error?: string | null;
 };
 
-function headers(json = true) {
-  const h: Record<string, string> = {};
-  if (json) h['Content-Type'] = 'application/json';
-
-  // Add admin token from localStorage if available
-  if (typeof window !== 'undefined') {
-    const token = localStorage.getItem('admin_token');
-    if (token) {
-      h['Authorization'] = `Bearer ${token}`;
-    }
-  }
-
-  return h;
-}
-
 async function http<T>(url: string, init?: RequestInit): Promise<T> {
   console.log('[SDK] Fetching:', url, 'with options:', init);
   try {
     const res = await fetch(url, {
       ...init,
-      headers: {
-        ...headers(),
-        ...(init?.headers || {})
-      },
       credentials: 'include',
       cache: 'no-store',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(init?.headers || {})
+      }
     });
     console.log('[SDK] Response status:', res.status, res.statusText);
     if (!res.ok) {
       const text = await res.text().catch(() => '');
       console.error('[SDK] Error response:', text);
       const error = new Error(`HTTP ${res.status} ${res.statusText}: ${text}`);
-      console.error('API fetch failed', { url, init, status: res.status, statusText: res.statusText });
       throw error;
     }
     const data = await res.json();
@@ -89,7 +60,7 @@ export async function startMagicLogin(input: { email: string; tenantId?: string 
   console.log('[SDK] startMagicLogin input:', input);
   return http<{ success: boolean; message?: string }>(
     url,
-    { method: 'POST', headers: headers(), body: JSON.stringify(input) }
+    { method: 'POST', body: JSON.stringify(input) }
   );
 }
 
@@ -182,21 +153,21 @@ export async function updateTenant(
 ) {
   return http<{ success: true }>(
     `${API_BASE}/api/v1/admin/tenants/${encodeURIComponent(tenantId)}`,
-    { method: 'PATCH', headers: headers(), body: JSON.stringify(updates) }
+    { method: 'PATCH', body: JSON.stringify(updates) }
   );
 }
 
 export async function deactivateTenant(tenantId: string) {
   return http<{ success: true }>(
     `${API_BASE}/api/v1/admin/tenants/${encodeURIComponent(tenantId)}/deactivate`,
-    { method: 'POST', headers: headers() }
+    { method: 'POST' }
   );
 }
 
 export async function deleteTenant(tenantId: string) {
   return http<{ success: true }>(
     `${API_BASE}/api/v1/admin/tenants/${encodeURIComponent(tenantId)}`,
-    { method: 'DELETE', headers: headers() }
+    { method: 'DELETE' }
   );
 }
 
@@ -214,14 +185,14 @@ export async function createPromoCode(data: {
 }) {
   return http<{ success: true; promoCode: PromoCode }>(
     `${API_BASE}/api/v1/admin/promo-codes`,
-    { method: 'POST', headers: headers(), body: JSON.stringify(data) }
+    { method: 'POST', body: JSON.stringify(data) }
   );
 }
 
 export async function deactivatePromoCode(code: string) {
   return http<{ success: true }>(
     `${API_BASE}/api/v1/admin/promo-codes/${encodeURIComponent(code)}/deactivate`,
-    { method: 'POST', headers: headers() }
+    { method: 'POST' }
   );
 }
 

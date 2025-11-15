@@ -1,7 +1,8 @@
 {
-  "name": "automation-script-monorepo",
+  "name": "team-platform",
   "version": "1.0.0",
   "private": true,
+  "workspaces": ["backend", "web", "web-app", "packages/*"],
   "scripts": {
     "test": "npm run test:backend && npm run test:web && npm run test:apps",
     "test:backend": "npm --prefix backend test",

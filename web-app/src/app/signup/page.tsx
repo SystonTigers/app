@@ -45,6 +45,10 @@ function SignupPageContent() {
   const [resendingEmail, setResendingEmail] = useState(false);
   const [emailResent, setEmailResent] = useState(false);
   const [slugDirty, setSlugDirty] = useState(false);
+  const [promoApplied, setPromoApplied] = useState(false);
+  const [promoVerifying, setPromoVerifying] = useState(false);
+  const [promoLifetime, setPromoLifetime] = useState(false);
+  const [promoLocksPlan, setPromoLocksPlan] = useState(false);
 
   const [formData, setFormData] = useState<SignupData>({
     clubName: '',
@@ -61,6 +65,65 @@ function SignupPageContent() {
   const updateField = (field: keyof SignupData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     setError('');
+  };
+
+  // Verify promo code
+  const handleVerifyPromo = async () => {
+    if (!formData.promoCode || !formData.clubSlug) {
+      setError('Please enter both a promo code and team slug');
+      return;
+    }
+
+    setPromoVerifying(true);
+    setError('');
+
+    try {
+      const response = await fetch(`${API_BASE}/public/signup/verify-promo`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          code: formData.promoCode,
+          tenantSlug: formData.clubSlug,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error?.message || 'Promo code invalid');
+      }
+
+      // Apply promo
+      setPromoApplied(true);
+      setDiscount(data.promo.discount_percent || 0);
+      setPromoLifetime(data.promo.lifetime || false);
+
+      // If promo specifies a plan, lock to that plan
+      if (data.promo.plan) {
+        updateField('plan', data.promo.plan);
+        setPromoLocksPlan(true);
+      }
+
+      // Show success
+      alert(`Promo code applied! ${data.promo.lifetime ? 'Lifetime ' : ''}${data.promo.plan ? data.promo.plan.charAt(0).toUpperCase() + data.promo.plan.slice(1) : ''} ${data.promo.discount_percent}% off`);
+    } catch (err: any) {
+      setError(err.message || 'Failed to verify promo code');
+      setPromoApplied(false);
+      setPromoLifetime(false);
+      setPromoLocksPlan(false);
+    } finally {
+      setPromoVerifying(false);
+    }
+  };
+
+  // Remove promo code
+  const handleRemovePromo = () => {
+    setPromoApplied(false);
+    setPromoLifetime(false);
+    setPromoLocksPlan(false);
+    setDiscount(0);
+    updateField('promoCode', '');
   };
 
   // Resend magic link email
@@ -338,6 +401,46 @@ function SignupPageContent() {
               )}
 
               <div className="space-y-4">
+                {/* Promo Code at top */}
+                <div className="bg-yellow-50 border-2 border-yellow-300 rounded-lg p-4">
+                  <label className="block text-sm font-semibold text-gray-900 mb-2">
+                    🎟️ Promo Code
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={formData.promoCode}
+                      onChange={(e) => updateField('promoCode', e.target.value.toUpperCase())}
+                      className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent font-mono"
+                      placeholder="SYSTON100"
+                      disabled={promoApplied}
+                    />
+                    {!promoApplied ? (
+                      <button
+                        type="button"
+                        onClick={handleVerifyPromo}
+                        disabled={promoVerifying || !formData.promoCode || !formData.clubSlug}
+                        className="px-4 py-2 bg-yellow-600 text-white rounded-lg font-semibold hover:bg-yellow-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {promoVerifying ? 'Verifying...' : 'Apply'}
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={handleRemovePromo}
+                        className="px-4 py-2 bg-gray-600 text-white rounded-lg font-semibold hover:bg-gray-700"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                  {promoApplied && (
+                    <div className="mt-2 text-sm text-green-700 font-semibold">
+                      ✓ Promo applied! {promoLifetime ? 'Lifetime ' : ''}{discount}% off
+                    </div>
+                  )}
+                </div>
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Club Name
@@ -354,7 +457,7 @@ function SignupPageContent() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Web address
+                    Web address / Team Slug
                   </label>
                   <input
                     type="text"
@@ -388,50 +491,56 @@ function SignupPageContent() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Plan
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Select Plan
                   </label>
                   <div className="grid grid-cols-2 gap-4">
                     <button
                       type="button"
-                      onClick={() => updateField('plan', 'starter')}
-                      className={`p-4 border-2 rounded-lg text-left ${
+                      onClick={() => !promoLocksPlan && updateField('plan', 'starter')}
+                      disabled={promoLocksPlan && formData.plan !== 'starter'}
+                      className={`relative p-4 border-4 rounded-lg text-left transition-all ${
                         formData.plan === 'starter'
-                          ? 'border-blue-600 bg-blue-50'
-                          : 'border-gray-200'
+                          ? 'border-yellow-500 bg-yellow-50 shadow-lg'
+                          : promoLocksPlan ? 'border-gray-200 bg-gray-100 opacity-50 cursor-not-allowed' : 'border-gray-300 hover:border-gray-400'
                       }`}
                     >
+                      {formData.plan === 'starter' && (
+                        <div className="absolute top-2 right-2 text-yellow-600 text-2xl">✓</div>
+                      )}
                       <div className="font-semibold text-gray-900">Starter</div>
                       <div className="text-2xl font-bold text-gray-900 mt-1">£14.99</div>
                       <div className="text-xs text-gray-600 mt-1">1,000 actions/mo</div>
                     </button>
                     <button
                       type="button"
-                      onClick={() => updateField('plan', 'pro')}
-                      className={`p-4 border-2 rounded-lg text-left ${
+                      onClick={() => !promoLocksPlan && updateField('plan', 'pro')}
+                      disabled={promoLocksPlan && formData.plan !== 'pro'}
+                      className={`relative p-4 border-4 rounded-lg text-left transition-all ${
                         formData.plan === 'pro'
-                          ? 'border-blue-600 bg-blue-50'
-                          : 'border-gray-200'
+                          ? 'border-yellow-500 bg-yellow-50 shadow-lg'
+                          : promoLocksPlan ? 'border-gray-200 bg-gray-100 opacity-50 cursor-not-allowed' : 'border-gray-300 hover:border-gray-400'
                       }`}
                     >
+                      {formData.plan === 'pro' && (
+                        <div className="absolute top-2 right-2 text-yellow-600 text-2xl">✓</div>
+                      )}
                       <div className="font-semibold text-gray-900">Pro</div>
-                      <div className="text-2xl font-bold text-gray-900 mt-1">£29.99</div>
+                      <div className="text-2xl font-bold text-gray-900 mt-1">
+                        {promoLifetime && formData.plan === 'pro' ? (
+                          <span className="text-green-600">FREE</span>
+                        ) : (
+                          '£29.99'
+                        )}
+                      </div>
                       <div className="text-xs text-gray-600 mt-1">Unlimited actions</div>
+                      {promoLifetime && formData.plan === 'pro' && (
+                        <div className="mt-2 px-2 py-1 bg-black text-yellow-400 text-xs font-bold rounded inline-block">
+                          ⭐ LIFETIME
+                        </div>
+                      )}
                     </button>
                   </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Promo Code (Optional)
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.promoCode}
-                    onChange={(e) => updateField('promoCode', e.target.value.toUpperCase())}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="LAUNCH50"
-                  />
                 </div>
               </div>
 

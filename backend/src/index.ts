@@ -1265,6 +1265,72 @@ export default {
 
     // -------- Admin endpoints --------
 
+    // POST /api/v1/admin/login - Admin authentication
+    if (url.pathname === `/api/${v}/admin/login` && req.method === "POST") {
+      try {
+        const body = await req.json().catch(() => ({}));
+        const { email, password, token } = body;
+
+        let user: any = null;
+
+        // Handle magic token login
+        if (token) {
+          // Verify magic token and get user
+          // For now, just reject tokens (can add later if needed)
+          return json({ success: false, error: { code: "TOKEN_AUTH_NOT_SUPPORTED", message: "Token auth not yet implemented for admin" } }, 400, corsHdrs);
+        }
+
+        // Handle email/password login
+        if (email && password) {
+          // Find user by email across all tenants
+          const userRow = await env.DB.prepare(
+            `SELECT id, tenant_id, email, password_hash, roles FROM auth_users WHERE email = ? LIMIT 1`
+          ).bind(email.trim().toLowerCase()).first();
+
+          if (!userRow || !userRow.password_hash) {
+            return json({ success: false, error: { code: "INVALID_CREDENTIALS", message: "Invalid credentials" } }, 401, corsHdrs);
+          }
+
+          // Verify password
+          const bcrypt = await import('bcryptjs');
+          const valid = await bcrypt.compare(password, userRow.password_hash as string);
+          if (!valid) {
+            return json({ success: false, error: { code: "INVALID_CREDENTIALS", message: "Invalid credentials" } }, 401, corsHdrs);
+          }
+
+          user = userRow;
+        } else {
+          return json({ success: false, error: { code: "MISSING_CREDENTIALS", message: "email and password required" } }, 400, corsHdrs);
+        }
+
+        // Check if user is admin (either tenant_admin role or Syston owner)
+        const roles = JSON.parse(user.roles || '[]');
+        const isAdmin = roles.includes('tenant_admin') || roles.includes('platform_admin');
+
+        if (!isAdmin) {
+          return json({ success: false, error: { code: "NOT_ADMIN", message: "Admin access required" } }, 403, corsHdrs);
+        }
+
+        // Issue JWT with 7 day expiry
+        const secret = new TextEncoder().encode(env.JWT_SECRET || 'dev-secret');
+        const jwt = await new SignJWT({
+          sub: user.email,
+          tenant_id: user.tenant_id,
+          roles: roles,
+          aud: 'syston-mobile'
+        })
+          .setProtectedHeader({ alg: 'HS256' })
+          .setIssuedAt()
+          .setExpirationTime('7d')
+          .sign(secret);
+
+        return json({ success: true, jwt }, 200, corsHdrs);
+      } catch (err: any) {
+        logJSON("error", requestId, { message: "ADMIN_LOGIN_ERROR", error: err.message });
+        return json({ success: false, error: { code: "LOGIN_FAILED", message: err.message } }, 500, corsHdrs);
+      }
+    }
+
     // GET /api/v1/admin/stats - Dashboard statistics
     if (url.pathname === `/api/${v}/admin/stats` && req.method === "GET") {
       return await getAdminStats(req, env, requestId, corsHdrs);
