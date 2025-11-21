@@ -1,3 +1,4 @@
+
 name = "app"
 main = "src/index.ts"
 compatibility_date = "2024-11-01"
@@ -15,13 +16,12 @@ enabled = true
 compatibility_date = "2024-11-01"
 
 [env.production.vars]
-# Global vars
+# Public Config
 API_VERSION = "v1"
 JWT_ISSUER = "syston.app"
 JWT_AUDIENCE = "syston-mobile"
 APP_VERSION = "7.0.0"
 TEMPLATE_SPREADSHEET_ID = "1YourTemplateSpreadsheetId"
-YOUTUBE_API_KEY = "AIzaSyREPLACE"
 FIXTURES_REFRESH_URL = "https://syston-fixtures.team-platform-2025.workers.dev/refresh"
 ALLOWED_WEBHOOK_HOSTS = "hook.make.com,hook.eu2.make.com,hook.us1.make.com,*.make.com,webhook.site"
 SETUP_URL = "https://setup-console.team-platform-2025.workers.dev"
@@ -34,20 +34,16 @@ APPS_SCRIPT_AUTO_DEPLOY = "true"
 BACKEND_URL = "https://syston-postbus.team-platform-2025.workers.dev"
 ADMIN_CONSOLE_URL = "https://admin-console.team-platform-2025.workers.dev"
 RESEND_FROM_EMAIL = "onboarding@syston.app"
-# Environment-specific vars
 WORKER_BASE_URL = "https://app.team-platform-2025.workers.dev"
 ENVIRONMENT = "production"
-BACKEND_API_KEY = "replace-with-secret-api-key"
-GAS_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbwMEAZaXwn_1mvpa_XWFB4ywU8oP795NFVyVu6RmyCXpLIOA0MurWVVuWbocmWakF3O/exec"
-GAS_HMAC_SECRET = "d6029df0d32ca2e03bc21342779d3f6bf2bf0c05dde7b3c6d3620a63191be628"
-SUPABASE_URL = "https://prod-supabase.example.com"
-SUPABASE_ANON_KEY = "prod-anon-key"
-SUPABASE_SERVICE_ROLE = "prod-service-role"
-EBAY_CLIENT_ID = "prod-ebay-client-id"
-EBAY_CLIENT_SECRET = "prod-ebay-client-secret"
-SENTRY_DSN = "https://prod-sentry.example.com/1"
 DRY_RUN = "false"
 MAKE_VALIDATE_STRICT = "true"
+SENTRY_DSN = "https://prod-sentry.example.com/1"
+GAS_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbwMEAZaXwn_1mvpa_XWFB4ywU8oP795NFVyVu6RmyCXpLIOA0MurWVVuWbocmWakF3O/exec"
+SUPABASE_URL = "https://prod-supabase.example.com"
+SUPABASE_ANON_KEY = "prod-anon-key"
+
+# Secret variables are bound below from Wrangler secrets
 
 [[env.production.kv_namespaces]]
 binding = "TENANTS"
@@ -124,13 +120,12 @@ class_name = "Provisioner"
 compatibility_date = "2024-11-01"
 
 [env.preview.vars]
-# Global vars
+# Public Config
 API_VERSION = "v1"
 JWT_ISSUER = "syston.app"
 JWT_AUDIENCE = "syston-mobile"
 APP_VERSION = "7.0.0"
 TEMPLATE_SPREADSHEET_ID = "1YourTemplateSpreadsheetId"
-YOUTUBE_API_KEY = "AIzaSyREPLACE"
 FIXTURES_REFRESH_URL = "https://syston-fixtures.team-platform-2025.workers.dev/refresh"
 ALLOWED_WEBHOOK_HOSTS = "hook.make.com,hook.eu2.make.com,hook.us1.make.com,*.make.com,webhook.site"
 SETUP_URL = "https://setup-console.team-platform-2025.workers.dev"
@@ -143,20 +138,16 @@ APPS_SCRIPT_AUTO_DEPLOY = "true"
 BACKEND_URL = "https://syston-postbus.team-platform-2025.workers.dev"
 ADMIN_CONSOLE_URL = "https://admin-console.team-platform-2025.workers.dev"
 RESEND_FROM_EMAIL = "onboarding@syston.app"
-# Environment-specific vars
 WORKER_BASE_URL = "https://app-preview.team-platform-2025.workers.dev"
 ENVIRONMENT = "preview"
-BACKEND_API_KEY = "replace-with-secret-api-key"
-GAS_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbwMEAZaXwn_1mvpa_XWFB4ywU8oP795NFVyVu6RmyCXpLIOA0MurWVVuWbocmWakF3O/exec"
-GAS_HMAC_SECRET = "d6029df0d32ca2e03bc21342779d3f6bf2bf0c05dde7b3c6d3620a63191be628"
-SUPABASE_URL = "https://preview-supabase.example.com"
-SUPABASE_ANON_KEY = "preview-anon-key"
-SUPABASE_SERVICE_ROLE = "preview-service-role"
-EBAY_CLIENT_ID = "preview-ebay-client-id"
-EBAY_CLIENT_SECRET = "preview-ebay-client-secret"
-SENTRY_DSN = "https://preview-sentry.example.com/1"
 DRY_RUN = "true"
 MAKE_VALIDATE_STRICT = "false"
+SENTRY_DSN = "https://preview-sentry.example.com/1"
+GAS_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbwMEAZaXwn_1mvpa_XWFB4ywU8oP795NFVyVu6RmyCXpLIOA0MurWVVuWbocmWakF3O/exec"
+SUPABASE_URL = "https://preview-supabase.example.com"
+SUPABASE_ANON_KEY = "preview-anon-key"
+
+# Secret variables are bound below from Wrangler secrets
 
 [[env.preview.kv_namespaces]]
 binding = "TENANTS"
@@ -227,6 +218,55 @@ name = "PROVISIONER"
 class_name = "Provisioner"
 
 # ─────────────────────────────────────────────────────────
+# TEST ENVIRONMENT
+# ─────────────────────────────────────────────────────────
+[env.test]
+compatibility_date = "2024-11-01"
+
+[env.test.vars]
+JWT_SECRET="test-secret-key-that-is-at-least-32-characters-long"
+GAS_HMAC_SECRET="test-hmac-secret"
+BACKEND_API_KEY="test-backend-api-key"
+YOUTUBE_API_KEY="test-youtube-api-key"
+SUPABASE_SERVICE_ROLE="test-supabase-service-role"
+EBAY_CLIENT_ID="test-ebay-client-id"
+EBAY_CLIENT_SECRET="test-ebay-client-secret"
+RESEND_API_KEY="test-resend-api-key"
+GOOGLE_SERVICE_ACCOUNT_KEY="{}"
+FCM_SERVER_KEY="test-fcm-server-key"
+STRIPE_SECRET_KEY="test-stripe-secret-key"
+STRIPE_WEBHOOK_SECRET="test-stripe-webhook-secret"
+GITHUB_TOKEN="test-github-token"
+EXPO_ACCESS_TOKEN="test-expo-access-token"
+YT_CLIENT_ID="test-yt-client-id"
+YT_CLIENT_SECRET="test-yt-client-secret"
+API_VERSION = "v1"
+JWT_ISSUER = "syston.app"
+JWT_AUDIENCE = "syston-mobile"
+APP_VERSION = "7.0.0-test"
+TEMPLATE_SPREADSHEET_ID = "test-spreadsheet-id"
+FIXTURES_REFRESH_URL = "http://localhost/refresh"
+ALLOWED_WEBHOOK_HOSTS = "localhost"
+SETUP_URL = "http://localhost"
+GALLERY_ALLOWED = "image/jpeg"
+GALLERY_MAX_BYTES = "1024"
+YT_REDIRECT_URL = "http://localhost/callback"
+RL_POSTS_PER_MIN = "100"
+RL_UPLOADS_PER_MIN = "100"
+APPS_SCRIPT_AUTO_DEPLOY = "false"
+BACKEND_URL = "http://localhost"
+ADMIN_CONSOLE_URL = "http://localhost"
+RESEND_FROM_EMAIL = "test@syston.app"
+WORKER_BASE_URL = "http://localhost"
+ENVIRONMENT = "development"
+GAS_WEBAPP_URL = "http://localhost"
+SUPABASE_URL = "http://localhost"
+SUPABASE_ANON_KEY = "test-anon-key"
+DRY_RUN = "true"
+MAKE_VALIDATE_STRICT = "false"
+
+
+# ─────────────────────────────────────────────────────────
 # DURABLE OBJECT MIGRATIONS (Global)
 # ─────────────────────────────────────────────────────────
 [[migrations]]
@@ -254,26 +294,3 @@ new_classes = [ "Provisioner" ]
 # ─────────────────────────────────────────────────────────
 [triggers]
 crons = [ "*/5 * * * *" ]
-
-# ─────────────────────────────────────────────────────────
-# NOTES ON SECRETS
-# ─────────────────────────────────────────────────────────
-# Secrets must be set using wrangler secret put for each environment:
-#
-# Production:
-#   wrangler secret put GAS_WEBAPP_URL --env production
-#   wrangler secret put GAS_HMAC_SECRET --env production
-#   wrangler secret put SUPABASE_URL --env production
-#   wrangler secret put SUPABASE_SERVICE_ROLE --env production
-#   wrangler secret put GOOGLE_SERVICE_ACCOUNT_KEY --env production
-#   wrangler secret put APPS_SCRIPT_TEMPLATE_ID --env production
-#   wrangler secret put RESEND_API_KEY --env production
-#
-# Preview:
-#   wrangler secret put GAS_WEBAPP_URL --env preview
-#   wrangler secret put GAS_HMAC_SECRET --env preview
-#   wrangler secret put SUPABASE_URL --env preview
-#   wrangler secret put SUPABASE_SERVICE_ROLE --env preview
-#   wrangler secret put GOOGLE_SERVICE_ACCOUNT_KEY --env preview
-#   wrangler secret put APPS_SCRIPT_TEMPLATE_ID --env preview
-#   wrangler secret put RESEND_API_KEY --env preview
