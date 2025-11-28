@@ -44,6 +44,7 @@ import { rateLimit } from "./middleware/rateLimit";
 import { newRequestId, logJSON } from "./lib/log";
 import { parse, isValidationError } from "./lib/validate";
 import { healthz, readyz } from "./routes/health";
+import { parseEnv } from "./config";
 
 // --- Self-serve signup / usage / admin (Phase 3) ---
 import {
@@ -770,9 +771,10 @@ export default {
   async fetch(req: Request, env: any, _ctx: ExecutionContext): Promise<Response> {
     const t0 = Date.now();
     const requestId = newRequestId();
+    const config = parseEnv(env);
     const origin = req.headers.get("Origin");
     const release = typeof APP_VERSION === "string" ? APP_VERSION : "unknown";
-    const corsHdrs = buildCorsHeaders(origin, env, requestId, release);
+    const corsHdrs = buildCorsHeaders(origin, config, requestId, release);
     let url: URL | null = null;
 
     if (isPreflight(req)) {
@@ -783,54 +785,54 @@ export default {
       url = new URL(req.url);
 
       if (req.method === "GET" && url.pathname === "/healthz") {
-        const res = await healthz(env);
+        const res = await healthz(config);
         return respondWithCors(res, corsHdrs);
       }
       if (req.method === "GET" && url.pathname === "/readyz") {
-        const res = await readyz(env);
+        const res = await readyz(config);
         return respondWithCors(res, corsHdrs);
       }
 
       if (req.method === "GET" && url.pathname.startsWith("/public/")) {
-        const res = await handlePublicTenantRequest(req, env, url, corsHdrs, requestId);
+        const res = await handlePublicTenantRequest(req, config, url, corsHdrs, requestId);
         if (res) return res;
       }
 
       // Check signup routes BEFORE router to prevent router 404 from blocking them
       if (url.pathname.startsWith('/public/signup/')) {
-        const killSwitchResponse = await requireSignupEnabled(req, env, corsHdrs);
+        const killSwitchResponse = await requireSignupEnabled(req, config, corsHdrs);
         if (killSwitchResponse) {
-          return addSecurityHeaders(killSwitchResponse, env);
+          return addSecurityHeaders(killSwitchResponse, config);
         }
 
         if (url.pathname === '/public/signup/start' && req.method === "POST") {
-          const response = await signupStart(req, env, requestId, corsHdrs);
-          return addSecurityHeaders(response, env);
+          const response = await signupStart(req, config, requestId, corsHdrs);
+          return addSecurityHeaders(response, config);
         }
 
         if (url.pathname === `/public/signup/brand` && req.method === "POST") {
-          const response = await signupBrand(req, env, requestId, corsHdrs);
-          return addSecurityHeaders(response, env);
+          const response = await signupBrand(req, config, requestId, corsHdrs);
+          return addSecurityHeaders(response, config);
         }
 
         if (url.pathname === `/public/signup/starter/make` && req.method === "POST") {
-          const response = await signupStarterMake(req, env, requestId, corsHdrs);
-          return addSecurityHeaders(response, env);
+          const response = await signupStarterMake(req, config, requestId, corsHdrs);
+          return addSecurityHeaders(response, config);
         }
 
         if (url.pathname === `/public/signup/pro/confirm` && req.method === "POST") {
-          const response = await signupProConfirm(req, env, requestId, corsHdrs);
-          return addSecurityHeaders(response, env);
+          const response = await signupProConfirm(req, config, requestId, corsHdrs);
+          return addSecurityHeaders(response, config);
         }
 
         if (url.pathname === `/public/signup/verify-promo` && req.method === "POST") {
-          const response = await signupVerifyPromo(req, env, requestId, corsHdrs);
-          return addSecurityHeaders(response, env);
+          const response = await signupVerifyPromo(req, config, requestId, corsHdrs);
+          return addSecurityHeaders(response, config);
         }
       }
 
       const routed = await router
-        .handle(req, env, corsHdrs, requestId)
+        .handle(req, config, corsHdrs, requestId)
         .catch((err: unknown) => {
           if (err instanceof Response) return err;
           throw err;
@@ -847,7 +849,7 @@ export default {
           pathname: url.pathname,
           search: url.search,
           fullUrl: url.href,
-          apiVersion: env.API_VERSION || "v1"
+          apiVersion: config.API_VERSION || "v1"
         }), {
           status: 200,
           headers: { 'content-type': 'application/json', ...corsHdrs }
@@ -857,7 +859,7 @@ export default {
       // -------- DEV-ONLY: Admin Token Minting --------
       // POST /internal/dev/admin-token - Mint admin JWT for development
       if (url.pathname === '/internal/dev/admin-token' && req.method === 'POST') {
-        const environment = env.ENVIRONMENT || 'development';
+        const environment = config.ENVIRONMENT || 'development';
 
         // Block in production
         if (environment === 'production') {
@@ -875,8 +877,8 @@ export default {
           const data = schema.parse(body);
 
           // Mint JWT with owner role
-          const secret = new TextEncoder().encode(env.JWT_SECRET || '');
-          if (!env.JWT_SECRET) {
+          const secret = new TextEncoder().encode(config.JWT_SECRET || '');
+          if (!config.JWT_SECRET) {
             throw new Error('JWT_SECRET not configured');
           }
 
@@ -888,8 +890,8 @@ export default {
             roles: ['admin']
           })
             .setProtectedHeader({ alg: 'HS256' })
-            .setIssuer(env.JWT_ISSUER || 'syston.app')
-            .setAudience(env.JWT_AUDIENCE || 'syston-mobile')
+            .setIssuer(config.JWT_ISSUER || 'syston.app')
+            .setAudience(config.JWT_AUDIENCE || 'syston-mobile')
             .setIssuedAt(now)
             .setExpirationTime(exp)
             .sign(secret);
@@ -913,12 +915,12 @@ export default {
         }
       }
 
-      const v = env.API_VERSION || "v1";
+      const v = config.API_VERSION || "v1";
 
       const method = req.method.toUpperCase();
       if (method !== "GET" && method !== "HEAD") {
         const scope = buildRateLimitScope(url.pathname);
-        const limitResult = await rateLimit(req, env, {
+        const limitResult = await rateLimit(req, config, {
           scope,
           requestId,
           path: url.pathname
@@ -948,19 +950,19 @@ export default {
       }
 
       if (url.pathname === `/api/${v}/auth/register` && req.method === "POST") {
-        return await handleAuthRegister(req, env, corsHdrs);
+        return await handleAuthRegister(req, config, corsHdrs);
       }
 
       if (url.pathname === `/api/${v}/auth/login` && req.method === "POST") {
-        return await handleAuthLogin(req, env, corsHdrs);
+        return await handleAuthLogin(req, config, corsHdrs);
       }
 
       if (url.pathname === `/api/${v}/auth/set-password` && req.method === "POST") {
-        return await handleSetPassword(req, env, corsHdrs);
+        return await handleSetPassword(req, config, corsHdrs);
       }
 
       if (url.pathname === `/api/${v}/auth/password-status` && req.method === "GET") {
-        return await handleCheckPasswordStatus(req, env, corsHdrs);
+        return await handleCheckPasswordStatus(req, config, corsHdrs);
       }
 
     // -------- Public signup endpoint --------
@@ -970,7 +972,7 @@ export default {
       try {
         const body = await req.json().catch(() => ({}));
         const data = parse(SignupSchema, body);
-        const result = await provisionTenant(env, data);
+        const result = await provisionTenant(config, data);
 
         if (result.success) {
           return json({ success: true, data: result.tenant }, 200, corsHdrs);
@@ -998,39 +1000,39 @@ export default {
     // -------- Magic Link Authentication --------
     // POST /auth/magic/start - Send magic link email
     if (url.pathname === '/auth/magic/start' && req.method === 'POST') {
-      return await handleMagicStart(req, env, corsHdrs);
+      return await handleMagicStart(req, config, corsHdrs);
     }
 
     // GET /auth/magic/verify - Verify magic link token
     if (url.pathname === '/auth/magic/verify' && req.method === 'GET') {
-      return await handleMagicVerify(req, env, corsHdrs);
+      return await handleMagicVerify(req, config, corsHdrs);
     }
 
     // -------- Dev Authentication (Development Only) --------
     // POST /dev/auth/admin-jwt - Generate admin JWT for testing
     if (url.pathname === '/dev/auth/admin-jwt' && req.method === 'POST') {
-      return await handleDevAdminJWT(req, env);
+      return await handleDevAdminJWT(req, config);
     }
 
     // POST /dev/auth/magic-link - Generate magic link for testing
     if (url.pathname === '/dev/auth/magic-link' && req.method === 'POST') {
-      return await handleDevMagicLink(req, env);
+      return await handleDevMagicLink(req, config);
     }
 
     // GET /dev/info - Get development environment info
     if (url.pathname === '/dev/info' && req.method === 'GET') {
-      return await handleDevInfo(req, env);
+      return await handleDevInfo(req, config);
     }
 
     // -------- Provisioning Routes (Internal) --------
     // POST /internal/provision/queue - Queue provisioning
     if (url.pathname === '/internal/provision/queue' && req.method === 'POST') {
-      return await handleProvisionQueue(req, env);
+      return await handleProvisionQueue(req, config);
     }
 
     // POST /internal/provision/retry - Retry failed provisioning
     if (url.pathname === '/internal/provision/retry' && req.method === 'POST') {
-      return await handleProvisionRetry(req, env);
+      return await handleProvisionRetry(req, config);
     }
 
     // GET /api/v1/tenants/:id/provision-status - Get provisioning status
@@ -1038,8 +1040,8 @@ export default {
     if (provisionStatusMatch && req.method === 'GET') {
       const tenantId = provisionStatusMatch[1];
       // TODO: Add auth check for owner session or admin
-      const response = await handleProvisionStatus(req, env, tenantId);
-      return addSecurityHeaders(response, env);
+      const response = await handleProvisionStatus(req, config, tenantId);
+      return addSecurityHeaders(response, config);
     }
 
     // GET /api/v1/tenants/:id/overview - Get tenant overview
@@ -1047,7 +1049,7 @@ export default {
     if (overviewMatch && req.method === 'GET') {
       const tenantId = overviewMatch[1];
       // TODO: Add auth check for owner session or admin
-      return await handleTenantOverview(req, env, tenantId);
+      return await handleTenantOverview(req, config, tenantId);
     }
 
     // -------- Phase 3: Usage Tracking --------
@@ -1059,7 +1061,7 @@ export default {
       const now = new Date();
       const ym = `${now.getUTCFullYear()}-${String(now.getUTCMonth()+1).padStart(2,'0')}`;
       const kvKey = `usage:${tenant}:${ym}`;
-      const value = (await env.KV_IDEMP.get(kvKey, "json")) as any || { count: 0, month: ym };
+      const value = (await config.KV_IDEMP.get(kvKey, "json")) as any || { count: 0, month: ym };
       return json({ success:true, data:{ tenant, month: ym, count: Number(value.count||0) } }, 200, corsHdrs);
     }
 
@@ -1072,12 +1074,12 @@ export default {
       const planKey = `tenant:${tenant}:plan`; // optional hint; fallback to cap if not present
 
       // Read current
-      const current = (await env.KV_IDEMP.get(kvKey, "json")) as any || { count: 0, month: ym };
+      const current = (await config.KV_IDEMP.get(kvKey, "json")) as any || { count: 0, month: ym };
       let count = Number(current.count || 0) + 1;
 
       // Enforce 1,000/mo cap for Starter (non-managed) unless comped
       // We infer "managed" from flags (managed.yt = true => Pro)
-      const cfg = await ensureTenant(env, tenant);
+      const cfg = await ensureTenant(config, tenant);
       const isPro = !!cfg?.flags?.managed?.yt;
       const comped = !!cfg?.flags?.comped;
 
@@ -1086,7 +1088,7 @@ export default {
         return json({ success:false, error:{ code:'USAGE_CAP', message:'Monthly cap reached (1,000).' }, data:{ tenant, month: ym, count: count-1 } }, 402, corsHdrs);
       }
 
-      await env.KV_IDEMP.put(kvKey, JSON.stringify({ count, month: ym }));
+      await config.KV_IDEMP.put(kvKey, JSON.stringify({ count, month: ym }));
       return json({ success:true, data:{ tenant, month: ym, count } }, 200, corsHdrs);
     }
 
@@ -1096,7 +1098,7 @@ export default {
     if (url.pathname === `/api/${v}/post` && req.method === "POST") {
       try {
         // Require authentication (automationJWT)
-        const claims = await requireJWT(req, env);
+        const claims = await requireJWT(req, config);
         const tenantId = claims.tenant_id || claims.tenantId;
 
         if (!tenantId) {
@@ -1108,7 +1110,7 @@ export default {
 
         // Idempotency check
         const idemHeader = readIdempotencyKey(req);
-        const idem = await ensureIdempotent(env, tenantId, body, idemHeader || undefined);
+        const idem = await ensureIdempotent(config, tenantId, body, idemHeader || undefined);
         if (idem.hit) {
           return json(idem.response, 200, corsHdrs);
         }
@@ -1128,7 +1130,7 @@ export default {
         };
 
         // Queue the job
-        await env.POST_QUEUE.send(job);
+        await config.POST_QUEUE.send(job);
 
         const result = {
           success: true,
@@ -1191,7 +1193,7 @@ export default {
     // GET /api/v1/admin/whoami - Debug endpoint to verify JWT is valid/parsed
     if (url.pathname === `/api/${v}/admin/whoami` && req.method === "GET") {
       try {
-        const claims = await requireJWT(req, env); // normalized claims
+        const claims = await requireJWT(req, config); // normalized claims
         return json({
           ok: true,
           claims: {
@@ -1225,7 +1227,7 @@ export default {
     // GET /whoami - Public JWT introspection (accepts any valid JWT)
     if (url.pathname === '/whoami' && req.method === 'GET') {
       try {
-        const claims = await requireJWT(req, env);
+        const claims = await requireJWT(req, config);
         return json({
           success: true,
           data: {
@@ -1254,7 +1256,7 @@ export default {
     // GET /health - Health check endpoint
     if (url.pathname === '/health' && req.method === 'GET') {
       const version = typeof APP_VERSION !== 'undefined' ? APP_VERSION : 'dev';
-      const environment = env.ENVIRONMENT || 'development';
+      const environment = config.ENVIRONMENT || 'development';
       return json({
         ok: true,
         version,
@@ -1283,7 +1285,7 @@ export default {
         // Handle email/password login
         if (email && password) {
           // Find user by email across all tenants
-          const userRow = await env.DB.prepare(
+          const userRow = await config.DB.prepare(
             `SELECT id, tenant_id, email, password_hash, roles FROM auth_users WHERE email = ? LIMIT 1`
           ).bind(email.trim().toLowerCase()).first();
 
@@ -1312,7 +1314,7 @@ export default {
         }
 
         // Issue JWT with 7 day expiry
-        const secret = new TextEncoder().encode(env.JWT_SECRET || 'dev-secret');
+        const secret = new TextEncoder().encode(config.JWT_SECRET);
         const jwt = await new SignJWT({
           sub: user.email,
           tenant_id: user.tenant_id,
@@ -1333,13 +1335,13 @@ export default {
 
     // GET /api/v1/admin/stats - Dashboard statistics
     if (url.pathname === `/api/${v}/admin/stats` && req.method === "GET") {
-      return await getAdminStats(req, env, requestId, corsHdrs);
+      return await getAdminStats(req, config, requestId, corsHdrs);
     }
 
     // GET /api/v1/users - List users (requires tenant isolation check)
     if (url.pathname === `/api/${v}/users` && req.method === "GET") {
       try {
-        const claims = await requireJWT(req, env);
+        const claims = await requireJWT(req, config);
         const jwtTenant = claims.tenant_id || claims.tenantId;
         const requestedTenant = url.searchParams.get("tenant_id");
 
@@ -1358,67 +1360,67 @@ export default {
 
     // GET /api/v1/admin/users - List all users for a tenant
     if (url.pathname === `/api/${v}/admin/users` && req.method === "GET") {
-      return await listUsers(req, env, requestId, corsHdrs);
+      return await listUsers(req, config, requestId, corsHdrs);
     }
 
     // GET /api/v1/admin/tenants - List all tenants
     if (url.pathname === `/api/${v}/admin/tenants` && req.method === "GET") {
-      return await listTenants(req, env, requestId, corsHdrs);
+      return await listTenants(req, config, requestId, corsHdrs);
     }
 
     // GET /api/v1/admin/tenants/:id - Get tenant details
     const getTenantMatch = url.pathname.match(new RegExp(`^/api/${v}/admin/tenants/([^/]+)$`));
     if (getTenantMatch && req.method === "GET") {
       const tenantId = getTenantMatch[1];
-      return await getTenant(req, env, requestId, corsHdrs, tenantId);
+      return await getTenant(req, config, requestId, corsHdrs, tenantId);
     }
 
     // PATCH /api/v1/admin/tenants/:id - Update tenant
     const updateTenantMatch = url.pathname.match(new RegExp(`^/api/${v}/admin/tenants/([^/]+)$`));
     if (updateTenantMatch && req.method === "PATCH") {
       const tenantId = updateTenantMatch[1];
-      return await updateTenant(req, env, requestId, corsHdrs, tenantId);
+      return await updateTenant(req, config, requestId, corsHdrs, tenantId);
     }
 
     // POST /api/v1/admin/tenants/:id/deactivate - Deactivate tenant
     const deactivateTenantMatch = url.pathname.match(new RegExp(`^/api/${v}/admin/tenants/([^/]+)/deactivate$`));
     if (deactivateTenantMatch && req.method === "POST") {
       const tenantId = deactivateTenantMatch[1];
-      return await deactivateTenant(req, env, requestId, corsHdrs, tenantId);
+      return await deactivateTenant(req, config, requestId, corsHdrs, tenantId);
     }
 
     // DELETE /api/v1/admin/tenants/:id - Delete tenant
     const deleteTenantMatch = url.pathname.match(new RegExp(`^/api/${v}/admin/tenants/([^/]+)$`));
     if (deleteTenantMatch && req.method === "DELETE") {
       const tenantId = deleteTenantMatch[1];
-      return await deleteTenant(req, env, requestId, corsHdrs, tenantId);
+      return await deleteTenant(req, config, requestId, corsHdrs, tenantId);
     }
 
     // GET /api/v1/admin/promo-codes - List promo codes
     if (url.pathname === `/api/${v}/admin/promo-codes` && req.method === "GET") {
-      return await listPromoCodes(req, env, requestId, corsHdrs);
+      return await listPromoCodes(req, config, requestId, corsHdrs);
     }
 
     // POST /api/v1/admin/promo-codes - Create promo code
     if (url.pathname === `/api/${v}/admin/promo-codes` && req.method === "POST") {
-      return await createPromoCode(req, env, requestId, corsHdrs);
+      return await createPromoCode(req, config, requestId, corsHdrs);
     }
 
     // POST /api/v1/admin/promo-codes/:code/deactivate - Deactivate promo code
     const deactivatePromoMatch = url.pathname.match(new RegExp(`^/api/${v}/admin/promo-codes/([^/]+)/deactivate$`));
     if (deactivatePromoMatch && req.method === "POST") {
       const code = deactivatePromoMatch[1];
-      return await deactivatePromoCode(req, env, requestId, corsHdrs, code);
+      return await deactivatePromoCode(req, config, requestId, corsHdrs, code);
     }
 
     // POST /api/v1/admin/promo/upsert - Upsert promo code with all fields
     if (url.pathname === `/api/${v}/admin/promo/upsert` && req.method === "POST") {
-      return await upsertPromoCode(req, env, requestId, corsHdrs);
+      return await upsertPromoCode(req, config, requestId, corsHdrs);
     }
 
     // POST /api/v1/admin/tenant/create
     if (url.pathname === `/api/${v}/admin/tenant/create` && req.method === "POST") {
-      await requireAdmin(req, env); // throws 403 Response on failure
+      await requireAdmin(req, config); // throws 403 Response on failure
       const body = await req.json().catch(() => ({}));
       const schema = z.object({
         id: z.string().min(1, "id required"),
@@ -1435,7 +1437,7 @@ export default {
         flags: { use_make: false, direct_yt: true },
         makeWebhookUrl: null,
       };
-      await putTenantConfig(env, cfg);
+      await putTenantConfig(config, cfg);
       return json({ success: true, data: { created: true, tenant: cfg } }, 200, corsHdrs);
     }
 
@@ -4534,6 +4536,7 @@ export default {
 
   // <- Cron handler (called by [triggers].crons in wrangler.toml)
   async scheduled(controller: ScheduledController, env: any, ctx: ExecutionContext) {
+    const config = parseEnv(env);
     logJSON({ level: "info", msg: "cron_tick", path: "scheduled", ms: Date.now() - controller.scheduledTime });
 
     // OPTIONAL: event reminders (wire later)

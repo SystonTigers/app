@@ -1,5 +1,9 @@
+
 import { verifyAndNormalize, verifyAdminJWT, requireAdminClaims, type Claims } from "./jwt";
 import { isTokenRevoked } from "./jwtRevocation";
+import { parseEnv } from "../config";
+
+type AppEnv = ReturnType<typeof parseEnv>;
 
 /**
  * Helper to extract Bearer token from request
@@ -52,13 +56,13 @@ function forbidden(message?: string): Response {
  * Verify JWT and return normalized claims
  * Includes revocation check
  */
-export async function requireJWT(req: Request, env: any): Promise<Claims> {
+export async function requireJWT(req: Request, config: AppEnv): Promise<Claims> {
   const token = getBearer(req);
   try {
-    const claims = await verifyAndNormalize(token, env);
+    const claims = await verifyAndNormalize(token, config);
 
     // Check if token has been revoked
-    const revoked = await isTokenRevoked(env, {
+    const revoked = await isTokenRevoked(config, {
       jti: (claims as any).jti,
       sub: claims.sub,
       tenantId: claims.tenantId,
@@ -87,25 +91,21 @@ export async function requireJWT(req: Request, env: any): Promise<Claims> {
  * Require admin role with detailed logging
  * Supports both Bearer token (Authorization header) and owner_session cookie
  */
-export async function requireAdmin(req: Request, env: any): Promise<Claims> {
+export async function requireAdmin(req: Request, config: AppEnv): Promise<Claims> {
   const url = new URL(req.url);
   const token = getToken(req);
   let claims: Claims | undefined;
   try {
-    // Admin tokens use 'syston-admin' audience, not the default mobile audience
-    claims = await verifyAdminJWT(token, env);
-    // sub can be 'admin' or 'admin-user'; don't hard-reject on sub value
+    claims = await verifyAdminJWT(token, config);
     requireAdminClaims(claims);
 
-    // Check if token has been revoked
-    const revoked = await isTokenRevoked(env, {
+    const revoked = await isTokenRevoked(config, {
       jti: (claims as any).jti,
       sub: claims.sub,
       tenantId: claims.tenantId,
     });
 
     if (revoked) {
-      // Structured log for revoked token
       console.log(JSON.stringify({
         ts: new Date().toISOString(),
         event: "authz_deny",
@@ -120,7 +120,6 @@ export async function requireAdmin(req: Request, env: any): Promise<Claims> {
       throw new Error("Token revoked");
     }
 
-    // Success - log authorization grant
     console.log(JSON.stringify({
       ts: new Date().toISOString(),
       event: "authz_grant",
@@ -134,7 +133,6 @@ export async function requireAdmin(req: Request, env: any): Promise<Claims> {
 
     return claims;
   } catch (e: any) {
-    // Structured log for authorization failure
     console.log(JSON.stringify({
       ts: new Date().toISOString(),
       event: "authz_deny",
@@ -154,14 +152,14 @@ export async function requireAdmin(req: Request, env: any): Promise<Claims> {
 
 export async function requireTenantAdminOrPlatform(
   req: Request,
-  env: any,
+  config: AppEnv,
   tenantId: string
 ): Promise<{ claims: Claims; scope: "platform_admin" | "tenant_admin" }> {
   const url = new URL(req.url);
   let adminFailure: Response | null = null;
 
   try {
-    const claims = await requireAdmin(req, env);
+    const claims = await requireAdmin(req, config);
     console.log(JSON.stringify({
       ts: new Date().toISOString(),
       event: "authz_grant",
@@ -184,7 +182,7 @@ export async function requireTenantAdminOrPlatform(
   }
 
   try {
-    const claims = await requireJWT(req, env);
+    const claims = await requireJWT(req, config);
     const allowedRoles = new Set(["admin", "tenant_admin", "owner"]);
     const tenant = claims.tenantId;
 

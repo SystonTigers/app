@@ -1,4 +1,11 @@
+
 import { defineWorkersConfig } from "@cloudflare/vitest-pool-workers/config";
+import { readFileSync } from 'fs';
+import toml from 'toml';
+
+// Read and parse wrangler.toml to get test environment variables
+const wranglerConfig = toml.parse(readFileSync('wrangler.toml', 'utf-8'));
+const testVars = (wranglerConfig.env as any).test.vars;
 
 export default defineWorkersConfig({
   test: {
@@ -6,6 +13,11 @@ export default defineWorkersConfig({
       workers: {
         wrangler: {
           configPath: "wrangler.toml",
+          env: "test",
+        },
+        main: "src/index.ts",
+        bindings: {
+          ...testVars,
         },
       },
     },
@@ -16,7 +28,6 @@ export default defineWorkersConfig({
   },
   resolve: {
     alias: {
-      // Mock isomorphic-dompurify for tests since it requires DOM
       'isomorphic-dompurify': new URL('./src/__mocks__/dompurify.ts', import.meta.url).pathname,
     },
   },
