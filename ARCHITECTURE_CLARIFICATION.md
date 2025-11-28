@@ -1,3 +1,20 @@
+# 📁 ARCHIVED - Superseded by Current Docs
+
+**Status:** DUPLICATE/SUPERSEDED | **Archived:** 2025-11-28
+
+This content is now maintained in the official documentation.
+
+**Current Documentation:**
+- [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) – Official architecture
+- [docs/CURRENT_STATE.md](./docs/CURRENT_STATE.md) – Current snapshot
+- [README.md](./README.md) – Setup & quick start
+- [PRODUCT_ROADMAP.md](./PRODUCT_ROADMAP.md) – Roadmap & next steps
+
+---
+
+# ORIGINAL CONTENT BELOW (MAY BE OUTDATED)
+
+
 # Architecture Clarification: Multi-Tenant SaaS Design
 
 ## I Was Wrong - ChatGPT Was Mostly Right
