@@ -1,3 +1,19 @@
+# 📁 ARCHIVED - Historical Launch/Production Doc
+
+**Status:** OBSOLETE | **Archived:** 2025-11-28
+
+This is a historical launch/production checklist. System has evolved.
+
+**Current Documentation:**
+- [docs/CURRENT_STATE.md](./docs/CURRENT_STATE.md) – Current status
+- [docs/RUNBOOK.md](./docs/RUNBOOK.md) – Operations
+- [START_HERE.md](./START_HERE.md) – Quick start
+
+---
+
+# ORIGINAL CONTENT BELOW (MAY BE OUTDATED)
+
+
 # Production Readiness Status
 
 **Last Updated**: 2025-10-08

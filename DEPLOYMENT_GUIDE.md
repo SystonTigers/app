@@ -1,3 +1,19 @@
+# 📁 ARCHIVED - See Current Deployment Docs
+
+**Status:** SUPERSEDED | **Archived:** 2025-11-28
+
+Deployment procedures have changed. See current documentation.
+
+**Current Documentation:**
+- [README.md](./README.md) – Current deployment steps
+- [docs/RUNBOOK.md](./docs/RUNBOOK.md) – Operations & deployment
+- [START_HERE.md](./START_HERE.md) – Quick start (3 commands)
+
+---
+
+# ORIGINAL CONTENT BELOW (MAY BE OUTDATED)
+
+
 # Complete Deployment Guide - MUST DO!
 
 ## ✅ YES, You MUST Run All Deployment Steps!
