@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@team-platform/sdk": "file:../packages/sdk",
+    "@team-platform/types": "file:../packages/types",
     "axios": "^1.6.0",
     "next": "^16.0.1",
     "react": "^19.2.0",
