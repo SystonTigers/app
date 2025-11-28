@@ -1,11 +1,12 @@
 export function logJSON(event: {
-  level: "info"|"warn"|"error",
+  level: "info" | "warn" | "error",
   msg: string,
   requestId?: string,
   path?: string,
   status?: number,
   ms?: number,
-  tenant?: string
+  tenant?: string;
+  [key: string]: any;
 }) {
   console.log(JSON.stringify({ t: new Date().toISOString(), ...event }));
 }

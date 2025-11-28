@@ -31,6 +31,8 @@ export function sanitizeHtml(
   // Simple HTML tag stripping - secure for Workers environment
   // Replaces all HTML tags with empty string
   return dirty
+    .replace(/<script\b[^>]*>([\s\S]*?)<\/script>/gim, "")
+    .replace(/<style\b[^>]*>([\s\S]*?)<\/style>/gim, "")
     .replace(/<[^>]*>/g, '')
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')

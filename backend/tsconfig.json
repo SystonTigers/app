@@ -5,6 +5,8 @@
     "moduleResolution": "Bundler",
     "strict": true,
     "esModuleInterop": true,
-    "types": ["vitest/globals"]
+    "types": [
+      "vitest/globals"
+    ]
   }
 }

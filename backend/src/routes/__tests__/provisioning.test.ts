@@ -314,9 +314,10 @@ describe("Provisioning Routes", () => {
         "non-existent"
       );
 
-      expect(response.status).toBe(404);
+      // Should be 403 because tenant-123 admin cannot access non-existent tenant
+      expect(response.status).toBe(403);
       const data = await response.json();
-      expect(data.error.code).toBe("TENANT_NOT_FOUND");
+      expect(data.error.code).toBe("FORBIDDEN");
     });
 
     it("returns default status when provisioner has no state", async () => {

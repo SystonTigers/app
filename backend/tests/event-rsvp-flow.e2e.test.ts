@@ -79,24 +79,40 @@ class EventDB {
           }
 
           // Get event
-          if (query.includes("FROM events") && query.includes("WHERE id")) {
+          if (query.includes("FROM calendar_events") && query.includes("WHERE id")) {
             const eventId = params[0];
             return this.events.get(eventId) || null;
           }
 
           // Get RSVP
-          if (query.includes("FROM rsvps")) {
+          if (query.includes("FROM event_rsvps")) {
             const eventId = params.find((p: any) => this.events.has(p));
+            // ... (rest of RSVP logic needs update too)
+
             const userId = params.find((p: any) => this.users.has(p));
             const rsvps = this.rsvps.get(eventId) || [];
             return rsvps.find((r: any) => r.user_id === userId) || null;
+          }
+
+          // Get RSVP aggregation
+          if (query.includes("SELECT") && query.includes("yes_count") && query.includes("event_rsvps")) {
+            const eventId = params[0];
+            const rsvps = this.rsvps.get(eventId) || [];
+            console.error(`[EventDB] Aggregation for eventId=${eventId}, found ${rsvps.length} rsvps`);
+            console.error(`[EventDB] RSVPs:`, JSON.stringify(rsvps));
+
+            const yes_count = rsvps.filter((r: any) => r.status === "yes").length;
+            const no_count = rsvps.filter((r: any) => r.status === "no").length;
+            const maybe_count = rsvps.filter((r: any) => r.status === "maybe").length;
+
+            return { yes_count, no_count, maybe_count };
           }
 
           return null;
         },
         all: async () => {
           // Get events
-          if (query.includes("FROM events")) {
+          if (query.includes("FROM calendar_events")) {
             const tenantId = params[0];
             const events = Array.from(this.events.values()).filter(
               (e: any) => e.tenant_id === tenantId
@@ -105,7 +121,7 @@ class EventDB {
           }
 
           // Get RSVPs for event
-          if (query.includes("FROM rsvps")) {
+          if (query.includes("FROM event_rsvps")) {
             const eventId = params[0];
             const rsvps = this.rsvps.get(eventId) || [];
             return { results: rsvps };
@@ -115,93 +131,60 @@ class EventDB {
         },
         run: async () => {
           // Create event
-          if (query.includes("INSERT INTO events")) {
-            const eventId = `event-${this.nextEventId++}`;
-            const tenantId = params[0];
-            const title = params[1];
-            const date = params[2];
+          if (query.includes("INSERT INTO calendar_events")) {
+            const eventId = params[0];
+            const tenantId = params[1];
+            const title = params[2];
+            const date = params[3];
 
             this.events.set(eventId, {
               id: eventId,
               tenant_id: tenantId,
               title: title,
-              date: date,
-              location: params[3] || null,
-              description: params[4] || null,
-              rsvp_yes_count: 0,
-              rsvp_no_count: 0,
-              rsvp_maybe_count: 0,
+              start_time: date, // Map date to start_time
+              location: params[4] || null,
+              description: params[5] || null,
               created_at: new Date().toISOString(),
             });
             this.rsvps.set(eventId, []);
 
             return {
               success: true,
-              meta: { last_row_id: this.nextEventId - 1 }
+              meta: { last_row_id: this.nextEventId++ }
             };
           }
 
-          // Create RSVP
-          if (query.includes("INSERT INTO rsvps")) {
-            const rsvpId = `rsvp-${this.nextRsvpId++}`;
-            const eventId = params[0];
-            const userId = params[1];
-            const status = params[2];
-
-            const rsvp = {
-              id: rsvpId,
-              event_id: eventId,
-              user_id: userId,
-              status: status,
-              created_at: new Date().toISOString(),
-            };
+          // Upsert RSVP
+          if (query.includes("INSERT INTO event_rsvps")) {
+            const rsvpId = params[0];
+            const eventId = params[1];
+            const userId = params[2];
+            const status = params[3];
+            console.error(`[EventDB] Upserting RSVP: eventId=${eventId}, userId=${userId}, status=${status}`);
 
             const rsvps = this.rsvps.get(eventId) || [];
-            rsvps.push(rsvp);
+            const existingIndex = rsvps.findIndex((r: any) => r.user_id === userId);
+
+            if (existingIndex !== -1) {
+              // Update existing
+              rsvps[existingIndex].status = status;
+            } else {
+              // Insert new
+              rsvps.push({
+                id: rsvpId,
+                event_id: eventId,
+                user_id: userId,
+                status: status,
+                created_at: new Date().toISOString(),
+              });
+            }
             this.rsvps.set(eventId, rsvps);
-
-            // Update event counts
-            const event = this.events.get(eventId);
-            if (event) {
-              if (status === "yes") event.rsvp_yes_count++;
-              else if (status === "no") event.rsvp_no_count++;
-              else if (status === "maybe") event.rsvp_maybe_count++;
-            }
-
-            return { success: true };
-          }
-
-          // Update RSVP
-          if (query.includes("UPDATE rsvps")) {
-            const eventId = params.find((p: any) => this.events.has(p));
-            const userId = params.find((p: any) => this.users.has(p));
-            const newStatus = params[0];
-
-            const rsvps = this.rsvps.get(eventId) || [];
-            const rsvp = rsvps.find((r: any) => r.user_id === userId);
-
-            if (rsvp) {
-              const event = this.events.get(eventId);
-              if (event) {
-                // Decrement old status count
-                if (rsvp.status === "yes") event.rsvp_yes_count--;
-                else if (rsvp.status === "no") event.rsvp_no_count--;
-                else if (rsvp.status === "maybe") event.rsvp_maybe_count--;
-
-                // Increment new status count
-                if (newStatus === "yes") event.rsvp_yes_count++;
-                else if (newStatus === "no") event.rsvp_no_count++;
-                else if (newStatus === "maybe") event.rsvp_maybe_count++;
-              }
-
-              rsvp.status = newStatus;
-            }
 
             return { success: true };
           }
 
           // Delete RSVP
-          if (query.includes("DELETE FROM rsvps")) {
+          if (query.includes("DELETE FROM event_rsvps")) {
             const eventId = params[0];
             const userId = params[1];
 
@@ -209,16 +192,6 @@ class EventDB {
             const rsvpIndex = rsvps.findIndex((r: any) => r.user_id === userId);
 
             if (rsvpIndex !== -1) {
-              const rsvp = rsvps[rsvpIndex];
-              const event = this.events.get(eventId);
-
-              if (event) {
-                // Decrement count
-                if (rsvp.status === "yes") event.rsvp_yes_count--;
-                else if (rsvp.status === "no") event.rsvp_no_count--;
-                else if (rsvp.status === "maybe") event.rsvp_maybe_count--;
-              }
-
               rsvps.splice(rsvpIndex, 1);
             }
 
@@ -234,8 +207,8 @@ class EventDB {
 
 function createExecutionContext(): ExecutionContext {
   return {
-    waitUntil: () => {},
-    passThroughOnException: () => {},
+    waitUntil: () => { },
+    passThroughOnException: () => { },
   } as ExecutionContext;
 }
 
@@ -253,14 +226,14 @@ function createEnv() {
     YT_REDIRECT_URL: "https://example.com/yt",
     KV_IDEMP: kv,
     DB: db,
-    POST_QUEUE: { send: async () => {} },
-    DLQ: { send: async () => {} },
+    POST_QUEUE: { send: async () => { } },
+    DLQ: { send: async () => { } },
     TenantRateLimiter: { idFromName: () => ({}) },
     VotingRoom: { idFromName: () => ({}) },
     ChatRoom: { idFromName: () => ({}) },
     MatchRoom: { idFromName: () => ({}) },
     GeoFenceManager: { idFromName: () => ({}) },
-    R2_MEDIA: { put: async () => {}, get: async () => null },
+    R2_MEDIA: { put: async () => { }, get: async () => null },
   } as Record<string, any>;
 }
 

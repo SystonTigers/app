@@ -1,4 +1,9 @@
 /** @type {import('next').NextConfig} */
+const withBundleAnalyzer = require('@next/bundle-analyzer')({
+  enabled: process.env.ANALYZE === 'true',
+  openAnalyzer: false,
+})
+
 const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
@@ -36,10 +41,10 @@ const nextConfig = {
     ];
   },
 
-  // Turbopack config - specify correct project root
-  turbopack: {
-    root: __dirname,
-  },
+
+
+  // Turbopack config
+  turbopack: {},
 
   // Webpack config for Axios browser/node compatibility
   webpack: (config, { isServer }) => {
@@ -52,4 +57,4 @@ const nextConfig = {
   },
 };
 
-module.exports = nextConfig;
+module.exports = withBundleAnalyzer(nextConfig);

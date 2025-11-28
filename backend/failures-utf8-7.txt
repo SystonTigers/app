@@ -1,0 +1,71 @@
+﻿Total Failures: 14
+
+--- Failure 1 ---
+File: C:/dev/app-FRESH/backend/src/routes/__tests__/auth.test.ts
+Test:  auth routes registers a tenant member and allows login
+Message: expected 401 to be 200 // Object.is equality
+
+--- Failure 2 ---
+File: C:/dev/app-FRESH/backend/src/routes/__tests__/provisioning.test.ts
+Test:  Provisioning Routes handleProvisionStatus returns 404 for non-existent tenant
+Message: expected 500 to be 404 // Object.is equality
+
+--- Failure 3 ---
+File: C:/dev/app-FRESH/backend/src/services/__tests__/auth.test.ts
+Test:  Auth Service requireAdmin prefers Bearer token over cookie when both present
+Message: undefined
+
+--- Failure 4 ---
+File: C:/dev/app-FRESH/backend/src/services/__tests__/chatKV.test.ts
+Test:  Chat KV Service addMessage sanitizes HTML in message text
+Message: expected 'alert("xss")Hello' not to contain 'alert'
+
+--- Failure 5 ---
+File: C:/dev/app-FRESH/backend/tests/event-rsvp-flow.e2e.test.ts
+Test:  Event & RSVP E2E Flow completes full event creation and RSVP workflow
+Message: Cannot read properties of null (reading 'id')
+
+--- Failure 6 ---
+File: C:/dev/app-FRESH/backend/tests/event-rsvp-flow.e2e.test.ts
+Test:  Event & RSVP E2E Flow handles multiple users RSVPing to same event
+Message: Cannot read properties of null (reading 'id')
+
+--- Failure 7 ---
+File: C:/dev/app-FRESH/backend/tests/event-rsvp-flow.e2e.test.ts
+Test:  Event & RSVP E2E Flow prevents duplicate RSVPs (updates existing)
+Message: Cannot read properties of null (reading 'id')
+
+--- Failure 8 ---
+File: C:/dev/app-FRESH/backend/tests/magic-link-flow.e2e.test.ts
+Test:  Magic Link Authentication E2E Flow completes full magic link authentication flow
+Message: expected 404 to be 200 // Object.is equality
+
+--- Failure 9 ---
+File: C:/dev/app-FRESH/backend/tests/magic-link-flow.e2e.test.ts
+Test:  Magic Link Authentication E2E Flow rejects expired magic link tokens
+Message: expected [ 401, 403, 500 ] to include 404
+
+--- Failure 10 ---
+File: C:/dev/app-FRESH/backend/tests/magic-link-flow.e2e.test.ts
+Test:  Magic Link Authentication E2E Flow handles case-insensitive email addresses
+Message: expected 404 to be 200 // Object.is equality
+
+--- Failure 11 ---
+File: C:/dev/app-FRESH/backend/tests/magic-link-flow.e2e.test.ts
+Test:  Magic Link Authentication E2E Flow defaults to platform tenant when tenant not specified
+Message: expected 404 to be 200 // Object.is equality
+
+--- Failure 12 ---
+File: C:/dev/app-FRESH/backend/tests/security.penetration.test.ts
+Test:  ≡ƒöÆ Security Penetration Tests JWT Security Breach Attempts rejects JWT with role escalation attempt
+Message: expected 404 to be 403 // Object.is equality
+
+--- Failure 13 ---
+File: C:/dev/app-FRESH/backend/tests/signup.integration.test.ts
+Test:  tenant provisioning issues admin tokens that can call admin routes
+Message: expected 404 to be 200 // Object.is equality
+
+--- Failure 14 ---
+File: C:/dev/app-FRESH/backend/tests/signup.integration.test.ts
+Test:  tenant provisioning allows platform admin JWTs to create tenants
+Message: expected 404 to be 200 // Object.is equality

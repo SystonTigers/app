@@ -11,7 +11,7 @@ import {
   deactivatePromoCode,
   listUsers,
 } from "../admin";
-import { issueTenantAdminJWT } from "../../services/jwt";
+import { issuePlatformAdminJWT } from "../../services/jwt";
 
 describe("Admin Routes", () => {
   let mockEnv: any;
@@ -54,7 +54,7 @@ describe("Admin Routes", () => {
     path: string,
     body?: any
   ): Promise<Request> {
-    const token = await issueTenantAdminJWT(mockEnv, {
+    const token = await issuePlatformAdminJWT(mockEnv, {
       tenant_id: "test-tenant",
       ttlMinutes: 60,
     });

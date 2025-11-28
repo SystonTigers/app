@@ -108,7 +108,6 @@ export async function handleProvisionQueue(
     );
 
     if (!retryResult.success) {
-      console.error(`[Provision Queue] Failed after ${retryResult.attempts} attempts:`, retryResult.error);
       return Response.json({
         success: false,
         error: {
@@ -119,10 +118,8 @@ export async function handleProvisionQueue(
       }, { status: 500 });
     }
 
-    console.log(`[Provision Queue] Succeeded after ${retryResult.attempts} attempts (${retryResult.totalDuration}ms)`);
     return Response.json(retryResult.data);
   } catch (error) {
-    console.error('[Provision Queue] Error:', error);
     return Response.json({
       success: false,
       error: {
@@ -196,14 +193,11 @@ export async function handleProvisionStatus(
         updatedAt: tenant.provision_updated_at,
       },
     });
-  } catch (error) {
-    console.error('[Provision Status] Error:', error);
+  } catch (err: any) {
+    if (err instanceof Response || (err && typeof err.status === 'number')) return err;
     return Response.json({
       success: false,
-      error: {
-        code: 'STATUS_ERROR',
-        message: error instanceof Error ? error.message : String(error),
-      },
+      error: { code: 'STATUS_ERROR', message: err instanceof Error ? err.message : String(err) },
     }, { status: 500 });
   }
 }
@@ -252,10 +246,9 @@ export async function handleTenantOverview(
     });
   } catch (error) {
     // Re-throw Response errors (like 401/403 from auth checks)
-    if (error instanceof Response) {
-      return error;
+    if (error instanceof Response || (error && typeof (error as any).status === 'number')) {
+      return error as Response;
     }
-    console.error('[Tenant Overview] Error:', error);
     return Response.json({
       success: false,
       error: {
@@ -349,7 +342,6 @@ export async function handleProvisionRetry(
 
     return Response.json(result);
   } catch (error) {
-    console.error('[Provision Retry] Error:', error);
     return Response.json({
       success: false,
       error: {

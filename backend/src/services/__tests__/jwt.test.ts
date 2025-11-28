@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import {
   issueTenantAdminJWT,
+  issuePlatformAdminJWT,
   issueTenantMemberJWT,
   verifyAndNormalize,
   verifyAdminJWT,
@@ -34,10 +35,10 @@ describe("JWT Service", () => {
       expect(token.split(".").length).toBe(3); // JWT has 3 parts
 
       // Verify the token
-      const claims = await verifyAdminJWT(token, mockEnv);
+      const claims = await verifyAndNormalize(token, mockEnv);
       expect(claims.tenantId).toBe("tenant-123");
       expect(claims.roles).toContain("tenant_admin");
-      expect(claims.roles).toContain("admin");
+      expect(claims.roles).toContain("owner");
     });
 
     it("issues admin JWT with custom TTL", async () => {
@@ -46,7 +47,7 @@ describe("JWT Service", () => {
         ttlMinutes: 120,
       });
 
-      const claims = await verifyAdminJWT(token, mockEnv);
+      const claims = await verifyAndNormalize(token, mockEnv);
       const now = Math.floor(Date.now() / 1000);
       const expectedExp = now + 120 * 60;
 
@@ -65,7 +66,7 @@ describe("JWT Service", () => {
       const [, payloadB64] = token.split(".");
       const payload = JSON.parse(Buffer.from(payloadB64, "base64").toString());
 
-      expect(payload.aud).toBe("syston-admin");
+      expect(payload.aud).toBe("syston-mobile");
     });
 
     it("includes tenant_id in claims", async () => {
@@ -74,8 +75,22 @@ describe("JWT Service", () => {
         ttlMinutes: 60,
       });
 
-      const claims = await verifyAdminJWT(token, mockEnv);
+      const claims = await verifyAndNormalize(token, mockEnv);
       expect(claims.tenantId).toBe("tenant-456");
+    });
+
+    describe("issuePlatformAdminJWT", () => {
+      it("issues valid platform admin JWT with correct claims", async () => {
+        const token = await issuePlatformAdminJWT(mockEnv, {
+          tenant_id: "tenant-123",
+          ttlMinutes: 60,
+        });
+
+        expect(token).toBeTruthy();
+        const claims = await verifyAdminJWT(token, mockEnv);
+        expect(claims.roles).toContain("admin");
+        expect(claims.aud).toBe("syston-admin");
+      });
     });
   });
 
@@ -214,7 +229,7 @@ describe("JWT Service", () => {
 
   describe("verifyAdminJWT", () => {
     it("verifies admin JWT with syston-admin audience", async () => {
-      const token = await issueTenantAdminJWT(mockEnv, {
+      const token = await issuePlatformAdminJWT(mockEnv, {
         tenant_id: "tenant-123",
         ttlMinutes: 60,
       });

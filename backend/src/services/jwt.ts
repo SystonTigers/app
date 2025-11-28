@@ -95,6 +95,25 @@ export async function issueTenantAdminJWT(env: any, args: { tenant_id: string; t
   return token;
 }
 
+export async function issuePlatformAdminJWT(env: any, args: { tenant_id: string; ttlMinutes: number }) {
+  const secret = getJwtSecret(env);
+  const now = Math.floor(Date.now() / 1000);
+  const exp = now + args.ttlMinutes * 60;
+
+  const token = await new SignJWT({
+    roles: ["admin", "owner"],
+    tenant_id: args.tenant_id,
+  })
+    .setProtectedHeader({ alg: "HS256", typ: "JWT" })
+    .setIssuer(env.JWT_ISSUER)
+    .setAudience("syston-admin") // Platform admin audience
+    .setIssuedAt(now)
+    .setExpirationTime(exp)
+    .sign(secret);
+
+  return token;
+}
+
 export async function issueTenantMemberJWT(env: any, args: { tenant_id: string; user_id: string; roles?: string[]; ttlMinutes?: number }) {
   const secret = getJwtSecret(env);
   const now = Math.floor(Date.now() / 1000);

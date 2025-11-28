@@ -8,8 +8,10 @@ export interface AppError extends Error {
 }
 
 export const errorHandler = (err: AppError, env: any, requestId: string) => {
-    logJSON("error", requestId, {
-        message: "UNHANDLED_EXCEPTION",
+    logJSON({
+        level: "error",
+        requestId,
+        msg: "UNHANDLED_EXCEPTION",
         error: err.message,
         stack: err.stack,
         code: err.code,
@@ -31,4 +33,19 @@ export const errorHandler = (err: AppError, env: any, requestId: string) => {
         },
         status
     );
+};
+
+export const createResponse = (data: any, status = 200, headers?: Headers) => {
+    return json(data, status, headers);
+};
+
+export const errorResponse = (code: string, message: string, status = 400, details?: any) => {
+    return json({
+        success: false,
+        error: {
+            code,
+            message,
+            details
+        }
+    }, status);
 };

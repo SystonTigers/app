@@ -45,6 +45,7 @@ class MemoryKV {
 class NotificationDB {
   private users = new Map<string, any>();
   private events = new Map<string, any>();
+  private devices = new Map<string, any>();
   private nextEventId = 1;
 
   constructor() {
@@ -98,6 +99,23 @@ class NotificationDB {
             );
             return { results: users };
           }
+          if (query.includes("FROM devices")) {
+            if (query.includes("user_id = ?")) {
+              const userId = params[0];
+              const tenantId = params[1];
+              const devices = Array.from(this.devices.values()).filter(
+                (d: any) => d.user_id === userId && d.tenant_id === tenantId
+              );
+              return { results: devices };
+            }
+            if (query.includes("tenant_id = ?")) {
+              const tenantId = params[0];
+              const devices = Array.from(this.devices.values()).filter(
+                (d: any) => d.tenant_id === tenantId
+              );
+              return { results: devices };
+            }
+          }
           return { results: [] };
         },
         run: async () => {
@@ -119,6 +137,35 @@ class NotificationDB {
               meta: { last_row_id: this.nextEventId - 1 },
             };
           }
+          if (query.includes("DELETE FROM devices")) {
+            const userId = params[0];
+            const platform = params[1];
+
+            for (const [key, value] of this.devices.entries()) {
+              if (value.user_id === userId && value.platform === platform) {
+                this.devices.delete(key);
+              }
+            }
+            return { success: true };
+          }
+          if (query.includes("INSERT OR REPLACE INTO devices")) {
+            // params: token, user_id, tenant_id, token, platform, created_at
+            const id = params[0];
+            const userId = params[1];
+            const tenantId = params[2];
+            const token = params[3];
+            const platform = params[4];
+
+            this.devices.set(id, {
+              id,
+              user_id: userId,
+              tenant_id: tenantId,
+              token,
+              platform,
+              created_at: params[5]
+            });
+            return { success: true };
+          }
           return { success: true };
         },
       }),
@@ -128,8 +175,9 @@ class NotificationDB {
 
 function createExecutionContext(): ExecutionContext {
   return {
-    waitUntil: () => {},
-    passThroughOnException: () => {},
+    waitUntil: () => { },
+    passThroughOnException: () => { },
+    props: {},
   } as ExecutionContext;
 }
 
@@ -148,14 +196,14 @@ function createEnv() {
     FCM_SERVER_KEY: "test-fcm-key",
     KV_IDEMP: kv,
     DB: db,
-    POST_QUEUE: { send: async () => {} },
-    DLQ: { send: async () => {} },
+    POST_QUEUE: { send: async () => { } },
+    DLQ: { send: async () => { } },
     TenantRateLimiter: { idFromName: () => ({}) },
     VotingRoom: { idFromName: () => ({}) },
     ChatRoom: { idFromName: () => ({}) },
     MatchRoom: { idFromName: () => ({}) },
     GeoFenceManager: { idFromName: () => ({}) },
-    R2_MEDIA: { put: async () => {}, get: async () => null },
+    R2_MEDIA: { put: async () => { }, get: async () => null },
   } as Record<string, any>;
 }
 

@@ -3,63 +3,59 @@ import { ThemeProvider } from '@/components/ThemeProvider';
 
 interface TenantLayoutProps {
   children: React.ReactNode;
-  params: { tenant: string };
+  params: Promise<{ tenant: string }>;
 }
 
-export default function TenantLayout({ children, params }: TenantLayoutProps) {
-  const { tenant } = params;
+export async function generateMetadata({ params }: TenantLayoutProps) {
+  const { tenant } = await params;
+  const name = tenant.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+  return {
+    title: `${name} | Team Platform`,
+  };
+}
+
+export default async function TenantLayout({ children, params }: TenantLayoutProps) {
+  const { tenant } = await params;
+
+  // Provide default tenant name if undefined
+  const tenantName = tenant
+    ? tenant.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+    : 'Team Platform';
 
   return (
-    <ThemeProvider tenant={tenant}>
-      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+    <ThemeProvider tenant={tenant || 'default'}>
+      <div className="min-h-screen flex flex-col">
         {/* Header/Nav */}
-        <header
-          style={{
-            background: 'var(--surface)',
-            borderBottom: '1px solid var(--border)',
-            padding: 'var(--spacing-md) 0',
-          }}
-        >
+        <header className="bg-[var(--surface)] border-b border-border py-4">
           <nav className="container">
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-              }}
-            >
+            <div className="flex items-center justify-between">
               <Link
-                href={`/${tenant}`}
-                style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--brand)' }}
+                href={`/${tenant || ''}`}
+                className="text-2xl font-bold text-brand no-underline"
               >
-                {tenant.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
+                {tenantName}
               </Link>
 
-              <div style={{ display: 'flex', gap: 'var(--spacing-lg)' }}>
-                <Link href={`/${tenant}`}>Home</Link>
-                <Link href={`/${tenant}/fixtures`}>Fixtures</Link>
-                <Link href={`/${tenant}/results`}>Results</Link>
-                <Link href={`/${tenant}/table`}>Table</Link>
-                <Link href={`/${tenant}/squad`}>Squad</Link>
-                <Link href={`/${tenant}/stats`}>Stats</Link>
+              <div className="flex gap-6">
+                <Link href={`/${tenant}`} className="hover:text-brand transition-colors">Home</Link>
+                <Link href={`/${tenant}/fixtures`} className="hover:text-brand transition-colors">Fixtures</Link>
+                <Link href={`/${tenant}/results`} className="hover:text-brand transition-colors">Results</Link>
+                <Link href={`/${tenant}/table`} className="hover:text-brand transition-colors">Table</Link>
+                <Link href={`/${tenant}/squad`} className="hover:text-brand transition-colors">Squad</Link>
+                <Link href={`/${tenant}/stats`} className="hover:text-brand transition-colors">Stats</Link>
               </div>
             </div>
           </nav>
         </header>
 
         {/* Main content */}
-        <main style={{ flex: 1 }}>{children}</main>
+        <main className="flex-1">
+          {children}
+        </main>
 
         {/* Footer */}
-        <footer
-          style={{
-            background: 'var(--surface)',
-            borderTop: '1px solid var(--border)',
-            padding: 'var(--spacing-xl) 0',
-            marginTop: 'var(--spacing-2xl)',
-          }}
-        >
-          <div className="container" style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
+        <footer className="bg-[var(--surface)] border-t border-border py-8 mt-12">
+          <div className="container text-center text-muted-foreground">
             <p>Powered by Team Platform</p>
           </div>
         </footer>

@@ -18,7 +18,7 @@
     "@cloudflare/workers-types": "^4.20241022.0",
     "@types/node": "^22.7.7",
     "@vitest/coverage-v8": "^1.5.0",
-    "esbuild": "^0.23.0",
+    "esbuild": "^0.25.12",
     "pretty-format": "^29.7.0",
     "tsx": "^4.19.2",
     "typescript": "^5.6.2",

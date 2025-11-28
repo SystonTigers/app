@@ -5,7 +5,7 @@ import {
   requireTenantAdminOrPlatform,
   hasRole,
 } from "../auth";
-import { issueTenantMemberJWT, issueTenantAdminJWT } from "../jwt";
+import { issueTenantMemberJWT, issueTenantAdminJWT, issuePlatformAdminJWT } from "../jwt";
 import type { Claims } from "../jwt";
 
 describe("Auth Service", () => {
@@ -164,7 +164,7 @@ describe("Auth Service", () => {
 
   describe("requireAdmin", () => {
     it("accepts valid admin Bearer token", async () => {
-      const token = await issueTenantAdminJWT(mockEnv, {
+      const token = await issuePlatformAdminJWT(mockEnv, {
         tenant_id: "tenant-123",
         ttlMinutes: 60,
       });
@@ -183,7 +183,7 @@ describe("Auth Service", () => {
     });
 
     it("accepts valid admin from owner_session cookie", async () => {
-      const token = await issueTenantAdminJWT(mockEnv, {
+      const token = await issuePlatformAdminJWT(mockEnv, {
         tenant_id: "tenant-123",
         ttlMinutes: 60,
       });
@@ -201,7 +201,7 @@ describe("Auth Service", () => {
     });
 
     it("accepts valid admin from cookie with other cookies", async () => {
-      const token = await issueTenantAdminJWT(mockEnv, {
+      const token = await issuePlatformAdminJWT(mockEnv, {
         tenant_id: "tenant-123",
         ttlMinutes: 60,
       });
@@ -218,12 +218,12 @@ describe("Auth Service", () => {
     });
 
     it("prefers Bearer token over cookie when both present", async () => {
-      const bearerToken = await issueTenantAdminJWT(mockEnv, {
+      const bearerToken = await issuePlatformAdminJWT(mockEnv, {
         tenant_id: "tenant-bearer",
         ttlMinutes: 60,
       });
 
-      const cookieToken = await issueTenantAdminJWT(mockEnv, {
+      const cookieToken = await issuePlatformAdminJWT(mockEnv, {
         tenant_id: "tenant-cookie",
         ttlMinutes: 60,
       });
@@ -273,7 +273,7 @@ describe("Auth Service", () => {
     });
 
     it("rejects revoked admin token", async () => {
-      const token = await issueTenantAdminJWT(mockEnv, {
+      const token = await issuePlatformAdminJWT(mockEnv, {
         tenant_id: "tenant-123",
         ttlMinutes: 60,
       });
@@ -297,7 +297,7 @@ describe("Auth Service", () => {
 
   describe("requireTenantAdminOrPlatform", () => {
     it("accepts platform admin", async () => {
-      const token = await issueTenantAdminJWT(mockEnv, {
+      const token = await issuePlatformAdminJWT(mockEnv, {
         tenant_id: "system",
         ttlMinutes: 60,
       });

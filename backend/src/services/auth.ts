@@ -65,20 +65,11 @@ export async function requireJWT(req: Request, env: any): Promise<Claims> {
     });
 
     if (revoked) {
-      console.warn("JWT_REVOKED", {
-        path: new URL(req.url).pathname,
-        sub: claims.sub,
-        tenantId: claims.tenantId,
-      });
       throw new Response("Unauthorized - Token revoked", { status: 401 });
     }
 
     return claims;
   } catch (e: any) {
-    console.warn("JWT_VERIFY_FAIL", {
-      path: new URL(req.url).pathname,
-      reason: e?.message || String(e),
-    });
     throw new Response("Unauthorized", { status: 401 });
   }
 }
@@ -105,49 +96,11 @@ export async function requireAdmin(req: Request, env: any): Promise<Claims> {
     });
 
     if (revoked) {
-      // Structured log for revoked token
-      console.log(JSON.stringify({
-        ts: new Date().toISOString(),
-        event: "authz_deny",
-        route: url.pathname,
-        sub: claims.sub,
-        aud: claims.aud,
-        roles: claims.roles,
-        tenantId: claims.tenantId,
-        decision: "deny",
-        reason: "token_revoked",
-      }));
       throw new Error("Token revoked");
     }
 
-    // Success - log authorization grant
-    console.log(JSON.stringify({
-      ts: new Date().toISOString(),
-      event: "authz_grant",
-      route: url.pathname,
-      sub: claims.sub,
-      aud: claims.aud,
-      roles: claims.roles,
-      tenantId: claims.tenantId,
-      decision: "grant",
-    }));
-
     return claims;
   } catch (e: any) {
-    // Structured log for authorization failure
-    console.log(JSON.stringify({
-      ts: new Date().toISOString(),
-      event: "authz_deny",
-      route: url.pathname,
-      sub: claims?.sub,
-      aud: claims?.aud,
-      roles: claims?.roles,
-      tenantId: claims?.tenantId,
-      decision: "deny",
-      reason: e?.message || "auth_failed",
-      hasAuthHeader: !!req.headers.get("authorization"),
-      hasCookie: req.headers.get("cookie")?.includes("owner_session") || false,
-    }));
     throw forbidden();
   }
 }
@@ -162,18 +115,6 @@ export async function requireTenantAdminOrPlatform(
 
   try {
     const claims = await requireAdmin(req, env);
-    console.log(JSON.stringify({
-      ts: new Date().toISOString(),
-      event: "authz_grant",
-      route: url.pathname,
-      sub: claims.sub,
-      aud: claims.aud,
-      roles: claims.roles,
-      tenantId: claims.tenantId,
-      requestedTenant: tenantId,
-      decision: "grant",
-      scope: "platform_admin",
-    }));
     return { claims, scope: "platform_admin" };
   } catch (err) {
     if (err instanceof Response) {
@@ -189,51 +130,13 @@ export async function requireTenantAdminOrPlatform(
     const tenant = claims.tenantId;
 
     if (!tenant || tenant !== tenantId) {
-      console.log(JSON.stringify({
-        ts: new Date().toISOString(),
-        event: "authz_deny",
-        route: url.pathname,
-        sub: claims.sub,
-        aud: claims.aud,
-        roles: claims.roles,
-        tenantId: claims.tenantId,
-        requestedTenant: tenantId,
-        decision: "deny",
-        reason: "tenant_mismatch",
-      }));
       throw forbidden("tenant_mismatch");
     }
 
     const hasAllowed = claims.roles.some((role) => allowedRoles.has(role));
     if (!hasAllowed) {
-      console.log(JSON.stringify({
-        ts: new Date().toISOString(),
-        event: "authz_deny",
-        route: url.pathname,
-        sub: claims.sub,
-        aud: claims.aud,
-        roles: claims.roles,
-        tenantId: claims.tenantId,
-        requestedTenant: tenantId,
-        decision: "deny",
-        reason: "role_mismatch",
-        allowedRoles: Array.from(allowedRoles),
-      }));
       throw forbidden("requires tenant_admin role");
     }
-
-    console.log(JSON.stringify({
-      ts: new Date().toISOString(),
-      event: "authz_grant",
-      route: url.pathname,
-      sub: claims.sub,
-      aud: claims.aud,
-      roles: claims.roles,
-      tenantId: claims.tenantId,
-      requestedTenant: tenantId,
-      decision: "grant",
-      scope: "tenant_admin",
-    }));
 
     return { claims, scope: "tenant_admin" };
   } catch (err) {
