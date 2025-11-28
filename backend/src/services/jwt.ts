@@ -168,7 +168,6 @@ export async function verifyServiceJWT(env: any, token: string): Promise<boolean
     const claims = normalizeClaims(payload as RawClaims);
     return claims.roles.includes("service");
   } catch (error) {
-    console.error('[Service JWT] Verification failed:', error);
     return false;
   }
 }

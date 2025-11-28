@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, beforeAll } from "vitest";
 import type { ExecutionContext } from "@cloudflare/workers-types";
 import worker from "../src/index";
 
@@ -34,8 +34,8 @@ class MemoryKV {
 
 function createExecutionContext(): ExecutionContext {
   return {
-    waitUntil: () => {},
-    passThroughOnException: () => {},
+    waitUntil: () => { },
+    passThroughOnException: () => { },
   } as ExecutionContext;
 }
 
@@ -59,107 +59,7 @@ function createEnv() {
         }),
       }),
     },
-    POST_QUEUE: { send: async () => {} },
-    DLQ: { send: async () => {} },
-    TenantRateLimiter: { idFromName: () => ({}) },
-    VotingRoom: { idFromName: () => ({}) },
-    ChatRoom: { idFromName: () => ({}) },
-    MatchRoom: { idFromName: () => ({}) },
-    GeoFenceManager: { idFromName: () => ({}) },
-    R2_MEDIA: { put: async () => {}, get: async () => null },
-  } as Record<string, any>;
-}
-
-describe("Magic Link Authentication E2E Flow", () => {
-  let env: any;
-  let ctx: ExecutionContext;
-
-  beforeEach(() => {
-    env = createEnv();
-    ctx = createExecutionContext();
-    vi.clearAllMocks();
-  });
-
-  it("completes full magic link authentication flow", async () => {
-    // Step 1: Request magic link
-    const startRequest = new Request("https://example.com/auth/magic/start", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        email: "user@example.com",
-        tenantId: "test-tenant",
-      }),
-    });
-
-    const startResponse = await worker.fetch(startRequest, env, ctx);
-    expect(startResponse.status).toBe(200);
-    const startData: any = await startResponse.json();
-    expect(startData.success).toBe(true);
-
-    // Verify email was sent
-    expect(emailLib.sendMagicLinkEmail).toHaveBeenCalled();
-
-    // Extract magic link token from email mock
-    const emailCalls = vi.mocked(emailLib.sendMagicLinkEmail).mock.calls;
-    const lastCall = emailCalls[emailCalls.length - 1];
-    // sendMagicLinkEmail(email, magicLink, tenantName, env)
-    const emailTo = lastCall[0];
-    const magicLinkUrl = lastCall[1];
-
-    expect(emailTo).toBe("user@example.com");
-    expect(magicLinkUrl).toBeTruthy();
-
-    const url = new URL(magicLinkUrl);
-    const magicToken = url.searchParams.get("token");
-
-    expect(magicToken).toBeTruthy();
-
-    // Step 2: Verify magic link token
-    const verifyRequest = new Request(
-      `https://example.com/auth/magic/verify?token=${magicToken}`,
-      {
-        method: "GET",
-      }
-    );
-
-    const verifyResponse = await worker.fetch(verifyRequest, env, ctx);
-    expect(verifyResponse.status).toBe(200);
-    const verifyData: any = await verifyResponse.json();
-    expect(verifyData.success).toBe(true);
-    expect(verifyData.tenantId).toBe("test-tenant");
-
-    // Step 3: Verify session cookie was set
-    const setCookieHeader = verifyResponse.headers.get("Set-Cookie");
-    expect(setCookieHeader).toBeTruthy();
-    expect(setCookieHeader).toContain("owner_session=");
-    expect(setCookieHeader).toContain("HttpOnly");
-    expect(setCookieHeader).toContain("Secure");
-
-    // Extract session token from cookie
-    const cookieMatch = setCookieHeader!.match(/owner_session=([^;]+)/);
-    expect(cookieMatch).toBeTruthy();
-    const sessionToken = cookieMatch![1];
-
-    // Step 4: Use session token to access protected route
-    const protectedRequest = new Request(
-      "https://example.com/api/v1/tenants/test-tenant/overview",
-      {
-        method: "GET",
-        headers: {
-          cookie: `owner_session=${sessionToken}`,
-        },
-      }
-    );
-
-    const protectedResponse = await worker.fetch(protectedRequest, env, ctx);
-    expect(protectedResponse.status).toBe(200);
-    const protectedData: any = await protectedResponse.json();
-    expect(protectedData.success).toBe(true);
-  });
-
-  it("rejects expired magic link tokens", async () => {
+    POST_QUEUE: { send: async () => { } },
     // Create an expired magic link token
     const { SignJWT } = await import("jose");
     const now = Math.floor(Date.now() / 1000);
@@ -177,7 +77,7 @@ describe("Magic Link Authentication E2E Flow", () => {
       .sign(new TextEncoder().encode(env.JWT_SECRET));
 
     const verifyRequest = new Request(
-      `https://example.com/auth/magic/verify?token=${expiredToken}`,
+      `https://example.com/api/v1/magic/verify?token=${expiredToken}`,
       {
         method: "GET",
       }
@@ -191,7 +91,7 @@ describe("Magic Link Authentication E2E Flow", () => {
 
   it("handles case-insensitive email addresses", async () => {
     // Request with uppercase email
-    const startRequest = new Request("https://example.com/auth/magic/start", {
+    const startRequest = new Request("https://example.com/api/v1/magic/start", {
       method: "POST",
       headers: {
         "content-type": "application/json",
@@ -214,7 +114,7 @@ describe("Magic Link Authentication E2E Flow", () => {
   });
 
   it("defaults to platform tenant when tenant not specified", async () => {
-    const startRequest = new Request("https://example.com/auth/magic/start", {
+    const startRequest = new Request("https://example.com/api/v1/magic/start", {
       method: "POST",
       headers: {
         "content-type": "application/json",

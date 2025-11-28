@@ -53,7 +53,7 @@ function forbidden(message?: string): Response {
  * Includes revocation check
  */
 export async function requireJWT(req: Request, env: any): Promise<Claims> {
-  const token = getBearer(req);
+  const token = getToken(req);
   try {
     const claims = await verifyAndNormalize(token, env);
 
@@ -117,6 +117,7 @@ export async function requireTenantAdminOrPlatform(
     const claims = await requireAdmin(req, env);
     return { claims, scope: "platform_admin" };
   } catch (err) {
+    console.error("[Auth] requireAdmin failed:", err);
     if (err instanceof Response) {
       adminFailure = err;
     } else {
