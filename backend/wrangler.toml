@@ -8,6 +8,12 @@ workers_dev = true
 [observability]
 enabled = true
 
+# Default D1 binding for local development
+[[d1_databases]]
+binding = "DB"
+database_name = "syston-db-local"
+database_id = "local-db-id"
+
 # ─────────────────────────────────────────────────────────
 # PRODUCTION ENVIRONMENT
 # ─────────────────────────────────────────────────────────

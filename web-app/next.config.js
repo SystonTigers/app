@@ -36,6 +36,11 @@ const nextConfig = {
     ];
   },
 
+  // Turbopack config - specify correct project root
+  turbopack: {
+    root: __dirname,
+  },
+
   // Webpack config for Axios browser/node compatibility
   webpack: (config, { isServer }) => {
     config.resolve = config.resolve || {};
