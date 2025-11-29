@@ -18,10 +18,13 @@
   "dependencies": {
     "@team-platform/sdk": "file:../packages/sdk",
     "@team-platform/types": "file:../packages/types",
+    "@types/canvas-confetti": "^1.9.0",
     "axios": "^1.6.0",
+    "canvas-confetti": "^1.9.4",
     "next": "^16.0.1",
     "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "react-dom": "^19.2.0",
+    "swr": "^2.3.7"
   },
   "devDependencies": {
     "@next/bundle-analyzer": "^16.0.5",
