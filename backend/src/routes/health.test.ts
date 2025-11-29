@@ -8,7 +8,7 @@ describe("health endpoint", () => {
     };
     const response = await healthz(mockEnv);
     expect(response.status).toBe(200);
-    const json = await response.json();
+    const json: any = await response.json();
     expect(json).toMatchObject({ status: "ok", version: "test-version" });
     expect(typeof json.ts).toBe("string");
   });

@@ -10,7 +10,7 @@ import { logJSON } from "../lib/log";
 export async function getUsage(req: Request, env: any, requestId: string, corsHdrs: Headers): Promise<Response> {
   try {
     const claims = await requireJWT(req, env);
-    const tenantId = claims.tenant_id || claims.tenantId;
+    const tenantId = (claims as any).tenant_id || claims.tenantId;
 
     // Get tenant plan
     const tenant = await env.DB.prepare("SELECT plan, comped FROM tenants WHERE id = ?").bind(tenantId).first();
@@ -49,7 +49,7 @@ export async function getUsage(req: Request, env: any, requestId: string, corsHd
 
   } catch (err: any) {
     if (err instanceof Response) throw err;
-    logJSON("error", requestId, { message: "GET_USAGE_ERROR", error: err.message });
+    logJSON({ level: "error", requestId, msg: "GET_USAGE_ERROR", error: err.message });
     return json({ success: false, error: { code: "SERVER_ERROR", message: err.message } }, 500, corsHdrs);
   }
 }
@@ -58,7 +58,7 @@ export async function getUsage(req: Request, env: any, requestId: string, corsHd
 export async function incrementUsage(req: Request, env: any, requestId: string, corsHdrs: Headers): Promise<Response> {
   try {
     const claims = await requireJWT(req, env);
-    const tenantId = claims.tenant_id || claims.tenantId;
+    const tenantId = (claims as any).tenant_id || claims.tenantId;
 
     // Get tenant plan
     const tenant = await env.DB.prepare("SELECT plan, comped, status FROM tenants WHERE id = ?").bind(tenantId).first();
@@ -130,7 +130,7 @@ export async function incrementUsage(req: Request, env: any, requestId: string, 
 
   } catch (err: any) {
     if (err instanceof Response) throw err;
-    logJSON("error", requestId, { message: "INCREMENT_USAGE_ERROR", error: err.message });
+    logJSON({ level: "error", requestId, msg: "INCREMENT_USAGE_ERROR", error: err.message });
     return json({ success: false, error: { code: "SERVER_ERROR", message: err.message } }, 500, corsHdrs);
   }
 }

@@ -21,7 +21,7 @@ export async function handleDevAdminJWT(req: Request, env: Env): Promise<Respons
     }, 403);
   }
 
-  const body = await req.json().catch(() => ({}));
+  const body: any = await req.json().catch(() => ({}));
   const tenantId = (body.tenantId || 'test-tenant').toString().trim();
   const email = (body.email || 'dev@localhost').toString().trim();
 
@@ -65,7 +65,7 @@ export async function handleDevMagicLink(req: Request, env: Env): Promise<Respon
     }, 403);
   }
 
-  const body = await req.json().catch(() => ({}));
+  const body: any = await req.json().catch(() => ({}));
   const tenantId = (body.tenantId || 'test-tenant').toString().trim();
   const email = (body.email || 'dev@localhost').toString().trim();
 

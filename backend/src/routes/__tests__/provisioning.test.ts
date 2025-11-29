@@ -94,7 +94,7 @@ describe("Provisioning Routes", () => {
       const response = await handleProvisionQueue(request, mockEnv);
 
       expect(response.status).toBe(200);
-      const data = await response.json();
+      const data: any = await response.json();
       expect(data.success).toBe(true);
       expect(mockProvisioner.fetch).toHaveBeenCalledTimes(2); // queue + run
     });
@@ -111,7 +111,7 @@ describe("Provisioning Routes", () => {
       const response = await handleProvisionQueue(request, mockEnv);
 
       expect(response.status).toBe(401);
-      const data = await response.json();
+      const data: any = await response.json();
       expect(data.error.code).toBe("UNAUTHORIZED");
     });
 
@@ -128,7 +128,7 @@ describe("Provisioning Routes", () => {
       const response = await handleProvisionQueue(request, mockEnv);
 
       expect(response.status).toBe(401);
-      const data = await response.json();
+      const data: any = await response.json();
       expect(data.error.code).toBe("INVALID_TOKEN");
     });
 
@@ -146,7 +146,7 @@ describe("Provisioning Routes", () => {
       const response = await handleProvisionQueue(request, mockEnv);
 
       expect(response.status).toBe(400);
-      const data = await response.json();
+      const data: any = await response.json();
       expect(data.error.code).toBe("MISSING_TENANT_ID");
     });
 
@@ -170,7 +170,7 @@ describe("Provisioning Routes", () => {
       const response = await handleProvisionQueue(request, mockEnv);
 
       expect(response.status).toBe(404);
-      const data = await response.json();
+      const data: any = await response.json();
       expect(data.error.code).toBe("TENANT_NOT_FOUND");
     });
 
@@ -213,7 +213,7 @@ describe("Provisioning Routes", () => {
       const response = await handleProvisionQueue(request, mockEnv);
 
       expect(response.status).toBe(200);
-      const data = await response.json();
+      const data: any = await response.json();
       expect(data.success).toBe(true);
     });
 
@@ -246,7 +246,7 @@ describe("Provisioning Routes", () => {
       const response = await handleProvisionQueue(request, mockEnv);
 
       expect(response.status).toBe(500);
-      const data = await response.json();
+      const data: any = await response.json();
       expect(data.error.code).toBe("PROVISIONING_FAILED");
       expect(data.error.attempts).toBeGreaterThan(1);
     }, 15000); // Increased timeout to 15 seconds for retry logic
@@ -282,7 +282,7 @@ describe("Provisioning Routes", () => {
       const response = await handleProvisionStatus(request, mockEnv, "tenant-123");
 
       expect(response.status).toBe(200);
-      const data = await response.json();
+      const data: any = await response.json();
       expect(data.success).toBe(true);
       expect(data.data.status).toBeDefined();
     });
@@ -316,7 +316,7 @@ describe("Provisioning Routes", () => {
 
       // Should be 403 because tenant-123 admin cannot access non-existent tenant
       expect(response.status).toBe(403);
-      const data = await response.json();
+      const data: any = await response.json();
       expect(data.error.code).toBe("FORBIDDEN");
     });
 
@@ -357,7 +357,7 @@ describe("Provisioning Routes", () => {
       const response = await handleProvisionStatus(request, mockEnv, "tenant-123");
 
       expect(response.status).toBe(200);
-      const data = await response.json();
+      const data: any = await response.json();
       expect(data.data.status).toBe("pending");
     });
   });
@@ -395,7 +395,7 @@ describe("Provisioning Routes", () => {
       const response = await handleTenantOverview(request, mockEnv, "tenant-123");
 
       expect(response.status).toBe(200);
-      const data = await response.json();
+      const data: any = await response.json();
       expect(data.success).toBe(true);
       expect(data.data).toBeDefined();
       expect(data.data.name).toBe("Test Club");
@@ -426,7 +426,7 @@ describe("Provisioning Routes", () => {
       const response = await handleTenantOverview(request, mockEnv, "tenant-123");
 
       expect(response.status).toBe(200);
-      const data = await response.json();
+      const data: any = await response.json();
       expect(data.success).toBe(true);
       expect(data.data).toBeNull();
     });
@@ -453,7 +453,7 @@ describe("Provisioning Routes", () => {
       const response = await handleProvisionRetry(request, mockEnv);
 
       expect(response.status).toBe(200);
-      const data = await response.json();
+      const data: any = await response.json();
       expect(data.success).toBe(true);
       expect(mockProvisioner.fetch).toHaveBeenCalled();
     });
@@ -470,7 +470,7 @@ describe("Provisioning Routes", () => {
       const response = await handleProvisionRetry(request, mockEnv);
 
       expect(response.status).toBe(401);
-      const data = await response.json();
+      const data: any = await response.json();
       expect(data.error.code).toBe("UNAUTHORIZED");
     });
 
@@ -488,7 +488,7 @@ describe("Provisioning Routes", () => {
       const response = await handleProvisionRetry(request, mockEnv);
 
       expect(response.status).toBe(400);
-      const data = await response.json();
+      const data: any = await response.json();
       expect(data.error.code).toBe("MISSING_TENANT_ID");
     });
 
@@ -512,7 +512,7 @@ describe("Provisioning Routes", () => {
       const response = await handleProvisionRetry(request, mockEnv);
 
       expect(response.status).toBe(404);
-      const data = await response.json();
+      const data: any = await response.json();
       expect(data.error.code).toBe("TENANT_NOT_FOUND");
     });
   });

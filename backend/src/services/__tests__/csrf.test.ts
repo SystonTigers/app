@@ -91,7 +91,7 @@ describe("CSRF Protection Service", () => {
       const envWithoutKV = { KV_IDEMP: null };
 
       const { token, cookieHeader } = await generateCsrfToken(
-        envWithoutKV,
+        envWithoutKV as any,
         "user-123"
       );
 
@@ -267,7 +267,7 @@ describe("CSRF Protection Service", () => {
         const response = error as Response;
         expect(response.status).toBe(403);
 
-        const body = await response.json();
+        const body: any = await response.json();
         expect(body.success).toBe(false);
         expect(body.error.code).toBe("CSRF_VALIDATION_FAILED");
         expect(body.error.message).toContain("Invalid or missing CSRF token");
@@ -305,7 +305,7 @@ describe("CSRF Protection Service", () => {
 
       // Should not throw
       await expect(
-        invalidateCsrfToken(envWithoutKV, "user-123", "some-token")
+        invalidateCsrfToken(envWithoutKV as any, "user-123", "some-token")
       ).resolves.not.toThrow();
     });
 
@@ -340,7 +340,7 @@ describe("CSRF Protection Service", () => {
       const envWithoutKV = { KV_IDEMP: null };
 
       await expect(
-        clearCsrfTokens(envWithoutKV, "user-123")
+        clearCsrfTokens(envWithoutKV as any, "user-123")
       ).resolves.not.toThrow();
     });
 

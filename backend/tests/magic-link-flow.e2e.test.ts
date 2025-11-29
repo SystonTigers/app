@@ -1,10 +1,9 @@
-import { describe, it, expect, beforeEach, beforeAll } from "vitest";
+import { describe, it, expect, beforeEach, beforeAll, vi } from "vitest";
 import type { ExecutionContext } from "@cloudflare/workers-types";
 import worker from "../src/index";
 
 // Mock email service
 import * as emailLib from "../src/lib/email";
-import { vi } from "vitest";
 
 vi.mock("../src/lib/email", () => ({
   sendMagicLinkEmail: vi.fn(async () => ({
@@ -36,7 +35,7 @@ function createExecutionContext(): ExecutionContext {
   return {
     waitUntil: () => { },
     passThroughOnException: () => { },
-  } as ExecutionContext;
+  } as unknown as ExecutionContext;
 }
 
 function createEnv() {
@@ -60,6 +59,19 @@ function createEnv() {
       }),
     },
     POST_QUEUE: { send: async () => { } },
+  };
+}
+
+describe("Magic Link Flow E2E", () => {
+  let env: any;
+  let ctx: ExecutionContext;
+
+  beforeEach(() => {
+    env = createEnv();
+    ctx = createExecutionContext();
+  });
+
+  it("rejects expired magic link token", async () => {
     // Create an expired magic link token
     const { SignJWT } = await import("jose");
     const now = Math.floor(Date.now() / 1000);
@@ -134,3 +146,4 @@ function createEnv() {
     expect(emailLib.sendMagicLinkEmail).toHaveBeenCalled();
   });
 });
+

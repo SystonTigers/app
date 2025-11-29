@@ -117,7 +117,7 @@ describe("Matches Service", () => {
 
       const mockReq = { tenant: "tenant-123" };
       const response = await getNextFixture(mockReq, mockEnv);
-      const data = await response.json();
+      const data: any = await response.json();
 
       expect(data.fixture).toBeDefined();
       expect(data.fixture.id).toBe("match-1");
@@ -126,7 +126,7 @@ describe("Matches Service", () => {
     it("returns null when no upcoming fixtures exist", async () => {
       const mockReq = { tenant: "tenant-123" };
       const response = await getNextFixture(mockReq, mockEnv);
-      const data = await response.json();
+      const data: any = await response.json();
 
       expect(data.fixture).toBeNull();
     });
@@ -147,7 +147,7 @@ describe("Matches Service", () => {
 
       const mockReq = { tenant: "tenant-123" };
       const response = await getNextFixture(mockReq, mockEnv);
-      const data = await response.json();
+      const data: any = await response.json();
 
       expect(data.fixture).toBeNull();
     });
@@ -167,7 +167,7 @@ describe("Matches Service", () => {
 
       const mockReq = { tenant: "tenant-123" };
       const response = await getNextFixture(mockReq, mockEnv);
-      const data = await response.json();
+      const data: any = await response.json();
 
       expect(data.fixture).toBeNull();
     });
@@ -187,7 +187,7 @@ describe("Matches Service", () => {
 
       const mockReq = { tenant: "tenant-123" };
       const response = await getLeagueTable(mockReq, mockEnv);
-      const data = await response.json();
+      const data: any = await response.json();
 
       expect(data.table.standings.length).toBe(2);
       expect(data.table.standings[0].team).toBe("Team A");
@@ -196,7 +196,7 @@ describe("Matches Service", () => {
     it("returns empty table when not set", async () => {
       const mockReq = { tenant: "tenant-123" };
       const response = await getLeagueTable(mockReq, mockEnv);
-      const data = await response.json();
+      const data: any = await response.json();
 
       expect(data.table.standings).toEqual([]);
       expect(data.table.last_updated).toBeNull();
@@ -210,7 +210,7 @@ describe("Matches Service", () => {
 
       const mockReq = { tenant: "tenant-123" };
       const response = await getLeagueTable(mockReq, mockEnv);
-      const data = await response.json();
+      const data: any = await response.json();
 
       expect(data.table.standings).toEqual([]);
     });
@@ -229,7 +229,7 @@ describe("Matches Service", () => {
       };
 
       const response = await upsertLeagueTable(mockReq, mockEnv);
-      const data = await response.json();
+      const data: any = await response.json();
 
       expect(data.success).toBe(true);
       expect(data.table.standings.length).toBe(2);
@@ -242,7 +242,7 @@ describe("Matches Service", () => {
       const response = await upsertLeagueTable(mockReq, mockEnv);
 
       expect(response.status).toBe(400);
-      const data = await response.json();
+      const data: any = await response.json();
       expect(data.error).toContain("standings array required");
     });
 
@@ -260,7 +260,7 @@ describe("Matches Service", () => {
       };
 
       const response = await upsertLeagueTable(mockReq, mockEnv);
-      const data = await response.json();
+      const data: any = await response.json();
 
       expect(data.table.competition).toBe("Unknown");
       expect(data.table.season).toBe(new Date().getFullYear());
@@ -281,7 +281,7 @@ describe("Matches Service", () => {
       };
 
       const response = await createMatch(mockReq, mockEnv);
-      const data = await response.json();
+      const data: any = await response.json();
 
       expect(data.match_id).toBeDefined();
       expect(data.status).toBe("scheduled");
@@ -300,7 +300,7 @@ describe("Matches Service", () => {
 
       const response = await createMatch(mockReq, mockEnv);
       expect(response.status).toBe(400);
-      const data = await response.json();
+      const data: any = await response.json();
       expect(data.error).toContain("required");
     });
 
@@ -315,7 +315,7 @@ describe("Matches Service", () => {
       };
 
       const response = await createMatch(mockReq, mockEnv);
-      const data = await response.json();
+      const data: any = await response.json();
 
       // Check D1
       const dbMatches = mockDB.get("matches") || [];
@@ -345,7 +345,7 @@ describe("Matches Service", () => {
       };
 
       const response = await getMatch(mockReq, mockEnv);
-      const data = await response.json();
+      const data: any = await response.json();
 
       expect(data.match.match_id).toBe("match-123");
       expect(data.match.home_team).toBe("Team A");
@@ -359,7 +359,7 @@ describe("Matches Service", () => {
 
       const response = await getMatch(mockReq, mockEnv);
       expect(response.status).toBe(404);
-      const data = await response.json();
+      const data: any = await response.json();
       expect(data.error).toContain("not found");
     });
 
@@ -402,7 +402,7 @@ describe("Matches Service", () => {
       };
 
       const response = await updateMatch(mockReq, mockEnv);
-      const data = await response.json();
+      const data: any = await response.json();
 
       expect(data.match.status).toBe("in_progress");
     });
@@ -415,7 +415,7 @@ describe("Matches Service", () => {
       };
 
       const response = await updateMatch(mockReq, mockEnv);
-      const data = await response.json();
+      const data: any = await response.json();
 
       expect(data.match.home_score).toBe(2);
       expect(data.match.away_score).toBe(1);
@@ -472,7 +472,7 @@ describe("Matches Service", () => {
       };
 
       const response = await listFixtures(mockReq, mockEnv);
-      const data = await response.json();
+      const data: any = await response.json();
 
       expect(data.data.length).toBe(20); // Default limit
     });
@@ -484,7 +484,7 @@ describe("Matches Service", () => {
       };
 
       const response = await listFixtures(mockReq, mockEnv);
-      const data = await response.json();
+      const data: any = await response.json();
 
       expect(data.data.length).toBe(10);
     });
@@ -496,7 +496,7 @@ describe("Matches Service", () => {
       };
 
       const response = await listFixtures(mockReq, mockEnv);
-      const data = await response.json();
+      const data: any = await response.json();
 
       // Most recent should be first
       for (let i = 1; i < data.data.length; i++) {
@@ -520,7 +520,7 @@ describe("Matches Service", () => {
       };
 
       const response = await createFixture(mockReq, mockEnv);
-      const data = await response.json();
+      const data: any = await response.json();
 
       expect(data.success).toBe(true);
       expect(data.data.opponent).toBe("Rival Team");
@@ -559,7 +559,7 @@ describe("Matches Service", () => {
       };
 
       const response = await createFixture(mockReq, mockEnv);
-      const data = await response.json();
+      const data: any = await response.json();
 
       expect(data.data.status).toBe("completed");
       expect(data.data.homeScore).toBe(3);
@@ -576,7 +576,7 @@ describe("Matches Service", () => {
       };
 
       const response = await createFixture(mockReq, mockEnv);
-      const data = await response.json();
+      const data: any = await response.json();
 
       expect(data.data.time).toBe("TBC");
       expect(data.data.venue).toBe("TBC");
@@ -603,7 +603,7 @@ describe("Matches Service", () => {
       };
 
       const response = await updateFixture(mockReq, mockEnv);
-      const data = await response.json();
+      const data: any = await response.json();
 
       expect(data.success).toBe(true);
       expect(data.data.status).toBe("completed");
@@ -629,7 +629,7 @@ describe("Matches Service", () => {
       };
 
       const response = await updateFixture(mockReq, mockEnv);
-      const data = await response.json();
+      const data: any = await response.json();
 
       expect(data.data.opponent).toBe("Team A"); // Preserved
       expect(data.data.status).toBe("completed"); // Updated
@@ -655,7 +655,7 @@ describe("Matches Service", () => {
       };
 
       const response = await deleteFixture(mockReq, mockEnv);
-      const data = await response.json();
+      const data: any = await response.json();
 
       expect(data.success).toBe(true);
 
@@ -686,7 +686,7 @@ describe("Matches Service", () => {
         };
 
         const response = await createPlayer(mockReq, mockEnv);
-        const data = await response.json();
+        const data: any = await response.json();
 
         expect(data.success).toBe(true);
         expect(data.data.name).toBe("John Doe");
@@ -721,7 +721,7 @@ describe("Matches Service", () => {
         };
 
         const response = await createPlayer(mockReq, mockEnv);
-        const data = await response.json();
+        const data: any = await response.json();
 
         expect(data.data.goals).toBe(0);
         expect(data.data.assists).toBe(0);
@@ -736,7 +736,7 @@ describe("Matches Service", () => {
         };
 
         const response = await createPlayer(mockReq, mockEnv);
-        const data = await response.json();
+        const data: any = await response.json();
 
         expect(data.data.position).toBe("Forward");
       });
@@ -771,7 +771,7 @@ describe("Matches Service", () => {
         };
 
         const response = await listSquad(mockReq, mockEnv);
-        const data = await response.json();
+        const data: any = await response.json();
 
         expect(data.data.length).toBe(2);
         expect(data.data[0].name).toBe("Player 1");
@@ -784,7 +784,7 @@ describe("Matches Service", () => {
         };
 
         const response = await listSquad(mockReq, mockEnv);
-        const data = await response.json();
+        const data: any = await response.json();
 
         expect(data.data).toEqual([]);
       });
@@ -812,7 +812,7 @@ describe("Matches Service", () => {
         };
 
         const response = await updatePlayer(mockReq, mockEnv);
-        const data = await response.json();
+        const data: any = await response.json();
 
         expect(data.success).toBe(true);
         expect(data.data.goals).toBe(10);
@@ -861,7 +861,7 @@ describe("Matches Service", () => {
         };
 
         const response = await deletePlayer(mockReq, mockEnv);
-        const data = await response.json();
+        const data: any = await response.json();
 
         expect(data.success).toBe(true);
 
@@ -897,7 +897,7 @@ describe("Matches Service", () => {
         };
 
         const response = await createPost(mockReq, mockEnv);
-        const data = await response.json();
+        const data: any = await response.json();
 
         expect(data.success).toBe(true);
         expect(data.data.content).toBe("Great win today! 3-1 victory!");
@@ -922,7 +922,7 @@ describe("Matches Service", () => {
         };
 
         const response = await createPost(mockReq, mockEnv);
-        const data = await response.json();
+        const data: any = await response.json();
 
         expect(data.data.channels).toEqual(["feed"]);
       });
@@ -934,7 +934,7 @@ describe("Matches Service", () => {
         };
 
         const response = await createPost(mockReq, mockEnv);
-        const data = await response.json();
+        const data: any = await response.json();
 
         expect(data.data.media).toEqual([]);
       });
@@ -978,7 +978,7 @@ describe("Matches Service", () => {
         };
 
         const response = await listPosts(mockReq, mockEnv);
-        const data = await response.json();
+        const data: any = await response.json();
 
         expect(data.data.length).toBe(20); // Default limit
         expect(data.total).toBe(50);
@@ -993,7 +993,7 @@ describe("Matches Service", () => {
         };
 
         const response = await listPosts(mockReq, mockEnv);
-        const data = await response.json();
+        const data: any = await response.json();
 
         expect(data.page).toBe(2);
         expect(data.data.length).toBe(20);
@@ -1007,7 +1007,7 @@ describe("Matches Service", () => {
         };
 
         const response = await listPosts(mockReq, mockEnv);
-        const data = await response.json();
+        const data: any = await response.json();
 
         expect(data.data.length).toBe(10);
         expect(data.limit).toBe(10);
@@ -1020,7 +1020,7 @@ describe("Matches Service", () => {
         };
 
         const response = await listPosts(mockReq, mockEnv);
-        const data = await response.json();
+        const data: any = await response.json();
 
         expect(data.data).toEqual([]);
         expect(data.total).toBe(0);
@@ -1052,7 +1052,7 @@ describe("Matches Service", () => {
 
       const mockReq = { tenant: "tenant-123" };
       const response = await getLeagueTable(mockReq, mockEnv);
-      const data = await response.json();
+      const data: any = await response.json();
 
       expect(data.table.standings).toEqual([]);
     });
@@ -1069,7 +1069,7 @@ describe("Matches Service", () => {
       };
 
       const response = await listSquad(mockReq, mockEnv);
-      const data = await response.json();
+      const data: any = await response.json();
 
       expect(data.data).toEqual([]);
     });

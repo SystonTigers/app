@@ -282,4 +282,4 @@ test("rejects invalid login credentials", async () => {
   expect(badJson.success).toBe(false);
   expect(badJson.error.code).toBe("INVALID_CREDENTIALS");
 });
-});
+

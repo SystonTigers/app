@@ -321,7 +321,7 @@ export async function handlePublicTenantRequest(
     try {
         tenant = await resolveTenantRecord(env, tenantSlug);
     } catch (err) {
-        logJSON("error", requestId, { message: "TENANT_RESOLVE_FAIL", tenant: tenantSlug, error: String(err) });
+        logJSON({ level: "error", requestId, msg: "TENANT_RESOLVE_FAIL", tenant: tenantSlug, error: String(err) });
         return json({ success: false, error: { code: "INTERNAL", message: "Failed to resolve tenant" } }, 500, corsHdrs);
     }
 
@@ -480,8 +480,10 @@ export async function handlePublicTenantRequest(
 
         return json({ success: false, error: { code: "NOT_FOUND", message: "Unknown public resource" } }, 404, corsHdrs);
     } catch (err) {
-        logJSON("error", requestId, {
-            message: "PUBLIC_ROUTE_FAIL",
+        logJSON({
+            level: "error",
+            requestId,
+            msg: "PUBLIC_ROUTE_FAIL",
             tenant: tenant.id,
             resource,
             error: String(err),

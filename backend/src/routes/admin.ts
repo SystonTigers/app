@@ -70,7 +70,7 @@ export async function listTenants(req: Request, env: any, requestId: string, cor
 
   } catch (err: any) {
     if (err instanceof Response) throw err;
-    logJSON("error", requestId, { message: "LIST_TENANTS_ERROR", error: err.message });
+    logJSON({ level: "error", requestId, msg: "LIST_TENANTS_ERROR", error: err.message });
     return json({ success: false, error: { code: "SERVER_ERROR", message: err.message } }, 500, corsHdrs);
   }
 }
@@ -122,7 +122,7 @@ export async function getTenant(req: Request, env: any, requestId: string, corsH
 
   } catch (err: any) {
     if (err instanceof Response) throw err;
-    logJSON("error", requestId, { message: "GET_TENANT_ERROR", error: err.message });
+    logJSON({ level: "error", requestId, msg: "GET_TENANT_ERROR", error: err.message });
     return json({ success: false, error: { code: "SERVER_ERROR", message: err.message } }, 500, corsHdrs);
   }
 }
@@ -180,7 +180,7 @@ export async function updateTenant(req: Request, env: any, requestId: string, co
         error: { code: "INVALID_REQUEST", message: "Validation failed", issues: err.issues }
       }, 400, corsHdrs);
     }
-    logJSON("error", requestId, { message: "UPDATE_TENANT_ERROR", error: err.message });
+    logJSON({ level: "error", requestId, msg: "UPDATE_TENANT_ERROR", error: err.message });
     return json({ success: false, error: { code: "SERVER_ERROR", message: err.message } }, 500, corsHdrs);
   }
 }
@@ -203,7 +203,7 @@ export async function listPromoCodes(req: Request, env: any, requestId: string, 
 
   } catch (err: any) {
     if (err instanceof Response) throw err;
-    logJSON("error", requestId, { message: "LIST_PROMO_CODES_ERROR", error: err.message });
+    logJSON({ level: "error", requestId, msg: "LIST_PROMO_CODES_ERROR", error: err.message });
     return json({ success: false, error: { code: "SERVER_ERROR", message: err.message } }, 500, corsHdrs);
   }
 }
@@ -255,7 +255,7 @@ export async function createPromoCode(req: Request, env: any, requestId: string,
         error: { code: "INVALID_REQUEST", message: "Validation failed", issues: err.issues }
       }, 400, corsHdrs);
     }
-    logJSON("error", requestId, { message: "CREATE_PROMO_CODE_ERROR", error: err.message });
+    logJSON({ level: "error", requestId, msg: "CREATE_PROMO_CODE_ERROR", error: err.message });
     return json({ success: false, error: { code: "SERVER_ERROR", message: err.message } }, 500, corsHdrs);
   }
 }
@@ -278,12 +278,12 @@ export async function deactivateTenant(req: Request, env: any, requestId: string
 
     await env.DB.prepare(`UPDATE tenants SET status = 'deactivated', updated_at = unixepoch() WHERE id = ?`).bind(tenantId).run();
 
-    logJSON("info", requestId, { message: "TENANT_DEACTIVATED", tenantId, slug: current.slug });
+    logJSON({ level: "info", requestId, msg: "TENANT_DEACTIVATED", tenantId, slug: current.slug });
     return json({ success: true }, 200, corsHdrs);
 
   } catch (err: any) {
     if (err instanceof Response) throw err;
-    logJSON("error", requestId, { message: "DEACTIVATE_TENANT_ERROR", error: err.message });
+    logJSON({ level: "error", requestId, msg: "DEACTIVATE_TENANT_ERROR", error: err.message });
     return json({ success: false, error: { code: "SERVER_ERROR", message: err.message } }, 500, corsHdrs);
   }
 }
@@ -315,12 +315,12 @@ export async function deleteTenant(req: Request, env: any, requestId: string, co
       env.DB.prepare(`DELETE FROM tenants WHERE id = ?`).bind(tenantId),
     ]);
 
-    logJSON("info", requestId, { message: "TENANT_DELETED", tenantId, slug: current.slug });
+    logJSON({ level: "info", requestId, msg: "TENANT_DELETED", tenantId, slug: current.slug });
     return json({ success: true }, 200, corsHdrs);
 
   } catch (err: any) {
     if (err instanceof Response) throw err;
-    logJSON("error", requestId, { message: "DELETE_TENANT_ERROR", error: err.message });
+    logJSON({ level: "error", requestId, msg: "DELETE_TENANT_ERROR", error: err.message });
     return json({ success: false, error: { code: "SERVER_ERROR", message: err.message } }, 500, corsHdrs);
   }
 }
@@ -339,12 +339,12 @@ export async function deactivatePromoCode(req: Request, env: any, requestId: str
       UPDATE promo_codes SET active = 0 WHERE code = ?
     `).bind(code).run();
 
-    logJSON("info", requestId, { message: "PROMO_CODE_DEACTIVATED", code });
+    logJSON({ level: "info", requestId, msg: "PROMO_CODE_DEACTIVATED", code });
     return json({ success: true }, 200, corsHdrs);
 
   } catch (err: any) {
     if (err instanceof Response) throw err;
-    logJSON("error", requestId, { message: "DEACTIVATE_PROMO_CODE_ERROR", error: err.message });
+    logJSON({ level: "error", requestId, msg: "DEACTIVATE_PROMO_CODE_ERROR", error: err.message });
     return json({ success: false, error: { code: "SERVER_ERROR", message: err.message } }, 500, corsHdrs);
   }
 }
@@ -389,7 +389,7 @@ export async function getAdminStats(req: Request, env: any, requestId: string, c
 
   } catch (err: any) {
     if (err instanceof Response) throw err;
-    logJSON("error", requestId, { message: "GET_ADMIN_STATS_ERROR", error: err.message });
+    logJSON({ level: "error", requestId, msg: "GET_ADMIN_STATS_ERROR", error: err.message });
     return json({ success: false, error: { code: "SERVER_ERROR", message: err.message } }, 500, corsHdrs);
   }
 }
@@ -467,7 +467,7 @@ export async function listUsers(req: Request, env: any, requestId: string, corsH
 
   } catch (err: any) {
     if (err instanceof Response) throw err;
-    logJSON("error", requestId, { message: "LIST_USERS_ERROR", error: err.message });
+    logJSON({ level: "error", requestId, msg: "LIST_USERS_ERROR", error: err.message });
     return json({ success: false, error: { code: "SERVER_ERROR", message: err.message } }, 500, corsHdrs);
   }
 }
@@ -536,8 +536,10 @@ export async function upsertPromoCode(req: Request, env: any, requestId: string,
       data.notes || null
     ).run();
 
-    logJSON("info", requestId, {
-      message: existing ? "PROMO_CODE_UPDATED" : "PROMO_CODE_CREATED",
+    logJSON({
+      level: "info",
+      requestId,
+      msg: existing ? "PROMO_CODE_UPDATED" : "PROMO_CODE_CREATED",
       code: data.code,
       plan: data.plan,
       lifetime: data.lifetime
@@ -568,7 +570,7 @@ export async function upsertPromoCode(req: Request, env: any, requestId: string,
         error: { code: "INVALID_REQUEST", message: "Validation failed", issues: err.issues }
       }, 400, corsHdrs);
     }
-    logJSON("error", requestId, { message: "UPSERT_PROMO_CODE_ERROR", error: err.message });
+    logJSON({ level: "error", requestId, msg: "UPSERT_PROMO_CODE_ERROR", error: err.message });
     return json({ success: false, error: { code: "SERVER_ERROR", message: err.message } }, 500, corsHdrs);
   }
 }

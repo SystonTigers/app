@@ -114,7 +114,7 @@ export function registerTenantRoutes(router: any) {
     };
 
     try {
-      const result = await gasCall(env, "provision", payload);
+      const result: any = await gasCall(env, "provision", payload);
       const stored = await putTenant(env, {
         ...base,
         spreadsheetId: result.spreadsheetId,
@@ -127,7 +127,7 @@ export function registerTenantRoutes(router: any) {
         msg: "tenant_provision_complete",
         requestId,
         tenantId: stored.tenantId,
-        status: stored.status
+        tenantStatus: stored.status
       });
 
       return new Response(
@@ -195,7 +195,7 @@ export function registerTenantRoutes(router: any) {
     }
 
     try {
-      const result = await gasCall(env, "verify", { spreadsheetId: tenant.spreadsheetId });
+      const result: any = await gasCall(env, "verify", { spreadsheetId: tenant.spreadsheetId });
       const stored = await putTenant(env, {
         ...tenant,
         status: result.ok ? "READY" : "ERROR",
@@ -207,7 +207,7 @@ export function registerTenantRoutes(router: any) {
         msg: "tenant_verify_complete",
         requestId,
         tenantId: stored.tenantId,
-        status: stored.status
+        tenantStatus: stored.status
       });
 
       return new Response(

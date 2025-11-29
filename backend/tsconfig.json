@@ -6,7 +6,12 @@
     "strict": true,
     "esModuleInterop": true,
     "types": [
-      "vitest/globals"
+      "vitest/globals",
+      "@cloudflare/workers-types",
+      "node"
     ]
-  }
+  },
+  "exclude": [
+    "INTEGRATION_SNIPPET.ts"
+  ]
 }

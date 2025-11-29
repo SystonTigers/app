@@ -63,7 +63,7 @@ export async function createEvent(req: Request, env: any, requestId: string, cor
 
         const event = await getEventWithCounts(env, id);
 
-        logJSON("info", requestId, { message: "EVENT_CREATED", eventId: id, tenantId: claims.tenantId });
+        logJSON({ level: "info", requestId, msg: "EVENT_CREATED", eventId: id, tenantId: claims.tenantId });
 
         return json({ success: true, data: { event } }, 201, corsHdrs);
     } catch (err: any) {
@@ -71,7 +71,7 @@ export async function createEvent(req: Request, env: any, requestId: string, cor
         if (err instanceof z.ZodError) {
             return json({ success: false, error: { code: "INVALID_REQUEST", issues: err.issues } }, 400, corsHdrs);
         }
-        logJSON("error", requestId, { message: "CREATE_EVENT_ERROR", error: err.message });
+        logJSON({ level: "error", requestId, msg: "CREATE_EVENT_ERROR", error: err.message });
         return json({ success: false, error: { code: "SERVER_ERROR", message: err.message } }, 500, corsHdrs);
     }
 }
@@ -89,7 +89,7 @@ export async function getEvent(req: Request, env: any, requestId: string, corsHd
         return json({ success: true, data: { event } }, 200, corsHdrs);
     } catch (err: any) {
         if (err instanceof Response) throw err;
-        logJSON("error", requestId, { message: "GET_EVENT_ERROR", error: err.message });
+        logJSON({ level: "error", requestId, msg: "GET_EVENT_ERROR", error: err.message });
         return json({ success: false, error: { code: "SERVER_ERROR", message: err.message } }, 500, corsHdrs);
     }
 }
@@ -125,7 +125,7 @@ export async function rsvpEvent(req: Request, env: any, requestId: string, corsH
             now
         ).run();
 
-        logJSON("info", requestId, { message: "RSVP_UPDATED", eventId: id, userId: claims.sub, status: data.status });
+        logJSON({ level: "info", requestId, msg: "RSVP_UPDATED", eventId: id, userId: claims.sub, rsvpStatus: data.status });
 
         return json({ success: true }, 200, corsHdrs);
     } catch (err: any) {
@@ -133,7 +133,7 @@ export async function rsvpEvent(req: Request, env: any, requestId: string, corsH
         if (err instanceof z.ZodError) {
             return json({ success: false, error: { code: "INVALID_REQUEST", issues: err.issues } }, 400, corsHdrs);
         }
-        logJSON("error", requestId, { message: "RSVP_EVENT_ERROR", error: err.message });
+        logJSON({ level: "error", requestId, msg: "RSVP_EVENT_ERROR", error: err.message });
         return json({ success: false, error: { code: "SERVER_ERROR", message: err.message } }, 500, corsHdrs);
     }
 }
@@ -148,7 +148,7 @@ export async function getEventRsvps(req: Request, env: any, requestId: string, c
         return json({ success: true, data: { rsvps: rsvps.results } }, 200, corsHdrs);
     } catch (err: any) {
         if (err instanceof Response) throw err;
-        logJSON("error", requestId, { message: "GET_RSVPS_ERROR", error: err.message });
+        logJSON({ level: "error", requestId, msg: "GET_RSVPS_ERROR", error: err.message });
         return json({ success: false, error: { code: "SERVER_ERROR", message: err.message } }, 500, corsHdrs);
     }
 }
@@ -160,12 +160,12 @@ export async function cancelRsvp(req: Request, env: any, requestId: string, cors
 
         await env.DB.prepare("DELETE FROM event_rsvps WHERE event_id = ? AND user_id = ?").bind(id, claims.sub).run();
 
-        logJSON("info", requestId, { message: "RSVP_CANCELLED", eventId: id, userId: claims.sub });
+        logJSON({ level: "info", requestId, msg: "RSVP_CANCELLED", eventId: id, userId: claims.sub });
 
         return json({ success: true }, 200, corsHdrs);
     } catch (err: any) {
         if (err instanceof Response) throw err;
-        logJSON("error", requestId, { message: "CANCEL_RSVP_ERROR", error: err.message });
+        logJSON({ level: "error", requestId, msg: "CANCEL_RSVP_ERROR", error: err.message });
         return json({ success: false, error: { code: "SERVER_ERROR", message: err.message } }, 500, corsHdrs);
     }
 }

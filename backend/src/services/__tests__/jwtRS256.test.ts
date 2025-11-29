@@ -322,7 +322,7 @@ yT5PFDPjNnJUh0IDAQyT5PFDPjNnJUh0IDAQyT5PFDPjNnJUh0IDAQAB
       const token = await signRS256JWT(payload, testConfig, 60);
       const claims = await verifyRS256JWT(token, testConfig);
 
-      expect(claims.userId).toBe("user-456");
+      expect((claims as any).userId).toBe("user-456");
     });
   });
 
@@ -350,7 +350,7 @@ yT5PFDPjNnJUh0IDAQyT5PFDPjNnJUh0IDAQyT5PFDPjNnJUh0IDAQAB
       const claims = await verifyRS256JWT(token, testConfig);
 
       expect(claims.sub).toBe("admin-456");
-      expect(claims.userId).toBe("admin-456");
+      expect((claims as any).userId).toBe("admin-456");
     });
 
     it("generates sub from tenant when user_id not provided", async () => {
@@ -401,7 +401,7 @@ yT5PFDPjNnJUh0IDAQyT5PFDPjNnJUh0IDAQyT5PFDPjNnJUh0IDAQAB
       const claims = await verifyRS256JWT(token, testConfig);
 
       expect(claims.sub).toBe("platform-admin-123");
-      expect(claims.userId).toBe("platform-admin-123");
+      expect((claims as any).userId).toBe("platform-admin-123");
     });
 
     it("uses platform-admin as sub when user_id not provided", async () => {

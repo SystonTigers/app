@@ -100,7 +100,7 @@ describe("idempotency service", () => {
       expect(first.hit).toBe(false);
 
       // Process and cache result using the store function
-      await first.store({
+      await first.store!({
         status: 201,
         body: { success: true, id: "created-123" },
       });

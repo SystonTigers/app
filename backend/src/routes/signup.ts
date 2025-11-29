@@ -37,7 +37,7 @@ async function queueProvisioning(env: any, tenantId: string): Promise<void> {
     // Get tenant plan
     const tenant = await env.DB.prepare(
       `SELECT id, plan FROM tenants WHERE id = ?`
-    ).bind(tenantId).first<{ id: string; plan: string }>();
+    ).bind(tenantId).first() as { id: string; plan: string } | null;
 
     if (!tenant) {
       console.error(`[Signup] Tenant not found: ${tenantId}`);
@@ -66,7 +66,7 @@ async function queueProvisioning(env: any, tenantId: string): Promise<void> {
         tenantId: tenant.id,
         plan: tenant.plan,
       }),
-    })).catch(err => {
+    })).catch((err: any) => {
       console.error(`[Signup] Provisioning run failed for ${tenantId}:`, err);
     });
 
@@ -156,8 +156,10 @@ export async function signupStart(req: Request, env: any, requestId: string, cor
         comped = 1;
       }
 
-      logJSON("info", requestId, {
-        message: "PROMO_APPLIED",
+      logJSON({
+        level: "info",
+        requestId,
+        msg: "PROMO_APPLIED",
         code: promo.code,
         discount,
         finalPlan,
@@ -233,7 +235,7 @@ export async function signupStart(req: Request, env: any, requestId: string, cor
         error: { code: "INVALID_REQUEST", message: "Validation failed", issues: err.issues }
       }, 400, corsHdrs);
     }
-    logJSON("error", requestId, { message: "SIGNUP_START_ERROR", error: err.message });
+    logJSON({ level: "error", requestId, msg: "SIGNUP_START_ERROR", error: err.message });
     return json({ success: false, error: { code: "SIGNUP_FAILED", message: err.message } }, 500, corsHdrs);
   }
 }
@@ -242,7 +244,7 @@ export async function signupStart(req: Request, env: any, requestId: string, cor
 export async function signupBrand(req: Request, env: any, requestId: string, corsHdrs: Headers): Promise<Response> {
   try {
     const claims = await requireJWT(req, env);
-    const tenantId = claims.tenant_id || claims.tenantId;
+    const tenantId = (claims as any).tenant_id || claims.tenantId;
 
     const body = await req.json().catch(() => ({}));
     const data = parse(BrandSchema, body);
@@ -264,7 +266,7 @@ export async function signupBrand(req: Request, env: any, requestId: string, cor
         error: { code: "INVALID_REQUEST", message: "Validation failed", issues: err.issues }
       }, 400, corsHdrs);
     }
-    logJSON("error", requestId, { message: "BRAND_UPDATE_ERROR", error: err.message });
+    logJSON({ level: "error", requestId, msg: "BRAND_UPDATE_ERROR", error: err.message });
     return json({ success: false, error: { code: "BRAND_UPDATE_FAILED", message: err.message } }, 500, corsHdrs);
   }
 }
@@ -273,7 +275,7 @@ export async function signupBrand(req: Request, env: any, requestId: string, cor
 export async function signupStarterMake(req: Request, env: any, requestId: string, corsHdrs: Headers): Promise<Response> {
   try {
     const claims = await requireJWT(req, env);
-    const tenantId = claims.tenant_id || claims.tenantId;
+    const tenantId = (claims as any).tenant_id || claims.tenantId;
 
     // Verify tenant is on Starter plan
     const tenant = await env.DB.prepare("SELECT plan FROM tenants WHERE id = ?").bind(tenantId).first();
@@ -321,7 +323,7 @@ export async function signupStarterMake(req: Request, env: any, requestId: strin
         error: { code: "INVALID_REQUEST", message: "Validation failed", issues: err.issues }
       }, 400, corsHdrs);
     }
-    logJSON("error", requestId, { message: "MAKE_SETUP_ERROR", error: err.message });
+    logJSON({ level: "error", requestId, msg: "MAKE_SETUP_ERROR", error: err.message });
     return json({ success: false, error: { code: "MAKE_SETUP_FAILED", message: err.message } }, 500, corsHdrs);
   }
 }
@@ -330,7 +332,7 @@ export async function signupStarterMake(req: Request, env: any, requestId: strin
 export async function signupProConfirm(req: Request, env: any, requestId: string, corsHdrs: Headers): Promise<Response> {
   try {
     const claims = await requireJWT(req, env);
-    const tenantId = claims.tenant_id || claims.tenantId;
+    const tenantId = (claims as any).tenant_id || claims.tenantId;
 
     // Verify tenant is on Pro plan
     const tenant = await env.DB.prepare("SELECT plan FROM tenants WHERE id = ?").bind(tenantId).first();
@@ -358,7 +360,7 @@ export async function signupProConfirm(req: Request, env: any, requestId: string
 
   } catch (err: any) {
     if (err instanceof Response) throw err;
-    logJSON("error", requestId, { message: "PRO_CONFIRM_ERROR", error: err.message });
+    logJSON({ level: "error", requestId, msg: "PRO_CONFIRM_ERROR", error: err.message });
     return json({ success: false, error: { code: "PRO_CONFIRM_FAILED", message: err.message } }, 500, corsHdrs);
   }
 }
@@ -369,8 +371,10 @@ export async function signupVerifyPromo(req: Request, env: any, requestId: strin
     const body = await req.json().catch(() => ({}));
     const data = parse(VerifyPromoSchema, body);
 
-    logJSON("info", requestId, {
-      message: "VERIFY_PROMO_REQUEST",
+    logJSON({
+      level: "info",
+      requestId,
+      msg: "VERIFY_PROMO_REQUEST",
       code: data.promoCode,
       tenantSlug: data.tenantSlug
     });
@@ -384,7 +388,7 @@ export async function signupVerifyPromo(req: Request, env: any, requestId: strin
     `).bind(data.promoCode).first();
 
     if (!promo) {
-      logJSON("info", requestId, { message: "PROMO_NOT_FOUND", code: data.promoCode });
+      logJSON({ level: "info", requestId, msg: "PROMO_NOT_FOUND", code: data.promoCode });
       return json({
         success: false,
         error: { code: "INVALID_PROMO", message: "Invalid promo code" }
@@ -393,7 +397,7 @@ export async function signupVerifyPromo(req: Request, env: any, requestId: strin
 
     // Check if promo is active
     if (!promo.active) {
-      logJSON("info", requestId, { message: "PROMO_INACTIVE", code: data.promoCode });
+      logJSON({ level: "info", requestId, msg: "PROMO_INACTIVE", code: data.promoCode });
       return json({
         success: false,
         error: { code: "PROMO_INACTIVE", message: "Promo code is not active" }
@@ -405,8 +409,10 @@ export async function signupVerifyPromo(req: Request, env: any, requestId: strin
     const nowUnix = Math.floor(Date.now() / 1000);
 
     if (promo.starts_at && promo.starts_at > now) {
-      logJSON("info", requestId, {
-        message: "PROMO_NOT_STARTED",
+      logJSON({
+        level: "info",
+        requestId,
+        msg: "PROMO_NOT_STARTED",
         code: data.promoCode,
         startsAt: promo.starts_at
       });
@@ -418,8 +424,10 @@ export async function signupVerifyPromo(req: Request, env: any, requestId: strin
 
     if (promo.valid_until && promo.valid_until < nowUnix) {
       const expiryDate = new Date(promo.valid_until * 1000).toISOString();
-      logJSON("info", requestId, {
-        message: "PROMO_EXPIRED",
+      logJSON({
+        level: "info",
+        requestId,
+        msg: "PROMO_EXPIRED",
         code: data.promoCode,
         expiryDate
       });
@@ -437,8 +445,10 @@ export async function signupVerifyPromo(req: Request, env: any, requestId: strin
       const reqSlug = data.tenantSlug.trim().toLowerCase();
 
       if (!allowed.includes(reqSlug)) {
-        logJSON("info", requestId, {
-          message: "PROMO_NOT_ALLOWED_FOR_TENANT",
+        logJSON({
+          level: "info",
+          requestId,
+          msg: "PROMO_NOT_ALLOWED_FOR_TENANT",
           code: data.promoCode,
           tenantSlug: reqSlug,
           whitelist: allowed
@@ -452,8 +462,10 @@ export async function signupVerifyPromo(req: Request, env: any, requestId: strin
 
     // Check if promo has reached max uses
     if (promo.max_uses && promo.used_count >= promo.max_uses) {
-      logJSON("info", requestId, {
-        message: "PROMO_MAXED",
+      logJSON({
+        level: "info",
+        requestId,
+        msg: "PROMO_MAXED",
         code: data.promoCode,
         maxUses: promo.max_uses,
         usedCount: promo.used_count
@@ -465,8 +477,10 @@ export async function signupVerifyPromo(req: Request, env: any, requestId: strin
     }
 
     // Promo is valid
-    logJSON("info", requestId, {
-      message: "PROMO_VALID",
+    logJSON({
+      level: "info",
+      requestId,
+      msg: "PROMO_VALID",
       code: promo.code,
       discount: promo.discount_percent,
       plan: promo.plan,
@@ -498,7 +512,7 @@ export async function signupVerifyPromo(req: Request, env: any, requestId: strin
       }, err.status, corsHdrs);
     }
     if (err instanceof Response) throw err;
-    logJSON("error", requestId, { message: "VERIFY_PROMO_ERROR", error: err.message });
+    logJSON({ level: "error", requestId, msg: "VERIFY_PROMO_ERROR", error: err.message });
     return json({ success: false, error: { code: "VERIFY_PROMO_FAILED", message: err.message } }, 500, corsHdrs);
   }
 }

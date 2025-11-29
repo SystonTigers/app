@@ -448,7 +448,7 @@ describe("Auth Service", () => {
         sub: "user-123",
       };
 
-      expect(hasRole(user, "admin")).toBe(false);
+      expect(hasRole(user as any, "admin")).toBe(false);
     });
 
     it("returns false for empty roles array", () => {

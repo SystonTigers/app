@@ -49,7 +49,7 @@ describe("Magic Link Authentication", () => {
       const response = await handleMagicStart(request, mockEnv, corsHdrs);
 
       expect(response.status).toBe(200);
-      const data = await response.json();
+      const data: any = await response.json();
       expect(data.success).toBe(true);
     });
 
@@ -85,7 +85,7 @@ describe("Magic Link Authentication", () => {
       const response = await handleMagicStart(request, mockEnv, corsHdrs);
 
       expect(response.status).toBe(200);
-      const data = await response.json();
+      const data: any = await response.json();
       expect(data.success).toBe(true);
     });
 
@@ -103,7 +103,7 @@ describe("Magic Link Authentication", () => {
       const response = await handleMagicStart(request, mockEnv, corsHdrs);
 
       expect(response.status).toBe(400);
-      const data = await response.json();
+      const data: any = await response.json();
       expect(data.success).toBe(false);
       expect(data.error).toBe("email required");
     });
@@ -123,7 +123,7 @@ describe("Magic Link Authentication", () => {
       const response = await handleMagicStart(request, mockEnv, corsHdrs);
 
       expect(response.status).toBe(400);
-      const data = await response.json();
+      const data: any = await response.json();
       expect(data.success).toBe(false);
     });
 
@@ -170,7 +170,7 @@ describe("Magic Link Authentication", () => {
       const response = await handleMagicStart(request, mockEnv, corsHdrs);
 
       expect(response.status).toBe(200);
-      const data = await response.json();
+      const data: any = await response.json();
       expect(data.success).toBe(true);
     });
 
@@ -215,7 +215,7 @@ describe("Magic Link Authentication", () => {
       const response = await handleMagicStart(request, mockEnv, corsHdrs);
 
       expect(response.status).toBe(200);
-      const data = await response.json();
+      const data: any = await response.json();
       expect(data.success).toBe(true);
     });
   });
@@ -248,7 +248,7 @@ describe("Magic Link Authentication", () => {
       const response = await handleMagicVerify(request, mockEnv, corsHdrs);
 
       expect(response.status).toBe(200);
-      const data = await response.json();
+      const data: any = await response.json();
       expect(data.success).toBe(true);
       expect(data.tenantId).toBe("tenant-123");
     });
@@ -323,7 +323,7 @@ describe("Magic Link Authentication", () => {
       const response = await handleMagicVerify(request, mockEnv, corsHdrs);
 
       expect(response.status).toBe(400);
-      const data = await response.json();
+      const data: any = await response.json();
       expect(data.success).toBe(false);
       expect(data.error).toBe("token required");
     });
@@ -421,7 +421,7 @@ describe("Magic Link Authentication", () => {
 
       const response = await handleMagicVerify(request, mockEnv, corsHdrs);
 
-      const data = await response.json();
+      const data: any = await response.json();
       expect(data.tenantId).toBe("specific-tenant-456");
     });
   });

@@ -106,7 +106,7 @@ describe("Security Monitoring Service", () => {
       };
 
       await expect(
-        logSecurityEvent(envWithoutKV, event)
+        logSecurityEvent(envWithoutKV as any, event)
       ).resolves.not.toThrow();
     });
 
@@ -258,7 +258,7 @@ describe("Security Monitoring Service", () => {
 
     it("returns empty array when KV unavailable", async () => {
       const envWithoutKV = { KV_IDEMP: null };
-      const metrics = await getSecurityMetrics(envWithoutKV, 24);
+      const metrics = await getSecurityMetrics(envWithoutKV as any, 24);
 
       expect(metrics).toEqual([]);
     });
@@ -418,7 +418,7 @@ describe("Security Monitoring Service", () => {
 
     it("returns empty array when KV unavailable", async () => {
       const envWithoutKV = { KV_IDEMP: null };
-      const events = await getRecentSecurityEvents(envWithoutKV, 100);
+      const events = await getRecentSecurityEvents(envWithoutKV as any, 100);
 
       expect(events).toEqual([]);
     });

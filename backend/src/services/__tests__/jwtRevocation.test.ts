@@ -102,7 +102,7 @@ describe("JWT Revocation Service", () => {
 
       // Should not throw
       await expect(
-        revokeToken(envWithoutKV, token)
+        revokeToken(envWithoutKV as any, token)
       ).resolves.not.toThrow();
     });
 
@@ -192,7 +192,7 @@ describe("JWT Revocation Service", () => {
       const envWithoutKV = { KV_IDEMP: null };
 
       await expect(
-        revokeAllUserTokens(envWithoutKV, "tenant-123", "user-456")
+        revokeAllUserTokens(envWithoutKV as any, "tenant-123", "user-456")
       ).resolves.not.toThrow();
     });
   });
@@ -258,7 +258,7 @@ describe("JWT Revocation Service", () => {
       const envWithoutKV = { KV_IDEMP: null };
 
       await expect(
-        revokeAllTenantTokens(envWithoutKV, "tenant-123")
+        revokeAllTenantTokens(envWithoutKV as any, "tenant-123")
       ).resolves.not.toThrow();
     });
   });
@@ -358,7 +358,7 @@ describe("JWT Revocation Service", () => {
         tenantId: "tenant-123",
       };
 
-      const revoked = await isTokenRevoked(envWithoutKV, token);
+      const revoked = await isTokenRevoked(envWithoutKV as any, token);
       expect(revoked).toBe(false);
     });
 
@@ -387,7 +387,7 @@ describe("JWT Revocation Service", () => {
         tenantId: "tenant-123",
       };
 
-      const revoked = await isTokenRevoked(badEnv, token);
+      const revoked = await isTokenRevoked(badEnv as any, token);
       expect(revoked).toBe(false);
     });
   });
@@ -479,7 +479,7 @@ describe("JWT Revocation Service", () => {
 
     it("returns empty array when KV unavailable", async () => {
       const envWithoutKV = { KV_IDEMP: null };
-      const tokens = await listRevokedTokens(envWithoutKV, "tenant-123");
+      const tokens = await listRevokedTokens(envWithoutKV as any, "tenant-123");
       expect(tokens).toEqual([]);
     });
 
@@ -492,7 +492,7 @@ describe("JWT Revocation Service", () => {
         },
       };
 
-      const tokens = await listRevokedTokens(badEnv, "tenant-123");
+      const tokens = await listRevokedTokens(badEnv as any, "tenant-123");
       expect(tokens).toEqual([]);
     });
   });

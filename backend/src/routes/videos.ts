@@ -31,7 +31,7 @@ export async function handleVideoUpload(
   // Require JWT authentication
   const claims = await requireJWT(req, env);
   const tenant = claims.tenantId;
-  const userId = claims.userId || claims.sub || "anonymous";
+  const userId = (claims as any).userId || claims.sub || "anonymous";
 
   if (!tenant) {
     return json(
