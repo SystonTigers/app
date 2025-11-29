@@ -60,7 +60,7 @@ export async function requireJWT(req: Request, env: any): Promise<Claims> {
     // Check if token has been revoked
     const revoked = await isTokenRevoked(env, {
       jti: (claims as any).jti,
-      sub: claims.sub,
+      sub: claims.sub || "",
       tenantId: claims.tenantId,
     });
 
@@ -91,7 +91,7 @@ export async function requireAdmin(req: Request, env: any): Promise<Claims> {
     // Check if token has been revoked
     const revoked = await isTokenRevoked(env, {
       jti: (claims as any).jti,
-      sub: claims.sub,
+      sub: claims.sub || "",
       tenantId: claims.tenantId,
     });
 

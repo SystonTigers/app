@@ -1,16 +1,6 @@
-import { Hono } from 'hono';
-import type { Context } from 'hono';
 import { z } from 'zod';
 import { requireJWT } from '../services/auth';
-
-type Env = {
-  DB: D1Database;
-  JWT_SECRET?: string;
-  JWT_ISSUER?: string;
-  JWT_AUDIENCE?: string;
-};
-
-const app = new Hono<{ Bindings: Env }>();
+import { json } from '../services/util';
 
 // Zod validation schemas
 const FixtureSyncSchema = z.object({
@@ -40,22 +30,21 @@ const ResultSchema = z.object({
  * Receives fixture data from consolidator and stores in D1
  * SECURITY: Requires JWT authentication (admin or service token)
  */
-app.post('/sync', async (c: Context) => {
+export async function handleFixtureSync(req: Request, env: any): Promise<Response> {
   try {
     // Require JWT authentication
-    const request = c.req.raw;
-    await requireJWT(request, c.env);
+    await requireJWT(req, env);
 
-    const body = await c.req.json();
+    const body = await req.json();
     const validated = FixtureSyncSchema.parse(body);
     const { fixtures } = validated;
 
     if (!Array.isArray(fixtures)) {
-      return c.json({ error: 'Invalid fixtures data' }, 400);
+      return json({ error: 'Invalid fixtures data' }, 400);
     }
 
     let synced = 0;
-    const db = c.env.DB as D1Database;
+    const db = env.DB as D1Database;
 
     for (const fixture of fixtures) {
       try {
@@ -96,32 +85,31 @@ app.post('/sync', async (c: Context) => {
       }
     }
 
-    return c.json({
+    return json({
       success: true,
       synced
     });
 
   } catch (err) {
     console.error('Fixture sync error:', err);
-    return c.json({
+    return json({
       error: 'Failed to sync fixtures',
       message: err instanceof Error ? err.message : 'Unknown error'
     }, 500);
   }
-});
+}
 
 /**
  * GET /upcoming - Get upcoming fixtures
  * Returns next 10 scheduled fixtures for mobile app
  * SECURITY: Requires JWT authentication
  */
-app.get('/upcoming', async (c: Context) => {
+export async function handleGetUpcomingFixtures(req: Request, env: any): Promise<Response> {
   try {
     // Require JWT authentication
-    const request = c.req.raw;
-    await requireJWT(request, c.env);
+    await requireJWT(req, env);
 
-    const db = c.env.DB as D1Database;
+    const db = env.DB as D1Database;
 
     const result = await db.prepare(`
       SELECT
@@ -140,31 +128,31 @@ app.get('/upcoming', async (c: Context) => {
       LIMIT 10
     `).all();
 
-    return c.json(result.results || []);
+    return json(result.results || []);
 
   } catch (err) {
     console.error('Get upcoming fixtures error:', err);
-    return c.json({
+    return json({
       error: 'Failed to fetch fixtures',
       message: err instanceof Error ? err.message : 'Unknown error'
     }, 500);
   }
-});
+}
 
 /**
  * GET /all - Get all fixtures (upcoming and past)
  * Optional query params: status, limit
  * SECURITY: Requires JWT authentication
  */
-app.get('/all', async (c: Context) => {
+export async function handleGetAllFixtures(req: Request, env: any): Promise<Response> {
   try {
     // Require JWT authentication
-    const request = c.req.raw;
-    await requireJWT(request, c.env);
+    await requireJWT(req, env);
 
-    const status = c.req.query('status');
-    const limit = parseInt(c.req.query('limit') || '50');
-    const db = c.env.DB as D1Database;
+    const url = new URL(req.url);
+    const status = url.searchParams.get('status');
+    const limit = parseInt(url.searchParams.get('limit') || '50');
+    const db = env.DB as D1Database;
 
     let query = `
       SELECT
@@ -191,30 +179,30 @@ app.get('/all', async (c: Context) => {
 
     const result = await db.prepare(query).bind(...params).all();
 
-    return c.json(result.results || []);
+    return json(result.results || []);
 
   } catch (err) {
     console.error('Get all fixtures error:', err);
-    return c.json({
+    return json({
       error: 'Failed to fetch fixtures',
       message: err instanceof Error ? err.message : 'Unknown error'
     }, 500);
   }
-});
+}
 
 /**
  * GET /results - Get recent match results
  * Returns last 10 completed matches
  * SECURITY: Requires JWT authentication
  */
-app.get('/results', async (c: Context) => {
+export async function handleGetResults(req: Request, env: any): Promise<Response> {
   try {
     // Require JWT authentication
-    const request = c.req.raw;
-    await requireJWT(request, c.env);
+    await requireJWT(req, env);
 
-    const limit = parseInt(c.req.query('limit') || '10');
-    const db = c.env.DB as D1Database;
+    const url = new URL(req.url);
+    const limit = parseInt(url.searchParams.get('limit') || '10');
+    const db = env.DB as D1Database;
 
     const result = await db.prepare(`
       SELECT
@@ -231,31 +219,30 @@ app.get('/results', async (c: Context) => {
       LIMIT ?
     `).bind(limit).all();
 
-    return c.json(result.results || []);
+    return json(result.results || []);
 
   } catch (err) {
     console.error('Get results error:', err);
-    return c.json({
+    return json({
       error: 'Failed to fetch results',
       message: err instanceof Error ? err.message : 'Unknown error'
     }, 500);
   }
-});
+}
 
 /**
  * POST /results - Add a match result
  * Stores completed match result in D1
  * SECURITY: Requires JWT authentication
  */
-app.post('/results', async (c: Context) => {
+export async function handleAddResult(req: Request, env: any): Promise<Response> {
   try {
     // Require JWT authentication
-    const request = c.req.raw;
-    await requireJWT(request, c.env);
+    await requireJWT(req, env);
 
-    const body = await c.req.json();
+    const body = await req.json();
     const result = ResultSchema.parse(body);
-    const db = c.env.DB as D1Database;
+    const db = env.DB as D1Database;
 
     await db.prepare(`
       INSERT INTO results (
@@ -285,41 +272,37 @@ app.post('/results', async (c: Context) => {
       result.scorers || ''
     ).run();
 
-    return c.json({ success: true });
+    return json({ success: true });
 
   } catch (err) {
     console.error('Add result error:', err);
-    return c.json({
+    return json({
       error: 'Failed to add result',
       message: err instanceof Error ? err.message : 'Unknown error'
     }, 500);
   }
-});
+}
 
 /**
  * DELETE /fixtures/:id - Delete a fixture by ID
  * SECURITY: Requires JWT authentication
  */
-app.delete('/:id', async (c: Context) => {
+export async function handleDeleteFixture(req: Request, env: any, id: string): Promise<Response> {
   try {
     // Require JWT authentication
-    const request = c.req.raw;
-    await requireJWT(request, c.env);
+    await requireJWT(req, env);
 
-    const id = c.req.param('id');
-    const db = c.env.DB as D1Database;
+    const db = env.DB as D1Database;
 
     await db.prepare('DELETE FROM fixtures WHERE id = ?').bind(id).run();
 
-    return c.json({ success: true });
+    return json({ success: true });
 
   } catch (err) {
     console.error('Delete fixture error:', err);
-    return c.json({
+    return json({
       error: 'Failed to delete fixture',
       message: err instanceof Error ? err.message : 'Unknown error'
     }, 500);
   }
-});
-
-export default app;
+}

@@ -145,7 +145,7 @@ async function getAllPlayersStats(req: any, env: Env, season: string) {
   // Build stats map
   const playerStats = new Map<string, any>();
 
-  for (const event of eventList) {
+  for (const event of eventList as any[]) {
     if (!event.player_id) continue;
 
     if (!playerStats.has(event.player_id)) {
@@ -207,7 +207,7 @@ export const getTopScorers = async (req: any, env: Env) => {
   const limit = parseInt(url.searchParams.get('limit') || '10');
 
   const response = await getAllPlayersStats(req, env, '');
-  const data = await response.json();
+  const data: any = await response.json();
 
   const topScorers = data.players.slice(0, limit);
 

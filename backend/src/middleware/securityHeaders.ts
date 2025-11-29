@@ -106,9 +106,9 @@ export function withSecurity(init: ResponseInit = {}, environment?: string): Res
   // Choose appropriate headers based on environment
   let headers = securityHeaders;
   if (environment === 'development') {
-    headers = developmentSecurityHeaders;
+    headers = developmentSecurityHeaders as unknown as typeof securityHeaders;
   } else if (environment === 'api') {
-    headers = apiSecurityHeaders;
+    headers = apiSecurityHeaders as unknown as typeof securityHeaders;
   }
 
   for (const [k, v] of Object.entries(headers)) {
@@ -127,9 +127,9 @@ export function addSecurityHeaders(response: Response, environment?: string): Re
   // Choose appropriate headers based on environment
   let secHeaders = securityHeaders;
   if (environment === 'development') {
-    secHeaders = developmentSecurityHeaders;
+    secHeaders = developmentSecurityHeaders as unknown as typeof securityHeaders;
   } else if (environment === 'api') {
-    secHeaders = apiSecurityHeaders;
+    secHeaders = apiSecurityHeaders as unknown as typeof securityHeaders;
   }
 
   for (const [k, v] of Object.entries(secHeaders)) {

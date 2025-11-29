@@ -20,9 +20,9 @@ class MemoryKV {
 
 function createExecutionContext(): ExecutionContext {
   return {
-    waitUntil: () => {},
-    passThroughOnException: () => {},
-  } as ExecutionContext;
+    waitUntil: () => { },
+    passThroughOnException: () => { },
+  } as unknown as ExecutionContext;
 }
 
 function createEnv() {
@@ -36,14 +36,14 @@ function createEnv() {
     ADMIN_CONSOLE_URL: "https://admin.test",
     YT_REDIRECT_URL: "https://example.com/yt",
     KV_IDEMP: kv,
-    POST_QUEUE: { send: async () => {} },
-    DLQ: { send: async () => {} },
+    POST_QUEUE: { send: async () => { } },
+    DLQ: { send: async () => { } },
     TenantRateLimiter: { idFromName: () => ({}) },
     VotingRoom: { idFromName: () => ({}) },
     ChatRoom: { idFromName: () => ({}) },
     MatchRoom: { idFromName: () => ({}) },
     GeoFenceManager: { idFromName: () => ({}) },
-    R2_MEDIA: { put: async () => {}, get: async () => null },
+    R2_MEDIA: { put: async () => { }, get: async () => null },
   } as Record<string, any>;
 }
 
@@ -65,7 +65,7 @@ describe("tenant provisioning", () => {
 
     const signupResponse = await worker.fetch(signupRequest, env, ctx);
     expect(signupResponse.status).toBe(200);
-    const signupData = await signupResponse.json();
+    const signupData: any = await signupResponse.json();
     expect(signupData.success).toBe(true);
     expect(typeof signupData.data.adminJWT).toBe("string");
 
@@ -103,7 +103,7 @@ describe("tenant provisioning", () => {
 
     const adminResponse = await worker.fetch(adminRequest, env, ctx);
     expect(adminResponse.status).toBe(200);
-    const adminData = await adminResponse.json();
+    const adminData: any = await adminResponse.json();
     expect(adminData.success).toBe(true);
     expect(adminData.data.tenant.id).toBe("platform-created-tenant");
   });

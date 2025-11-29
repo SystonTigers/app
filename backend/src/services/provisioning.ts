@@ -30,6 +30,11 @@ export interface ProvisioningResult {
     automationJWT: string;
     setupUrl: string;
     adminConsoleUrl: string;
+    appsScript?: {
+      scriptId?: string;
+      scriptUrl?: string;
+      webAppUrl?: string;
+    } | null;
   };
   error?: {
     code: string;

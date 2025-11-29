@@ -209,7 +209,7 @@ function createExecutionContext(): ExecutionContext {
   return {
     waitUntil: () => { },
     passThroughOnException: () => { },
-  } as ExecutionContext;
+  } as unknown as ExecutionContext;
 }
 
 function createEnv() {

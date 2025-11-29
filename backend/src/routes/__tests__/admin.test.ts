@@ -112,7 +112,7 @@ describe("Admin Routes", () => {
       const res = await getAdminStats(req, mockEnv, requestId, corsHdrs);
 
       expect(res.status).toBe(200);
-      const data = await res.json();
+      const data: any = await res.json();
       expect(data.success).toBe(true);
       expect(data.stats).toBeDefined();
       expect(data.stats.byStatus).toHaveLength(2);
@@ -172,7 +172,7 @@ describe("Admin Routes", () => {
       const res = await listTenants(req, mockEnv, requestId, corsHdrs);
 
       expect(res.status).toBe(200);
-      const data = await res.json();
+      const data: any = await res.json();
       expect(data.success).toBe(true);
       expect(data.tenants).toHaveLength(2);
       expect(data.pagination).toBeDefined();
@@ -238,7 +238,7 @@ describe("Admin Routes", () => {
       const res = await getTenant(req, mockEnv, requestId, corsHdrs, "tenant-1");
 
       expect(res.status).toBe(200);
-      const data = await res.json();
+      const data: any = await res.json();
       expect(data.success).toBe(true);
       expect(data.tenant).toBeDefined();
       expect(data.tenant.id).toBe("tenant-1");
@@ -266,7 +266,7 @@ describe("Admin Routes", () => {
       );
 
       expect(res.status).toBe(404);
-      const data = await res.json();
+      const data: any = await res.json();
       expect(data.success).toBe(false);
       expect(data.error.code).toBe("NOT_FOUND");
     });
@@ -290,7 +290,7 @@ describe("Admin Routes", () => {
       );
 
       expect(res.status).toBe(200);
-      const data = await res.json();
+      const data: any = await res.json();
       expect(data.success).toBe(true);
       expect(mockDB.prepare).toHaveBeenCalledWith(
         expect.stringContaining("UPDATE tenants SET")
@@ -352,7 +352,7 @@ describe("Admin Routes", () => {
       );
 
       expect(res.status).toBe(400);
-      const data = await res.json();
+      const data: any = await res.json();
       expect(data.error.code).toBe("INVALID_REQUEST");
     });
 
@@ -371,7 +371,7 @@ describe("Admin Routes", () => {
       );
 
       expect(res.status).toBe(400);
-      const data = await res.json();
+      const data: any = await res.json();
       expect(data.error.code).toBe("NO_UPDATES");
     });
   });
@@ -400,7 +400,7 @@ describe("Admin Routes", () => {
       );
 
       expect(res.status).toBe(200);
-      const data = await res.json();
+      const data: any = await res.json();
       expect(data.success).toBe(true);
     });
 
@@ -424,7 +424,7 @@ describe("Admin Routes", () => {
       );
 
       expect(res.status).toBe(403);
-      const data = await res.json();
+      const data: any = await res.json();
       expect(data.error.code).toBe("PROTECTED_TENANT");
     });
 
@@ -474,7 +474,7 @@ describe("Admin Routes", () => {
       );
 
       expect(res.status).toBe(200);
-      const data = await res.json();
+      const data: any = await res.json();
       expect(data.success).toBe(true);
       expect(mockDB.batch).toHaveBeenCalled();
     });
@@ -499,7 +499,7 @@ describe("Admin Routes", () => {
       );
 
       expect(res.status).toBe(403);
-      const data = await res.json();
+      const data: any = await res.json();
       expect(data.error.code).toBe("PROTECTED_TENANT");
     });
   });
@@ -531,7 +531,7 @@ describe("Admin Routes", () => {
       const res = await listPromoCodes(req, mockEnv, requestId, corsHdrs);
 
       expect(res.status).toBe(200);
-      const data = await res.json();
+      const data: any = await res.json();
       expect(data.success).toBe(true);
       expect(data.promoCodes).toHaveLength(2);
       expect(data.promoCodes[0].code).toBe("SAVE20");
@@ -557,7 +557,7 @@ describe("Admin Routes", () => {
       const res = await createPromoCode(req, mockEnv, requestId, corsHdrs);
 
       expect(res.status).toBe(201);
-      const data = await res.json();
+      const data: any = await res.json();
       expect(data.success).toBe(true);
       expect(data.promoCode).toBeDefined();
       expect(data.promoCode.code).toBe("SAVE30");
@@ -578,7 +578,7 @@ describe("Admin Routes", () => {
       const res = await createPromoCode(req, mockEnv, requestId, corsHdrs);
 
       expect(res.status).toBe(400);
-      const data = await res.json();
+      const data: any = await res.json();
       expect(data.error.code).toBe("CODE_EXISTS");
     });
 
@@ -590,7 +590,7 @@ describe("Admin Routes", () => {
       const res = await createPromoCode(req, mockEnv, requestId, corsHdrs);
 
       expect(res.status).toBe(400);
-      const data = await res.json();
+      const data: any = await res.json();
       expect(data.error.code).toBe("INVALID_REQUEST");
     });
 
@@ -629,7 +629,7 @@ describe("Admin Routes", () => {
       );
 
       expect(res.status).toBe(200);
-      const data = await res.json();
+      const data: any = await res.json();
       expect(data.success).toBe(true);
     });
 
@@ -691,7 +691,7 @@ describe("Admin Routes", () => {
       const res = await listUsers(req, mockEnv, requestId, corsHdrs);
 
       expect(res.status).toBe(200);
-      const data = await res.json();
+      const data: any = await res.json();
       expect(data.success).toBe(true);
       expect(data.users).toHaveLength(2);
       expect(data.users[0].email).toBe("user1@example.com");
@@ -704,7 +704,7 @@ describe("Admin Routes", () => {
       const res = await listUsers(req, mockEnv, requestId, corsHdrs);
 
       expect(res.status).toBe(400);
-      const data = await res.json();
+      const data: any = await res.json();
       expect(data.error.code).toBe("TENANT_REQUIRED");
     });
 

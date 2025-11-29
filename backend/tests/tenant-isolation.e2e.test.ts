@@ -69,7 +69,7 @@ class MultiTenantDB {
           if (query.includes("FROM events")) {
             const tenantId = params.find((p: any) =>
               typeof p === "string" && (p === "tenant-a" || p === "tenant-b")
-            );
+            ) || "";
             const eventId = params[0];
             const events = this.events.get(tenantId) || [];
             return events.find((e: any) => e.id === eventId) || null;
@@ -85,7 +85,7 @@ class MultiTenantDB {
           if (query.includes("FROM events")) {
             const tenantId = params.find((p: any) =>
               typeof p === "string" && (p === "tenant-a" || p === "tenant-b")
-            );
+            ) || "";
             const events = this.events.get(tenantId) || [];
             return { results: events };
           }
@@ -106,9 +106,9 @@ class MultiTenantDB {
 
 function createExecutionContext(): ExecutionContext {
   return {
-    waitUntil: () => {},
-    passThroughOnException: () => {},
-  } as ExecutionContext;
+    waitUntil: () => { },
+    passThroughOnException: () => { },
+  } as unknown as ExecutionContext;
 }
 
 function createEnv() {
@@ -125,14 +125,14 @@ function createEnv() {
     YT_REDIRECT_URL: "https://example.com/yt",
     KV_IDEMP: kv,
     DB: db,
-    POST_QUEUE: { send: async () => {} },
-    DLQ: { send: async () => {} },
+    POST_QUEUE: { send: async () => { } },
+    DLQ: { send: async () => { } },
     TenantRateLimiter: { idFromName: () => ({}) },
     VotingRoom: { idFromName: () => ({}) },
     ChatRoom: { idFromName: () => ({}) },
     MatchRoom: { idFromName: () => ({}) },
     GeoFenceManager: { idFromName: () => ({}) },
-    R2_MEDIA: { put: async () => {}, get: async () => null },
+    R2_MEDIA: { put: async () => { }, get: async () => null },
   } as Record<string, any>;
 }
 

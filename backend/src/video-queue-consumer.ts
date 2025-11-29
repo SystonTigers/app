@@ -16,7 +16,7 @@ export interface VideoJob {
 }
 
 export default {
-  async queue(batch: QueueBatch<VideoJob>, env: any) {
+  async queue(batch: MessageBatch<VideoJob>, env: any) {
     for (const msg of batch.messages) {
       const job = msg.body;
 
@@ -110,7 +110,7 @@ export default {
             error: err?.message || "unknown",
             job,
             timestamp: Date.now()
-          }).catch(() => {});
+          }).catch(() => { });
         }
 
         await msg.ack();

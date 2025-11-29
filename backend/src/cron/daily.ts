@@ -194,7 +194,7 @@ async function processCountdowns(env: Env, tenant: string) {
   }
 
   // Calculate hours until match
-  const hoursUntil = Math.floor((result.date_utc - now) / 3600);
+  const hoursUntil = Math.floor(((result.date_utc as number) - now) / 3600);
 
   // Only post if match is today or tomorrow
   if (hoursUntil <= 48) {

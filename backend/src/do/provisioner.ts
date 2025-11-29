@@ -133,7 +133,7 @@ async function getMakeWebhook(db: any, tenantId: string): Promise<string> {
   const row = await db
     .prepare(`SELECT webhook_url FROM make_connections WHERE tenant_id = ?`)
     .bind(tenantId)
-    .first<{ webhook_url: string }>();
+    .first();
   if (!row?.webhook_url) throw new Error('make_webhook_not_found');
   return row.webhook_url;
 }

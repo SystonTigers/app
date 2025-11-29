@@ -19,7 +19,7 @@ export interface PromoCode {
   type: PromoCodeType;
   value: string | number;  // Depends on type: percentage (50), months (3), plan ("enterprise")
   durationMonths?: number;  // How long discount lasts (null = forever)
-  maxUses?: number;         // Max times it can be used (null = unlimited)
+  maxUses?: number | null;         // Max times it can be used (null = unlimited)
   usedCount: number;        // Times it's been used
   active: boolean;
   expiresAt?: string;       // ISO date string (null = never expires)

@@ -24,7 +24,7 @@ export const getNextFixture = async (req: any, env: Env) => {
 // Get league table from KV
 export const getLeagueTable = async (req: any, env: Env) => {
   const key = `league:${req.tenant}:table`;
-  const table = await env.KV.get(key, 'json');
+  const table = await env.KV.get(key, 'json') as any;
 
   return ok({
     table: table || {
@@ -120,7 +120,7 @@ export const getMatch = async (req: any, env: Env) => {
   const match = await env.KV.get(
     `match:${req.tenant}:${match_id}`,
     'json'
-  );
+  ) as any;
 
   if (!match) {
     return new Response(
@@ -139,7 +139,7 @@ export const updateMatch = async (req: any, env: Env) => {
   const { status, home_score, away_score } = req.json || {};
 
   const matchKey = `match:${req.tenant}:${match_id}`;
-  const match = await env.KV.get(matchKey, 'json');
+  const match = await env.KV.get(matchKey, 'json') as any;
 
   if (!match) {
     return new Response(
@@ -230,7 +230,7 @@ export const updateFixture = async (req: any, env: Env) => {
   const updates = req.json || {};
 
   const fixtureKey = `fixture:${req.tenant}:${fixture_id}`;
-  const fixture = await env.KV.get(fixtureKey, 'json');
+  const fixture = await env.KV.get(fixtureKey, 'json') as any;
 
   if (!fixture) {
     return new Response(
@@ -264,7 +264,7 @@ export const listSquad = async (req: any, env: Env) => {
 
   // Get all players from KV
   const listKey = `squad:${req.tenant}:list`;
-  const players = await env.KV.get(listKey, 'json') || [];
+  const players = await env.KV.get(listKey, 'json') as any || [];
 
   return ok({ data: players });
 };
@@ -299,7 +299,7 @@ export const createPlayer = async (req: any, env: Env) => {
 
   // Update squad list
   const listKey = `squad:${req.tenant}:list`;
-  const squad = await env.KV.get(listKey, 'json') || [];
+  const squad = await env.KV.get(listKey, 'json') as any || [];
   squad.push(player);
   await env.KV.put(listKey, JSON.stringify(squad));
 
@@ -312,7 +312,7 @@ export const updatePlayer = async (req: any, env: Env) => {
   const updates = req.json || {};
 
   const playerKey = `player:${req.tenant}:${player_id}`;
-  const player = await env.KV.get(playerKey, 'json');
+  const player = await env.KV.get(playerKey, 'json') as any;
 
   if (!player) {
     return new Response(
@@ -326,7 +326,7 @@ export const updatePlayer = async (req: any, env: Env) => {
 
   // Update in squad list
   const listKey = `squad:${req.tenant}:list`;
-  const squad = await env.KV.get(listKey, 'json') || [];
+  const squad = await env.KV.get(listKey, 'json') as any || [];
   const updatedSquad = squad.map((p: any) => p.id === player_id ? updated : p);
   await env.KV.put(listKey, JSON.stringify(updatedSquad));
 
@@ -342,7 +342,7 @@ export const deletePlayer = async (req: any, env: Env) => {
 
   // Remove from squad list
   const listKey = `squad:${req.tenant}:list`;
-  const squad = await env.KV.get(listKey, 'json') || [];
+  const squad = await env.KV.get(listKey, 'json') as any || [];
   const updatedSquad = squad.filter((p: any) => p.id !== player_id);
   await env.KV.put(listKey, JSON.stringify(updatedSquad));
 
@@ -357,7 +357,7 @@ export const listPosts = async (req: any, env: Env) => {
 
   // Get posts from KV
   const postsKey = `feed:${req.tenant}:posts`;
-  const allPosts = await env.KV.get(postsKey, 'json') || [];
+  const allPosts = await env.KV.get(postsKey, 'json') as any || [];
 
   // Paginate
   const start = (page - 1) * limit;
@@ -392,7 +392,7 @@ export const createPost = async (req: any, env: Env) => {
 
   // Add to posts list
   const postsKey = `feed:${req.tenant}:posts`;
-  const posts = await env.KV.get(postsKey, 'json') || [];
+  const posts = await env.KV.get(postsKey, 'json') as any || [];
   posts.unshift(post); // Add to beginning
   await env.KV.put(postsKey, JSON.stringify(posts));
 

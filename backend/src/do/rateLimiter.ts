@@ -12,11 +12,11 @@ export class TenantRateLimiter {
     let used = (await this.storage.get<number>(key)) ?? 0;
 
     if (used < burst) {
-      await this.storage.put(key, used + 1, { expiration: Math.floor((now + windowMs)/1000) });
+      await this.storage.put(key, used + 1);
       return new Response(JSON.stringify({ ok: true }), {
         headers: {
           "X-RateLimit-Limit": String(burst),
-          "X-RateLimit-Remaining": String(burst-(used+1)),
+          "X-RateLimit-Remaining": String(burst - (used + 1)),
           "X-RateLimit-Reset": "1"
         }
       });

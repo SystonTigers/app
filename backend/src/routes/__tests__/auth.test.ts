@@ -186,7 +186,7 @@ test("registers a tenant member and allows login", async () => {
 
   const registerResponse = await handleAuthRegister(registerRequest, env, new Headers(corsHeaders));
   expect(registerResponse.status).toBe(201);
-  const registerJson = await registerResponse.json();
+  const registerJson: any = await registerResponse.json();
   expect(registerJson.success).toBe(true);
   expect(registerJson.data.token).toBeTypeOf("string");
   expect(registerJson.data.user.email).toBe("user@example.com");
@@ -207,7 +207,7 @@ test("registers a tenant member and allows login", async () => {
 
   const loginResponse = await handleAuthLogin(loginRequest, env, new Headers(corsHeaders));
   expect(loginResponse.status).toBe(200);
-  const loginJson = await loginResponse.json();
+  const loginJson: any = await loginResponse.json();
   expect(loginJson.success).toBe(true);
   expect(loginJson.data.token).toBeTypeOf("string");
   expect(loginJson.data.user.roles).toContain("tenant_member");
@@ -278,7 +278,7 @@ test("rejects invalid login credentials", async () => {
 
   const badResponse = await handleAuthLogin(badLogin, env, new Headers(corsHeaders));
   expect(badResponse.status).toBe(401);
-  const badJson = await badResponse.json();
+  const badJson: any = await badResponse.json();
   expect(badJson.success).toBe(false);
   expect(badJson.error.code).toBe("INVALID_CREDENTIALS");
 });

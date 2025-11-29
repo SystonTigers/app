@@ -74,9 +74,9 @@ class MemoryDB {
 
 function createExecutionContext(): ExecutionContext {
   return {
-    waitUntil: () => {},
-    passThroughOnException: () => {},
-  } as ExecutionContext;
+    waitUntil: () => { },
+    passThroughOnException: () => { },
+  } as unknown as ExecutionContext;
 }
 
 function createEnv() {
@@ -132,14 +132,14 @@ function createEnv() {
       idFromName: vi.fn(() => "provisioner-id"),
       get: vi.fn(() => mockProvisioner),
     },
-    POST_QUEUE: { send: async () => {} },
-    DLQ: { send: async () => {} },
+    POST_QUEUE: { send: async () => { } },
+    DLQ: { send: async () => { } },
     TenantRateLimiter: { idFromName: () => ({}) },
     VotingRoom: { idFromName: () => ({}) },
     ChatRoom: { idFromName: () => ({}) },
     MatchRoom: { idFromName: () => ({}) },
     GeoFenceManager: { idFromName: () => ({}) },
-    R2_MEDIA: { put: async () => {}, get: async () => null },
+    R2_MEDIA: { put: async () => { }, get: async () => null },
   } as Record<string, any>;
 }
 

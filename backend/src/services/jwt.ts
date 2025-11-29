@@ -14,6 +14,7 @@ export type Claims = {
   sub?: string;
   roles: string[];
   tenantId?: string;
+  userId?: string;
   iat?: number;
   exp?: number;
 };

@@ -10,7 +10,7 @@ import { getTenantConfig } from "./services/tenantConfig";
 import { shouldDefer, incrementCounter } from "./services/rateAware";
 
 export default {
-  async queue(batch: QueueBatch<PostJob>, env: any) {
+  async queue(batch: MessageBatch<PostJob>, env: any) {
     for (const msg of batch.messages) {
       const job = msg.body;
       try {
@@ -52,14 +52,13 @@ export default {
               continue;
             }
 
-            // Prepare publish params
             const params = {
               tenant: cfg,
               job: {
                 template: job.template,
                 data: job.data,
-                text: job.data.text || job.data.msg || job.data.title,
-                mediaUrl: job.data.mediaUrl || job.data.videoUrl,
+                text: (job.data.text || job.data.msg || job.data.title) as string | undefined,
+                mediaUrl: (job.data.mediaUrl || job.data.videoUrl) as string | undefined,
               },
               env,
             };
@@ -124,7 +123,7 @@ export default {
             error: err?.message || "unknown",
             job,
             timestamp: Date.now()
-          }).catch(() => {});
+          }).catch(() => { });
 
           // Optional: send alert webhook (non-blocking)
           if (env.DLQ_ALERT_URL) {

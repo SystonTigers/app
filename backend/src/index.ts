@@ -186,27 +186,27 @@ router.delete("/api/:v/events/:id/rsvp", (req, env, corsHdrs, requestId) => {
 });
 
 // Video Routes
-router.post("/api/:v/videos/upload", (req, env, corsHdrs, requestId) => handleVideoUpload(req, env, requestId, corsHdrs));
-router.get("/api/:v/videos", (req, env, corsHdrs, requestId) => handleVideoList(req, env, requestId, corsHdrs));
+router.post("/api/:v/videos/upload", (req, env, corsHdrs, requestId) => handleVideoUpload(req, env, corsHdrs));
+router.get("/api/:v/videos", (req, env, corsHdrs, requestId) => handleVideoList(req, env, corsHdrs));
 router.get("/api/:v/videos/:id", (req, env, corsHdrs, requestId) => {
     const params = (req as any).params || {};
-    return handleVideoGet(req, env, requestId, corsHdrs, params.id);
+    return handleVideoGet(req, env, corsHdrs, params.id);
 });
 router.get("/api/:v/videos/:id/status", (req, env, corsHdrs, requestId) => {
     const params = (req as any).params || {};
-    return handleVideoStatus(req, env, requestId, corsHdrs, params.id);
+    return handleVideoStatus(req, env, corsHdrs, params.id);
 });
 router.post("/api/:v/videos/:id/process", (req, env, corsHdrs, requestId) => {
     const params = (req as any).params || {};
-    return handleVideoProcess(req, env, requestId, corsHdrs, params.id);
+    return handleVideoProcess(req, env, corsHdrs, params.id);
 });
 router.delete("/api/:v/videos/:id", (req, env, corsHdrs, requestId) => {
     const params = (req as any).params || {};
-    return handleVideoDelete(req, env, requestId, corsHdrs, params.id);
+    return handleVideoDelete(req, env, corsHdrs, params.id);
 });
 router.get("/api/:v/videos/:id/clips", (req, env, corsHdrs, requestId) => {
     const params = (req as any).params || {};
-    return handleVideoClips(req, env, requestId, corsHdrs, params.id);
+    return handleVideoClips(req, env, corsHdrs, params.id);
 });
 
 // Dev Auth Routes (only in development)
