@@ -326,10 +326,65 @@ const compat: AnySDK = {
   listLiveUpdates: async () => [],
 };
 
-// Legacy entry points some pages still import
-export function getServerSDK(_tenant?: string): AnySDK {
-  return compat;
+// Client SDK implementation
+class ClientSDK implements AnySDK {
+  private tenantId: string;
+
+  constructor(tenantId: string) {
+    this.tenantId = tenantId;
+  }
+
+  // Real implementations
+  async listFixtures() {
+    return http<any[]>(`${API_BASE}/public/${this.tenantId}/fixtures`);
+  }
+
+  async listResults() {
+    return http<any[]>(`${API_BASE}/public/${this.tenantId}/fixtures?status=results`);
+  }
+
+  async listFeed(page = 1, limit = 10) {
+    return http<any[]>(`${API_BASE}/public/${this.tenantId}/feed?page=${page}&limit=${limit}`);
+  }
+
+  async getLeagueTable() {
+    return http<any[]>(`${API_BASE}/public/${this.tenantId}/table`);
+  }
+
+  async getTeamStats() {
+    return http<any>(`${API_BASE}/public/${this.tenantId}/stats`);
+  }
+
+  async getTopScorers(limit = 10) {
+    return [];
+  }
+
+  async getSquad() {
+    return http<any[]>(`${API_BASE}/public/${this.tenantId}/squad`);
+  }
+
+  // Fallback to compat/mocks for others
+  getProvisionStatus = compat.getProvisionStatus;
+  startMagicLogin = compat.startMagicLogin;
+  verifyMagicToken = compat.verifyMagicToken;
+  getAdminOverview = compat.getAdminOverview;
+  getBrand = compat.getBrand;
+  getBrandKit = compat.getBrandKit;
+  getFeed = this.listFeed; // Alias
+  getFixtures = this.listFixtures; // Alias
+  getNextFixture = compat.getNextFixture;
+  getResults = this.listResults; // Alias
+  getTable = this.getLeagueTable; // Alias
+  getStats = this.getTeamStats; // Alias
+  listLiveUpdates = compat.listLiveUpdates;
 }
-export function createClientSDK(_tenant?: string): AnySDK {
-  return compat;
+
+export function createClientSDK(tenant?: string): AnySDK {
+  if (!tenant) return compat;
+  return new ClientSDK(tenant);
+}
+
+export function getServerSDK(tenant?: string): AnySDK {
+  if (!tenant) return compat;
+  return new ClientSDK(tenant);
 }
