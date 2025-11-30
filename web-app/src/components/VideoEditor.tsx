@@ -45,6 +45,25 @@ export function VideoEditor({ tenant }: VideoEditorProps) {
         if (!files || files.length === 0) return;
 
         const file = files[0];
+
+        // Create a local preview immediately
+        const localId = `local-${Date.now()}`;
+        const localUrl = URL.createObjectURL(file);
+        const localVideo: Video = {
+            id: localId,
+            filename: file.name,
+            uploadTimestamp: Date.now(),
+            size: file.size,
+            status: 'processing', // Show as processing/uploading
+            r2Key: '',
+            processingProgress: 0
+        };
+        // Attach localUrl to the video object (we'll need to cast it or update type)
+        (localVideo as any).localUrl = localUrl;
+
+        setVideos(prev => [localVideo, ...prev]);
+        setSelectedVideo(localVideo); // Auto-select the new video
+
         setUploading(true);
         setUploadProgress(0);
 
@@ -60,15 +79,22 @@ export function VideoEditor({ tenant }: VideoEditorProps) {
             const data = await response.json();
 
             if (data.success) {
+                // Replace local video with real one
                 await loadVideos();
                 setUploadProgress(100);
                 setTimeout(() => {
                     setUploading(false);
                     setUploadProgress(0);
                 }, 1000);
+            } else {
+                // Handle error
+                console.error('Upload failed', data.error);
+                setVideos(prev => prev.map(v => v.id === localId ? { ...v, status: 'failed' } : v));
+                setUploading(false);
             }
         } catch (error) {
             console.error('Upload failed:', error);
+            setVideos(prev => prev.map(v => v.id === localId ? { ...v, status: 'failed' } : v));
             setUploading(false);
         }
     };
@@ -155,8 +181,8 @@ export function VideoEditor({ tenant }: VideoEditorProps) {
                                         key={video.id}
                                         onClick={() => setSelectedVideo(video)}
                                         className={`p-3 rounded-lg border cursor-pointer transition-all duration-200 ${selectedVideo?.id === video.id
-                                                ? 'border-brand bg-brand/10'
-                                                : 'border-border hover:border-brand/50 hover:bg-surface/50'
+                                            ? 'border-brand bg-brand/10'
+                                            : 'border-border hover:border-brand/50 hover:bg-surface/50'
                                             }`}
                                     >
                                         <div className="flex items-start justify-between mb-2">
@@ -180,7 +206,11 @@ export function VideoEditor({ tenant }: VideoEditorProps) {
 
                     <div className="lg:col-span-2">
                         {selectedVideo ? (
-                            <VideoEditorCanvas video={selectedVideo} tenant={tenant} />
+                            <VideoEditorCanvas
+                                video={selectedVideo}
+                                tenant={tenant}
+                                localUrl={selectedVideo.id.startsWith('local-') ? (selectedVideo as any).localUrl : undefined}
+                            />
                         ) : (
                             <div className="card h-full flex items-center justify-center min-h-[500px]">
                                 <div className="text-center text-muted">
@@ -200,7 +230,7 @@ export function VideoEditor({ tenant }: VideoEditorProps) {
     );
 }
 
-function VideoEditorCanvas({ video, tenant }: { video: Video; tenant: string }) {
+function VideoEditorCanvas({ video, tenant, localUrl }: { video: Video; tenant: string; localUrl?: string }) {
     const videoRef = useRef<HTMLVideoElement>(null);
     const [playing, setPlaying] = useState(false);
     const [currentTime, setCurrentTime] = useState(0);
@@ -300,7 +330,7 @@ function VideoEditorCanvas({ video, tenant }: { video: Video; tenant: string }) 
         return `${mins}:${secs.toString().padStart(2, '0')}`;
     };
 
-    const videoUrl = video.streamUrl || `/api/v1/videos/${video.id}/stream`;
+    const videoUrl = localUrl || video.streamUrl || `/api/v1/videos/${video.id}/stream`;
 
     return (
         <div className="card space-y-6">
