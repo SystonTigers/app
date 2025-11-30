@@ -1,7 +1,8 @@
 import { getServerSDK } from '@/lib/sdk';
 
-export default async function StatsPage({ params }: { params: { tenant: string } }) {
-  const sdk = getServerSDK(params.tenant);
+export default async function StatsPage({ params }: { params: Promise<{ tenant: string }> }) {
+  const { tenant } = await params;
+  const sdk = getServerSDK(tenant);
 
   const [teamStats, topScorers] = await Promise.allSettled([
     sdk.getTeamStats().catch(() => null),

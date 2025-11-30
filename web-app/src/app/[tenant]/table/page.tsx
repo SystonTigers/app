@@ -1,12 +1,31 @@
 import { getServerSDK } from '@/lib/sdk';
 
-export default async function TablePage({ params }: { params: { tenant: string } }) {
-  const sdk = getServerSDK(params.tenant);
+export default async function TablePage({ params }: { params: Promise<{ tenant: string }> }) {
+  const { tenant } = await params;
+  const sdk = getServerSDK(tenant);
   const table = await sdk.getLeagueTable().catch(() => []);
 
   return (
     <div className="container" style={{ paddingTop: 'var(--spacing-2xl)', paddingBottom: 'var(--spacing-2xl)' }}>
-      <h1 style={{ fontSize: '2.5rem', marginBottom: 'var(--spacing-xl)' }}>League Table</h1>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--spacing-xl)' }}>
+        <h1 style={{ fontSize: '2.5rem', margin: 0 }}>League Table</h1>
+        <a
+          href="#"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            padding: '0.5rem 1rem',
+            background: 'var(--surface)',
+            border: '1px solid var(--border)',
+            borderRadius: 'var(--radius-md)',
+            textDecoration: 'none',
+            color: 'var(--text)',
+            fontWeight: '500'
+          }}
+        >
+          Official League Site &rarr;
+        </a>
+      </div>
 
       {table.length > 0 ? (
         <div className="card" style={{ overflowX: 'auto' }}>

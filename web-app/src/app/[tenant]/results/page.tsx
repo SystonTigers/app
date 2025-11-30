@@ -1,7 +1,8 @@
 import { getServerSDK } from '@/lib/sdk';
 
-export default async function ResultsPage({ params }: { params: { tenant: string } }) {
-  const sdk = getServerSDK(params.tenant);
+export default async function ResultsPage({ params }: { params: Promise<{ tenant: string }> }) {
+  const { tenant } = await params;
+  const sdk = getServerSDK(tenant);
   const results = await sdk.listResults().catch(() => []);
 
   return (

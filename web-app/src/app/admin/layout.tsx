@@ -28,6 +28,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                                     <Link href="/admin/security" className="text-gray-600 hover:text-black dark:text-gray-300 dark:hover:text-white transition-colors">
                                         Security
                                     </Link>
+                                    <Link href="/admin/settings" className="text-gray-600 hover:text-black dark:text-gray-300 dark:hover:text-white transition-colors">
+                                        Settings
+                                    </Link>
                                 </div>
                             </div>
 

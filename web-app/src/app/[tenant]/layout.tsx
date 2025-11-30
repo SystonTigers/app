@@ -57,8 +57,15 @@ export default async function TenantLayout({ children, params }: TenantLayoutPro
 
         {/* Footer */}
         <footer className="bg-[var(--surface)] border-t border-border py-8 mt-12">
-          <div className="container text-center text-muted-foreground">
-            <p>Powered by Team Platform</p>
+          <div className="container flex flex-col md:flex-row justify-between items-center gap-4">
+            <div className="text-muted-foreground">
+              <p>&copy; {new Date().getFullYear()} {tenantName}. Powered by Team Platform</p>
+            </div>
+            <div className="flex gap-4">
+              <a href="#" className="text-muted-foreground hover:text-brand transition-colors">Twitter</a>
+              <a href="#" className="text-muted-foreground hover:text-brand transition-colors">Instagram</a>
+              <a href="#" className="text-muted-foreground hover:text-brand transition-colors">Facebook</a>
+            </div>
           </div>
         </footer>
       </div>

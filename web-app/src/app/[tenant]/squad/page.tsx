@@ -1,7 +1,8 @@
 import { getServerSDK } from '@/lib/sdk';
 
-export default async function SquadPage({ params }: { params: { tenant: string } }) {
-  const sdk = getServerSDK(params.tenant);
+export default async function SquadPage({ params }: { params: Promise<{ tenant: string }> }) {
+  const { tenant } = await params;
+  const sdk = getServerSDK(tenant);
   const squad = await sdk.getSquad().catch(() => []);
 
   return (
@@ -34,6 +35,11 @@ export default async function SquadPage({ params }: { params: { tenant: string }
                 <div>
                   <h3 style={{ fontSize: '1.125rem', marginBottom: '0.25rem' }}>{player.name}</h3>
                   <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>{player.position}</div>
+                  {player.dob && (
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+                      Born: {new Date(player.dob).toLocaleDateString()}
+                    </div>
+                  )}
                 </div>
               </div>
 
