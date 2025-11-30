@@ -17,14 +17,14 @@ export async function POST(req: NextRequest) {
   }
 
   // Normal password login via backend
-  const r = await fetch(process.env.BACKEND_API_BASE! + '/api/v1/admin/login', {
+  const r = await fetch(process.env.BACKEND_API_BASE! + '/api/v1/auth/login', {
     method: 'POST',
-    headers: { 'Content-Type':'application/json' },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password }),
   });
 
   if (!r.ok) {
-    const msg = await r.text().catch(()=>'');
+    const msg = await r.text().catch(() => '');
     return new NextResponse(msg || 'Unauthorized', { status: 401 });
   }
 

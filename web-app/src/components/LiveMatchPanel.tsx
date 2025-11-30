@@ -19,7 +19,7 @@ export function LiveMatchPanel({ matchData, liveUpdates: initialUpdates, tenant 
 
         const refreshInterval = setInterval(async () => {
             try {
-                const response = await fetch(`/api/matches/${matchData.id}/updates`);
+                const response = await fetch(`/api/v1/matches/${matchData.id}/updates`);
                 const data = await response.json();
 
                 // Check for new goals

@@ -204,10 +204,55 @@ export async function handleVideoGet(
 }
 
 /**
- * GET /api/v1/videos/:id/status
- * Get processing status
- * SECURITY: Requires JWT authentication, tenant extracted from JWT claims
+ * GET /api/v1/videos/:id/stream
+ * Stream video from R2
+ * SECURITY: Requires JWT authentication
  */
+export async function handleVideoStream(
+  req: Request,
+  env: any,
+  corsHdrs: Headers,
+  videoId: string
+): Promise<Response> {
+  const claims = await requireJWT(req, env);
+  const tenant = claims.tenantId;
+
+  if (!tenant) {
+    return json(
+      { success: false, error: { code: "MISSING_TENANT", message: "Tenant ID not found in JWT" } },
+      400,
+      corsHdrs
+    );
+  }
+
+  const metadata = (await env.KV_IDEMP.get(`video:${tenant}:${videoId}`, "json")) as any;
+
+  if (!metadata) {
+    return json(
+      { success: false, error: { code: "VIDEO_NOT_FOUND", message: "Video not found" } },
+      404,
+      corsHdrs
+    );
+  }
+
+  const object = await env.R2_MEDIA.get(metadata.r2Key);
+
+  if (!object) {
+    return json(
+      { success: false, error: { code: "FILE_NOT_FOUND", message: "Video file not found in storage" } },
+      404,
+      corsHdrs
+    );
+  }
+
+  return new Response(object.body, {
+    headers: {
+      "Content-Type": "video/mp4",
+      "Content-Length": object.size.toString(),
+      ...Object.fromEntries(corsHdrs.entries()),
+    },
+  });
+}
 export async function handleVideoStatus(
   req: Request,
   env: any,

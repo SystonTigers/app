@@ -55,6 +55,7 @@ import {
     handleVideoStatus,
     handleVideoProcess,
     handleVideoDelete,
+    handleVideoStream,
     handleVideoClips
 } from "./routes/videos";
 
@@ -185,6 +186,13 @@ router.delete("/api/:v/events/:id/rsvp", (req, env, corsHdrs, requestId) => {
     return cancelRsvp(req, env, requestId, corsHdrs, params.id);
 });
 
+// Match Routes
+import { handleMatchUpdates } from "./routes/matches";
+router.get("/api/:v/matches/:id/updates", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleMatchUpdates(req, env, corsHdrs, params.id);
+});
+
 // Video Routes
 router.post("/api/:v/videos/upload", (req, env, corsHdrs, requestId) => handleVideoUpload(req, env, corsHdrs));
 router.get("/api/:v/videos", (req, env, corsHdrs, requestId) => handleVideoList(req, env, corsHdrs));
@@ -207,6 +215,10 @@ router.delete("/api/:v/videos/:id", (req, env, corsHdrs, requestId) => {
 router.get("/api/:v/videos/:id/clips", (req, env, corsHdrs, requestId) => {
     const params = (req as any).params || {};
     return handleVideoClips(req, env, corsHdrs, params.id);
+});
+router.get("/api/:v/videos/:id/stream", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleVideoStream(req, env, corsHdrs, params.id);
 });
 
 // Dev Auth Routes (only in development)
