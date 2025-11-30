@@ -198,6 +198,138 @@ router.get("/api/:v/matches/:id/updates", (req, env, corsHdrs) => {
     return handleMatchUpdates(req, env, corsHdrs, params.id);
 });
 
+// Chat Routes
+import {
+    handleListRooms,
+    handleSendMessage,
+    handleGetHistory,
+    handleTyping,
+    handleCreateRoom
+} from "./routes/chat";
+router.get("/api/:v/chat/rooms", (req, env, corsHdrs) => handleListRooms(req, env, corsHdrs));
+router.post("/api/:v/chat/rooms", (req, env, corsHdrs) => handleCreateRoom(req, env, corsHdrs));
+router.post("/api/:v/chat/:roomId/send", (req, env, corsHdrs) => handleSendMessage(req, env, corsHdrs));
+router.get("/api/:v/chat/:roomId/history", (req, env, corsHdrs) => handleGetHistory(req, env, corsHdrs));
+router.post("/api/:v/chat/:roomId/typing", (req, env, corsHdrs) => handleTyping(req, env, corsHdrs));
+
+// Gallery Routes
+import {
+    handlePhotoUpload,
+    handleListPhotos,
+    handleGetPhoto,
+    handleDeletePhoto,
+    handleCreateAlbum,
+    handleListAlbums,
+    handleDeleteAlbum
+} from "./routes/gallery";
+router.post("/api/:v/gallery/upload", (req, env, corsHdrs) => handlePhotoUpload(req, env, corsHdrs));
+router.get("/api/:v/gallery/photos", (req, env, corsHdrs) => handleListPhotos(req, env, corsHdrs));
+router.get("/api/:v/gallery/photos/:id", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleGetPhoto(req, env, corsHdrs, params.id);
+});
+router.delete("/api/:v/gallery/photos/:id", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleDeletePhoto(req, env, corsHdrs, params.id);
+});
+router.post("/api/:v/gallery/albums", (req, env, corsHdrs) => handleCreateAlbum(req, env, corsHdrs));
+router.get("/api/:v/gallery/albums", (req, env, corsHdrs) => handleListAlbums(req, env, corsHdrs));
+router.delete("/api/:v/gallery/albums/:id", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleDeleteAlbum(req, env, corsHdrs, params.id);
+});
+
+// Training Routes
+import {
+    handleCreateSession,
+    handleListSessions,
+    handleDeleteSession,
+    handleCreateDrill,
+    handleListDrills,
+    handleDeleteDrill,
+    handleAddDrillToSession,
+    handleGetSessionDrills
+} from "./routes/training";
+router.post("/api/:v/training/sessions", (req, env, corsHdrs) => handleCreateSession(req, env, corsHdrs));
+router.get("/api/:v/training/sessions", (req, env, corsHdrs) => handleListSessions(req, env, corsHdrs));
+router.delete("/api/:v/training/sessions/:id", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleDeleteSession(req, env, corsHdrs, params.id);
+});
+router.post("/api/:v/training/drills", (req, env, corsHdrs) => handleCreateDrill(req, env, corsHdrs));
+router.get("/api/:v/training/drills", (req, env, corsHdrs) => handleListDrills(req, env, corsHdrs));
+router.delete("/api/:v/training/drills/:id", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleDeleteDrill(req, env, corsHdrs, params.id);
+});
+router.post("/api/:v/training/session-drills", (req, env, corsHdrs) => handleAddDrillToSession(req, env, corsHdrs));
+router.get("/api/:v/training/sessions/:id/drills", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleGetSessionDrills(req, env, corsHdrs, params.id);
+});
+
+// Shop Routes
+import {
+    handleCreateProduct,
+    handleListProducts,
+    handleGetProduct,
+    handleUpdateProduct,
+    handleDeleteProduct,
+    handlePrintifySync,
+    handlePublicListProducts
+} from "./routes/shop";
+router.post("/api/:v/shop/products", (req, env, corsHdrs) => handleCreateProduct(req, env, corsHdrs));
+router.get("/api/:v/shop/products", (req, env, corsHdrs) => handleListProducts(req, env, corsHdrs));
+router.get("/api/:v/shop/products/:id", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleGetProduct(req, env, corsHdrs, params.id);
+});
+router.put("/api/:v/shop/products/:id", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleUpdateProduct(req, env, corsHdrs, params.id);
+});
+router.delete("/api/:v/shop/products/:id", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleDeleteProduct(req, env, corsHdrs, params.id);
+});
+router.post("/api/:v/shop/printify/sync", (req, env, corsHdrs) => handlePrintifySync(req, env, corsHdrs));
+
+// MOTM Voting Routes
+import {
+    handleInitVote,
+    handleCastVote,
+    handleGetResults
+} from "./routes/motm";
+router.get("/api/:v/motm/:matchId", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleInitVote(req, env, corsHdrs, params.matchId);
+});
+router.post("/api/:v/motm/:matchId/vote", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleCastVote(req, env, corsHdrs, params.matchId);
+});
+router.get("/api/:v/motm/:matchId/results", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleGetResults(req, env, corsHdrs, params.matchId);
+});
+
+// Social Media Routes
+import {
+    handleCreatePost as handleCreateSocialPost,
+    handleListPosts as handleListSocialPosts,
+    handleDeletePost as handleDeleteSocialPost,
+    handleUpdateSocialConfig,
+    handleGetSocialConfig
+} from "./routes/social";
+router.post("/api/:v/social/posts", (req, env, corsHdrs) => handleCreateSocialPost(req, env, corsHdrs));
+router.get("/api/:v/social/posts", (req, env, corsHdrs) => handleListSocialPosts(req, env, corsHdrs));
+router.delete("/api/:v/social/posts/:id", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleDeleteSocialPost(req, env, corsHdrs, params.id);
+});
+router.put("/api/:v/social/config", (req, env, corsHdrs) => handleUpdateSocialConfig(req, env, corsHdrs));
+router.get("/api/:v/social/config", (req, env, corsHdrs) => handleGetSocialConfig(req, env, corsHdrs));
+
 // Video Routes
 router.post("/api/:v/videos/upload", (req, env, corsHdrs, requestId) => handleVideoUpload(req, env, corsHdrs));
 router.get("/api/:v/videos", (req, env, corsHdrs, requestId) => handleVideoList(req, env, corsHdrs));

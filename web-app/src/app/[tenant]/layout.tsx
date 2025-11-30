@@ -38,6 +38,10 @@ export default async function TenantLayout({ children, params }: TenantLayoutPro
 
               <div className="flex gap-6">
                 <Link href={`/${tenant}`} className="hover:text-brand transition-colors">Home</Link>
+                <Link href={`/${tenant}/chat`} className="hover:text-brand transition-colors">Chat</Link>
+                <Link href={`/${tenant}/gallery`} className="hover:text-brand transition-colors">Gallery</Link>
+                <Link href={`/${tenant}/training`} className="hover:text-brand transition-colors">Training</Link>
+                <Link href={`/${tenant}/shop`} className="hover:text-brand transition-colors">Shop</Link>
                 <Link href={`/${tenant}/calendar`} className="hover:text-brand transition-colors">Calendar</Link>
                 <Link href={`/${tenant}/videos`} className="hover:text-brand transition-colors">Videos</Link>
                 <Link href={`/${tenant}/fixtures`} className="hover:text-brand transition-colors">Fixtures</Link>
