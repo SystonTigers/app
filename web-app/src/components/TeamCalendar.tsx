@@ -29,42 +29,27 @@ export function TeamCalendar() {
 
     const loadEvents = async () => {
         try {
-            // In a real app, we'd pass filter params. For now, we'll fetch all and filter client-side 
-            // or assume the backend returns relevant ones. 
-            // The backend route is generic /api/v1/events (POST) or /api/v1/events/:id (GET).
-            // Wait, the backend audit showed:
-            // router.post("/api/:v/events", ...) -> createEvent
-            // router.get("/api/:v/events/:id", ...) -> getEvent
-            // It seems there is NO list events endpoint in the backend index.ts!
-            // I need to check backend/src/routes/events.ts again.
-            // If missing, I'll need to add it.
-            // For now, I'll mock the data to get the UI ready, then fix the backend.
+            // Fetch real events from the public API (or SDK if available for public)
+            // Since we are in a client component, we can use fetch directly to the public endpoint
+            // or use a public SDK method.
+            // Let's use the public endpoint we created: GET /api/v1/events?tenantId=...
+            // Wait, the route we made requires auth OR tenantId param.
+            // But we don't have a public SDK method for this yet that doesn't require auth?
+            // Actually, listEvents in SDK uses /api/v1/events.
+            // Let's assume for now we fetch from the public API if we had one, but we only made an admin one?
+            // Re-reading events.ts: "if (!targetTenantId) return 401".
+            // So we need to pass tenantId if not authenticated.
 
-            // MOCK DATA for initial UI build
-            const mockEvents: CalendarEvent[] = [
-                {
-                    id: '1',
-                    title: 'Team Training',
-                    start_time: new Date(Date.now() + 86400000).toISOString(), // Tomorrow
-                    location: 'Training Ground A',
-                    description: 'Regular Tuesday session. Bring running shoes.',
-                    rsvp_yes_count: 12,
-                    rsvp_no_count: 2,
-                    rsvp_maybe_count: 1,
-                    user_rsvp: 'yes'
-                },
-                {
-                    id: '2',
-                    title: 'Match vs Rovers',
-                    start_time: new Date(Date.now() + 172800000).toISOString(), // Day after tomorrow
-                    location: 'Home Stadium',
-                    description: 'League match. Kickoff 3pm.',
-                    rsvp_yes_count: 15,
-                    rsvp_no_count: 0,
-                    rsvp_maybe_count: 0
+            // Ideally we should have a public route for this like /public/:tenant/calendar
+            // But for now let's try to hit the API with the tenant param.
+
+            const res = await fetch(`/api/v1/events?tenantId=${tenant}`);
+            if (res.ok) {
+                const data = await res.json();
+                if (data.success) {
+                    setEvents(data.data);
                 }
-            ];
-            setEvents(mockEvents);
+            }
             setLoading(false);
         } catch (error) {
             console.error('Failed to load events', error);
@@ -174,8 +159,8 @@ export function TeamCalendar() {
                                                 key={status}
                                                 onClick={(e) => { e.stopPropagation(); handleRsvp(event.id, status); }}
                                                 className={`px-3 py-1 text-xs font-medium rounded-md capitalize transition-all ${event.user_rsvp === status
-                                                        ? status === 'yes' ? 'bg-green-500 text-white' : status === 'no' ? 'bg-red-500 text-white' : 'bg-yellow-500 text-white'
-                                                        : 'hover:bg-white dark:hover:bg-gray-700 text-muted-foreground'
+                                                    ? status === 'yes' ? 'bg-green-500 text-white' : status === 'no' ? 'bg-red-500 text-white' : 'bg-yellow-500 text-white'
+                                                    : 'hover:bg-white dark:hover:bg-gray-700 text-muted-foreground'
                                                     }`}
                                             >
                                                 {status}

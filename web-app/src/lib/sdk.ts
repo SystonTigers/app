@@ -189,6 +189,83 @@ export async function createPromoCode(data: {
   );
 }
 
+export async function updateSquad(players: any[]) {
+  return http<{ success: true; count: number }>(
+    `${API_BASE}/api/v1/squad`,
+    { method: 'POST', body: JSON.stringify(players) }
+  );
+}
+
+export async function createFixture(data: any) {
+  return http<{ success: true; id: string }>(
+    `${API_BASE}/api/v1/fixtures`,
+    { method: 'POST', body: JSON.stringify(data) }
+  );
+}
+
+export async function deleteFixture(id: string) {
+  return http<{ success: true }>(
+    `${API_BASE}/api/v1/fixtures/${id}`,
+    { method: 'DELETE' }
+  );
+}
+
+export async function createResult(data: any) {
+  return http<{ success: true; id: string }>(
+    `${API_BASE}/api/v1/results`,
+    { method: 'POST', body: JSON.stringify(data) }
+  );
+}
+
+export async function deleteResult(id: string) {
+  return http<{ success: true }>(
+    `${API_BASE}/api/v1/results/${id}`,
+    { method: 'DELETE' }
+  );
+}
+
+export async function createPost(data: any) {
+  return http<{ success: true; id: string }>(
+    `${API_BASE}/api/v1/feed`,
+    { method: 'POST', body: JSON.stringify(data) }
+  );
+}
+
+export async function deletePost(id: string) {
+  return http<{ success: true }>(
+    `${API_BASE}/api/v1/feed/${id}`,
+    { method: 'DELETE' }
+  );
+}
+
+export async function updateTable(rows: any[]) {
+  return http<{ success: true }>(
+    `${API_BASE}/api/v1/table`,
+    { method: 'POST', body: JSON.stringify(rows) }
+  );
+}
+
+export async function listEvents() {
+  return http<any[]>(
+    `${API_BASE}/api/v1/events`,
+    { method: 'GET' }
+  );
+}
+
+export async function createEvent(data: any) {
+  return http<{ success: true; data: { event: any } }>(
+    `${API_BASE}/api/v1/events`,
+    { method: 'POST', body: JSON.stringify(data) }
+  );
+}
+
+export async function deleteEvent(id: string) {
+  return http<{ success: true }>(
+    `${API_BASE}/api/v1/events/${id}`,
+    { method: 'DELETE' }
+  );
+}
+
 export async function deactivatePromoCode(code: string) {
   return http<{ success: true }>(
     `${API_BASE}/api/v1/admin/promo-codes/${encodeURIComponent(code)}/deactivate`,

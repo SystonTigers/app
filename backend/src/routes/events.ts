@@ -94,6 +94,71 @@ export async function getEvent(req: Request, env: any, requestId: string, corsHd
     }
 }
 
+// GET /api/v1/events
+export async function listEvents(req: Request, env: any, requestId: string, corsHdrs: Headers) {
+    try {
+        const url = new URL(req.url);
+        const tenantId = url.searchParams.get("tenantId"); // Optional, for public access if needed, or rely on auth?
+        // For public calendar, we might need tenantId. For admin, we use claims.
+        // Let's support both: if auth header present, use claims. If not, check query param (public).
+
+        let targetTenantId = tenantId;
+
+        // Try to get auth claims if present
+        try {
+            const claims = await requireJWT(req, env);
+            targetTenantId = claims.tenantId;
+        } catch (e) {
+            // Not authenticated, rely on query param
+        }
+
+        if (!targetTenantId) {
+            return json({ success: false, error: { code: "UNAUTHORIZED", message: "Tenant ID required" } }, 401, corsHdrs);
+        }
+
+        const events = await env.DB.prepare(
+            "SELECT * FROM calendar_events WHERE tenant_id = ? ORDER BY start_time ASC"
+        ).bind(targetTenantId || "").all();
+
+        const results = await Promise.all((events.results || []).map(async (event: any) => {
+            const counts = await env.DB.prepare(`
+                SELECT 
+                  SUM(CASE WHEN status = 'yes' THEN 1 ELSE 0 END) as yes_count,
+                  SUM(CASE WHEN status = 'no' THEN 1 ELSE 0 END) as no_count,
+                  SUM(CASE WHEN status = 'maybe' THEN 1 ELSE 0 END) as maybe_count
+                FROM event_rsvps
+                WHERE event_id = ?
+              `).bind(event.id).first();
+
+            return {
+                ...event,
+                date: event.start_time,
+                rsvp_yes_count: counts?.yes_count || 0,
+                rsvp_no_count: counts?.no_count || 0,
+                rsvp_maybe_count: counts?.maybe_count || 0,
+            };
+        }));
+
+        return json({ success: true, data: results }, 200, corsHdrs);
+    } catch (err: any) {
+        logJSON({ level: "error", requestId, msg: "LIST_EVENTS_ERROR", error: err.message });
+        return json({ success: false, error: { code: "SERVER_ERROR", message: err.message } }, 500, corsHdrs);
+    }
+}
+
+// DELETE /api/v1/events/:id
+export async function deleteEvent(req: Request, env: any, requestId: string, corsHdrs: Headers, id: string) {
+    try {
+        const claims = await requireJWT(req, env);
+        await env.DB.prepare("DELETE FROM calendar_events WHERE id = ? AND tenant_id = ?")
+            .bind(id, claims.tenantId).run();
+        return json({ success: true }, 200, corsHdrs);
+    } catch (err: any) {
+        logJSON({ level: "error", requestId, msg: "DELETE_EVENT_ERROR", error: err.message });
+        return json({ success: false, error: { code: "SERVER_ERROR", message: err.message } }, 500, corsHdrs);
+    }
+}
+
 // POST /api/v1/events/:id/rsvp
 export async function rsvpEvent(req: Request, env: any, requestId: string, corsHdrs: Headers, id: string) {
     try {

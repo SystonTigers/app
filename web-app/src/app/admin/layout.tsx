@@ -22,6 +22,24 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                                     <Link href="/admin/tenants" className="text-gray-600 hover:text-black dark:text-gray-300 dark:hover:text-white transition-colors">
                                         Tenants
                                     </Link>
+                                    <Link href="/admin/squad" className="text-gray-600 hover:text-black dark:text-gray-300 dark:hover:text-white transition-colors">
+                                        Squad
+                                    </Link>
+                                    <Link href="/admin/calendar" className="text-gray-600 hover:text-black dark:text-gray-300 dark:hover:text-white transition-colors">
+                                        Calendar
+                                    </Link>
+                                    <Link href="/admin/fixtures" className="text-gray-600 hover:text-black dark:text-gray-300 dark:hover:text-white transition-colors">
+                                        Fixtures
+                                    </Link>
+                                    <Link href="/admin/results" className="text-gray-600 hover:text-black dark:text-gray-300 dark:hover:text-white transition-colors">
+                                        Results
+                                    </Link>
+                                    <Link href="/admin/feed" className="text-gray-600 hover:text-black dark:text-gray-300 dark:hover:text-white transition-colors">
+                                        News
+                                    </Link>
+                                    <Link href="/admin/table" className="text-gray-600 hover:text-black dark:text-gray-300 dark:hover:text-white transition-colors">
+                                        Table
+                                    </Link>
                                     <Link href="/admin/push" className="text-gray-600 hover:text-black dark:text-gray-300 dark:hover:text-white transition-colors">
                                         Push Notifications
                                     </Link>

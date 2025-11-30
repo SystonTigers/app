@@ -167,11 +167,16 @@ router.post("/api/:v/push/send", (req, env) => handlePushSend(req, env));
 router.post("/api/:v/push/broadcast", (req, env) => handlePushBroadcast(req, env));
 
 // Events Routes
-import { createEvent, getEvent, rsvpEvent, getEventRsvps, cancelRsvp } from "./routes/events";
+import { createEvent, getEvent, rsvpEvent, getEventRsvps, cancelRsvp, listEvents, deleteEvent } from "./routes/events";
 router.post("/api/:v/events", (req, env, corsHdrs, requestId) => createEvent(req, env, requestId, corsHdrs));
+router.get("/api/:v/events", (req, env, corsHdrs, requestId) => listEvents(req, env, requestId, corsHdrs));
 router.get("/api/:v/events/:id", (req, env, corsHdrs, requestId) => {
     const params = (req as any).params || {};
     return getEvent(req, env, requestId, corsHdrs, params.id);
+});
+router.delete("/api/:v/events/:id", (req, env, corsHdrs, requestId) => {
+    const params = (req as any).params || {};
+    return deleteEvent(req, env, requestId, corsHdrs, params.id);
 });
 router.post("/api/:v/events/:id/rsvp", (req, env, corsHdrs, requestId) => {
     const params = (req as any).params || {};
@@ -220,6 +225,38 @@ router.get("/api/:v/videos/:id/stream", (req, env, corsHdrs) => {
     const params = (req as any).params || {};
     return handleVideoStream(req, env, corsHdrs, params.id);
 });
+
+// Squad Routes
+import { handleUpdateSquad } from "./routes/squad";
+router.post("/api/:v/squad", (req, env, corsHdrs) => handleUpdateSquad(req, env, corsHdrs));
+
+// Content Routes
+import {
+    handleCreateFixture, handleDeleteFixture,
+    handleCreateResult, handleDeleteResult,
+    handleCreatePost, handleDeletePost,
+    handleUpdateTable
+} from "./routes/content";
+
+router.post("/api/:v/fixtures", (req, env, corsHdrs) => handleCreateFixture(req, env, corsHdrs));
+router.delete("/api/:v/fixtures/:id", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleDeleteFixture(req, env, corsHdrs, params.id);
+});
+
+router.post("/api/:v/results", (req, env, corsHdrs) => handleCreateResult(req, env, corsHdrs));
+router.delete("/api/:v/results/:id", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleDeleteResult(req, env, corsHdrs, params.id);
+});
+
+router.post("/api/:v/feed", (req, env, corsHdrs) => handleCreatePost(req, env, corsHdrs));
+router.delete("/api/:v/feed/:id", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleDeletePost(req, env, corsHdrs, params.id);
+});
+
+router.post("/api/:v/table", (req, env, corsHdrs) => handleUpdateTable(req, env, corsHdrs));
 
 // Dev Auth Routes (only in development)
 router.post("/dev/admin-jwt", (req, env) => handleDevAdminJWT(req, env));
