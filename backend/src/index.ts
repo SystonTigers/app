@@ -58,7 +58,16 @@ import {
     handleVideoStream,
     handleVideoClips
 } from "./routes/videos";
-
+import {
+    handleAnalyzeMistakes,
+    handleGetMistakes,
+    handleGenerateDrills,
+    handleGenerateSession,
+    handleSaveTrainingSession,
+    handleGetTrainingSessions,
+    handleGetTrainingSession,
+    handleDeleteTrainingSession
+} from "./routes/coaching";
 // Export Durable Objects
 export { TenantRateLimiter } from "./do/rateLimiter";
 export { VotingRoom } from "./do/votingRoom";
@@ -330,6 +339,17 @@ router.delete("/api/:v/social/posts/:id", (req, env, corsHdrs) => {
 router.put("/api/:v/social/config", (req, env, corsHdrs) => handleUpdateSocialConfig(req, env, corsHdrs));
 router.get("/api/:v/social/config", (req, env, corsHdrs) => handleGetSocialConfig(req, env, corsHdrs));
 
+// Player Photo Routes
+import { handlePlayerPhotoUpload, handlePlayerPhotoDelete } from "./routes/players";
+router.post("/api/:v/players/:id/photo", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handlePlayerPhotoUpload(req, env, corsHdrs);
+});
+router.delete("/api/:v/players/:id/photo", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handlePlayerPhotoDelete(req, env, corsHdrs, params.id);
+});
+
 // Video Routes
 router.post("/api/:v/videos/upload", (req, env, corsHdrs, requestId) => handleVideoUpload(req, env, corsHdrs));
 router.get("/api/:v/videos", (req, env, corsHdrs, requestId) => handleVideoList(req, env, corsHdrs));
@@ -356,6 +376,52 @@ router.get("/api/:v/videos/:id/clips", (req, env, corsHdrs, requestId) => {
 router.get("/api/:v/videos/:id/stream", (req, env, corsHdrs) => {
     const params = (req as any).params || {};
     return handleVideoStream(req, env, corsHdrs, params.id);
+});
+
+// ===== AI ASSISTANT COACH ROUTES =====
+
+// Analyze video for coaching opportunities
+router.post("/api/:v/videos/:id/analyze-mistakes", (req, env, corsHdrs, requestId) => {
+    const params = (req as any).params || {};
+    return handleAnalyzeMistakes(req, env, corsHdrs, params.id);
+});
+
+// Get detected mistakes for a video
+router.get("/api/:v/videos/:id/mistakes", (req, env, corsHdrs, requestId) => {
+    const params = (req as any).params || {};
+    return handleGetMistakes(req, env, corsHdrs, params.id);
+});
+
+// Generate training drills from mistakes
+router.post("/api/:v/coaching/generate-drills", (req, env, corsHdrs, requestId) =>
+    handleGenerateDrills(req, env, corsHdrs)
+);
+
+// Generate complete training session
+router.post("/api/:v/coaching/generate-session", (req, env, corsHdrs, requestId) =>
+    handleGenerateSession(req, env, corsHdrs)
+);
+
+// Save training session plan
+router.post("/api/:v/coaching/sessions", (req, env, corsHdrs, requestId) =>
+    handleSaveTrainingSession(req, env, corsHdrs)
+);
+
+// Get all training sessions
+router.get("/api/:v/coaching/sessions", (req, env, corsHdrs, requestId) =>
+    handleGetTrainingSessions(req, env, corsHdrs)
+);
+
+// Get specific training session
+router.get("/api/:v/coaching/sessions/:id", (req, env, corsHdrs, requestId) => {
+    const params = (req as any).params || {};
+    return handleGetTrainingSession(req, env, corsHdrs, params.id);
+});
+
+// Delete training session
+router.delete("/api/:v/coaching/sessions/:id", (req, env, corsHdrs, requestId) => {
+    const params = (req as any).params || {};
+    return handleDeleteTrainingSession(req, env, corsHdrs, params.id);
 });
 
 // Squad Routes

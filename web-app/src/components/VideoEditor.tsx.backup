@@ -239,7 +239,7 @@ function VideoEditorCanvas({ video, tenant, localUrl }: { video: Video; tenant: 
     const [outPoint, setOutPoint] = useState<number | null>(null);
     const [clips, setClips] = useState<any[]>([]);
     const [creatingClip, setCreatingClip] = useState(false);
-    const [analyzingCoaching, setAnalyzingCoaching] = useState(false);
+
     useEffect(() => {
         loadClips();
     }, [video.id]);
@@ -324,45 +324,6 @@ function VideoEditorCanvas({ video, tenant, localUrl }: { video: Video; tenant: 
         }
     };
 
-    const analyzeForCoaching = async () => {
-        const teamName = prompt('Enter your team name:');
-        if (!teamName) return;
-
-        const opponentName = prompt('Enter opponent name:');
-        if (!opponentName) return;
-
-        const goalsText = prompt('How many goals did you concede? (optional)');
-        const goalsConceeded = goalsText ? parseInt(goalsText) : undefined;
-
-        const finalScore = prompt('Final score? (e.g., 2-3) (optional)') || undefined;
-
-        setAnalyzingCoaching(true);
-        try {
-            const response = await fetch(`/api/v1/videos/${video.id}/analyze-mistakes`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    team_name: teamName,
-                    opponent_name: opponentName,
-                    goals_conceded: goalsConceeded,
-                    final_score: finalScore,
-                }),
-            });
-
-            const data = await response.json();
-            if (data.success) {
-                alert(`AI Coaching Analysis Started!\n\nJob ID: ${data.data.job_id}\n\nThe AI will analyze your match for coaching opportunities. Check the Coaching tab to view results in a few moments.`);
-            } else {
-                alert(`Failed to start analysis: ${data.error?.message || 'Unknown error'}`);
-            }
-        } catch (error) {
-            console.error('Failed to analyze for coaching:', error);
-            alert('Failed to start coaching analysis');
-        } finally {
-            setAnalyzingCoaching(false);
-        }
-    };
-
     const formatTime = (seconds: number) => {
         const mins = Math.floor(seconds / 60);
         const secs = Math.floor(seconds % 60);
@@ -443,14 +404,6 @@ function VideoEditorCanvas({ video, tenant, localUrl }: { video: Video; tenant: 
                         className="btn btn-primary text-sm px-6 py-2 disabled:opacity-50"
                     >
                         {creatingClip ? 'Creating...' : 'Create Clip'}
-                    </button>
-                    <button
-                        onClick={analyzeForCoaching}
-                        disabled={analyzingCoaching}
-                        className="btn btn-secondary text-sm px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white disabled:opacity-50"
-                        title="AI will analyze this video for coaching opportunities and suggest training drills"
-                    >
-                        {analyzingCoaching ? '🤖 Analyzing...' : '🤖 Analyze for Coaching'}
                     </button>
                 </div>
 

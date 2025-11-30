@@ -27,7 +27,9 @@ export function TeamChat({ tenant }: TeamChatProps) {
     const [messages, setMessages] = useState<Message[]>([]);
     const [messageText, setMessageText] = useState('');
     const [loading, setLoading] = useState(true);
+    const [typingUsers, setTypingUsers] = useState<string[]>([]);
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     useEffect(() => {
         loadRooms();
@@ -93,6 +95,12 @@ export function TeamChat({ tenant }: TeamChatProps) {
 
         const token = localStorage.getItem('token');
         try {
+            // Clear typing indicator before sending
+            if (typingTimeoutRef.current) {
+                clearTimeout(typingTimeoutRef.current);
+            }
+            await sendTypingIndicator(false);
+
             await fetch(`/api/v1/chat/${selectedRoom.roomId}/send`, {
                 method: 'POST',
                 headers: {
@@ -109,6 +117,45 @@ export function TeamChat({ tenant }: TeamChatProps) {
             await loadMessages(selectedRoom.roomId);
         } catch (error) {
             console.error('Failed to send message:', error);
+        }
+    };
+
+    const sendTypingIndicator = async (typing: boolean) => {
+        if (!selectedRoom) return;
+
+        const token = localStorage.getItem('token');
+        try {
+            await fetch(`/api/v1/chat/${selectedRoom.roomId}/typing`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({ typing }),
+            });
+        } catch (error) {
+            // Silent fail for typing indicators
+        }
+    };
+
+    const handleTyping = (value: string) => {
+        setMessageText(value);
+
+        // Clear existing timeout
+        if (typingTimeoutRef.current) {
+            clearTimeout(typingTimeoutRef.current);
+        }
+
+        if (value.trim()) {
+            // Send typing indicator
+            sendTypingIndicator(true);
+
+            // Stop typing after 3 seconds of inactivity
+            typingTimeoutRef.current = setTimeout(() => {
+                sendTypingIndicator(false);
+            }, 3000);
+        } else {
+            sendTypingIndicator(false);
         }
     };
 
@@ -213,6 +260,18 @@ export function TeamChat({ tenant }: TeamChatProps) {
                         </div>
                     </div>
                 ))}
+
+                {/* Typing Indicator */}
+                {typingUsers.length > 0 && (
+                    <div className="flex gap-2 items-center px-4 py-2 text-sm text-gray-500">
+                        <div className="flex gap-1">
+                            <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                            <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                            <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                        </div>
+                        <span>{typingUsers[0]} is typing...</span>
+                    </div>
+                )}
                 <div ref={messagesEndRef} />
             </div>
 
@@ -222,7 +281,7 @@ export function TeamChat({ tenant }: TeamChatProps) {
                     <input
                         type="text"
                         value={messageText}
-                        onChange={(e) => setMessageText(e.target.value)}
+                        onChange={(e) => handleTyping(e.target.value)}
                         onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
                         placeholder="Type a message..."
                         className="flex-1 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand dark:bg-gray-700"

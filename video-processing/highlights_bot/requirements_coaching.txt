@@ -1,0 +1,21 @@
+# AI Assistant Coach - Python Dependencies
+
+# Google Gemini AI SDK
+google-generativeai>=0.8.0
+
+# Existing dependencies (from main requirements.txt)
+# These are needed for the full highlights_bot functionality
+opencv-python>=4.8.0
+numpy>=1.24.0
+ffmpeg-python>=0.2.0
+PyYAML>=6.0
+ultralytics>=8.0.0  # YOLOv8 for object detection
+scipy>=1.10.0  # For signal processing (audio peaks)
+
+# Optional: PDF export for training sessions
+reportlab>=4.0.0  # For exporting training sessions to PDF
+
+# Optional: Web service (if running as HTTP service)
+fastapi>=0.104.0
+uvicorn>=0.24.0
+pydantic>=2.5.0
