@@ -89,7 +89,7 @@ export function readIdempotencyKey(req: Request) {
 
 // Additional utility helpers
 export function assert(cond: any, msg = "bad request") {
-  if (!cond) throw badReq(msg);
+  if (!cond) {throw badReq(msg);}
 }
 
 export function badReq(message: string) {

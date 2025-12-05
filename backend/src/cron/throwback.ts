@@ -1,3 +1,4 @@
+import { logJSON } from '../lib/log';
 import type { Env } from '../env';
 import { nowUTC } from '../utils/time';
 
@@ -12,7 +13,7 @@ export const runThrowback = async (env: Env, ctx: ExecutionContext) => {
   const now = nowUTC();
   const today = now.toFormat('yyyy-MM-dd');
 
-  console.log(`Running Throwback Thursday cron job for ${today}`);
+  logJSON({ level: 'info', msg: 'Running Throwback Thursday cron job for today' });
 
   try {
     // Get all active tenants with throwback feature enabled
@@ -22,9 +23,9 @@ export const runThrowback = async (env: Env, ctx: ExecutionContext) => {
       await createThrowbackPost(env, tenant, now);
     }
 
-    console.log(`Throwback posts created for ${tenants.length} tenants`);
+    logJSON({ level: 'info', msg: 'Throwback posts created for tenants.length tenants' });
   } catch (error) {
-    console.error('Throwback cron error:', error);
+    logJSON({ level: 'error', msg: 'Throwback cron error', error: error instanceof Error ? error.message : String(error) });
   }
 };
 
@@ -50,7 +51,7 @@ async function getTenantsWithThrowbacks(env: Env): Promise<any[]> {
 async function createThrowbackPost(env: Env, config: any, now: any) {
   const tenant = config.team_id;
 
-  console.log(`Creating throwback post for ${tenant}`);
+  logJSON({ level: 'info', msg: 'Creating throwback post for tenant' });
 
   // Strategy 1: "On this day" - exact date from previous years
   const onThisDayMatch = await findOnThisDayMatch(env, tenant, now);
@@ -68,7 +69,7 @@ async function createThrowbackPost(env: Env, config: any, now: any) {
     return;
   }
 
-  console.log(`No throwback content found for ${tenant}`);
+  logJSON({ level: 'info', msg: 'No throwback content found for tenant' });
 }
 
 // Find match that happened on this day in previous years
@@ -118,7 +119,7 @@ async function findMemorableMatch(env: Env, tenant: string) {
           'json'
         );
 
-        if (!matchData) return null;
+        if (!matchData) {return null;}
 
         let score = 0;
 
@@ -191,7 +192,7 @@ async function createOnThisDayPost(env: Env, tenant: string, match: any) {
     });
   }
 
-  console.log(`Created "On This Day" post for ${tenant}: ${yearsAgo} years ago`);
+  logJSON({ level: 'info', msg: 'Created "On This Day" post for tenant: yearsAgo years ago' });
 }
 
 // Create memorable moment post
@@ -226,5 +227,5 @@ async function createMemorablePost(env: Env, tenant: string, match: any) {
     });
   }
 
-  console.log(`Created memorable moment post for ${tenant}`);
+  logJSON({ level: 'info', msg: 'Created memorable moment post for tenant' });
 }

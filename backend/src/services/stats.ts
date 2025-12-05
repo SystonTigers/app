@@ -146,7 +146,7 @@ async function getAllPlayersStats(req: any, env: Env, season: string) {
   const playerStats = new Map<string, any>();
 
   for (const event of eventList as any[]) {
-    if (!event.player_id) continue;
+    if (!event.player_id) {continue;}
 
     if (!playerStats.has(event.player_id)) {
       playerStats.set(event.player_id, {

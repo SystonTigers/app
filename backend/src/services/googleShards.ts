@@ -17,7 +17,7 @@ function simpleHash(str: string): number {
 }
 
 function safeParse<T>(json: string | undefined): T | null {
-  if (!json) return null;
+  if (!json) {return null;}
   try {
     return JSON.parse(json) as T;
   } catch {

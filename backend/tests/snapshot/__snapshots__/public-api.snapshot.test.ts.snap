@@ -1,0 +1,25 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Snapshot: Public API > snapshots API version in response 1`] = `
+{
+  "hasApiPrefix": true,
+  "hasVersionPrefix": true,
+  "responseStatus": 404,
+}
+`;
+
+exports[`Snapshot: Public API > snapshots public clubs endpoint response structure 1`] = `
+{
+  "contentType": "text/plain;charset=UTF-8",
+  "responseType": "plain-text",
+  "status": 404,
+}
+`;
+
+exports[`Snapshot: Public API > snapshots response headers for public endpoints 1`] = `
+{
+  "access-control-allow-origin": null,
+  "cache-control": null,
+  "content-type": "text/plain;charset=UTF-8",
+}
+`;

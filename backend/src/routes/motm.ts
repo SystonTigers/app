@@ -36,6 +36,7 @@ export async function handleInitVote(req: Request, env: any, corsHdrs: Headers, 
             }
         }, 200, corsHdrs);
     } catch (err) {
+        if (err instanceof Response) throw err;
         return json({ success: false, error: "Failed to initialize vote" }, 500, corsHdrs);
     }
 }
@@ -65,6 +66,7 @@ export async function handleCastVote(req: Request, env: any, corsHdrs: Headers, 
 
         return json({ success: true }, 200, corsHdrs);
     } catch (err) {
+        if (err instanceof Response) throw err;
         return json({ success: false, error: "Failed to cast vote" }, 500, corsHdrs);
     }
 }
@@ -95,6 +97,7 @@ export async function handleGetResults(req: Request, env: any, corsHdrs: Headers
             }
         }, 200, corsHdrs);
     } catch (err) {
+        if (err instanceof Response) throw err;
         return json({ success: false, error: "Failed to get results" }, 500, corsHdrs);
     }
 }

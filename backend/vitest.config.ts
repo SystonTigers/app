@@ -10,8 +10,22 @@ export default defineWorkersConfig({
       },
     },
     include: ["src/**/*.test.ts", "tests/**/*.test.ts"],
+    exclude: [
+      "**/node_modules/**",
+      "**/dist/**",
+    ],
     coverage: {
-      reporter: ["text", "html"],
+      provider: "istanbul",
+      reporter: ["text", "json", "html"],
+      exclude: [
+        "**/node_modules/**",
+        "**/dist/**",
+        "**/__tests__/**",
+        "**/*.test.ts",
+        "**/do/**", // Durable Objects
+        "src/queue-consumer.ts", // Queue consumer
+        "src/__mocks__/**",
+      ],
     },
   },
   resolve: {

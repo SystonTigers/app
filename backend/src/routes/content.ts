@@ -121,7 +121,6 @@ export async function handleUpdateTable(req: Request, env: any, corsHdrs: Header
         await env.DB.batch(batch);
         return json({ success: true }, 200, corsHdrs);
     } catch (err) {
-        console.error(err);
         return json({ success: false, error: "Failed to update table" }, 500, corsHdrs);
     }
 }

@@ -194,7 +194,7 @@ export async function handleProvisionStatus(
       },
     });
   } catch (err: any) {
-    if (err instanceof Response || (err && typeof err.status === 'number')) return err;
+    if (err instanceof Response || (err && typeof err.status === 'number')) {return err;}
     return Response.json({
       success: false,
       error: { code: 'STATUS_ERROR', message: err instanceof Error ? err.message : String(err) },

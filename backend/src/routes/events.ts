@@ -18,7 +18,7 @@ const RsvpSchema = z.object({
 // Helper to get event with RSVP counts
 async function getEventWithCounts(env: any, eventId: string) {
     const event = await env.DB.prepare("SELECT * FROM calendar_events WHERE id = ?").bind(eventId).first();
-    if (!event) return null;
+    if (!event) {return null;}
 
     const counts = await env.DB.prepare(`
     SELECT 
@@ -67,7 +67,7 @@ export async function createEvent(req: Request, env: any, requestId: string, cor
 
         return json({ success: true, data: { event } }, 201, corsHdrs);
     } catch (err: any) {
-        if (err instanceof Response) throw err;
+        if (err instanceof Response) {throw err;}
         if (err instanceof z.ZodError) {
             return json({ success: false, error: { code: "INVALID_REQUEST", issues: err.issues } }, 400, corsHdrs);
         }
@@ -88,7 +88,7 @@ export async function getEvent(req: Request, env: any, requestId: string, corsHd
 
         return json({ success: true, data: { event } }, 200, corsHdrs);
     } catch (err: any) {
-        if (err instanceof Response) throw err;
+        if (err instanceof Response) {throw err;}
         logJSON({ level: "error", requestId, msg: "GET_EVENT_ERROR", error: err.message });
         return json({ success: false, error: { code: "SERVER_ERROR", message: err.message } }, 500, corsHdrs);
     }
@@ -194,7 +194,7 @@ export async function rsvpEvent(req: Request, env: any, requestId: string, corsH
 
         return json({ success: true }, 200, corsHdrs);
     } catch (err: any) {
-        if (err instanceof Response) throw err;
+        if (err instanceof Response) {throw err;}
         if (err instanceof z.ZodError) {
             return json({ success: false, error: { code: "INVALID_REQUEST", issues: err.issues } }, 400, corsHdrs);
         }
@@ -212,7 +212,7 @@ export async function getEventRsvps(req: Request, env: any, requestId: string, c
 
         return json({ success: true, data: { rsvps: rsvps.results } }, 200, corsHdrs);
     } catch (err: any) {
-        if (err instanceof Response) throw err;
+        if (err instanceof Response) {throw err;}
         logJSON({ level: "error", requestId, msg: "GET_RSVPS_ERROR", error: err.message });
         return json({ success: false, error: { code: "SERVER_ERROR", message: err.message } }, 500, corsHdrs);
     }
@@ -229,7 +229,7 @@ export async function cancelRsvp(req: Request, env: any, requestId: string, cors
 
         return json({ success: true }, 200, corsHdrs);
     } catch (err: any) {
-        if (err instanceof Response) throw err;
+        if (err instanceof Response) {throw err;}
         logJSON({ level: "error", requestId, msg: "CANCEL_RSVP_ERROR", error: err.message });
         return json({ success: false, error: { code: "SERVER_ERROR", message: err.message } }, 500, corsHdrs);
     }

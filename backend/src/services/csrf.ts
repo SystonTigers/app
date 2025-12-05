@@ -222,7 +222,7 @@ export async function invalidateCsrfToken(
   token: string
 ): Promise<void> {
   const kv = env.KV_IDEMP;
-  if (!kv) return;
+  if (!kv) {return;}
 
   const key = `csrf:${sessionId}:${token}`;
   await kv.delete(key);
@@ -237,7 +237,7 @@ export async function clearCsrfTokens(
   sessionId: string
 ): Promise<void> {
   const kv = env.KV_IDEMP;
-  if (!kv) return;
+  if (!kv) {return;}
 
   // Note: This requires listing keys with prefix, which can be slow
   // Consider using a different data structure for production (e.g., session-based storage)

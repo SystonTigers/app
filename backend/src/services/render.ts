@@ -6,14 +6,14 @@ import type { TemplateMeta, TokenMap } from '../templates/schema';
 // Helper to load text from R2
 async function loadTextFromR2(env: Env, key: string) {
   const obj = await env.R2.get(key);
-  if (!obj) throw new Error(`R2 missing: ${key}`);
+  if (!obj) {throw new Error(`R2 missing: ${key}`);}
   return await obj.text();
 }
 
 // Helper to load buffer from R2
 async function loadBufferFromR2(env: Env, key: string) {
   const obj = await env.R2.get(key);
-  if (!obj) throw new Error(`R2 missing: ${key}`);
+  if (!obj) {throw new Error(`R2 missing: ${key}`);}
   return await obj.arrayBuffer();
 }
 
@@ -105,7 +105,6 @@ export const renderGraphic = async (req: any, env: Env) => {
       { headers: { 'content-type': 'application/json' } }
     );
   } catch (error: any) {
-    console.error('Render error:', error);
     return new Response(
       JSON.stringify({ error: error.message || 'Rendering failed' }),
       { status: 500, headers: { 'content-type': 'application/json' } }

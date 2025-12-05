@@ -16,6 +16,7 @@ export async function handleCreateSession(req: Request, env: any, corsHdrs: Head
 
         return json({ success: true, id: sessionId }, 200, corsHdrs);
     } catch (err) {
+        if (err instanceof Response) throw err;
         return json({ success: false, error: "Failed to create session" }, 500, corsHdrs);
     }
 }
@@ -30,6 +31,7 @@ export async function handleListSessions(req: Request, env: any, corsHdrs: Heade
 
         return json({ success: true, data: result.results }, 200, corsHdrs);
     } catch (err) {
+        if (err instanceof Response) throw err;
         return json({ success: false, error: "Failed to list sessions" }, 500, corsHdrs);
     }
 }
@@ -44,6 +46,7 @@ export async function handleDeleteSession(req: Request, env: any, corsHdrs: Head
 
         return json({ success: true }, 200, corsHdrs);
     } catch (err) {
+        if (err instanceof Response) throw err;
         return json({ success: false, error: "Failed to delete session" }, 500, corsHdrs);
     }
 }
@@ -65,6 +68,7 @@ export async function handleCreateDrill(req: Request, env: any, corsHdrs: Header
 
         return json({ success: true, id: drillId }, 200, corsHdrs);
     } catch (err) {
+        if (err instanceof Response) throw err;
         return json({ success: false, error: "Failed to create drill" }, 500, corsHdrs);
     }
 }
@@ -96,6 +100,7 @@ export async function handleListDrills(req: Request, env: any, corsHdrs: Headers
 
         return json({ success: true, data: drills }, 200, corsHdrs);
     } catch (err) {
+        if (err instanceof Response) throw err;
         return json({ success: false, error: "Failed to list drills" }, 500, corsHdrs);
     }
 }
@@ -110,6 +115,7 @@ export async function handleDeleteDrill(req: Request, env: any, corsHdrs: Header
 
         return json({ success: true }, 200, corsHdrs);
     } catch (err) {
+        if (err instanceof Response) throw err;
         return json({ success: false, error: "Failed to delete drill" }, 500, corsHdrs);
     }
 }
@@ -129,6 +135,7 @@ export async function handleAddDrillToSession(req: Request, env: any, corsHdrs: 
 
         return json({ success: true, id }, 200, corsHdrs);
     } catch (err) {
+        if (err instanceof Response) throw err;
         return json({ success: false, error: "Failed to add drill to session" }, 500, corsHdrs);
     }
 }
@@ -147,6 +154,7 @@ export async function handleGetSessionDrills(req: Request, env: any, corsHdrs: H
 
         return json({ success: true, data: result.results }, 200, corsHdrs);
     } catch (err) {
+        if (err instanceof Response) throw err;
         return json({ success: false, error: "Failed to get session drills" }, 500, corsHdrs);
     }
 }

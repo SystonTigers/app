@@ -23,7 +23,6 @@ export async function isSignupEnabled(env: Env): Promise<boolean> {
     return normalized === 'true' || normalized === '1' || normalized === 'on';
   } catch (error) {
     // If KV fails, fail open (allow signups) to avoid blocking users
-    console.error('[KillSwitch] Failed to check signup_enabled flag:', error);
     return true;
   }
 }
@@ -40,7 +39,6 @@ export async function requireSignupEnabled(
   const enabled = await isSignupEnabled(env);
 
   if (!enabled) {
-    console.warn('[KillSwitch] Signup attempt blocked - signups are currently disabled');
 
     return Response.json(
       {

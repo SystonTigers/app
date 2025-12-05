@@ -40,7 +40,6 @@ async function queueProvisioning(env: any, tenantId: string): Promise<void> {
     ).bind(tenantId).first() as { id: string; plan: string } | null;
 
     if (!tenant) {
-      console.error(`[Signup] Tenant not found: ${tenantId}`);
       return;
     }
 
@@ -67,12 +66,9 @@ async function queueProvisioning(env: any, tenantId: string): Promise<void> {
         plan: tenant.plan,
       }),
     })).catch((err: any) => {
-      console.error(`[Signup] Provisioning run failed for ${tenantId}:`, err);
     });
 
-    console.log(`[Signup] Queued provisioning for ${tenantId} (plan: ${tenant.plan})`);
   } catch (error) {
-    console.error(`[Signup] Failed to queue provisioning for ${tenantId}:`, error);
     // Don't fail signup if provisioning queue fails - it can be retried
   }
 }
@@ -259,7 +255,7 @@ export async function signupBrand(req: Request, env: any, requestId: string, cor
     return json({ success: true }, 200, corsHdrs);
 
   } catch (err: any) {
-    if (err instanceof Response) throw err;
+    if (err instanceof Response) {throw err;}
     if (isValidationError(err)) {
       return json({
         success: false,
@@ -316,7 +312,7 @@ export async function signupStarterMake(req: Request, env: any, requestId: strin
     return json({ success: true }, 200, corsHdrs);
 
   } catch (err: any) {
-    if (err instanceof Response) throw err;
+    if (err instanceof Response) {throw err;}
     if (isValidationError(err)) {
       return json({
         success: false,
@@ -359,7 +355,7 @@ export async function signupProConfirm(req: Request, env: any, requestId: string
     return json({ success: true }, 200, corsHdrs);
 
   } catch (err: any) {
-    if (err instanceof Response) throw err;
+    if (err instanceof Response) {throw err;}
     logJSON({ level: "error", requestId, msg: "PRO_CONFIRM_ERROR", error: err.message });
     return json({ success: false, error: { code: "PRO_CONFIRM_FAILED", message: err.message } }, 500, corsHdrs);
   }
@@ -511,7 +507,7 @@ export async function signupVerifyPromo(req: Request, env: any, requestId: strin
         }
       }, err.status, corsHdrs);
     }
-    if (err instanceof Response) throw err;
+    if (err instanceof Response) {throw err;}
     logJSON({ level: "error", requestId, msg: "VERIFY_PROMO_ERROR", error: err.message });
     return json({ success: false, error: { code: "VERIFY_PROMO_FAILED", message: err.message } }, 500, corsHdrs);
   }

@@ -32,8 +32,8 @@ describe("Matches Service", () => {
       KV: {
         get: async (key: string, type?: string) => {
           const value = mockKV.get(key);
-          if (!value) return null;
-          if (type === "json") return JSON.parse(value);
+          if (!value) {return null;}
+          if (type === "json") {return JSON.parse(value);}
           return value;
         },
         put: async (key: string, value: string) => {
@@ -84,7 +84,7 @@ describe("Matches Service", () => {
                     const [status, id] = params;
                     const table = mockDB.get("matches") || [];
                     const match = table.find((m: any) => m.id === id);
-                    if (match) match.status = status;
+                    if (match) {match.status = status;}
                   } else if (sql.includes("DELETE FROM matches")) {
                     const [id] = params;
                     const table = mockDB.get("matches") || [];

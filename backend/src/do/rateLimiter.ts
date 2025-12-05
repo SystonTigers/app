@@ -4,12 +4,12 @@ export class TenantRateLimiter {
 
   async fetch(req: Request): Promise<Response> {
     const url = new URL(req.url);
-    if (url.pathname !== "/check") return new Response("not found", { status: 404 });
+    if (url.pathname !== "/check") {return new Response("not found", { status: 404 });}
 
     const bucket = url.searchParams.get("bucket") || "post";
     const now = Date.now(); const windowMs = 1000; const burst = 5;
     const key = `rl:${bucket}:${Math.floor(now / windowMs)}`;
-    let used = (await this.storage.get<number>(key)) ?? 0;
+    const used = (await this.storage.get<number>(key)) ?? 0;
 
     if (used < burst) {
       await this.storage.put(key, used + 1);

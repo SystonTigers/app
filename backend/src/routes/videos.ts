@@ -8,6 +8,7 @@ import { requireJWT } from "../services/auth";
 import type { VideoJob } from "../video-queue-consumer";
 import { logJSON } from "../lib/log";
 import { fileValidators, getValidationErrorResponse } from "../lib/fileValidation";
+import { rateLimitWithTenant } from "../middleware/rateLimit";
 
 // Zod validation schemas
 const VideoUploadMetadataSchema = z.object({
@@ -38,6 +39,35 @@ export async function handleVideoUpload(
       { success: false, error: { code: "MISSING_TENANT", message: "Tenant ID not found in JWT" } },
       400,
       corsHdrs
+    );
+  }
+
+  // Rate limit: 10 uploads per hour per tenant
+  const rateLimitResult = await rateLimitWithTenant(req, env, claims, {
+    scope: "video:upload",
+    limit: 10,
+    windowSeconds: 3600, // 1 hour
+    path: "/api/v1/videos/upload",
+    tenantLimit: 50, // 50 uploads per hour per tenant
+    tenantWindow: 3600
+  });
+
+  if (!rateLimitResult.ok) {
+    const headers = new Headers(corsHdrs);
+    if (rateLimitResult.limit) headers.set("X-RateLimit-Limit", String(rateLimitResult.limit));
+    if (rateLimitResult.remaining !== undefined) headers.set("X-RateLimit-Remaining", String(rateLimitResult.remaining));
+    if (rateLimitResult.retryAfter) headers.set("Retry-After", String(rateLimitResult.retryAfter));
+
+    return json(
+      {
+        success: false,
+        error: {
+          code: "RATE_LIMITED",
+          message: rateLimitResult.error || "Too many video uploads. Please try again later."
+        }
+      },
+      429,
+      headers
     );
   }
 

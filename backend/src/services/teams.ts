@@ -27,7 +27,7 @@ export async function createTeam(
 
   const key = TEAM_KEY(args.tenant, args.teamId);
   const existing = await kvGetJSON<Team>(env.KV_IDEMP, key);
-  if (existing) return existing;
+  if (existing) {return existing;}
 
   const team: Team = {
     tenantId: args.tenant,

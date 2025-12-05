@@ -18,6 +18,7 @@ export async function handleCreateProduct(req: Request, env: any, corsHdrs: Head
 
         return json({ success: true, id: productId }, 200, corsHdrs);
     } catch (err) {
+        if (err instanceof Response) throw err;
         return json({ success: false, error: "Failed to create product" }, 500, corsHdrs);
     }
 }
@@ -50,6 +51,7 @@ export async function handleListProducts(req: Request, env: any, corsHdrs: Heade
 
         return json({ success: true, data: products }, 200, corsHdrs);
     } catch (err) {
+        if (err instanceof Response) throw err;
         return json({ success: false, error: "Failed to list products" }, 500, corsHdrs);
     }
 }
@@ -76,6 +78,7 @@ export async function handleGetProduct(req: Request, env: any, corsHdrs: Headers
             }
         }, 200, corsHdrs);
     } catch (err) {
+        if (err instanceof Response) throw err;
         return json({ success: false, error: "Failed to get product" }, 500, corsHdrs);
     }
 }
@@ -99,6 +102,7 @@ export async function handleUpdateProduct(req: Request, env: any, corsHdrs: Head
 
         return json({ success: true }, 200, corsHdrs);
     } catch (err) {
+        if (err instanceof Response) throw err;
         return json({ success: false, error: "Failed to update product" }, 500, corsHdrs);
     }
 }
@@ -113,6 +117,7 @@ export async function handleDeleteProduct(req: Request, env: any, corsHdrs: Head
 
         return json({ success: true }, 200, corsHdrs);
     } catch (err) {
+        if (err instanceof Response) throw err;
         return json({ success: false, error: "Failed to delete product" }, 500, corsHdrs);
     }
 }
@@ -129,6 +134,7 @@ export async function handlePrintifySync(req: Request, env: any, corsHdrs: Heade
             message: "Printify sync not yet implemented. Configure Printify API keys in environment."
         }, 200, corsHdrs);
     } catch (err) {
+        if (err instanceof Response) throw err;
         return json({ success: false, error: "Failed to sync with Printify" }, 500, corsHdrs);
     }
 }
@@ -158,6 +164,7 @@ export async function handlePublicListProducts(req: Request, env: any, corsHdrs:
 
         return json({ success: true, data: products }, 200, corsHdrs);
     } catch (err) {
+        if (err instanceof Response) throw err;
         return json({ success: false, error: "Failed to list products" }, 500, corsHdrs);
     }
 }

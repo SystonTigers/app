@@ -86,9 +86,7 @@ export async function provisionTenant(
           finalPlan = promoResult.discount.plan as "free" | "managed" | "enterprise";
         }
 
-        console.log(`[Provisioning] Promo code applied: ${request.promoCode} for ${tenantId}`);
       } else {
-        console.warn(`[Provisioning] Invalid promo code: ${request.promoCode}`, promoResult.error);
         // Don't fail provisioning, just log warning and continue
       }
     }
@@ -160,9 +158,7 @@ export async function provisionTenant(
       );
 
       if (appsScriptDeployment.success) {
-        console.log(`[Provisioning] Apps Script deployed for ${tenantId}:`, appsScriptDeployment.scriptId);
       } else {
-        console.warn(`[Provisioning] Apps Script deployment failed (non-critical):`, appsScriptDeployment.error);
       }
     }
 
@@ -184,7 +180,6 @@ export async function provisionTenant(
     };
 
   } catch (error: any) {
-    console.error("PROVISIONING_ERROR", error);
     return {
       success: false,
       error: {
@@ -246,7 +241,7 @@ async function sendWelcomeEmail(env: Env, data: {
   adminJWT: string;
 }) {
   // Example using Resend API
-  if (!env.RESEND_API_KEY) return;
+  if (!env.RESEND_API_KEY) {return;}
 
   await fetch("https://api.resend.com/emails", {
     method: "POST",

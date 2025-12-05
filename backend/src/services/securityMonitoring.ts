@@ -133,7 +133,7 @@ export async function logSecurityEvent(
 
   // Store in KV for querying (last 7 days)
   const kv = env.KV_IDEMP;
-  if (!kv) return;
+  if (!kv) {return;}
 
   try {
     // Store with timestamp key for time-series queries
@@ -164,7 +164,7 @@ async function updateSecurityMetrics(
   event: SecurityEvent
 ): Promise<void> {
   const kv = env.KV_IDEMP;
-  if (!kv) return;
+  if (!kv) {return;}
 
   // Get current hour for metrics bucketing
   const hour = new Date(event.timestamp).toISOString().slice(0, 13) + ':00';
@@ -239,7 +239,7 @@ async function checkAttackPatterns(
   event: SecurityEvent
 ): Promise<void> {
   const kv = env.KV_IDEMP;
-  if (!kv) return;
+  if (!kv) {return;}
 
   // Check for brute force attempts (multiple auth failures from same IP)
   if (event.type === SecurityEventType.AUTH_FAILURE) {
@@ -330,7 +330,7 @@ export async function getSecurityMetrics(
   hours: number = 24
 ): Promise<SecurityMetrics[]> {
   const kv = env.KV_IDEMP;
-  if (!kv) return [];
+  if (!kv) {return [];}
 
   const metrics: SecurityMetrics[] = [];
   const now = Date.now();
@@ -371,7 +371,7 @@ export async function getRecentSecurityEvents(
   }
 ): Promise<SecurityEvent[]> {
   const kv = env.KV_IDEMP;
-  if (!kv) return [];
+  if (!kv) {return [];}
 
   try {
     // List events from KV
@@ -380,14 +380,14 @@ export async function getRecentSecurityEvents(
 
     for (const key of list.keys) {
       const event = await kv.get(key.name, 'json') as SecurityEvent | null;
-      if (!event) continue;
+      if (!event) {continue;}
 
       // Apply filters
       if (filter) {
-        if (filter.type && event.type !== filter.type) continue;
-        if (filter.severity && event.severity !== filter.severity) continue;
-        if (filter.tenantId && event.tenantId !== filter.tenantId) continue;
-        if (filter.ip && event.ip !== filter.ip) continue;
+        if (filter.type && event.type !== filter.type) {continue;}
+        if (filter.severity && event.severity !== filter.severity) {continue;}
+        if (filter.tenantId && event.tenantId !== filter.tenantId) {continue;}
+        if (filter.ip && event.ip !== filter.ip) {continue;}
       }
 
       events.push(event);

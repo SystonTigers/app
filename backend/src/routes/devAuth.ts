@@ -39,7 +39,6 @@ export async function handleDevAdminJWT(req: Request, env: Env): Promise<Respons
     .setExpirationTime(now + 7 * 24 * 3600)
     .sign(new TextEncoder().encode(env.JWT_SECRET));
 
-  console.log('[DEV] Generated admin JWT for:', { tenantId, email });
 
   return json({
     success: true,
@@ -86,7 +85,6 @@ export async function handleDevMagicLink(req: Request, env: Env): Promise<Respon
 
   const link = `${env.ADMIN_CONSOLE_URL}/admin/onboard?token=${token}`;
 
-  console.log('[DEV] Generated magic link for:', { tenantId, email, link });
 
   return json({
     success: true,

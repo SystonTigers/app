@@ -105,7 +105,7 @@ export async function updatePlayerImage(
   updates: Partial<Omit<PlayerImage, "id" | "uploadedAt">>
 ): Promise<PlayerImage | null> {
   const existing = await getPlayerImage(env, tenant, imageId);
-  if (!existing) return null;
+  if (!existing) {return null;}
 
   const updated: PlayerImage = {
     ...existing,
@@ -134,14 +134,13 @@ export async function deletePlayerImage(
   imageId: string
 ): Promise<boolean> {
   const existing = await getPlayerImage(env, tenant, imageId);
-  if (!existing) return false;
+  if (!existing) {return false;}
 
   // Delete from R2 if exists
   if (existing.r2Key) {
     try {
       await env.R2_MEDIA.delete(existing.r2Key);
     } catch (err) {
-      console.error("Failed to delete R2 object", existing.r2Key, err);
     }
   }
 

@@ -633,3 +633,66 @@ export async function handleDeleteTrainingSession(
     corsHdrs
   );
 }
+/**
+ * GET /api/v1/coaching/jobs/:id
+ * Get coaching job status (for polling)
+ * SECURITY: Requires JWT authentication
+ */
+export async function handleGetJobStatus(
+  req: Request,
+  env: any,
+  corsHdrs: Headers,
+  jobId: string
+): Promise<Response> {
+  const claims = await requireJWT(req, env);
+  const tenant = claims.tenantId;
+
+  if (!tenant) {
+    return json(
+      { success: false, error: { code: "MISSING_TENANT", message: "Tenant not found" } },
+      400,
+      corsHdrs
+    );
+  }
+
+  // Try all possible job types
+  const jobKeys = [
+    `coaching_job:${tenant}:${jobId}`,
+    `drill_job:${tenant}:${jobId}`,
+    `session_job:${tenant}:${jobId}`
+  ];
+
+  for (const key of jobKeys) {
+    const job = await env.KV_IDEMP.get(key, "json");
+
+    if (job) {
+      return json(
+        {
+          success: true,
+          data: {
+            job_id: jobId,
+            status: (job as any).status || "unknown",
+            type: (job as any).type || "unknown",
+            result: (job as any).result,
+            error: (job as any).error,
+            created_at: (job as any).createdAt,
+            updated_at: (job as any).updatedAt,
+            completed_at: (job as any).completedAt,
+          },
+        },
+        200,
+        corsHdrs
+      );
+    }
+  }
+
+  // Job not found
+  return json(
+    {
+      success: false,
+      error: { code: "JOB_NOT_FOUND", message: "Job not found" },
+    },
+    404,
+    corsHdrs
+  );
+}

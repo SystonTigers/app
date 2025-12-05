@@ -1,5 +1,6 @@
 import { json } from "../services/util";
 import { logJSON } from "../lib/log";
+import { requireJWT } from "../services/auth";
 
 export async function handleMatchUpdates(
     req: Request,
@@ -7,6 +8,8 @@ export async function handleMatchUpdates(
     corsHdrs: Headers,
     matchId: string
 ): Promise<Response> {
+    const claims = await requireJWT(req, env);
+
     // 1. Fetch match details
     const match = await env.DB.prepare("SELECT * FROM matches WHERE id = ?").bind(matchId).first();
 

@@ -4,7 +4,7 @@ const key = (tenant: TenantId) => `tenant:${tenant}`;
 
 export async function getTenantConfig(env: any, tenant: TenantId): Promise<TenantConfig | null> {
   const raw = await env.KV_IDEMP.get(key(tenant));
-  if (!raw) return null;
+  if (!raw) {return null;}
   try {
     return JSON.parse(raw) as TenantConfig;
   } catch {
@@ -19,7 +19,7 @@ export async function putTenantConfig(env: any, cfg: TenantConfig): Promise<void
 
 export async function ensureTenant(env: any, tenant: TenantId): Promise<TenantConfig> {
   const existing = await getTenantConfig(env, tenant);
-  if (existing) return existing;
+  if (existing) {return existing;}
   const fresh: TenantConfig = {
     id: tenant,
     flags: { use_make: false, direct_yt: true },
@@ -69,8 +69,8 @@ export async function setTenantCreds(env: any, tenant: TenantId, patch: Partial<
 
 export async function setChannelWebhook(env: any, tenant: TenantId, channel: Channel, url: string): Promise<TenantConfig> {
   const cfg = await ensureTenant(env, tenant);
-  if (!cfg.creds) cfg.creds = {};
-  if (!cfg.creds.make) cfg.creds.make = {};
+  if (!cfg.creds) {cfg.creds = {};}
+  if (!cfg.creds.make) {cfg.creds.make = {};}
   cfg.creds.make[channel] = url;
   await putTenantConfig(env, cfg);
   return cfg;
@@ -78,8 +78,8 @@ export async function setChannelWebhook(env: any, tenant: TenantId, channel: Cha
 
 export async function setYouTubeBYOGoogle(env: any, tenant: TenantId, client_id: string, client_secret: string): Promise<TenantConfig> {
   const cfg = await ensureTenant(env, tenant);
-  if (!cfg.creds) cfg.creds = {};
-  if (!cfg.creds.yt) cfg.creds.yt = {};
+  if (!cfg.creds) {cfg.creds = {};}
+  if (!cfg.creds.yt) {cfg.creds.yt = {};}
   cfg.creds.yt.client_id = client_id;
   cfg.creds.yt.client_secret = client_secret;
   await putTenantConfig(env, cfg);
@@ -89,9 +89,9 @@ export async function setYouTubeBYOGoogle(env: any, tenant: TenantId, client_id:
 // Webhook host validation with suffix support - defensive, never throws
 export function isAllowedWebhookHost(host: string, allowedCsv: string): boolean {
   try {
-    if (!host) return false;
+    if (!host) {return false;}
     const raw = (allowedCsv || "").trim();
-    if (!raw) return false; // fail closed if no config
+    if (!raw) {return false;} // fail closed if no config
 
     const items = raw
       .split(',')
@@ -101,23 +101,23 @@ export function isAllowedWebhookHost(host: string, allowedCsv: string): boolean 
     const h = host.toLowerCase();
 
     // Exact match
-    if (items.includes(h)) return true;
+    if (items.includes(h)) {return true;}
 
     // Wildcard *.make.com
-    if (items.includes("*.make.com") && h.endsWith(".make.com")) return true;
+    if (items.includes("*.make.com") && h.endsWith(".make.com")) {return true;}
 
     // Generic make.com allowance (exact or any subdomain)
-    if (items.includes("make.com") && (h === "make.com" || h.endsWith(".make.com"))) return true;
+    if (items.includes("make.com") && (h === "make.com" || h.endsWith(".make.com"))) {return true;}
 
     // Check other suffix rules
     for (const item of items) {
       if (item.startsWith('.')) {
         // explicit suffix rule (e.g. ".make.com")
-        if (h.endsWith(item)) return true;
+        if (h.endsWith(item)) {return true;}
       } else if (item.startsWith('*.')) {
         // wildcard style (e.g. "*.make.com")
         const suf = item.slice(1); // ".make.com"
-        if (h.endsWith(suf)) return true;
+        if (h.endsWith(suf)) {return true;}
       }
     }
 

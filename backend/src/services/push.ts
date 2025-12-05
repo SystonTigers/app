@@ -2,7 +2,7 @@
 import type { Env } from "../types";
 
 export async function sendFcm(env: Env, tokens: string[], payload: any) {
-  if (!env.FCM_SERVER_KEY) throw new Error("FCM_SERVER_KEY missing");
+  if (!env.FCM_SERVER_KEY) {throw new Error("FCM_SERVER_KEY missing");}
   const body = {
     registration_ids: tokens,
     notification: payload.notification ?? undefined,
@@ -43,7 +43,7 @@ export async function getUserTokens(env: Env, tenant: string, userId: string): P
 
 export async function sendToUser(env: Env, tenant: string, userId: string, payload: any) {
   const tokens = await getUserTokens(env, tenant, userId);
-  if (tokens.length === 0) return { sent: 0 };
+  if (tokens.length === 0) {return { sent: 0 };}
   return await sendFcm(env, tokens, payload);
 }
 
@@ -53,6 +53,6 @@ export async function sendToMany(env: Env, tenant: string, userIds: string[], pa
     const tokens = await getUserTokens(env, tenant, userId);
     allTokens.push(...tokens);
   }
-  if (allTokens.length === 0) return { sent: 0 };
+  if (allTokens.length === 0) {return { sent: 0 };}
   return await sendFcm(env, allTokens, payload);
 }

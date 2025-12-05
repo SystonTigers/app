@@ -31,7 +31,7 @@ export class VotingRoom {
     return `tenants:${tenant}:motm:${matchId}:snapshot`;
   }
   private ensure() {
-    if (!this.snapshot) throw new Error("room not initialised");
+    if (!this.snapshot) {throw new Error("room not initialised");}
   }
 
   // Load from storage (DO storage) or KV snapshot
@@ -80,10 +80,10 @@ export class VotingRoom {
 
   async vote(candidateId: string, userHash: string) {
     this.ensure();
-    if (!this.snapshot!.settings.open) throw new Error("voting closed");
-    if (this.snapshot!.voted[userHash]) throw new Error("already voted");
+    if (!this.snapshot!.settings.open) {throw new Error("voting closed");}
+    if (this.snapshot!.voted[userHash]) {throw new Error("already voted");}
 
-    if (!(candidateId in this.snapshot!.counts)) throw new Error("invalid candidate");
+    if (!(candidateId in this.snapshot!.counts)) {throw new Error("invalid candidate");}
 
     // enforce simple per-user limit (1)
     const limit = this.snapshot!.settings.maxVotesPerUser || 1;

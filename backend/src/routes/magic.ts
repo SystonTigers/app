@@ -9,7 +9,7 @@ export async function handleMagicStart(req: Request, env: Env, corsHdrs?: Header
   const body: any = await req.json().catch(() => ({}));
   const email = (body.email || '').toString().trim().toLowerCase();
   const tenantId = (body.tenantId || 'platform').toString().trim(); // Default to 'platform' for admin login
-  if (!email) return json({ success: false, error: 'email required' }, 400);
+  if (!email) {return json({ success: false, error: 'email required' }, 400);}
 
   // Get tenant name from database for personalized email
   let clubName = 'Platform Admin'; // Default for platform admin
@@ -22,7 +22,6 @@ export async function handleMagicStart(req: Request, env: Env, corsHdrs?: Header
         clubName = row.name;
       }
     } catch (error) {
-      console.warn('[Magic] Could not fetch tenant name:', error);
     }
   }
 
@@ -43,9 +42,7 @@ export async function handleMagicStart(req: Request, env: Env, corsHdrs?: Header
   const emailResult = await sendMagicLinkEmail(email, link, clubName, env);
 
   if (emailResult.success) {
-    console.log(`[Magic] Email sent to ${email} (messageId: ${emailResult.messageId})`);
   } else {
-    console.error(`[Magic] Email send failed for ${email}:`, emailResult.error);
     // Don't fail the request - link is still logged and can be manually shared
   }
 
@@ -55,7 +52,7 @@ export async function handleMagicStart(req: Request, env: Env, corsHdrs?: Header
 // GET /auth/magic/verify?token=...
 export async function handleMagicVerify(req: Request, env: Env, corsHdrs?: Headers): Promise<Response> {
   const token = new URL(req.url).searchParams.get('token') || '';
-  if (!token) return json({ success: false, error: 'token required' }, 400, corsHdrs);
+  if (!token) {return json({ success: false, error: 'token required' }, 400, corsHdrs);}
 
   const { payload } = await jwtVerify(token, new TextEncoder().encode(env.JWT_SECRET), {
     issuer: env.JWT_ISSUER || 'syston.app',

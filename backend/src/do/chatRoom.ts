@@ -59,13 +59,13 @@ export class ChatRoom {
   }
 
   private async save() {
-    if (!this.chatState) throw new Error("chat not initialized");
+    if (!this.chatState) {throw new Error("chat not initialized");}
     this.chatState.updatedAt = Date.now();
     await this.state.storage.put("state", this.chatState);
   }
 
   private async flushToKV() {
-    if (!this.chatState) return;
+    if (!this.chatState) {return;}
     const { tenant, roomId } = this.chatState;
     // Keep last 200 messages in KV
     const snapshot = {
@@ -84,7 +84,7 @@ export class ChatRoom {
 
   async send(data: { tenant: string; roomId: string; userId: string; text: string; mediaIds?: string[] }) {
     await this.load(data.tenant, data.roomId);
-    if (!this.chatState) throw new Error("chat not initialized");
+    if (!this.chatState) {throw new Error("chat not initialized");}
 
     // SECURITY: Sanitize HTML to prevent XSS attacks
     let sanitized = sanitizers.comment(data.text);
@@ -125,7 +125,7 @@ export class ChatRoom {
 
   async history(data: { tenant: string; roomId: string; cursor?: string; limit?: number }) {
     await this.load(data.tenant, data.roomId);
-    if (!this.chatState) throw new Error("chat not initialized");
+    if (!this.chatState) {throw new Error("chat not initialized");}
 
     const limit = data.limit || 50;
     let messages = [...this.chatState.messages];
@@ -152,7 +152,7 @@ export class ChatRoom {
 
   async typing(data: { tenant: string; roomId: string; userId: string; typing: boolean }) {
     await this.load(data.tenant, data.roomId);
-    if (!this.chatState) throw new Error("chat not initialized");
+    if (!this.chatState) {throw new Error("chat not initialized");}
 
     const now = Date.now();
     if (data.typing) {
@@ -163,7 +163,7 @@ export class ChatRoom {
 
     // Clean expired
     for (const [userId, expiryTs] of this.typingUsers.entries()) {
-      if (now > expiryTs) this.typingUsers.delete(userId);
+      if (now > expiryTs) {this.typingUsers.delete(userId);}
     }
 
     return { ok: true, typing: Array.from(this.typingUsers.keys()) };

@@ -81,7 +81,6 @@ export async function handleFixtureSync(req: Request, env: any): Promise<Respons
 
         synced++;
       } catch (err) {
-        console.error('Error syncing fixture:', err);
       }
     }
 
@@ -91,7 +90,6 @@ export async function handleFixtureSync(req: Request, env: any): Promise<Respons
     });
 
   } catch (err) {
-    console.error('Fixture sync error:', err);
     return json({
       error: 'Failed to sync fixtures',
       message: err instanceof Error ? err.message : 'Unknown error'
@@ -131,7 +129,6 @@ export async function handleGetUpcomingFixtures(req: Request, env: any): Promise
     return json(result.results || []);
 
   } catch (err) {
-    console.error('Get upcoming fixtures error:', err);
     return json({
       error: 'Failed to fetch fixtures',
       message: err instanceof Error ? err.message : 'Unknown error'
@@ -182,7 +179,6 @@ export async function handleGetAllFixtures(req: Request, env: any): Promise<Resp
     return json(result.results || []);
 
   } catch (err) {
-    console.error('Get all fixtures error:', err);
     return json({
       error: 'Failed to fetch fixtures',
       message: err instanceof Error ? err.message : 'Unknown error'
@@ -222,7 +218,6 @@ export async function handleGetResults(req: Request, env: any): Promise<Response
     return json(result.results || []);
 
   } catch (err) {
-    console.error('Get results error:', err);
     return json({
       error: 'Failed to fetch results',
       message: err instanceof Error ? err.message : 'Unknown error'
@@ -275,7 +270,6 @@ export async function handleAddResult(req: Request, env: any): Promise<Response>
     return json({ success: true });
 
   } catch (err) {
-    console.error('Add result error:', err);
     return json({
       error: 'Failed to add result',
       message: err instanceof Error ? err.message : 'Unknown error'
@@ -299,7 +293,6 @@ export async function handleDeleteFixture(req: Request, env: any, id: string): P
     return json({ success: true });
 
   } catch (err) {
-    console.error('Delete fixture error:', err);
     return json({
       error: 'Failed to delete fixture',
       message: err instanceof Error ? err.message : 'Unknown error'

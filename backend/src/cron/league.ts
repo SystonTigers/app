@@ -1,3 +1,4 @@
+import { logJSON } from '../lib/log';
 import type { Env } from '../env';
 
 /**
@@ -8,7 +9,7 @@ import type { Env } from '../env';
  * - Detecting position changes
  */
 export const runLeague = async (env: Env, ctx: ExecutionContext) => {
-  console.log('Running league table refresh cron job');
+  logJSON({ level: 'info', msg: 'league_cron_started' });
 
   try {
     // Get all active tenants with league table tracking enabled
@@ -18,9 +19,9 @@ export const runLeague = async (env: Env, ctx: ExecutionContext) => {
       await refreshLeagueTable(env, tenant);
     }
 
-    console.log(`League refresh completed for ${tenants.length} tenants`);
+    logJSON({ level: 'info', msg: 'league_cron_completed', tenantCount: tenants.length });
   } catch (error) {
-    console.error('League cron error:', error);
+    logJSON({ level: 'error', msg: 'league_cron_error', error: error instanceof Error ? error.message : String(error) });
   }
 };
 
@@ -46,7 +47,7 @@ async function getTenantsWithLeagueTracking(env: Env): Promise<any[]> {
 async function refreshLeagueTable(env: Env, config: any) {
   const tenant = config.team_id;
 
-  console.log(`Refreshing league table for ${tenant}`);
+  logJSON({ level: 'info', msg: 'refreshing_league_table', tenant });
 
   try {
     // Get previous table
@@ -59,7 +60,7 @@ async function refreshLeagueTable(env: Env, config: any) {
     const newTable = await fetchLeagueData(config.league_url);
 
     if (!newTable || !newTable.standings) {
-      console.log(`No league data found for ${tenant}`);
+      logJSON({ level: 'info', msg: 'no_league_data', tenant });
       return;
     }
 
@@ -86,9 +87,9 @@ async function refreshLeagueTable(env: Env, config: any) {
       }
     }
 
-    console.log(`League table updated for ${tenant}`);
+    logJSON({ level: 'info', msg: 'league_table_updated', tenant });
   } catch (error) {
-    console.error(`Failed to refresh league table for ${tenant}:`, error);
+    logJSON({ level: 'error', msg: 'Failed to refresh league table for ${tenant}:', error: error instanceof Error ? error.message : String(error) });
   }
 }
 
@@ -112,7 +113,7 @@ async function fetchLeagueData(url: string): Promise<any> {
       return null;
     }
   } catch (error) {
-    console.error('Failed to fetch league data:', error);
+    logJSON({ level: 'error', msg: 'Failed to fetch league data', error: error instanceof Error ? error.message : String(error) });
     return null;
   }
 }
@@ -183,5 +184,10 @@ async function createLeagueUpdatePost(
     });
   }
 
-  console.log(`Created league update post for ${tenant}:`, changes);
+  logJSON({
+    level: "info",
+    msg: "league_update_post_created",
+    tenant,
+    changes: changes.length
+  });
 }

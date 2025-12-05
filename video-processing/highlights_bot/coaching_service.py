@@ -16,8 +16,12 @@ import os
 import json
 import logging
 from typing import Optional, Dict, Any
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Header, Depends
 from fastapi.middleware.cors import CORSMiddleware
+# Load environment variables from .env file
+from dotenv import load_dotenv
+load_dotenv()
+
 from pydantic import BaseModel
 import httpx
 
@@ -62,6 +66,25 @@ except Exception as e:
 # Environment variables
 CLOUDFLARE_KV_API = os.getenv('CLOUDFLARE_KV_API_URL')
 CLOUDFLARE_API_TOKEN = os.getenv('CLOUDFLARE_API_TOKEN')
+COACHING_API_KEY = os.getenv('COACHING_API_KEY')
+
+# Dependency for API key validation
+async def verify_api_key(x_api_key: str = Header(None)):
+    """Verify API key from request header"""
+    if not COACHING_API_KEY:
+        # If no API key configured, allow (for local dev)
+        logger.warning("⚠️  No COACHING_API_KEY set - authentication disabled!")
+        return True
+
+    if x_api_key != COACHING_API_KEY:
+        logger.error(f"❌ Invalid API key attempted")
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid or missing API key"
+        )
+
+    return True
+
 
 
 # ===== REQUEST MODELS =====
@@ -286,7 +309,7 @@ async def health():
     }
 
 
-@app.post("/analyze-mistakes")
+@app.post("/analyze-mistakes", dependencies=[Depends(verify_api_key)])
 async def analyze_mistakes(
     request: AnalyzeMistakesRequest,
     background_tasks: BackgroundTasks
@@ -312,7 +335,7 @@ async def analyze_mistakes(
     }
 
 
-@app.post("/generate-drills")
+@app.post("/generate-drills", dependencies=[Depends(verify_api_key)])
 async def generate_drills(
     request: GenerateDrillsRequest,
     background_tasks: BackgroundTasks
@@ -338,7 +361,7 @@ async def generate_drills(
     }
 
 
-@app.post("/generate-session")
+@app.post("/generate-session", dependencies=[Depends(verify_api_key)])
 async def generate_session(
     request: GenerateSessionRequest,
     background_tasks: BackgroundTasks

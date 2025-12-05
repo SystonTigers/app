@@ -53,19 +53,19 @@ export class MatchRoom {
   }
 
   private async save() {
-    if (!this.matchState) throw new Error("match not initialized");
+    if (!this.matchState) {throw new Error("match not initialized");}
     this.matchState.updatedAt = Date.now();
     await this.state.storage.put("state", this.matchState);
   }
 
   private async flushToKV() {
-    if (!this.matchState) return;
+    if (!this.matchState) {return;}
     const { tenant, matchId } = this.matchState;
     await this.env.KV_IDEMP.put(this.keySnap(tenant, matchId), JSON.stringify(this.matchState));
   }
 
   private async maybePush(eventType: string, text: string) {
-    if (!this.matchState) return;
+    if (!this.matchState) {return;}
     const now = Date.now();
     // Goals: immediate; others: throttle to 1/15s
     if (eventType === "goal" || now - this.lastPushTs > 15000) {
@@ -77,10 +77,8 @@ export class MatchRoom {
         if (tokens.length > 0) {
           // Use existing push service if available
           // For now, just log (sendToUser expects userId, we have tokens)
-          console.log(`[MatchRoom] Would push to ${tokens.length} tokens: ${text}`);
         }
       } catch (e) {
-        console.error("[MatchRoom] push error:", e);
       }
     }
   }
@@ -106,8 +104,8 @@ export class MatchRoom {
   }
 
   async event(evt: Omit<MatchEvent, "id" | "ts">) {
-    if (!this.matchState) throw new Error("match not initialized");
-    if (this.matchState.closed) throw new Error("match closed");
+    if (!this.matchState) {throw new Error("match not initialized");}
+    if (this.matchState.closed) {throw new Error("match closed");}
 
     const id = `evt_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
     const ts = Date.now();
@@ -115,8 +113,8 @@ export class MatchRoom {
 
     // Update score if goal
     if (evt.type === "goal" && evt.payload?.side) {
-      if (evt.payload.side === "home") this.matchState.homeScore++;
-      else if (evt.payload.side === "away") this.matchState.awayScore++;
+      if (evt.payload.side === "home") {this.matchState.homeScore++;}
+      else if (evt.payload.side === "away") {this.matchState.awayScore++;}
     }
 
     this.matchState.timeline.push(fullEvent);
@@ -140,7 +138,7 @@ export class MatchRoom {
   }
 
   async tally() {
-    if (!this.matchState) throw new Error("match not initialized");
+    if (!this.matchState) {throw new Error("match not initialized");}
     return {
       ok: true,
       data: {
@@ -158,7 +156,7 @@ export class MatchRoom {
   }
 
   async close() {
-    if (!this.matchState) throw new Error("match not initialized");
+    if (!this.matchState) {throw new Error("match not initialized");}
     this.matchState.closed = true;
     await this.save();
     await this.flushToKV();

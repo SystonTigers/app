@@ -23,7 +23,7 @@ export async function getUsage(req: Request, env: any, requestId: string, corsHd
     const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
     // Get usage counter for current month
-    let usage = await env.DB.prepare(`
+    const usage = await env.DB.prepare(`
       SELECT action_count FROM usage_counters WHERE tenant_id = ? AND month = ?
     `).bind(tenantId, month).first();
 
@@ -48,7 +48,7 @@ export async function getUsage(req: Request, env: any, requestId: string, corsHd
     }, 200, corsHdrs);
 
   } catch (err: any) {
-    if (err instanceof Response) throw err;
+    if (err instanceof Response) {throw err;}
     logJSON({ level: "error", requestId, msg: "GET_USAGE_ERROR", error: err.message });
     return json({ success: false, error: { code: "SERVER_ERROR", message: err.message } }, 500, corsHdrs);
   }
@@ -129,7 +129,7 @@ export async function incrementUsage(req: Request, env: any, requestId: string, 
     }, 200, corsHdrs);
 
   } catch (err: any) {
-    if (err instanceof Response) throw err;
+    if (err instanceof Response) {throw err;}
     logJSON({ level: "error", requestId, msg: "INCREMENT_USAGE_ERROR", error: err.message });
     return json({ success: false, error: { code: "SERVER_ERROR", message: err.message } }, 500, corsHdrs);
   }

@@ -36,7 +36,7 @@ async function getAuth(request: IRequest, env: Env) {
     }
     const token = authHeader.substring(7);
     const decoded = await verifyJWT(env, token);
-    if (!decoded) throw new Error("Unauthorized");
+    if (!decoded) {throw new Error("Unauthorized");}
     return decoded;
 }
 
@@ -66,7 +66,7 @@ export async function handlePushRegister(request: IRequest, env: Env) {
 
         return createResponse({ success: true });
     } catch (error: any) {
-        if (error.message.includes("Unauthorized")) return errorResponse("unauthorized", "Unauthorized", 401);
+        if (error.message.includes("Unauthorized")) {return errorResponse("unauthorized", "Unauthorized", 401);}
         return errorResponse("server_error", error.message, 500);
     }
 }
@@ -99,7 +99,7 @@ export async function handlePushSend(request: IRequest, env: Env) {
 
         return createResponse({ success: true, sent: results.length });
     } catch (error: any) {
-        if (error.message.includes("Unauthorized")) return errorResponse("unauthorized", "Unauthorized", 401);
+        if (error.message.includes("Unauthorized")) {return errorResponse("unauthorized", "Unauthorized", 401);}
         return errorResponse("server_error", error.message, 500);
     }
 }
@@ -132,14 +132,13 @@ export async function handlePushBroadcast(request: IRequest, env: Env) {
 
         return createResponse({ success: true, sent: results.length });
     } catch (error: any) {
-        if (error.message.includes("Unauthorized")) return errorResponse("unauthorized", "Unauthorized", 401);
+        if (error.message.includes("Unauthorized")) {return errorResponse("unauthorized", "Unauthorized", 401);}
         return errorResponse("server_error", error.message, 500);
     }
 }
 
 async function sendToFCM(env: Env, devices: { token: string }[], notification: any, data?: any) {
     if (!env.FCM_SERVER_KEY) {
-        console.warn("FCM_SERVER_KEY not set");
         return;
     }
 
@@ -162,6 +161,5 @@ async function sendToFCM(env: Env, devices: { token: string }[], notification: a
     });
 
     if (!response.ok) {
-        console.error("FCM Send Failed", await response.text());
     }
 }

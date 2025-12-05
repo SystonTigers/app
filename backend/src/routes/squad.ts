@@ -18,7 +18,6 @@ export async function handleUpdateSquad(req: Request, env: any, corsHdrs: Header
 
         return json({ success: true, count: body.length }, 200, corsHdrs);
     } catch (err) {
-        console.error("SQUAD_UPDATE_FAIL", err);
         return json({ success: false, error: "Failed to update squad" }, 500, corsHdrs);
     }
 }

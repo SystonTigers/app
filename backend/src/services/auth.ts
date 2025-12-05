@@ -7,7 +7,7 @@ import { isTokenRevoked } from "./jwtRevocation";
 function getBearer(req: Request): string {
   const hdr = req.headers.get("authorization") || "";
   const token = hdr.startsWith("Bearer ") ? hdr.slice(7) : "";
-  if (!token) throw new Response("Unauthorized", { status: 401 });
+  if (!token) {throw new Response("Unauthorized", { status: 401 });}
   return token;
 }
 
@@ -117,7 +117,6 @@ export async function requireTenantAdminOrPlatform(
     const claims = await requireAdmin(req, env);
     return { claims, scope: "platform_admin" };
   } catch (err) {
-    console.error("[Auth] requireAdmin failed:", err);
     if (err instanceof Response) {
       adminFailure = err;
     } else {
@@ -141,7 +140,7 @@ export async function requireTenantAdminOrPlatform(
 
     return { claims, scope: "tenant_admin" };
   } catch (err) {
-    if (err instanceof Response) throw err;
+    if (err instanceof Response) {throw err;}
     throw adminFailure ?? forbidden();
   }
 }
@@ -153,6 +152,6 @@ export function hasRole(user: Claims | { role?: string; roles?: string[] }, requ
   if ('roles' in user && Array.isArray(user.roles)) {
     return user.roles.includes(requiredRole);
   }
-  if ('role' in user && user.role === requiredRole) return true;
+  if ('role' in user && user.role === requiredRole) {return true;}
   return false;
 }

@@ -66,7 +66,8 @@ import {
     handleSaveTrainingSession,
     handleGetTrainingSessions,
     handleGetTrainingSession,
-    handleDeleteTrainingSession
+    handleDeleteTrainingSession,
+    handleGetJobStatus
 } from "./routes/coaching";
 // Export Durable Objects
 export { TenantRateLimiter } from "./do/rateLimiter";
@@ -422,6 +423,13 @@ router.get("/api/:v/coaching/sessions/:id", (req, env, corsHdrs, requestId) => {
 router.delete("/api/:v/coaching/sessions/:id", (req, env, corsHdrs, requestId) => {
     const params = (req as any).params || {};
     return handleDeleteTrainingSession(req, env, corsHdrs, params.id);
+});
+
+
+// Get coaching job status (for polling)
+router.get("/api/:v/coaching/jobs/:id", (req, env, corsHdrs, requestId) => {
+    const params = (req as any).params || {};
+    return handleGetJobStatus(req, env, corsHdrs, params.id);
 });
 
 // Squad Routes

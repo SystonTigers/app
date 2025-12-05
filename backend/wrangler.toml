@@ -14,6 +14,19 @@ binding = "DB"
 database_name = "syston-db-local"
 database_id = "local-db-id"
 
+# Default KV bindings for local development and testing
+[[kv_namespaces]]
+binding = "TENANTS"
+id = "local-tenants-kv"
+
+[[kv_namespaces]]
+binding = "KV_IDEMP"
+id = "local-idemp-kv"
+
+[[kv_namespaces]]
+binding = "FEATURE_FLAGS"
+id = "local-flags-kv"
+
 # ─────────────────────────────────────────────────────────
 # PRODUCTION ENVIRONMENT
 # ─────────────────────────────────────────────────────────
@@ -43,9 +56,10 @@ RESEND_FROM_EMAIL = "onboarding@syston.app"
 # Environment-specific vars
 WORKER_BASE_URL = "https://app.team-platform-2025.workers.dev"
 ENVIRONMENT = "production"
-BACKEND_API_KEY = "replace-with-secret-api-key"
+# BACKEND_API_KEY - Set via: wrangler secret put BACKEND_API_KEY --env production
+PYTHON_COACHING_SERVICE_URL = "http://localhost:8000"
 GAS_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbwMEAZaXwn_1mvpa_XWFB4ywU8oP795NFVyVu6RmyCXpLIOA0MurWVVuWbocmWakF3O/exec"
-GAS_HMAC_SECRET = "d6029df0d32ca2e03bc21342779d3f6bf2bf0c05dde7b3c6d3620a63191be628"
+# GAS_HMAC_SECRET - Set via: wrangler secret put GAS_HMAC_SECRET --env production
 SUPABASE_URL = "https://prod-supabase.example.com"
 SUPABASE_ANON_KEY = "prod-anon-key"
 SUPABASE_SERVICE_ROLE = "prod-service-role"
@@ -152,9 +166,10 @@ RESEND_FROM_EMAIL = "onboarding@syston.app"
 # Environment-specific vars
 WORKER_BASE_URL = "https://app-preview.team-platform-2025.workers.dev"
 ENVIRONMENT = "preview"
-BACKEND_API_KEY = "replace-with-secret-api-key"
+# BACKEND_API_KEY - Set via: wrangler secret put BACKEND_API_KEY --env preview
+PYTHON_COACHING_SERVICE_URL = "http://localhost:8000"
 GAS_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbwMEAZaXwn_1mvpa_XWFB4ywU8oP795NFVyVu6RmyCXpLIOA0MurWVVuWbocmWakF3O/exec"
-GAS_HMAC_SECRET = "d6029df0d32ca2e03bc21342779d3f6bf2bf0c05dde7b3c6d3620a63191be628"
+# GAS_HMAC_SECRET - Set via: wrangler secret put GAS_HMAC_SECRET --env preview
 SUPABASE_URL = "https://preview-supabase.example.com"
 SUPABASE_ANON_KEY = "preview-anon-key"
 SUPABASE_SERVICE_ROLE = "preview-service-role"

@@ -2,7 +2,7 @@ type YTCreds = { client_id: string; client_secret: string; refresh_token: string
 
 export async function publishYouTube(env: any, tenant: any, template: string, data: Record<string,unknown>) {
   const creds = await getTenantYouTubeCreds(env, tenant.id);
-  if (!creds) throw new Error("YouTube not configured for tenant");
+  if (!creds) {throw new Error("YouTube not configured for tenant");}
 
   const accessToken = await getGoogleAccessToken(creds);
   const privacy = (String((data.privacy||"unlisted")) as "public"|"unlisted"|"private");
@@ -32,8 +32,8 @@ async function getGoogleAccessToken(creds:YTCreds): Promise<string> {
   const res = await fetch("https://oauth2.googleapis.com/token", {
     method:"POST", headers:{ "content-type":"application/x-www-form-urlencoded" }, body: params.toString()
   });
-  if (!res.ok) throw new Error(`OAuth token refresh failed ${res.status}`);
-  const json:any = await res.json(); if (!json.access_token) throw new Error("No access_token");
+  if (!res.ok) {throw new Error(`OAuth token refresh failed ${res.status}`);}
+  const json:any = await res.json(); if (!json.access_token) {throw new Error("No access_token");}
   return json.access_token;
 }
 
@@ -42,7 +42,7 @@ async function createLiveBroadcast(accessToken:string, o:{ title:string; descrip
   const res = await fetch("https://www.googleapis.com/youtube/v3/liveBroadcasts?part=snippet,contentDetails,status", {
     method: "POST", headers: { "authorization": `Bearer ${accessToken}`, "content-type": "application/json" }, body: JSON.stringify(body)
   });
-  if (!res.ok) throw new Error(`createLiveBroadcast failed ${res.status}`);
+  if (!res.ok) {throw new Error(`createLiveBroadcast failed ${res.status}`);}
   return await res.json() as { id:string };
 }
 
@@ -51,7 +51,7 @@ async function createLiveStream(accessToken:string, o:{ title:string }) {
   const res = await fetch("https://www.googleapis.com/youtube/v3/liveStreams?part=snippet,cdn,status", {
     method: "POST", headers: { "authorization": `Bearer ${accessToken}`, "content-type": "application/json" }, body: JSON.stringify(body)
   });
-  if (!res.ok) throw new Error(`createLiveStream failed ${res.status}`);
+  if (!res.ok) {throw new Error(`createLiveStream failed ${res.status}`);}
   return await res.json() as { id:string };
 }
 
@@ -61,6 +61,6 @@ async function bindBroadcast(accessToken:string, broadcastId:string, streamId:st
   url.searchParams.set("part", "id,contentDetails");
   url.searchParams.set("streamId", streamId);
   const res = await fetch(url.toString(), { method:"POST", headers: { "authorization": `Bearer ${accessToken}` } });
-  if (!res.ok) throw new Error(`bindBroadcast failed ${res.status}`);
+  if (!res.ok) {throw new Error(`bindBroadcast failed ${res.status}`);}
   return await res.json();
 }

@@ -21,7 +21,7 @@ export function injectFont(svg: string, family: string, fontName: string, ttf: A
 // For images (badges/logos) -> base64 data URIs
 export async function fetchAsDataURI(url: string): Promise<string> {
   const r = await fetch(url);
-  if (!r.ok) throw new Error(`Failed to fetch asset ${url}`);
+  if (!r.ok) {throw new Error(`Failed to fetch asset ${url}`);}
   const ab = await r.arrayBuffer();
   const ct = r.headers.get('content-type') || 'image/png';
   return `data:${ct};base64,${b64(ab)}`;

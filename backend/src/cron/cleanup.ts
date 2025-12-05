@@ -1,4 +1,5 @@
 import type { Env } from '../env';
+import { logJSON } from '../lib/log';
 
 /**
  * Cleanup cron job - Runs every 5 minutes
@@ -8,16 +9,16 @@ import type { Env } from '../env';
  * - Removing expired cache entries
  */
 export const runCleanup = async (env: Env, ctx: ExecutionContext) => {
-  console.log('Running cleanup cron job');
+  logJSON({ level: 'info', msg: 'cleanup_cron_started' });
 
   try {
     await cleanupLiveUpdates(env);
     await cleanupExpiredData(env);
     await cleanupOldRenders(env);
 
-    console.log('Cleanup completed successfully');
+    logJSON({ level: 'info', msg: 'cleanup_cron_completed' });
   } catch (error) {
-    console.error('Cleanup cron error:', error);
+    logJSON({ level: 'error', msg: 'cleanup_cron_error', error: error instanceof Error ? error.message : String(error) });
   }
 };
 
@@ -38,7 +39,7 @@ async function cleanupLiveUpdates(env: Env) {
   }
 
   if (cleaned > 0) {
-    console.log(`Cleaned up ${cleaned} expired live updates`);
+    logJSON({ level: 'info', msg: 'cleanup_live_updates', cleaned });
   }
 }
 
@@ -63,7 +64,7 @@ async function cleanupExpiredData(env: Env) {
   }
 
   if (cleaned > 0) {
-    console.log(`Cleaned up ${cleaned} old autoposts`);
+    logJSON({ level: 'info', msg: 'cleanup_old_autoposts', cleaned });
   }
 }
 
@@ -84,7 +85,7 @@ async function cleanupOldRenders(env: Env) {
   }
 
   if (cleaned > 0) {
-    console.log(`Cleaned up ${cleaned} old render requests`);
+    logJSON({ level: 'info', msg: 'cleanup_old_renders', cleaned });
   }
 }
 
@@ -101,10 +102,10 @@ async function cleanupOldEvents(env: Env) {
     `).bind(cutoffTs).run();
 
     if (result.meta.changes > 0) {
-      console.log(`Cleaned up ${result.meta.changes} old events from D1`);
+      logJSON({ level: 'info', msg: 'cleanup_old_events', changes: result.meta.changes });
     }
   } catch (error) {
-    console.error('Failed to cleanup old events:', error);
+    logJSON({ level: 'error', msg: 'cleanup_old_events_failed', error: error instanceof Error ? error.message : String(error) });
   }
 }
 
@@ -128,7 +129,7 @@ async function cleanupOrphanedData(env: Env) {
       if (!config) {
         // Tenant deleted - remove orphaned data
         await env.KV.delete(key.name);
-        console.log(`Cleaned up orphaned data: ${key.name}`);
+        logJSON({ level: 'info', msg: 'cleanup_orphaned_data', key: key.name });
       }
     }
   }
@@ -147,7 +148,7 @@ async function monitorStorage(env: Env) {
     counts[prefix] = list.keys.length;
   }
 
-  console.log('KV Storage metrics:', counts);
+  logJSON({ level: 'info', msg: 'kv_storage_metrics', counts });
 
   // Store metrics for monitoring
   await env.KV.put(

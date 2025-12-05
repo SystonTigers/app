@@ -144,7 +144,6 @@ export async function signRS256JWT(
  * @example
  * ```typescript
  * const claims = await verifyRS256JWT(token, config);
- * console.log(claims.sub); // user-123
  * ```
  */
 export async function verifyRS256JWT(

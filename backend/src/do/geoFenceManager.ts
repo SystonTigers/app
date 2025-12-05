@@ -43,7 +43,7 @@ export class GeoFenceManager {
   }
 
   private async save() {
-    if (!this.geoState) return;
+    if (!this.geoState) {return;}
 
     // Convert Map to plain object for storage
     const toStore = {
@@ -147,7 +147,6 @@ export class GeoFenceManager {
       if (distance > 500) {
         tokens.push(token);
       } else {
-        console.log(`[GeoFence] User ${token} is at venue (${distance.toFixed(0)}m), skipping notification`);
       }
     }
 
@@ -177,7 +176,7 @@ export class GeoFenceManager {
    * Clean up locations older than 10 minutes
    */
   private async cleanupOldLocations() {
-    if (!this.geoState) return;
+    if (!this.geoState) {return;}
 
     const now = Date.now();
     const maxAge = 600000; // 10 minutes
@@ -185,7 +184,6 @@ export class GeoFenceManager {
     for (const [token, location] of this.geoState.userLocations.entries()) {
       if (now - location.timestamp > maxAge) {
         this.geoState.userLocations.delete(token);
-        console.log(`[GeoFence] Removed stale location for token ${token}`);
       }
     }
 

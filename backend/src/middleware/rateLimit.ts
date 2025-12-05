@@ -17,6 +17,7 @@ export interface RateLimitResult {
   remaining?: number;
   limit?: number;
   retryAfter?: number;
+  error?: string;
 }
 
 const DEFAULT_LIMIT = 60;
@@ -45,13 +46,35 @@ export async function rateLimit(
   options: RateLimitOptions = {}
 ): Promise<RateLimitResult> {
   const environment = env.ENVIRONMENT || env.NODE_ENV || "development";
+
+  // ✅ SECURITY FIX: Still allow non-production, but log warning
   if (environment !== "production") {
+    logJSON({
+      level: "warn",
+      msg: "rate_limit_bypassed_non_production",
+      environment,
+      path: options.path || new URL(request.url).pathname
+    });
     return { ok: true };
   }
 
   const kv = env.RATE_LIMIT_KV;
+
+  // ✅ SECURITY FIX: Fail closed if KV not configured in production
   if (!kv) {
-    return { ok: true };
+    logJSON({
+      level: "error",
+      msg: "rate_limit_kv_not_configured",
+      status: 503,
+      path: options.path || new URL(request.url).pathname
+    });
+    return {
+      ok: false,
+      remaining: 0,
+      limit: 0,
+      retryAfter: 60,
+      error: "Rate limiting unavailable"
+    };
   }
 
   const limit = options.limit ?? DEFAULT_LIMIT;
@@ -118,14 +141,27 @@ export async function rateLimit(
     await kv.put(key, String(nextRemaining), { expirationTtl: windowSeconds });
     return { ok: true, remaining: nextRemaining, limit };
   } catch (err: unknown) {
+    // ✅ CRITICAL SECURITY FIX: FAIL CLOSED on errors
+    // Previous behavior: returned { ok: true } - bypassed all rate limiting!
+    // New behavior: reject request and alert monitoring
     logJSON({
       level: "error",
-      msg: "rate_limit_error",
-      status: 500,
+      msg: "rate_limit_critical_error",
+      error: err instanceof Error ? err.message : String(err),
+      status: 503,
       path,
-      requestId
+      requestId,
+      alert: true // Flag for monitoring/alerting systems
     });
-    return { ok: true };
+
+    // Return failure with retry-after to prevent abuse
+    return {
+      ok: false,
+      remaining: 0,
+      limit: 0,
+      retryAfter: 60,
+      error: "Rate limiting service unavailable"
+    };
   }
 }
 

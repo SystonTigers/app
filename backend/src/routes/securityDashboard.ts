@@ -34,7 +34,7 @@ export async function handleSecuritySummary(
       data: summary,
     }, 200, corsHdrs);
   } catch (error) {
-    if (error instanceof Response) throw error;
+    if (error instanceof Response) {throw error;}
 
     return json({
       success: false,
@@ -75,7 +75,7 @@ export async function handleSecurityMetrics(
       }
     }, 200, corsHdrs);
   } catch (error) {
-    if (error instanceof Response) throw error;
+    if (error instanceof Response) {throw error;}
 
     return json({
       success: false,
@@ -130,7 +130,7 @@ export async function handleSecurityEvents(
       }
     }, 200, corsHdrs);
   } catch (error) {
-    if (error instanceof Response) throw error;
+    if (error instanceof Response) {throw error;}
 
     return json({
       success: false,
@@ -163,7 +163,7 @@ export async function handleEventTypes(
       }
     }, 200, corsHdrs);
   } catch (error) {
-    if (error instanceof Response) throw error;
+    if (error instanceof Response) {throw error;}
 
     return json({
       success: false,
@@ -227,7 +227,7 @@ export async function handleSecurityExport(
       }, 200, corsHdrs);
     }
   } catch (error) {
-    if (error instanceof Response) throw error;
+    if (error instanceof Response) {throw error;}
 
     return json({
       success: false,

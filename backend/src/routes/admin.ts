@@ -6,6 +6,7 @@ import { json } from "../services/util";
 import { parse, isValidationError } from "../lib/validate";
 import { requireAdmin } from "../services/auth";
 import { logJSON } from "../lib/log";
+import { withCsrfProtection } from "../middleware/csrf";
 
 // GET /api/v1/admin/tenants - List all tenants
 export async function listTenants(req: Request, env: any, requestId: string, corsHdrs: Headers): Promise<Response> {
@@ -69,7 +70,7 @@ export async function listTenants(req: Request, env: any, requestId: string, cor
     }, 200, corsHdrs);
 
   } catch (err: any) {
-    if (err instanceof Response) throw err;
+    if (err instanceof Response) {throw err;}
     logJSON({ level: "error", requestId, msg: "LIST_TENANTS_ERROR", error: err.message });
     return json({ success: false, error: { code: "SERVER_ERROR", message: err.message } }, 500, corsHdrs);
   }
@@ -121,7 +122,7 @@ export async function getTenant(req: Request, env: any, requestId: string, corsH
     }, 200, corsHdrs);
 
   } catch (err: any) {
-    if (err instanceof Response) throw err;
+    if (err instanceof Response) {throw err;}
     logJSON({ level: "error", requestId, msg: "GET_TENANT_ERROR", error: err.message });
     return json({ success: false, error: { code: "SERVER_ERROR", message: err.message } }, 500, corsHdrs);
   }
@@ -130,9 +131,11 @@ export async function getTenant(req: Request, env: any, requestId: string, corsH
 // PATCH /api/v1/admin/tenants/:id - Update tenant
 export async function updateTenant(req: Request, env: any, requestId: string, corsHdrs: Headers, tenantId: string): Promise<Response> {
   try {
-    await requireAdmin(req, env);
+    const claims = await requireAdmin(req, env);
 
     const body = await req.json().catch(() => ({}));
+    // CSRF Protection
+    await withCsrfProtection(req, env, body, claims.userId);
 
     const UpdateSchema = z.object({
       status: z.enum(["trial", "active", "suspended", "cancelled"]).optional(),
@@ -173,7 +176,7 @@ export async function updateTenant(req: Request, env: any, requestId: string, co
     return json({ success: true }, 200, corsHdrs);
 
   } catch (err: any) {
-    if (err instanceof Response) throw err;
+    if (err instanceof Response) {throw err;}
     if (isValidationError(err)) {
       return json({
         success: false,
@@ -202,7 +205,7 @@ export async function listPromoCodes(req: Request, env: any, requestId: string, 
     }, 200, corsHdrs);
 
   } catch (err: any) {
-    if (err instanceof Response) throw err;
+    if (err instanceof Response) {throw err;}
     logJSON({ level: "error", requestId, msg: "LIST_PROMO_CODES_ERROR", error: err.message });
     return json({ success: false, error: { code: "SERVER_ERROR", message: err.message } }, 500, corsHdrs);
   }
@@ -211,9 +214,11 @@ export async function listPromoCodes(req: Request, env: any, requestId: string, 
 // POST /api/v1/admin/promo-codes - Create promo code
 export async function createPromoCode(req: Request, env: any, requestId: string, corsHdrs: Headers): Promise<Response> {
   try {
-    await requireAdmin(req, env);
+    const claims = await requireAdmin(req, env);
 
     const body = await req.json().catch(() => ({}));
+    // CSRF Protection
+    await withCsrfProtection(req, env, body, claims.userId);
 
     const PromoSchema = z.object({
       code: z.string().min(4).max(20).regex(/^[A-Z0-9]+$/, "Code must be uppercase alphanumeric"),
@@ -248,7 +253,7 @@ export async function createPromoCode(req: Request, env: any, requestId: string,
     }, 201, corsHdrs);
 
   } catch (err: any) {
-    if (err instanceof Response) throw err;
+    if (err instanceof Response) {throw err;}
     if (isValidationError(err)) {
       return json({
         success: false,
@@ -263,7 +268,10 @@ export async function createPromoCode(req: Request, env: any, requestId: string,
 // POST /api/v1/admin/tenants/:id/deactivate - Deactivate tenant (soft delete)
 export async function deactivateTenant(req: Request, env: any, requestId: string, corsHdrs: Headers, tenantId: string): Promise<Response> {
   try {
-    await requireAdmin(req, env);
+    const claims = await requireAdmin(req, env);
+
+    // CSRF Protection
+    await withCsrfProtection(req, env, undefined, claims.userId);
 
     // Never deactivate Syston production tenant
     const current = await env.DB.prepare(`SELECT slug FROM tenants WHERE id = ?`).bind(tenantId).first();
@@ -282,7 +290,7 @@ export async function deactivateTenant(req: Request, env: any, requestId: string
     return json({ success: true }, 200, corsHdrs);
 
   } catch (err: any) {
-    if (err instanceof Response) throw err;
+    if (err instanceof Response) {throw err;}
     logJSON({ level: "error", requestId, msg: "DEACTIVATE_TENANT_ERROR", error: err.message });
     return json({ success: false, error: { code: "SERVER_ERROR", message: err.message } }, 500, corsHdrs);
   }
@@ -291,7 +299,10 @@ export async function deactivateTenant(req: Request, env: any, requestId: string
 // DELETE /api/v1/admin/tenants/:id - Delete tenant (hard delete)
 export async function deleteTenant(req: Request, env: any, requestId: string, corsHdrs: Headers, tenantId: string): Promise<Response> {
   try {
-    await requireAdmin(req, env);
+    const claims = await requireAdmin(req, env);
+
+    // CSRF Protection
+    await withCsrfProtection(req, env, undefined, claims.userId);
 
     // Never delete Syston production tenant
     const current = await env.DB.prepare(`SELECT slug FROM tenants WHERE id = ?`).bind(tenantId).first();
@@ -319,7 +330,7 @@ export async function deleteTenant(req: Request, env: any, requestId: string, co
     return json({ success: true }, 200, corsHdrs);
 
   } catch (err: any) {
-    if (err instanceof Response) throw err;
+    if (err instanceof Response) {throw err;}
     logJSON({ level: "error", requestId, msg: "DELETE_TENANT_ERROR", error: err.message });
     return json({ success: false, error: { code: "SERVER_ERROR", message: err.message } }, 500, corsHdrs);
   }
@@ -328,7 +339,10 @@ export async function deleteTenant(req: Request, env: any, requestId: string, co
 // POST /api/v1/admin/promo-codes/:code/deactivate - Deactivate promo code
 export async function deactivatePromoCode(req: Request, env: any, requestId: string, corsHdrs: Headers, code: string): Promise<Response> {
   try {
-    await requireAdmin(req, env);
+    const claims = await requireAdmin(req, env);
+
+    // CSRF Protection
+    await withCsrfProtection(req, env, undefined, claims.userId);
 
     const existing = await env.DB.prepare("SELECT id FROM promo_codes WHERE code = ?").bind(code).first();
     if (!existing) {
@@ -343,7 +357,7 @@ export async function deactivatePromoCode(req: Request, env: any, requestId: str
     return json({ success: true }, 200, corsHdrs);
 
   } catch (err: any) {
-    if (err instanceof Response) throw err;
+    if (err instanceof Response) {throw err;}
     logJSON({ level: "error", requestId, msg: "DEACTIVATE_PROMO_CODE_ERROR", error: err.message });
     return json({ success: false, error: { code: "SERVER_ERROR", message: err.message } }, 500, corsHdrs);
   }
@@ -388,7 +402,7 @@ export async function getAdminStats(req: Request, env: any, requestId: string, c
     }, 200, corsHdrs);
 
   } catch (err: any) {
-    if (err instanceof Response) throw err;
+    if (err instanceof Response) {throw err;}
     logJSON({ level: "error", requestId, msg: "GET_ADMIN_STATS_ERROR", error: err.message });
     return json({ success: false, error: { code: "SERVER_ERROR", message: err.message } }, 500, corsHdrs);
   }
@@ -466,7 +480,7 @@ export async function listUsers(req: Request, env: any, requestId: string, corsH
     }, 200, corsHdrs);
 
   } catch (err: any) {
-    if (err instanceof Response) throw err;
+    if (err instanceof Response) {throw err;}
     logJSON({ level: "error", requestId, msg: "LIST_USERS_ERROR", error: err.message });
     return json({ success: false, error: { code: "SERVER_ERROR", message: err.message } }, 500, corsHdrs);
   }
@@ -475,9 +489,11 @@ export async function listUsers(req: Request, env: any, requestId: string, corsH
 // POST /api/v1/admin/promo/upsert - Upsert promo code with all fields
 export async function upsertPromoCode(req: Request, env: any, requestId: string, corsHdrs: Headers): Promise<Response> {
   try {
-    await requireAdmin(req, env);
+    const claims = await requireAdmin(req, env);
 
     const body = await req.json().catch(() => ({}));
+    // CSRF Protection
+    await withCsrfProtection(req, env, body, claims.userId);
 
     const UpsertPromoSchema = z.object({
       code: z.string().min(4).max(20).regex(/^[A-Z0-9]+$/, "Code must be uppercase alphanumeric"),
@@ -563,7 +579,7 @@ export async function upsertPromoCode(req: Request, env: any, requestId: string,
     }, existing ? 200 : 201, corsHdrs);
 
   } catch (err: any) {
-    if (err instanceof Response) throw err;
+    if (err instanceof Response) {throw err;}
     if (isValidationError(err)) {
       return json({
         success: false,

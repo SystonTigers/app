@@ -47,7 +47,7 @@ export function calculateBackoff(
  * Check if an error is retryable
  */
 export function isRetryable(error: any, retryableErrors: string[]): boolean {
-  if (!error) return false;
+  if (!error) {return false;}
 
   const errorMessage = error.message || error.toString();
   const errorCode = error.code || '';
@@ -80,11 +80,9 @@ export async function retryWithBackoff<T>(
       };
     } catch (error: any) {
       lastError = error;
-      console.warn(`[Retry] Attempt ${attempt + 1}/${opts.maxAttempts} failed:`, error.message);
 
       // Don't retry if this is not a retryable error
       if (!isRetryable(error, opts.retryableErrors)) {
-        console.error('[Retry] Non-retryable error, aborting:', error.message);
         return {
           success: false,
           error: error.message || String(error),
@@ -101,7 +99,6 @@ export async function retryWithBackoff<T>(
           opts.maxDelayMs,
           opts.backoffMultiplier
         );
-        console.log(`[Retry] Waiting ${delay}ms before attempt ${attempt + 2}...`);
         await new Promise((resolve) => setTimeout(resolve, delay));
       }
     }

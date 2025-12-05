@@ -47,7 +47,12 @@ export const getUsage = async (req: any, env: Env) => {
     : monthKey(req.tenant);
 
   const used = +(await env.KV.get(key) || 0);
-  const cap = 1000; // TODO: Get from tenant config
+
+  // Get tenant usage cap from config (default: 1000 for basic plan)
+  const tenant = await env.DB.prepare(
+    'SELECT usage_cap FROM tenants WHERE id = ?'
+  ).bind(req.tenant).first();
+  const cap = tenant?.usage_cap || 1000;
 
   return new Response(
     JSON.stringify({

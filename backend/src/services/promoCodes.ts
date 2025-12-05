@@ -1,6 +1,7 @@
 // src/services/promoCodes.ts
 
 import type { Env } from "../types";
+import { logJSON } from "../lib/log";
 
 /**
  * Promo code types
@@ -94,7 +95,12 @@ export class PromoCodeService {
         JSON.stringify(fullPromoCode)
       );
 
-      console.log(`[PromoCode] Created: ${cleanCode}`, fullPromoCode);
+      logJSON({
+        level: "info",
+        msg: "promo_code_created",
+        code: cleanCode,
+        type: fullPromoCode.type
+      });
 
       return {
         success: true,
@@ -102,7 +108,11 @@ export class PromoCodeService {
       };
 
     } catch (error: any) {
-      console.error('[PromoCode] Creation failed:', error);
+      logJSON({
+        level: "error",
+        msg: "promo_code_creation_failed",
+        error: error.message
+      });
       return {
         success: false,
         error: error.message || 'Failed to create promo code'
@@ -124,7 +134,11 @@ export class PromoCodeService {
 
       return JSON.parse(data) as PromoCode;
     } catch (error) {
-      console.error('[PromoCode] Retrieval failed:', error);
+      logJSON({
+        level: "error",
+        msg: "promo_code_retrieval_failed",
+        error: error instanceof Error ? error.message : String(error)
+      });
       return null;
     }
   }
@@ -199,7 +213,11 @@ export class PromoCodeService {
       };
 
     } catch (error: any) {
-      console.error('[PromoCode] Validation failed:', error);
+      logJSON({
+        level: "error",
+        msg: "promo_code_validation_failed",
+        error: error.message
+      });
       return {
         valid: false,
         error: error.message || 'Validation failed'
@@ -256,7 +274,13 @@ export class PromoCodeService {
         JSON.stringify(promoCode)
       );
 
-      console.log(`[PromoCode] Applied: ${promoCode.code} to ${tenantId}`);
+      logJSON({
+        level: "info",
+        msg: "promo_code_applied",
+        code: promoCode.code,
+        tenantId,
+        type: promoCode.type
+      });
 
       // Return discount details
       const discount: any = {
@@ -276,7 +300,11 @@ export class PromoCodeService {
       };
 
     } catch (error: any) {
-      console.error('[PromoCode] Application failed:', error);
+      logJSON({
+        level: "error",
+        msg: "promo_code_application_failed",
+        error: error.message
+      });
       return {
         success: false,
         error: error.message || 'Failed to apply promo code'
@@ -295,7 +323,11 @@ export class PromoCodeService {
       );
       return !!redemption;
     } catch (error) {
-      console.error('[PromoCode] Usage check failed:', error);
+      logJSON({
+        level: "error",
+        msg: "promo_code_usage_check_failed",
+        error: error instanceof Error ? error.message : String(error)
+      });
       return false;
     }
   }
@@ -320,12 +352,20 @@ export class PromoCodeService {
         JSON.stringify(promoCode)
       );
 
-      console.log(`[PromoCode] Deactivated: ${promoCode.code}`);
+      logJSON({
+        level: "info",
+        msg: "promo_code_deactivated",
+        code: promoCode.code
+      });
 
       return { success: true };
 
     } catch (error: any) {
-      console.error('[PromoCode] Deactivation failed:', error);
+      logJSON({
+        level: "error",
+        msg: "promo_code_deactivation_failed",
+        error: error.message
+      });
       return {
         success: false,
         error: error.message || 'Failed to deactivate promo code'
@@ -355,7 +395,11 @@ export class PromoCodeService {
       );
 
     } catch (error) {
-      console.error('[PromoCode] List failed:', error);
+      logJSON({
+        level: "error",
+        msg: "promo_code_list_failed",
+        error: error instanceof Error ? error.message : String(error)
+      });
       return [];
     }
   }
@@ -402,7 +446,11 @@ export class PromoCodeService {
       }
 
     } catch (error: any) {
-      console.error('[PromoCode] Referral code creation failed:', error);
+      logJSON({
+        level: "error",
+        msg: "referral_code_creation_failed",
+        error: error.message
+      });
       return {
         success: false,
         error: error.message || 'Failed to create referral code'

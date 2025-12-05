@@ -27,6 +27,7 @@ export async function handlePlayerPhotoUpload(req: Request, env: any, corsHdrs: 
 
         return json({ success: true, photoUrl: key }, 200, corsHdrs);
     } catch (err) {
+        if (err instanceof Response) throw err;
         return json({ success: false, error: "Failed to upload photo" }, 500, corsHdrs);
     }
 }
@@ -52,6 +53,7 @@ export async function handlePlayerPhotoDelete(req: Request, env: any, corsHdrs: 
 
         return json({ success: true }, 200, corsHdrs);
     } catch (err) {
+        if (err instanceof Response) throw err;
         return json({ success: false, error: "Failed to delete photo" }, 500, corsHdrs);
     }
 }

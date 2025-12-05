@@ -66,7 +66,7 @@ export async function getUploadUrl(
   }
 ) {
   const allowed = (env.GALLERY_ALLOWED || "image/jpeg,image/png,image/webp").split(",");
-  if (!allowed.includes(args.contentType)) throw badReq("unsupported content-type");
+  if (!allowed.includes(args.contentType)) {throw badReq("unsupported content-type");}
 
   const key = `media/${args.tenant}/${args.albumId}/${Date.now()}-${id()}`;
   // Workers R2 doesn't do signed URL natively; emulate with private PUT via backend

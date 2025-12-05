@@ -19,8 +19,8 @@ describe("Chat KV Service", () => {
       KV_IDEMP: {
         get: async (key: string, type?: string) => {
           const value = mockKV.get(key);
-          if (!value) return null;
-          if (type === "json") return JSON.parse(value);
+          if (!value) {return null;}
+          if (type === "json") {return JSON.parse(value);}
           return value;
         },
         put: async (key: string, value: string) => {

@@ -107,9 +107,9 @@ export interface AuthenticateUserInput {
 export async function authenticateUser(env: any, input: AuthenticateUserInput): Promise<UserProfile | null> {
   const email = normalizeEmail(input.email);
   const stored = await getStoredUser(env, input.tenantId, email);
-  if (!stored) return null;
+  if (!stored) {return null;}
   const isValid = await verifyPassword(input.password, stored.password_hash);
-  if (!isValid) return null;
+  if (!isValid) {return null;}
   return toUserProfile(stored);
 }
 
@@ -126,7 +126,7 @@ async function getStoredUser(env: any, tenantId: string, email: string): Promise
      LIMIT 1`
   ).bind(tenantId, email).first();
 
-  if (!result) return null;
+  if (!result) {return null;}
 
   return {
     id: result.id,
@@ -231,7 +231,7 @@ function toBase64(bytes: Uint8Array): string {
 }
 
 function timingSafeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
+  if (a.length !== b.length) {return false;}
   let diff = 0;
   for (let i = 0; i < a.length; i++) {
     diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
@@ -248,9 +248,9 @@ export async function hashPassword(password: string, salt?: string): Promise<str
 }
 
 export async function verifyPassword(password: string, stored: string): Promise<boolean> {
-  if (!stored) return false;
+  if (!stored) {return false;}
   const parts = stored.split(":");
-  if (parts.length !== 2) return false;
+  if (parts.length !== 2) {return false;}
   const [salt, hash] = parts;
   const recalculated = await hashPassword(password, salt);
   const recalculatedHash = recalculated.split(":")[1];

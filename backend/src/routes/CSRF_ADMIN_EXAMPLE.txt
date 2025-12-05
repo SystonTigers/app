@@ -1,0 +1,96 @@
+# Example: Adding CSRF Protection to admin.ts
+
+## Step 1: Add import at top of file
+
+```typescript
+// At the top with other imports:
+import { withCsrfProtection } from "../middleware/csrf";
+```
+
+## Step 2: Add CSRF validation to state-changing handlers
+
+### updateTenant (line 131)
+
+**BEFORE:**
+```typescript
+export async function updateTenant(req: Request, env: any, requestId: string, corsHdrs: Headers, tenantId: string): Promise<Response> {
+  try {
+    await requireAdmin(req, env);
+    const body = await req.json();
+    // ... rest of function
+```
+
+**AFTER:**
+```typescript
+export async function updateTenant(req: Request, env: any, requestId: string, corsHdrs: Headers, tenantId: string): Promise<Response> {
+  try {
+    const claims = await requireAdmin(req, env);
+    const body = await req.json();
+    
+    // ✅ CSRF Protection
+    await withCsrfProtection(req, env, body, claims.userId);
+    
+    // ... rest of function
+```
+
+### createPromoCode (line 212)
+
+**BEFORE:**
+```typescript
+export async function createPromoCode(req: Request, env: any, requestId: string, corsHdrs: Headers): Promise<Response> {
+  try {
+    await requireAdmin(req, env);
+    const body = await req.json();
+    // ... validation and logic
+```
+
+**AFTER:**
+```typescript
+export async function createPromoCode(req: Request, env: any, requestId: string, corsHdrs: Headers): Promise<Response> {
+  try {
+    const claims = await requireAdmin(req, env);
+    const body = await req.json();
+    
+    // ✅ CSRF Protection
+    await withCsrfProtection(req, env, body, claims.userId);
+    
+    // ... validation and logic
+```
+
+### deleteTenant (line 292)
+
+**BEFORE:**
+```typescript
+export async function deleteTenant(req: Request, env: any, requestId: string, corsHdrs: Headers, tenantId: string): Promise<Response> {
+  try {
+    await requireAdmin(req, env);
+    // ... delete logic
+```
+
+**AFTER:**
+```typescript
+export async function deleteTenant(req: Request, env: any, requestId: string, corsHdrs: Headers, tenantId: string): Promise<Response> {
+  try {
+    const claims = await requireAdmin(req, env);
+    
+    // ✅ CSRF Protection
+    await withCsrfProtection(req, env, undefined, claims.userId);
+    
+    // ... delete logic
+```
+
+## Apply the same pattern to:
+- deactivateTenant (line 264)
+- deactivatePromoCode (line 329)
+- upsertPromoCode (line 476)
+
+## Total Changes Required:
+- 1 import statement
+- 6 CSRF validation calls (one per state-changing function)
+- ~20 lines of code total
+
+## Testing:
+After changes, test that:
+1. Admin operations fail without CSRF token (403)
+2. Admin operations succeed with valid CSRF token
+3. Mobile API continues to work (CSRF skipped for `/api/v1/`)

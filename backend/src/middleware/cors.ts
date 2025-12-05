@@ -33,7 +33,7 @@ export function corsHeaders(origin: string | null, env?: { CORS_ALLOWED?: string
   if (env?.CORS_ALLOWED) {
     env.CORS_ALLOWED.split(',').forEach(o => {
       const trimmed = o.trim();
-      if (trimmed) allowed.add(trimmed);
+      if (trimmed) {allowed.add(trimmed);}
     });
   }
 

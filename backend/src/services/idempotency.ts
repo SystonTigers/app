@@ -1,7 +1,7 @@
 export async function ensureIdempotent(env: any, tenantId: string, body: unknown, explicitKey?: string) {
   const key = explicitKey || await hashKey(tenantId, body);
   const existing = await env.KV_IDEMP.get(key);
-  if (existing) return { hit: true as const, key, response: JSON.parse(existing) };
+  if (existing) {return { hit: true as const, key, response: JSON.parse(existing) };}
   return {
     hit: false as const,
     key,

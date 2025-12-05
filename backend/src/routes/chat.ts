@@ -8,6 +8,7 @@ export async function handleListRooms(req: Request, env: any, corsHdrs: Headers)
         const rooms = (await env.KV_IDEMP.get(indexKey, "json")) as any[] || [];
         return json({ success: true, data: rooms }, 200, corsHdrs);
     } catch (err) {
+        if (err instanceof Response) throw err;
         return json({ success: false, error: "Failed to list rooms" }, 500, corsHdrs);
     }
 }
@@ -36,6 +37,7 @@ export async function handleSendMessage(req: Request, env: any, corsHdrs: Header
         const result = await response.json();
         return json(result, 200, corsHdrs);
     } catch (err) {
+        if (err instanceof Response) throw err;
         return json({ success: false, error: "Failed to send message" }, 500, corsHdrs);
     }
 }
@@ -56,7 +58,7 @@ export async function handleGetHistory(req: Request, env: any, corsHdrs: Headers
             roomId: params.roomId,
             limit: limit.toString(),
         });
-        if (cursor) queryParams.set("cursor", cursor);
+        if (cursor) {queryParams.set("cursor", cursor);}
 
         const response = await stub.fetch(new Request(`https://chat/history?${queryParams.toString()}`, {
             method: "GET",
@@ -65,6 +67,7 @@ export async function handleGetHistory(req: Request, env: any, corsHdrs: Headers
         const result = await response.json();
         return json(result, 200, corsHdrs);
     } catch (err) {
+        if (err instanceof Response) throw err;
         return json({ success: false, error: "Failed to get history" }, 500, corsHdrs);
     }
 }
@@ -92,6 +95,7 @@ export async function handleTyping(req: Request, env: any, corsHdrs: Headers) {
         const result = await response.json();
         return json(result, 200, corsHdrs);
     } catch (err) {
+        if (err instanceof Response) throw err;
         return json({ success: false, error: "Failed to update typing status" }, 500, corsHdrs);
     }
 }
@@ -124,6 +128,7 @@ export async function handleCreateRoom(req: Request, env: any, corsHdrs: Headers
 
         return json({ success: true, data: roomData }, 200, corsHdrs);
     } catch (err) {
+        if (err instanceof Response) throw err;
         return json({ success: false, error: "Failed to create room" }, 500, corsHdrs);
     }
 }

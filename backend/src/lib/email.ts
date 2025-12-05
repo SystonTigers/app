@@ -3,6 +3,8 @@
  * Sends transactional emails (magic links, welcome emails, etc.)
  */
 
+import { logJSON } from "./log";
+
 export interface EmailOptions {
   to: string;
   subject: string;
@@ -26,10 +28,12 @@ export async function sendEmail(
 ): Promise<EmailResult> {
   // If no API key configured, log the email instead (dev mode)
   if (!env.RESEND_API_KEY) {
-    console.log('[EMAIL] No RESEND_API_KEY configured - logging email instead:');
-    console.log('[EMAIL] To:', options.to);
-    console.log('[EMAIL] Subject:', options.subject);
-    console.log('[EMAIL] Body:', options.html);
+    logJSON({
+      level: "warn",
+      msg: "email_not_sent_no_api_key",
+      to: options.to,
+      subject: options.subject
+    });
     return {
       success: true,
       messageId: 'dev-mode-no-send',
@@ -53,7 +57,12 @@ export async function sendEmail(
 
     if (!response.ok) {
       const errorData = await response.text();
-      console.error('[EMAIL] Resend API error:', errorData);
+      logJSON({
+        level: "error",
+        msg: "email_resend_api_error",
+        status: response.status,
+        error: errorData
+      });
       return {
         success: false,
         error: `Resend API error: ${response.status} ${errorData}`,
@@ -66,7 +75,11 @@ export async function sendEmail(
       messageId: data.id,
     };
   } catch (error) {
-    console.error('[EMAIL] Send failed:', error);
+    logJSON({
+      level: "error",
+      msg: "email_send_failed",
+      error: error instanceof Error ? error.message : String(error)
+    });
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',

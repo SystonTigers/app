@@ -34,7 +34,7 @@ export async function handlePhotoUpload(req: Request, env: any, corsHdrs: Header
 
         return json({ success: true, id: photoId, url: `/api/v1/photos/${photoId}` }, 200, corsHdrs);
     } catch (err) {
-        console.error('Photo upload error:', err);
+        if (err instanceof Response) throw err;
         return json({ success: false, error: "Failed to upload photo" }, 500, corsHdrs);
     }
 }
@@ -59,6 +59,7 @@ export async function handleListPhotos(req: Request, env: any, corsHdrs: Headers
 
         return json({ success: true, data: result.results }, 200, corsHdrs);
     } catch (err) {
+        if (err instanceof Response) throw err;
         return json({ success: false, error: "Failed to list photos" }, 500, corsHdrs);
     }
 }
@@ -89,6 +90,7 @@ export async function handleGetPhoto(req: Request, env: any, corsHdrs: Headers, 
             },
         });
     } catch (err) {
+        if (err instanceof Response) throw err;
         return json({ success: false, error: "Failed to get photo" }, 500, corsHdrs);
     }
 }
@@ -115,6 +117,7 @@ export async function handleDeletePhoto(req: Request, env: any, corsHdrs: Header
 
         return json({ success: true }, 200, corsHdrs);
     } catch (err) {
+        if (err instanceof Response) throw err;
         return json({ success: false, error: "Failed to delete photo" }, 500, corsHdrs);
     }
 }
@@ -140,6 +143,7 @@ export async function handleCreateAlbum(req: Request, env: any, corsHdrs: Header
 
         return json({ success: true, id: albumId }, 200, corsHdrs);
     } catch (err) {
+        if (err instanceof Response) throw err;
         return json({ success: false, error: "Failed to create album" }, 500, corsHdrs);
     }
 }
@@ -159,6 +163,7 @@ export async function handleListAlbums(req: Request, env: any, corsHdrs: Headers
 
         return json({ success: true, data: albums.results }, 200, corsHdrs);
     } catch (err) {
+        if (err instanceof Response) throw err;
         return json({ success: false, error: "Failed to list albums" }, 500, corsHdrs);
     }
 }
@@ -189,6 +194,7 @@ export async function handleDeleteAlbum(req: Request, env: any, corsHdrs: Header
 
         return json({ success: true }, 200, corsHdrs);
     } catch (err) {
+        if (err instanceof Response) throw err;
         return json({ success: false, error: "Failed to delete album" }, 500, corsHdrs);
     }
 }

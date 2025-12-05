@@ -30,7 +30,7 @@ export async function putTenant(env: Env, tenant: Tenant) {
 
 export async function getTenant(env: Env, tenantId: string): Promise<Tenant | null> {
   const raw = await env.TENANTS.get(key(tenantId));
-  if (!raw) return null;
+  if (!raw) {return null;}
   try {
     return JSON.parse(raw) as Tenant;
   } catch {

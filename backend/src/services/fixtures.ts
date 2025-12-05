@@ -41,19 +41,19 @@ export function normalizeFixtureRow(row: any) {
 }
 
 export function normalizeResultRow(row: any) {
-    let scorers: string[] = [];
+    const scorers: string[] = [];
 
     if (row.home_scorers) {
         try {
             const home = JSON.parse(row.home_scorers);
-            if (Array.isArray(home)) scorers.push(...home);
+            if (Array.isArray(home)) {scorers.push(...home);}
         } catch (e) { }
     }
 
     if (row.away_scorers) {
         try {
             const away = JSON.parse(row.away_scorers);
-            if (Array.isArray(away)) scorers.push(...away);
+            if (Array.isArray(away)) {scorers.push(...away);}
         } catch (e) { }
     }
 

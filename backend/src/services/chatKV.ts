@@ -36,7 +36,7 @@ export async function createRoom(
   assert(args.tenant && args.roomId && args.teamId && args.type, "missing params");
   const key = ROOM_KEY(args.tenant, args.roomId);
   const exists = await kvGetJSON<Room>(env.KV_IDEMP, key);
-  if (exists) return exists;
+  if (exists) {return exists;}
   const room: Room = {
     roomId: args.roomId,
     tenantId: args.tenant,

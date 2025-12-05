@@ -1,5 +1,6 @@
 import type { Env } from '../env';
 import { nowUTC } from '../utils/time';
+import { logJSON } from '../lib/log';
 
 /**
  * Daily cron job - Runs at 06:00 UTC
@@ -16,7 +17,7 @@ export const runDaily = async (
   const now = nowUTC();
   const today = now.toFormat('yyyy-MM-dd');
 
-  console.log(`Running daily cron job for ${today}`, options);
+  logJSON({ level: 'info', msg: 'daily_cron_started', today, options });
 
   try {
     // Get all active tenants
@@ -33,9 +34,9 @@ export const runDaily = async (
       }
     }
 
-    console.log(`Daily cron completed for ${tenants.length} tenants`);
+    logJSON({ level: 'info', msg: 'daily_cron_completed', tenantCount: tenants.length });
   } catch (error) {
-    console.error('Daily cron error:', error);
+    logJSON({ level: 'error', msg: 'daily_cron_error', error: error instanceof Error ? error.message : String(error) });
   }
 };
 
@@ -117,7 +118,7 @@ async function createBirthdayPost(env: Env, tenant: string, player: any) {
     });
   }
 
-  console.log(`Created birthday post for ${player.name} (${tenant})`);
+  logJSON({ level: 'info', msg: 'created_birthday_post', playerName: player.name, tenant });
 }
 
 // Calculate age from birthday
@@ -169,7 +170,7 @@ async function processQuotes(env: Env, tenant: string) {
     { expirationTtl: 60 * 60 * 24 } // 1 day
   );
 
-  console.log(`Created daily quote for ${tenant}`);
+  logJSON({ level: 'info', msg: 'created_daily_quote', tenant });
 }
 
 // Process match day countdowns
@@ -215,6 +216,6 @@ async function processCountdowns(env: Env, tenant: string) {
       { expirationTtl: 60 * 60 * 24 } // 1 day
     );
 
-    console.log(`Created countdown post for ${tenant}: ${hoursUntil}h until match`);
+    logJSON({ level: 'info', msg: 'created_countdown_post', tenant, hoursUntil });
   }
 }

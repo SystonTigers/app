@@ -15,7 +15,7 @@ export default {
       const job = msg.body;
       try {
         const cfg = job?.tenant ? await getTenantConfig(env, job.tenant) : null;
-        if (!cfg) throw new Error(`Tenant ${job.tenant} not found`);
+        if (!cfg) {throw new Error(`Tenant ${job.tenant} not found`);}
 
         const useMake = !!cfg?.flags?.use_make;
         const hook = cfg?.makeWebhookUrl || null;
@@ -27,7 +27,7 @@ export default {
             results[ch] = await publishViaMake(env, cfg, job.template, job.data);
           }
           await setFinalIdempotent(env, job.idemKey, { success: true, data: { results } });
-          await msg.ack();
+          msg.ack();
           continue;
         }
 
@@ -114,7 +114,7 @@ export default {
           data: { results, fallbacks: fallbacks.length > 0 ? fallbacks : undefined },
         });
 
-        await msg.ack();
+        msg.ack();
       } catch (err: any) {
         // Send to dead-letter queue (no retries yet)
         if (env.DLQ) {
@@ -146,7 +146,7 @@ export default {
           success: false,
           error: { code: "DLQ", message: String(err?.message || err) },
         });
-        await msg.ack();
+        msg.ack();
       }
     }
   }

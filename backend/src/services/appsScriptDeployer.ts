@@ -2,6 +2,7 @@
 
 import { getGoogleAPIHeaders } from "./googleAuth";
 import type { Env } from "../types";
+import { logJSON } from "../lib/log";
 
 /**
  * Apps Script deployment result
@@ -50,26 +51,52 @@ export class AppsScriptDeployer {
     backendUrl: string
   ): Promise<AppsScriptDeployment> {
     try {
-      console.log(`[AppsScriptDeployer] Starting deployment for tenant: ${tenantId}`);
+      logJSON({
+        level: "info",
+        msg: "apps_script_deployment_started",
+        tenantId
+      });
 
       // 1. Authenticate
       await this.authenticate();
 
       // 2. Create new project from template
       const scriptId = await this.createProjectFromTemplate(tenantId, tenantName);
-      console.log(`[AppsScriptDeployer] Created project: ${scriptId}`);
+      logJSON({
+        level: "info",
+        msg: "apps_script_project_created",
+        tenantId,
+        scriptId
+      });
 
       // 3. Configure script with tenant settings
       await this.configureScript(scriptId, tenantId, automationJWT, backendUrl);
-      console.log(`[AppsScriptDeployer] Configured script with tenant settings`);
+      logJSON({
+        level: "info",
+        msg: "apps_script_configured",
+        tenantId,
+        scriptId
+      });
 
       // 4. Create version
       const versionNumber = await this.createVersion(scriptId);
-      console.log(`[AppsScriptDeployer] Created version: ${versionNumber}`);
+      logJSON({
+        level: "info",
+        msg: "apps_script_version_created",
+        tenantId,
+        scriptId,
+        versionNumber
+      });
 
       // 5. Deploy as web app
       const webAppUrl = await this.deployAsWebApp(scriptId, versionNumber);
-      console.log(`[AppsScriptDeployer] Deployed web app: ${webAppUrl}`);
+      logJSON({
+        level: "info",
+        msg: "apps_script_deployed",
+        tenantId,
+        scriptId,
+        webAppUrl
+      });
 
       const scriptUrl = `https://script.google.com/d/${scriptId}/edit`;
 
@@ -81,7 +108,12 @@ export class AppsScriptDeployer {
       };
 
     } catch (error: any) {
-      console.error(`[AppsScriptDeployer] Deployment failed for ${tenantId}:`, error);
+      logJSON({
+        level: "error",
+        msg: "apps_script_deployment_failed",
+        tenantId,
+        error: error.message
+      });
       return {
         success: false,
         error: error.message || "Deployment failed"
@@ -359,13 +391,23 @@ function _autoInitTenant() {
       );
 
       if (!response.ok) {
-        console.warn(`Function execution warning (non-critical): ${response.status}`);
+        logJSON({
+          level: "warn",
+          msg: "apps_script_function_execution_warning",
+          functionName,
+          status: response.status
+        });
         // Non-critical - properties can be set manually if needed
       }
 
       return await response.json();
     } catch (error) {
-      console.warn(`Function execution failed (non-critical):`, error);
+      logJSON({
+        level: "warn",
+        msg: "apps_script_function_execution_failed",
+        functionName,
+        error: error instanceof Error ? error.message : String(error)
+      });
       // Non-critical - continue deployment
     }
   }

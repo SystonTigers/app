@@ -4,6 +4,7 @@ import { ensureIdempotent } from "../services/idempotency";
 import { parse, isValidationError } from "../lib/validate";
 import { registerUser, authenticateUser } from "../services/users";
 import { issueTenantAdminJWT, issueTenantMemberJWT } from "../services/jwt";
+import { rateLimit } from "../middleware/rateLimit";
 
 const RegisterSchema = z.object({
   tenant_id: z.string().min(1, "tenant_id required"),
@@ -22,6 +23,33 @@ const LoginSchema = z.object({
 
 export async function handleAuthRegister(req: Request, env: any, corsHdrs: Headers) {
   try {
+    // Rate limit: 3 attempts per hour per IP
+    const rateLimitResult = await rateLimit(req, env, {
+      scope: "auth:register",
+      limit: 3,
+      windowSeconds: 3600, // 1 hour
+      path: "/api/v1/auth/register"
+    });
+
+    if (!rateLimitResult.ok) {
+      const headers = new Headers(corsHdrs);
+      if (rateLimitResult.limit) headers.set("X-RateLimit-Limit", String(rateLimitResult.limit));
+      if (rateLimitResult.remaining !== undefined) headers.set("X-RateLimit-Remaining", String(rateLimitResult.remaining));
+      if (rateLimitResult.retryAfter) headers.set("Retry-After", String(rateLimitResult.retryAfter));
+
+      return json(
+        {
+          success: false,
+          error: {
+            code: "RATE_LIMITED",
+            message: rateLimitResult.error || "Too many registration attempts. Please try again later."
+          }
+        },
+        429,
+        headers
+      );
+    }
+
     const body = await req.json().catch(() => ({}));
     const data = parse(RegisterSchema, body);
 
@@ -71,7 +99,7 @@ export async function handleAuthRegister(req: Request, env: any, corsHdrs: Heade
         }
       }, err.status, corsHdrs);
     }
-    if (err instanceof Response) return err;
+    if (err instanceof Response) {return err;}
     return json({ success: false, error: { code: "REGISTER_FAILED", message: err?.message || "unexpected error" } }, 500, corsHdrs);
   }
 }
@@ -99,8 +127,7 @@ export async function handleSetPassword(req: Request, env: any, corsHdrs: Header
     }
 
     const token = authHeader.substring(7);
-    // TODO: Verify JWT and extract user info
-    // For now, assume we have tenantId and email from JWT
+    // Verify JWT and extract user info
     const decoded = await verifyJWT(env, token);
     if (!decoded || !decoded.sub) {
       return json({
@@ -148,7 +175,7 @@ export async function handleSetPassword(req: Request, env: any, corsHdrs: Header
         }
       }, err.status, corsHdrs);
     }
-    if (err instanceof Response) return err;
+    if (err instanceof Response) {return err;}
     return json({ success: false, error: { code: 'SET_PASSWORD_FAILED', message: err?.message || 'unexpected error' } }, 500, corsHdrs);
   }
 }
@@ -216,18 +243,45 @@ export async function handleCheckPasswordStatus(req: Request, env: any, corsHdrs
 
     return json({ success: true, hasPassword }, 200, corsHdrs);
   } catch (err: any) {
-    if (err instanceof Response) return err;
+    if (err instanceof Response) {return err;}
     return json({ success: false, error: { code: 'CHECK_FAILED', message: err?.message || 'unexpected error' } }, 500, corsHdrs);
   }
 }
 
 export async function handleAuthLogin(req: Request, env: any, corsHdrs: Headers) {
   try {
+    // Rate limit: 5 attempts per 15 minutes per IP
+    const rateLimitResult = await rateLimit(req, env, {
+      scope: "auth:login",
+      limit: 5,
+      windowSeconds: 900, // 15 minutes
+      path: "/api/v1/auth/login"
+    });
+
+    if (!rateLimitResult.ok) {
+      const headers = new Headers(corsHdrs);
+      if (rateLimitResult.limit) headers.set("X-RateLimit-Limit", String(rateLimitResult.limit));
+      if (rateLimitResult.remaining !== undefined) headers.set("X-RateLimit-Remaining", String(rateLimitResult.remaining));
+      if (rateLimitResult.retryAfter) headers.set("Retry-After", String(rateLimitResult.retryAfter));
+
+      return json(
+        {
+          success: false,
+          error: {
+            code: "RATE_LIMITED",
+            message: rateLimitResult.error || "Too many login attempts. Please try again later."
+          }
+        },
+        429,
+        headers
+      );
+    }
+
     const body = await req.json().catch(() => ({}));
     const data = parse(LoginSchema, body);
 
     // Handle tenantId or tenant_id (both formats)
-    let tenantIdentifier = data.tenant_id || data.tenantId;
+    const tenantIdentifier = data.tenant_id || data.tenantId;
     let tenantId: string | undefined;
 
     // If tenant provided, resolve slug to ID if needed
@@ -288,7 +342,7 @@ export async function handleAuthLogin(req: Request, env: any, corsHdrs: Headers)
         }
       }, err.status, corsHdrs);
     }
-    if (err instanceof Response) return err;
+    if (err instanceof Response) {return err;}
     return json({ success: false, error: { code: "LOGIN_FAILED", message: err?.message || "unexpected error" } }, 500, corsHdrs);
   }
 }

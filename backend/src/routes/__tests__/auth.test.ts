@@ -91,12 +91,27 @@ class MockD1Database {
 
   async query(sql: string, params: unknown[]) {
     const normalized = sql.trim().toUpperCase();
-    if (normalized.startsWith("SELECT")) {
-      const [tenantId, email] = params as [string, string];
-      const key = `${tenantId}::${email}`;
-      const row = this.rows.get(key);
-      if (!row) return [];
-      return [row];
+    if (normalized.startsWith("SELECT") && normalized.includes("FROM AUTH_USERS")) {
+      // Handle auth_users SELECT queries
+      if (normalized.includes("WHERE TENANT_ID = ? AND EMAIL = ?")) {
+        const [tenantId, email] = params as [string, string];
+        const key = `${tenantId}::${email}`;
+        const row = this.rows.get(key);
+        if (!row) {return [];}
+        return [row];
+      } else if (normalized.includes("WHERE EMAIL = ?")) {
+        const [email] = params as [string];
+        // Find user by email across all tenants
+        for (const row of this.rows.values()) {
+          if (row.email === email) {
+            return [row];
+          }
+        }
+        return [];
+      }
+    } else if (normalized.startsWith("SELECT") && normalized.includes("FROM TENANTS")) {
+      // Tenants table lookups - for now, just return empty (tenant lookup will fall back to direct lookup)
+      return [];
     }
     throw new Error(`Unsupported SQL: ${sql}`);
   }
@@ -105,30 +120,6 @@ class MockD1Database {
     return this.rows.get(`${tenantId}::${email}`);
   }
 }
-
-vi.mock("../services/users", () => ({
-  registerUser: vi.fn(async () => ({
-    success: true,
-    user: {
-      id: "user-123",
-      tenant_id: "demo",
-      email: "user@example.com",
-      roles: ["tenant_member"],
-      profile: { name: "Demo" },
-      created_at: Date.now(),
-      updated_at: Date.now(),
-    },
-  })),
-  authenticateUser: vi.fn(async () => ({
-    id: "user-123",
-    tenant_id: "demo",
-    email: "user@example.com",
-    roles: ["tenant_member"],
-    profile: { name: "Demo" },
-    created_at: Date.now(),
-    updated_at: Date.now(),
-  })),
-}));
 
 // Crypto is available globally in Node 18+
 beforeAll(() => {

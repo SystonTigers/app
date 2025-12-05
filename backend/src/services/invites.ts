@@ -71,7 +71,7 @@ export async function createInvite(
 
 export async function getInvite(env: Env, token: string) {
   const invite = await kvGetJSON<Invite>(env.KV_IDEMP, INVITES(token));
-  if (!invite) throw badReq("invite not found");
+  if (!invite) {throw badReq("invite not found");}
   return invite;
 }
 
@@ -81,9 +81,9 @@ export async function getInvite(env: Env, token: string) {
 export async function consumeInvite(env: Env, token: string) {
   const key = INVITES(token);
   const invite = await kvGetJSON<Invite>(env.KV_IDEMP, key);
-  if (!invite) throw badReq("invalid token");
-  if (invite.exp < nowMs()) throw badReq("token expired");
-  if (invite.used >= invite.maxUses) throw badReq("token fully used");
+  if (!invite) {throw badReq("invalid token");}
+  if (invite.exp < nowMs()) {throw badReq("token expired");}
+  if (invite.used >= invite.maxUses) {throw badReq("token fully used");}
 
   invite.used += 1;
   await kvPutJSON(env.KV_IDEMP, key, invite);

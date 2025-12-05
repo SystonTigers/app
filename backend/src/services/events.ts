@@ -71,14 +71,14 @@ export async function setRsvp(env: Env, tenant: string, eventId: string, userId:
   const event = await getEvent(env, tenant, eventId);
   if (event) {
     // Decrement previous count
-    if (previousRsvp === "yes") event.rsvp_yes_count = (event.rsvp_yes_count || 1) - 1;
-    else if (previousRsvp === "no") event.rsvp_no_count = (event.rsvp_no_count || 1) - 1;
-    else if (previousRsvp === "maybe") event.rsvp_maybe_count = (event.rsvp_maybe_count || 1) - 1;
+    if (previousRsvp === "yes") {event.rsvp_yes_count = (event.rsvp_yes_count || 1) - 1;}
+    else if (previousRsvp === "no") {event.rsvp_no_count = (event.rsvp_no_count || 1) - 1;}
+    else if (previousRsvp === "maybe") {event.rsvp_maybe_count = (event.rsvp_maybe_count || 1) - 1;}
 
     // Increment new count
-    if (rsvp === "yes") event.rsvp_yes_count = (event.rsvp_yes_count || 0) + 1;
-    else if (rsvp === "no") event.rsvp_no_count = (event.rsvp_no_count || 0) + 1;
-    else if (rsvp === "maybe") event.rsvp_maybe_count = (event.rsvp_maybe_count || 0) + 1;
+    if (rsvp === "yes") {event.rsvp_yes_count = (event.rsvp_yes_count || 0) + 1;}
+    else if (rsvp === "no") {event.rsvp_no_count = (event.rsvp_no_count || 0) + 1;}
+    else if (rsvp === "maybe") {event.rsvp_maybe_count = (event.rsvp_maybe_count || 0) + 1;}
 
     // Ensure counts don't go negative
     event.rsvp_yes_count = Math.max(0, event.rsvp_yes_count || 0);
@@ -115,9 +115,9 @@ export async function deleteRsvp(env: Env, tenant: string, eventId: string, user
     const event = await getEvent(env, tenant, eventId);
     if (event) {
       // Decrement count
-      if (currentRsvp === "yes") event.rsvp_yes_count = Math.max(0, (event.rsvp_yes_count || 1) - 1);
-      else if (currentRsvp === "no") event.rsvp_no_count = Math.max(0, (event.rsvp_no_count || 1) - 1);
-      else if (currentRsvp === "maybe") event.rsvp_maybe_count = Math.max(0, (event.rsvp_maybe_count || 1) - 1);
+      if (currentRsvp === "yes") {event.rsvp_yes_count = Math.max(0, (event.rsvp_yes_count || 1) - 1);}
+      else if (currentRsvp === "no") {event.rsvp_no_count = Math.max(0, (event.rsvp_no_count || 1) - 1);}
+      else if (currentRsvp === "maybe") {event.rsvp_maybe_count = Math.max(0, (event.rsvp_maybe_count || 1) - 1);}
 
       event.updatedAt = Date.now();
       await putEvent(env, tenant, event);

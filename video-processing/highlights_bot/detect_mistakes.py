@@ -10,8 +10,8 @@ import os
 import json
 from pathlib import Path
 from typing import List, Dict, Any, Optional
-from google import genai
-from google.genai import types
+import google.generativeai as genai
+# from google.genai import types
 
 
 class MistakeDetector:
@@ -31,7 +31,8 @@ class MistakeDetector:
         if not self.api_key:
             raise ValueError("GEMINI_API_KEY environment variable not set")
 
-        self.client = genai.Client(api_key=self.api_key)
+        genai.configure(api_key=self.api_key)
+        self.client = genai
         self.model = 'models/gemini-2.5-flash'
 
     def analyze_video(
