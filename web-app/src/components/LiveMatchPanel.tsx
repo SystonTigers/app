@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from 'react';
 import confetti from 'canvas-confetti';
 import { AnimatePresence, motion } from 'framer-motion';
+import { SponsorOverlay } from './SponsorOverlay';
 
 declare global {
     interface Window {
@@ -205,6 +206,9 @@ export function LiveMatchPanel({ matchData, liveUpdates: initialUpdates, tenant 
                     )}
 
                     {/* --- BROADCAST OVERLAYS --- */}
+
+                    {/* Sponsor Corner Overlay */}
+                    {isActive && <SponsorOverlay layout="corner" className="top-24" />}
 
                     {/* 1. Scorebug (Top Left) */}
                     {isActive && (
