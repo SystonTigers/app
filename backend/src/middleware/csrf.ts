@@ -48,7 +48,7 @@ export async function withCsrfProtection(
   // CSRF is primarily for browser-based admin panel
   if (url.pathname.startsWith("/api/v1/")) {
     logJSON({
-      level: "debug",
+      level: "info",
       msg: "csrf_skipped_api_endpoint",
       path: url.pathname,
     });

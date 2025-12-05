@@ -63,7 +63,7 @@ describe("Content Routes", () => {
                 });
 
                 const response = await handleCreateFixture(req, env, corsHdrs);
-                const body = await response.json();
+                const body = await response.json() as any;
 
                 expect(body.success).toBe(true);
                 expect(body.id).toBe("test-uuid-123");
@@ -97,7 +97,7 @@ describe("Content Routes", () => {
                 });
 
                 const response = await handleDeleteFixture(req, env, corsHdrs, "abc123");
-                const body = await response.json();
+                const body = await response.json() as any;
 
                 expect(body.success).toBe(true);
             });
@@ -124,7 +124,7 @@ describe("Content Routes", () => {
                 });
 
                 const response = await handleCreateResult(req, env, corsHdrs);
-                const body = await response.json();
+                const body = await response.json() as any;
 
                 expect(body.success).toBe(true);
                 expect(body.id).toBe("test-uuid-123");
@@ -141,7 +141,7 @@ describe("Content Routes", () => {
                 });
 
                 const response = await handleDeleteResult(req, env, corsHdrs, "xyz789");
-                const body = await response.json();
+                const body = await response.json() as any;
 
                 expect(body.success).toBe(true);
             });
@@ -165,7 +165,7 @@ describe("Content Routes", () => {
                 });
 
                 const response = await handleCreatePost(req, env, corsHdrs);
-                const body = await response.json();
+                const body = await response.json() as any;
 
                 expect(body.success).toBe(true);
                 expect(body.id).toBe("test-uuid-123");
@@ -182,7 +182,7 @@ describe("Content Routes", () => {
                 });
 
                 const response = await handleDeletePost(req, env, corsHdrs, "post123");
-                const body = await response.json();
+                const body = await response.json() as any;
 
                 expect(body.success).toBe(true);
             });
@@ -206,7 +206,7 @@ describe("Content Routes", () => {
                 });
 
                 const response = await handleUpdateTable(req, env, corsHdrs);
-                const body = await response.json();
+                const body = await response.json() as any;
 
                 expect(body.success).toBe(true);
             });
@@ -239,7 +239,7 @@ describe("Content Routes", () => {
                 });
 
                 const response = await handleUpdateTable(req, env, corsHdrs);
-                const body = await response.json();
+                const body = await response.json() as any;
 
                 expect(body.success).toBe(true);
             });

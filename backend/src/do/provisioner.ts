@@ -10,8 +10,9 @@ import { sendMagicLinkEmail } from '../lib/email';
 
 const now = () => new Date().toISOString();
 
-const log = (level: 'info' | 'warn' | 'error', msg: string, extra: Record<string, unknown> = {}) =>
-
+const log = (level: 'info' | 'warn' | 'error', msg: string, extra: Record<string, unknown> = {}) => {
+  console.log(JSON.stringify({ level, msg, ...extra, ts: new Date().toISOString() }));
+};
 // ====================================================================================
 // STATE MANAGEMENT
 // ====================================================================================
@@ -56,12 +57,12 @@ async function validateWebhook(
   };
 
   let res = await tryFetch('HEAD');
-  if (!res.ok) {res = await tryFetch('GET');}
-  if (!res.ok) {res = await tryFetch('OPTIONS');}
+  if (!res.ok) { res = await tryFetch('GET'); }
+  if (!res.ok) { res = await tryFetch('OPTIONS'); }
 
   // If strict mode, require 2xx; otherwise allow 401/403/404/405 as "exists but restricted"
   const strict = env.MAKE_VALIDATE_STRICT === 'true';
-  if (res.ok) {return res;}
+  if (res.ok) { return res; }
 
   const permissible = [401, 403, 404, 405];
   if (!strict && res.status && permissible.includes(res.status)) {
@@ -133,7 +134,7 @@ async function getMakeWebhook(db: any, tenantId: string): Promise<string> {
     .prepare(`SELECT webhook_url FROM make_connections WHERE tenant_id = ?`)
     .bind(tenantId)
     .first();
-  if (!row?.webhook_url) {throw new Error('make_webhook_not_found');}
+  if (!row?.webhook_url) { throw new Error('make_webhook_not_found'); }
   return row.webhook_url;
 }
 
@@ -198,7 +199,7 @@ async function sendOwnerMagicLink(env: Env, tenantId: string, jwtSecret: string)
     .bind(tenantId)
     .first<{ id: string; slug: string; name: string; email: string }>();
 
-  if (!tenant) {throw new Error('tenant_not_found_for_email');}
+  if (!tenant) { throw new Error('tenant_not_found_for_email'); }
 
   // Generate magic token
   const token = await generateMagicToken(env, tenantId, tenant.email, jwtSecret);
@@ -344,7 +345,7 @@ export class Provisioner {
         .bind(tenantId)
         .first<{ email: string }>();
 
-      if (!tenant) {throw new Error('tenant_not_found');}
+      if (!tenant) { throw new Error('tenant_not_found'); }
 
       await createOwnerUser(this.env, tenantId, tenant.email);
 

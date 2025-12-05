@@ -38,7 +38,7 @@ describe("Dev Auth Routes", () => {
             });
 
             const response = await handleDevAdminJWT(req, env as any);
-            const body = await response.json();
+            const body = await response.json() as any;
 
             expect(response.status).toBe(403);
             expect(body.success).toBe(false);
@@ -58,7 +58,7 @@ describe("Dev Auth Routes", () => {
             });
 
             const response = await handleDevAdminJWT(req, env as any);
-            const body = await response.json();
+            const body = await response.json() as any;
 
             expect(body.success).toBe(true);
             expect(body.token).toBe("mock-jwt-token");
@@ -79,7 +79,7 @@ describe("Dev Auth Routes", () => {
             });
 
             const response = await handleDevAdminJWT(req, env as any);
-            const body = await response.json();
+            const body = await response.json() as any;
 
             expect(body.tenantId).toBe("test-tenant");
             expect(body.email).toBe("dev@localhost");
@@ -97,7 +97,7 @@ describe("Dev Auth Routes", () => {
             });
 
             const response = await handleDevAdminJWT(req, env as any);
-            const body = await response.json();
+            const body = await response.json() as any;
 
             // Should use defaults even with invalid JSON
             expect(body.success).toBe(true);
@@ -117,7 +117,7 @@ describe("Dev Auth Routes", () => {
             });
 
             const response = await handleDevMagicLink(req, env as any);
-            const body = await response.json();
+            const body = await response.json() as any;
 
             expect(response.status).toBe(403);
             expect(body.success).toBe(false);
@@ -136,7 +136,7 @@ describe("Dev Auth Routes", () => {
             });
 
             const response = await handleDevMagicLink(req, env as any);
-            const body = await response.json();
+            const body = await response.json() as any;
 
             expect(body.success).toBe(true);
             expect(body.magicLink).toContain("localhost:3000");
@@ -158,7 +158,7 @@ describe("Dev Auth Routes", () => {
             });
 
             const response = await handleDevMagicLink(req, env as any);
-            const body = await response.json();
+            const body = await response.json() as any;
 
             expect(body.tenantId).toBe("test-tenant");
             expect(body.email).toBe("dev@localhost");
@@ -177,7 +177,7 @@ describe("Dev Auth Routes", () => {
             const req = new Request("https://api.test.com/dev/info");
 
             const response = await handleDevInfo(req, env as any);
-            const body = await response.json();
+            const body = await response.json() as any;
 
             expect(body.environment).toBe("development");
             expect(body.isDevelopment).toBe(true);
@@ -195,7 +195,7 @@ describe("Dev Auth Routes", () => {
             const req = new Request("https://api.test.com/dev/info");
 
             const response = await handleDevInfo(req, env as any);
-            const body = await response.json();
+            const body = await response.json() as any;
 
             expect(body.isDevelopment).toBe(false);
             expect(body.devEndpointsEnabled).toBe(false);
@@ -207,7 +207,7 @@ describe("Dev Auth Routes", () => {
             const req = new Request("https://api.test.com/dev/info");
 
             const response = await handleDevInfo(req, env as any);
-            const body = await response.json();
+            const body = await response.json() as any;
 
             expect(body.environment).toBe("unknown");
             expect(body.backendUrl).toBe("not set");

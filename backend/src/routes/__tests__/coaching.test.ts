@@ -2,13 +2,20 @@ import { describe, it, expect } from "vitest";
 import { env } from "cloudflare:test";
 import worker from "../../index";
 
+// Mock ExecutionContext for worker tests
+const mockCtx = {
+  waitUntil: () => { },
+  passThroughOnException: () => { },
+  props: {},
+} as unknown as ExecutionContext;
+
 describe("AI Coaching Routes", () => {
   it("should require authentication for analyze mistakes", async () => {
     const request = new Request("https://example.com/api/v1/videos/test-id/analyze-mistakes", {
       method: "POST",
     });
 
-    const response = await worker.fetch(request, env);
+    const response = await worker.fetch(request, env, mockCtx);
     expect(response.status).toBe(401);
   });
 
@@ -21,14 +28,14 @@ describe("AI Coaching Routes", () => {
       }),
     });
 
-    const response = await worker.fetch(request, env);
+    const response = await worker.fetch(request, env, mockCtx);
     expect(response.status).toBe(401);
   });
 
   it("should require authentication for coaching sessions", async () => {
     const request = new Request("https://example.com/api/v1/coaching/sessions");
 
-    const response = await worker.fetch(request, env);
+    const response = await worker.fetch(request, env, mockCtx);
     expect(response.status).toBe(401);
   });
 });

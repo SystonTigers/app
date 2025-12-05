@@ -50,7 +50,7 @@ describe("Fixtures Routes", () => {
             });
 
             const response = await handleFixtureSync(req, env);
-            const body = await response.json();
+            const body = await response.json() as any;
 
             expect(body.success).toBe(true);
             expect(body.synced).toBe(1);
@@ -70,7 +70,7 @@ describe("Fixtures Routes", () => {
             });
 
             const response = await handleFixtureSync(req, env);
-            const body = await response.json();
+            const body = await response.json() as any;
 
             expect(body.success).toBe(true);
             expect(body.synced).toBe(3);
@@ -84,7 +84,7 @@ describe("Fixtures Routes", () => {
             });
 
             const response = await handleFixtureSync(req, env);
-            const body = await response.json();
+            const body = await response.json() as any;
 
             expect(body.success).toBe(true);
             expect(body.synced).toBe(0);
@@ -115,7 +115,7 @@ describe("Fixtures Routes", () => {
 
             const req = new Request("https://api.test.com/fixtures/upcoming");
             const response = await handleGetUpcomingFixtures(req, env);
-            const body = await response.json();
+            const body = await response.json() as any;
 
             expect(Array.isArray(body)).toBe(true);
         });
@@ -128,7 +128,7 @@ describe("Fixtures Routes", () => {
 
             const req = new Request("https://api.test.com/fixtures/upcoming");
             const response = await handleGetUpcomingFixtures(req, env);
-            const body = await response.json();
+            const body = await response.json() as any;
 
             expect(body).toEqual([]);
         });
@@ -144,7 +144,7 @@ describe("Fixtures Routes", () => {
 
             const req = new Request("https://api.test.com/fixtures/all");
             const response = await handleGetAllFixtures(req, env);
-            const body = await response.json();
+            const body = await response.json() as any;
 
             expect(Array.isArray(body)).toBe(true);
         });
@@ -191,7 +191,7 @@ describe("Fixtures Routes", () => {
 
             const req = new Request("https://api.test.com/fixtures/results");
             const response = await handleGetResults(req, env);
-            const body = await response.json();
+            const body = await response.json() as any;
 
             expect(Array.isArray(body)).toBe(true);
         });
@@ -224,7 +224,7 @@ describe("Fixtures Routes", () => {
             });
 
             const response = await handleAddResult(req, env);
-            const body = await response.json();
+            const body = await response.json() as any;
 
             expect(body.success).toBe(true);
         });
@@ -250,7 +250,7 @@ describe("Fixtures Routes", () => {
             });
 
             const response = await handleDeleteFixture(req, env, "abc123");
-            const body = await response.json();
+            const body = await response.json() as any;
 
             expect(body.success).toBe(true);
         });

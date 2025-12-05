@@ -2,10 +2,17 @@ import { describe, it, expect } from "vitest";
 import { env } from "cloudflare:test";
 import worker from "../../index";
 
+// Mock ExecutionContext for worker tests
+const mockCtx = {
+  waitUntil: () => { },
+  passThroughOnException: () => { },
+  props: {},
+} as unknown as ExecutionContext;
+
 describe("Chat Routes", () => {
   it("should require authentication for listing rooms", async () => {
     const request = new Request("https://example.com/api/v1/chat/rooms");
-    const response = await worker.fetch(request, env);
+    const response = await worker.fetch(request, env, mockCtx);
     expect(response.status).toBe(401);
   });
 
@@ -17,7 +24,7 @@ describe("Chat Routes", () => {
         name: "Test Room",
       }),
     });
-    const response = await worker.fetch(request, env);
+    const response = await worker.fetch(request, env, mockCtx);
     expect(response.status).toBe(401);
   });
 
@@ -29,13 +36,13 @@ describe("Chat Routes", () => {
         message: "Hello",
       }),
     });
-    const response = await worker.fetch(request, env);
+    const response = await worker.fetch(request, env, mockCtx);
     expect(response.status).toBe(401);
   });
 
   it("should require authentication for getting history", async () => {
     const request = new Request("https://example.com/api/v1/chat/test-room/history");
-    const response = await worker.fetch(request, env);
+    const response = await worker.fetch(request, env, mockCtx);
     expect(response.status).toBe(401);
   });
 
@@ -47,7 +54,7 @@ describe("Chat Routes", () => {
         isTyping: true,
       }),
     });
-    const response = await worker.fetch(request, env);
+    const response = await worker.fetch(request, env, mockCtx);
     expect(response.status).toBe(401);
   });
 });

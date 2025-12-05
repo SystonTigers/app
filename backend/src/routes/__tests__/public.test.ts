@@ -71,7 +71,7 @@ describe("Public Routes", () => {
             const response = await handlePublicTenantRequest(req, env, url, corsHdrs, "req-123");
 
             expect(response).not.toBeNull();
-            const body = await response!.json();
+            const body = await response!.json() as any;
             expect(body.success).toBe(false);
             expect(body.error.code).toBe("NOT_FOUND");
         });
@@ -85,7 +85,7 @@ describe("Public Routes", () => {
             const response = await handlePublicTenantRequest(req, env, url, corsHdrs, "req-123");
 
             expect(response).not.toBeNull();
-            const body = await response!.json();
+            const body = await response!.json() as any;
             expect(body.success).toBe(false);
             expect(body.error.code).toBe("TENANT_NOT_FOUND");
         });
@@ -122,7 +122,7 @@ describe("Public Routes", () => {
                 const response = await handlePublicTenantRequest(req, env, url, corsHdrs, "req-123");
 
                 expect(response).not.toBeNull();
-                const body = await response!.json();
+                const body = await response!.json() as any;
                 expect(body.success).toBe(true);
                 expect(body.data).toBeDefined();
             });
@@ -138,7 +138,7 @@ describe("Public Routes", () => {
                 const response = await handlePublicTenantRequest(req, env, url, corsHdrs, "req-123");
 
                 expect(response).not.toBeNull();
-                const body = await response!.json();
+                const body = await response!.json() as any;
                 expect(body.success).toBe(true);
             });
 
@@ -153,7 +153,7 @@ describe("Public Routes", () => {
                 const response = await handlePublicTenantRequest(req, env, url, corsHdrs, "req-123");
 
                 expect(response).not.toBeNull();
-                const body = await response!.json();
+                const body = await response!.json() as any;
                 expect(body.success).toBe(true);
                 expect(body.data).toBeDefined();
             });
@@ -169,7 +169,7 @@ describe("Public Routes", () => {
                 const response = await handlePublicTenantRequest(req, env, url, corsHdrs, "req-123");
 
                 expect(response).not.toBeNull();
-                const body = await response!.json();
+                const body = await response!.json() as any;
                 expect(body.success).toBe(true);
             });
 
@@ -184,7 +184,7 @@ describe("Public Routes", () => {
                 const response = await handlePublicTenantRequest(req, env, url, corsHdrs, "req-123");
 
                 expect(response).not.toBeNull();
-                const body = await response!.json();
+                const body = await response!.json() as any;
                 expect(body.success).toBe(true);
             });
 
@@ -199,7 +199,7 @@ describe("Public Routes", () => {
                 const response = await handlePublicTenantRequest(req, env, url, corsHdrs, "req-123");
 
                 expect(response).not.toBeNull();
-                const body = await response!.json();
+                const body = await response!.json() as any;
                 expect(body.success).toBe(true);
                 expect(body.data).toBeDefined();
             });
@@ -215,7 +215,7 @@ describe("Public Routes", () => {
                 const response = await handlePublicTenantRequest(req, env, url, corsHdrs, "req-123");
 
                 expect(response).not.toBeNull();
-                const body = await response!.json();
+                const body = await response!.json() as any;
                 expect(body.success).toBe(false);
                 expect(body.error.code).toBe("NOT_FOUND");
             });
@@ -231,7 +231,7 @@ describe("Public Routes", () => {
                 const response = await handlePublicTenantRequest(req, env, url, corsHdrs, "req-123");
 
                 expect(response).not.toBeNull();
-                const body = await response!.json();
+                const body = await response!.json() as any;
                 expect(body.success).toBe(true);
             });
 
@@ -246,7 +246,7 @@ describe("Public Routes", () => {
                 const response = await handlePublicTenantRequest(req, env, url, corsHdrs, "req-123");
 
                 expect(response).not.toBeNull();
-                const body = await response!.json();
+                const body = await response!.json() as any;
                 expect(body.success).toBe(true);
             });
 
@@ -261,7 +261,7 @@ describe("Public Routes", () => {
                 const response = await handlePublicTenantRequest(req, env, url, corsHdrs, "req-123");
 
                 expect(response).not.toBeNull();
-                const body = await response!.json();
+                const body = await response!.json() as any;
                 expect(body.success).toBe(true);
             });
 
@@ -276,7 +276,7 @@ describe("Public Routes", () => {
                 const response = await handlePublicTenantRequest(req, env, url, corsHdrs, "req-123");
 
                 expect(response).not.toBeNull();
-                const body = await response!.json();
+                const body = await response!.json() as any;
                 expect(body.success).toBe(true);
             });
         });
@@ -309,7 +309,7 @@ describe("Public Routes", () => {
                 const response = await handlePublicTenantRequest(req, env, url, corsHdrs, "req-123");
 
                 expect(response).not.toBeNull();
-                const body = await response!.json();
+                const body = await response!.json() as any;
                 expect(body.success).toBe(true);
             });
 
@@ -326,7 +326,7 @@ describe("Public Routes", () => {
                 const response = await handlePublicTenantRequest(req, env, url, corsHdrs, "req-123");
 
                 expect(response).not.toBeNull();
-                const body = await response!.json();
+                const body = await response!.json() as any;
                 expect(body.success).toBe(true);
             });
         });

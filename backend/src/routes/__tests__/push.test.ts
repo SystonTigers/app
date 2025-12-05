@@ -64,7 +64,7 @@ describe("Push Routes", () => {
             };
 
             const response = await handlePushRegister(request as any, env as any);
-            const body = await response.json();
+            const body = await response.json() as any;
 
             expect(body.success).toBe(true);
         });
@@ -122,7 +122,7 @@ describe("Push Routes", () => {
             };
 
             const response = await handlePushRegister(request as any, env as any);
-            const body = await response.json();
+            const body = await response.json() as any;
 
             expect(body.success).toBe(true);
         });
@@ -150,7 +150,7 @@ describe("Push Routes", () => {
             };
 
             const response = await handlePushSend(request as any, env as any);
-            const body = await response.json();
+            const body = await response.json() as any;
 
             expect(body.success).toBe(true);
             expect(body.sent).toBe(1);
@@ -172,7 +172,7 @@ describe("Push Routes", () => {
             };
 
             const response = await handlePushSend(request as any, env as any);
-            const body = await response.json();
+            const body = await response.json() as any;
 
             expect(body.success).toBe(true);
             expect(body.sent).toBe(0);
@@ -197,7 +197,7 @@ describe("Push Routes", () => {
             };
 
             const response = await handlePushSend(request as any, env as any);
-            const body = await response.json();
+            const body = await response.json() as any;
 
             expect(body.success).toBe(true);
         });
@@ -242,7 +242,7 @@ describe("Push Routes", () => {
             };
 
             const response = await handlePushBroadcast(request as any, env as any);
-            const body = await response.json();
+            const body = await response.json() as any;
 
             expect(body.success).toBe(true);
             expect(body.sent).toBe(3);
@@ -263,7 +263,7 @@ describe("Push Routes", () => {
             };
 
             const response = await handlePushBroadcast(request as any, env as any);
-            const body = await response.json();
+            const body = await response.json() as any;
 
             expect(body.success).toBe(true);
             expect(body.sent).toBe(0);

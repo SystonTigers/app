@@ -2,6 +2,13 @@ import { describe, it, expect } from "vitest";
 import { env } from "cloudflare:test";
 import worker from "../../src/index";
 
+// Mock ExecutionContext for worker tests
+const mockCtx = {
+  waitUntil: () => { },
+  passThroughOnException: () => { },
+  props: {},
+} as unknown as ExecutionContext;
+
 /**
  * Snapshot Test: Public API Responses
  *
@@ -12,7 +19,7 @@ import worker from "../../src/index";
 describe("Snapshot: Public API", () => {
   it("snapshots public clubs endpoint response structure", async () => {
     const request = new Request("https://example.com/api/v1/public/clubs");
-    const response = await worker.fetch(request, env);
+    const response = await worker.fetch(request, env, mockCtx);
 
     const contentType = response.headers.get("content-type");
 
@@ -43,7 +50,7 @@ describe("Snapshot: Public API", () => {
 
   it("snapshots response headers for public endpoints", async () => {
     const request = new Request("https://example.com/api/v1/public/clubs");
-    const response = await worker.fetch(request, env);
+    const response = await worker.fetch(request, env, mockCtx);
 
     const headers = {
       "content-type": response.headers.get("content-type"),
@@ -57,7 +64,7 @@ describe("Snapshot: Public API", () => {
 
   it("snapshots API version in response", async () => {
     const request = new Request("https://example.com/api/v1/public/clubs");
-    const response = await worker.fetch(request, env);
+    const response = await worker.fetch(request, env, mockCtx);
 
     // API version should be in URL structure
     const urlStructure = {
