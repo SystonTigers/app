@@ -1,0 +1,150 @@
+name: Load Tests (K6)
+
+on:
+  # Run on-demand via workflow_dispatch
+  workflow_dispatch:
+    inputs:
+      test_type:
+        description: 'Type of load test to run'
+        required: true
+        default: 'basic'
+        type: choice
+        options:
+          - basic
+          - spike
+          - stress
+          - all
+      api_url:
+        description: 'API URL to test (defaults to staging)'
+        required: false
+        default: 'https://syston-postbus-staging.team-platform-2025.workers.dev'
+      vus:
+        description: 'Virtual Users (overrides script defaults)'
+        required: false
+        default: ''
+      duration:
+        description: 'Test duration (e.g., 1m, 5m)'
+        required: false
+        default: ''
+
+  # Run after deployment to staging
+  workflow_run:
+    workflows: ["Backend CI"]
+    types:
+      - completed
+    branches: [main]
+
+  # Scheduled: Run basic load tests weekly
+  schedule:
+    - cron: '0 3 * * 1' # Every Monday at 3 AM UTC
+
+jobs:
+  load-test:
+    name: Run K6 Load Tests
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'schedule' ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create results directory
+        run: mkdir -p backend/tests/load/results
+
+      - name: Install K6
+        run: |
+          sudo gpg -k
+          sudo gpg --no-default-keyring --keyring /usr/share/keyrings/k6-archive-keyring.gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update
+          sudo apt-get install k6
+
+      - name: Verify K6 installation
+        run: k6 version
+
+      - name: Run Basic Load Test
+        if: inputs.test_type == 'basic' || inputs.test_type == 'all' || github.event_name != 'workflow_dispatch'
+        working-directory: ./backend
+        run: |
+          k6 run \
+            --env API_URL=${{ inputs.api_url || 'https://syston-postbus-staging.team-platform-2025.workers.dev' }} \
+            ${{ inputs.vus && format('--vus {0}', inputs.vus) || '' }} \
+            ${{ inputs.duration && format('--duration {0}', inputs.duration) || '' }} \
+            tests/load/basic-load.k6.js
+        continue-on-error: true
+
+      - name: Run Spike Test
+        if: inputs.test_type == 'spike' || inputs.test_type == 'all'
+        working-directory: ./backend
+        run: |
+          k6 run \
+            --env API_URL=${{ inputs.api_url || 'https://syston-postbus-staging.team-platform-2025.workers.dev' }} \
+            tests/load/spike-test.k6.js
+        continue-on-error: true
+
+      - name: Run Stress Test
+        if: inputs.test_type == 'stress' || inputs.test_type == 'all'
+        working-directory: ./backend
+        run: |
+          k6 run \
+            --env API_URL=${{ inputs.api_url || 'https://syston-postbus-staging.team-platform-2025.workers.dev' }} \
+            tests/load/stress-test.k6.js
+        continue-on-error: true
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: k6-results-${{ github.run_number }}
+          path: backend/tests/load/results/
+          retention-days: 30
+
+      - name: Create summary
+        if: always()
+        run: |
+          echo "## K6 Load Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Test Type:** ${{ inputs.test_type || 'basic' }}" >> $GITHUB_STEP_SUMMARY
+          echo "**API URL:** ${{ inputs.api_url || 'https://syston-postbus-staging.team-platform-2025.workers.dev' }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ -f backend/tests/load/results/basic-load-summary.json ]; then
+            echo "### Basic Load Test" >> $GITHUB_STEP_SUMMARY
+            echo '```json' >> $GITHUB_STEP_SUMMARY
+            cat backend/tests/load/results/basic-load-summary.json | head -100 >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi
+
+  notify-on-failure:
+    name: Notify on Failure
+    runs-on: ubuntu-latest
+    needs: load-test
+    if: failure() && github.event_name == 'schedule'
+
+    steps:
+      - name: Create failure issue
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: '⚠️ Weekly Load Test Failed',
+              body: `## Load Test Failure Alert
+
+              The scheduled weekly load test has failed.
+
+              **Workflow Run:** [View Details](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})
+
+              **Date:** ${new Date().toISOString()}
+
+              Please investigate the load test results and address any performance issues.
+
+              ---
+              *This issue was automatically created by GitHub Actions*`,
+              labels: ['performance', 'automated']
+            })

@@ -3,11 +3,83 @@
  * Implements OWASP security best practices
  */
 
+// =============================================================================
+// Constants
+// =============================================================================
+
 const CONNECT_SRC = [
   "'self'",
   "https://syston-postbus.team-platform-2025.workers.dev",
   "https://api.systontigers.co.uk",
 ].join(" ");
+
+// =============================================================================
+// CSP Nonce Generation
+// =============================================================================
+
+/**
+ * Generates a cryptographically secure nonce for CSP
+ * Uses Web Crypto API which is available in Cloudflare Workers
+ */
+export function generateNonce(): string {
+  const bytes = new Uint8Array(16); // 128 bits of entropy
+  crypto.getRandomValues(bytes);
+  // Convert bytes to base64 without spread operator for compatibility
+  let binary = "";
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
+/**
+ * Context object containing nonce values for CSP
+ */
+export interface NonceContext {
+  /** Raw nonce value */
+  nonce: string;
+  /** Formatted for script-src directive: 'nonce-{value}' */
+  scriptNonce: string;
+  /** Formatted for style-src directive: 'nonce-{value}' */
+  styleNonce: string;
+}
+
+/**
+ * Creates a new nonce context with formatted values for CSP directives
+ */
+export function createNonceContext(): NonceContext {
+  const nonce = generateNonce();
+  return {
+    nonce,
+    scriptNonce: `'nonce-${nonce}'`,
+    styleNonce: `'nonce-${nonce}'`,
+  };
+}
+
+/**
+ * Generates a CSP header value with nonce-based script and style sources
+ * This removes the need for 'unsafe-inline' directives
+ */
+export function generateCSPWithNonce(nonceContext: NonceContext): string {
+  return [
+    "default-src 'self'",
+    "img-src 'self' https: data:",
+    `script-src 'self' ${nonceContext.scriptNonce}`,
+    `style-src 'self' ${nonceContext.styleNonce}`,
+    `connect-src ${CONNECT_SRC}`,
+    "font-src 'self' https:",
+    "object-src 'none'",
+    "frame-src 'none'",
+    "frame-ancestors 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "upgrade-insecure-requests",
+  ].join("; ");
+}
+
+// =============================================================================
+// Security Header Configurations
+// =============================================================================
 
 /**
  * Production security headers - Maximum security
@@ -139,6 +211,131 @@ export function addSecurityHeaders(response: Response, environment?: string): Re
   return new Response(response.body, {
     status: response.status,
     statusText: response.statusText,
+    headers,
+  });
+}
+
+// =============================================================================
+// Nonce-Based Security Headers
+// =============================================================================
+
+/**
+ * Result of applying nonce-based security headers
+ */
+export interface NonceSecurityResult {
+  /** The ResponseInit with nonce-based CSP applied */
+  init: ResponseInit;
+  /** The nonce context for use in HTML templates */
+  nonceContext: NonceContext;
+}
+
+/**
+ * Apply nonce-based security headers to ResponseInit
+ * Use this for HTML responses where you need to include the nonce in script/style tags
+ *
+ * @example
+ * ```typescript
+ * const { init, nonceContext } = withSecurityNonce();
+ * const html = `<script nonce="${nonceContext.nonce}">...</script>`;
+ * return new Response(html, init);
+ * ```
+ */
+export function withSecurityNonce(init: ResponseInit = {}): NonceSecurityResult {
+  const nonceContext = createNonceContext();
+  const h = new Headers(init.headers || {});
+
+  // Apply all production security headers except CSP
+  for (const [k, v] of Object.entries(securityHeaders)) {
+    if (k !== "Content-Security-Policy") {
+      h.set(k, v);
+    }
+  }
+
+  // Apply nonce-based CSP
+  h.set("Content-Security-Policy", generateCSPWithNonce(nonceContext));
+
+  return {
+    init: { ...init, headers: h },
+    nonceContext,
+  };
+}
+
+/**
+ * Apply nonce-based security headers to an existing Response
+ * Returns both the modified response and the nonce context for template rendering
+ *
+ * @example
+ * ```typescript
+ * const { response, nonceContext } = addSecurityHeadersWithNonce(existingResponse);
+ * // Note: HTML content should already include nonce attributes
+ * ```
+ */
+export function addSecurityHeadersWithNonce(response: Response): {
+  response: Response;
+  nonceContext: NonceContext;
+} {
+  const nonceContext = createNonceContext();
+  const headers = new Headers(response.headers);
+
+  // Apply all production security headers except CSP
+  for (const [k, v] of Object.entries(securityHeaders)) {
+    if (k !== "Content-Security-Policy") {
+      headers.set(k, v);
+    }
+  }
+
+  // Apply nonce-based CSP
+  headers.set("Content-Security-Policy", generateCSPWithNonce(nonceContext));
+
+  return {
+    response: new Response(response.body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers,
+    }),
+    nonceContext,
+  };
+}
+
+/**
+ * Helper to inject nonce into HTML content
+ * Replaces __CSP_NONCE__ placeholders with the actual nonce value
+ *
+ * @example
+ * ```typescript
+ * const template = '<script nonce="__CSP_NONCE__">...</script>';
+ * const html = injectNonceIntoHtml(template, nonceContext.nonce);
+ * ```
+ */
+export function injectNonceIntoHtml(html: string, nonce: string): string {
+  return html.replace(/__CSP_NONCE__/g, nonce);
+}
+
+/**
+ * Complete helper for serving HTML with nonce-based CSP
+ * Combines nonce generation, HTML injection, and security headers
+ *
+ * @example
+ * ```typescript
+ * const html = '<script nonce="__CSP_NONCE__">alert("Hello")</script>';
+ * return createSecureHtmlResponse(html);
+ * ```
+ */
+export function createSecureHtmlResponse(
+  htmlTemplate: string,
+  init: ResponseInit = {}
+): Response {
+  const { init: secureInit, nonceContext } = withSecurityNonce(init);
+  const html = injectNonceIntoHtml(htmlTemplate, nonceContext.nonce);
+
+  // Ensure content-type is set for HTML
+  const headers = new Headers(secureInit.headers);
+  if (!headers.has("Content-Type")) {
+    headers.set("Content-Type", "text/html; charset=utf-8");
+  }
+
+  return new Response(html, {
+    ...secureInit,
     headers,
   });
 }

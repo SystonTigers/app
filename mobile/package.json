@@ -10,7 +10,8 @@
     "web": "expo start --web",
     "lint": "eslint . --ext .ts,.tsx",
     "test:snapshots": "node test/theme.snapshot.test.js",
-    "test": "npm run test:snapshots"
+    "test:components": "jest --config jest.config.js",
+    "test": "npm run test:snapshots && npm run test:components"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.2",
@@ -52,9 +53,14 @@
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
+    "@testing-library/react-native": "^12.9.0",
+    "@types/jest": "^29.5.14",
     "@types/react": "~19.1.10",
     "babel-plugin-module-resolver": "^5.0.0",
     "babel-preset-expo": "~54.0.0",
+    "jest": "^29.7.0",
+    "jest-expo": "~52.0.3",
+    "react-test-renderer": "^19.1.0",
     "typescript": "~5.9.2"
   },
   "overrides": {

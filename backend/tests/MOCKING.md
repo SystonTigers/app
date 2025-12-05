@@ -359,12 +359,14 @@ describe("Weather Service", () => {
 
 | Service | Status | Priority | Action Needed |
 |---------|--------|----------|---------------|
-| Email (Resend) | ✅ Handled | High | None (conditional logic exists) |
-| Weather (Open-Meteo) | ❌ Not Mocked | High | Create mock or global fetch intercept |
-| YouTube API | ❌ Not Mocked | High | Create module mock |
-| Google OAuth | ❌ Not Mocked | High | Create global fetch intercept |
-| Push Notifications | ❌ Not Mocked | Medium | Investigate service, then mock |
-| Make.com Webhooks | ❌ Not Mocked | Medium | Create global fetch intercept |
+| Email (Resend) | ✅ **IMPLEMENTED** | High | Use `src/__mocks__/services/email.ts` |
+| Weather (Open-Meteo) | ✅ **IMPLEMENTED** | High | Use `src/__mocks__/services/weather.ts` |
+| YouTube API | ✅ **IMPLEMENTED** | High | Use `src/__mocks__/adapters/youtube.ts` |
+| Google OAuth | ✅ **IMPLEMENTED** | High | Use global fetch interceptor |
+| Push Notifications (Expo) | ✅ **IMPLEMENTED** | Medium | Use global fetch interceptor |
+| Make.com Webhooks | ✅ **IMPLEMENTED** | Medium | Use `src/__mocks__/adapters/make.ts` |
+| Printify API | ✅ **IMPLEMENTED** | Medium | Use `src/__mocks__/services/printify.ts` |
+| Social Media (X, Instagram, Facebook, TikTok) | ✅ **IMPLEMENTED** | Medium | Use `src/__mocks__/adapters/social.ts` |
 | DOMPurify | ✅ Mocked | N/A | `src/__mocks__/dompurify.ts` exists |
 
 ---
@@ -387,6 +389,105 @@ describe("Weather Service", () => {
 3. Add tests that verify mocked behavior
 4. Document expected responses for each external API
 5. Consider using libraries like `msw` (Mock Service Worker) for more sophisticated mocking
+
+---
+
+## Quick Start Guide (IMPLEMENTED)
+
+### Option 1: Global Fetch Interceptor (Recommended for Integration Tests)
+
+```typescript
+import {
+  setupExternalApiMocks,
+  teardownExternalApiMocks,
+  assertApiCalled,
+  getApiCalls
+} from "../__mocks__";
+
+describe("My Integration Test", () => {
+  beforeEach(() => {
+    setupExternalApiMocks();
+  });
+
+  afterEach(() => {
+    teardownExternalApiMocks();
+  });
+
+  it("calls YouTube API", async () => {
+    // Your code that calls YouTube API
+    await someFunction();
+
+    // Verify the API was called
+    assertApiCalled(/googleapis\.com\/youtube/);
+
+    // Get call details
+    const calls = getApiCalls(/googleapis\.com/);
+    expect(calls).toHaveLength(1);
+  });
+});
+```
+
+### Option 2: Module Mocking (Recommended for Unit Tests)
+
+```typescript
+import { vi } from "vitest";
+
+// Mock at the top of your test file
+vi.mock("../adapters/youtube");
+
+import { mockYouTubeSuccess, mockYouTubeFailure } from "../__mocks__/adapters/youtube";
+
+describe("YouTube Publisher", () => {
+  it("handles success", async () => {
+    mockYouTubeSuccess({ broadcast_id: "custom-id" });
+    // Test code...
+  });
+
+  it("handles failure", async () => {
+    mockYouTubeFailure("API quota exceeded");
+    // Test error handling...
+  });
+});
+```
+
+### Available Mock Files
+
+```
+src/__mocks__/
+├── index.ts                    # Main export (import all mocks from here)
+├── externalApis.ts             # Global fetch interceptor
+├── dompurify.ts                # DOMPurify mock
+├── adapters/
+│   ├── youtube.ts              # YouTube API mock
+│   ├── make.ts                 # Make.com webhook mock
+│   └── social.ts               # X, Instagram, Facebook, TikTok mocks
+└── services/
+    ├── email.ts                # Resend email mock
+    ├── weather.ts              # Open-Meteo weather mock
+    └── printify.ts             # Printify API mock
+```
+
+### Email Testing
+
+```typescript
+import {
+  assertEmailSent,
+  getSentEmails,
+  clearSentEmails
+} from "../__mocks__/services/email";
+
+it("sends welcome email", async () => {
+  await registerUser({ email: "user@example.com" });
+
+  assertEmailSent({
+    to: "user@example.com",
+    subject: "Welcome"
+  });
+
+  const emails = getSentEmails();
+  expect(emails).toHaveLength(1);
+});
+```
 
 ---
 
