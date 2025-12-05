@@ -148,10 +148,16 @@ export default function FixturesAdminPage() {
                                                 {fixture.venue || 'Home'}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-right">
+                                        <td className="px-6 py-4 whitespace-nowrap text-right space-x-2">
+                                            <a
+                                                href={`/admin/matches/${fixture.id}/live`}
+                                                className="inline-block bg-green-600 text-white px-3 py-1 rounded text-xs font-bold hover:bg-green-500"
+                                            >
+                                                GO LIVE 🔴
+                                            </a>
                                             <button
                                                 onClick={() => handleDelete(fixture.id)}
-                                                className="text-red-600 hover:text-red-900"
+                                                className="text-red-600 hover:text-red-900 text-xs"
                                             >
                                                 Delete
                                             </button>

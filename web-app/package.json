@@ -21,6 +21,8 @@
     "@types/canvas-confetti": "^1.9.0",
     "axios": "^1.6.0",
     "canvas-confetti": "^1.9.4",
+    "framer-motion": "^12.23.25",
+    "html-to-image": "^1.11.13",
     "next": "^16.0.1",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
