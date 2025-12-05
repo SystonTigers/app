@@ -40,7 +40,7 @@ describe("Shop Service", () => {
       const response = await customize(req, mockEnv);
       expect(response.status).toBe(200);
 
-      const data = await response.json();
+      const data = await response.json() as any;
       expect(data.product_id).toBe("prod_123");
       expect(data.custom_product_id).toBeTruthy();
       expect(data.customization.badge_url).toBe("https://example.com/badge.png");
@@ -71,7 +71,7 @@ describe("Shop Service", () => {
       const response = await customize(req, mockEnv);
       expect(response.status).toBe(200);
 
-      const data = await response.json();
+      const data = await response.json() as any;
       expect(data.customization.badge_url).toBe(
         "https://example.com/default-badge.png"
       );
@@ -91,7 +91,7 @@ describe("Shop Service", () => {
       const response = await customize(req, mockEnv);
       expect(response.status).toBe(400);
 
-      const data = await response.json();
+      const data = await response.json() as any;
       expect(data.error).toBe("product_id required");
     });
 
@@ -102,10 +102,10 @@ describe("Shop Service", () => {
       };
 
       const response1 = await customize(req, mockEnv);
-      const data1 = await response1.json();
+      const data1 = await response1.json() as any;
 
       const response2 = await customize(req, mockEnv);
-      const data2 = await response2.json();
+      const data2 = await response2.json() as any;
 
       expect(data1.custom_product_id).not.toBe(data2.custom_product_id);
     });
@@ -124,7 +124,7 @@ describe("Shop Service", () => {
       const response = await getProducts(req, mockEnv);
       expect(response.status).toBe(200);
 
-      const data = await response.json();
+      const data = await response.json() as any;
       expect(data.products).toEqual(products);
       expect(data.products).toHaveLength(2);
     });
@@ -134,7 +134,7 @@ describe("Shop Service", () => {
       const response = await getProducts(req, mockEnv);
       expect(response.status).toBe(200);
 
-      const data = await response.json();
+      const data = await response.json() as any;
       expect(data.products).toEqual([]);
     });
 
@@ -150,11 +150,11 @@ describe("Shop Service", () => {
 
       const req1 = { tenant: "tenant1" };
       const response1 = await getProducts(req1, mockEnv);
-      const data1 = await response1.json();
+      const data1 = await response1.json() as any;
 
       const req2 = { tenant: "tenant2" };
       const response2 = await getProducts(req2, mockEnv);
-      const data2 = await response2.json();
+      const data2 = await response2.json() as any;
 
       expect(data1.products[0].name).toBe("Tenant 1 Jersey");
       expect(data2.products[0].name).toBe("Tenant 2 Jersey");
@@ -180,7 +180,7 @@ describe("Shop Service", () => {
       const response = await createOrder(req, mockEnv);
       expect(response.status).toBe(200);
 
-      const data = await response.json();
+      const data = await response.json() as any;
       expect(data.order_id).toBeTruthy();
       expect(data.status).toBe("pending");
       expect(data.message).toContain("Order created");
@@ -224,7 +224,7 @@ describe("Shop Service", () => {
       const response = await createOrder(req, mockEnv);
       expect(response.status).toBe(400);
 
-      const data = await response.json();
+      const data = await response.json() as any;
       expect(data.error).toContain("product_id");
       expect(data.error).toContain("required");
     });
@@ -241,7 +241,7 @@ describe("Shop Service", () => {
       const response = await createOrder(req, mockEnv);
       expect(response.status).toBe(400);
 
-      const data = await response.json();
+      const data = await response.json() as any;
       expect(data.error).toContain("variant_id");
     });
 
@@ -257,7 +257,7 @@ describe("Shop Service", () => {
       const response = await createOrder(req, mockEnv);
       expect(response.status).toBe(400);
 
-      const data = await response.json();
+      const data = await response.json() as any;
       expect(data.error).toContain("quantity");
     });
   });
@@ -283,7 +283,7 @@ describe("Shop Service", () => {
       const response = await getOrder(req, mockEnv);
       expect(response.status).toBe(200);
 
-      const data = await response.json();
+      const data = await response.json() as any;
       expect(data.order).toEqual(order);
     });
 
@@ -296,7 +296,7 @@ describe("Shop Service", () => {
       const response = await getOrder(req, mockEnv);
       expect(response.status).toBe(404);
 
-      const data = await response.json();
+      const data = await response.json() as any;
       expect(data.error).toBe("Order not found");
     });
 
@@ -315,14 +315,14 @@ describe("Shop Service", () => {
         url: "https://example.com/orders/order_abc",
       };
       const response1 = await getOrder(req1, mockEnv);
-      const data1 = await response1.json();
+      const data1 = await response1.json() as any;
 
       const req2 = {
         tenant: "tenant2",
         url: "https://example.com/orders/order_abc",
       };
       const response2 = await getOrder(req2, mockEnv);
-      const data2 = await response2.json();
+      const data2 = await response2.json() as any;
 
       expect(data1.order.product_id).toBe("prod_1");
       expect(data2.order.product_id).toBe("prod_2");
@@ -334,7 +334,7 @@ describe("Shop Service", () => {
       // 1. Get products (empty initially)
       const getProductsReq = { tenant: "demo" };
       const productsResp = await getProducts(getProductsReq, mockEnv);
-      const productsData = await productsResp.json();
+      const productsData = await productsResp.json() as any;
       expect(productsData.products).toEqual([]);
 
       // 2. Customize product
@@ -347,7 +347,7 @@ describe("Shop Service", () => {
         },
       };
       const customizeResp = await customize(customizeReq, mockEnv);
-      const customizeData = await customizeResp.json();
+      const customizeData = await customizeResp.json() as any;
       expect(customizeData.custom_product_id).toBeTruthy();
 
       // 3. Create order
@@ -360,7 +360,7 @@ describe("Shop Service", () => {
         },
       };
       const orderResp = await createOrder(createOrderReq, mockEnv);
-      const orderData = await orderResp.json();
+      const orderData = await orderResp.json() as any;
       expect(orderData.order_id).toBeTruthy();
 
       // 4. Get order
@@ -369,7 +369,7 @@ describe("Shop Service", () => {
         url: `https://example.com/orders/${orderData.order_id}`,
       };
       const retrievedResp = await getOrder(getOrderReq, mockEnv);
-      const retrievedData = await retrievedResp.json();
+      const retrievedData = await retrievedResp.json() as any;
       expect(retrievedData.order.order_id).toBe(orderData.order_id);
       expect(retrievedData.order.quantity).toBe(2);
     });

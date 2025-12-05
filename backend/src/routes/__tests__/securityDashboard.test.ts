@@ -31,10 +31,10 @@ vi.mock("../../services/securityMonitoring", () => ({
   getRecentSecurityEvents: vi.fn(async (env, limit, filters) => {
     const allEvents = [
       {
-        id: "event1",
+
         timestamp: Date.now() - 3600000,
-        type: "AUTH_FAILURE",
-        severity: "HIGH",
+        type: "auth_failure",
+        severity: "high",
         ip: "192.168.1.100",
         tenantId: "tenant1",
         userId: "user1",
@@ -42,20 +42,20 @@ vi.mock("../../services/securityMonitoring", () => ({
         metadata: { attempts: 3 },
       },
       {
-        id: "event2",
+
         timestamp: Date.now() - 7200000,
-        type: "RATE_LIMIT",
-        severity: "MEDIUM",
+        type: "rate_limit_exceeded",
+        severity: "medium",
         ip: "192.168.1.101",
         tenantId: "tenant2",
         message: "Rate limit exceeded",
         metadata: { limit: 100 },
       },
       {
-        id: "event3",
+
         timestamp: Date.now() - 10800000,
-        type: "SUSPICIOUS_IP",
-        severity: "CRITICAL",
+        type: "brute_force_attempt",
+        severity: "critical",
         ip: "10.0.0.50",
         tenantId: "tenant1",
         message: "Suspicious IP blocked",
@@ -80,16 +80,16 @@ vi.mock("../../services/securityMonitoring", () => ({
     return filtered.slice(0, limit || 50);
   }),
   SecurityEventType: {
-    AUTH_FAILURE: "AUTH_FAILURE",
-    RATE_LIMIT: "RATE_LIMIT",
-    SUSPICIOUS_IP: "SUSPICIOUS_IP",
-    INVALID_TOKEN: "INVALID_TOKEN",
+    AUTH_FAILURE: "auth_failure",
+    RATE_LIMIT_EXCEEDED: "rate_limit_exceeded",
+    BRUTE_FORCE_ATTEMPT: "brute_force_attempt",
+    INVALID_TOKEN: "jwt_invalid",
   },
   SecuritySeverity: {
-    LOW: "LOW",
-    MEDIUM: "MEDIUM",
-    HIGH: "HIGH",
-    CRITICAL: "CRITICAL",
+    LOW: "low",
+    MEDIUM: "medium",
+    HIGH: "high",
+    CRITICAL: "critical",
   },
 }));
 
@@ -482,10 +482,10 @@ describe("Security Dashboard Routes", () => {
       );
       vi.mocked(getRecentSecurityEvents).mockResolvedValueOnce([
         {
-          id: "event1",
+
           timestamp: Date.now(),
-          type: "AUTH_FAILURE",
-          severity: "HIGH",
+          type: "auth_failure" as any,
+          severity: "high" as any,
           ip: "192.168.1.100",
           path: "/api/auth",
           method: "POST",
@@ -510,7 +510,7 @@ describe("Security Dashboard Routes", () => {
     it("should apply multiple filters correctly", async () => {
       const req = await createAdminRequest(
         "GET",
-        "/api/v1/admin/security/events?type=SUSPICIOUS_IP&severity=CRITICAL&tenantId=tenant1"
+        "/api/v1/admin/security/events?type=brute_force_attempt&severity=critical&tenantId=tenant1"
       );
 
       const response = await handleSecurityEvents(req, env, corsHdrs);
@@ -521,8 +521,8 @@ describe("Security Dashboard Routes", () => {
       expect(
         data.data.events.every(
           (e: any) =>
-            e.type === "SUSPICIOUS_IP" &&
-            e.severity === "CRITICAL" &&
+            e.type === "brute_force_attempt" &&
+            e.severity === "critical" &&
             e.tenantId === "tenant1"
         )
       ).toBe(true);
