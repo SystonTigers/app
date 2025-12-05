@@ -94,7 +94,7 @@ vi.mock("../../services/securityMonitoring", () => ({
 }));
 
 describe("Security Dashboard Routes", () => {
-  let env: Env;
+  let env: any;
   let mockDB: any;
   let corsHdrs: Headers;
 
@@ -123,7 +123,7 @@ describe("Security Dashboard Routes", () => {
       JWT_ISSUER: "test-issuer",
       JWT_AUDIENCE: "syston-mobile",
       ENVIRONMENT: "test",
-    } as Env;
+    } as unknown as Env;
     corsHdrs = new Headers({
       "Access-Control-Allow-Origin": "*",
     });
@@ -162,7 +162,7 @@ describe("Security Dashboard Routes", () => {
       const response = await handleSecuritySummary(req, env, corsHdrs);
       expect(response.status).toBe(200);
 
-      const data = await response.json();
+      const data = await response.json() as any;
       expect(data.success).toBe(true);
       expect(data.data).toMatchObject({
         totalEvents: 150,
@@ -191,7 +191,7 @@ describe("Security Dashboard Routes", () => {
       const response = await handleSecurityMetrics(req, env, corsHdrs);
       expect(response.status).toBe(200);
 
-      const data = await response.json();
+      const data = await response.json() as any;
       expect(data.success).toBe(true);
       expect(data.data.period).toBe("24 hours");
       expect(data.data.metrics.events).toHaveLength(2);
@@ -208,7 +208,7 @@ describe("Security Dashboard Routes", () => {
       const response = await handleSecurityMetrics(req, env, corsHdrs);
       expect(response.status).toBe(200);
 
-      const data = await response.json();
+      const data = await response.json() as any;
       expect(data.success).toBe(true);
       expect(data.data.period).toBe("48 hours");
     });
@@ -222,7 +222,7 @@ describe("Security Dashboard Routes", () => {
       const response = await handleSecurityMetrics(req, env, corsHdrs);
       expect(response.status).toBe(200);
 
-      const data = await response.json();
+      const data = await response.json() as any;
       expect(data.success).toBe(true);
       expect(data.data.period).toBe("168 hours");
     });
@@ -244,7 +244,7 @@ describe("Security Dashboard Routes", () => {
       const response = await handleSecurityEvents(req, env, corsHdrs);
       expect(response.status).toBe(200);
 
-      const data = await response.json();
+      const data = await response.json() as any;
       expect(data.success).toBe(true);
       expect(Array.isArray(data.data.events)).toBe(true);
       expect(data.data.events.length).toBeGreaterThan(0);
@@ -267,7 +267,7 @@ describe("Security Dashboard Routes", () => {
       const response = await handleSecurityEvents(req, env, corsHdrs);
       expect(response.status).toBe(200);
 
-      const data = await response.json();
+      const data = await response.json() as any;
       expect(data.success).toBe(true);
       expect(data.data.events.every((e: any) => e.type === "AUTH_FAILURE")).toBe(
         true
@@ -283,7 +283,7 @@ describe("Security Dashboard Routes", () => {
       const response = await handleSecurityEvents(req, env, corsHdrs);
       expect(response.status).toBe(200);
 
-      const data = await response.json();
+      const data = await response.json() as any;
       expect(data.success).toBe(true);
       expect(
         data.data.events.every((e: any) => e.severity === "CRITICAL")
@@ -299,7 +299,7 @@ describe("Security Dashboard Routes", () => {
       const response = await handleSecurityEvents(req, env, corsHdrs);
       expect(response.status).toBe(200);
 
-      const data = await response.json();
+      const data = await response.json() as any;
       expect(data.success).toBe(true);
       expect(
         data.data.events.every((e: any) => e.tenantId === "tenant1")
@@ -315,7 +315,7 @@ describe("Security Dashboard Routes", () => {
       const response = await handleSecurityEvents(req, env, corsHdrs);
       expect(response.status).toBe(200);
 
-      const data = await response.json();
+      const data = await response.json() as any;
       expect(data.success).toBe(true);
       expect(data.data.events.every((e: any) => e.ip === "192.168.1.100")).toBe(
         true
@@ -331,7 +331,7 @@ describe("Security Dashboard Routes", () => {
       const response = await handleSecurityEvents(req, env, corsHdrs);
       expect(response.status).toBe(200);
 
-      const data = await response.json();
+      const data = await response.json() as any;
       expect(data.success).toBe(true);
       expect(data.data.events).toHaveLength(1);
     });
@@ -345,7 +345,7 @@ describe("Security Dashboard Routes", () => {
       const response = await handleSecurityEvents(req, env, corsHdrs);
       expect(response.status).toBe(200);
 
-      const data = await response.json();
+      const data = await response.json() as any;
       expect(data.success).toBe(true);
       expect(
         data.data.events.every(
@@ -371,7 +371,7 @@ describe("Security Dashboard Routes", () => {
       const response = await handleEventTypes(req, env, corsHdrs);
       expect(response.status).toBe(200);
 
-      const data = await response.json();
+      const data = await response.json() as any;
       expect(data.success).toBe(true);
       expect(Array.isArray(data.data.eventTypes)).toBe(true);
       expect(Array.isArray(data.data.severities)).toBe(true);
@@ -420,7 +420,7 @@ describe("Security Dashboard Routes", () => {
       expect(response.status).toBe(200);
       expect(response.headers.get("Content-Type")).toContain("application/json");
 
-      const data = await response.json();
+      const data = await response.json() as any;
       expect(data.success).toBe(true);
       expect(Array.isArray(data.data.events)).toBe(true);
     });
@@ -445,7 +445,7 @@ describe("Security Dashboard Routes", () => {
       const response = await handleSecurityExport(req, env, corsHdrs);
       expect(response.status).toBe(200);
 
-      const data = await response.json();
+      const data = await response.json() as any;
       expect(data.success).toBe(true);
     });
 
@@ -471,7 +471,7 @@ describe("Security Dashboard Routes", () => {
       const response = await handleSecurityEvents(req, env, corsHdrs);
       expect(response.status).toBe(200);
 
-      const data = await response.json();
+      const data = await response.json() as any;
       expect(data.success).toBe(true);
       expect(data.data.events).toEqual([]);
     });
@@ -516,7 +516,7 @@ describe("Security Dashboard Routes", () => {
       const response = await handleSecurityEvents(req, env, corsHdrs);
       expect(response.status).toBe(200);
 
-      const data = await response.json();
+      const data = await response.json() as any;
       expect(data.success).toBe(true);
       expect(
         data.data.events.every(

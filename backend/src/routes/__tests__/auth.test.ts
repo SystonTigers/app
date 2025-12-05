@@ -97,7 +97,7 @@ class MockD1Database {
         const [tenantId, email] = params as [string, string];
         const key = `${tenantId}::${email}`;
         const row = this.rows.get(key);
-        if (!row) {return [];}
+        if (!row) { return []; }
         return [row];
       } else if (normalized.includes("WHERE EMAIL = ?")) {
         const [email] = params as [string];
@@ -234,11 +234,11 @@ test("returns cached response on idempotent retry", async () => {
 
   const firstResponse = await handleAuthRegister(firstRequest, env, new Headers(corsHeaders));
   expect(firstResponse.status).toBe(201);
-  const firstJson = await firstResponse.json();
+  const firstJson = await firstResponse.json() as any;
 
   const secondResponse = await handleAuthRegister(secondRequest, env, new Headers(corsHeaders));
   expect(secondResponse.status).toBe(200);
-  const secondJson = await secondResponse.json();
+  const secondJson = await secondResponse.json() as any;
   expect(secondJson).toEqual(firstJson);
 });
 

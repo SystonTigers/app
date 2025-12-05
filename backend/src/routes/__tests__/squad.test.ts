@@ -42,7 +42,7 @@ describe("Squad Routes", () => {
             });
 
             const response = await handleUpdateSquad(req, env, corsHdrs);
-            const body = await response.json();
+            const body = await response.json() as any;
 
             expect(body.success).toBe(true);
             expect(body.count).toBe(2);
@@ -76,7 +76,7 @@ describe("Squad Routes", () => {
             });
 
             const response = await handleUpdateSquad(req, env, corsHdrs);
-            const body = await response.json();
+            const body = await response.json() as any;
 
             expect(body.success).toBe(false);
             expect(body.error).toContain("array");
@@ -92,7 +92,7 @@ describe("Squad Routes", () => {
             });
 
             const response = await handleUpdateSquad(req, env, corsHdrs);
-            const body = await response.json();
+            const body = await response.json() as any;
 
             expect(body.success).toBe(true);
             expect(body.count).toBe(0);
@@ -113,7 +113,7 @@ describe("Squad Routes", () => {
             });
 
             const response = await handleUpdateSquad(req, env, corsHdrs);
-            const body = await response.json();
+            const body = await response.json() as any;
 
             expect(body.success).toBe(true);
             expect(body.count).toBe(50);

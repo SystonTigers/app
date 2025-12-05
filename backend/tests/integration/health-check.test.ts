@@ -2,6 +2,13 @@ import { describe, it, expect } from "vitest";
 import { env } from "cloudflare:test";
 import worker from "../../src/index";
 
+// Mock ExecutionContext for worker tests
+const mockCtx = {
+  waitUntil: () => { },
+  passThroughOnException: () => { },
+  props: {},
+} as unknown as ExecutionContext;
+
 /**
  * Health Check Endpoint Tests
  *
@@ -12,14 +19,14 @@ describe("Integration: Health Check Endpoints", () => {
   describe("GET /healthz (Liveness Probe)", () => {
     it("returns 200 OK when worker is running", async () => {
       const request = new Request("https://example.com/healthz");
-      const response = await worker.fetch(request, env);
+      const response = await worker.fetch(request, env, mockCtx);
 
       expect(response.status).toBe(200);
     });
 
     it("returns health status in JSON format", async () => {
       const request = new Request("https://example.com/healthz");
-      const response = await worker.fetch(request, env);
+      const response = await worker.fetch(request, env, mockCtx);
 
       const data = (await response.json()) as any;
 
@@ -30,7 +37,7 @@ describe("Integration: Health Check Endpoints", () => {
 
     it("includes version information", async () => {
       const request = new Request("https://example.com/healthz");
-      const response = await worker.fetch(request, env);
+      const response = await worker.fetch(request, env, mockCtx);
 
       const data = (await response.json()) as any;
 
@@ -39,7 +46,7 @@ describe("Integration: Health Check Endpoints", () => {
 
     it("returns valid ISO timestamp", async () => {
       const request = new Request("https://example.com/healthz");
-      const response = await worker.fetch(request, env);
+      const response = await worker.fetch(request, env, mockCtx);
 
       const data = (await response.json()) as any;
 
@@ -52,14 +59,14 @@ describe("Integration: Health Check Endpoints", () => {
   describe("GET /readyz (Readiness Probe)", () => {
     it("returns 200 when all services are healthy", async () => {
       const request = new Request("https://example.com/readyz");
-      const response = await worker.fetch(request, env);
+      const response = await worker.fetch(request, env, mockCtx);
 
       expect([200, 503]).toContain(response.status);
     });
 
     it("returns health check structure", async () => {
       const request = new Request("https://example.com/readyz");
-      const response = await worker.fetch(request, env);
+      const response = await worker.fetch(request, env, mockCtx);
 
       const data = (await response.json()) as any;
 
@@ -71,7 +78,7 @@ describe("Integration: Health Check Endpoints", () => {
 
     it("includes database health check", async () => {
       const request = new Request("https://example.com/readyz");
-      const response = await worker.fetch(request, env);
+      const response = await worker.fetch(request, env, mockCtx);
 
       const data = (await response.json()) as any;
 
@@ -81,7 +88,7 @@ describe("Integration: Health Check Endpoints", () => {
 
     it("includes KV health check", async () => {
       const request = new Request("https://example.com/readyz");
-      const response = await worker.fetch(request, env);
+      const response = await worker.fetch(request, env, mockCtx);
 
       const data = (await response.json()) as any;
 
@@ -91,7 +98,7 @@ describe("Integration: Health Check Endpoints", () => {
 
     it("includes durable objects health check", async () => {
       const request = new Request("https://example.com/readyz");
-      const response = await worker.fetch(request, env);
+      const response = await worker.fetch(request, env, mockCtx);
 
       const data = (await response.json()) as any;
 
@@ -102,7 +109,7 @@ describe("Integration: Health Check Endpoints", () => {
       // This test verifies the logic exists
       // In a real unhealthy scenario, status code should be 503
       const request = new Request("https://example.com/readyz");
-      const response = await worker.fetch(request, env);
+      const response = await worker.fetch(request, env, mockCtx);
 
       const data = (await response.json()) as any;
 
@@ -113,7 +120,7 @@ describe("Integration: Health Check Endpoints", () => {
 
     it("returns timestamp in ISO format", async () => {
       const request = new Request("https://example.com/readyz");
-      const response = await worker.fetch(request, env);
+      const response = await worker.fetch(request, env, mockCtx);
 
       const data = (await response.json()) as any;
 
@@ -126,7 +133,7 @@ describe("Integration: Health Check Endpoints", () => {
     it("liveness probe responds quickly (< 100ms)", async () => {
       const start = Date.now();
       const request = new Request("https://example.com/healthz");
-      await worker.fetch(request, env);
+      await worker.fetch(request, env, mockCtx);
       const duration = Date.now() - start;
 
       // Liveness should be very fast
@@ -136,7 +143,7 @@ describe("Integration: Health Check Endpoints", () => {
     it("readiness probe responds reasonably fast (< 1000ms)", async () => {
       const start = Date.now();
       const request = new Request("https://example.com/readyz");
-      await worker.fetch(request, env);
+      await worker.fetch(request, env, mockCtx);
       const duration = Date.now() - start;
 
       // Readiness can be slower due to checks, but should still be fast
@@ -147,7 +154,7 @@ describe("Integration: Health Check Endpoints", () => {
   describe("Health Check Security", () => {
     it("does not require authentication", async () => {
       const request = new Request("https://example.com/healthz");
-      const response = await worker.fetch(request, env);
+      const response = await worker.fetch(request, env, mockCtx);
 
       // Should work without auth
       expect(response.status).toBe(200);
@@ -155,7 +162,7 @@ describe("Integration: Health Check Endpoints", () => {
 
     it("does not expose sensitive information", async () => {
       const request = new Request("https://example.com/readyz");
-      const response = await worker.fetch(request, env);
+      const response = await worker.fetch(request, env, mockCtx);
 
       const data = (await response.json()) as any;
 
@@ -167,7 +174,7 @@ describe("Integration: Health Check Endpoints", () => {
 
     it("includes security headers", async () => {
       const request = new Request("https://example.com/healthz");
-      const response = await worker.fetch(request, env);
+      const response = await worker.fetch(request, env, mockCtx);
 
       // Should have security headers like any other endpoint
       expect(response.headers.get("X-Content-Type-Options")).toBeTruthy();

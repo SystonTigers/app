@@ -2,6 +2,13 @@ import { describe, it, expect } from "vitest";
 import { env } from "cloudflare:test";
 import worker from "../../src/index";
 
+// Mock ExecutionContext for worker tests
+const mockCtx = {
+  waitUntil: () => { },
+  passThroughOnException: () => { },
+  props: {},
+} as unknown as ExecutionContext;
+
 /**
  * E2E Test: Event Management Journey
  *
@@ -34,7 +41,7 @@ describe("E2E: Event Management Journey", () => {
       }),
     });
 
-    const registerResponse = await worker.fetch(registerRequest, env);
+    const registerResponse = await worker.fetch(registerRequest, env, mockCtx);
     const registerData = await registerResponse.json() as any;
     const authToken = registerData.data?.token || "";
     expect(authToken).toBeTruthy();
@@ -56,7 +63,7 @@ describe("E2E: Event Management Journey", () => {
       }),
     });
 
-    const createResponse = await worker.fetch(createEventRequest, env);
+    const createResponse = await worker.fetch(createEventRequest, env, mockCtx);
     expect(createResponse.status).toBeGreaterThanOrEqual(200);
     expect(createResponse.status).toBeLessThan(300);
 
@@ -73,7 +80,7 @@ describe("E2E: Event Management Journey", () => {
       },
     });
 
-    const listResponse = await worker.fetch(listEventsRequest, env);
+    const listResponse = await worker.fetch(listEventsRequest, env, mockCtx);
     expect(listResponse.status).toBe(200);
 
     const listData = await listResponse.json() as any;
@@ -94,7 +101,7 @@ describe("E2E: Event Management Journey", () => {
         }),
       });
 
-      const rsvpResponse = await worker.fetch(rsvpRequest, env);
+      const rsvpResponse = await worker.fetch(rsvpRequest, env, mockCtx);
       expect(rsvpResponse.status).toBeGreaterThanOrEqual(200);
       expect(rsvpResponse.status).toBeLessThan(500);
 
@@ -106,7 +113,7 @@ describe("E2E: Event Management Journey", () => {
         },
       });
 
-      const attendeesResponse = await worker.fetch(attendeesRequest, env);
+      const attendeesResponse = await worker.fetch(attendeesRequest, env, mockCtx);
       expect(attendeesResponse.status).toBeGreaterThanOrEqual(200);
       expect(attendeesResponse.status).toBeLessThan(500);
     }
@@ -123,12 +130,12 @@ describe("E2E: Event Management Journey", () => {
       }),
     });
 
-    const createResponse = await worker.fetch(createRequest, env);
+    const createResponse = await worker.fetch(createRequest, env, mockCtx);
     expect(createResponse.status).toBe(401);
 
     // Try to list events without auth
     const listRequest = new Request("https://example.com/api/v1/events");
-    const listResponse = await worker.fetch(listRequest, env);
+    const listResponse = await worker.fetch(listRequest, env, mockCtx);
     expect(listResponse.status).toBe(401);
   });
 
@@ -149,7 +156,7 @@ describe("E2E: Event Management Journey", () => {
       }),
     });
 
-    const registerResponse = await worker.fetch(registerRequest, env);
+    const registerResponse = await worker.fetch(registerRequest, env, mockCtx);
     const registerData = await registerResponse.json() as any;
     const authToken = registerData.data?.token || "";
 
@@ -164,7 +171,7 @@ describe("E2E: Event Management Journey", () => {
       }),
     });
 
-    const response = await worker.fetch(invalidRequest, env);
+    const response = await worker.fetch(invalidRequest, env, mockCtx);
     expect(response.status).toBeGreaterThanOrEqual(400);
     expect(response.status).toBeLessThan(500);
   });
@@ -186,7 +193,7 @@ describe("E2E: Event Management Journey", () => {
       }),
     });
 
-    const registerResponse = await worker.fetch(registerRequest, env);
+    const registerResponse = await worker.fetch(registerRequest, env, mockCtx);
     const registerData = await registerResponse.json() as any;
     const authToken = registerData.data?.token || "";
 
@@ -204,7 +211,7 @@ describe("E2E: Event Management Journey", () => {
       }),
     });
 
-    const createResponse = await worker.fetch(createRequest, env);
+    const createResponse = await worker.fetch(createRequest, env, mockCtx);
     const createData = await createResponse.json() as any;
     const eventId = createData.data?.id || createData.data?.event_id;
 
@@ -219,7 +226,7 @@ describe("E2E: Event Management Journey", () => {
         body: JSON.stringify({ status: "going" }),
       });
 
-      const goingResponse = await worker.fetch(rsvpGoingRequest, env);
+      const goingResponse = await worker.fetch(rsvpGoingRequest, env, mockCtx);
       expect(goingResponse.status).toBeGreaterThanOrEqual(200);
       expect(goingResponse.status).toBeLessThan(500);
 
@@ -233,7 +240,7 @@ describe("E2E: Event Management Journey", () => {
         body: JSON.stringify({ status: "not_going" }),
       });
 
-      const notGoingResponse = await worker.fetch(rsvpNotGoingRequest, env);
+      const notGoingResponse = await worker.fetch(rsvpNotGoingRequest, env, mockCtx);
       expect(notGoingResponse.status).toBeGreaterThanOrEqual(200);
       expect(notGoingResponse.status).toBeLessThan(500);
     }

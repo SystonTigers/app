@@ -73,16 +73,7 @@ export async function handleAnalyzeMistakes(
 
   // Parse request body
   const body = await req.json();
-  const validated = parse(AnalyzeMistakesSchema, body);
-  if (!validated.success) {
-    return json(
-      { success: false, error: { code: "VALIDATION_ERROR", message: validated.error } },
-      400,
-      corsHdrs
-    );
-  }
-
-  const { team_name, opponent_name, goals_conceded, final_score } = validated.data;
+  const { team_name, opponent_name, goals_conceded, final_score } = parse(AnalyzeMistakesSchema, body);
 
   // Create coaching analysis job
   const jobId = `coaching-${Date.now()}-${Math.random().toString(36).substring(7)}`;
@@ -124,7 +115,7 @@ export async function handleAnalyzeMistakes(
 
     logJSON({
       level: "info",
-      message: "Coaching analysis job queued",
+      msg: "Coaching analysis job queued",
       jobId,
       videoId,
       tenant,
@@ -145,7 +136,7 @@ export async function handleAnalyzeMistakes(
   } catch (error) {
     logJSON({
       level: "error",
-      message: "Failed to queue coaching analysis",
+      msg: "Failed to queue coaching analysis",
       error: String(error),
       jobId,
     });
@@ -233,16 +224,7 @@ export async function handleGenerateDrills(
 
   // Parse request body
   const body = await req.json();
-  const validated = parse(GenerateDrillsSchema, body);
-  if (!validated.success) {
-    return json(
-      { success: false, error: { code: "VALIDATION_ERROR", message: validated.error } },
-      400,
-      corsHdrs
-    );
-  }
-
-  const { mistake_clip_ids, mistake_data, num_drills, age_group, skill_level } = validated.data;
+  const { mistake_clip_ids, mistake_data, num_drills, age_group, skill_level } = parse(GenerateDrillsSchema, body);
 
   // Create drill generation job
   const jobId = `drills-${Date.now()}-${Math.random().toString(36).substring(7)}`;
@@ -277,7 +259,7 @@ export async function handleGenerateDrills(
 
     logJSON({
       level: "info",
-      message: "Drill generation job queued",
+      msg: "Drill generation job queued",
       jobId,
       tenant,
     });
@@ -297,7 +279,7 @@ export async function handleGenerateDrills(
   } catch (error) {
     logJSON({
       level: "error",
-      message: "Failed to queue drill generation",
+      msg: "Failed to queue drill generation",
       error: String(error),
       jobId,
     });
@@ -333,16 +315,7 @@ export async function handleGenerateSession(
 
   // Parse request body
   const body = await req.json();
-  const validated = parse(GenerateSessionSchema, body);
-  if (!validated.success) {
-    return json(
-      { success: false, error: { code: "VALIDATION_ERROR", message: validated.error } },
-      400,
-      corsHdrs
-    );
-  }
-
-  const { mistakes, session_duration, age_group, skill_level, focus_categories } = validated.data;
+  const { mistakes, session_duration, age_group, skill_level, focus_categories } = parse(GenerateSessionSchema, body);
 
   // Create session generation job
   const jobId = `session-${Date.now()}-${Math.random().toString(36).substring(7)}`;
@@ -378,7 +351,7 @@ export async function handleGenerateSession(
 
     logJSON({
       level: "info",
-      message: "Session generation job queued",
+      msg: "Session generation job queued",
       jobId,
       tenant,
     });
@@ -398,7 +371,7 @@ export async function handleGenerateSession(
   } catch (error) {
     logJSON({
       level: "error",
-      message: "Failed to queue session generation",
+      msg: "Failed to queue session generation",
       error: String(error),
       jobId,
     });
@@ -435,16 +408,7 @@ export async function handleSaveTrainingSession(
 
   // Parse request body
   const body = await req.json();
-  const validated = parse(SaveTrainingSessionSchema, body);
-  if (!validated.success) {
-    return json(
-      { success: false, error: { code: "VALIDATION_ERROR", message: validated.error } },
-      400,
-      corsHdrs
-    );
-  }
-
-  const { name, match_id, session_plan, notes, scheduled_date } = validated.data;
+  const { name, match_id, session_plan, notes, scheduled_date } = parse(SaveTrainingSessionSchema, body);
 
   // Generate session ID
   const sessionId = `session-${Date.now()}-${Math.random().toString(36).substring(7)}`;
@@ -473,7 +437,7 @@ export async function handleSaveTrainingSession(
 
   logJSON({
     level: "info",
-    message: "Training session saved",
+    msg: "Training session saved",
     sessionId,
     tenant,
     userId,
@@ -617,7 +581,7 @@ export async function handleDeleteTrainingSession(
 
   logJSON({
     level: "info",
-    message: "Training session deleted",
+    msg: "Training session deleted",
     sessionId,
     tenant,
   });

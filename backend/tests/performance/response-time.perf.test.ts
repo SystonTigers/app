@@ -2,6 +2,13 @@ import { describe, it, expect } from "vitest";
 import { env } from "cloudflare:test";
 import worker from "../../src/index";
 
+// Mock ExecutionContext for worker tests
+const mockCtx = {
+  waitUntil: () => { },
+  passThroughOnException: () => { },
+  props: {},
+} as unknown as ExecutionContext;
+
 /**
  * Performance Test: Response Time Benchmarks
  *
@@ -17,7 +24,7 @@ describe("Performance: Response Time", () => {
     const start = performance.now();
 
     const request = new Request("https://example.com/api/v1");
-    const response = await worker.fetch(request, env);
+    const response = await worker.fetch(request, env, mockCtx);
 
     const duration = performance.now() - start;
 
@@ -31,7 +38,7 @@ describe("Performance: Response Time", () => {
     const start = performance.now();
 
     const request = new Request("https://example.com/api/v1/public/clubs");
-    const response = await worker.fetch(request, env);
+    const response = await worker.fetch(request, env, mockCtx);
 
     const duration = performance.now() - start;
 
@@ -45,7 +52,7 @@ describe("Performance: Response Time", () => {
     const start = performance.now();
 
     const request = new Request("https://example.com/api/v1/videos");
-    const response = await worker.fetch(request, env);
+    const response = await worker.fetch(request, env, mockCtx);
 
     const duration = performance.now() - start;
 
@@ -59,7 +66,7 @@ describe("Performance: Response Time", () => {
     const start = performance.now();
 
     const request = new Request("https://example.com/api/v1/nonexistent");
-    const response = await worker.fetch(request, env);
+    const response = await worker.fetch(request, env, mockCtx);
 
     const duration = performance.now() - start;
 
@@ -79,7 +86,7 @@ describe("Performance: Response Time", () => {
         "access-control-request-method": "GET",
       },
     });
-    const response = await worker.fetch(request, env);
+    const response = await worker.fetch(request, env, mockCtx);
 
     const duration = performance.now() - start;
 

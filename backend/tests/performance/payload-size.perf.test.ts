@@ -2,6 +2,13 @@ import { describe, it, expect } from "vitest";
 import { env } from "cloudflare:test";
 import worker from "../../src/index";
 
+// Mock ExecutionContext for worker tests
+const mockCtx = {
+  waitUntil: () => { },
+  passThroughOnException: () => { },
+  props: {},
+} as unknown as ExecutionContext;
+
 /**
  * Performance Test: Payload Size Handling
  *
@@ -23,7 +30,7 @@ describe("Performance: Payload Size", () => {
       body: JSON.stringify(smallPayload),
     });
 
-    const response = await worker.fetch(request, env);
+    const response = await worker.fetch(request, env, mockCtx);
     const duration = performance.now() - start;
 
     expect(response.status).toBeLessThan(500);
@@ -42,7 +49,7 @@ describe("Performance: Payload Size", () => {
       body: JSON.stringify(mediumPayload),
     });
 
-    const response = await worker.fetch(request, env);
+    const response = await worker.fetch(request, env, mockCtx);
     const duration = performance.now() - start;
 
     expect(response.status).toBeLessThan(500);
@@ -61,7 +68,7 @@ describe("Performance: Payload Size", () => {
       body: JSON.stringify(largePayload),
     });
 
-    const response = await worker.fetch(request, env);
+    const response = await worker.fetch(request, env, mockCtx);
     const duration = performance.now() - start;
 
     expect(response.status).toBeLessThan(500);
@@ -74,7 +81,7 @@ describe("Performance: Payload Size", () => {
     const start = performance.now();
 
     const request = new Request("https://example.com/api/v1/public/clubs");
-    const response = await worker.fetch(request, env);
+    const response = await worker.fetch(request, env, mockCtx);
 
     // Measure time to get response headers
     const headersTime = performance.now() - start;
@@ -99,7 +106,7 @@ describe("Performance: Payload Size", () => {
     const request = new Request(
       `https://example.com/api/v1/videos?${longQuery}`
     );
-    const response = await worker.fetch(request, env);
+    const response = await worker.fetch(request, env, mockCtx);
 
     const duration = performance.now() - start;
 
@@ -120,7 +127,8 @@ describe("Performance: Payload Size", () => {
           headers: { "content-type": "application/json" },
           body: JSON.stringify(largePayload),
         }),
-        env
+        env,
+        mockCtx
       )
     );
 

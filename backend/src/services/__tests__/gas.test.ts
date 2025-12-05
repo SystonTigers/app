@@ -70,7 +70,7 @@ describe("GAS Service", () => {
         await gasCall(mockEnv, "provision", { tenant: "demo" });
 
         const fetchCall = mockFetch.mock.calls[0];
-        const body = JSON.parse(fetchCall[1].body);
+        const body = JSON.parse(fetchCall[1].body) as any;
 
         expect(body.action).toBe("provision");
       });
@@ -88,7 +88,7 @@ describe("GAS Service", () => {
         });
 
         const fetchCall = mockFetch.mock.calls[0];
-        const body = JSON.parse(fetchCall[1].body);
+        const body = JSON.parse(fetchCall[1].body) as any;
 
         expect(body.action).toBe("verify");
         expect(body.tenant).toBe("demo");
@@ -150,7 +150,7 @@ describe("GAS Service", () => {
           json: async () => ({ success: true, action: "provision" }),
         });
 
-        const result = await gasCall(mockEnv, "provision", {
+        const result: any = await gasCall(mockEnv, "provision", {
           tenant: "demo",
           spreadsheetId: "sheet123",
         });
@@ -164,7 +164,7 @@ describe("GAS Service", () => {
           json: async () => ({ success: true, action: "verify", verified: true }),
         });
 
-        const result = await gasCall(mockEnv, "verify", {
+        const result: any = await gasCall(mockEnv, "verify", {
           tenant: "demo",
           email: "user@example.com",
         });
@@ -189,7 +189,7 @@ describe("GAS Service", () => {
           json: async () => mockResponse,
         });
 
-        const result = await gasCall(mockEnv, "provision", { tenant: "demo" });
+        const result: any = await gasCall(mockEnv, "provision", { tenant: "demo" });
 
         expect(result).toEqual(mockResponse);
       });
@@ -276,7 +276,7 @@ describe("GAS Service", () => {
         await gasCall(mockEnv, "provision", {});
 
         const fetchCall = mockFetch.mock.calls[0];
-        const body = JSON.parse(fetchCall[1].body);
+        const body = JSON.parse(fetchCall[1].body) as any;
 
         expect(body.action).toBe("provision");
         expect(Object.keys(body)).toEqual(["action"]);
@@ -306,7 +306,7 @@ describe("GAS Service", () => {
         await gasCall(mockEnv, "provision", complexPayload);
 
         const fetchCall = mockFetch.mock.calls[0];
-        const body = JSON.parse(fetchCall[1].body);
+        const body = JSON.parse(fetchCall[1].body) as any;
 
         expect(body.action).toBe("provision");
         expect(body.config.spreadsheet.id).toBe("sheet123");
@@ -328,7 +328,7 @@ describe("GAS Service", () => {
         await gasCall(mockEnv, "provision", payload);
 
         const fetchCall = mockFetch.mock.calls[0];
-        const body = JSON.parse(fetchCall[1].body);
+        const body = JSON.parse(fetchCall[1].body) as any;
 
         expect(body.name).toBe("Test & Demo <Company>");
         expect(body.email).toBe("user+tag@example.com");

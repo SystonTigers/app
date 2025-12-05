@@ -18,7 +18,7 @@ describe("Weather Service", () => {
             const response = await getWeather(req);
 
             expect(response.status).toBe(400);
-            const body = await response.json();
+            const body = await response.json() as any;
             expect(body.error).toBe("lat/lon required");
         });
 
@@ -27,7 +27,7 @@ describe("Weather Service", () => {
             const response = await getWeather(req);
 
             expect(response.status).toBe(400);
-            const body = await response.json();
+            const body = await response.json() as any;
             expect(body.error).toBe("lat/lon required");
         });
 
@@ -36,7 +36,7 @@ describe("Weather Service", () => {
             const response = await getWeather(req);
 
             expect(response.status).toBe(400);
-            const body = await response.json();
+            const body = await response.json() as any;
             expect(body.error).toBe("lat/lon required");
         });
 

@@ -2,6 +2,13 @@ import { describe, it, expect } from "vitest";
 import { env } from "cloudflare:test";
 import worker from "../../index";
 
+// Mock ExecutionContext for worker tests
+const mockCtx = {
+  waitUntil: () => { },
+  passThroughOnException: () => { },
+  props: {},
+} as unknown as ExecutionContext;
+
 describe("Signup Routes", () => {
   it("should reject signup without required fields", async () => {
     const request = new Request("https://example.com/public/signup/start", {
@@ -10,7 +17,7 @@ describe("Signup Routes", () => {
       body: JSON.stringify({}),
     });
 
-    const response = await worker.fetch(request, env);
+    const response = await worker.fetch(request, env, mockCtx);
     expect(response.status).toBe(400);
     const data: any = await response.json();
     expect(data.success).toBe(false);
@@ -28,7 +35,7 @@ describe("Signup Routes", () => {
       }),
     });
 
-    const response = await worker.fetch(request, env);
+    const response = await worker.fetch(request, env, mockCtx);
     // Route exists and responds (may be 200 or 500 depending on DB state)
     expect(response.status).toBeGreaterThanOrEqual(200);
     expect(response.status).toBeLessThan(600);
@@ -43,7 +50,7 @@ describe("Signup Routes", () => {
       }),
     });
 
-    const response = await worker.fetch(request, env);
+    const response = await worker.fetch(request, env, mockCtx);
     // Route exists and responds
     expect(response.status).toBeGreaterThanOrEqual(200);
     expect(response.status).toBeLessThan(600);

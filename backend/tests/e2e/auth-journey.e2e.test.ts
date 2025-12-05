@@ -2,6 +2,13 @@ import { describe, it, expect } from "vitest";
 import { env } from "cloudflare:test";
 import worker from "../../src/index";
 
+// Mock ExecutionContext for worker tests
+const mockCtx = {
+  waitUntil: () => { },
+  passThroughOnException: () => { },
+  props: {},
+} as unknown as ExecutionContext;
+
 /**
  * E2E Test: Complete Authentication Journey
  *
@@ -35,7 +42,7 @@ describe("E2E: Authentication Journey", () => {
       }),
     });
 
-    const registerResponse = await worker.fetch(registerRequest, env);
+    const registerResponse = await worker.fetch(registerRequest, env, mockCtx);
     expect(registerResponse.status).toBeGreaterThanOrEqual(200);
     expect(registerResponse.status).toBeLessThan(300);
 
@@ -53,7 +60,7 @@ describe("E2E: Authentication Journey", () => {
       }),
     });
 
-    const loginResponse = await worker.fetch(loginRequest, env);
+    const loginResponse = await worker.fetch(loginRequest, env, mockCtx);
     expect(loginResponse.status).toBe(200);
 
     const loginData = await loginResponse.json() as any;
@@ -70,7 +77,7 @@ describe("E2E: Authentication Journey", () => {
       },
     });
 
-    const protectedResponse = await worker.fetch(protectedRequest, env);
+    const protectedResponse = await worker.fetch(protectedRequest, env, mockCtx);
     expect(protectedResponse.status).toBe(200);
 
     const protectedData = await protectedResponse.json() as any;
@@ -84,7 +91,7 @@ describe("E2E: Authentication Journey", () => {
       },
     });
 
-    const otherTenantResponse = await worker.fetch(otherTenantRequest, env);
+    const otherTenantResponse = await worker.fetch(otherTenantRequest, env, mockCtx);
     // Should still succeed but only return data for authenticated tenant
     expect(otherTenantResponse.status).toBe(200);
   });
@@ -100,7 +107,7 @@ describe("E2E: Authentication Journey", () => {
       }),
     });
 
-    const response = await worker.fetch(loginRequest, env);
+    const response = await worker.fetch(loginRequest, env, mockCtx);
     expect(response.status).toBeGreaterThanOrEqual(400);
 
     const data = await response.json() as any;
@@ -112,7 +119,7 @@ describe("E2E: Authentication Journey", () => {
       method: "GET",
     });
 
-    const response = await worker.fetch(request, env);
+    const response = await worker.fetch(request, env, mockCtx);
     expect(response.status).toBe(401);
   });
 });

@@ -2,6 +2,13 @@ import { describe, it, expect } from "vitest";
 import { env } from "cloudflare:test";
 import worker from "../../src/index";
 
+// Mock ExecutionContext for worker tests
+const mockCtx = {
+  waitUntil: () => { },
+  passThroughOnException: () => { },
+  props: {},
+} as unknown as ExecutionContext;
+
 /**
  * E2E Test: Social Media Management Journey
  *
@@ -35,7 +42,7 @@ describe("E2E: Social Media Journey", () => {
       }),
     });
 
-    const registerResponse = await worker.fetch(registerRequest, env);
+    const registerResponse = await worker.fetch(registerRequest, env, mockCtx);
     const registerData = await registerResponse.json() as any;
     const authToken = registerData.data?.token || "";
     expect(authToken).toBeTruthy();
@@ -63,7 +70,7 @@ describe("E2E: Social Media Journey", () => {
       }),
     });
 
-    const configureResponse = await worker.fetch(configureRequest, env);
+    const configureResponse = await worker.fetch(configureRequest, env, mockCtx);
     expect(configureResponse.status).toBeGreaterThanOrEqual(200);
     expect(configureResponse.status).toBeLessThan(500);
 
@@ -82,7 +89,7 @@ describe("E2E: Social Media Journey", () => {
       }),
     });
 
-    const createPostResponse = await worker.fetch(createPostRequest, env);
+    const createPostResponse = await worker.fetch(createPostRequest, env, mockCtx);
     expect(createPostResponse.status).toBeGreaterThanOrEqual(200);
     expect(createPostResponse.status).toBeLessThan(300);
 
@@ -99,7 +106,7 @@ describe("E2E: Social Media Journey", () => {
       },
     });
 
-    const listPostsResponse = await worker.fetch(listPostsRequest, env);
+    const listPostsResponse = await worker.fetch(listPostsRequest, env, mockCtx);
     expect(listPostsResponse.status).toBe(200);
 
     const listPostsData = await listPostsResponse.json() as any;
@@ -115,7 +122,7 @@ describe("E2E: Social Media Journey", () => {
         },
       });
 
-      const deletePostResponse = await worker.fetch(deletePostRequest, env);
+      const deletePostResponse = await worker.fetch(deletePostRequest, env, mockCtx);
       expect(deletePostResponse.status).toBeGreaterThanOrEqual(200);
       expect(deletePostResponse.status).toBeLessThan(500);
     }
@@ -132,12 +139,12 @@ describe("E2E: Social Media Journey", () => {
       }),
     });
 
-    const createResponse = await worker.fetch(createRequest, env);
+    const createResponse = await worker.fetch(createRequest, env, mockCtx);
     expect(createResponse.status).toBe(401);
 
     // Try to list posts without auth
     const listRequest = new Request("https://example.com/api/v1/social/posts");
-    const listResponse = await worker.fetch(listRequest, env);
+    const listResponse = await worker.fetch(listRequest, env, mockCtx);
     expect(listResponse.status).toBe(401);
 
     // Try to configure without auth
@@ -146,7 +153,7 @@ describe("E2E: Social Media Journey", () => {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ twitter: { enabled: true } }),
     });
-    const configResponse = await worker.fetch(configRequest, env);
+    const configResponse = await worker.fetch(configRequest, env, mockCtx);
     expect(configResponse.status).toBe(401);
   });
 
@@ -168,7 +175,7 @@ describe("E2E: Social Media Journey", () => {
       }),
     });
 
-    const registerResponse = await worker.fetch(registerRequest, env);
+    const registerResponse = await worker.fetch(registerRequest, env, mockCtx);
     const registerData = await registerResponse.json() as any;
     const authToken = registerData.data?.token || "";
 
@@ -185,7 +192,7 @@ describe("E2E: Social Media Journey", () => {
       }),
     });
 
-    const emptyResponse = await worker.fetch(emptyContentRequest, env);
+    const emptyResponse = await worker.fetch(emptyContentRequest, env, mockCtx);
     expect(emptyResponse.status).toBeGreaterThanOrEqual(400);
     expect(emptyResponse.status).toBeLessThan(500);
 
@@ -202,7 +209,7 @@ describe("E2E: Social Media Journey", () => {
       }),
     });
 
-    const noPlatformsResponse = await worker.fetch(noPlatformsRequest, env);
+    const noPlatformsResponse = await worker.fetch(noPlatformsRequest, env, mockCtx);
     expect(noPlatformsResponse.status).toBeGreaterThanOrEqual(400);
     expect(noPlatformsResponse.status).toBeLessThan(500);
   });
@@ -225,7 +232,7 @@ describe("E2E: Social Media Journey", () => {
       }),
     });
 
-    const registerResponse = await worker.fetch(registerRequest, env);
+    const registerResponse = await worker.fetch(registerRequest, env, mockCtx);
     const registerData = await registerResponse.json() as any;
     const authToken = registerData.data?.token || "";
 
@@ -240,7 +247,7 @@ describe("E2E: Social Media Journey", () => {
         twitter: { enabled: true, account: "@testfc" },
       }),
     });
-    await worker.fetch(setConfigRequest, env);
+    await worker.fetch(setConfigRequest, env, mockCtx);
 
     // Get config
     const getConfigRequest = new Request("https://example.com/api/v1/social/config", {
@@ -250,7 +257,7 @@ describe("E2E: Social Media Journey", () => {
       },
     });
 
-    const getConfigResponse = await worker.fetch(getConfigRequest, env);
+    const getConfigResponse = await worker.fetch(getConfigRequest, env, mockCtx);
     expect(getConfigResponse.status).toBe(200);
 
     const configData = await getConfigResponse.json() as any;
@@ -275,7 +282,7 @@ describe("E2E: Social Media Journey", () => {
       }),
     });
 
-    const registerResponse = await worker.fetch(registerRequest, env);
+    const registerResponse = await worker.fetch(registerRequest, env, mockCtx);
     const registerData = await registerResponse.json() as any;
     const authToken = registerData.data?.token || "";
 
@@ -292,7 +299,7 @@ describe("E2E: Social Media Journey", () => {
       }),
     });
 
-    const immediateResponse = await worker.fetch(immediatePostRequest, env);
+    const immediateResponse = await worker.fetch(immediatePostRequest, env, mockCtx);
     expect(immediateResponse.status).toBeGreaterThanOrEqual(200);
     expect(immediateResponse.status).toBeLessThan(500);
 
@@ -310,7 +317,7 @@ describe("E2E: Social Media Journey", () => {
       }),
     });
 
-    const scheduledResponse = await worker.fetch(scheduledPostRequest, env);
+    const scheduledResponse = await worker.fetch(scheduledPostRequest, env, mockCtx);
     expect(scheduledResponse.status).toBeGreaterThanOrEqual(200);
     expect(scheduledResponse.status).toBeLessThan(500);
   });

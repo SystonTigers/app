@@ -2,6 +2,13 @@ import { describe, it, expect } from "vitest";
 import { env } from "cloudflare:test";
 import worker from "../../src/index";
 
+// Mock ExecutionContext for worker tests
+const mockCtx = {
+  waitUntil: () => { },
+  passThroughOnException: () => { },
+  props: {},
+} as unknown as ExecutionContext;
+
 /**
  * Performance Test: Concurrency & Throughput
  *
@@ -17,7 +24,7 @@ describe("Performance: Concurrency", () => {
     const start = performance.now();
 
     const requests = Array.from({ length: 10 }, () =>
-      worker.fetch(new Request("https://example.com/api/v1/public/clubs"), env)
+      worker.fetch(new Request("https://example.com/api/v1/public/clubs"), env, mockCtx)
     );
 
     const responses = await Promise.all(requests);
@@ -37,7 +44,7 @@ describe("Performance: Concurrency", () => {
     const start = performance.now();
 
     const requests = Array.from({ length: 50 }, () =>
-      worker.fetch(new Request("https://example.com/api/v1/videos"), env)
+      worker.fetch(new Request("https://example.com/api/v1/videos"), env, mockCtx)
     );
 
     const responses = await Promise.all(requests);
@@ -65,7 +72,7 @@ describe("Performance: Concurrency", () => {
         "https://example.com/api/v1/events",
       ];
       const endpoint = endpoints[i % endpoints.length];
-      return worker.fetch(new Request(endpoint), env);
+      return worker.fetch(new Request(endpoint), env, mockCtx);
     });
 
     const responses = await Promise.all(requests);
@@ -87,7 +94,7 @@ describe("Performance: Concurrency", () => {
     const start = performance.now();
 
     const requests = Array.from({ length: 200 }, () =>
-      worker.fetch(new Request("https://example.com/api/v1/public/clubs"), env)
+      worker.fetch(new Request("https://example.com/api/v1/public/clubs"), env, mockCtx)
     );
 
     const responses = await Promise.all(requests);
@@ -108,7 +115,7 @@ describe("Performance: Concurrency", () => {
 
     // Create 30 requests of different types
     const getRequests = Array.from({ length: 10 }, () =>
-      worker.fetch(new Request("https://example.com/api/v1/public/clubs"), env)
+      worker.fetch(new Request("https://example.com/api/v1/public/clubs"), env, mockCtx)
     );
 
     const postRequests = Array.from({ length: 10 }, () =>
@@ -118,7 +125,8 @@ describe("Performance: Concurrency", () => {
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ test: true }),
         }),
-        env
+        env,
+        mockCtx
       )
     );
 
@@ -131,7 +139,8 @@ describe("Performance: Concurrency", () => {
             "access-control-request-method": "GET",
           },
         }),
-        env
+        env,
+        mockCtx
       )
     );
 

@@ -2,6 +2,13 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { env } from "cloudflare:test";
 import worker from "../../src/index";
 
+// Mock ExecutionContext for worker tests
+const mockCtx = {
+  waitUntil: () => { },
+  passThroughOnException: () => { },
+  props: {},
+} as unknown as ExecutionContext;
+
 /**
  * Rate Limiting Security Tests
  *
@@ -23,7 +30,7 @@ describe("Security: Rate Limiting", () => {
         }),
       });
 
-      const response = await worker.fetch(request, env);
+      const response = await worker.fetch(request, env, mockCtx);
 
       // Should not be rate limited (first request)
       expect(response.status).not.toBe(429);
@@ -42,14 +49,14 @@ describe("Security: Rate Limiting", () => {
         }),
       });
 
-      const response = await worker.fetch(request, env);
+      const response = await worker.fetch(request, env, mockCtx);
 
       // Check for rate limit headers (in production)
       const environment = env.ENVIRONMENT || env.NODE_ENV;
       if (environment === "production") {
         expect(
           response.headers.has("X-RateLimit-Limit") ||
-            response.headers.has("X-RateLimit-Remaining")
+          response.headers.has("X-RateLimit-Remaining")
         ).toBe(true);
       }
     });
@@ -70,7 +77,7 @@ describe("Security: Rate Limiting", () => {
         }),
       });
 
-      const response = await worker.fetch(request, env);
+      const response = await worker.fetch(request, env, mockCtx);
 
       // Should not be rate limited (first request)
       expect(response.status).not.toBe(429);
@@ -86,7 +93,7 @@ describe("Security: Rate Limiting", () => {
         },
       });
 
-      const response = await worker.fetch(request, env);
+      const response = await worker.fetch(request, env, mockCtx);
 
       // Should get 401 Unauthorized, not 429 Rate Limited
       expect(response.status).toBe(401);
@@ -123,7 +130,8 @@ describe("Security: Rate Limiting", () => {
                 password: "password123",
               }),
             }),
-            env
+            env,
+            mockCtx
           )
         );
       }
@@ -184,7 +192,7 @@ describe("Security: Rate Limiting", () => {
           }),
         });
 
-        const response = await worker.fetch(request, env);
+        const response = await worker.fetch(request, env, mockCtx);
 
         // Should not be rate limited in non-production
         expect(response.status).not.toBe(429);
@@ -239,7 +247,7 @@ describe("Security: Rate Limiting", () => {
           }),
         });
 
-        const response = await worker.fetch(request, env);
+        const response = await worker.fetch(request, env, mockCtx);
 
         // In production, should include rate limit headers
         expect(response.headers.has("X-RateLimit-Limit")).toBe(true);
@@ -264,7 +272,7 @@ describe("Security: Rate Limiting", () => {
           }),
         });
 
-        const response = await worker.fetch(request, env);
+        const response = await worker.fetch(request, env, mockCtx);
 
         expect(response.headers.has("X-RateLimit-Remaining")).toBe(true);
       } else {
@@ -286,7 +294,7 @@ describe("Security: Rate Limiting", () => {
         }),
       });
 
-      const response = await worker.fetch(request, env);
+      const response = await worker.fetch(request, env, mockCtx);
 
       // Should still work (uses "unknown" as IP)
       expect(response).toBeDefined();

@@ -2,6 +2,13 @@ import { describe, it, expect } from "vitest";
 import { env } from "cloudflare:test";
 import worker from "../../src/index";
 
+// Mock ExecutionContext for worker tests
+const mockCtx = {
+  waitUntil: () => { },
+  passThroughOnException: () => { },
+  props: {},
+} as unknown as ExecutionContext;
+
 /**
  * Security Headers Test
  *
@@ -11,7 +18,7 @@ import worker from "../../src/index";
 describe("Security: HTTP Security Headers", () => {
   it("includes all required security headers on API responses", async () => {
     const request = new Request("https://example.com/api/v1/public/clubs");
-    const response = await worker.fetch(request, env);
+    const response = await worker.fetch(request, env, mockCtx);
 
     // Required security headers
     const requiredHeaders = {
@@ -42,7 +49,7 @@ describe("Security: HTTP Security Headers", () => {
 
   it("includes HSTS header with appropriate duration", async () => {
     const request = new Request("https://example.com/api/v1/public/clubs");
-    const response = await worker.fetch(request, env);
+    const response = await worker.fetch(request, env, mockCtx);
 
     const hsts = response.headers.get("Strict-Transport-Security");
 
@@ -53,7 +60,7 @@ describe("Security: HTTP Security Headers", () => {
 
   it("includes Content Security Policy with safe defaults", async () => {
     const request = new Request("https://example.com/api/v1/public/clubs");
-    const response = await worker.fetch(request, env);
+    const response = await worker.fetch(request, env, mockCtx);
 
     const csp = response.headers.get("Content-Security-Policy");
 
@@ -67,7 +74,7 @@ describe("Security: HTTP Security Headers", () => {
 
   it("includes X-Frame-Options to prevent clickjacking", async () => {
     const request = new Request("https://example.com/api/v1/public/clubs");
-    const response = await worker.fetch(request, env);
+    const response = await worker.fetch(request, env, mockCtx);
 
     const xFrameOptions = response.headers.get("X-Frame-Options");
 
@@ -77,7 +84,7 @@ describe("Security: HTTP Security Headers", () => {
 
   it("includes Permissions-Policy to restrict browser features", async () => {
     const request = new Request("https://example.com/api/v1/public/clubs");
-    const response = await worker.fetch(request, env);
+    const response = await worker.fetch(request, env, mockCtx);
 
     const permissionsPolicy = response.headers.get("Permissions-Policy");
 
@@ -92,7 +99,7 @@ describe("Security: HTTP Security Headers", () => {
 
   it("includes security headers on error responses", async () => {
     const request = new Request("https://example.com/api/v1/nonexistent");
-    const response = await worker.fetch(request, env);
+    const response = await worker.fetch(request, env, mockCtx);
 
     expect(response.status).toBe(404);
 
@@ -104,7 +111,7 @@ describe("Security: HTTP Security Headers", () => {
 
   it("includes security headers on authenticated endpoints", async () => {
     const request = new Request("https://example.com/api/v1/videos");
-    const response = await worker.fetch(request, env);
+    const response = await worker.fetch(request, env, mockCtx);
 
     expect(response.status).toBe(401);
 
@@ -123,7 +130,7 @@ describe("Security: HTTP Security Headers", () => {
       },
     });
 
-    const response = await worker.fetch(request, env);
+    const response = await worker.fetch(request, env, mockCtx);
 
     expect(response.status).toBe(204);
 
@@ -134,7 +141,7 @@ describe("Security: HTTP Security Headers", () => {
 
   it("does not leak sensitive information in headers", async () => {
     const request = new Request("https://example.com/api/v1/public/clubs");
-    const response = await worker.fetch(request, env);
+    const response = await worker.fetch(request, env, mockCtx);
 
     // Should NOT have headers that leak server info
     expect(response.headers.get("Server")).toBeNull();
@@ -144,7 +151,7 @@ describe("Security: HTTP Security Headers", () => {
 
   it("sets appropriate cache headers for API responses", async () => {
     const request = new Request("https://example.com/api/v1/public/clubs");
-    const response = await worker.fetch(request, env);
+    const response = await worker.fetch(request, env, mockCtx);
 
     // API responses should generally not be cached or have explicit cache control
     const cacheControl = response.headers.get("Cache-Control");
@@ -156,3 +163,4 @@ describe("Security: HTTP Security Headers", () => {
     }
   });
 });
+

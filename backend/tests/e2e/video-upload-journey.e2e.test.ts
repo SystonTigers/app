@@ -2,6 +2,13 @@ import { describe, it, expect } from "vitest";
 import { env } from "cloudflare:test";
 import worker from "../../src/index";
 
+// Mock ExecutionContext for worker tests
+const mockCtx = {
+  waitUntil: () => { },
+  passThroughOnException: () => { },
+  props: {},
+} as unknown as ExecutionContext;
+
 /**
  * E2E Test: Video Upload & Processing Journey
  *
@@ -35,7 +42,7 @@ describe("E2E: Video Upload Journey", () => {
       }),
     });
 
-    const registerResponse = await worker.fetch(registerRequest, env);
+    const registerResponse = await worker.fetch(registerRequest, env, mockCtx);
     const registerData = await registerResponse.json() as any;
     authToken = registerData.data?.token || "";
     expect(authToken).toBeTruthy();
@@ -55,7 +62,7 @@ describe("E2E: Video Upload Journey", () => {
       }),
     });
 
-    const uploadUrlResponse = await worker.fetch(requestUploadRequest, env);
+    const uploadUrlResponse = await worker.fetch(requestUploadRequest, env, mockCtx);
     expect(uploadUrlResponse.status).toBeGreaterThanOrEqual(200);
     expect(uploadUrlResponse.status).toBeLessThan(300);
 
@@ -73,7 +80,7 @@ describe("E2E: Video Upload Journey", () => {
       },
     });
 
-    const listResponse = await worker.fetch(listVideosRequest, env);
+    const listResponse = await worker.fetch(listVideosRequest, env, mockCtx);
     expect(listResponse.status).toBe(200);
 
     const listData = await listResponse.json() as any;
@@ -94,7 +101,7 @@ describe("E2E: Video Upload Journey", () => {
         }),
       });
 
-      const processResponse = await worker.fetch(processRequest, env);
+      const processResponse = await worker.fetch(processRequest, env, mockCtx);
       // May return 200 (queued) or 4xx/5xx (video not fully uploaded)
       expect(processResponse.status).toBeGreaterThanOrEqual(200);
       expect(processResponse.status).toBeLessThan(600);
@@ -107,7 +114,7 @@ describe("E2E: Video Upload Journey", () => {
         },
       });
 
-      const statusResponse = await worker.fetch(statusRequest, env);
+      const statusResponse = await worker.fetch(statusRequest, env, mockCtx);
       expect(statusResponse.status).toBeGreaterThanOrEqual(200);
       expect(statusResponse.status).toBeLessThan(500);
     }
@@ -123,7 +130,7 @@ describe("E2E: Video Upload Journey", () => {
       }),
     });
 
-    const response = await worker.fetch(uploadRequest, env);
+    const response = await worker.fetch(uploadRequest, env, mockCtx);
     expect(response.status).toBe(401);
   });
 
@@ -144,7 +151,7 @@ describe("E2E: Video Upload Journey", () => {
       }),
     });
 
-    const registerResponse = await worker.fetch(registerRequest, env);
+    const registerResponse = await worker.fetch(registerRequest, env, mockCtx);
     const registerData = await registerResponse.json() as any;
     const token = registerData.data?.token || "";
 
@@ -159,7 +166,7 @@ describe("E2E: Video Upload Journey", () => {
       }),
     });
 
-    const response = await worker.fetch(invalidRequest, env);
+    const response = await worker.fetch(invalidRequest, env, mockCtx);
     expect(response.status).toBeGreaterThanOrEqual(400);
     expect(response.status).toBeLessThan(500);
   });
@@ -181,7 +188,7 @@ describe("E2E: Video Upload Journey", () => {
       }),
     });
 
-    const registerResponse = await worker.fetch(registerRequest, env);
+    const registerResponse = await worker.fetch(registerRequest, env, mockCtx);
     const registerData = await registerResponse.json() as any;
     const token = registerData.data?.token || "";
 
@@ -199,7 +206,7 @@ describe("E2E: Video Upload Journey", () => {
       }),
     });
 
-    const uploadResponse = await worker.fetch(uploadRequest, env);
+    const uploadResponse = await worker.fetch(uploadRequest, env, mockCtx);
     const uploadData = await uploadResponse.json() as any;
 
     if (uploadData.data?.videoId) {
@@ -210,7 +217,7 @@ describe("E2E: Video Upload Journey", () => {
         },
       });
 
-      const deleteResponse = await worker.fetch(deleteRequest, env);
+      const deleteResponse = await worker.fetch(deleteRequest, env, mockCtx);
       expect(deleteResponse.status).toBeGreaterThanOrEqual(200);
       expect(deleteResponse.status).toBeLessThan(500);
     }

@@ -2,6 +2,13 @@ import { describe, it, expect } from "vitest";
 import { env } from "cloudflare:test";
 import worker from "../../src/index";
 
+// Mock ExecutionContext for worker tests
+const mockCtx = {
+  waitUntil: () => { },
+  passThroughOnException: () => { },
+  props: {},
+} as unknown as ExecutionContext;
+
 /**
  * Contract Test: Events API
  *
@@ -13,7 +20,7 @@ describe("Contract: Events API", () => {
     it("returns 401 with expected error structure when unauthorized", async () => {
       const request = new Request("https://example.com/api/v1/events");
 
-      const response = await worker.fetch(request, env);
+      const response = await worker.fetch(request, env, mockCtx);
       expect(response.status).toBe(401);
 
       const data = await response.json() as any;
@@ -38,7 +45,7 @@ describe("Contract: Events API", () => {
         }),
       });
 
-      const response = await worker.fetch(request, env);
+      const response = await worker.fetch(request, env, mockCtx);
       expect(response.status).toBe(401);
 
       // Contract: Auth failures return 401 (format may vary)

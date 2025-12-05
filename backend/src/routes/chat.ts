@@ -54,11 +54,11 @@ export async function handleGetHistory(req: Request, env: any, corsHdrs: Headers
         const stub = env.ChatRoom.get(id);
 
         const queryParams = new URLSearchParams({
-            tenant: claims.tenantId,
-            roomId: params.roomId,
+            tenant: claims.tenantId || "",
+            roomId: params.roomId || "",
             limit: limit.toString(),
         });
-        if (cursor) {queryParams.set("cursor", cursor);}
+        if (cursor) { queryParams.set("cursor", cursor); }
 
         const response = await stub.fetch(new Request(`https://chat/history?${queryParams.toString()}`, {
             method: "GET",

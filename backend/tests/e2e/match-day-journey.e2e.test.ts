@@ -2,6 +2,13 @@ import { describe, it, expect } from "vitest";
 import { env } from "cloudflare:test";
 import worker from "../../src/index";
 
+// Mock ExecutionContext for worker tests
+const mockCtx = {
+  waitUntil: () => { },
+  passThroughOnException: () => { },
+  props: {},
+} as unknown as ExecutionContext;
+
 /**
  * E2E Test: Match Day Journey
  *
@@ -36,7 +43,7 @@ describe("E2E: Match Day Journey", () => {
       }),
     });
 
-    const registerResponse = await worker.fetch(registerRequest, env);
+    const registerResponse = await worker.fetch(registerRequest, env, mockCtx);
     const registerData = await registerResponse.json() as any;
     const authToken = registerData.data?.token || "";
     expect(authToken).toBeTruthy();
@@ -60,7 +67,7 @@ describe("E2E: Match Day Journey", () => {
       },
     });
 
-    const updatesResponse = await worker.fetch(matchUpdatesRequest, env);
+    const updatesResponse = await worker.fetch(matchUpdatesRequest, env, mockCtx);
     expect(updatesResponse.status).toBeGreaterThanOrEqual(200);
     expect(updatesResponse.status).toBeLessThan(500);
 
@@ -80,7 +87,7 @@ describe("E2E: Match Day Journey", () => {
       }),
     });
 
-    const initVoteResponse = await worker.fetch(initVoteRequest, env);
+    const initVoteResponse = await worker.fetch(initVoteRequest, env, mockCtx);
     expect(initVoteResponse.status).toBeGreaterThanOrEqual(200);
     expect(initVoteResponse.status).toBeLessThan(500);
 
@@ -96,7 +103,7 @@ describe("E2E: Match Day Journey", () => {
       }),
     });
 
-    const voteResponse = await worker.fetch(voteRequest, env);
+    const voteResponse = await worker.fetch(voteRequest, env, mockCtx);
     expect(voteResponse.status).toBeGreaterThanOrEqual(200);
     expect(voteResponse.status).toBeLessThan(500);
 
@@ -108,7 +115,7 @@ describe("E2E: Match Day Journey", () => {
       },
     });
 
-    const resultsResponse = await worker.fetch(resultsRequest, env);
+    const resultsResponse = await worker.fetch(resultsRequest, env, mockCtx);
     expect(resultsResponse.status).toBeGreaterThanOrEqual(200);
     expect(resultsResponse.status).toBeLessThan(500);
 
@@ -121,7 +128,7 @@ describe("E2E: Match Day Journey", () => {
 
     // Try to get updates without auth
     const updatesRequest = new Request(`https://example.com/api/v1/matches/${matchId}/updates`);
-    const updatesResponse = await worker.fetch(updatesRequest, env);
+    const updatesResponse = await worker.fetch(updatesRequest, env, mockCtx);
     expect(updatesResponse.status).toBe(401);
 
     // Try to vote without auth
@@ -130,7 +137,7 @@ describe("E2E: Match Day Journey", () => {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ player_id: "player1" }),
     });
-    const voteResponse = await worker.fetch(voteRequest, env);
+    const voteResponse = await worker.fetch(voteRequest, env, mockCtx);
     expect(voteResponse.status).toBe(401);
   });
 
@@ -152,7 +159,7 @@ describe("E2E: Match Day Journey", () => {
       }),
     });
 
-    const registerResponse = await worker.fetch(registerRequest, env);
+    const registerResponse = await worker.fetch(registerRequest, env, mockCtx);
     const registerData = await registerResponse.json() as any;
     const authToken = registerData.data?.token || "";
 
@@ -175,7 +182,7 @@ describe("E2E: Match Day Journey", () => {
         players: [{ id: "player1", name: "Test Player", number: 10 }],
       }),
     });
-    await worker.fetch(initRequest, env);
+    await worker.fetch(initRequest, env, mockCtx);
 
     // First vote
     const vote1Request = new Request(`https://example.com/api/v1/motm/${matchId}/vote`, {
@@ -186,7 +193,7 @@ describe("E2E: Match Day Journey", () => {
       },
       body: JSON.stringify({ player_id: "player1" }),
     });
-    const vote1Response = await worker.fetch(vote1Request, env);
+    const vote1Response = await worker.fetch(vote1Request, env, mockCtx);
     expect(vote1Response.status).toBeGreaterThanOrEqual(200);
 
     // Second vote (should be rejected or replace first vote)
@@ -198,7 +205,7 @@ describe("E2E: Match Day Journey", () => {
       },
       body: JSON.stringify({ player_id: "player1" }),
     });
-    const vote2Response = await worker.fetch(vote2Request, env);
+    const vote2Response = await worker.fetch(vote2Request, env, mockCtx);
     // Application should handle duplicate votes gracefully
     expect(vote2Response.status).toBeGreaterThanOrEqual(200);
     expect(vote2Response.status).toBeLessThan(500);
@@ -221,7 +228,7 @@ describe("E2E: Match Day Journey", () => {
       }),
     });
 
-    const registerResponse = await worker.fetch(registerRequest, env);
+    const registerResponse = await worker.fetch(registerRequest, env, mockCtx);
     const registerData = await registerResponse.json() as any;
     const authToken = registerData.data?.token || "";
 
@@ -232,7 +239,7 @@ describe("E2E: Match Day Journey", () => {
       },
     });
 
-    const response = await worker.fetch(invalidMatchRequest, env);
+    const response = await worker.fetch(invalidMatchRequest, env, mockCtx);
     expect(response.status).toBeGreaterThanOrEqual(404);
   });
 });

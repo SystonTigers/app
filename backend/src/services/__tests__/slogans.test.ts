@@ -6,7 +6,7 @@ describe("Slogans Service", () => {
         it("returns 5 slogan options", async () => {
             const req = { url: "https://api.test.com/slogans?team=Tigers&city=Detroit" };
             const response = await getSlogans(req);
-            const body = await response.json();
+            const body = await response.json() as any;
 
             expect(body.options).toBeDefined();
             expect(body.options).toHaveLength(5);
@@ -15,7 +15,7 @@ describe("Slogans Service", () => {
         it("replaces {TEAM} placeholder with team parameter", async () => {
             const req = { url: "https://api.test.com/slogans?team=Eagles&city=Philadelphia" };
             const response = await getSlogans(req);
-            const body = await response.json();
+            const body = await response.json() as any;
 
             body.options.forEach((slogan: string) => {
                 expect(slogan).not.toContain("{TEAM}");
@@ -26,7 +26,7 @@ describe("Slogans Service", () => {
         it("replaces {CITY} placeholder with city parameter", async () => {
             const req = { url: "https://api.test.com/slogans?team=Bears&city=Chicago" };
             const response = await getSlogans(req);
-            const body = await response.json();
+            const body = await response.json() as any;
 
             body.options.forEach((slogan: string) => {
                 expect(slogan).not.toContain("{CITY}");
@@ -36,7 +36,7 @@ describe("Slogans Service", () => {
         it("uses default team name when not provided", async () => {
             const req = { url: "https://api.test.com/slogans" };
             const response = await getSlogans(req);
-            const body = await response.json();
+            const body = await response.json() as any;
 
             // Should use 'Your Team' as default
             expect(body.options).toHaveLength(5);
@@ -48,7 +48,7 @@ describe("Slogans Service", () => {
         it("derives city from team name when city not provided", async () => {
             const req = { url: "https://api.test.com/slogans?team=New York Giants" };
             const response = await getSlogans(req);
-            const body = await response.json();
+            const body = await response.json() as any;
 
             // City should be derived as first word of team name: "New"
             expect(body.options).toHaveLength(5);
@@ -71,7 +71,7 @@ describe("Slogans Service", () => {
             const allSlogans = new Set<string>();
             for (let i = 0; i < 10; i++) {
                 const response = await getSlogans(req);
-                const body = await response.json();
+                const body = await response.json() as any;
                 body.options.forEach((s: string) => allSlogans.add(s));
             }
 
@@ -83,7 +83,7 @@ describe("Slogans Service", () => {
         it("handles special characters in team and city names", async () => {
             const req = { url: "https://api.test.com/slogans?team=St.%20Louis&city=St.%20Louis" };
             const response = await getSlogans(req);
-            const body = await response.json();
+            const body = await response.json() as any;
 
             expect(body.options).toHaveLength(5);
             body.options.forEach((slogan: string) => {
@@ -95,7 +95,7 @@ describe("Slogans Service", () => {
         it("handles Unicode characters in team names", async () => {
             const req = { url: "https://api.test.com/slogans?team=München&city=München" };
             const response = await getSlogans(req);
-            const body = await response.json();
+            const body = await response.json() as any;
 
             expect(body.options).toHaveLength(5);
         });
@@ -103,7 +103,7 @@ describe("Slogans Service", () => {
         it("all slogans are non-empty strings", async () => {
             const req = { url: "https://api.test.com/slogans?team=TestTeam" };
             const response = await getSlogans(req);
-            const body = await response.json();
+            const body = await response.json() as any;
 
             body.options.forEach((slogan: string) => {
                 expect(typeof slogan).toBe("string");

@@ -2,6 +2,13 @@ import { describe, it, expect } from "vitest";
 import { env } from "cloudflare:test";
 import worker from "../../src/index";
 
+// Mock ExecutionContext for worker tests
+const mockCtx = {
+  waitUntil: () => { },
+  passThroughOnException: () => { },
+  props: {},
+} as unknown as ExecutionContext;
+
 /**
  * Contract Test: Authentication API
  *
@@ -28,7 +35,7 @@ describe("Contract: Authentication API", () => {
         }),
       });
 
-      const response = await worker.fetch(request, env);
+      const response = await worker.fetch(request, env, mockCtx);
       const data = await response.json() as any;
 
       // Contract validation
@@ -70,7 +77,7 @@ describe("Contract: Authentication API", () => {
         }),
       });
 
-      const response = await worker.fetch(request, env);
+      const response = await worker.fetch(request, env, mockCtx);
       const data = await response.json() as any;
 
       // Contract validation for errors
@@ -99,7 +106,7 @@ describe("Contract: Authentication API", () => {
         }),
       });
 
-      const response = await worker.fetch(request, env);
+      const response = await worker.fetch(request, env, mockCtx);
       const data = await response.json() as any;
 
       // Contract validation
@@ -122,7 +129,7 @@ describe("Contract: Authentication API", () => {
     it("returns 401 or 404 when accessing protected routes without auth", async () => {
       const request = new Request("https://example.com/api/v1/videos");
 
-      const response = await worker.fetch(request, env);
+      const response = await worker.fetch(request, env, mockCtx);
 
       // Contract: Protected routes return 401 (or 404 if route doesn't exist)
       expect([401, 404]).toContain(response.status);

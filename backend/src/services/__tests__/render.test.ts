@@ -4,7 +4,7 @@ import type { Env } from "../../env";
 
 // Mock the WASM module
 vi.mock("@resvg/resvg-wasm", () => ({
-  default: vi.fn(async () => {}),
+  default: vi.fn(async () => { }),
   Resvg: vi.fn().mockImplementation(() => ({
     render: vi.fn().mockReturnValue({
       asPng: vi.fn().mockReturnValue(new Uint8Array([137, 80, 78, 71])), // PNG header
@@ -67,7 +67,7 @@ describe("Render Service", () => {
       const response = await renderGraphic(req, mockEnv as Env);
       expect(response.status).toBe(400);
 
-      const data = await response.json();
+      const data = await response.json() as any;
       expect(data.error).toContain("templateId");
     });
 
@@ -81,7 +81,7 @@ describe("Render Service", () => {
       const response = await renderGraphic(req, mockEnv as Env);
       expect(response.status).toBe(400);
 
-      const data = await response.json();
+      const data = await response.json() as any;
       expect(data.error).toContain("size");
     });
 
@@ -131,7 +131,7 @@ describe("Render Service", () => {
       const response = await renderGraphic(req, mockEnv as Env);
       expect(response.status).toBe(400);
 
-      const data = await response.json();
+      const data = await response.json() as any;
       expect(data.error).toContain("Unsupported size");
     });
 
@@ -302,7 +302,7 @@ describe("Render Service", () => {
       const response = await renderGraphic(req, mockEnv as Env);
       expect(response.status).toBe(200);
 
-      const data = await response.json();
+      const data = await response.json() as any;
       expect(data.id).toBeTruthy();
       expect(data.url).toContain("renders/result/");
       expect(data.url).toMatch(/\.png$/);
@@ -322,7 +322,7 @@ describe("Render Service", () => {
       const response = await renderGraphic(req, mockEnv as Env);
       expect(response.status).toBe(500);
 
-      const data = await response.json();
+      const data = await response.json() as any;
       expect(data.error).toContain("R2 missing");
     });
 
@@ -344,7 +344,7 @@ describe("Render Service", () => {
       const response = await renderGraphic(req, mockEnv as Env);
       expect(response.status).toBe(500);
 
-      const data = await response.json();
+      const data = await response.json() as any;
       expect(data.error).toBeDefined();
     });
   });
@@ -368,7 +368,7 @@ describe("Render Service", () => {
       const response = await getRenderStatus(req, mockEnv as Env);
       expect(response.status).toBe(200);
 
-      const data = await response.json();
+      const data = await response.json() as any;
       expect(data.id).toBe("render_123");
       expect(data.status).toBe("completed");
       expect(data.url).toBe("https://cdn.example.com/render.png");
@@ -383,7 +383,7 @@ describe("Render Service", () => {
       const response = await getRenderStatus(req, mockEnv as Env);
       expect(response.status).toBe(404);
 
-      const data = await response.json();
+      const data = await response.json() as any;
       expect(data.error).toBe("Render not found");
     });
 
@@ -408,10 +408,10 @@ describe("Render Service", () => {
       };
 
       const response1 = await getRenderStatus(req1, mockEnv as Env);
-      const data1 = await response1.json();
+      const data1 = await response1.json() as any;
 
       const response2 = await getRenderStatus(req2, mockEnv as Env);
-      const data2 = await response2.json();
+      const data2 = await response2.json() as any;
 
       expect(data1.tenant).toBe("tenant1");
       expect(data2.tenant).toBe("tenant2");
@@ -431,7 +431,7 @@ describe("Render Service", () => {
       const response = await getRenderStatus(req, mockEnv as Env);
       expect(response.status).toBe(200);
 
-      const data = await response.json();
+      const data = await response.json() as any;
       expect(data.id).toBe("abc-def-123");
     });
   });

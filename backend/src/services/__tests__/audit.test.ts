@@ -59,7 +59,7 @@ describe("Audit Service", () => {
       const response = await logRoleChange(req, mockEnv);
       expect(response.status).toBe(200);
 
-      const data = await response.json();
+      const data = await response.json() as any;
       expect(data.success).toBe(true);
       expect(data.auditId).toBeTruthy();
 
@@ -84,7 +84,7 @@ describe("Audit Service", () => {
       const response = await logRoleChange(req, mockEnv);
       expect(response.status).toBe(400);
 
-      const data = await response.json();
+      const data = await response.json() as any;
       expect(data.error).toContain("userId");
     });
 
@@ -102,7 +102,7 @@ describe("Audit Service", () => {
       const response = await logRoleChange(req, mockEnv);
       expect(response.status).toBe(400);
 
-      const data = await response.json();
+      const data = await response.json() as any;
       expect(data.error).toContain("oldRole");
     });
 
@@ -120,7 +120,7 @@ describe("Audit Service", () => {
       const response = await logRoleChange(req, mockEnv);
       expect(response.status).toBe(400);
 
-      const data = await response.json();
+      const data = await response.json() as any;
       expect(data.error).toContain("newRole");
     });
 
@@ -138,7 +138,7 @@ describe("Audit Service", () => {
       };
 
       const response = await logRoleChange(req, mockEnv);
-      const data = await response.json();
+      const data = await response.json() as any;
 
       const key = `audit:role-change:demo:${data.auditId}`;
       const entry = JSON.parse(mockKV.get(key)!);
@@ -160,7 +160,7 @@ describe("Audit Service", () => {
       };
 
       const response = await logRoleChange(req, mockEnv);
-      const data = await response.json();
+      const data = await response.json() as any;
 
       const key = `audit:role-change:demo:${data.auditId}`;
       const entry = JSON.parse(mockKV.get(key)!);
@@ -185,7 +185,7 @@ describe("Audit Service", () => {
       };
 
       const response = await logRoleChange(req, mockEnv);
-      const data = await response.json();
+      const data = await response.json() as any;
 
       const key = `audit:role-change:demo:${data.auditId}`;
       const entry = JSON.parse(mockKV.get(key)!);
@@ -209,7 +209,7 @@ describe("Audit Service", () => {
       };
 
       const response = await logRoleChange(req, mockEnv);
-      const data = await response.json();
+      const data = await response.json() as any;
 
       const key = `audit:role-change:demo:${data.auditId}`;
       const entry = JSON.parse(mockKV.get(key)!);
@@ -332,7 +332,7 @@ describe("Audit Service", () => {
       };
 
       const response = await getRoleChangeHistory(req, mockEnv);
-      const data = await response.json();
+      const data = await response.json() as any;
 
       expect(data.entries).toHaveLength(3);
       expect(data.total).toBe(3);
@@ -347,7 +347,7 @@ describe("Audit Service", () => {
       };
 
       const response = await getRoleChangeHistory(req, mockEnv);
-      const data = await response.json();
+      const data = await response.json() as any;
 
       expect(data.entries).toHaveLength(2);
       expect(data.limit).toBe(2);
@@ -360,7 +360,7 @@ describe("Audit Service", () => {
       };
 
       const response = await getRoleChangeHistory(req, mockEnv);
-      const data = await response.json();
+      const data = await response.json() as any;
 
       expect(data.entries).toHaveLength(1);
       expect(data.offset).toBe(2);
@@ -373,7 +373,7 @@ describe("Audit Service", () => {
       };
 
       const response = await getRoleChangeHistory(req, mockEnv);
-      const data = await response.json();
+      const data = await response.json() as any;
 
       expect(data.entries).toHaveLength(2);
       expect(data.entries.every((e: any) => e.userId === "user_1")).toBe(true);
@@ -388,7 +388,7 @@ describe("Audit Service", () => {
       };
 
       const response = await getRoleChangeHistory(req, mockEnv);
-      const data = await response.json();
+      const data = await response.json() as any;
 
       expect(data.entries).toEqual([]);
       expect(data.total).toBe(0);
@@ -407,7 +407,7 @@ describe("Audit Service", () => {
       };
 
       const response = await getRoleChangeHistory(req, mockEnv);
-      const data = await response.json();
+      const data = await response.json() as any;
 
       expect(data.entries).toEqual([]);
     });
@@ -437,7 +437,7 @@ describe("Audit Service", () => {
 
       const req = { tenant: "demo" };
       const response = await getAuditStats(req, mockEnv);
-      const data = await response.json();
+      const data = await response.json() as any;
 
       expect(data.totalRoleChanges).toBe(4);
       expect(data.last24Hours).toBe(2);
@@ -448,7 +448,7 @@ describe("Audit Service", () => {
     it("should return zeros when no entries exist", async () => {
       const req = { tenant: "demo" };
       const response = await getAuditStats(req, mockEnv);
-      const data = await response.json();
+      const data = await response.json() as any;
 
       expect(data.totalRoleChanges).toBe(0);
       expect(data.last24Hours).toBe(0);
@@ -470,7 +470,7 @@ describe("Audit Service", () => {
 
       const req = { tenant: "demo" };
       const response = await getAuditStats(req, mockEnv);
-      const data = await response.json();
+      const data = await response.json() as any;
 
       expect(data.totalRoleChanges).toBe(150);
       expect(data.last24Hours).toBeLessThanOrEqual(100);

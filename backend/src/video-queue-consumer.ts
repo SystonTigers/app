@@ -183,7 +183,7 @@ async function processCoachingAnalysis(env: any, job: VideoJob) {
     throw new Error(`Python service error: ${response.status} - ${errorText}`);
   }
 
-  const data = await response.json();
+  const data = await response.json() as any;
 
   if (!data.success) {
     throw new Error(`Coaching analysis failed: ${data.message || "Unknown error"}`);
@@ -232,7 +232,7 @@ async function processDrillGeneration(env: any, job: VideoJob) {
     throw new Error(`Python service error: ${response.status} - ${errorText}`);
   }
 
-  const data = await response.json();
+  const data = await response.json() as any;
 
   if (!data.success) {
     throw new Error(`Drill generation failed: ${data.message || "Unknown error"}`);
@@ -282,7 +282,7 @@ async function processSessionGeneration(env: any, job: VideoJob) {
     throw new Error(`Python service error: ${response.status} - ${errorText}`);
   }
 
-  const data = await response.json();
+  const data = await response.json() as any;
 
   if (!data.success) {
     throw new Error(`Session generation failed: ${data.message || "Unknown error"}`);

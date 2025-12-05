@@ -52,7 +52,7 @@ export const getUsage = async (req: any, env: Env) => {
   const tenant = await env.DB.prepare(
     'SELECT usage_cap FROM tenants WHERE id = ?'
   ).bind(req.tenant).first();
-  const cap = tenant?.usage_cap || 1000;
+  const cap = Number(tenant?.usage_cap) || 1000;
 
   return new Response(
     JSON.stringify({

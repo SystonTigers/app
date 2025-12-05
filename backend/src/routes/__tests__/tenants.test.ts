@@ -83,7 +83,7 @@ describe("Tenant Management Routes", () => {
       const response = await postHandler(request, mockEnv, corsHdrs, "req-123");
 
       expect(response.status).toBe(200);
-      const data = await response.json();
+      const data = await response.json() as any;
       expect(data.success).toBe(true);
       expect(data.tenantId).toBe("test-team");
       expect(data.spreadsheetId).toBe("new-spreadsheet-id");
@@ -137,7 +137,7 @@ describe("Tenant Management Routes", () => {
       const response = await postHandler(request, mockEnv, corsHdrs);
 
       expect(response.status).toBe(200);
-      const data = await response.json();
+      const data = await response.json() as any;
       expect(data.success).toBe(true);
 
       // Verify optional fields were passed to gasCall
@@ -186,7 +186,7 @@ describe("Tenant Management Routes", () => {
       const response = await postHandler(request, mockEnv, corsHdrs);
 
       expect(response.status).toBe(200);
-      const data = await response.json();
+      const data = await response.json() as any;
       expect(data.success).toBe(true);
       expect(data.spreadsheetId).toBe("existing-spreadsheet-id");
       expect(data.status).toBe("READY");
@@ -210,7 +210,7 @@ describe("Tenant Management Routes", () => {
       const response = await postHandler(request, mockEnv, corsHdrs);
 
       expect(response.status).toBe(400);
-      const data = await response.json();
+      const data = await response.json() as any;
       expect(data.success).toBe(false);
       expect(data.error).toBe("invalid_request");
       expect(data.issues).toBeDefined();
@@ -235,7 +235,7 @@ describe("Tenant Management Routes", () => {
       const response = await postHandler(request, mockEnv, corsHdrs);
 
       expect(response.status).toBe(400);
-      const data = await response.json();
+      const data = await response.json() as any;
       expect(data.success).toBe(false);
       expect(data.error).toBe("invalid_request");
     });
@@ -259,7 +259,7 @@ describe("Tenant Management Routes", () => {
       const response = await postHandler(request, mockEnv, corsHdrs);
 
       expect(response.status).toBe(400);
-      const data = await response.json();
+      const data = await response.json() as any;
       expect(data.success).toBe(false);
     });
 
@@ -282,7 +282,7 @@ describe("Tenant Management Routes", () => {
       const response = await postHandler(request, mockEnv, corsHdrs);
 
       expect(response.status).toBe(400);
-      const data = await response.json();
+      const data = await response.json() as any;
       expect(data.success).toBe(false);
     });
 
@@ -305,7 +305,7 @@ describe("Tenant Management Routes", () => {
       const response = await postHandler(request, mockEnv, corsHdrs);
 
       expect(response.status).toBe(400);
-      const data = await response.json();
+      const data = await response.json() as any;
       expect(data.success).toBe(false);
     });
 
@@ -336,7 +336,7 @@ describe("Tenant Management Routes", () => {
       const response = await postHandler(request, mockEnv, corsHdrs);
 
       expect(response.status).toBe(502);
-      const data = await response.json();
+      const data = await response.json() as any;
       expect(data.success).toBe(false);
       expect(data.status).toBe("ERROR");
       expect(data.error).toBe("Google Apps Script error");
@@ -380,7 +380,7 @@ describe("Tenant Management Routes", () => {
       const response = await postHandler(request, mockEnv, corsHdrs);
 
       expect(response.status).toBe(200);
-      const data = await response.json();
+      const data = await response.json() as any;
       expect(data.success).toBe(false);
       expect(data.status).toBe("ERROR");
       expect(data.validatorReport.errors).toContain("Missing sheet");
@@ -398,7 +398,7 @@ describe("Tenant Management Routes", () => {
       const response = await postHandler(request, mockEnv, corsHdrs);
 
       expect(response.status).toBe(400);
-      const data = await response.json();
+      const data = await response.json() as any;
       expect(data.success).toBe(false);
     });
   });
@@ -436,7 +436,7 @@ describe("Tenant Management Routes", () => {
       const response = await postVerifyHandler(request, mockEnv, corsHdrs);
 
       expect(response.status).toBe(200);
-      const data = await response.json();
+      const data = await response.json() as any;
       expect(data.success).toBe(true);
       expect(data.ok).toBe(true);
       expect(data.report.status).toBe("valid");
@@ -461,7 +461,7 @@ describe("Tenant Management Routes", () => {
       const response = await postVerifyHandler(request, mockEnv, corsHdrs);
 
       expect(response.status).toBe(404);
-      const data = await response.json();
+      const data = await response.json() as any;
       expect(data.success).toBe(false);
       expect(data.error).toBe("unknown_tenant");
     });
@@ -491,7 +491,7 @@ describe("Tenant Management Routes", () => {
       const response = await postVerifyHandler(request, mockEnv, corsHdrs);
 
       expect(response.status).toBe(404);
-      const data = await response.json();
+      const data = await response.json() as any;
       expect(data.success).toBe(false);
       expect(data.error).toBe("unknown_tenant");
     });
@@ -508,7 +508,7 @@ describe("Tenant Management Routes", () => {
       const response = await postVerifyHandler(request, mockEnv, corsHdrs);
 
       expect(response.status).toBe(400);
-      const data = await response.json();
+      const data = await response.json() as any;
       expect(data.success).toBe(false);
       expect(data.error).toBe("missing_tenant_id");
     });
@@ -545,7 +545,7 @@ describe("Tenant Management Routes", () => {
       const response = await postVerifyHandler(request, mockEnv, corsHdrs);
 
       expect(response.status).toBe(200);
-      const data = await response.json();
+      const data = await response.json() as any;
       expect(data.success).toBe(false);
       expect(data.ok).toBe(false);
       expect(data.report.errors).toContain("Missing required columns");
@@ -590,7 +590,7 @@ describe("Tenant Management Routes", () => {
       const response = await postVerifyHandler(request, mockEnv, corsHdrs);
 
       expect(response.status).toBe(502);
-      const data = await response.json();
+      const data = await response.json() as any;
       expect(data.success).toBe(false);
       expect(data.ok).toBe(false);
       expect(data.error).toBe("Network timeout");

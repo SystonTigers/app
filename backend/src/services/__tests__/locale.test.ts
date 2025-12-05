@@ -22,7 +22,7 @@ describe("Locale Service", () => {
             const response = await getLocale(req, env as any);
 
             expect(response.status).toBe(403);
-            const body = await response.json();
+            const body = await response.json() as any;
             expect(body.error).toBe("disabled");
         });
 
@@ -35,7 +35,7 @@ describe("Locale Service", () => {
             const response = await getLocale(req, env as any);
 
             expect(response.status).toBe(403);
-            const body = await response.json();
+            const body = await response.json() as any;
             expect(body.error).toBe("disabled");
         });
 

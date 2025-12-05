@@ -31,7 +31,7 @@ describe("Player Images Service", () => {
         }),
       },
       R2_MEDIA: {
-        delete: vi.fn(async () => {}),
+        delete: vi.fn(async () => { }),
       },
     };
 
@@ -67,6 +67,7 @@ describe("Player Images Service", () => {
         type: "action" as const,
         r2Key: "tenants/demo/player-images/player_456/action/img_456.jpg",
         uploadedBy: "user@example.com",
+        imageUrl: "https://example.com/placeholder-action.jpg",
       };
 
       const result = await createPlayerImage(mockEnv, "demo", imageData);
@@ -197,6 +198,7 @@ describe("Player Images Service", () => {
       const created = await createPlayerImage(mockEnv, "demo", {
         playerId: "player_789", playerName: "Test Player", type: "headshot",
         r2Key: uploadInfo.r2Key, uploadedBy: "admin@test.com",
+        imageUrl: "https://example.com/placeholder.jpg",
       });
 
       const retrieved = await getPlayerImage(mockEnv, "demo", created.id);

@@ -176,7 +176,7 @@ describe("API Versioning Service", () => {
             expect(response).not.toBeNull();
             expect(response!.status).toBe(400);
 
-            const body = await response!.json();
+            const body = await response!.json() as any;
             expect(body.error.code).toBe("UNSUPPORTED_API_VERSION");
             expect(body.error.supportedVersions).toContain("v1");
         });
@@ -191,7 +191,7 @@ describe("API Versioning Service", () => {
             expect(response).not.toBeNull();
             expect(response!.status).toBe(410);
 
-            const body = await response!.json();
+            const body = await response!.json() as any;
             expect(body.error.code).toBe("API_VERSION_SUNSET");
         });
 
@@ -207,7 +207,7 @@ describe("API Versioning Service", () => {
             const response = getAPIVersionsResponse();
             expect(response.status).toBe(200);
 
-            const body = await response.json();
+            const body = await response.json() as any;
             expect(body.success).toBe(true);
             expect(body.data.versions).toBeDefined();
             expect(body.data.current).toBe(CURRENT_VERSION);

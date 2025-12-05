@@ -2,6 +2,13 @@ import { describe, it, expect } from "vitest";
 import { env } from "cloudflare:test";
 import worker from "../../index";
 
+// Mock ExecutionContext for worker tests
+const mockCtx = {
+  waitUntil: () => { },
+  passThroughOnException: () => { },
+  props: {},
+} as unknown as ExecutionContext;
+
 describe("Shop Routes", () => {
   it("should require authentication for creating products", async () => {
     const request = new Request("https://example.com/api/v1/shop/products", {
@@ -12,13 +19,13 @@ describe("Shop Routes", () => {
         price: 29.99,
       }),
     });
-    const response = await worker.fetch(request, env);
+    const response = await worker.fetch(request, env, mockCtx);
     expect(response.status).toBe(401);
   });
 
   it("should require authentication for listing products", async () => {
     const request = new Request("https://example.com/api/v1/shop/products");
-    const response = await worker.fetch(request, env);
+    const response = await worker.fetch(request, env, mockCtx);
     expect(response.status).toBe(401);
   });
 
@@ -30,7 +37,7 @@ describe("Shop Routes", () => {
         price: 39.99,
       }),
     });
-    const response = await worker.fetch(request, env);
+    const response = await worker.fetch(request, env, mockCtx);
     expect(response.status).toBe(401);
   });
 
@@ -38,7 +45,7 @@ describe("Shop Routes", () => {
     const request = new Request("https://example.com/api/v1/shop/products/test-id", {
       method: "DELETE",
     });
-    const response = await worker.fetch(request, env);
+    const response = await worker.fetch(request, env, mockCtx);
     expect(response.status).toBe(401);
   });
 
@@ -46,7 +53,7 @@ describe("Shop Routes", () => {
     const request = new Request("https://example.com/api/v1/shop/printify/sync", {
       method: "POST",
     });
-    const response = await worker.fetch(request, env);
+    const response = await worker.fetch(request, env, mockCtx);
     expect(response.status).toBe(401);
   });
 });

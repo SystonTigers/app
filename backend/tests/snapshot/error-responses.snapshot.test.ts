@@ -2,6 +2,13 @@ import { describe, it, expect } from "vitest";
 import { env } from "cloudflare:test";
 import worker from "../../src/index";
 
+// Mock ExecutionContext for worker tests
+const mockCtx = {
+  waitUntil: () => { },
+  passThroughOnException: () => { },
+  props: {},
+} as unknown as ExecutionContext;
+
 /**
  * Snapshot Test: Error Responses
  *
@@ -14,7 +21,7 @@ import worker from "../../src/index";
 describe("Snapshot: Error Responses", () => {
   it("snapshots 401 Unauthorized response", async () => {
     const request = new Request("https://example.com/api/v1/videos");
-    const response = await worker.fetch(request, env);
+    const response = await worker.fetch(request, env, mockCtx);
 
     expect(response.status).toBe(401);
 
@@ -31,7 +38,7 @@ describe("Snapshot: Error Responses", () => {
 
   it("snapshots 404 Not Found response", async () => {
     const request = new Request("https://example.com/api/v1/nonexistent-endpoint");
-    const response = await worker.fetch(request, env);
+    const response = await worker.fetch(request, env, mockCtx);
 
     expect(response.status).toBe(404);
 
@@ -68,7 +75,7 @@ describe("Snapshot: Error Responses", () => {
       }),
     });
 
-    const response = await worker.fetch(request, env);
+    const response = await worker.fetch(request, env, mockCtx);
     expect(response.status).toBeGreaterThanOrEqual(400);
 
     if (response.headers.get("content-type")?.includes("application/json")) {
@@ -80,9 +87,9 @@ describe("Snapshot: Error Responses", () => {
         hasError: !!data.error,
         errorFields: data.error
           ? {
-              hasCode: !!data.error.code,
-              hasMessage: !!data.error.message,
-            }
+            hasCode: !!data.error.code,
+            hasMessage: !!data.error.message,
+          }
           : null,
       };
 
@@ -97,7 +104,7 @@ describe("Snapshot: Error Responses", () => {
       },
     });
 
-    const response = await worker.fetch(request, env);
+    const response = await worker.fetch(request, env, mockCtx);
 
     const corsHeaders = {
       "access-control-allow-origin":
@@ -120,7 +127,7 @@ describe("Snapshot: Error Responses", () => {
       },
     });
 
-    const response = await worker.fetch(request, env);
+    const response = await worker.fetch(request, env, mockCtx);
     expect(response.status).toBe(204);
 
     const corsHeaders = {
@@ -135,3 +142,4 @@ describe("Snapshot: Error Responses", () => {
     expect(corsHeaders).toMatchSnapshot();
   });
 });
+
