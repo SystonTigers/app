@@ -1,13 +1,14 @@
 import { describe, it, expect } from "vitest";
 import { env } from "cloudflare:test";
 import worker from "../../src/index";
+import {
+  TEST_TENANT,
+  generateTestEmail,
+  generateIdempotencyKey,
+  createMockContext,
+} from "./vitest.setup";
 
-// Mock ExecutionContext for worker tests
-const mockCtx = {
-  waitUntil: () => { },
-  passThroughOnException: () => { },
-  props: {},
-} as unknown as ExecutionContext;
+const mockCtx = createMockContext();
 
 /**
  * E2E Test: Social Media Management Journey
@@ -19,22 +20,23 @@ const mockCtx = {
  * 4. View post history
  * 5. Delete post
  *
- * Note: Uses the existing 'syston' tenant from test fixtures
+ * Prerequisites: Run test-seed.sql to seed the test database
+ * @see ./fixtures/test-seed.sql
  */
 describe("E2E: Social Media Journey", () => {
   const testPassword = "SecurePass123!";
 
   it("completes social media workflow: configure -> create post -> view history", async () => {
     // Register admin user for this test
-    const email = `social-${Date.now()}@example.com`;
+    const email = generateTestEmail();
     const registerRequest = new Request("https://example.com/api/v1/auth/register", {
       method: "POST",
       headers: {
-        "content-type": "application/json",
-        "Idempotency-Key": `social-reg-${Date.now()}`,
+        "Content-Type": "application/json",
+        "Idempotency-Key": generateIdempotencyKey("social-reg"),
       },
       body: JSON.stringify({
-        tenant_id: "syston",
+        tenant_id: TEST_TENANT.id,
         email,
         password: testPassword,
         profile: { name: "Social Media Manager" },
@@ -159,15 +161,15 @@ describe("E2E: Social Media Journey", () => {
 
   it("validates post content", async () => {
     // Register user for this test
-    const email = `validate-post-${Date.now()}@example.com`;
+    const email = generateTestEmail();
     const registerRequest = new Request("https://example.com/api/v1/auth/register", {
       method: "POST",
       headers: {
-        "content-type": "application/json",
-        "Idempotency-Key": `validate-post-${Date.now()}`,
+        "Content-Type": "application/json",
+        "Idempotency-Key": generateIdempotencyKey("validate-post"),
       },
       body: JSON.stringify({
-        tenant_id: "syston",
+        tenant_id: TEST_TENANT.id,
         email,
         password: testPassword,
         profile: { name: "Validate User" },
@@ -216,15 +218,15 @@ describe("E2E: Social Media Journey", () => {
 
   it("retrieves social media configuration", async () => {
     // Register user for this test
-    const email = `config-${Date.now()}@example.com`;
+    const email = generateTestEmail();
     const registerRequest = new Request("https://example.com/api/v1/auth/register", {
       method: "POST",
       headers: {
-        "content-type": "application/json",
-        "Idempotency-Key": `config-reg-${Date.now()}`,
+        "Content-Type": "application/json",
+        "Idempotency-Key": generateIdempotencyKey("config-reg"),
       },
       body: JSON.stringify({
-        tenant_id: "syston",
+        tenant_id: TEST_TENANT.id,
         email,
         password: testPassword,
         profile: { name: "Config User" },
@@ -266,15 +268,15 @@ describe("E2E: Social Media Journey", () => {
 
   it("handles immediate vs scheduled posts", async () => {
     // Register user for this test
-    const email = `schedule-${Date.now()}@example.com`;
+    const email = generateTestEmail();
     const registerRequest = new Request("https://example.com/api/v1/auth/register", {
       method: "POST",
       headers: {
-        "content-type": "application/json",
-        "Idempotency-Key": `schedule-reg-${Date.now()}`,
+        "Content-Type": "application/json",
+        "Idempotency-Key": generateIdempotencyKey("schedule-reg"),
       },
       body: JSON.stringify({
-        tenant_id: "syston",
+        tenant_id: TEST_TENANT.id,
         email,
         password: testPassword,
         profile: { name: "Schedule User" },

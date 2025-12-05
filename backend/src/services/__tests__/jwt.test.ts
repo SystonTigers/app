@@ -10,6 +10,7 @@ import {
   verifyServiceJWT,
   requireAdminClaims,
   isSystemTenant,
+  JWTSecretError,
 } from "../jwt";
 
 describe("JWT Service", () => {
@@ -465,6 +466,123 @@ describe("JWT Service", () => {
       };
 
       expect(isSystemTenant(claims)).toBe(false);
+    });
+  });
+
+  describe("JWT Secret Validation", () => {
+    it("throws JWTSecretError when JWT_SECRET is missing", async () => {
+      const envWithoutSecret = {
+        JWT_ISSUER: "test-issuer",
+        JWT_AUDIENCE: "syston-mobile",
+      };
+
+      await expect(
+        issueTenantMemberJWT(envWithoutSecret, {
+          tenant_id: "tenant-123",
+          user_id: "user-456",
+        })
+      ).rejects.toThrow(JWTSecretError);
+
+      await expect(
+        issueTenantMemberJWT(envWithoutSecret, {
+          tenant_id: "tenant-123",
+          user_id: "user-456",
+        })
+      ).rejects.toThrow("JWT_SECRET is not configured");
+    });
+
+    it("throws JWTSecretError when JWT_SECRET is empty string", async () => {
+      const envWithEmptySecret = {
+        JWT_SECRET: "",
+        JWT_ISSUER: "test-issuer",
+        JWT_AUDIENCE: "syston-mobile",
+      };
+
+      await expect(
+        issueTenantMemberJWT(envWithEmptySecret, {
+          tenant_id: "tenant-123",
+          user_id: "user-456",
+        })
+      ).rejects.toThrow(JWTSecretError);
+    });
+
+    it("throws JWTSecretError when JWT_SECRET is whitespace only", async () => {
+      const envWithWhitespaceSecret = {
+        JWT_SECRET: "   ",
+        JWT_ISSUER: "test-issuer",
+        JWT_AUDIENCE: "syston-mobile",
+      };
+
+      await expect(
+        issueTenantMemberJWT(envWithWhitespaceSecret, {
+          tenant_id: "tenant-123",
+          user_id: "user-456",
+        })
+      ).rejects.toThrow(JWTSecretError);
+    });
+
+    it("throws JWTSecretError when JWT_SECRET is too short", async () => {
+      const envWithShortSecret = {
+        JWT_SECRET: "short", // Less than 32 bytes
+        JWT_ISSUER: "test-issuer",
+        JWT_AUDIENCE: "syston-mobile",
+      };
+
+      await expect(
+        issueTenantMemberJWT(envWithShortSecret, {
+          tenant_id: "tenant-123",
+          user_id: "user-456",
+        })
+      ).rejects.toThrow(JWTSecretError);
+
+      await expect(
+        issueTenantMemberJWT(envWithShortSecret, {
+          tenant_id: "tenant-123",
+          user_id: "user-456",
+        })
+      ).rejects.toThrow("too short");
+    });
+
+    it("accepts valid secret with minimum length", async () => {
+      const envWithValidSecret = {
+        JWT_SECRET: "a".repeat(32), // Exactly 32 bytes
+        JWT_ISSUER: "test-issuer",
+        JWT_AUDIENCE: "syston-mobile",
+      };
+
+      const token = await issueTenantMemberJWT(envWithValidSecret, {
+        tenant_id: "tenant-123",
+        user_id: "user-456",
+      });
+
+      expect(token).toBeTruthy();
+      expect(token.split(".").length).toBe(3);
+    });
+
+    it("accepts base64-encoded secret", async () => {
+      // Create a base64-encoded secret (32 bytes when decoded)
+      const secretBytes = new Uint8Array(32).fill(65); // 32 'A' characters
+      const base64Secret = btoa(String.fromCharCode(...secretBytes));
+
+      const envWithBase64Secret = {
+        JWT_SECRET: base64Secret,
+        JWT_ISSUER: "test-issuer",
+        JWT_AUDIENCE: "syston-mobile",
+      };
+
+      const token = await issueTenantMemberJWT(envWithBase64Secret, {
+        tenant_id: "tenant-123",
+        user_id: "user-456",
+      });
+
+      expect(token).toBeTruthy();
+    });
+
+    it("JWTSecretError has correct name property", () => {
+      const error = new JWTSecretError("test message");
+      expect(error.name).toBe("JWTSecretError");
+      expect(error.message).toBe("test message");
+      expect(error instanceof Error).toBe(true);
     });
   });
 

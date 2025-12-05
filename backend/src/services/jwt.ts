@@ -1,5 +1,18 @@
 import { SignJWT, jwtVerify } from "jose";
 
+// Minimum secret length for security (256 bits = 32 bytes)
+const MIN_SECRET_LENGTH = 32;
+
+/**
+ * Error thrown when JWT secret is missing or invalid
+ */
+export class JWTSecretError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "JWTSecretError";
+  }
+}
+
 // Claim types for normalization
 export type RawClaims = {
   iss?: string; aud?: string; sub?: string;
@@ -38,15 +51,36 @@ export function normalizeClaims(c: RawClaims): Claims {
   };
 }
 
-// Helper to get JWT secret as key
+/**
+ * Get JWT secret as key with validation
+ * Throws JWTSecretError if secret is missing or too short
+ */
 function getJwtSecret(env: any): Uint8Array {
-  const raw = env.JWT_SECRET || "";
-  // Try base64 first, fallback to plain text
-  try {
-    return Uint8Array.from(atob(raw), c => c.charCodeAt(0));
-  } catch {
-    return new TextEncoder().encode(raw);
+  const raw = env.JWT_SECRET;
+
+  // Fail fast if secret is missing or empty
+  if (!raw || typeof raw !== "string" || raw.trim() === "") {
+    throw new JWTSecretError(
+      "JWT_SECRET is not configured. Set it using: wrangler secret put JWT_SECRET"
+    );
   }
+
+  // Try base64 first, fallback to plain text
+  let secret: Uint8Array;
+  try {
+    secret = Uint8Array.from(atob(raw), c => c.charCodeAt(0));
+  } catch {
+    secret = new TextEncoder().encode(raw);
+  }
+
+  // Validate minimum length for security
+  if (secret.length < MIN_SECRET_LENGTH) {
+    throw new JWTSecretError(
+      `JWT_SECRET is too short (${secret.length} bytes). Minimum required: ${MIN_SECRET_LENGTH} bytes (256 bits)`
+    );
+  }
+
+  return secret;
 }
 
 // Verify and normalize JWT claims

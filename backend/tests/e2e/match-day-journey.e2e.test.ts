@@ -1,13 +1,14 @@
 import { describe, it, expect } from "vitest";
 import { env } from "cloudflare:test";
 import worker from "../../src/index";
+import {
+  TEST_TENANT,
+  generateTestEmail,
+  generateIdempotencyKey,
+  createMockContext,
+} from "./vitest.setup";
 
-// Mock ExecutionContext for worker tests
-const mockCtx = {
-  waitUntil: () => { },
-  passThroughOnException: () => { },
-  props: {},
-} as unknown as ExecutionContext;
+const mockCtx = createMockContext();
 
 /**
  * E2E Test: Match Day Journey
@@ -20,22 +21,23 @@ const mockCtx = {
  * 5. Cast votes
  * 6. View results
  *
- * Note: Uses the existing 'syston' tenant from test fixtures
+ * Prerequisites: Run test-seed.sql to seed the test database
+ * @see ./fixtures/test-seed.sql
  */
 describe("E2E: Match Day Journey", () => {
   const testPassword = "SecurePass123!";
 
   it("completes match day workflow: create match -> update score -> vote MOTM", async () => {
     // Register admin user for this test
-    const email = `match-${Date.now()}@example.com`;
+    const email = generateTestEmail();
     const registerRequest = new Request("https://example.com/api/v1/auth/register", {
       method: "POST",
       headers: {
-        "content-type": "application/json",
-        "Idempotency-Key": `match-reg-${Date.now()}`,
+        "Content-Type": "application/json",
+        "Idempotency-Key": generateIdempotencyKey("match-reg"),
       },
       body: JSON.stringify({
-        tenant_id: "syston",
+        tenant_id: TEST_TENANT.id,
         email,
         password: testPassword,
         profile: { name: "Team Coach" },
@@ -143,15 +145,15 @@ describe("E2E: Match Day Journey", () => {
 
   it("prevents duplicate MOTM votes from same user", async () => {
     // Register user for this test
-    const email = `vote-${Date.now()}@example.com`;
+    const email = generateTestEmail();
     const registerRequest = new Request("https://example.com/api/v1/auth/register", {
       method: "POST",
       headers: {
-        "content-type": "application/json",
-        "Idempotency-Key": `vote-reg-${Date.now()}`,
+        "Content-Type": "application/json",
+        "Idempotency-Key": generateIdempotencyKey("vote-reg"),
       },
       body: JSON.stringify({
-        tenant_id: "syston",
+        tenant_id: TEST_TENANT.id,
         email,
         password: testPassword,
         profile: { name: "Voter" },
@@ -169,7 +171,7 @@ describe("E2E: Match Day Journey", () => {
     await env.DB.prepare(
       `INSERT OR IGNORE INTO matches (id, tenant_id, opponent, match_date, status)
        VALUES (?, ?, ?, ?, ?)`
-    ).bind(matchId, "syston", "Test Opponent", Date.now(), "completed").run();
+    ).bind(matchId, TEST_TENANT.id, "Test Opponent", Date.now(), "completed").run();
 
     // Initialize voting
     const initRequest = new Request(`https://example.com/api/v1/motm/${matchId}/init`, {
@@ -213,15 +215,15 @@ describe("E2E: Match Day Journey", () => {
 
   it("returns match not found for invalid match ID", async () => {
     // Register user for this test
-    const email = `notfound-${Date.now()}@example.com`;
+    const email = generateTestEmail();
     const registerRequest = new Request("https://example.com/api/v1/auth/register", {
       method: "POST",
       headers: {
-        "content-type": "application/json",
-        "Idempotency-Key": `notfound-reg-${Date.now()}`,
+        "Content-Type": "application/json",
+        "Idempotency-Key": generateIdempotencyKey("notfound-reg"),
       },
       body: JSON.stringify({
-        tenant_id: "syston",
+        tenant_id: TEST_TENANT.id,
         email,
         password: testPassword,
         profile: { name: "NotFound User" },

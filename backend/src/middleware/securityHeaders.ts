@@ -1,6 +1,6 @@
 /**
  * Enhanced Security Headers
- * Implements OWASP security best practices
+ * Implements OWASP security best practices with CSP nonce support
  */
 
 const CONNECT_SRC = [
@@ -8,6 +8,38 @@ const CONNECT_SRC = [
   "https://syston-postbus.team-platform-2025.workers.dev",
   "https://api.systontigers.co.uk",
 ].join(" ");
+
+/**
+ * Generate a cryptographically secure nonce for CSP
+ * Returns a base64-encoded 16-byte random string
+ */
+export function generateNonce(): string {
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  return btoa(String.fromCharCode(...bytes));
+}
+
+/**
+ * CSP nonce context for request-scoped nonce management
+ */
+export interface NonceContext {
+  nonce: string;
+  scriptNonce: string;
+  styleNonce: string;
+}
+
+/**
+ * Create a new nonce context for a request
+ * Use the same nonce for both scripts and styles for simplicity
+ */
+export function createNonceContext(): NonceContext {
+  const nonce = generateNonce();
+  return {
+    nonce,
+    scriptNonce: `'nonce-${nonce}'`,
+    styleNonce: `'nonce-${nonce}'`,
+  };
+}
 
 /**
  * Production security headers - Maximum security
@@ -46,12 +78,12 @@ export const securityHeaders = {
     "fullscreen=(self)",
   ].join(", "),
 
-  // Content Security Policy
+  // Content Security Policy (static - use generateCSPWithNonce for dynamic)
   "Content-Security-Policy": [
     "default-src 'self'",
     "img-src 'self' https: data:",
     "script-src 'self'",
-    "style-src 'self' 'unsafe-inline'", // Remove unsafe-inline when using styled-components with nonces
+    "style-src 'self' 'unsafe-inline'", // Fallback - use generateCSPWithNonce for nonce-based
     `connect-src ${CONNECT_SRC}`,
     "font-src 'self' https:",
     "object-src 'none'",
@@ -62,6 +94,37 @@ export const securityHeaders = {
     "upgrade-insecure-requests",
   ].join("; "),
 } as const;
+
+/**
+ * Generate Content-Security-Policy header with nonce
+ * Use this for HTML responses that include inline scripts/styles
+ *
+ * @param nonceContext - The nonce context for this request
+ * @returns CSP header value with nonce directives
+ *
+ * @example
+ * ```typescript
+ * const nonceCtx = createNonceContext();
+ * const csp = generateCSPWithNonce(nonceCtx);
+ * // Use nonceCtx.nonce in HTML: <script nonce="${nonceCtx.nonce}">...</script>
+ * ```
+ */
+export function generateCSPWithNonce(nonceContext: NonceContext): string {
+  return [
+    "default-src 'self'",
+    "img-src 'self' https: data:",
+    `script-src 'self' ${nonceContext.scriptNonce}`,
+    `style-src 'self' ${nonceContext.styleNonce}`,
+    `connect-src ${CONNECT_SRC}`,
+    "font-src 'self' https:",
+    "object-src 'none'",
+    "frame-src 'none'",
+    "frame-ancestors 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "upgrade-insecure-requests",
+  ].join("; ");
+}
 
 /**
  * Development security headers - Relaxed for debugging

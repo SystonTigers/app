@@ -1,13 +1,14 @@
 import { describe, it, expect } from "vitest";
 import { env } from "cloudflare:test";
 import worker from "../../src/index";
+import {
+  TEST_TENANT,
+  generateTestEmail,
+  generateIdempotencyKey,
+  createMockContext,
+} from "./vitest.setup";
 
-// Mock ExecutionContext for worker tests
-const mockCtx = {
-  waitUntil: () => { },
-  passThroughOnException: () => { },
-  props: {},
-} as unknown as ExecutionContext;
+const mockCtx = createMockContext();
 
 /**
  * E2E Test: Video Upload & Processing Journey
@@ -19,10 +20,11 @@ const mockCtx = {
  * 4. Check processing status
  * 5. Retrieve processed highlights
  *
- * Note: Uses the existing 'syston' tenant from test fixtures
+ * Prerequisites: Run test-seed.sql to seed the test database
+ * @see ./fixtures/test-seed.sql
  */
 describe("E2E: Video Upload Journey", () => {
-  const testEmail = `video-test-${Date.now()}@example.com`;
+  const testEmail = generateTestEmail();
   const testPassword = "SecurePass123!";
   let authToken: string;
 
@@ -31,11 +33,11 @@ describe("E2E: Video Upload Journey", () => {
     const registerRequest = new Request("https://example.com/api/v1/auth/register", {
       method: "POST",
       headers: {
-        "content-type": "application/json",
-        "Idempotency-Key": `video-reg-${Date.now()}`,
+        "Content-Type": "application/json",
+        "Idempotency-Key": generateIdempotencyKey("video-reg"),
       },
       body: JSON.stringify({
-        tenant_id: "syston",
+        tenant_id: TEST_TENANT.id,
         email: testEmail,
         password: testPassword,
         profile: { name: "Video Test User" },
@@ -136,15 +138,15 @@ describe("E2E: Video Upload Journey", () => {
 
   it("validates video upload parameters", async () => {
     // Register user for this test
-    const email = `validate-${Date.now()}@example.com`;
+    const email = generateTestEmail();
     const registerRequest = new Request("https://example.com/api/v1/auth/register", {
       method: "POST",
       headers: {
-        "content-type": "application/json",
-        "Idempotency-Key": `validate-reg-${Date.now()}`,
+        "Content-Type": "application/json",
+        "Idempotency-Key": generateIdempotencyKey("validate-reg"),
       },
       body: JSON.stringify({
-        tenant_id: "syston",
+        tenant_id: TEST_TENANT.id,
         email,
         password: testPassword,
         profile: { name: "Validate Test User" },
@@ -173,15 +175,15 @@ describe("E2E: Video Upload Journey", () => {
 
   it("allows video deletion", async () => {
     // Register user for this test
-    const email = `delete-${Date.now()}@example.com`;
+    const email = generateTestEmail();
     const registerRequest = new Request("https://example.com/api/v1/auth/register", {
       method: "POST",
       headers: {
-        "content-type": "application/json",
-        "Idempotency-Key": `delete-reg-${Date.now()}`,
+        "Content-Type": "application/json",
+        "Idempotency-Key": generateIdempotencyKey("delete-reg"),
       },
       body: JSON.stringify({
-        tenant_id: "syston",
+        tenant_id: TEST_TENANT.id,
         email,
         password: testPassword,
         profile: { name: "Delete Test User" },

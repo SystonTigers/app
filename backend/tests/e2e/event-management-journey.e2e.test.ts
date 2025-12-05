@@ -1,13 +1,14 @@
 import { describe, it, expect } from "vitest";
 import { env } from "cloudflare:test";
 import worker from "../../src/index";
+import {
+  TEST_TENANT,
+  generateTestEmail,
+  generateIdempotencyKey,
+  createMockContext,
+} from "./vitest.setup";
 
-// Mock ExecutionContext for worker tests
-const mockCtx = {
-  waitUntil: () => { },
-  passThroughOnException: () => { },
-  props: {},
-} as unknown as ExecutionContext;
+const mockCtx = createMockContext();
 
 /**
  * E2E Test: Event Management Journey
@@ -19,22 +20,23 @@ const mockCtx = {
  * 4. View attendees
  * 5. Update event
  *
- * Note: Uses the existing 'syston' tenant from test fixtures
+ * Prerequisites: Run test-seed.sql to seed the test database
+ * @see ./fixtures/test-seed.sql
  */
 describe("E2E: Event Management Journey", () => {
   const testPassword = "SecurePass123!";
 
   it("completes event lifecycle: create -> list -> RSVP -> view attendees", async () => {
     // Register user for this test
-    const email = `event-${Date.now()}@example.com`;
+    const email = generateTestEmail();
     const registerRequest = new Request("https://example.com/api/v1/auth/register", {
       method: "POST",
       headers: {
-        "content-type": "application/json",
-        "Idempotency-Key": `event-reg-${Date.now()}`,
+        "Content-Type": "application/json",
+        "Idempotency-Key": generateIdempotencyKey("event-reg"),
       },
       body: JSON.stringify({
-        tenant_id: "syston",
+        tenant_id: TEST_TENANT.id,
         email,
         password: testPassword,
         profile: { name: "Event Organizer" },
@@ -141,15 +143,15 @@ describe("E2E: Event Management Journey", () => {
 
   it("validates event creation parameters", async () => {
     // Register user for this test
-    const email = `validate-event-${Date.now()}@example.com`;
+    const email = generateTestEmail();
     const registerRequest = new Request("https://example.com/api/v1/auth/register", {
       method: "POST",
       headers: {
-        "content-type": "application/json",
-        "Idempotency-Key": `validate-event-${Date.now()}`,
+        "Content-Type": "application/json",
+        "Idempotency-Key": generateIdempotencyKey("validate-event"),
       },
       body: JSON.stringify({
-        tenant_id: "syston",
+        tenant_id: TEST_TENANT.id,
         email,
         password: testPassword,
         profile: { name: "Validate User" },
@@ -178,15 +180,15 @@ describe("E2E: Event Management Journey", () => {
 
   it("handles RSVP status changes", async () => {
     // Register user for this test
-    const email = `rsvp-${Date.now()}@example.com`;
+    const email = generateTestEmail();
     const registerRequest = new Request("https://example.com/api/v1/auth/register", {
       method: "POST",
       headers: {
-        "content-type": "application/json",
-        "Idempotency-Key": `rsvp-reg-${Date.now()}`,
+        "Content-Type": "application/json",
+        "Idempotency-Key": generateIdempotencyKey("rsvp-reg"),
       },
       body: JSON.stringify({
-        tenant_id: "syston",
+        tenant_id: TEST_TENANT.id,
         email,
         password: testPassword,
         profile: { name: "RSVP User" },

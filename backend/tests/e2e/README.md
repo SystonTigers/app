@@ -2,6 +2,19 @@
 
 This directory contains end-to-end tests for the complete user journeys through the application.
 
+## Quick Start
+
+```bash
+# 1. Seed the test database
+npx wrangler d1 execute DB --local --file=./tests/e2e/fixtures/test-seed.sql
+
+# 2. Run all E2E tests
+npm test tests/e2e/
+
+# 3. Run specific journey
+npx vitest run tests/e2e/auth-journey.e2e.test.ts
+```
+
 ## Test Files Created
 
 ### 1. **auth-journey.e2e.test.ts**
@@ -65,47 +78,49 @@ Tests the social media management workflow:
 
 ## Current Status
 
-✅ **Environment setup partially fixed** - Removed `beforeEach` hooks, now using 'syston' tenant
+✅ **Environment setup complete** - Test fixtures and utilities created
 
-⚠️ **10 out of 20 tests passing** - Test fixtures and database seeding still needed
+### Setup Components
 
-### Issues Fixed
-- ✅ Removed `beforeEach` hooks that accessed `env.KV_IDEMP`
-- ✅ Changed all tests to use 'syston' tenant from fixtures
-- ✅ Each test now registers its own user within the test
+1. **Test Fixtures** (`./fixtures/test-seed.sql`)
+   - Seeds 'syston' tenant with ID matching `TEST_TENANT.id`
+   - Creates test admin user, events, matches, and feed posts
+   - Run once before testing: `npx wrangler d1 execute DB --local --file=./tests/e2e/fixtures/test-seed.sql`
 
-### Remaining Issues
+2. **Test Utilities** (`./vitest.setup.ts`)
+   - `TEST_TENANT` - Consistent tenant configuration
+   - `generateTestEmail()` - Unique emails for each test
+   - `generateIdempotencyKey()` - Unique idempotency keys
+   - `createMockContext()` - Worker execution context
+   - `createTestRequest()` - Request builder with auth headers
 
-1. **Test fixtures not loaded** - The 'syston' tenant doesn't exist in test environment
-   ```
-   Registration returns 500 or empty auth tokens
-   ```
+### How to Run
 
-2. **Database tables missing** - Test database not seeded with schema
-   ```
-   D1_ERROR: no such table: matches: SQLITE_ERROR
-   ```
+```bash
+# First time setup
+cd backend
+npm install
+npx wrangler d1 execute DB --local --file=./tests/e2e/fixtures/test-seed.sql
 
-3. **Solution needed**: Set up proper test fixtures that seed:
-   - Tenant data ('syston' tenant in KV_IDEMP)
-   - Database schema (matches, users, events, etc.)
-   - Test environment bindings
+# Run all E2E tests
+npm test tests/e2e/
 
-### Solutions
+# Run with verbose output
+npx vitest run tests/e2e/ --reporter=verbose
+```
 
-**Option 1: Use Test Fixtures** (Recommended)
-- Create test fixture files that seed the database/KV with test data
-- Use the `syston` tenant which is already seeded in test fixtures
-- Remove `beforeEach` hooks that try to create tenant data
+### Troubleshooting
 
-**Option 2: Mock Environment Bindings**
-- Create mock implementations of KV, D1, R2 bindings
-- Use vitest's `vi.mock()` to inject mocked bindings
+**"no such table" errors**
+```bash
+# Apply all migrations first
+npx wrangler d1 migrations apply DB --local
+npx wrangler d1 execute DB --local --file=./tests/e2e/fixtures/test-seed.sql
+```
 
-**Option 3: Integration Test Approach**
-- Use real database seeded with test data
-- Run tests against a test environment with proper bindings
-- Clean up data after each test run
+**"tenant not found" errors**
+- Ensure test-seed.sql was run successfully
+- Check that TEST_TENANT.id matches seed file
 
 ## Running E2E Tests
 

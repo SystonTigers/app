@@ -1,13 +1,15 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeAll } from "vitest";
 import { env } from "cloudflare:test";
 import worker from "../../src/index";
+import {
+  TEST_TENANT,
+  generateTestEmail,
+  generateIdempotencyKey,
+  createMockContext,
+  parseResponse,
+} from "./vitest.setup";
 
-// Mock ExecutionContext for worker tests
-const mockCtx = {
-  waitUntil: () => { },
-  passThroughOnException: () => { },
-  props: {},
-} as unknown as ExecutionContext;
+const mockCtx = createMockContext();
 
 /**
  * E2E Test: Complete Authentication Journey
@@ -18,24 +20,24 @@ const mockCtx = {
  * 3. Token validation
  * 4. Authenticated API access
  *
- * Note: These tests use the existing 'syston' tenant from test fixtures
- * which should be seeded in the test environment
+ * Prerequisites: Run test-seed.sql to seed the test database
+ * @see ./fixtures/test-seed.sql
  */
 describe("E2E: Authentication Journey", () => {
-  const testEmail = `test-${Date.now()}@example.com`;
+  const testEmail = generateTestEmail();
   const testPassword = "SecurePassword123!";
   let authToken: string;
 
   it("completes full authentication journey: register -> login -> access protected resource", async () => {
-    // Step 1: Register new user (using syston tenant from fixtures)
+    // Step 1: Register new user (using test tenant from fixtures)
     const registerRequest = new Request("https://example.com/api/v1/auth/register", {
       method: "POST",
       headers: {
-        "content-type": "application/json",
-        "Idempotency-Key": `reg-${Date.now()}`,
+        "Content-Type": "application/json",
+        "Idempotency-Key": generateIdempotencyKey("reg"),
       },
       body: JSON.stringify({
-        tenant_id: "syston",
+        tenant_id: TEST_TENANT.id,
         email: testEmail,
         password: testPassword,
         profile: { name: "Test User" },
@@ -52,9 +54,9 @@ describe("E2E: Authentication Journey", () => {
     // Step 2: Login with credentials
     const loginRequest = new Request("https://example.com/api/v1/auth/login", {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        tenant_id: "syston",
+        tenant_id: TEST_TENANT.id,
         email: testEmail,
         password: testPassword,
       }),
@@ -99,9 +101,9 @@ describe("E2E: Authentication Journey", () => {
   it("handles invalid credentials correctly", async () => {
     const loginRequest = new Request("https://example.com/api/v1/auth/login", {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        tenant_id: "syston",
+        tenant_id: TEST_TENANT.id,
         email: "nonexistent@example.com",
         password: "WrongPassword123!",
       }),
