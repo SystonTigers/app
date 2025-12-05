@@ -2,13 +2,21 @@
 'use client';
 
 import React, { useState, useEffect, useRef, Suspense } from 'react';
-import { toPng } from 'html-to-image';
 import { ModernDarkTheme, MatchData } from '@/components/templates/ModernDark';
-// import { createClientSDK } from '@/lib/sdk'; // Unused
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || '/api/admin';
 
-export default function LiveMatchConsole({ params }: { params: { id: string } }) {
+export const dynamic = 'force-dynamic';
+
+export default function LiveMatchConsole(props: any) {
+    return (
+        <Suspense fallback={<div className="p-10 text-white">Loading Console...</div>}>
+            <LiveMatchConsoleContent {...props} />
+        </Suspense>
+    );
+}
+
+function LiveMatchConsoleContent({ params }: { params: { id: string } }) {
     const [match, setMatch] = useState<any>(null);
     const [players, setPlayers] = useState<any[]>([]);
     const [score, setScore] = useState({ home: 0, away: 0 });
@@ -62,6 +70,14 @@ export default function LiveMatchConsole({ params }: { params: { id: string } })
         return () => clearInterval(interval);
     }, [isTimerRunning, params.id]);
 
+    const resetForms = () => {
+        setSelectedScorer('');
+        setSelectedAssister('');
+        setCardPlayer('');
+        setSubIn('');
+        setSubOut('');
+    };
+
     // --- BROADCAST HELPER ---
     const broadcastEvent = async (eventData: MatchData, logText: string) => {
         setLatestEventData(eventData);
@@ -69,6 +85,8 @@ export default function LiveMatchConsole({ params }: { params: { id: string } })
         setTimeout(async () => {
             if (graphicRef.current) {
                 try {
+                    // Dynamic import to avoid SSR build errors
+                    const { toPng } = await import('html-to-image');
                     const dataUrl = await toPng(graphicRef.current, { cacheBust: true });
 
                     // Send directly to backend
@@ -100,18 +118,10 @@ export default function LiveMatchConsole({ params }: { params: { id: string } })
                     console.error('Failed to generate graphic', err);
                 }
             }
-        }, 500);
+        }, 1000);
 
         setModalMode(null);
         resetForms();
-    };
-
-    const resetForms = () => {
-        setSelectedScorer('');
-        setSelectedAssister('');
-        setCardPlayer('');
-        setSubIn('');
-        setSubOut('');
     };
 
     // --- HANDLERS ---
@@ -184,6 +194,19 @@ export default function LiveMatchConsole({ params }: { params: { id: string } })
         alert(`Chance logged at ${matchTime} mins for Video Editor 🎥`);
     };
 
+    const handleIntroGraphic = () => {
+        const data: MatchData = {
+            type: 'intro',
+            homeTeam: match.homeTeam,
+            awayTeam: match.awayTeam,
+            score: score,
+            competition: match.competition,
+            date: new Date().toLocaleDateString(),
+            themeColor: '#f97316'
+        };
+        broadcastEvent(data, `🎬 Highlights Intro Generated`);
+    };
+
     if (!match) return <div className="p-10 text-white">Loading...</div>;
 
     return (
@@ -249,6 +272,13 @@ export default function LiveMatchConsole({ params }: { params: { id: string } })
                 {/* SUBS */}
                 <button onClick={() => setModalMode('sub')} className="bg-blue-600 hover:bg-blue-500 h-20 rounded-xl text-xl font-bold col-span-2">
                     🔄 Substitution
+                </button>
+            </div>
+
+            {/* MEDIA EXTRAS */}
+            <div className="grid grid-cols-1 max-w-4xl mx-auto mb-10">
+                <button onClick={handleIntroGraphic} className="bg-pink-600 hover:bg-pink-500 h-16 rounded-xl text-xl font-bold flex items-center justify-center gap-2">
+                    <span>🎬</span> Generate Highlights Intro
                 </button>
             </div>
 

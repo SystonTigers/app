@@ -9,7 +9,7 @@ export interface MatchData {
     | 'countdown' | 'throwback' | 'second_half' | 'league_results'
     | 'week_fixtures' | 'next_fixture' | 'month_fixtures' | 'league_table'
     | 'cup_fixture' | 'cup_result' | 'motm_voting' | 'gotm_comp' | 'gotm_result'
-    | 'card' | 'sub';
+    | 'card' | 'sub' | 'intro';
     homeTeam: string;
     awayTeam?: string;
     homeBadge?: string;
@@ -378,6 +378,41 @@ export const ModernDarkTheme: React.FC<{ data: MatchData }> = ({ data }) => {
                 </div>
                 <div style={{ fontSize: 24, fontWeight: 600, letterSpacing: 1 }}>systontigers.com</div>
             </div>
+
+            {/* --- VARIATION: INTRO --- */}
+            {data.type === 'intro' && (
+                <div style={{ position: 'absolute', inset: 0, background: '#111', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
+                    <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.5 }}>
+                        <h2 style={{ fontSize: 100, fontWeight: 900, marginBottom: 40, letterSpacing: 5, textTransform: 'uppercase', background: `linear-gradient(to right, ${primaryColor}, #fff)`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', textAlign: 'center' }}>
+                            MATCH<br />HIGHLIGHTS
+                        </h2>
+                    </motion.div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 60, marginTop: 40 }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                            <div style={{ width: 220, height: 220, borderRadius: '50%', background: '#333', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 80, fontWeight: 'bold', marginBottom: 20, boxShadow: '0 10px 40px rgba(0,0,0,0.5)' }}>
+                                {data.homeTeam.substring(0, 2).toUpperCase()}
+                            </div>
+                            <h3 style={{ fontSize: 40, fontWeight: 'bold' }}>{data.homeTeam}</h3>
+                        </div>
+
+                        <div style={{ fontSize: 60, fontWeight: 'bold', color: '#888' }}>VS</div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                            <div style={{ width: 220, height: 220, borderRadius: '50%', background: '#333', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 80, fontWeight: 'bold', marginBottom: 20, boxShadow: '0 10px 40px rgba(0,0,0,0.5)' }}>
+                                {data.awayTeam?.substring(0, 2).toUpperCase()}
+                            </div>
+                            <h3 style={{ fontSize: 40, fontWeight: 'bold' }}>{data.awayTeam}</h3>
+                        </div>
+                    </div>
+
+                    <div style={{ marginTop: 80, fontSize: 35, color: '#aaa', fontWeight: 500, display: 'flex', gap: 40 }}>
+                        <span>{data.date}</span>
+                        <span>•</span>
+                        <span>{data.competition}</span>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
