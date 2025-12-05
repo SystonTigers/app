@@ -8,6 +8,8 @@ export interface Env {
   GAS_HMAC_SECRET: string;
   TEMPLATE_SPREADSHEET_ID: string;
   YOUTUBE_API_KEY: string;
+  PRINTIFY_API_TOKEN: string;
+  PRINTIFY_SHOP_ID: string;
 
   TENANTS: KVNamespace;
 }

@@ -18,6 +18,8 @@ export interface Env {
   SUPABASE_ANON_KEY: string;
   GITHUB_TOKEN: string;
   EXPO_ACCESS_TOKEN?: string;
+  PRINTIFY_API_TOKEN: string;
+  PRINTIFY_SHOP_ID: string;
 
   ALLOW_PUBLIC_APIS?: string;
   RESVG_WASM?: WebAssembly.Module;

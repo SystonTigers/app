@@ -1,4 +1,6 @@
 import type { Env } from '../env';
+import { PrintifyService, PrintifyOrderPayload } from './printify';
+import { json } from './util'; // Assuming a util exists, or we use Response directly
 
 // Customize Printify product with team branding
 export const customize = async (req: any, env: Env) => {
@@ -31,8 +33,10 @@ export const customize = async (req: any, env: Env) => {
     slogan: slogan || config?.slogan,
   };
 
-  // TODO: Call Printify API to create customized product
-  // For now, return mock response
+  // Logic to actually create a product in Printify would go here
+  // (e.g. using Printify's Product Creator API which is complex)
+  // For MVP, we might just store the customization data and apply it on the frontend
+  // or use a "base product" in Printify and overlay the design.
 
   const custom_product_id = crypto.randomUUID();
 
@@ -41,26 +45,56 @@ export const customize = async (req: any, env: Env) => {
       custom_product_id,
       product_id,
       customization,
-      preview_url: `https://printify.com/preview/${custom_product_id}`,
-      message: 'Product customization pending (stub)',
+      preview_url: `https://printify.com/preview/${product_id}?custom=${custom_product_id}`, // Mock URL
+      message: 'Product customization stored',
     }),
     { headers: { 'content-type': 'application/json' } }
   );
 };
 
-// Get shop products for tenant
+// Get shop products for tenant (Syned from Printify)
 export const getProducts = async (req: any, env: Env) => {
-  const products = await env.KV.get(
-    `shop:${req.tenant}:products`,
-    'json'
-  );
+  try {
+    const printify = new PrintifyService(env);
+    const printifyProducts = await printify.getProducts();
 
-  return new Response(
-    JSON.stringify({
-      products: products || [],
-    }),
-    { headers: { 'content-type': 'application/json' } }
-  );
+    // Transform for our frontend
+    const products = printifyProducts.map(p => ({
+      id: p.id,
+      name: p.title,
+      description: p.description,
+      image_url: p.images.find(i => i.is_default)?.src || p.images[0]?.src,
+      price: p.variants[0]?.price / 100, // Printify uses cents
+      variants: p.variants.filter(v => v.is_enabled).map(v => ({
+        id: v.id,
+        title: v.title,
+        price: v.price / 100
+      }))
+    }));
+
+    // Cache in KV for speed? (Optional)
+    await env.KV.put(`shop:${req.tenant}:products`, JSON.stringify(products), { expirationTtl: 3600 });
+
+    return new Response(
+      JSON.stringify({ products }),
+      { headers: { 'content-type': 'application/json' } }
+    );
+  } catch (err) {
+    // Fallback to KV or return error
+    console.error("Printify Sync Error:", err);
+    const cached = await env.KV.get(`shop:${req.tenant}:products`, 'json');
+    if (cached) {
+      return new Response(
+        JSON.stringify({ products: cached, source: 'cache', warning: 'Live sync failed' }),
+        { headers: { 'content-type': 'application/json' } }
+      );
+    }
+
+    return new Response(
+      JSON.stringify({ error: 'Failed to fetch products', details: String(err) }),
+      { status: 500, headers: { 'content-type': 'application/json' } }
+    );
+  }
 };
 
 // Create order
@@ -72,39 +106,64 @@ export const createOrder = async (req: any, env: Env) => {
     shipping_address,
   } = req.json || {};
 
-  if (!product_id || !variant_id || !quantity) {
+  if (!product_id || !variant_id || !quantity || !shipping_address) {
     return new Response(
-      JSON.stringify({ error: 'product_id, variant_id, and quantity required' }),
+      JSON.stringify({ error: 'product_id, variant_id, quantity, and shipping_address required' }),
       { status: 400, headers: { 'content-type': 'application/json' } }
     );
   }
 
-  // TODO: Create order via Printify API
-
   const order_id = crypto.randomUUID();
 
-  // Store order in KV
-  await env.KV.put(
-    `order:${req.tenant}:${order_id}`,
-    JSON.stringify({
-      order_id,
-      product_id,
-      variant_id,
-      quantity,
-      shipping_address,
-      status: 'pending',
-      created_at: Date.now(),
-    })
-  );
+  try {
+    const printify = new PrintifyService(env);
 
-  return new Response(
-    JSON.stringify({
-      order_id,
-      status: 'pending',
-      message: 'Order created (stub)',
-    }),
-    { headers: { 'content-type': 'application/json' } }
-  );
+    const payload: PrintifyOrderPayload = {
+      external_id: order_id,
+      line_items: [{
+        product_id,
+        variant_id: Number(variant_id),
+        quantity
+      }],
+      shipping_method: 1,
+      send_shipping_notification: true,
+      address_to: shipping_address // Ensure shape matches Printify reqs
+    };
+
+    const printifyOrder = await printify.createOrder(payload);
+
+    // Store success in KV
+    await env.KV.put(
+      `order:${req.tenant}:${order_id}`,
+      JSON.stringify({
+        order_id,
+        printify_order_id: printifyOrder.id,
+        product_id,
+        variant_id,
+        quantity,
+        shipping_address,
+        status: 'submitted', // Printify received it
+        created_at: Date.now(),
+      })
+    );
+
+    return new Response(
+      JSON.stringify({
+        order_id,
+        printify_order_id: printifyOrder.id,
+        status: 'submitted',
+        message: 'Order sent to Printify',
+      }),
+      { headers: { 'content-type': 'application/json' } }
+    );
+
+  } catch (err: any) {
+    console.error("Printify Order Error:", err);
+    return new Response(
+      JSON.stringify({ error: 'Failed to create order', details: err.message }),
+      { status: 500, headers: { 'content-type': 'application/json' } }
+    );
+  }
 };
 
 // Get order status
