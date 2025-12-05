@@ -1,7 +1,15 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import confetti from 'canvas-confetti';
+import { AnimatePresence, motion } from 'framer-motion';
+
+declare global {
+    interface Window {
+        onYouTubeIframeAPIReady: () => void;
+        YT: any;
+    }
+}
 
 interface LiveMatchPanelProps {
     matchData: any;
@@ -12,8 +20,13 @@ interface LiveMatchPanelProps {
 export function LiveMatchPanel({ matchData, liveUpdates: initialUpdates, tenant }: LiveMatchPanelProps) {
     const [liveUpdates, setLiveUpdates] = useState(initialUpdates);
     const [prevScore, setPrevScore] = useState(matchData?.score);
+    const playerRef = useRef<any>(null);
+    const [isReplayMode, setIsReplayMode] = useState(false);
 
     // Auto-refresh during live matches
+    const [lastEventId, setLastEventId] = useState<string | null>(null);
+    const [overlayEvent, setOverlayEvent] = useState<any>(null);
+
     useEffect(() => {
         if (matchData?.status !== 'live') return;
 
@@ -22,23 +35,41 @@ export function LiveMatchPanel({ matchData, liveUpdates: initialUpdates, tenant 
                 const response = await fetch(`/api/v1/matches/${matchData.id}/updates`);
                 const data = await response.json();
 
-                // Check for new goals
+                // Check for new goals or major events
                 if (data.score && prevScore) {
                     if (data.score.home > prevScore.home || data.score.away > prevScore.away) {
-                        // GOAL! Trigger celebration
                         fireConfetti();
                     }
                 }
 
-                setLiveUpdates(data.updates || []);
+                const newUpdates = data.updates || [];
+                setLiveUpdates(newUpdates);
                 setPrevScore(data.score);
+
+                // Detect NEW latest event for overlay
+                if (newUpdates.length > 0) {
+                    const latest = newUpdates[newUpdates.length - 1]; // items are appended? or verify order. Server sends DESC usually?
+                    // The server route says "ORDER BY minute ASC, ts ASC", so last is latest.
+
+                    if (latest.id !== lastEventId) {
+                        setLastEventId(latest.id);
+
+                        // Trigger Overlay for Goal
+                        if (latest.type === 'goal') {
+                            setOverlayEvent(latest);
+                            // Hide after 6 seconds
+                            setTimeout(() => setOverlayEvent(null), 6000);
+                        }
+                    }
+                }
+
             } catch (error) {
                 console.error('Failed to refresh live data:', error);
             }
-        }, 30000); // Refresh every 30 seconds
+        }, 5000); // Poll faster (5s) for live overlays
 
         return () => clearInterval(refreshInterval);
-    }, [matchData?.status, matchData?.id, prevScore]);
+    }, [matchData?.status, matchData?.id, prevScore, lastEventId]);
 
     const fireConfetti = () => {
         // Goal celebration!
@@ -69,6 +100,26 @@ export function LiveMatchPanel({ matchData, liveUpdates: initialUpdates, tenant 
         })();
     };
 
+    const performInstantReplay = () => {
+        if (playerRef.current && playerRef.current.seekTo) {
+            const currentTime = playerRef.current.getCurrentTime();
+            // Seek back 30 seconds for the goal
+            playerRef.current.seekTo(currentTime - 30, true);
+            setIsReplayMode(true);
+
+            // Auto-return to live after 20 seconds? Or let user click.
+        }
+    };
+
+    const returnToLive = () => {
+        if (playerRef.current && playerRef.current.seekTo) {
+            const duration = playerRef.current.getDuration();
+            // Seek to live edge
+            playerRef.current.seekTo(duration, true);
+            setIsReplayMode(false);
+        }
+    };
+
     if (!matchData) return null;
 
     const { youtubeLiveId, youtubeStatus, status, score, minute, homeTeam, awayTeam } = matchData;
@@ -77,6 +128,36 @@ export function LiveMatchPanel({ matchData, liveUpdates: initialUpdates, tenant 
     const withinWindow = now >= kickoff - 24 * 60 * 60 * 1000 && now <= kickoff + 3 * 60 * 60 * 1000;
     const showYouTube = withinWindow && youtubeLiveId && (youtubeStatus === 'live' || youtubeStatus === 'upcoming');
     const isActive = status === 'live' || status === 'halftime' || status === 'ft';
+
+    // Initialize YouTube API
+    useEffect(() => {
+        if (showYouTube && !playerRef.current) {
+            const tag = document.createElement('script');
+            tag.src = "https://www.youtube.com/iframe_api";
+            // Ensure we don't duplicate script
+            if (!document.querySelector('script[src*="youtube.com/iframe_api"]')) {
+                const firstScriptTag = document.getElementsByTagName('script')[0];
+                firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
+            }
+
+            window.onYouTubeIframeAPIReady = () => {
+                playerRef.current = new window.YT.Player('yt-player-frame', {
+                    videoId: youtubeLiveId,
+                    playerVars: {
+                        autoplay: 1,
+                        modestbranding: 1,
+                        playsinline: 1,
+                        rel: 0
+                    },
+                    events: {
+                        onStateChange: (event: any) => {
+                            // Detect if user manually seeks to live?
+                        }
+                    }
+                });
+            };
+        }
+    }, [showYouTube, youtubeLiveId]);
 
     const getEventIcon = (type: string, card?: string) => {
         switch (type) {
@@ -109,14 +190,84 @@ export function LiveMatchPanel({ matchData, liveUpdates: initialUpdates, tenant 
                     </div>
                 )}
 
-                {/* YouTube embed */}
-                <div className="relative pb-[56.25%] h-0 overflow-hidden">
-                    <iframe
-                        src={embedUrl}
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                        allowFullScreen
-                        className="absolute top-0 left-0 w-full h-full border-0"
-                    />
+                {/* YouTube embed container */}
+                <div className="relative pb-[56.25%] h-0 overflow-hidden bg-black group">
+                    <div id="yt-player-frame" className="absolute top-0 left-0 w-full h-full" />
+
+                    {/* Return to Live Button */}
+                    {isReplayMode && (
+                        <button
+                            onClick={returnToLive}
+                            className="absolute top-4 right-4 z-40 bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-full font-bold shadow-lg flex items-center gap-2 animate-bounce"
+                        >
+                            <span>🔴</span> RETURN TO LIVE
+                        </button>
+                    )}
+
+                    {/* --- BROADCAST OVERLAYS --- */}
+
+                    {/* 1. Scorebug (Top Left) */}
+                    {isActive && (
+                        <div className="absolute top-4 left-4 z-20 flex flex-col font-sans">
+                            {/* Main Bar */}
+                            <div className="flex items-center shadow-lg overflow-hidden rounded-md">
+                                {/* Home */}
+                                <div className="bg-white text-gray-900 px-3 py-1 font-bold flex items-center gap-2 min-w-[80px] justify-between border-r border-gray-200">
+                                    <span>{homeTeam.substring(0, 3).toUpperCase()}</span>
+                                    {isActive && <span className="bg-gray-800 text-white px-1.5 rounded text-sm">{score?.home ?? 0}</span>}
+                                </div>
+
+                                {/* Time / Status */}
+                                <div className="bg-gray-900 text-white px-3 py-1 text-sm font-mono font-bold min-w-[60px] text-center border-r border-gray-700">
+                                    {status === 'halftime' ? 'HT' : status === 'ft' ? 'FT' : `${minute}'`}
+                                </div>
+
+                                {/* Away */}
+                                <div className="bg-white text-gray-900 px-3 py-1 font-bold flex items-center gap-2 min-w-[80px] justify-between">
+                                    {isActive && <span className="bg-gray-800 text-white px-1.5 rounded text-sm">{score?.away ?? 0}</span>}
+                                    <span>{awayTeam.substring(0, 3).toUpperCase()}</span>
+                                </div>
+                            </div>
+                            {/* Branding / Tagline usually below */}
+                            <div className="bg-green-600 text-white text-[10px] uppercase font-bold text-center py-0.5 rounded-b-md mx-2 shadow-sm">
+                                Live Match
+                            </div>
+                        </div>
+                    )}
+
+                    {/* 2. Goal Overlay (Bottom Center) */}
+                    <AnimatePresence>
+                        {overlayEvent && overlayEvent.type === 'goal' && (
+                            <motion.div
+                                initial={{ y: 100, opacity: 0, scale: 0.8 }}
+                                animate={{ y: 0, opacity: 1, scale: 1 }}
+                                exit={{ y: 50, opacity: 0 }}
+                                className="absolute bottom-8 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center"
+                            >
+                                <div className="bg-white rounded-lg shadow-2xl overflow-hidden flex flex-col items-center min-w-[300px] border-2 border-green-500">
+                                    <div className="bg-green-600 text-white w-full text-center py-1 font-black text-xl italic tracking-wider animate-pulse">
+                                        GOAL!
+                                    </div>
+                                    <div className="p-4 flex flex-col items-center">
+                                        {/* Scorer Name - Try to parse from text or use extra field */}
+                                        <h3 className="text-2xl font-bold text-gray-900 uppercase">
+                                            {overlayEvent.text?.replace('GOAL! ', '').split('scores')[0] || overlayEvent.extra?.player_name || 'GOAL'}
+                                        </h3>
+
+                                        {/* Updated Score */}
+                                        <div className="text-4xl font-black text-gray-800 mt-2">
+                                            {score?.home ?? 0} - {score?.away ?? 0}
+                                        </div>
+
+                                        <div className="text-gray-500 text-sm font-mono mt-1">
+                                            {overlayEvent.minute}'
+                                        </div>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+
                 </div>
 
                 {/* Premium scoreboard */}

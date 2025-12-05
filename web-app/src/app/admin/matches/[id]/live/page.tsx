@@ -1,10 +1,12 @@
 
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { toPng } from 'html-to-image';
 import { ModernDarkTheme, MatchData } from '@/components/templates/ModernDark';
-import { createClientSDK } from '@/lib/sdk';
+// import { createClientSDK } from '@/lib/sdk'; // Unused
+
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE || '/api/admin';
 
 export default function LiveMatchConsole({ params }: { params: { id: string } }) {
     const [match, setMatch] = useState<any>(null);
@@ -68,8 +70,32 @@ export default function LiveMatchConsole({ params }: { params: { id: string } })
             if (graphicRef.current) {
                 try {
                     const dataUrl = await toPng(graphicRef.current, { cacheBust: true });
-                    console.log('BROADCASTING:', { text: logText, image: dataUrl.substring(0, 50) + '...' });
-                    alert(`Posted: ${logText}`);
+
+                    // Send directly to backend
+                    const res = await fetch(`${API_BASE}/api/v1/matches/${match.id}/events`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            type: eventData.type,
+                            minute: matchTime,
+                            text: logText,
+                            image: dataUrl, // base64 graphic
+                            team: selectedTeam,
+                            extra: {
+                                assister: eventData.scorers?.[0]?.assister,
+                                player_name: eventData.scorers?.[0]?.name || eventData.card?.player || eventData.sub?.in
+                            }
+                        })
+                    });
+
+                    if (res.ok) {
+                        const json = await res.json();
+                        console.log('Event created:', json);
+                        alert(`Posted to Feed: ${logText}`);
+                    } else {
+                        console.error('API Error:', await res.text());
+                        alert('Failed to post event. Check console.');
+                    }
                 } catch (err) {
                     console.error('Failed to generate graphic', err);
                 }

@@ -18,7 +18,6 @@
   "dependencies": {
     "@team-platform/sdk": "file:../packages/sdk",
     "@team-platform/types": "file:../packages/types",
-    "@types/canvas-confetti": "^1.9.0",
     "axios": "^1.6.0",
     "canvas-confetti": "^1.9.4",
     "framer-motion": "^12.23.25",
@@ -31,6 +30,7 @@
   "devDependencies": {
     "@next/bundle-analyzer": "^16.0.5",
     "@playwright/test": "^1.57.0",
+    "@types/canvas-confetti": "^1.9.0",
     "@types/node": "^20.0.0",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",

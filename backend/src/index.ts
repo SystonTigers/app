@@ -202,7 +202,11 @@ router.delete("/api/:v/events/:id/rsvp", (req, env, corsHdrs, requestId) => {
 });
 
 // Match Routes
-import { handleMatchUpdates } from "./routes/matches";
+import { handleMatchUpdates, handleCreateMatchEvent } from "./routes/matches";
+router.post("/api/:v/matches/:id/events", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleCreateMatchEvent(req, env, corsHdrs, params.id);
+});
 router.get("/api/:v/matches/:id/updates", (req, env, corsHdrs) => {
     const params = (req as any).params || {};
     return handleMatchUpdates(req, env, corsHdrs, params.id);

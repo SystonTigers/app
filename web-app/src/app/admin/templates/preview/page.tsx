@@ -1,21 +1,22 @@
 
+'use client';
 import React, { useState, useRef, useCallback } from 'react';
 import { toPng } from 'html-to-image';
-import { ModernDarkTheme, MatchData } from '../../components/templates/ModernDark';
-import { MinimalistLightArgs } from '../../components/templates/MinimalistLight';
-import { ImpactNeon } from '../../components/templates/ImpactNeon';
-import { RetroPixel } from '../../components/templates/RetroPixel';
-import { GrungeUrban } from '../../components/templates/GrungeUrban';
-import { CorporatePro } from '../../components/templates/CorporatePro';
-import { GlassMorphism } from '../../components/templates/GlassMorphism';
-import { SidelineChaos } from '../../components/templates/SidelineChaos';
-import { VintageClassic } from '../../components/templates/VintageClassic';
-import { BroadcastTV } from '../../components/templates/BroadcastTV';
-import { ComicBook } from '../../components/templates/ComicBook';
-import { BlueprintTech } from '../../components/templates/BlueprintTech';
-import { TradingCard } from '../../components/templates/TradingCard';
-import { GlitchCyber } from '../../components/templates/GlitchCyber';
-import { EditorialMag } from '../../components/templates/EditorialMag';
+import { ModernDarkTheme, MatchData } from '@/components/templates/ModernDark';
+import { MinimalistLightArgs } from '@/components/templates/MinimalistLight';
+import { ImpactNeon } from '@/components/templates/ImpactNeon';
+import { RetroPixel } from '@/components/templates/RetroPixel';
+import { GrungeUrban } from '@/components/templates/GrungeUrban';
+import { CorporatePro } from '@/components/templates/CorporatePro';
+import { GlassMorphism } from '@/components/templates/GlassMorphism';
+import { SidelineChaos } from '@/components/templates/SidelineChaos';
+import { VintageClassic } from '@/components/templates/VintageClassic';
+import { BroadcastTV } from '@/components/templates/BroadcastTV';
+import { ComicBook } from '@/components/templates/ComicBook';
+import { BlueprintTech } from '@/components/templates/BlueprintTech';
+import { TradingCard } from '@/components/templates/TradingCard';
+import { GlitchCyber } from '@/components/templates/GlitchCyber';
+import { EditorialMag } from '@/components/templates/EditorialMag';
 
 export default function TemplateReview() {
     const [activeTab, setActiveTab] = useState<'fixture' | 'goal' | 'result' | 'squad'>('fixture');
