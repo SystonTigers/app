@@ -13,6 +13,7 @@ enabled = true
 binding = "DB"
 database_name = "syston-db-local"
 database_id = "local-db-id"
+migrations_dir = "migrations"
 
 # Default KV bindings for local development and testing
 [[kv_namespaces]]
@@ -27,6 +28,18 @@ id = "local-idemp-kv"
 binding = "FEATURE_FLAGS"
 id = "local-flags-kv"
 
+# Default vars for local development and testing
+[vars]
+API_VERSION = "v1"
+JWT_SECRET = "test-secret-key-at-least-32-characters-long"
+JWT_ISSUER = "test-issuer"
+JWT_AUDIENCE = "syston-mobile"
+ENVIRONMENT = "development"
+ADMIN_CONSOLE_URL = "http://localhost:3000"
+# SECURITY: DISABLE_RATE_LIMITING - Only uncomment for local dev without KV
+# NEVER enable in production/preview - rate limiting fails closed by default
+# DISABLE_RATE_LIMITING = "true"
+
 # ─────────────────────────────────────────────────────────
 # PRODUCTION ENVIRONMENT
 # ─────────────────────────────────────────────────────────
@@ -39,8 +52,6 @@ API_VERSION = "v1"
 JWT_ISSUER = "syston.app"
 JWT_AUDIENCE = "syston-mobile"
 APP_VERSION = "7.0.0"
-TEMPLATE_SPREADSHEET_ID = "1YourTemplateSpreadsheetId"
-YOUTUBE_API_KEY = "AIzaSyREPLACE"
 FIXTURES_REFRESH_URL = "https://syston-fixtures.team-platform-2025.workers.dev/refresh"
 ALLOWED_WEBHOOK_HOSTS = "hook.make.com,hook.eu2.make.com,hook.us1.make.com,*.make.com,webhook.site"
 SETUP_URL = "https://setup-console.team-platform-2025.workers.dev"
@@ -56,18 +67,24 @@ RESEND_FROM_EMAIL = "onboarding@syston.app"
 # Environment-specific vars
 WORKER_BASE_URL = "https://app.team-platform-2025.workers.dev"
 ENVIRONMENT = "production"
-# BACKEND_API_KEY - Set via: wrangler secret put BACKEND_API_KEY --env production
-PYTHON_COACHING_SERVICE_URL = "http://localhost:8000"
-GAS_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbwMEAZaXwn_1mvpa_XWFB4ywU8oP795NFVyVu6RmyCXpLIOA0MurWVVuWbocmWakF3O/exec"
-# GAS_HMAC_SECRET - Set via: wrangler secret put GAS_HMAC_SECRET --env production
-SUPABASE_URL = "https://prod-supabase.example.com"
-SUPABASE_ANON_KEY = "prod-anon-key"
-SUPABASE_SERVICE_ROLE = "prod-service-role"
-EBAY_CLIENT_ID = "prod-ebay-client-id"
-EBAY_CLIENT_SECRET = "prod-ebay-client-secret"
-SENTRY_DSN = "https://prod-sentry.example.com/1"
 DRY_RUN = "false"
 MAKE_VALIDATE_STRICT = "true"
+# ─────────────────────────────────────────────────────────
+# SECRETS - Must be set via wrangler secret put --env production
+# ─────────────────────────────────────────────────────────
+# JWT_SECRET - wrangler secret put JWT_SECRET --env production
+# YOUTUBE_API_KEY - wrangler secret put YOUTUBE_API_KEY --env production
+# TEMPLATE_SPREADSHEET_ID - wrangler secret put TEMPLATE_SPREADSHEET_ID --env production
+# BACKEND_API_KEY - wrangler secret put BACKEND_API_KEY --env production
+# GAS_WEBAPP_URL - wrangler secret put GAS_WEBAPP_URL --env production
+# GAS_HMAC_SECRET - wrangler secret put GAS_HMAC_SECRET --env production
+# SUPABASE_URL - wrangler secret put SUPABASE_URL --env production
+# SUPABASE_ANON_KEY - wrangler secret put SUPABASE_ANON_KEY --env production
+# SUPABASE_SERVICE_ROLE - wrangler secret put SUPABASE_SERVICE_ROLE --env production
+# EBAY_CLIENT_ID - wrangler secret put EBAY_CLIENT_ID --env production
+# EBAY_CLIENT_SECRET - wrangler secret put EBAY_CLIENT_SECRET --env production
+# SENTRY_DSN - wrangler secret put SENTRY_DSN --env production
+# PYTHON_COACHING_SERVICE_URL - wrangler secret put PYTHON_COACHING_SERVICE_URL --env production
 
 [[env.production.kv_namespaces]]
 binding = "TENANTS"
@@ -149,8 +166,6 @@ API_VERSION = "v1"
 JWT_ISSUER = "syston.app"
 JWT_AUDIENCE = "syston-mobile"
 APP_VERSION = "7.0.0"
-TEMPLATE_SPREADSHEET_ID = "1YourTemplateSpreadsheetId"
-YOUTUBE_API_KEY = "AIzaSyREPLACE"
 FIXTURES_REFRESH_URL = "https://syston-fixtures.team-platform-2025.workers.dev/refresh"
 ALLOWED_WEBHOOK_HOSTS = "hook.make.com,hook.eu2.make.com,hook.us1.make.com,*.make.com,webhook.site"
 SETUP_URL = "https://setup-console.team-platform-2025.workers.dev"
@@ -166,18 +181,24 @@ RESEND_FROM_EMAIL = "onboarding@syston.app"
 # Environment-specific vars
 WORKER_BASE_URL = "https://app-preview.team-platform-2025.workers.dev"
 ENVIRONMENT = "preview"
-# BACKEND_API_KEY - Set via: wrangler secret put BACKEND_API_KEY --env preview
-PYTHON_COACHING_SERVICE_URL = "http://localhost:8000"
-GAS_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbwMEAZaXwn_1mvpa_XWFB4ywU8oP795NFVyVu6RmyCXpLIOA0MurWVVuWbocmWakF3O/exec"
-# GAS_HMAC_SECRET - Set via: wrangler secret put GAS_HMAC_SECRET --env preview
-SUPABASE_URL = "https://preview-supabase.example.com"
-SUPABASE_ANON_KEY = "preview-anon-key"
-SUPABASE_SERVICE_ROLE = "preview-service-role"
-EBAY_CLIENT_ID = "preview-ebay-client-id"
-EBAY_CLIENT_SECRET = "preview-ebay-client-secret"
-SENTRY_DSN = "https://preview-sentry.example.com/1"
 DRY_RUN = "true"
 MAKE_VALIDATE_STRICT = "false"
+# ─────────────────────────────────────────────────────────
+# SECRETS - Must be set via wrangler secret put --env preview
+# ─────────────────────────────────────────────────────────
+# JWT_SECRET - wrangler secret put JWT_SECRET --env preview
+# YOUTUBE_API_KEY - wrangler secret put YOUTUBE_API_KEY --env preview
+# TEMPLATE_SPREADSHEET_ID - wrangler secret put TEMPLATE_SPREADSHEET_ID --env preview
+# BACKEND_API_KEY - wrangler secret put BACKEND_API_KEY --env preview
+# GAS_WEBAPP_URL - wrangler secret put GAS_WEBAPP_URL --env preview
+# GAS_HMAC_SECRET - wrangler secret put GAS_HMAC_SECRET --env preview
+# SUPABASE_URL - wrangler secret put SUPABASE_URL --env preview
+# SUPABASE_ANON_KEY - wrangler secret put SUPABASE_ANON_KEY --env preview
+# SUPABASE_SERVICE_ROLE - wrangler secret put SUPABASE_SERVICE_ROLE --env preview
+# EBAY_CLIENT_ID - wrangler secret put EBAY_CLIENT_ID --env preview
+# EBAY_CLIENT_SECRET - wrangler secret put EBAY_CLIENT_SECRET --env preview
+# SENTRY_DSN - wrangler secret put SENTRY_DSN --env preview
+# PYTHON_COACHING_SERVICE_URL - wrangler secret put PYTHON_COACHING_SERVICE_URL --env preview
 
 [[env.preview.kv_namespaces]]
 binding = "TENANTS"

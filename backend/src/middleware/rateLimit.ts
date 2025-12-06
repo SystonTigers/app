@@ -47,11 +47,13 @@ export async function rateLimit(
 ): Promise<RateLimitResult> {
   const environment = env.ENVIRONMENT || env.NODE_ENV || "development";
 
-  // ✅ SECURITY FIX: Still allow non-production, but log warning
-  if (environment !== "production") {
+  // ✅ SECURITY: Only bypass rate limiting if EXPLICITLY disabled
+  // This must be set intentionally (e.g., for local development tests)
+  // Never bypass automatically based on environment name alone
+  if (env.DISABLE_RATE_LIMITING === "true") {
     logJSON({
       level: "warn",
-      msg: "rate_limit_bypassed_non_production",
+      msg: "rate_limit_explicitly_disabled",
       environment,
       path: options.path || new URL(request.url).pathname
     });
@@ -60,13 +62,29 @@ export async function rateLimit(
 
   const kv = env.RATE_LIMIT_KV;
 
-  // ✅ SECURITY FIX: Fail closed if KV not configured in production
+  // ✅ SECURITY: Fail closed if KV not configured
+  // In local development without KV, use DISABLE_RATE_LIMITING=true explicitly
   if (!kv) {
+    // For local development without KV, allow with warning
+    if (environment === "development" || environment === "test") {
+      logJSON({
+        level: "warn",
+        msg: "rate_limit_kv_missing_dev",
+        environment,
+        path: options.path || new URL(request.url).pathname,
+        recommendation: "Set DISABLE_RATE_LIMITING=true for local dev or configure RATE_LIMIT_KV"
+      });
+      return { ok: true };
+    }
+
+    // In preview/production, fail closed
     logJSON({
       level: "error",
       msg: "rate_limit_kv_not_configured",
       status: 503,
-      path: options.path || new URL(request.url).pathname
+      environment,
+      path: options.path || new URL(request.url).pathname,
+      alert: true
     });
     return {
       ok: false,
