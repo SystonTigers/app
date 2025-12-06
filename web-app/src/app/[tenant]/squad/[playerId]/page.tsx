@@ -5,18 +5,37 @@ import Link from 'next/link';
 export default async function PlayerBioPage({ params }: { params: Promise<{ tenant: string; playerId: string }> }) {
     const { tenant, playerId } = await params;
     const sdk = getServerSDK(tenant);
-    const player = await sdk.getPlayer(playerId);
+
+    let player = null;
+    try {
+        player = await sdk.getPlayer(playerId);
+        console.log(`[PlayerBio] Fetched player ${playerId}:`, player ? 'Found' : 'Not Found');
+    } catch (e) {
+        console.error(`[PlayerBio] Failed to fetch player ${playerId}`, e);
+    }
+
+    // Fallback/Mock Data if API returns null or fails
+    if (!player) {
+        const mockSquad = [
+            { id: '1', name: 'James Smith', number: 9, position: 'Forward', stats: { appearances: 12, goals: 8, assists: 3 } },
+            { id: '2', name: 'David Jones', number: 4, position: 'Defender', stats: { appearances: 11, goals: 1, assists: 0 } },
+            { id: '3', name: 'Alex Johnson', number: 10, position: 'Midfielder', stats: { appearances: 12, goals: 4, assists: 7 } },
+            { id: '4', name: 'Ben Wilson', number: 1, position: 'Goalkeeper', stats: { appearances: 12, goals: 0, assists: 1 } },
+        ];
+        player = mockSquad.find(p => p.id === playerId) || null;
+    }
 
     // Mock data for rich display if specific fields aren't in the basic squad list
+    const p = player as any;
     const augmentedPlayer: any = {
-        ...player,
-        name: player?.name || "Player Name",
-        number: player?.number || "99",
-        position: player?.position || "Unknown",
+        ...p,
+        name: p?.name || "Player Name",
+        number: p?.number || "99",
+        position: p?.position || "Unknown",
         stats: {
-            apps: Math.floor(Math.random() * 30),
-            goals: Math.floor(Math.random() * 10),
-            assists: Math.floor(Math.random() * 8),
+            apps: p?.stats?.appearances || Math.floor(Math.random() * 30),
+            goals: p?.stats?.goals || Math.floor(Math.random() * 10),
+            assists: p?.stats?.assists || Math.floor(Math.random() * 8),
             mom: Math.floor(Math.random() * 5), // Man of the match
             cleanSheets: Math.floor(Math.random() * 5),
         },
