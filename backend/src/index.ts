@@ -69,6 +69,14 @@ import {
     handleDeleteTrainingSession,
     handleGetJobStatus
 } from "./routes/coaching";
+import { handleProductSync, handleGetProducts } from "./routes/shop/products";
+import {
+    handleCreateCart,
+    handleGetCart,
+    handleAddToCart,
+    handleRemoveFromCart
+} from "./routes/shop/cart";
+import { handleCreateCheckout, handleStripeWebhook } from "./routes/shop/checkout";
 // Export Durable Objects
 export { TenantRateLimiter } from "./do/rateLimiter";
 export { VotingRoom } from "./do/votingRoom";
@@ -93,6 +101,21 @@ router.get("/readyz", async (req, env) => {
 router.get("/public/*", async (req, env, corsHdrs, requestId) => {
     return handlePublicTenantRequest(req, env, new URL(req.url), corsHdrs, requestId);
 });
+
+// Shop Routes
+router.post("/api/:v/shop/products/sync", (req, env, corsHdrs) => handleProductSync(req, env, corsHdrs));
+router.get("/api/:v/shop/products", (req, env, corsHdrs) => handleGetProducts(req, env, corsHdrs));
+
+// Cart Routes
+router.post("/api/:v/shop/cart", (req, env, corsHdrs) => handleCreateCart(req, env, corsHdrs));
+router.get("/api/:v/shop/cart/:id", (req, env, corsHdrs) => handleGetCart(req, env, corsHdrs));
+router.post("/api/:v/shop/cart/:id/items", (req, env, corsHdrs) => handleAddToCart(req, env, corsHdrs));
+router.delete("/api/:v/shop/cart/:id/items", (req, env, corsHdrs) => handleRemoveFromCart(req, env, corsHdrs));
+
+// Checkout Routes
+router.post("/api/:v/shop/checkout", (req, env, corsHdrs) => handleCreateCheckout(req, env, corsHdrs));
+// Stripe Webhook (No version prefix needed, publicly accessible)
+router.post("/api/webhooks/stripe", (req, env) => handleStripeWebhook(req, env));
 
 // Auth Routes
 router.post("/api/:v/auth/register", (req, env, corsHdrs) => handleAuthRegister(req, env, corsHdrs));
@@ -439,6 +462,11 @@ router.get("/api/:v/coaching/jobs/:id", (req, env, corsHdrs, requestId) => {
 // Squad Routes
 import { handleUpdateSquad } from "./routes/squad";
 router.post("/api/:v/squad", (req, env, corsHdrs) => handleUpdateSquad(req, env, corsHdrs));
+
+// Tactics Routes
+import { handleSaveTactics, handleGetTactics } from "./routes/tactics";
+router.post("/api/:v/tactics", (req, env, corsHdrs) => handleSaveTactics(req, env, corsHdrs));
+router.get("/api/:v/tactics", (req, env, corsHdrs) => handleGetTactics(req, env, corsHdrs));
 
 // Content Routes
 import {

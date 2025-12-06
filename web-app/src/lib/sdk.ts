@@ -40,7 +40,7 @@ async function http<T>(url: string, init?: RequestInit): Promise<T> {
       throw error;
     }
     const data = await res.json();
-    console.log('[SDK] Response data:', data);
+    // console.log('[SDK] Response data:', data);
     return data as T;
   } catch (e) {
     console.error('API fetch failed', { url, init, error: e });
@@ -299,6 +299,14 @@ export type AnySDK = {
   listResults: () => Promise<Array<Record<string, unknown>>>;
   listLiveUpdates: (fixtureId: string) => Promise<Array<Record<string, unknown>>>;
   getPlayer: (id: string) => Promise<Record<string, unknown> | null>;
+
+  // Shop
+  getShopProducts: () => Promise<Array<Record<string, unknown>>>;
+  createCart: () => Promise<{ success: boolean; cart: any }>;
+  getCart: (cartId: string) => Promise<{ success: boolean; cart: any }>;
+  addToCart: (cartId: string, variantId: string, quantity: number) => Promise<{ success: boolean; cart: any }>;
+  removeFromCart: (cartId: string, variantId: string) => Promise<{ success: boolean; cart: any }>;
+  createCheckoutSession: (cartId: string, email: string) => Promise<{ success: boolean; sessionId: string; url: string }>;
 };
 
 // One shared instance; hook these up to real calls later as needed
@@ -326,6 +334,14 @@ const compat: AnySDK = {
   listResults: async () => [],
   listLiveUpdates: async () => [],
   getPlayer: async () => null,
+
+  // Shop mocks
+  getShopProducts: async () => [],
+  createCart: async () => ({ success: true, cart: { items: [] } }),
+  getCart: async () => ({ success: true, cart: { items: [] } }),
+  addToCart: async () => ({ success: true, cart: { items: [] } }),
+  removeFromCart: async () => ({ success: true, cart: { items: [] } }),
+  createCheckoutSession: async () => ({ success: true, sessionId: 'mock', url: '#' }),
 };
 
 // Client SDK implementation
@@ -368,6 +384,45 @@ class ClientSDK implements AnySDK {
   async getPlayer(id: string) {
     const squad = await this.getSquad();
     return squad.find(p => p.id === id) || null;
+  }
+
+  // Shop
+  async getShopProducts() {
+    return http<any[]>(`${API_BASE}/api/v1/shop/products?tenant=${this.tenantId}`);
+  }
+
+  async createCart() {
+    return http<{ success: true; cart: any }>(
+      `${API_BASE}/api/v1/shop/cart`,
+      { method: 'POST', body: JSON.stringify({ tenantId: this.tenantId }) }
+    );
+  }
+
+  async getCart(cartId: string) {
+    return http<{ success: true; cart: any }>(
+      `${API_BASE}/api/v1/shop/cart/${cartId}`
+    );
+  }
+
+  async addToCart(cartId: string, variantId: string, quantity: number) {
+    return http<{ success: true; cart: any }>(
+      `${API_BASE}/api/v1/shop/cart/${cartId}/items`,
+      { method: 'POST', body: JSON.stringify({ variantId, quantity }) }
+    );
+  }
+
+  async removeFromCart(cartId: string, variantId: string) {
+    return http<{ success: true; cart: any }>(
+      `${API_BASE}/api/v1/shop/cart/${cartId}/items`,
+      { method: 'DELETE', body: JSON.stringify({ variantId }) }
+    );
+  }
+
+  async createCheckoutSession(cartId: string, email: string) {
+    return http<{ success: true; sessionId: string; url: string }>(
+      `${API_BASE}/api/v1/shop/checkout`,
+      { method: 'POST', body: JSON.stringify({ cartId, customerEmail: email }) }
+    );
   }
 
   // Fallback to compat/mocks for others

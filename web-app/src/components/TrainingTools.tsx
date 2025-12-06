@@ -38,6 +38,10 @@ interface TacticsConfig {
     defensiveLine: 'deep' | 'medium' | 'high';
     width: 'narrow' | 'normal' | 'wide';
     setPlayFocus: string[];
+    phases?: {
+        attacking?: any;
+        defensive?: any;
+    };
 }
 
 interface TacticalReview {
@@ -60,6 +64,10 @@ interface TrainingToolsProps {
 export function TrainingTools({ tenant }: TrainingToolsProps) {
     const [sessions, setSessions] = useState<TrainingSession[]>([]);
     const [drills, setDrills] = useState<Drill[]>([]);
+    const [showNewDrillModal, setShowNewDrillModal] = useState(false);
+    const [newDrill, setNewDrill] = useState<Partial<Drill>>({
+        name: '', category: 'Technical', duration: '15 min', difficulty: 'intermediate', description: ''
+    });
     const [selectedSession, setSelectedSession] = useState<TrainingSession | null>(null);
     const [loading, setLoading] = useState(true);
     const [view, setView] = useState<'sessions' | 'drills' | 'performance' | 'tactics'>('sessions');
@@ -74,6 +82,8 @@ export function TrainingTools({ tenant }: TrainingToolsProps) {
     ]);
 
     // Tactics configuration state
+    // Tactics configuration state
+    const [phase, setPhase] = useState<'attacking' | 'defensive'>('attacking');
     const [tactics, setTactics] = useState<TacticsConfig>({
         formation: '4-4-2',
         playingStyle: 'Balanced',
@@ -82,6 +92,10 @@ export function TrainingTools({ tenant }: TrainingToolsProps) {
         defensiveLine: 'medium',
         width: 'normal',
         setPlayFocus: ['corners', 'free-kicks'],
+        phases: {
+            attacking: { width: 'wide', tempo: 'fast' },
+            defensive: { width: 'narrow', aggression: 'medium' }
+        }
     });
 
     // Tactical AI reviews
@@ -95,7 +109,74 @@ export function TrainingTools({ tenant }: TrainingToolsProps) {
     useEffect(() => {
         loadSessions();
         loadDrills();
+        loadTactics();
     }, [tenant]);
+
+    const loadTactics = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            const res = await fetch('/api/v1/tactics', {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            const data = await res.json();
+            if (data.success && data.data) {
+                setTactics(data.data);
+            }
+        } catch (error) {
+            console.error('Failed to load tactics:', error);
+        }
+    };
+
+    const saveTactics = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            const res = await fetch('/api/v1/tactics', {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(tactics)
+            });
+            const data = await res.json();
+            if (data.success) {
+                alert('Tactics saved successfully!');
+            } else {
+                alert('Failed to save tactics');
+            }
+        } catch (error) {
+            console.error('Failed to save tactics:', error);
+            alert('Error saving tactics');
+        }
+    };
+
+    const createDrill = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            const res = await fetch('/api/v1/training/drills', {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    items: [], // Mocking required field equipment/players for now if needed, or update backend to be optional
+                    ...newDrill,
+                    players: '10+',
+                    equipment: ['Cones', 'Bibs'],
+                    focus: ['Skill']
+                })
+            });
+            const data = await res.json();
+            if (data.success) {
+                loadDrills();
+                setShowNewDrillModal(false);
+                setNewDrill({ name: '', category: 'Technical', duration: '15 min', difficulty: 'intermediate', description: '' });
+            }
+        } catch (error) {
+            console.error('Failed to create drill:', error);
+        }
+    };
 
     const loadSessions = async () => {
         try {
@@ -327,11 +408,11 @@ export function TrainingTools({ tenant }: TrainingToolsProps) {
                                 </div>
                                 <div className="p-6">
                                     <div className="grid grid-cols-3 gap-3 mb-6">
-                                        {['4-4-2', '4-3-3', '3-5-2', '4-2-3-1', '5-3-2', '4-1-4-1'].map((f) => (
+                                        {['4-4-2', '4-3-3', '3-5-2', '4-2-3-1', '5-3-2', '4-1-4-1', '3-4-2-1', '3-4-3', '4-1-2-1-2'].map((f) => (
                                             <button
                                                 key={f}
                                                 onClick={() => setTactics({ ...tactics, formation: f })}
-                                                className={`p-4 rounded-xl font-black text-lg transition-all ${tactics.formation === f
+                                                className={`p-4 rounded-xl font-black text-sm transition-all ${tactics.formation === f
                                                     ? 'bg-brand text-white shadow-lg scale-105'
                                                     : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                                                     }`}
@@ -435,9 +516,90 @@ export function TrainingTools({ tenant }: TrainingToolsProps) {
                                         </div>
                                     </div>
 
-                                    <button className="w-full py-4 bg-gradient-to-r from-brand to-green-600 text-white font-black uppercase tracking-wider rounded-xl hover:scale-[1.02] transition-transform shadow-lg">
+                                    <button
+                                        onClick={saveTactics}
+                                        className="w-full py-4 bg-gradient-to-r from-brand to-green-600 text-white font-black uppercase tracking-wider rounded-xl hover:scale-[1.02] transition-transform shadow-lg"
+                                    >
                                         Save Tactics
                                     </button>
+                                </div>
+                            </div>
+
+                            {/* Phase Configuration */}
+                            <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700 overflow-hidden shadow-sm">
+                                <div className="p-6 border-b border-gray-100 dark:border-gray-700 bg-gray-900 flex justify-between items-center">
+                                    <h3 className="font-black text-xl uppercase tracking-tight text-white">Phase Specific Instructions</h3>
+                                    <div className="flex bg-white/10 p-1 rounded-lg">
+                                        <button
+                                            onClick={() => setPhase('attacking')}
+                                            className={`px-4 py-1 rounded-md text-sm font-bold transition-all ${phase === 'attacking' ? 'bg-brand text-white' : 'text-white/70'}`}
+                                        >
+                                            Attacking
+                                        </button>
+                                        <button
+                                            onClick={() => setPhase('defensive')}
+                                            className={`px-4 py-1 rounded-md text-sm font-bold transition-all ${phase === 'defensive' ? 'bg-red-500 text-white' : 'text-white/70'}`}
+                                        >
+                                            Defensive
+                                        </button>
+                                    </div>
+                                </div>
+                                <div className="p-6">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div>
+                                            <label className="text-sm font-bold text-gray-500 uppercase tracking-wider block mb-2">
+                                                {phase === 'attacking' ? 'Attacking Width' : 'Defensive Width'}
+                                            </label>
+                                            <div className="flex gap-2">
+                                                {['narrow', 'normal', 'wide'].map((w) => (
+                                                    <button
+                                                        key={w}
+                                                        onClick={() => setTactics({
+                                                            ...tactics,
+                                                            phases: {
+                                                                ...tactics.phases,
+                                                                [phase]: { ...tactics.phases?.[phase], width: w }
+                                                            }
+                                                        })}
+                                                        className={`flex-1 py-3 rounded-xl font-bold uppercase text-xs transition-all ${tactics.phases?.[phase]?.width === w
+                                                            ? 'bg-brand text-white'
+                                                            : 'bg-gray-100 dark:bg-gray-700'
+                                                            }`}
+                                                    >
+                                                        {w}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="text-sm font-bold text-gray-500 uppercase tracking-wider block mb-2">
+                                                {phase === 'attacking' ? 'Tempo' : 'Aggression'}
+                                            </label>
+                                            <div className="flex gap-2">
+                                                {['low', 'medium', 'high'].map((l) => (
+                                                    <button
+                                                        key={l}
+                                                        onClick={() => setTactics({
+                                                            ...tactics,
+                                                            phases: {
+                                                                ...tactics.phases,
+                                                                [phase]: {
+                                                                    ...tactics.phases?.[phase],
+                                                                    [phase === 'attacking' ? 'tempo' : 'aggression']: l
+                                                                }
+                                                            }
+                                                        })}
+                                                        className={`flex-1 py-3 rounded-xl font-bold uppercase text-xs transition-all ${(phase === 'attacking' ? tactics.phases?.attacking?.tempo : tactics.phases?.defensive?.aggression) === l
+                                                                ? 'bg-brand text-white'
+                                                                : 'bg-gray-100 dark:bg-gray-700'
+                                                            }`}
+                                                    >
+                                                        {l}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -502,6 +664,78 @@ export function TrainingTools({ tenant }: TrainingToolsProps) {
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                        <div
+                            onClick={() => setShowNewDrillModal(true)}
+                            className="bg-white dark:bg-gray-800 rounded-2xl border-2 border-dashed border-gray-300 dark:border-gray-700 flex flex-col items-center justify-center p-6 cursor-pointer hover:border-brand hover:bg-brand/5 transition-all min-h-[200px]"
+                        >
+                            <div className="w-12 h-12 rounded-full bg-brand/10 text-brand flex items-center justify-center text-3xl mb-2">+</div>
+                            <h3 className="font-bold text-gray-900 dark:text-white">Create Custom Drill</h3>
+                        </div>
+
+                        {showNewDrillModal && (
+                            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                                <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 w-full max-w-md shadow-2xl">
+                                    <h3 className="text-2xl font-black uppercase text-gray-900 dark:text-white mb-4">New Drill</h3>
+                                    <div className="space-y-4">
+                                        <div>
+                                            <label className="block text-sm font-bold text-gray-500 mb-1">Name</label>
+                                            <input
+                                                value={newDrill.name}
+                                                onChange={e => setNewDrill({ ...newDrill, name: e.target.value })}
+                                                className="w-full p-3 rounded-xl bg-gray-50 dark:bg-gray-800 border-none font-bold"
+                                                placeholder="e.g. Triangle Passing"
+                                            />
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="block text-sm font-bold text-gray-500 mb-1">Category</label>
+                                                <select
+                                                    value={newDrill.category}
+                                                    onChange={e => setNewDrill({ ...newDrill, category: e.target.value })}
+                                                    className="w-full p-3 rounded-xl bg-gray-50 dark:bg-gray-800 border-none font-bold"
+                                                >
+                                                    <option>Technical</option>
+                                                    <option>Physical</option>
+                                                    <option>Tactical</option>
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-bold text-gray-500 mb-1">Duration</label>
+                                                <input
+                                                    value={newDrill.duration}
+                                                    onChange={e => setNewDrill({ ...newDrill, duration: e.target.value })}
+                                                    className="w-full p-3 rounded-xl bg-gray-50 dark:bg-gray-800 border-none font-bold"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-bold text-gray-500 mb-1">Description</label>
+                                            <textarea
+                                                value={newDrill.description}
+                                                onChange={e => setNewDrill({ ...newDrill, description: e.target.value })}
+                                                className="w-full p-3 rounded-xl bg-gray-50 dark:bg-gray-800 border-none font-bold h-24"
+                                                placeholder="Drill instructions..."
+                                            />
+                                        </div>
+                                        <div className="flex gap-2 pt-2">
+                                            <button
+                                                onClick={() => setShowNewDrillModal(false)}
+                                                className="flex-1 py-3 rounded-xl font-bold bg-gray-100 hover:bg-gray-200"
+                                            >
+                                                Cancel
+                                            </button>
+                                            <button
+                                                onClick={createDrill}
+                                                className="flex-1 py-3 rounded-xl font-bold bg-brand text-white hover:bg-green-600"
+                                            >
+                                                Create Drill
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
                         {drills.length === 0 ? (
                             <div className="col-span-full flex flex-col items-center justify-center py-20 text-center opacity-60">
                                 <div className="text-6xl mb-4">🏃</div>
@@ -538,6 +772,6 @@ export function TrainingTools({ tenant }: TrainingToolsProps) {
                     </div>
                 )}
             </div>
-        </div>
+        </div >
     );
 }

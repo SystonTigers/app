@@ -1,9 +1,20 @@
 import { json } from "../services/util";
 import { requireJWT } from "../services/auth";
 
+import { rateLimitWithTenant } from "../middleware/rateLimit";
+
 export async function handleCreateSession(req: Request, env: any, corsHdrs: Headers) {
     try {
         const claims = await requireJWT(req, env);
+
+        const rateLimitResult = await rateLimitWithTenant(req, env, claims, {
+            scope: "training_session",
+            limit: 30, // 30 sessions created per minute (generous)
+        });
+        if (!rateLimitResult.ok) {
+            return json({ success: false, error: rateLimitResult.error || "Rate limit exceeded" }, 429, corsHdrs);
+        }
+
         const body = await req.json() as any;
         const sessionId = crypto.randomUUID();
 

@@ -1,96 +1,152 @@
 
-import { Env } from "../env";
-
-const PRINTIFY_BASE_URL = "https://api.printify.com/v1";
-
-export interface PrintifyProduct {
+interface PrintifyProduct {
     id: string;
     title: string;
     description: string;
-    images: { src: string; is_default: boolean }[];
-    variants: PrintifyVariant[];
-}
-
-export interface PrintifyVariant {
-    id: number;
-    title: string;
-    price: number;
-    is_enabled: boolean;
-}
-
-export interface PrintifyOrderPayload {
-    external_id: string;
-    line_items: {
-        product_id: string;
-        variant_id: number;
-        quantity: number;
-    }[];
-    shipping_method: number; // 1 = standard
-    send_shipping_notification: boolean;
-    address_to: {
-        first_name: string;
-        last_name: string;
-        email: string;
-        phone: string;
-        country: string;
-        region: string;
-        address1: string;
-        city: string;
-        zip: string;
-    };
+    images: Array<{ src: string; position: number }>;
+    variants: Array<{
+        id: number;
+        title: string;
+        price: number; // In cents
+        sku: string;
+    }>;
 }
 
 export class PrintifyService {
-    private token: string;
-    private shopId: string;
+    constructor(
+        private apiKey: string,
+        private shopId: string
+    ) { }
 
-    constructor(env: Env) {
-        if (!env.PRINTIFY_API_TOKEN || !env.PRINTIFY_SHOP_ID) {
-            throw new Error("Printify configuration missing");
-        }
-        this.token = env.PRINTIFY_API_TOKEN;
-        this.shopId = env.PRINTIFY_SHOP_ID;
-    }
-
-    private async fetch(endpoint: string, options: RequestInit = {}) {
-        const url = `${PRINTIFY_BASE_URL}${endpoint}`;
-        const headers = {
-            Authorization: `Bearer ${this.token}`,
-            "Content-Type": "application/json",
-            ...options.headers,
-        };
-
-        const response = await fetch(url, { ...options, headers });
+    async getProducts(): Promise<PrintifyProduct[]> {
+        const response = await fetch(
+            `https://api.printify.com/v1/shops/${this.shopId}/products.json`,
+            {
+                headers: {
+                    'Authorization': `Bearer ${this.apiKey}`,
+                    'User-Agent': 'SystonTigers/1.0'
+                }
+            }
+        );
 
         if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`Printify API Error ${response.status}: ${errorText}`);
+            throw new Error(`Printify API error: ${response.status}`);
+        }
+
+        const json = await response.json() as any;
+        return json.data;
+    }
+
+    async createOrder(orderId: string, items: Array<{
+        printifyProductId: string;
+        printifyVariantId: number;
+        quantity: number;
+    }>, shippingAddress: any) {
+        const response = await fetch(
+            `https://api.printify.com/v1/shops/${this.shopId}/orders.json`,
+            {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${this.apiKey}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    external_id: orderId,
+                    line_items: items.map(item => ({
+                        product_id: item.printifyProductId,
+                        variant_id: item.printifyVariantId,
+                        quantity: item.quantity
+                    })),
+                    address_to: {
+                        first_name: shippingAddress.firstName,
+                        last_name: shippingAddress.lastName,
+                        email: shippingAddress.email,
+                        phone: shippingAddress.phone,
+                        country: shippingAddress.country,
+                        region: shippingAddress.region,
+                        address1: shippingAddress.address1,
+                        address2: shippingAddress.address2,
+                        city: shippingAddress.city,
+                        zip: shippingAddress.zip
+                    }
+                })
+            }
+        );
+
+        if (!response.ok) {
+            const error = await response.text();
+            throw new Error(`Printify order creation failed: ${error}`);
         }
 
         return response.json();
     }
+}
 
-    async getProducts(): Promise<PrintifyProduct[]> {
-        const data: any = await this.fetch(`/shops/${this.shopId}/products.json`);
-        return data.data; // Printify returns paginated list in 'data'
+export async function syncPrintifyProducts(env: any): Promise<number> {
+    const printify = new PrintifyService(
+        env.PRINTIFY_API_KEY,
+        env.PRINTIFY_SHOP_ID
+    );
+
+    const products = await printify.getProducts();
+    let syncedCount = 0;
+
+    for (const product of products) {
+        const productId = `product_${product.id}`;
+        const timestamp = Date.now();
+        const slug = slugify(product.title);
+
+        // Insert or update product
+        await env.DB.prepare(`
+      INSERT INTO products (id, title, description, handle, image_url, printify_id, vendor, status, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, 'printify', 'active', ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        title = excluded.title,
+        description = excluded.description,
+        image_url = excluded.image_url,
+        updated_at = excluded.updated_at
+    `).bind(
+            productId,
+            product.title,
+            product.description,
+            slug,
+            product.images[0]?.src || null,
+            product.id,
+            timestamp,
+            timestamp
+        ).run();
+
+        // Sync variants
+        for (const variant of product.variants) {
+            const variantId = `variant_${product.id}_${variant.id}`;
+
+            await env.DB.prepare(`
+        INSERT INTO product_variants (id, product_id, title, sku, price_gbp, printify_variant_id, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET
+          title = excluded.title,
+          price_gbp = excluded.price_gbp
+      `).bind(
+                variantId,
+                productId,
+                variant.title,
+                variant.sku,
+                variant.price, // Already in pence from Printify
+                variant.id.toString(),
+                timestamp
+            ).run();
+        }
+
+        syncedCount++;
     }
 
-    async getProduct(productId: string): Promise<PrintifyProduct> {
-        return await this.fetch(`/shops/${this.shopId}/products/${productId}.json`) as PrintifyProduct;
-    }
+    return syncedCount;
+}
 
-    async createOrder(payload: PrintifyOrderPayload): Promise<any> {
-        return await this.fetch(`/shops/${this.shopId}/orders.json`, {
-            method: 'POST',
-            body: JSON.stringify(payload)
-        });
-    }
-
-    async calculateShipping(payload: any): Promise<any> {
-        // https://developers.printify.com/#calculate-shipping-costs
-        return await this.fetch(`/shops/${this.shopId}/orders/shipping.json`, {
-            method: 'POST',
-            body: JSON.stringify(payload)
-        });
-    }
+function slugify(text: string): string {
+    return text
+        .toLowerCase()
+        .replace(/[^\w\s-]/g, '')
+        .replace(/[\s_-]+/g, '-')
+        .replace(/^-+|-+$/g, '');
 }

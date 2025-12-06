@@ -3,6 +3,8 @@ import { json } from "../services/util";
 import { requireJWT } from "../services/auth";
 import { logJSON } from "../lib/log";
 
+import { rateLimitWithTenant } from "../middleware/rateLimit";
+
 // Zod Schemas
 const CreateEventSchema = z.object({
     title: z.string().min(1),
@@ -42,6 +44,15 @@ async function getEventWithCounts(env: any, eventId: string) {
 export async function createEvent(req: Request, env: any, requestId: string, corsHdrs: Headers) {
     try {
         const claims = await requireJWT(req, env);
+
+        const rateLimitResult = await rateLimitWithTenant(req, env, claims, {
+            scope: "events",
+            limit: 20, // 20 events per minute
+        });
+        if (!rateLimitResult.ok) {
+            return json({ success: false, error: rateLimitResult.error || "Rate limit exceeded" }, 429, corsHdrs);
+        }
+
         const body = await req.json();
         const data = CreateEventSchema.parse(body);
 
