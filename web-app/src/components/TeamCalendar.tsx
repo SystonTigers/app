@@ -86,98 +86,134 @@ export function TeamCalendar() {
     };
 
     return (
-        <div className="space-y-6">
-            <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold">Team Schedule</h2>
-                <div className="flex gap-2 bg-surface p-1 rounded-lg border border-border">
-                    <button
-                        onClick={() => setFilter('upcoming')}
-                        className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${filter === 'upcoming' ? 'bg-brand text-white shadow-sm' : 'hover:bg-gray-100 dark:hover:bg-gray-800'
-                            }`}
-                    >
-                        Upcoming
-                    </button>
-                    <button
-                        onClick={() => setFilter('past')}
-                        className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${filter === 'past' ? 'bg-brand text-white shadow-sm' : 'hover:bg-gray-100 dark:hover:bg-gray-800'
-                            }`}
-                    >
-                        Past
-                    </button>
+        <div className="flex flex-col h-full bg-white dark:bg-gray-900 rounded-3xl overflow-hidden shadow-2xl border border-gray-100 dark:border-gray-800">
+            {/* Header */}
+            <div className="bg-gray-900 text-white p-8 relative overflow-hidden flex-shrink-0">
+                <div className="absolute inset-0 bg-[url('/assets/pattern.png')] opacity-20" />
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-900 to-gray-900 opacity-90" />
+
+                <div className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-4">
+                    <div>
+                        <h2 className="text-3xl font-black uppercase italic tracking-tighter mb-1">Team Calendar</h2>
+                        <p className="text-blue-200 font-medium">Coordinate events, matches, and socials.</p>
+                    </div>
+
+                    <div className="flex bg-black/30 p-1 rounded-xl glass-panel">
+                        <button
+                            onClick={() => setFilter('upcoming')}
+                            className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${filter === 'upcoming'
+                                ? 'bg-white text-blue-900 shadow-md'
+                                : 'text-white/70 hover:text-white hover:bg-white/10'}`}
+                        >
+                            Upcoming
+                        </button>
+                        <button
+                            onClick={() => setFilter('past')}
+                            className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${filter === 'past'
+                                ? 'bg-white text-blue-900 shadow-md'
+                                : 'text-white/70 hover:text-white hover:bg-white/10'}`}
+                        >
+                            History
+                        </button>
+                    </div>
                 </div>
             </div>
 
-            {loading ? (
-                <div className="space-y-4">
-                    {[1, 2, 3].map(i => (
-                        <div key={i} className="h-32 bg-gray-100 dark:bg-gray-800 rounded-xl animate-pulse" />
-                    ))}
-                </div>
-            ) : (
-                <div className="grid gap-4">
-                    {events.map(event => (
-                        <div key={event.id} className="card hover:border-brand/50 transition-colors group">
-                            <div className="flex flex-col md:flex-row md:items-center gap-4">
-                                {/* Date Badge */}
-                                <div className="flex-shrink-0 w-16 h-16 bg-brand/10 rounded-xl flex flex-col items-center justify-center text-brand border border-brand/20">
-                                    <span className="text-xs font-bold uppercase">{new Date(event.start_time).toLocaleDateString(undefined, { month: 'short' })}</span>
-                                    <span className="text-2xl font-bold">{new Date(event.start_time).getDate()}</span>
-                                </div>
-
-                                {/* Event Details */}
-                                <div className="flex-1 min-w-0">
-                                    <h3 className="font-bold text-lg truncate">{event.title}</h3>
-                                    <div className="text-sm text-muted flex items-center gap-3 mt-1">
-                                        <span className="flex items-center gap-1">
-                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                            </svg>
-                                            {new Date(event.start_time).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
-                                        </span>
-                                        {event.location && (
-                                            <span className="flex items-center gap-1">
-                                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                </svg>
-                                                {event.location}
-                                            </span>
-                                        )}
-                                    </div>
-                                    {event.description && (
-                                        <p className="text-sm text-muted mt-2 line-clamp-1 group-hover:line-clamp-none transition-all">
-                                            {event.description}
-                                        </p>
-                                    )}
-                                </div>
-
-                                {/* RSVP Actions */}
-                                <div className="flex flex-col items-end gap-2 min-w-[140px]">
-                                    <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-lg">
-                                        {(['yes', 'maybe', 'no'] as const).map((status) => (
-                                            <button
-                                                key={status}
-                                                onClick={(e) => { e.stopPropagation(); handleRsvp(event.id, status); }}
-                                                className={`px-3 py-1 text-xs font-medium rounded-md capitalize transition-all ${event.user_rsvp === status
-                                                    ? status === 'yes' ? 'bg-green-500 text-white' : status === 'no' ? 'bg-red-500 text-white' : 'bg-yellow-500 text-white'
-                                                    : 'hover:bg-white dark:hover:bg-gray-700 text-muted-foreground'
-                                                    }`}
-                                            >
-                                                {status}
-                                            </button>
-                                        ))}
-                                    </div>
-                                    <div className="text-xs text-muted flex gap-2">
-                                        <span className="text-green-600 font-medium">{event.rsvp_yes_count} Going</span>
-                                        <span>•</span>
-                                        <span>{event.rsvp_maybe_count} Maybe</span>
-                                    </div>
-                                </div>
+            <div className="flex-1 overflow-y-auto p-6 bg-gray-50 dark:bg-gray-950/50">
+                {loading ? (
+                    <div className="space-y-4">
+                        {[1, 2, 3].map(i => (
+                            <div key={i} className="h-32 bg-gray-200 dark:bg-gray-800 rounded-2xl animate-pulse" />
+                        ))}
+                    </div>
+                ) : (
+                    <div className="space-y-4">
+                        {events.length === 0 ? (
+                            <div className="text-center py-20 opacity-60">
+                                <div className="text-6xl mb-4">📅</div>
+                                <h3 className="text-xl font-bold text-gray-900 dark:text-white">No events found</h3>
+                                <p className="text-sm text-gray-500">Check back later for new schedules.</p>
                             </div>
-                        </div>
-                    ))}
-                </div>
-            )}
+                        ) : (
+                            events.map(event => (
+                                <div key={event.id} className="bg-white dark:bg-gray-800 rounded-2xl p-2 shadow-sm hover:shadow-lg transition-all border border-gray-100 dark:border-gray-700 group">
+                                    <div className="flex flex-col md:flex-row gap-4">
+                                        {/* Date Badge */}
+                                        <div className="flex-shrink-0 w-full md:w-32 bg-gray-50 dark:bg-gray-900/50 rounded-xl flex flex-col items-center justify-center p-4 border border-gray-100 dark:border-gray-700">
+                                            <span className="text-xs font-black text-brand uppercase tracking-widest mb-1">
+                                                {new Date(event.start_time).toLocaleDateString(undefined, { month: 'short' })}
+                                            </span>
+                                            <span className="text-4xl font-black text-gray-900 dark:text-white leading-none mb-1">
+                                                {new Date(event.start_time).getDate()}
+                                            </span>
+                                            <span className="text-xs font-bold text-gray-400 uppercase">
+                                                {new Date(event.start_time).toLocaleDateString(undefined, { weekday: 'short' })}
+                                            </span>
+                                        </div>
+
+                                        {/* Event Details */}
+                                        <div className="flex-1 py-4 pr-4">
+                                            <h3 className="font-bold text-xl text-gray-900 dark:text-white mb-2 group-hover:text-brand transition-colors">
+                                                {event.title}
+                                            </h3>
+
+                                            <div className="flex flex-wrap gap-4 text-sm text-gray-500 mb-4">
+                                                <span className="flex items-center gap-1.5 font-medium">
+                                                    <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                                    {new Date(event.start_time).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
+                                                </span>
+                                                {event.location && (
+                                                    <span className="flex items-center gap-1.5 font-medium">
+                                                        <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                                        {event.location}
+                                                    </span>
+                                                )}
+                                            </div>
+
+                                            {event.description && (
+                                                <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2 leading-relaxed mb-4">
+                                                    {event.description}
+                                                </p>
+                                            )}
+
+                                            <div className="flex items-center justify-between border-t border-gray-100 dark:border-gray-700 pt-3">
+                                                <div className="flex items-center gap-2 text-xs font-bold text-gray-500">
+                                                    <span className="flex items-center gap-1">
+                                                        <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                                                        {event.rsvp_yes_count} Going
+                                                    </span>
+                                                    <span className="w-1 h-3 bg-gray-300 rounded-full"></span>
+                                                    <span className="flex items-center gap-1">
+                                                        <span className="w-2 h-2 rounded-full bg-yellow-500"></span>
+                                                        {event.rsvp_maybe_count} Maybe
+                                                    </span>
+                                                </div>
+
+                                                <div className="flex bg-gray-100 dark:bg-gray-900 p-1 rounded-lg">
+                                                    {(['yes', 'maybe', 'no'] as const).map((status) => (
+                                                        <button
+                                                            key={status}
+                                                            onClick={(e) => { e.stopPropagation(); handleRsvp(event.id, status); }}
+                                                            className={`
+                                                                px-4 py-1.5 text-xs font-bold rounded-md capitalize transition-all
+                                                                ${event.user_rsvp === status
+                                                                    ? status === 'yes' ? 'bg-green-600 text-white shadow-md' : status === 'no' ? 'bg-red-600 text-white shadow-md' : 'bg-yellow-500 text-white shadow-md'
+                                                                    : 'text-gray-500 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-white dark:hover:bg-gray-800'}
+                                                            `}
+                                                        >
+                                                            {status}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                )}
+            </div>
         </div>
     );
 }

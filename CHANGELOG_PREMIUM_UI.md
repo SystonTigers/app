@@ -52,6 +52,18 @@ We introduced a unified design language focusing on:
 - **Sponsors**: New tiered grid layout for displaying partner logos.
 - **Shop**: (Note: The Shop component itself has its own internal styling, but the page wrapper now aligns with the global theme).
 
+### 9. **Team Chat** (`/[tenant]/chat`)
+- **UI Overhaul**: New conversational interface with "glass" header and pattern backgrounds.
+- **Interactions**: Animated message bubbles, typing indicators, and better room selection list.
+
+### 10. **Training Centre** (`/[tenant]/training`)
+- **Dual View**: Clean toggle between "Session List" and "Drill Library".
+- **Visuals**: Color-coded difficulty badges for drills and status pills for sessions.
+
+### 11. **Team Calendar** (`/[tenant]/calendar`)
+- **Event Cards**: Large date blocks and clear location/time details.
+- **RSVP**: Interactive toggle buttons for attendance status.
+
 ## 🧩 New Components
 - **`SponsorOverlay`**: A broadcast-style overlay for the live video player.
 - **`QuickStats`**: Reusable stat block component.
