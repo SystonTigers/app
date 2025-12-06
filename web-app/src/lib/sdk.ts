@@ -298,6 +298,7 @@ export type AnySDK = {
   listFeed: (page: number, limit: number) => Promise<Array<Record<string, unknown>>>;
   listResults: () => Promise<Array<Record<string, unknown>>>;
   listLiveUpdates: (fixtureId: string) => Promise<Array<Record<string, unknown>>>;
+  getPlayer: (id: string) => Promise<Record<string, unknown> | null>;
 };
 
 // One shared instance; hook these up to real calls later as needed
@@ -324,6 +325,7 @@ const compat: AnySDK = {
   listFeed: async () => [],
   listResults: async () => [],
   listLiveUpdates: async () => [],
+  getPlayer: async () => null,
 };
 
 // Client SDK implementation
@@ -361,6 +363,11 @@ class ClientSDK implements AnySDK {
 
   async getSquad() {
     return http<any[]>(`${API_BASE}/public/${this.tenantId}/squad`);
+  }
+
+  async getPlayer(id: string) {
+    const squad = await this.getSquad();
+    return squad.find(p => p.id === id) || null;
   }
 
   // Fallback to compat/mocks for others

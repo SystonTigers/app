@@ -64,6 +64,11 @@ We introduced a unified design language focusing on:
 - **Event Cards**: Large date blocks and clear location/time details.
 - **RSVP**: Interactive toggle buttons for attendance status.
 
+### 12. **Player Bio** (`/[tenant]/squad/[playerId]`)
+- **Hero Profile**: Giant player number background, large cutout avatar, and clear position badges.
+- **Deep Stats**: Comprehensive breakdown of season performance (Apps, Goals, MOM).
+- **Recent Form**: Table showing performance in the last 5 matches.
+
 ## 🧩 New Components
 - **`SponsorOverlay`**: A broadcast-style overlay for the live video player.
 - **`QuickStats`**: Reusable stat block component.

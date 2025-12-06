@@ -2,8 +2,10 @@
 import { getServerSDK } from '@/lib/sdk';
 import { Suspense } from 'react';
 
+import Link from 'next/link';
+
 // Player Card Component
-function PlayerCard({ player }: { player: any }) {
+function PlayerCard({ player, tenant }: { player: any; tenant: string }) {
   const initials = player.name
     .split(' ')
     .map((n: string) => n[0])
@@ -12,7 +14,7 @@ function PlayerCard({ player }: { player: any }) {
     .substring(0, 2);
 
   return (
-    <div className="group relative overflow-hidden rounded-2xl bg-white dark:bg-gray-800 shadow-md hover:shadow-xl transition-all duration-300 border border-gray-100 dark:border-gray-700">
+    <Link href={`/${tenant}/squad/${player.id}`} className="block group relative overflow-hidden rounded-2xl bg-white dark:bg-gray-800 shadow-md hover:shadow-xl transition-all duration-300 border border-gray-100 dark:border-gray-700 hover:-translate-y-1">
       {/* Top Pattern / Gradient */}
       <div className={`h-24 w-full bg-gradient-to-r from-brand to-brand/80 absolute top-0 left-0 z-0`}>
         <div className="absolute inset-0 opacity-20 bg-[url('/assets/pattern.png')] bg-repeat" />
@@ -61,7 +63,7 @@ function PlayerCard({ player }: { player: any }) {
           </div>
         )}
       </div>
-    </div>
+    </Link>
   );
 }
 
@@ -100,7 +102,7 @@ export default async function SquadPage({ params }: { params: Promise<{ tenant: 
           {title}
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {players.map((p: any) => <PlayerCard key={p.id} player={p} />)}
+          {players.map((p: any) => <PlayerCard key={p.id} player={p} tenant={tenant} />)}
         </div>
       </div>
     );
@@ -135,7 +137,7 @@ export default async function SquadPage({ params }: { params: Promise<{ tenant: 
           </>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {squad.map((p: any) => <PlayerCard key={p.id} player={p} />)}
+            {squad.map((p: any) => <PlayerCard key={p.id} player={p} tenant={tenant} />)}
           </div>
         )}
       </div>
