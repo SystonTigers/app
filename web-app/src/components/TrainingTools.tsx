@@ -20,16 +20,77 @@ interface Drill {
     description: string;
 }
 
+interface PerformanceRecord {
+    id: string;
+    playerId: string;
+    playerName: string;
+    drillType: 'Sprint (40m)' | 'Bleep Test' | 'Parachute Run' | 'Agility Test';
+    value: string;
+    date: string;
+    trend: 'up' | 'down' | 'neutral';
+}
+
+interface TacticsConfig {
+    formation: string;
+    playingStyle: string;
+    pressingIntensity: 'low' | 'medium' | 'high';
+    buildUpPlay: 'short' | 'mixed' | 'direct';
+    defensiveLine: 'deep' | 'medium' | 'high';
+    width: 'narrow' | 'normal' | 'wide';
+    setPlayFocus: string[];
+}
+
+interface TacticalReview {
+    id: string;
+    videoId: string;
+    videoName: string;
+    formation: string;
+    status: 'pending' | 'analyzing' | 'complete';
+    score: number | null;
+    insights: string[];
+    date: string;
+}
+
 interface TrainingToolsProps {
     tenant: string;
 }
+
+
 
 export function TrainingTools({ tenant }: TrainingToolsProps) {
     const [sessions, setSessions] = useState<TrainingSession[]>([]);
     const [drills, setDrills] = useState<Drill[]>([]);
     const [selectedSession, setSelectedSession] = useState<TrainingSession | null>(null);
     const [loading, setLoading] = useState(true);
-    const [view, setView] = useState<'sessions' | 'drills'>('sessions');
+    const [view, setView] = useState<'sessions' | 'drills' | 'performance' | 'tactics'>('sessions');
+
+    // Mock performance records
+    const [records, setRecords] = useState<PerformanceRecord[]>([
+        { id: '1', playerId: '1', playerName: 'James Smith', drillType: 'Sprint (40m)', value: '4.5s', date: '2023-10-15', trend: 'up' },
+        { id: '2', playerId: '3', playerName: 'Alex Johnson', drillType: 'Bleep Test', value: 'Level 12.4', date: '2023-11-02', trend: 'up' },
+        { id: '3', playerId: '2', playerName: 'David Jones', drillType: 'Parachute Run', value: '12.8s', date: '2023-10-20', trend: 'neutral' },
+        { id: '4', playerId: '1', playerName: 'James Smith', drillType: 'Agility Test', value: '8.2s', date: '2023-11-05', trend: 'up' },
+        { id: '5', playerId: '4', playerName: 'Ben Wilson', drillType: 'Bleep Test', value: 'Level 10.1', date: '2023-10-10', trend: 'down' },
+    ]);
+
+    // Tactics configuration state
+    const [tactics, setTactics] = useState<TacticsConfig>({
+        formation: '4-4-2',
+        playingStyle: 'Balanced',
+        pressingIntensity: 'medium',
+        buildUpPlay: 'mixed',
+        defensiveLine: 'medium',
+        width: 'normal',
+        setPlayFocus: ['corners', 'free-kicks'],
+    });
+
+    // Tactical AI reviews
+    const [tacticalReviews, setTacticalReviews] = useState<TacticalReview[]>([
+        { id: '1', videoId: 'v1', videoName: 'vs Rovers FC - Oct 15', formation: '4-4-2', status: 'complete', score: 78, insights: ['Good defensive shape', 'Transition could be faster', 'Wide play effective'], date: '2023-10-16' },
+        { id: '2', videoId: 'v2', videoName: 'vs City United - Oct 22', formation: '4-3-3', status: 'complete', score: 65, insights: ['Midfield overrun at times', 'Wing-backs exposed', 'Set pieces well executed'], date: '2023-10-23' },
+    ]);
+
+    const [analyzingTactics, setAnalyzingTactics] = useState(false);
 
     useEffect(() => {
         loadSessions();
@@ -110,6 +171,22 @@ export function TrainingTools({ tenant }: TrainingToolsProps) {
                         >
                             Drill Library
                         </button>
+                        <button
+                            onClick={() => setView('performance')}
+                            className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${view === 'performance'
+                                ? 'bg-white text-green-900 shadow-md'
+                                : 'text-white/70 hover:text-white hover:bg-white/10'}`}
+                        >
+                            Records
+                        </button>
+                        <button
+                            onClick={() => setView('tactics')}
+                            className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${view === 'tactics'
+                                ? 'bg-white text-green-900 shadow-md'
+                                : 'text-white/70 hover:text-white hover:bg-white/10'}`}
+                        >
+                            ⚽ Tactics
+                        </button>
                     </div>
                 </div>
             </div>
@@ -131,8 +208,8 @@ export function TrainingTools({ tenant }: TrainingToolsProps) {
                                 >
                                     <div className="absolute top-0 right-0 p-4">
                                         <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${session.status === 'completed' ? 'bg-green-100 text-green-700' :
-                                                session.status === 'cancelled' ? 'bg-red-100 text-red-700' :
-                                                    'bg-blue-100 text-blue-700'
+                                            session.status === 'cancelled' ? 'bg-red-100 text-red-700' :
+                                                'bg-blue-100 text-blue-700'
                                             }`}>
                                             {session.status}
                                         </span>
@@ -164,6 +241,264 @@ export function TrainingTools({ tenant }: TrainingToolsProps) {
                                 </div>
                             ))
                         )}
+                    </div>
+                ) : view === 'performance' ? (
+                    <div className="space-y-8">
+                        {/* Stats Summary Row */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div className="bg-gradient-to-br from-yellow-400 to-orange-500 rounded-2xl p-6 text-white shadow-lg">
+                                <h3 className="font-bold text-lg opacity-90 mb-1">Fastest Sprint</h3>
+                                <div className="text-4xl font-black mb-2">4.5s</div>
+                                <div className="text-sm font-medium flex items-center gap-2">
+                                    <span className="bg-white/20 px-2 py-1 rounded">James Smith</span>
+                                </div>
+                            </div>
+                            <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl p-6 text-white shadow-lg">
+                                <h3 className="font-bold text-lg opacity-90 mb-1">Fitness King</h3>
+                                <div className="text-4xl font-black mb-2">Lvl 12.4</div>
+                                <div className="text-sm font-medium flex items-center gap-2">
+                                    <span className="bg-white/20 px-2 py-1 rounded">Alex Johnson</span>
+                                    <span className="text-xs opacity-75">Bleep Test</span>
+                                </div>
+                            </div>
+                            <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl p-6 shadow-sm flex flex-col justify-center items-center text-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors">
+                                <div className="w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-2 text-2xl font-black">+</div>
+                                <h3 className="font-bold text-gray-900 dark:text-white">Log New Record</h3>
+                                <p className="text-xs text-gray-500">Record a player's achievement</p>
+                            </div>
+                        </div>
+
+                        {/* Records Table */}
+                        <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700 overflow-hidden shadow-sm">
+                            <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
+                                <h3 className="font-black text-xl uppercase tracking-tight">Recent Benchmarks</h3>
+                            </div>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left text-sm">
+                                    <thead className="bg-gray-50 dark:bg-gray-900/50 text-xs font-bold uppercase text-gray-500 tracking-wider">
+                                        <tr>
+                                            <th className="px-6 py-4">Player</th>
+                                            <th className="px-6 py-4">Drill / Test</th>
+                                            <th className="px-6 py-4">Result</th>
+                                            <th className="px-6 py-4">Date</th>
+                                            <th className="px-6 py-4 text-center">Trend</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                                        {records.map((record) => (
+                                            <tr key={record.id} className="hover:bg-gray-50 dark:hover:bg-black/20 transition-colors group">
+                                                <td className="px-6 py-4 font-bold text-gray-900 dark:text-white">
+                                                    {record.playerName}
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <span className="px-3 py-1 rounded-full bg-gray-100 dark:bg-gray-700 text-xs font-bold text-gray-600 dark:text-gray-300">
+                                                        {record.drillType}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4 font-black font-mono text-base">
+                                                    {record.value}
+                                                </td>
+                                                <td className="px-6 py-4 text-gray-500">
+                                                    {new Date(record.date).toLocaleDateString()}
+                                                </td>
+                                                <td className="px-6 py-4 text-center">
+                                                    <span className={`inline-block w-6 h-6 rounded-full flex items-center justify-center text-xs ${record.trend === 'up' ? 'text-green-500 bg-green-100' :
+                                                        record.trend === 'down' ? 'text-red-500 bg-red-100' :
+                                                            'text-gray-400 bg-gray-100'
+                                                        }`}>
+                                                        {record.trend === 'up' ? '▲' : record.trend === 'down' ? '▼' : '–'}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                ) : view === 'tactics' ? (
+                    <div className="space-y-8">
+                        {/* Formation & Tactics Configuration */}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            {/* Formation Selector */}
+                            <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700 overflow-hidden shadow-sm">
+                                <div className="p-6 border-b border-gray-100 dark:border-gray-700 bg-gradient-to-r from-brand to-brand/80">
+                                    <h3 className="font-black text-xl uppercase tracking-tight text-white">Formation</h3>
+                                </div>
+                                <div className="p-6">
+                                    <div className="grid grid-cols-3 gap-3 mb-6">
+                                        {['4-4-2', '4-3-3', '3-5-2', '4-2-3-1', '5-3-2', '4-1-4-1'].map((f) => (
+                                            <button
+                                                key={f}
+                                                onClick={() => setTactics({ ...tactics, formation: f })}
+                                                className={`p-4 rounded-xl font-black text-lg transition-all ${tactics.formation === f
+                                                    ? 'bg-brand text-white shadow-lg scale-105'
+                                                    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                                                    }`}
+                                            >
+                                                {f}
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    {/* Mini Pitch Visualization */}
+                                    <div className="aspect-[3/4] bg-gradient-to-b from-green-600 to-green-700 rounded-2xl p-4 relative border-4 border-white dark:border-gray-700 shadow-inner">
+                                        <div className="absolute inset-x-4 top-1/2 h-px bg-white/40" />
+                                        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 rounded-full border-2 border-white/40" />
+                                        <div className="absolute inset-x-4 bottom-4 h-16 border-2 border-white/40 rounded-t-lg" />
+                                        <div className="absolute inset-x-4 top-4 h-16 border-2 border-white/40 rounded-b-lg" />
+
+                                        {/* Formation dots */}
+                                        <div className="absolute inset-0 flex flex-col justify-around items-center py-8">
+                                            <div className="text-white font-black text-2xl drop-shadow-lg">{tactics.formation}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Tactics Configuration */}
+                            <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700 overflow-hidden shadow-sm">
+                                <div className="p-6 border-b border-gray-100 dark:border-gray-700 bg-gray-900">
+                                    <h3 className="font-black text-xl uppercase tracking-tight text-white">Tactical Setup</h3>
+                                </div>
+                                <div className="p-6 space-y-6">
+                                    {/* Playing Style */}
+                                    <div>
+                                        <label className="text-sm font-bold text-gray-500 uppercase tracking-wider block mb-2">Playing Style</label>
+                                        <select
+                                            value={tactics.playingStyle}
+                                            onChange={(e) => setTactics({ ...tactics, playingStyle: e.target.value })}
+                                            className="w-full p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 font-bold"
+                                        >
+                                            <option>Balanced</option>
+                                            <option>Possession</option>
+                                            <option>Counter-Attack</option>
+                                            <option>High Press</option>
+                                            <option>Direct Play</option>
+                                        </select>
+                                    </div>
+
+                                    {/* Pressing Intensity */}
+                                    <div>
+                                        <label className="text-sm font-bold text-gray-500 uppercase tracking-wider block mb-2">Pressing Intensity</label>
+                                        <div className="flex gap-2">
+                                            {(['low', 'medium', 'high'] as const).map((level) => (
+                                                <button
+                                                    key={level}
+                                                    onClick={() => setTactics({ ...tactics, pressingIntensity: level })}
+                                                    className={`flex-1 py-3 rounded-xl font-bold uppercase text-sm transition-all ${tactics.pressingIntensity === level
+                                                        ? level === 'high' ? 'bg-red-500 text-white' : level === 'medium' ? 'bg-yellow-500 text-white' : 'bg-green-500 text-white'
+                                                        : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
+                                                        }`}
+                                                >
+                                                    {level}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Build Up Play */}
+                                    <div>
+                                        <label className="text-sm font-bold text-gray-500 uppercase tracking-wider block mb-2">Build-Up Play</label>
+                                        <div className="flex gap-2">
+                                            {(['short', 'mixed', 'direct'] as const).map((style) => (
+                                                <button
+                                                    key={style}
+                                                    onClick={() => setTactics({ ...tactics, buildUpPlay: style })}
+                                                    className={`flex-1 py-3 rounded-xl font-bold uppercase text-sm transition-all ${tactics.buildUpPlay === style
+                                                        ? 'bg-brand text-white'
+                                                        : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
+                                                        }`}
+                                                >
+                                                    {style}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Defensive Line */}
+                                    <div>
+                                        <label className="text-sm font-bold text-gray-500 uppercase tracking-wider block mb-2">Defensive Line</label>
+                                        <div className="flex gap-2">
+                                            {(['deep', 'medium', 'high'] as const).map((line) => (
+                                                <button
+                                                    key={line}
+                                                    onClick={() => setTactics({ ...tactics, defensiveLine: line })}
+                                                    className={`flex-1 py-3 rounded-xl font-bold uppercase text-sm transition-all ${tactics.defensiveLine === line
+                                                        ? 'bg-blue-600 text-white'
+                                                        : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
+                                                        }`}
+                                                >
+                                                    {line}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <button className="w-full py-4 bg-gradient-to-r from-brand to-green-600 text-white font-black uppercase tracking-wider rounded-xl hover:scale-[1.02] transition-transform shadow-lg">
+                                        Save Tactics
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* AI Tactical Analysis */}
+                        <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700 overflow-hidden shadow-sm">
+                            <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gradient-to-r from-purple-600 to-indigo-600">
+                                <div>
+                                    <h3 className="font-black text-xl uppercase tracking-tight text-white">🤖 AI Tactical Analysis</h3>
+                                    <p className="text-purple-200 text-sm">Auto-evaluate your tactics from match footage</p>
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        setAnalyzingTactics(true);
+                                        setTimeout(() => setAnalyzingTactics(false), 3000);
+                                    }}
+                                    disabled={analyzingTactics}
+                                    className="px-6 py-3 bg-white text-purple-700 font-bold rounded-xl hover:bg-purple-50 transition-colors disabled:opacity-50"
+                                >
+                                    {analyzingTactics ? '⏳ Analyzing...' : '📹 Analyze Match'}
+                                </button>
+                            </div>
+
+                            <div className="p-6">
+                                {tacticalReviews.length === 0 ? (
+                                    <div className="text-center py-12 opacity-60">
+                                        <div className="text-6xl mb-4">🎬</div>
+                                        <h3 className="text-xl font-bold">No tactical reviews yet</h3>
+                                        <p className="text-sm">Upload match footage and run AI analysis</p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-4">
+                                        {tacticalReviews.map((review) => (
+                                            <div key={review.id} className="p-5 rounded-2xl border border-gray-100 dark:border-gray-700 hover:shadow-md transition-shadow bg-gray-50 dark:bg-gray-900/50">
+                                                <div className="flex items-start justify-between mb-4">
+                                                    <div>
+                                                        <h4 className="font-bold text-lg">{review.videoName}</h4>
+                                                        <div className="flex items-center gap-3 mt-1 text-sm text-gray-500">
+                                                            <span className="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded font-bold">{review.formation}</span>
+                                                            <span>{new Date(review.date).toLocaleDateString()}</span>
+                                                        </div>
+                                                    </div>
+                                                    <div className={`text-4xl font-black ${review.score! >= 75 ? 'text-green-500' :
+                                                        review.score! >= 50 ? 'text-yellow-500' : 'text-red-500'
+                                                        }`}>
+                                                        {review.score}
+                                                    </div>
+                                                </div>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {review.insights.map((insight, i) => (
+                                                        <span key={i} className="px-3 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-full text-xs font-medium">
+                                                            {insight}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">

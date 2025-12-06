@@ -161,22 +161,60 @@ export default async function PlayerBioPage({ params }: { params: Promise<{ tena
                                 </div>
                             </div>
                         </div>
+                    </div>
 
-                        {/* Mobile CTA */}
-                        <div className="block md:hidden">
-                            <button className="w-full bg-brand text-white py-4 rounded-xl font-black uppercase tracking-widest shadow-lg">
-                                Sponsor Player
-                            </button>
+                    {/* Physical Attributes (New) */}
+                    <div className="bg-gradient-to-br from-gray-900 to-gray-800 text-white p-6 rounded-3xl shadow-lg border border-gray-700">
+                        <div className="flex items-center gap-2 mb-6">
+                            <span className="text-2xl">⚡</span>
+                            <h3 className="text-lg font-black uppercase tracking-tight">Physical Attributes</h3>
                         </div>
 
-                        {/* Shop Item Mini Teaser */}
-                        <div className="bg-gray-900 text-white p-6 rounded-3xl relative overflow-hidden group cursor-pointer">
-                            <div className="absolute inset-0 bg-brand/20 opacity-0 group-hover:opacity-100 transition-opacity" />
-                            <h3 className="text-xl font-black uppercase italic mb-2 relative z-10">Get the Kit</h3>
-                            <p className="text-gray-300 text-sm mb-4 relative z-10">Support {augmentedPlayer.name} with the official home jersey.</p>
-                            <div className="inline-block bg-white text-black px-4 py-2 font-bold uppercase text-xs rounded-lg relative z-10">
-                                Shop Now &rarr;
+                        <div className="space-y-6">
+                            <div>
+                                <div className="flex justify-between text-sm font-bold mb-2">
+                                    <span className="text-gray-400">Pace (40m Sprint)</span>
+                                    <span>4.5s</span>
+                                </div>
+                                <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
+                                    <div className="h-full bg-brand w-[85%] rounded-full" />
+                                </div>
                             </div>
+                            <div>
+                                <div className="flex justify-between text-sm font-bold mb-2">
+                                    <span className="text-gray-400">Stamina (Bleep Test)</span>
+                                    <span>Lvl 12.4</span>
+                                </div>
+                                <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
+                                    <div className="h-full bg-blue-500 w-[75%] rounded-full" />
+                                </div>
+                            </div>
+                            <div>
+                                <div className="flex justify-between text-sm font-bold mb-2">
+                                    <span className="text-gray-400">Agility</span>
+                                    <span>High</span>
+                                </div>
+                                <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
+                                    <div className="h-full bg-green-500 w-[90%] rounded-full" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Mobile CTA */}
+                    <div className="block md:hidden">
+                        <button className="w-full bg-brand text-white py-4 rounded-xl font-black uppercase tracking-widest shadow-lg">
+                            Sponsor Player
+                        </button>
+                    </div>
+
+                    {/* Shop Item Mini Teaser */}
+                    <div className="bg-gray-900 text-white p-6 rounded-3xl relative overflow-hidden group cursor-pointer">
+                        <div className="absolute inset-0 bg-brand/20 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        <h3 className="text-xl font-black uppercase italic mb-2 relative z-10">Get the Kit</h3>
+                        <p className="text-gray-300 text-sm mb-4 relative z-10">Support {augmentedPlayer.name} with the official home jersey.</p>
+                        <div className="inline-block bg-white text-black px-4 py-2 font-bold uppercase text-xs rounded-lg relative z-10">
+                            Shop Now &rarr;
                         </div>
                     </div>
                 </div>

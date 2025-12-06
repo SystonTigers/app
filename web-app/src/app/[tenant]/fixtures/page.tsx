@@ -1,10 +1,17 @@
 
 import { getServerSDK } from '@/lib/sdk';
+import { CountdownTimer } from '@/components/ui/CountdownTimer';
+import { WeatherWidget } from '@/components/ui/WeatherWidget';
 
 function FixtureCard({ fixture, isNext }: { fixture: any, isNext?: boolean }) {
   const dateObj = new Date(fixture.date);
   const dateStr = dateObj.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
   const timeStr = fixture.time || '15:00';
+
+  // Combine date and time for countdown
+  const [hours, minutes] = timeStr.split(':');
+  const kickoffDate = new Date(dateObj);
+  kickoffDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
 
   if (isNext) {
     return (
@@ -12,46 +19,60 @@ function FixtureCard({ fixture, isNext }: { fixture: any, isNext?: boolean }) {
         <div className="absolute inset-0 bg-[url('/assets/pitch-bg.jpg')] bg-cover bg-center opacity-30 mix-blend-overlay" />
         <div className="absolute inset-0 bg-gradient-to-br from-brand/20 to-black/80" />
 
-        <div className="relative z-10 p-8 md:p-12 flex flex-col md:flex-row items-center justify-between gap-8 text-center md:text-left">
-          {/* Left: Competition & Date */}
-          <div className="md:w-1/3">
-            <div className="inline-block px-4 py-1 bg-brand text-brand-foreground font-bold uppercase tracking-wider text-sm rounded-full mb-4">
+        <div className="relative z-10 p-8 md:p-12">
+          {/* Top row: Competition badge & Weather */}
+          <div className="flex items-center justify-between mb-6">
+            <div className="inline-block px-4 py-1 bg-brand text-brand-foreground font-bold uppercase tracking-wider text-sm rounded-full">
               Next Match • {fixture.competition || 'League'}
             </div>
-            <h2 className="text-4xl md:text-5xl font-black uppercase italic leading-none mb-2">
-              Matchday
-            </h2>
-            <p className="text-xl text-gray-300 font-mono">
-              {dateStr} • {timeStr}
-            </p>
-            <p className="mt-4 text-gray-400 flex items-center justify-center md:justify-start gap-2">
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-              {fixture.venue || 'Home Ground'}
-            </p>
+            <WeatherWidget className="text-white" />
           </div>
 
-          {/* Center: VS */}
-          <div className="flex-1 flex items-center justify-center gap-8 w-full">
-            <div className="flex flex-col items-center">
-              <div className="w-24 h-24 md:w-32 md:h-32 bg-gray-800 rounded-full flex items-center justify-center border-4 border-gray-700 shadow-xl mb-4 text-4xl font-bold">
-                {fixture.homeTeam?.[0] || 'H'}
-              </div>
-              <span className="font-bold text-lg md:text-2xl uppercase tracking-tighter">{fixture.homeTeam}</span>
+          {/* Main content */}
+          <div className="flex flex-col md:flex-row items-center justify-between gap-8 text-center md:text-left">
+            {/* Left: Date & Venue */}
+            <div className="md:w-1/4">
+              <h2 className="text-4xl md:text-5xl font-black uppercase italic leading-none mb-2">
+                Matchday
+              </h2>
+              <p className="text-xl text-gray-300 font-mono">
+                {dateStr} • {timeStr}
+              </p>
+              <p className="mt-4 text-gray-400 flex items-center justify-center md:justify-start gap-2">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                {fixture.venue || 'Home Ground'}
+              </p>
             </div>
-            <div className="text-4xl md:text-6xl font-black text-gray-700 italic">VS</div>
-            <div className="flex flex-col items-center">
-              <div className="w-24 h-24 md:w-32 md:h-32 bg-white text-black rounded-full flex items-center justify-center border-4 border-gray-300 shadow-xl mb-4 text-4xl font-bold">
-                {fixture.awayTeam?.[0] || 'A'}
+
+            {/* Center: VS */}
+            <div className="flex-1 flex items-center justify-center gap-8 w-full">
+              <div className="flex flex-col items-center">
+                <div className="w-24 h-24 md:w-32 md:h-32 bg-gray-800 rounded-full flex items-center justify-center border-4 border-gray-700 shadow-xl mb-4 text-4xl font-bold">
+                  {fixture.homeTeam?.[0] || 'H'}
+                </div>
+                <span className="font-bold text-lg md:text-2xl uppercase tracking-tighter">{fixture.homeTeam}</span>
               </div>
-              <span className="font-bold text-lg md:text-2xl uppercase tracking-tighter">{fixture.awayTeam}</span>
+              <div className="text-4xl md:text-6xl font-black text-gray-700 italic">VS</div>
+              <div className="flex flex-col items-center">
+                <div className="w-24 h-24 md:w-32 md:h-32 bg-white text-black rounded-full flex items-center justify-center border-4 border-gray-300 shadow-xl mb-4 text-4xl font-bold">
+                  {fixture.awayTeam?.[0] || 'A'}
+                </div>
+                <span className="font-bold text-lg md:text-2xl uppercase tracking-tighter">{fixture.awayTeam}</span>
+              </div>
+            </div>
+
+            {/* Right: CTA */}
+            <div className="md:w-1/4 flex justify-center md:justify-end">
+              <button className="px-8 py-4 bg-white text-black font-black uppercase tracking-widest hover:bg-brand hover:text-white transition-all transform hover:scale-105 rounded-xl shadow-lg">
+                Get Tickets
+              </button>
             </div>
           </div>
 
-          {/* Right: CTA */}
-          <div className="md:w-1/3 flex justify-center md:justify-end">
-            <button className="px-8 py-4 bg-white text-black font-black uppercase tracking-widest hover:bg-brand hover:text-white transition-all transform hover:scale-105 rounded-xl shadow-lg">
-              Get Tickets
-            </button>
+          {/* Countdown Timer */}
+          <div className="mt-8 pt-6 border-t border-gray-700 flex flex-col items-center">
+            <div className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">Kick-Off In</div>
+            <CountdownTimer targetDate={kickoffDate} />
           </div>
         </div>
       </div>

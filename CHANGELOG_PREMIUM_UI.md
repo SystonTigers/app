@@ -68,15 +68,64 @@ We introduced a unified design language focusing on:
 - **Hero Profile**: Giant player number background, large cutout avatar, and clear position badges.
 - **Deep Stats**: Comprehensive breakdown of season performance (Apps, Goals, MOM).
 - **Recent Form**: Table showing performance in the last 5 matches.
+- **Physical Attributes**: Visual progress bars for Pace, Stamina, and Agility (linked to training records).
 
-## 🧩 New Components
-- **`SponsorOverlay`**: A broadcast-style overlay for the live video player.
-- **`QuickStats`**: Reusable stat block component.
-- **`HeroSection`**: Configurable hero banner pattern.
+### 13. **Training Records** (`/[tenant]/training` - Records Tab)
+- **Performance Tab**: New "Records" tab added to the Training Centre.
+- **Leaderboards**: Visual cards highlighting "Fastest Sprint" and "Fitness King" records.
+- **Benchmark Table**: Detailed log of player times (Sprint, Bleep Test, Parachute Run, Agility).
+- **Trend Indicators**: Up/Down arrows showing improvement or decline over time.
+
+### 14. **Tactics Centre** (`/[tenant]/training` - Tactics Tab)
+- **Formation Selector**: Visual grid to choose from 6 popular formations (4-4-2, 4-3-3, etc.).
+- **Mini Pitch View**: Bird's eye pitch visualization showing selected formation.
+- **Tactical Setup Panel**:
+  - Playing Style dropdown (Balanced, Possession, Counter-Attack, High Press, Direct).
+  - Pressing Intensity toggle (Low/Medium/High with color coding).
+  - Build-Up Play style (Short/Mixed/Direct).
+  - Defensive Line height (Deep/Medium/High).
+- **AI Tactical Analysis**:
+  - "Analyze Match" button to trigger AI review of uploaded footage.
+  - Tactical score (0-100) with color-coded rating.
+  - AI-generated insights displayed as tags.
+  - Historical reviews showing previous tactical evaluations.
+
+## 🧩 New Premium UI Components (`/components/ui/`)
+
+### Core Experience
+- **`CommandPalette`**: Spotlight-style search (⌘K / Ctrl+K) for quick navigation across pages and actions.
+- **`NotificationCenter`**: Bell icon dropdown with unread badges, notification types, and mark-all-read functionality.
+- **`QuickActionsFAB`**: Floating action button with expandable quick actions (Log Training, Upload Video, etc.).
+
+### Visual Enhancements
+- **`AnimatedCounter`**: Numbers that count up smoothly when scrolled into view with easing animations.
+- **`Skeleton`**: Shimmer loading placeholders (cards, tables, stats) for polished loading states.
+- **`Confetti`**: Canvas-based celebration animation with sound effects for wins.
+
+### Match Day Features
+- **`CountdownTimer`**: Live countdown blocks (Days/Hours/Minutes/Seconds) with "LIVE NOW" state for fixtures.
+- **`WeatherWidget`**: Match day weather forecast display with condition icons.
+- **`MatchTimeline`**: Interactive vertical timeline of match events (goals, cards, subs).
+
+### Analysis Tools
+- **`PlayerComparison`**: Side-by-side player stat comparison with visual bar charts and winner highlighting.
+
+### Theming & Sound
+- **`ThemeProvider`**: System/Light/Dark theme with smooth color transitions.
+- **`ThemeToggle` / `ThemeSelector`**: Toggle button and dropdown for theme selection.
+- **`SoundProvider`**: Web Audio API sound effects for notifications, success, errors, messages, and goals.
+- **`SoundToggle`**: Enable/disable sound effects button.
+
+## 📋 Integration Components
+- **`PremiumToolbar`**: Bundles CommandPalette + QuickActionsFAB for easy layout integration.
+- **`HeaderToolbarItems`**: Pre-configured header items (Search, Sound, Theme, Notifications).
 
 ## 🔧 Technical Fixes
 - **Type Safety**: Fixed implicit `any` errors in `page.tsx` files for Fixtures and Squad pages to ensure clean builds.
 - **Tailwind Config**: utilized `brand` and `brand-foreground` tokens consistently.
 
+## 📄 Updated Pages
+- **Fixtures Page**: Now includes live countdown timer and weather widget on the Next Match card.
+
 ---
-*Changes applied on 2025-12-05*
+*Changes applied on 2025-12-06*
