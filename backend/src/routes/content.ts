@@ -133,18 +133,103 @@ export async function handleResignTeam(req: Request, env: any, corsHdrs: Headers
 
         if (!teamName) return json({ success: false, error: "Team name required" }, 400, corsHdrs);
 
+        // Step 1: Get all results involving the resigned team to calculate deductions
+        const results = await env.DB.prepare(
+            `SELECT opponent, our_score, their_score FROM team_results WHERE tenant_id = ? AND opponent = ?`
+        ).bind(claims.tenantId, teamName).all();
+
+        // Calculate deductions for each opponent (YOUR team's results against them)
+        // our_score = your team's goals, their_score = resigned team's goals
+        const deductions: Record<string, { played: number; won: number; drawn: number; lost: number; goalsFor: number; goalsAgainst: number; points: number }> = {};
+
+        // Your team played matches against the resigned team - need to deduct YOUR stats
+        for (const row of (results.results || [])) {
+            const ourScore = Number(row.our_score || 0);
+            const theirScore = Number(row.their_score || 0);
+
+            // This is a match your team played against the resigned team
+            // We need to deduct from YOUR team's record (claims.tenantId)
+            // The "opponent" here IS the resigned team, so we deduct from our own team
+            // But actually we need to update the LEAGUE TABLE not just our results
+
+            // For the LEAGUE TABLE: we need to find all teams that played the resigned team
+            // and deduct their points. In your league table, each row is a different team.
+        }
+
+        // Step 2: Query the league standings to find teams and recalculate
+        // Get current standings
+        const standings = await env.DB.prepare(
+            `SELECT * FROM league_standings WHERE tenant_id = ?`
+        ).bind(claims.tenantId).all();
+
+        // We need results WHERE the resigned team was opponent for ANY team
+        // But team_results only stores YOUR team's results
+        // For a proper implementation, we need match_events or a full results table
+
+        // Alternative: Since we're storing league table manually, 
+        // we recalculate based on remaining results
+        // Get all remaining results (excluding resigned team)
+        const remainingResults = await env.DB.prepare(
+            `SELECT * FROM team_results WHERE tenant_id = ? AND opponent != ?`
+        ).bind(claims.tenantId, teamName).all();
+
+        // Recalculate your team's stats from remaining results
+        let played = 0, won = 0, drawn = 0, lost = 0, goalsFor = 0, goalsAgainst = 0;
+        for (const r of (remainingResults.results || [])) {
+            const ourScore = Number(r.our_score || 0);
+            const theirScore = Number(r.their_score || 0);
+            played++;
+            goalsFor += ourScore;
+            goalsAgainst += theirScore;
+            if (ourScore > theirScore) won++;
+            else if (ourScore === theirScore) drawn++;
+            else lost++;
+        }
+        const points = (won * 3) + drawn;
+
+        // Step 3: Update league standings - remove resigned team and update your team
         const batch = [
-            // Remove from League Table
-            env.DB.prepare("DELETE FROM league_standings WHERE tenant_id = ? AND team_name = ?").bind(claims.tenantId, teamName),
-            // Remove future/past fixtures against them
-            env.DB.prepare("DELETE FROM fixtures WHERE tenant_id = ? AND opponent = ?").bind(claims.tenantId, teamName),
-            // Remove results against them
-            env.DB.prepare("DELETE FROM team_results WHERE tenant_id = ? AND opponent = ?").bind(claims.tenantId, teamName)
+            // Remove resigned team from table
+            env.DB.prepare("DELETE FROM league_standings WHERE tenant_id = ? AND team_name = ?")
+                .bind(claims.tenantId, teamName),
+            // Update your team's standing with recalculated stats
+            env.DB.prepare(
+                `UPDATE league_standings 
+                 SET played = ?, won = ?, drawn = ?, lost = ?, goals_for = ?, goals_against = ?, points = ?
+                 WHERE tenant_id = ? AND team_name = (SELECT name FROM tenants WHERE id = ?)`
+            ).bind(played, won, drawn, lost, goalsFor, goalsAgainst, points, claims.tenantId, claims.tenantId),
+            // Remove fixtures against resigned team
+            env.DB.prepare("DELETE FROM fixtures WHERE tenant_id = ? AND opponent = ?")
+                .bind(claims.tenantId, teamName),
+            // Remove results against resigned team
+            env.DB.prepare("DELETE FROM team_results WHERE tenant_id = ? AND opponent = ?")
+                .bind(claims.tenantId, teamName)
         ];
 
         await env.DB.batch(batch);
-        return json({ success: true }, 200, corsHdrs);
+
+        // Step 4: Recalculate positions based on new points
+        const updatedStandings = await env.DB.prepare(
+            `SELECT id, points, goals_for - goals_against as gd FROM league_standings 
+             WHERE tenant_id = ? ORDER BY points DESC, gd DESC`
+        ).bind(claims.tenantId).all();
+
+        // Update positions
+        const positionUpdates = [];
+        let position = 1;
+        for (const team of (updatedStandings.results || [])) {
+            positionUpdates.push(
+                env.DB.prepare("UPDATE league_standings SET position = ? WHERE id = ?")
+                    .bind(position++, team.id)
+            );
+        }
+        if (positionUpdates.length > 0) {
+            await env.DB.batch(positionUpdates);
+        }
+
+        return json({ success: true, message: `Team ${teamName} resigned. Standings recalculated.` }, 200, corsHdrs);
     } catch (err) {
+        console.error('Resign team error:', err);
         return json({ success: false, error: "Failed to resign team" }, 500, corsHdrs);
     }
 }
