@@ -1,5 +1,7 @@
+'use client';
 
-import { getServerSDK } from '@/lib/sdk';
+import { useState, useEffect } from 'react';
+import { PublicSeasonTabs } from '@/components/PublicSeasonTabs';
 import { CountdownTimer } from '@/components/ui/CountdownTimer';
 import { WeatherWidget } from '@/components/ui/WeatherWidget';
 
@@ -114,29 +116,41 @@ function FixtureCard({ fixture, isNext }: { fixture: any, isNext?: boolean }) {
   );
 }
 
-export default async function FixturesPage({ params }: { params: Promise<{ tenant: string }> }) {
-  const { tenant } = await params;
-  const sdk = getServerSDK(tenant);
-  let fixtures: any[] = [];
-  try {
-    fixtures = await sdk.listFixtures().catch(() => []);
-  } catch (e) {
-    console.error("Failed to fetch fixtures");
-  }
+export default function FixturesPage({ params }: { params: Promise<{ tenant: string }> }) {
+  const [tenant, setTenant] = useState('');
+  const [seasonId, setSeasonId] = useState<string | null>(null);
+  const [fixtures, setFixtures] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Mock if empty
-  if (fixtures.length === 0) {
-    fixtures = [
-      { id: '1', homeTeam: 'Syston Tigers', awayTeam: 'Anstey Nomads', date: new Date().toISOString(), time: '15:00', competition: 'League Cup', venue: 'Memorial Park' },
-      { id: '2', homeTeam: 'Melton Town', awayTeam: 'Syston Tigers', date: new Date(Date.now() + 86400000 * 7).toISOString(), time: '19:45', competition: 'League', venue: 'Melton Sports Village' },
-      { id: '3', homeTeam: 'Syston Tigers', awayTeam: 'Kirby Muxloe', date: new Date(Date.now() + 86400000 * 14).toISOString(), time: '15:00', competition: 'League', venue: 'Memorial Park' },
-    ];
+  useEffect(() => {
+    params.then(p => setTenant(p.tenant));
+  }, [params]);
+
+  useEffect(() => {
+    if (!tenant) return;
+    loadFixtures();
+  }, [tenant, seasonId]);
+
+  async function loadFixtures() {
+    try {
+      setLoading(true);
+      const query = seasonId ? `?seasonId=${seasonId}` : '';
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE || ''}/public/${tenant}/fixtures${query}`);
+      const data = await res.json();
+      if (data.success && data.data) {
+        setFixtures(data.data);
+      }
+    } catch (err) {
+      console.error('Failed to load fixtures:', err);
+    } finally {
+      setLoading(false);
+    }
   }
 
   // Sort by date
-  fixtures.sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
-  const nextMatch = fixtures[0];
-  const upcoming = fixtures.slice(1);
+  const sortedFixtures = [...fixtures].sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  const nextMatch = sortedFixtures[0];
+  const upcoming = sortedFixtures.slice(1);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-black pb-20">
@@ -151,7 +165,21 @@ export default async function FixturesPage({ params }: { params: Promise<{ tenan
           </button>
         </div>
 
-        {nextMatch ? (
+        {tenant && (
+          <PublicSeasonTabs
+            tenant={tenant}
+            onSeasonChange={setSeasonId}
+            currentSeasonId={seasonId}
+          />
+        )}
+
+        {loading ? (
+          <div className="space-y-4 max-w-4xl mx-auto">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-32 bg-gray-200 dark:bg-gray-700 rounded-xl animate-pulse"></div>
+            ))}
+          </div>
+        ) : nextMatch ? (
           <>
             <FixtureCard fixture={nextMatch} isNext={true} />
 

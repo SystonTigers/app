@@ -368,7 +368,7 @@ router.put("/api/:v/social/config", (req, env, corsHdrs) => handleUpdateSocialCo
 router.get("/api/:v/social/config", (req, env, corsHdrs) => handleGetSocialConfig(req, env, corsHdrs));
 
 // Player Photo Routes
-import { handlePlayerPhotoUpload, handlePlayerPhotoDelete } from "./routes/players";
+import { handlePlayerPhotoUpload, handlePlayerPhotoDelete, handleGetPlayerGoals } from "./routes/players";
 router.post("/api/:v/players/:id/photo", (req, env, corsHdrs) => {
     const params = (req as any).params || {};
     return handlePlayerPhotoUpload(req, env, corsHdrs);
@@ -376,6 +376,10 @@ router.post("/api/:v/players/:id/photo", (req, env, corsHdrs) => {
 router.delete("/api/:v/players/:id/photo", (req, env, corsHdrs) => {
     const params = (req as any).params || {};
     return handlePlayerPhotoDelete(req, env, corsHdrs, params.id);
+});
+router.get("/api/:v/players/:id/goals", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleGetPlayerGoals(req, env, corsHdrs, params.id);
 });
 
 // Video Routes

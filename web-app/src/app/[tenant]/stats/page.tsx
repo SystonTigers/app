@@ -1,6 +1,6 @@
-
 import { getServerSDK } from '@/lib/sdk';
 import { AnimatedCounter } from '@/components/ui';
+import { FunStatsCard } from '@/components/FunStatsCard';
 
 export default async function StatsPage({ params }: { params: Promise<{ tenant: string }> }) {
   const { tenant } = await params;
@@ -72,6 +72,9 @@ export default async function StatsPage({ params }: { params: Promise<{ tenant: 
       </div>
 
       <div className="container px-6 py-12 space-y-8">
+        {/* Fun Stats Card */}
+        <FunStatsCard tenant={tenant} />
+
         {/* Team Overview Card - Full Width */}
         <section className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 p-8">
           <h2 className="text-2xl font-black uppercase tracking-tight mb-8 text-brand">Season Overview</h2>

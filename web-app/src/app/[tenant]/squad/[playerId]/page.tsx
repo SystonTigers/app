@@ -7,8 +7,15 @@ export default async function PlayerBioPage({ params }: { params: Promise<{ tena
     const sdk = getServerSDK(tenant);
 
     let player = null;
+    let playerGoals: any = null;
+
     try {
-        player = await sdk.getPlayer(playerId);
+        [player, playerGoals] = await Promise.all([
+            sdk.getPlayer(playerId),
+            fetch(`${process.env.NEXT_PUBLIC_API_BASE || ''}/api/v1/players/${playerId}/goals`, {
+                headers: { Authorization: `Bearer ${process.env.API_TOKEN || ''}` }
+            }).then(r => r.json()).then(d => d.success ? d.data : null).catch(() => null)
+        ]);
         console.log(`[PlayerBio] Fetched player ${playerId}:`, player ? 'Found' : 'Not Found');
     } catch (e) {
         console.error(`[PlayerBio] Failed to fetch player ${playerId}`, e);
@@ -180,6 +187,35 @@ export default async function PlayerBioPage({ params }: { params: Promise<{ tena
                                 </div>
                             </div>
                         </div>
+
+                        {/* Career Goals Section */}
+                        {playerGoals && (
+                            <div className="bg-gradient-to-br from-brand to-brand/80 text-white p-6 rounded-3xl shadow-lg">
+                                <div className="flex items-center gap-2 mb-4">
+                                    <span className="text-3xl">⚽</span>
+                                    <h3 className="text-lg font-black uppercase tracking-tight">Career Goals</h3>
+                                </div>
+
+                                <div className="text-7xl font-black mb-6 text-center py-4">
+                                    {playerGoals.total}
+                                </div>
+
+                                <div className="space-y-2">
+                                    <div className="text-xs font-bold uppercase tracking-wider opacity-75 mb-3">
+                                        Season Breakdown
+                                    </div>
+                                    {playerGoals.bySeason.map((season: any) => (
+                                        <div
+                                            key={season.seasonId}
+                                            className="flex justify-between items-center p-3 bg-white/10 backdrop-blur-sm rounded-lg hover:bg-white/20 transition-colors"
+                                        >
+                                            <span className="font-medium">{season.seasonName}</span>
+                                            <span className="font-black text-xl">{season.goals}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {/* Physical Attributes (New) */}

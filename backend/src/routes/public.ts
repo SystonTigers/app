@@ -363,21 +363,28 @@ export async function handlePublicTenantRequest(
         if (resource === "fixtures") {
             const limit = Math.min(parseInt(url.searchParams.get("limit") || "10", 10) || 10, 50);
             const statusParam = (url.searchParams.get("status") || url.searchParams.get("type") || "").toLowerCase();
+            const seasonId = url.searchParams.get("seasonId");
 
             if (["completed", "result", "results"].includes(statusParam)) {
+                const seasonWhere = seasonId ? `AND tr.season_id = ?` : '';
+                const binds = seasonId ? [tenant.id, seasonId, limit] : [tenant.id, limit];
+
                 const results = await env.DB.prepare(
                     `SELECT id, tenant_id, match_date, competition, opponent, venue, our_score, their_score, scorers
-             FROM team_results
-             WHERE tenant_id = ?
+             FROM team_results tr
+             WHERE tenant_id = ? ${seasonWhere}
              ORDER BY match_date DESC
              LIMIT ?`
                 )
-                    .bind(tenant.id, limit)
+                    .bind(...binds)
                     .all();
 
                 const mapped = (results.results || []).map((row: any) => mapResultRow(row, tenant.name ?? tenant.slug));
                 return json({ success: true, data: mapped }, 200, corsHdrs);
             }
+
+            const seasonWhere = seasonId ? `AND f.season_id = ?` : '';
+            const binds = seasonId ? [tenant.id, seasonId, limit] : [tenant.id, limit];
 
             const rows = await env.DB.prepare(
                 `SELECT
@@ -392,14 +399,15 @@ export async function handlePublicTenantRequest(
             home_team,
             away_team,
             home_score,
-            away_score
-         FROM fixtures
-         WHERE tenant_id = ?
+            away_score,
+            season_id
+         FROM fixtures f
+         WHERE tenant_id = ? ${seasonWhere}
            AND fixture_date >= DATE('now', '-7 days')
          ORDER BY fixture_date ASC, COALESCE(kick_off_time, '23:59') ASC
          LIMIT ?`
             )
-                .bind(tenant.id, limit)
+                .bind(...binds)
                 .all();
 
             const fixtures = (rows.results || []).map((row: any) => mapFixtureRow(row, tenant.name ?? tenant.slug));
@@ -426,19 +434,38 @@ export async function handlePublicTenantRequest(
 
         if (resource === "table") {
             const competition = url.searchParams.get("competition");
-            const stmt = competition
-                ? env.DB.prepare(
+            const seasonId = url.searchParams.get("seasonId");
+
+            let stmt;
+            if (competition && seasonId) {
+                stmt = env.DB.prepare(
+                    `SELECT position, team_name, played, won, drawn, lost, goals_for, goals_against, goal_difference, points
+               FROM league_standings
+               WHERE tenant_id = ? AND competition = ? AND season_id = ?
+               ORDER BY position ASC`
+                ).bind(tenant.id, competition, seasonId);
+            } else if (competition) {
+                stmt = env.DB.prepare(
                     `SELECT position, team_name, played, won, drawn, lost, goals_for, goals_against, goal_difference, points
                FROM league_standings
                WHERE tenant_id = ? AND competition = ?
                ORDER BY position ASC`
-                ).bind(tenant.id, competition)
-                : env.DB.prepare(
+                ).bind(tenant.id, competition);
+            } else if (seasonId) {
+                stmt = env.DB.prepare(
+                    `SELECT position, team_name, played, won, drawn, lost, goals_for, goals_against, goal_difference, points
+               FROM league_standings
+               WHERE tenant_id = ? AND season_id = ?
+               ORDER BY competition ASC, position ASC`
+                ).bind(tenant.id, seasonId);
+            } else {
+                stmt = env.DB.prepare(
                     `SELECT position, team_name, played, won, drawn, lost, goals_for, goals_against, goal_difference, points
                FROM league_standings
                WHERE tenant_id = ?
                ORDER BY competition ASC, position ASC`
                 ).bind(tenant.id);
+            }
 
             const rows = await stmt.all();
             const table = (rows.results || []).map((row: any) => ({
@@ -468,6 +495,44 @@ export async function handlePublicTenantRequest(
                 .all();
 
             const stats = buildTeamStats(rows.results || []);
+            return json({ success: true, data: stats }, 200, corsHdrs);
+        }
+
+        if (resource === "seasons") {
+            const rows = await env.DB.prepare(
+                `SELECT id, name, start_date, end_date, is_current, status
+         FROM seasons
+         WHERE tenant_id = ?
+         ORDER BY start_date DESC`
+            )
+                .bind(tenant.id)
+                .all();
+
+            const seasons = (rows.results || []).map((row: any) => ({
+                id: row.id,
+                name: row.name,
+                startDate: row.start_date,
+                endDate: row.end_date,
+                isCurrent: row.is_current === 1,
+                status: row.status
+            }));
+
+            return json({ success: true, data: seasons }, 200, corsHdrs);
+        }
+
+        if (resource === "stats" && segments[3] === "fun") {
+            // Import fun stats service
+            const { getCachedFunStats, computeFunStats, cacheFunStats } = await import("../services/funStats");
+            const seasonId = url.searchParams.get("seasonId") || undefined;
+
+            let stats = await getCachedFunStats(env.DB, tenant.id, seasonId);
+
+            // If no cache, compute
+            if (stats.length === 0) {
+                stats = await computeFunStats(env.DB, tenant.id, seasonId);
+                await cacheFunStats(env.DB, tenant.id, seasonId || null, stats);
+            }
+
             return json({ success: true, data: stats }, 200, corsHdrs);
         }
 
