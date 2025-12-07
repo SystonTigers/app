@@ -15,7 +15,7 @@ export function MobileBottomNav({ tenant }: MobileNavProps) {
         { label: 'Fixtures', href: `/${tenant}/fixtures`, icon: '📅' },
         { label: 'Results', href: `/${tenant}/results`, icon: '🏆' },
         { label: 'Squad', href: `/${tenant}/squad`, icon: '👥' },
-        { label: 'More', href: `/${tenant}/training`, icon: '⚡' },
+        { label: 'Team', href: `/${tenant}/team`, icon: '💬' },
     ];
 
     const isActive = (href: string) => {
@@ -33,8 +33,8 @@ export function MobileBottomNav({ tenant }: MobileNavProps) {
                         key={item.href}
                         href={item.href}
                         className={`flex flex-col items-center justify-center py-2 px-3 rounded-xl transition-all ${isActive(item.href)
-                                ? 'text-brand scale-110'
-                                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                            ? 'text-brand scale-110'
+                            : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
                             }`}
                     >
                         <span className={`text-xl mb-0.5 ${isActive(item.href) ? 'transform scale-110' : ''}`}>

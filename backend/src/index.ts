@@ -382,6 +382,45 @@ router.get("/api/:v/players/:id/goals", (req, env, corsHdrs) => {
     return handleGetPlayerGoals(req, env, corsHdrs, params.id);
 });
 
+// Team Discussion Routes
+import {
+    handleListDiscussions,
+    handleCreateDiscussion,
+    handleGetDiscussion,
+    handleUpdateDiscussion,
+    handleDeleteDiscussion,
+    handleCreateComment,
+    handleUpdateComment,
+    handleDeleteComment
+} from "./routes/discussions";
+
+router.get("/api/:v/discussions", (req, env, corsHdrs) => handleListDiscussions(req, env, corsHdrs));
+router.post("/api/:v/discussions", (req, env, corsHdrs) => handleCreateDiscussion(req, env, corsHdrs));
+router.get("/api/:v/discussions/:id", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleGetDiscussion(req, env, corsHdrs, params.id);
+});
+router.patch("/api/:v/discussions/:id", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleUpdateDiscussion(req, env, corsHdrs, params.id);
+});
+router.delete("/api/:v/discussions/:id", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleDeleteDiscussion(req, env, corsHdrs, params.id);
+});
+router.post("/api/:v/discussions/:id/comments", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleCreateComment(req, env, corsHdrs, params.id);
+});
+router.patch("/api/:v/comments/:id", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleUpdateComment(req, env, corsHdrs, params.id);
+});
+router.delete("/api/:v/comments/:id", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleDeleteComment(req, env, corsHdrs, params.id);
+});
+
 // Video Routes
 router.post("/api/:v/videos/upload", (req, env, corsHdrs, requestId) => handleVideoUpload(req, env, corsHdrs));
 router.get("/api/:v/videos", (req, env, corsHdrs, requestId) => handleVideoList(req, env, corsHdrs));

@@ -31,6 +31,7 @@ export function PremiumNav({ tenant, teamName }: PremiumNavProps) {
         { label: 'Table', href: `/${tenant}/table`, icon: '📊' },
         { label: 'Squad', href: `/${tenant}/squad`, icon: '👥' },
         { label: 'Stats', href: `/${tenant}/stats`, icon: '📈' },
+        { label: 'Team', href: `/${tenant}/team`, icon: '💬' },
     ];
 
     const secondaryNav: NavItem[] = [
@@ -60,8 +61,8 @@ export function PremiumNav({ tenant, teamName }: PremiumNavProps) {
     return (
         <>
             <header className={`sticky top-0 z-50 transition-all duration-300 ${isScrolled
-                    ? 'bg-white/95 dark:bg-gray-900/95 backdrop-blur-lg shadow-lg'
-                    : 'bg-white dark:bg-gray-900'
+                ? 'bg-white/95 dark:bg-gray-900/95 backdrop-blur-lg shadow-lg'
+                : 'bg-white dark:bg-gray-900'
                 } border-b border-gray-200 dark:border-gray-800`}>
                 <div className="container">
                     {/* Main Nav Row */}
@@ -83,8 +84,8 @@ export function PremiumNav({ tenant, teamName }: PremiumNavProps) {
                                     key={item.href}
                                     href={item.href}
                                     className={`px-4 py-2 rounded-xl font-medium text-sm transition-all ${isActive(item.href)
-                                            ? 'bg-brand text-white shadow-md'
-                                            : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+                                        ? 'bg-brand text-white shadow-md'
+                                        : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
                                         }`}
                                 >
                                     {item.label}
@@ -105,8 +106,8 @@ export function PremiumNav({ tenant, teamName }: PremiumNavProps) {
                                             key={item.href}
                                             href={item.href}
                                             className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${isActive(item.href)
-                                                    ? 'bg-brand/10 text-brand'
-                                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+                                                ? 'bg-brand/10 text-brand'
+                                                : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
                                                 }`}
                                         >
                                             <span className="text-lg">{item.icon}</span>
@@ -181,8 +182,8 @@ export function PremiumNav({ tenant, teamName }: PremiumNavProps) {
                                         href={item.href}
                                         onClick={() => setIsMobileMenuOpen(false)}
                                         className={`flex items-center gap-4 px-4 py-3 rounded-xl transition-colors ${isActive(item.href)
-                                                ? 'bg-brand text-white'
-                                                : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+                                            ? 'bg-brand text-white'
+                                            : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
                                             }`}
                                     >
                                         <span className="text-xl">{item.icon}</span>
