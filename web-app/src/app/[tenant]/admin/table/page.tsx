@@ -21,9 +21,30 @@ interface TableRow {
 
 export default function TableAdminPage({ params }: PageProps) {
     const { tenant } = use(params);
+    const sdk = createClientSDK(tenant);
     const [rows, setRows] = useState<TableRow[]>([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [calculating, setCalculating] = useState(false);
+    const [calcMessage, setCalcMessage] = useState('');
+
+    async function handleAutoCalculate() {
+        setCalculating(true);
+        setCalcMessage('');
+        try {
+            const result = await sdk.autoCalculateTable();
+            if (result.success) {
+                setCalcMessage(`✅ ${result.message || 'Calculated!'} (${result.teams || 0} teams)`);
+                loadTable();
+            } else {
+                setCalcMessage(`❌ ${(result as any).error || 'Calculation failed'}`);
+            }
+        } catch (err: any) {
+            setCalcMessage(`❌ ${err.message || 'Calculation failed'}`);
+        } finally {
+            setCalculating(false);
+        }
+    }
 
     useEffect(() => {
         loadTable();
@@ -85,15 +106,29 @@ export default function TableAdminPage({ params }: PageProps) {
 
     return (
         <div className="container mx-auto py-8 px-4">
-            <div className="flex justify-between items-center mb-8">
+            <div className="flex flex-wrap justify-between items-center gap-4 mb-8">
                 <h1 className="text-3xl font-bold text-gray-900 dark:text-white">League Table Manager</h1>
-                <button
-                    onClick={handleSave}
-                    disabled={saving}
-                    className="bg-brand text-white px-6 py-2 rounded hover:bg-brand/90 transition-colors disabled:opacity-50"
-                >
-                    {saving ? 'Saving...' : 'Save Changes'}
-                </button>
+                <div className="flex items-center gap-4 flex-wrap">
+                    {calcMessage && <span className="text-sm">{calcMessage}</span>}
+                    <button
+                        onClick={handleAutoCalculate}
+                        disabled={calculating}
+                        className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+                    >
+                        {calculating ? (
+                            <><span className="animate-spin">⏳</span> Calculating...</>
+                        ) : (
+                            <>🔄 Auto-Calculate from Results</>
+                        )}
+                    </button>
+                    <button
+                        onClick={handleSave}
+                        disabled={saving}
+                        className="bg-brand text-white px-6 py-2 rounded hover:bg-brand/90 transition-colors disabled:opacity-50"
+                    >
+                        {saving ? 'Saving...' : 'Save Changes'}
+                    </button>
+                </div>
             </div>
 
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-x-auto">

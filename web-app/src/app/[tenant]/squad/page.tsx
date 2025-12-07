@@ -4,6 +4,24 @@ import { Suspense } from 'react';
 
 import Link from 'next/link';
 
+// Helper to calculate time at club from joined_date
+function calculateTimeAtClub(joinedDate: string): string {
+  const joined = new Date(joinedDate);
+  const now = new Date();
+  const diffMs = now.getTime() - joined.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffDays < 30) return `${diffDays}d`;
+
+  const months = Math.floor(diffDays / 30);
+  const years = Math.floor(months / 12);
+  const remainingMonths = months % 12;
+
+  if (years === 0) return `${months}m`;
+  if (remainingMonths === 0) return `${years}y`;
+  return `${years}y ${remainingMonths}m`;
+}
+
 // Player Card Component
 function PlayerCard({ player, tenant }: { player: any; tenant: string }) {
   const initials = player.name
@@ -41,9 +59,17 @@ function PlayerCard({ player, tenant }: { player: any; tenant: string }) {
         <h3 className="text-xl font-bold text-gray-900 dark:text-white text-center mb-1 group-hover:text-brand transition-colors">
           {player.name}
         </h3>
-        <span className="inline-block px-3 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-xs font-bold uppercase tracking-wider rounded-full mb-6">
+        <span className="inline-block px-3 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-xs font-bold uppercase tracking-wider rounded-full mb-2">
           {player.position || 'Player'}
         </span>
+
+        {/* Time at Club Badge */}
+        {player.joined_date && (
+          <div className="text-xs text-gray-400 mb-4 flex items-center justify-center gap-1">
+            <span>⏱️</span>
+            <span>{calculateTimeAtClub(player.joined_date)}</span>
+          </div>
+        )}
 
         {/* Stats Grid */}
         {player.stats && (

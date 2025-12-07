@@ -473,7 +473,8 @@ import {
     handleCreateFixture, handleDeleteFixture,
     handleCreateResult, handleDeleteResult,
     handleCreatePost, handleDeletePost,
-    handleUpdateTable, handleResignTeam
+    handleUpdateTable, handleResignTeam,
+    handleAutoImportFixtures, handleAutoCalculateTable
 } from "./routes/content";
 
 import { handleUpdateFixtureSettings, handleGetFixtureSettings } from "./routes/settings";
@@ -513,6 +514,48 @@ router.delete("/api/:v/feed/:id", (req, env, corsHdrs) => {
 
 router.post("/api/:v/table", (req, env, corsHdrs) => handleUpdateTable(req, env, corsHdrs));
 router.post("/api/:v/table/resign", (req, env, corsHdrs) => handleResignTeam(req, env, corsHdrs));
+router.post("/api/:v/table/auto-calculate", (req, env, corsHdrs) => handleAutoCalculateTable(req, env, corsHdrs));
+router.post("/api/:v/fixtures/auto-import", (req, env, corsHdrs) => handleAutoImportFixtures(req, env, corsHdrs));
+
+// GOTM Voting Routes
+import { handleStartGOTMVoting, handleGetGOTMVoting, handleCastGOTMVote, handleCloseGOTMVoting } from "./routes/gotm";
+router.post("/api/:v/gotm/start", (req, env, corsHdrs) => handleStartGOTMVoting(req, env, corsHdrs));
+router.get("/api/:v/gotm", (req, env, corsHdrs) => handleGetGOTMVoting(req, env, corsHdrs));
+router.post("/api/:v/gotm/vote", (req, env, corsHdrs) => handleCastGOTMVote(req, env, corsHdrs));
+router.post("/api/:v/gotm/close", (req, env, corsHdrs) => handleCloseGOTMVoting(req, env, corsHdrs));
+
+// Calendar Routes
+import { handleExportCalendarICS } from "./routes/calendar";
+router.get("/api/:v/calendar/export", (req, env, corsHdrs) => handleExportCalendarICS(req, env, corsHdrs));
+
+// Seasons Routes
+import {
+    handleListSeasons, handleCreateSeason, handleSetCurrentSeason,
+    handleArchiveSeason, handleGetCurrentSeason, handleAddPlayerToSeason,
+    handleGetSeasonRoster
+} from "./routes/seasons";
+router.get("/api/:v/seasons", (req, env, corsHdrs) => handleListSeasons(req, env, corsHdrs));
+router.post("/api/:v/seasons", (req, env, corsHdrs) => handleCreateSeason(req, env, corsHdrs));
+router.get("/api/:v/seasons/current", (req, env, corsHdrs) => handleGetCurrentSeason(req, env, corsHdrs));
+router.post("/api/:v/seasons/set-current", (req, env, corsHdrs) => handleSetCurrentSeason(req, env, corsHdrs));
+router.post("/api/:v/seasons/archive", (req, env, corsHdrs) => handleArchiveSeason(req, env, corsHdrs));
+router.post("/api/:v/seasons/:id/roster", (req, env, corsHdrs) => handleAddPlayerToSeason(req, env, corsHdrs));
+router.get("/api/:v/seasons/:id/roster", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleGetSeasonRoster(req, env, corsHdrs, params.id);
+});
+
+// Fun Stats Routes
+import { handleGetTeamFunStats, handleGetPlayerFunStats, handleGetSeasonSummary } from "./routes/fun-stats";
+router.get("/api/:v/stats/fun", (req, env, corsHdrs) => handleGetTeamFunStats(req, env, corsHdrs));
+router.get("/api/:v/stats/fun/player/:id", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleGetPlayerFunStats(req, env, corsHdrs, params.id);
+});
+router.get("/api/:v/seasons/:id/summary", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleGetSeasonSummary(req, env, corsHdrs, params.id);
+});
 
 // Dev Auth Routes (only in development)
 router.post("/dev/admin-jwt", (req, env) => handleDevAdminJWT(req, env));

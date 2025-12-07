@@ -233,3 +233,199 @@ export async function handleResignTeam(req: Request, env: any, corsHdrs: Headers
         return json({ success: false, error: "Failed to resign team" }, 500, corsHdrs);
     }
 }
+
+// Auto-Import Fixtures from FA (using stored faSnippet URL)
+export async function handleAutoImportFixtures(req: Request, env: any, corsHdrs: Headers) {
+    try {
+        const claims = await requireJWT(req, env);
+
+        // Get tenant settings to find FA snippet URL
+        const settings = await env.DB.prepare(
+            "SELECT setting_value FROM tenant_settings WHERE tenant_id = ? AND setting_key = 'fixture_settings'"
+        ).bind(claims.tenantId).first();
+
+        if (!settings?.setting_value) {
+            return json({ success: false, error: "No FA settings configured. Please set FA snippet URL in Settings." }, 400, corsHdrs);
+        }
+
+        const fixtureSettings = JSON.parse(settings.setting_value);
+        const faSnippet = fixtureSettings.faSnippet;
+
+        if (!faSnippet) {
+            return json({ success: false, error: "FA snippet URL not configured" }, 400, corsHdrs);
+        }
+
+        // Fetch fixtures from FA Full-Time
+        let fixtures: any[] = [];
+        try {
+            const response = await fetch(faSnippet, {
+                headers: { 'User-Agent': 'Mozilla/5.0 (compatible; FootballClubApp/1.0)' }
+            });
+
+            if (!response.ok) {
+                return json({ success: false, error: `FA fetch failed: ${response.status}` }, 500, corsHdrs);
+            }
+
+            const html = await response.text();
+
+            // Parse fixtures from HTML (simplified - matches common FA Full-Time format)
+            const fixturePattern = /<tr[^>]*>.*?<td[^>]*>([^<]+)<\/td>.*?<td[^>]*>([^<]+)<\/td>.*?<td[^>]*>([^<]+)<\/td>.*?<\/tr>/gis;
+            let match;
+
+            while ((match = fixturePattern.exec(html)) !== null) {
+                const [, date, teams, time] = match;
+                if (date && teams) {
+                    fixtures.push({
+                        date: date.trim(),
+                        teams: teams.trim(),
+                        time: time?.trim() || 'TBC'
+                    });
+                }
+            }
+
+            // Alternative: Try JSON format
+            if (fixtures.length === 0) {
+                try {
+                    const jsonData = JSON.parse(html);
+                    if (Array.isArray(jsonData)) {
+                        fixtures = jsonData.map((f: any) => ({
+                            date: f.date || f.matchDate,
+                            opponent: f.opponent || f.awayTeam || f.homeTeam,
+                            time: f.time || f.kickOff || 'TBC',
+                            venue: f.venue || (f.homeTeam ? 'Away' : 'Home'),
+                            competition: f.competition || 'League'
+                        }));
+                    }
+                } catch { /* Not JSON */ }
+            }
+        } catch (fetchErr) {
+            console.error('FA fetch error:', fetchErr);
+            return json({ success: false, error: "Failed to fetch from FA" }, 500, corsHdrs);
+        }
+
+        if (fixtures.length === 0) {
+            return json({ success: true, imported: 0, message: "No fixtures found to import" }, 200, corsHdrs);
+        }
+
+        // Import fixtures to database (upsert by date + opponent)
+        let imported = 0;
+        for (const fixture of fixtures) {
+            const id = crypto.randomUUID();
+            try {
+                await env.DB.prepare(
+                    `INSERT OR REPLACE INTO fixtures (id, tenant_id, fixture_date, kick_off_time, opponent, venue, competition, status)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, 'scheduled')`
+                ).bind(
+                    id, claims.tenantId, fixture.date, fixture.time,
+                    fixture.opponent || fixture.teams, fixture.venue || 'TBC', fixture.competition || 'League'
+                ).run();
+                imported++;
+            } catch (e) {
+                console.error('Insert fixture error:', e);
+            }
+        }
+
+        return json({ success: true, imported, total: fixtures.length }, 200, corsHdrs);
+    } catch (err) {
+        console.error('Auto-import error:', err);
+        return json({ success: false, error: "Failed to auto-import fixtures" }, 500, corsHdrs);
+    }
+}
+
+// Auto-Calculate League Table from Results
+export async function handleAutoCalculateTable(req: Request, env: any, corsHdrs: Headers) {
+    try {
+        const claims = await requireJWT(req, env);
+
+        // Get all results for this tenant
+        const results = await env.DB.prepare(
+            "SELECT opponent, our_score, their_score, venue FROM team_results WHERE tenant_id = ?"
+        ).bind(claims.tenantId).all();
+
+        if (!results.results || results.results.length === 0) {
+            return json({ success: false, error: "No results found to calculate from" }, 400, corsHdrs);
+        }
+
+        // Get tenant name for "our team"
+        const tenant = await env.DB.prepare("SELECT name FROM tenants WHERE id = ?").bind(claims.tenantId).first();
+        const ourTeamName = tenant?.name || 'Our Team';
+
+        // Calculate standings
+        const standings: Record<string, { played: number; won: number; drawn: number; lost: number; gf: number; ga: number; pts: number }> = {};
+
+        // Initialize our team
+        standings[ourTeamName] = { played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, pts: 0 };
+
+        for (const result of results.results) {
+            const ourScore = Number(result.our_score) || 0;
+            const theirScore = Number(result.their_score) || 0;
+            const opponent = result.opponent;
+
+            // Initialize opponent if not exists
+            if (!standings[opponent]) {
+                standings[opponent] = { played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, pts: 0 };
+            }
+
+            // Update our stats
+            standings[ourTeamName].played++;
+            standings[ourTeamName].gf += ourScore;
+            standings[ourTeamName].ga += theirScore;
+
+            // Update opponent stats (inverse)
+            standings[opponent].played++;
+            standings[opponent].gf += theirScore;
+            standings[opponent].ga += ourScore;
+
+            if (ourScore > theirScore) {
+                // We won
+                standings[ourTeamName].won++;
+                standings[ourTeamName].pts += 3;
+                standings[opponent].lost++;
+            } else if (ourScore === theirScore) {
+                // Draw
+                standings[ourTeamName].drawn++;
+                standings[ourTeamName].pts += 1;
+                standings[opponent].drawn++;
+                standings[opponent].pts += 1;
+            } else {
+                // They won
+                standings[ourTeamName].lost++;
+                standings[opponent].won++;
+                standings[opponent].pts += 3;
+            }
+        }
+
+        // Clear existing standings and insert new ones
+        await env.DB.prepare("DELETE FROM league_standings WHERE tenant_id = ?").bind(claims.tenantId).run();
+
+        // Sort by points, then goal difference
+        const sortedTeams = Object.entries(standings).sort((a, b) => {
+            const ptsDiff = b[1].pts - a[1].pts;
+            if (ptsDiff !== 0) return ptsDiff;
+            return (b[1].gf - b[1].ga) - (a[1].gf - a[1].ga);
+        });
+
+        // Insert standings
+        let position = 1;
+        for (const [teamName, stats] of sortedTeams) {
+            const id = crypto.randomUUID();
+            await env.DB.prepare(
+                `INSERT INTO league_standings (id, tenant_id, position, team_name, played, won, drawn, lost, goals_for, goals_against, points)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+            ).bind(
+                id, claims.tenantId, position++, teamName,
+                stats.played, stats.won, stats.drawn, stats.lost,
+                stats.gf, stats.ga, stats.pts
+            ).run();
+        }
+
+        return json({
+            success: true,
+            message: `League table calculated from ${results.results.length} results`,
+            teams: sortedTeams.length
+        }, 200, corsHdrs);
+    } catch (err) {
+        console.error('Auto-calculate error:', err);
+        return json({ success: false, error: "Failed to calculate league table" }, 500, corsHdrs);
+    }
+}

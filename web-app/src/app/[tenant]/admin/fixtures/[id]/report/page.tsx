@@ -10,8 +10,9 @@ interface PageProps {
 
 interface MatchEvent {
     playerId: string;
-    eventType: 'goal' | 'assist' | 'yellow_card' | 'red_card' | 'motm';
+    eventType: 'goal' | 'assist' | 'yellow_card' | 'red_card' | 'motm' | 'sub_on' | 'sub_off';
     minute?: number;
+    relatedPlayerId?: string; // For subs: the player being replaced
 }
 
 interface Player {
@@ -38,6 +39,11 @@ export default function MatchReportPage({ params }: PageProps) {
     const [selectedPlayer, setSelectedPlayer] = useState('');
     const [selectedType, setSelectedType] = useState('goal');
     const [minute, setMinute] = useState('');
+    const [subPlayerOff, setSubPlayerOff] = useState('');
+
+    // Lineup state
+    const [startingXI, setStartingXI] = useState<string[]>([]);
+    const [subs, setSubs] = useState<string[]>([]);
 
     useEffect(() => {
         loadData();
@@ -70,15 +76,57 @@ export default function MatchReportPage({ params }: PageProps) {
 
     function addEvent() {
         if (!selectedPlayer) return;
-        const newEvent: MatchEvent = {
-            playerId: selectedPlayer,
-            eventType: selectedType as any,
-            minute: minute ? parseInt(minute) : undefined
-        };
-        setEvents([...events, newEvent]);
+
+        // Handle substitution specially
+        if (selectedType === 'sub_on') {
+            if (!subPlayerOff) return;
+            // Add sub_off event for player coming off
+            const offEvent: MatchEvent = {
+                playerId: subPlayerOff,
+                eventType: 'sub_off',
+                minute: minute ? parseInt(minute) : undefined,
+                relatedPlayerId: selectedPlayer
+            };
+            // Add sub_on event for player coming on
+            const onEvent: MatchEvent = {
+                playerId: selectedPlayer,
+                eventType: 'sub_on',
+                minute: minute ? parseInt(minute) : undefined,
+                relatedPlayerId: subPlayerOff
+            };
+            setEvents([...events, offEvent, onEvent]);
+            setSubPlayerOff('');
+        } else {
+            const newEvent: MatchEvent = {
+                playerId: selectedPlayer,
+                eventType: selectedType as any,
+                minute: minute ? parseInt(minute) : undefined
+            };
+            setEvents([...events, newEvent]);
+        }
         // Reset inputs
         setSelectedPlayer('');
         setMinute('');
+    }
+
+    function toggleStartingXI(playerId: string) {
+        if (startingXI.includes(playerId)) {
+            setStartingXI(startingXI.filter(id => id !== playerId));
+        } else if (startingXI.length < 11) {
+            setStartingXI([...startingXI, playerId]);
+            // Remove from subs if was there
+            setSubs(subs.filter(id => id !== playerId));
+        }
+    }
+
+    function toggleSubs(playerId: string) {
+        if (subs.includes(playerId)) {
+            setSubs(subs.filter(id => id !== playerId));
+        } else if (subs.length < 7) {
+            setSubs([...subs, playerId]);
+            // Remove from starting if was there
+            setStartingXI(startingXI.filter(id => id !== playerId));
+        }
     }
 
     function removeEvent(index: number) {
@@ -161,6 +209,7 @@ export default function MatchReportPage({ params }: PageProps) {
                                 <option value="yellow_card">🟨 Yellow Card</option>
                                 <option value="red_card">🟥 Red Card</option>
                                 <option value="motm">⭐ Man of the Match</option>
+                                <option value="sub_on">🔄 Substitution</option>
                             </select>
                             <input
                                 type="number"
@@ -170,9 +219,21 @@ export default function MatchReportPage({ params }: PageProps) {
                                 className="w-20 p-2 border rounded dark:bg-gray-700"
                             />
                         </div>
+                        {selectedType === 'sub_on' && (
+                            <select
+                                value={subPlayerOff}
+                                onChange={(e) => setSubPlayerOff(e.target.value)}
+                                className="w-full p-2 border rounded dark:bg-gray-700"
+                            >
+                                <option value="">Select Player Coming Off...</option>
+                                {players.filter(p => p.id !== selectedPlayer).map(p => (
+                                    <option key={p.id} value={p.id}>{p.number ? `#${p.number} ` : ''}{p.name}</option>
+                                ))}
+                            </select>
+                        )}
                         <button
                             onClick={addEvent}
-                            disabled={!selectedPlayer}
+                            disabled={!selectedPlayer || (selectedType === 'sub_on' && !subPlayerOff)}
                             className="bg-brand text-white py-2 rounded hover:bg-brand/90 disabled:opacity-50"
                         >
                             Add Event
@@ -199,6 +260,7 @@ export default function MatchReportPage({ params }: PageProps) {
                         <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                             {events.map((ev, i) => {
                                 const player = players.find(p => p.id === ev.playerId);
+                                const relatedPlayer = ev.relatedPlayerId ? players.find(p => p.id === ev.relatedPlayerId) : null;
                                 return (
                                     <tr key={i}>
                                         <td className="px-6 py-4 whitespace-nowrap text-gray-500">{ev.minute || '-'}</td>
@@ -208,9 +270,12 @@ export default function MatchReportPage({ params }: PageProps) {
                                             {ev.eventType === 'yellow_card' && '🟨 Yellow Card'}
                                             {ev.eventType === 'red_card' && '🟥 Red Card'}
                                             {ev.eventType === 'motm' && '⭐ MOTM'}
+                                            {ev.eventType === 'sub_on' && '🔼 Sub On'}
+                                            {ev.eventType === 'sub_off' && '🔽 Sub Off'}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap font-medium">
                                             {player ? player.name : 'Unknown Player'}
+                                            {relatedPlayer && <span className="text-gray-400 text-sm ml-2">(for {relatedPlayer.name})</span>}
                                         </td>
                                         <td className="px-6 py-4 text-right">
                                             <button

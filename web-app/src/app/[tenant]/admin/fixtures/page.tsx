@@ -10,8 +10,11 @@ interface PageProps {
 
 export default function FixturesAdminPage({ params }: PageProps) {
     const { tenant } = use(params);
+    const sdk = createClientSDK(tenant);
     const [fixtures, setFixtures] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [importing, setImporting] = useState(false);
+    const [importMessage, setImportMessage] = useState('');
     const [formData, setFormData] = useState({
         date: '',
         time: '',
@@ -20,10 +23,27 @@ export default function FixturesAdminPage({ params }: PageProps) {
         competition: 'League'
     });
 
+    async function handleAutoImport() {
+        setImporting(true);
+        setImportMessage('');
+        try {
+            const result = await sdk.autoImportFixtures();
+            if (result.success) {
+                setImportMessage(`✅ Imported ${result.imported || 0} fixtures!`);
+                loadFixtures();
+            } else {
+                setImportMessage(`❌ ${(result as any).error || 'Import failed'}`);
+            }
+        } catch (err: any) {
+            setImportMessage(`❌ ${err.message || 'Import failed'}`);
+        } finally {
+            setImporting(false);
+        }
+    }
+
     useEffect(() => {
         loadFixtures();
     }, [tenant]);
-
     async function loadFixtures() {
         try {
             const sdk = createClientSDK(tenant);
@@ -84,7 +104,29 @@ export default function FixturesAdminPage({ params }: PageProps) {
 
     return (
         <div className="container mx-auto py-8 px-4">
-            <h1 className="text-3xl font-bold mb-8 text-gray-900 dark:text-white">Fixtures Manager</h1>
+            <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
+                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Fixtures Manager</h1>
+                <div className="flex items-center gap-4">
+                    {importMessage && <span className="text-sm">{importMessage}</span>}
+                    <a
+                        href={`${process.env.NEXT_PUBLIC_API_BASE || ''}/api/v1/calendar/export`}
+                        className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center gap-2"
+                    >
+                        📅 Export Calendar
+                    </a>
+                    <button
+                        onClick={handleAutoImport}
+                        disabled={importing}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+                    >
+                        {importing ? (
+                            <><span className="animate-spin">⏳</span> Importing...</>
+                        ) : (
+                            <>📥 Auto-Import from FA</>
+                        )}
+                    </button>
+                </div>
+            </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Form */}

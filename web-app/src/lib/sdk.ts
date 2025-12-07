@@ -310,6 +310,13 @@ export type AnySDK = {
   saveMatchReport: (fixtureId: string, report: any) => Promise<{ success: boolean }>;
   getMatchReport: (fixtureId: string) => Promise<{ success: boolean; events: any[] }>;
   resignTeam: (teamName: string) => Promise<{ success: boolean }>;
+  autoImportFixtures: () => Promise<{ success: boolean; imported?: number; message?: string }>;
+  autoCalculateTable: () => Promise<{ success: boolean; teams?: number; message?: string }>;
+  // GOTM Voting
+  startGOTMVoting: (month: string, year: number, goals: any[]) => Promise<{ success: boolean; votingId?: string }>;
+  getGOTMVoting: (votingId?: string) => Promise<{ success: boolean; voting: any; candidates: any[] }>;
+  castGOTMVote: (votingId: string, candidateId: string) => Promise<{ success: boolean }>;
+  closeGOTMVoting: (votingId: string) => Promise<{ success: boolean; winner?: any }>;
 };
 
 // One shared instance; hook these up to real calls later as needed
@@ -348,6 +355,13 @@ const compat: AnySDK = {
   saveMatchReport: async () => ({ success: true }),
   getMatchReport: async () => ({ success: true, events: [] }),
   resignTeam: async () => ({ success: true }),
+  autoImportFixtures: async () => ({ success: true, imported: 0, message: 'Mock' }),
+  autoCalculateTable: async () => ({ success: true, teams: 0, message: 'Mock' }),
+  // GOTM mocks
+  startGOTMVoting: async () => ({ success: true, votingId: 'mock' }),
+  getGOTMVoting: async () => ({ success: true, voting: null, candidates: [] }),
+  castGOTMVote: async () => ({ success: true }),
+  closeGOTMVoting: async () => ({ success: true, winner: null }),
 };
 
 // Client SDK implementation
@@ -453,6 +467,56 @@ class ClientSDK implements AnySDK {
     return http<{ success: boolean }>(
       `${API_BASE}/api/v1/table/resign`,
       { method: 'POST', body: JSON.stringify({ teamName }), headers: { Authorization: `Bearer ${token}` } }
+    );
+  }
+
+  async autoImportFixtures() {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
+    return http<{ success: boolean; imported?: number; message?: string }>(
+      `${API_BASE}/api/v1/fixtures/auto-import`,
+      { method: 'POST', headers: { Authorization: `Bearer ${token}` } }
+    );
+  }
+
+  async autoCalculateTable() {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
+    return http<{ success: boolean; teams?: number; message?: string }>(
+      `${API_BASE}/api/v1/table/auto-calculate`,
+      { method: 'POST', headers: { Authorization: `Bearer ${token}` } }
+    );
+  }
+
+  // GOTM Voting
+  async startGOTMVoting(month: string, year: number, goals: any[]) {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
+    return http<{ success: boolean; votingId?: string }>(
+      `${API_BASE}/api/v1/gotm/start`,
+      { method: 'POST', body: JSON.stringify({ month, year, goals }), headers: { Authorization: `Bearer ${token}` } }
+    );
+  }
+
+  async getGOTMVoting(votingId?: string) {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
+    const url = votingId ? `${API_BASE}/api/v1/gotm?votingId=${votingId}` : `${API_BASE}/api/v1/gotm`;
+    return http<{ success: boolean; voting: any; candidates: any[] }>(
+      url,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+  }
+
+  async castGOTMVote(votingId: string, candidateId: string) {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
+    return http<{ success: boolean }>(
+      `${API_BASE}/api/v1/gotm/vote`,
+      { method: 'POST', body: JSON.stringify({ votingId, candidateId }), headers: { Authorization: `Bearer ${token}` } }
+    );
+  }
+
+  async closeGOTMVoting(votingId: string) {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
+    return http<{ success: boolean; winner?: any }>(
+      `${API_BASE}/api/v1/gotm/close`,
+      { method: 'POST', body: JSON.stringify({ votingId }), headers: { Authorization: `Bearer ${token}` } }
     );
   }
 
