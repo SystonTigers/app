@@ -307,6 +307,9 @@ export type AnySDK = {
   addToCart: (cartId: string, variantId: string, quantity: number) => Promise<{ success: boolean; cart: any }>;
   removeFromCart: (cartId: string, variantId: string) => Promise<{ success: boolean; cart: any }>;
   createCheckoutSession: (cartId: string, email: string) => Promise<{ success: boolean; sessionId: string; url: string }>;
+  saveMatchReport: (fixtureId: string, report: any) => Promise<{ success: boolean }>;
+  getMatchReport: (fixtureId: string) => Promise<{ success: boolean; events: any[] }>;
+  resignTeam: (teamName: string) => Promise<{ success: boolean }>;
 };
 
 // One shared instance; hook these up to real calls later as needed
@@ -342,6 +345,9 @@ const compat: AnySDK = {
   addToCart: async () => ({ success: true, cart: { items: [] } }),
   removeFromCart: async () => ({ success: true, cart: { items: [] } }),
   createCheckoutSession: async () => ({ success: true, sessionId: 'mock', url: '#' }),
+  saveMatchReport: async () => ({ success: true }),
+  getMatchReport: async () => ({ success: true, events: [] }),
+  resignTeam: async () => ({ success: true }),
 };
 
 // Client SDK implementation
@@ -422,6 +428,31 @@ class ClientSDK implements AnySDK {
     return http<{ success: true; sessionId: string; url: string }>(
       `${API_BASE}/api/v1/shop/checkout`,
       { method: 'POST', body: JSON.stringify({ cartId, customerEmail: email }) }
+    );
+  }
+
+  // Match Reports
+  async saveMatchReport(fixtureId: string, report: any) {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
+    return http<{ success: boolean }>(
+      `${API_BASE}/api/v1/matches/${fixtureId}/report`,
+      { method: 'POST', body: JSON.stringify(report), headers: { Authorization: `Bearer ${token}` } }
+    );
+  }
+
+  async getMatchReport(fixtureId: string) {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
+    return http<{ success: boolean; events: any[] }>(
+      `${API_BASE}/api/v1/matches/${fixtureId}/report`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+  }
+
+  async resignTeam(teamName: string) {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
+    return http<{ success: boolean }>(
+      `${API_BASE}/api/v1/table/resign`,
+      { method: 'POST', body: JSON.stringify({ teamName }), headers: { Authorization: `Bearer ${token}` } }
     );
   }
 

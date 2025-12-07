@@ -473,8 +473,25 @@ import {
     handleCreateFixture, handleDeleteFixture,
     handleCreateResult, handleDeleteResult,
     handleCreatePost, handleDeletePost,
-    handleUpdateTable
+    handleUpdateTable, handleResignTeam
 } from "./routes/content";
+
+import { handleUpdateFixtureSettings, handleGetFixtureSettings } from "./routes/settings";
+
+router.put("/api/:v/settings/fixtures", (req, env, corsHdrs) => handleUpdateFixtureSettings(req, env));
+router.get("/api/:v/settings/fixtures", (req, env, corsHdrs) => handleGetFixtureSettings(req, env));
+
+import { handleSaveMatchReport, handleGetMatchReport, handleGetPlayerStats } from "./routes/match-report";
+
+router.post("/api/:v/matches/:id/report", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleSaveMatchReport(req, env, params.id);
+});
+router.get("/api/:v/matches/:id/report", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleGetMatchReport(req, env, params.id);
+});
+router.get("/api/:v/stats/players", (req, env, corsHdrs) => handleGetPlayerStats(req, env));
 
 router.post("/api/:v/fixtures", (req, env, corsHdrs) => handleCreateFixture(req, env, corsHdrs));
 router.delete("/api/:v/fixtures/:id", (req, env, corsHdrs) => {
@@ -495,6 +512,7 @@ router.delete("/api/:v/feed/:id", (req, env, corsHdrs) => {
 });
 
 router.post("/api/:v/table", (req, env, corsHdrs) => handleUpdateTable(req, env, corsHdrs));
+router.post("/api/:v/table/resign", (req, env, corsHdrs) => handleResignTeam(req, env, corsHdrs));
 
 // Dev Auth Routes (only in development)
 router.post("/dev/admin-jwt", (req, env) => handleDevAdminJWT(req, env));

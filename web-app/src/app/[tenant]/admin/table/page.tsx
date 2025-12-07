@@ -109,6 +109,7 @@ export default function TableAdminPage({ params }: PageProps) {
                             <th className="px-2 py-2 text-center w-16">GF</th>
                             <th className="px-2 py-2 text-center w-16">GA</th>
                             <th className="px-2 py-2 text-center w-16">Pts</th>
+                            <th className="px-2 py-2 text-center">Action</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -131,6 +132,24 @@ export default function TableAdminPage({ params }: PageProps) {
                                 <td className="px-2 py-2"><input type="number" value={row.goalsFor} onChange={e => updateRow(i, 'goalsFor', parseInt(e.target.value))} className="w-full text-center p-1 border rounded dark:bg-gray-700" /></td>
                                 <td className="px-2 py-2"><input type="number" value={row.goalsAgainst} onChange={e => updateRow(i, 'goalsAgainst', parseInt(e.target.value))} className="w-full text-center p-1 border rounded dark:bg-gray-700" /></td>
                                 <td className="px-2 py-2"><input type="number" value={row.points} onChange={e => updateRow(i, 'points', parseInt(e.target.value))} className="w-full text-center p-1 border rounded dark:bg-gray-700 font-bold" /></td>
+                                <td className="px-2 py-2 text-center">
+                                    {row.team && (
+                                        <button
+                                            onClick={() => {
+                                                if (confirm(`Are you sure ${row.team} has resigned? This will delete all their fixtures and results.`)) {
+                                                    const sdk = createClientSDK(tenant);
+                                                    sdk.resignTeam(row.team).then(() => {
+                                                        alert(`${row.team} resigned.`);
+                                                        loadTable();
+                                                    });
+                                                }
+                                            }}
+                                            className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded hover:bg-red-200"
+                                        >
+                                            Resign
+                                        </button>
+                                    )}
+                                </td>
                             </tr>
                         ))}
                     </tbody>

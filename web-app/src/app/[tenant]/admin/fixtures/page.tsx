@@ -2,6 +2,7 @@
 
 import { useState, useEffect, use } from 'react';
 import { createClientSDK, createFixture, deleteFixture } from '@/lib/sdk';
+import Link from 'next/link';
 
 interface PageProps {
     params: Promise<{ tenant: string }>;
@@ -175,6 +176,12 @@ export default function FixturesAdminPage({ params }: PageProps) {
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-right">
+                                            <Link
+                                                href={`/${tenant}/admin/fixtures/${fixture.id}/report`}
+                                                className="text-blue-600 hover:text-blue-900 mr-4 font-medium"
+                                            >
+                                                Report
+                                            </Link>
                                             <button
                                                 onClick={() => handleDelete(fixture.id)}
                                                 className="text-red-600 hover:text-red-900"

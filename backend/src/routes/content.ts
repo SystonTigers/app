@@ -124,3 +124,27 @@ export async function handleUpdateTable(req: Request, env: any, corsHdrs: Header
         return json({ success: false, error: "Failed to update table" }, 500, corsHdrs);
     }
 }
+
+export async function handleResignTeam(req: Request, env: any, corsHdrs: Headers) {
+    try {
+        const claims = await requireJWT(req, env);
+        const body = await req.json() as { teamName: string };
+        const teamName = body.teamName;
+
+        if (!teamName) return json({ success: false, error: "Team name required" }, 400, corsHdrs);
+
+        const batch = [
+            // Remove from League Table
+            env.DB.prepare("DELETE FROM league_standings WHERE tenant_id = ? AND team_name = ?").bind(claims.tenantId, teamName),
+            // Remove future/past fixtures against them
+            env.DB.prepare("DELETE FROM fixtures WHERE tenant_id = ? AND opponent = ?").bind(claims.tenantId, teamName),
+            // Remove results against them
+            env.DB.prepare("DELETE FROM team_results WHERE tenant_id = ? AND opponent = ?").bind(claims.tenantId, teamName)
+        ];
+
+        await env.DB.batch(batch);
+        return json({ success: true }, 200, corsHdrs);
+    } catch (err) {
+        return json({ success: false, error: "Failed to resign team" }, 500, corsHdrs);
+    }
+}

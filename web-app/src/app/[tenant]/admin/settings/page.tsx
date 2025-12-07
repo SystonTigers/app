@@ -11,6 +11,7 @@ interface FixtureSettings {
     importSource: string;
     defaultVenue: string;
     notifyOnNewFixture: boolean;
+    faSnippet?: string;
 }
 
 export default function FixtureSettingsPage({ params }: PageProps) {
@@ -20,6 +21,7 @@ export default function FixtureSettingsPage({ params }: PageProps) {
         importSource: 'fa-fulltime',
         defaultVenue: '',
         notifyOnNewFixture: true,
+        faSnippet: '',
     });
     const [saving, setSaving] = useState(false);
 
@@ -69,18 +71,37 @@ export default function FixtureSettingsPage({ params }: PageProps) {
                 </div>
 
                 {/* Import Source */}
+                {/* Import Source */}
                 {settings.autoImport && (
-                    <div>
-                        <label className="block text-sm font-medium mb-2">Import Source</label>
-                        <select
-                            value={settings.importSource}
-                            onChange={(e) => setSettings({ ...settings, importSource: e.target.value })}
-                            className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand dark:bg-gray-700"
-                        >
-                            <option value="fa-fulltime">FA Full-Time</option>
-                            <option value="league-website">League Website</option>
-                            <option value="manual">Manual Entry</option>
-                        </select>
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium mb-2">Import Source</label>
+                            <select
+                                value={settings.importSource}
+                                onChange={(e) => setSettings({ ...settings, importSource: e.target.value })}
+                                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand dark:bg-gray-700"
+                            >
+                                <option value="fa-fulltime">FA Full-Time</option>
+                                <option value="league-website">League Website</option>
+                                <option value="manual">Manual Entry</option>
+                            </select>
+                        </div>
+
+                        {settings.importSource === 'fa-fulltime' && (
+                            <div>
+                                <label className="block text-sm font-medium mb-2">FA Full-Time Team URL / Code</label>
+                                <input
+                                    type="text"
+                                    value={settings.faSnippet || ''}
+                                    onChange={(e) => setSettings({ ...settings, faSnippet: e.target.value })}
+                                    placeholder="Paste your FA Full-Time URL or Team ID here"
+                                    className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand dark:bg-gray-700 font-mono text-sm"
+                                />
+                                <p className="text-xs text-gray-500 mt-1">
+                                    We'll extract the team ID to fetch your fixtures automatically.
+                                </p>
+                            </div>
+                        )}
                     </div>
                 )}
 
