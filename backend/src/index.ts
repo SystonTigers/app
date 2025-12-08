@@ -643,6 +643,35 @@ router.post("/dev/admin-jwt", (req, env) => handleDevAdminJWT(req, env));
 router.post("/dev/magic-link", (req, env) => handleDevMagicLink(req, env));
 router.get("/dev/info", (req, env) => handleDevInfo(req, env));
 
+// Feature Flags & Config Routes
+import {
+    handleGetFeatures, handleUpdateFeatures,
+    handleGetConfig, handleUpdateConfig,
+    handleGetBranding, handleUpdateBranding
+} from "./routes/features";
+router.get("/api/:v/features", (req, env, corsHdrs) => handleGetFeatures(req, env, corsHdrs));
+router.patch("/api/:v/features", (req, env, corsHdrs) => handleUpdateFeatures(req, env, corsHdrs));
+router.get("/api/:v/config", (req, env, corsHdrs) => handleGetConfig(req, env, corsHdrs));
+router.patch("/api/:v/config", (req, env, corsHdrs) => handleUpdateConfig(req, env, corsHdrs));
+router.get("/api/:v/config/branding", (req, env, corsHdrs) => handleGetBranding(req, env, corsHdrs));
+router.patch("/api/:v/config/branding", (req, env, corsHdrs) => handleUpdateBranding(req, env, corsHdrs));
+
+// CSV Import Routes
+import {
+    handleImportFixtures, handleImportResults,
+    handleImportPlayers, handleImportMatchEvents,
+    handleGetImportTemplate, handleGetImportStatus
+} from "./routes/import";
+router.post("/api/:v/import/fixtures", (req, env, corsHdrs) => handleImportFixtures(req, env, corsHdrs));
+router.post("/api/:v/import/results", (req, env, corsHdrs) => handleImportResults(req, env, corsHdrs));
+router.post("/api/:v/import/players", (req, env, corsHdrs) => handleImportPlayers(req, env, corsHdrs));
+router.post("/api/:v/import/match_events", (req, env, corsHdrs) => handleImportMatchEvents(req, env, corsHdrs));
+router.get("/api/:v/import/template/:type", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleGetImportTemplate(req, env, corsHdrs, params.type);
+});
+router.get("/api/:v/import/status", (req, env, corsHdrs) => handleGetImportStatus(req, env, corsHdrs));
+
 // Default 404
 router.all("*", () => new Response("Not Found", { status: 404 }));
 
@@ -659,6 +688,18 @@ function respondWithCors(res: Response, base: Headers) {
     const headers = mergeHeaders(base, res.headers);
     return new Response(res.body, withSecurity({ status: res.status, headers }));
 }
+
+// Import cron jobs
+import { runDaily } from "./cron/daily";
+import { runThrowback } from "./cron/throwback";
+import { runOnThisDay } from "./cron/onThisDay";
+import { runCleanup } from "./cron/cleanup";
+import { runLeague } from "./cron/league";
+import { runMilestones } from "./cron/milestones";
+import { runPlayerOfPeriod } from "./cron/playerOfPeriod";
+import { runWeeklyRoundup, runSeasonCheck } from "./cron/seasonalContent";
+import { runBirthdays } from "./cron/birthdays";
+import { runQuotes } from "./cron/quotes";
 
 export default {
     async fetch(req: Request, env: any, ctx: ExecutionContext): Promise<Response> {
@@ -682,6 +723,87 @@ export default {
         } catch (err: any) {
             const errorResponse = errorHandler(err, env, requestId);
             return respondWithCors(errorResponse, corsHdrs);
+        }
+    },
+
+    /**
+     * Scheduled handler for cron jobs
+     * Runs every 5 minutes - dispatches to appropriate job based on time
+     */
+    async scheduled(event: ScheduledEvent, env: any, ctx: ExecutionContext): Promise<void> {
+        const hour = new Date(event.scheduledTime).getUTCHours();
+        const minute = new Date(event.scheduledTime).getUTCMinutes();
+        const dayOfWeek = new Date(event.scheduledTime).getUTCDay();
+
+        logJSON({ level: 'info', msg: 'Cron triggered', hour, minute, dayOfWeek });
+
+        try {
+            // Every 5 minutes: Cleanup expired data
+            ctx.waitUntil(runCleanup(env, ctx));
+
+            // 06:00 UTC: Daily birthdays and quotes
+            if (hour === 6 && minute < 5) {
+                ctx.waitUntil(runDaily(env, ctx));
+            }
+
+            // 08:00 UTC: Match day countdowns
+            if (hour === 8 && minute < 5) {
+                ctx.waitUntil(runDaily(env, ctx, { countdownsOnly: true }));
+            }
+
+            // 09:00 UTC: "On This Day" posts (daily)
+            if (hour === 9 && minute < 5) {
+                ctx.waitUntil(runOnThisDay(env, ctx));
+            }
+
+            // Thursday 19:00 UTC: Throwback Thursday (photo-based)
+            if (dayOfWeek === 4 && hour === 19 && minute < 5) {
+                ctx.waitUntil(runThrowback(env, ctx));
+            }
+
+            // Every 6 hours: League table updates (00:00, 06:00, 12:00, 18:00)
+            if (hour % 6 === 0 && minute < 5) {
+                ctx.waitUntil(runLeague(env, ctx));
+            }
+
+            // 21:00 UTC: Player milestone checks (after matches typically end)
+            // Also runs on weekends (Sat/Sun) when most matches are played
+            if (hour === 21 && minute < 5 && (dayOfWeek === 0 || dayOfWeek === 6)) {
+                ctx.waitUntil(runMilestones(env, ctx));
+            }
+
+            // Sunday 18:00 UTC: Player of the Week
+            if (dayOfWeek === 0 && hour === 18 && minute < 5) {
+                ctx.waitUntil(runPlayerOfPeriod(env, ctx, { period: 'week' }));
+            }
+
+            // 1st of month, 10:00 UTC: Player of the Month
+            const dayOfMonth = new Date(event.scheduledTime).getUTCDate();
+            if (dayOfMonth === 1 && hour === 10 && minute < 5) {
+                ctx.waitUntil(runPlayerOfPeriod(env, ctx, { period: 'month' }));
+            }
+
+            // Monday 10:00 UTC: Weekly stats roundup
+            if (dayOfWeek === 1 && hour === 10 && minute < 5) {
+                ctx.waitUntil(runWeeklyRoundup(env, ctx));
+            }
+
+            // Daily 07:00 UTC: Season milestone checks (start/mid/end)
+            if (hour === 7 && minute < 5) {
+                ctx.waitUntil(runSeasonCheck(env, ctx));
+            }
+
+            // Daily 08:00 UTC: Birthday posts
+            if (hour === 8 && minute < 5) {
+                ctx.waitUntil(runBirthdays(env, ctx));
+            }
+
+            // Monday, Wednesday, Friday 07:30 UTC: Motivational quotes
+            if ((dayOfWeek === 1 || dayOfWeek === 3 || dayOfWeek === 5) && hour === 7 && minute >= 25 && minute < 35) {
+                ctx.waitUntil(runQuotes(env, ctx));
+            }
+        } catch (error) {
+            logJSON({ level: 'error', msg: 'Cron error', error: error instanceof Error ? error.message : String(error) });
         }
     }
 };

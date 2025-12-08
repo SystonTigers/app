@@ -33,7 +33,7 @@ const ResultSchema = z.object({
 export async function handleFixtureSync(req: Request, env: any): Promise<Response> {
   try {
     // Require JWT authentication
-    await requireJWT(req, env);
+    const claims = await requireJWT(req, env);
 
     const body = await req.json();
     const validated = FixtureSyncSchema.parse(body);
@@ -48,11 +48,14 @@ export async function handleFixtureSync(req: Request, env: any): Promise<Respons
 
     for (const fixture of fixtures) {
       try {
-        // Insert or replace fixture
+        // Insert or replace fixture - SECURITY: Include tenant_id
         await db.prepare(`
           INSERT INTO fixtures (
+            tenant_id,
             fixture_date,
             opponent,
+            home_team,
+            away_team,
             venue,
             competition,
             kick_off_time,
@@ -60,8 +63,8 @@ export async function handleFixtureSync(req: Request, env: any): Promise<Respons
             source,
             updated_at
           )
-          VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-          ON CONFLICT(fixture_date, opponent)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+          ON CONFLICT(tenant_id, fixture_date, home_team, away_team)
           DO UPDATE SET
             venue = excluded.venue,
             competition = excluded.competition,
@@ -70,8 +73,11 @@ export async function handleFixtureSync(req: Request, env: any): Promise<Respons
             source = excluded.source,
             updated_at = CURRENT_TIMESTAMP
         `).bind(
+          claims.tenantId,
           fixture.date,
           fixture.opponent,
+          fixture.homeTeam || 'Home',
+          fixture.awayTeam || fixture.opponent,
           fixture.venue || '',
           fixture.competition || '',
           fixture.time || '',
@@ -100,15 +106,16 @@ export async function handleFixtureSync(req: Request, env: any): Promise<Respons
 /**
  * GET /upcoming - Get upcoming fixtures
  * Returns next 10 scheduled fixtures for mobile app
- * SECURITY: Requires JWT authentication
+ * SECURITY: Requires JWT authentication, filters by tenant_id
  */
 export async function handleGetUpcomingFixtures(req: Request, env: any): Promise<Response> {
   try {
     // Require JWT authentication
-    await requireJWT(req, env);
+    const claims = await requireJWT(req, env);
 
     const db = env.DB as D1Database;
 
+    // SECURITY: Filter by tenant_id to prevent cross-tenant access
     const result = await db.prepare(`
       SELECT
         id,
@@ -120,11 +127,12 @@ export async function handleGetUpcomingFixtures(req: Request, env: any): Promise
         status,
         source
       FROM fixtures
-      WHERE fixture_date >= DATE('now')
+      WHERE tenant_id = ?
+        AND fixture_date >= DATE('now')
         AND status != 'postponed'
       ORDER BY fixture_date ASC
       LIMIT 10
-    `).all();
+    `).bind(claims.tenantId).all();
 
     return json(result.results || []);
 
@@ -139,18 +147,19 @@ export async function handleGetUpcomingFixtures(req: Request, env: any): Promise
 /**
  * GET /all - Get all fixtures (upcoming and past)
  * Optional query params: status, limit
- * SECURITY: Requires JWT authentication
+ * SECURITY: Requires JWT authentication, filters by tenant_id
  */
 export async function handleGetAllFixtures(req: Request, env: any): Promise<Response> {
   try {
     // Require JWT authentication
-    await requireJWT(req, env);
+    const claims = await requireJWT(req, env);
 
     const url = new URL(req.url);
     const status = url.searchParams.get('status');
     const limit = parseInt(url.searchParams.get('limit') || '50');
     const db = env.DB as D1Database;
 
+    // SECURITY: Always filter by tenant_id
     let query = `
       SELECT
         id,
@@ -162,17 +171,18 @@ export async function handleGetAllFixtures(req: Request, env: any): Promise<Resp
         status,
         source
       FROM fixtures
+      WHERE tenant_id = ?
     `;
 
-    const params: string[] = [];
+    const params: (string | number)[] = [claims.tenantId];
 
     if (status) {
-      query += ' WHERE status = ?';
+      query += ' AND status = ?';
       params.push(status);
     }
 
     query += ' ORDER BY fixture_date DESC LIMIT ?';
-    params.push(limit.toString());
+    params.push(limit);
 
     const result = await db.prepare(query).bind(...params).all();
 
@@ -189,17 +199,18 @@ export async function handleGetAllFixtures(req: Request, env: any): Promise<Resp
 /**
  * GET /results - Get recent match results
  * Returns last 10 completed matches
- * SECURITY: Requires JWT authentication
+ * SECURITY: Requires JWT authentication, filters by tenant_id
  */
 export async function handleGetResults(req: Request, env: any): Promise<Response> {
   try {
     // Require JWT authentication
-    await requireJWT(req, env);
+    const claims = await requireJWT(req, env);
 
     const url = new URL(req.url);
     const limit = parseInt(url.searchParams.get('limit') || '10');
     const db = env.DB as D1Database;
 
+    // SECURITY: Filter by tenant_id to prevent cross-tenant access
     const result = await db.prepare(`
       SELECT
         id,
@@ -211,9 +222,10 @@ export async function handleGetResults(req: Request, env: any): Promise<Response
         competition,
         scorers
       FROM results
+      WHERE tenant_id = ?
       ORDER BY match_date DESC
       LIMIT ?
-    `).bind(limit).all();
+    `).bind(claims.tenantId, limit).all();
 
     return json(result.results || []);
 
@@ -228,19 +240,21 @@ export async function handleGetResults(req: Request, env: any): Promise<Response
 /**
  * POST /results - Add a match result
  * Stores completed match result in D1
- * SECURITY: Requires JWT authentication
+ * SECURITY: Requires JWT authentication, includes tenant_id
  */
 export async function handleAddResult(req: Request, env: any): Promise<Response> {
   try {
     // Require JWT authentication
-    await requireJWT(req, env);
+    const claims = await requireJWT(req, env);
 
     const body = await req.json();
     const result = ResultSchema.parse(body);
     const db = env.DB as D1Database;
 
+    // SECURITY: Include tenant_id in insert
     await db.prepare(`
       INSERT INTO results (
+        tenant_id,
         match_date,
         opponent,
         home_score,
@@ -249,8 +263,8 @@ export async function handleAddResult(req: Request, env: any): Promise<Response>
         competition,
         scorers
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-      ON CONFLICT(match_date, opponent)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(tenant_id, match_date, opponent)
       DO UPDATE SET
         home_score = excluded.home_score,
         away_score = excluded.away_score,
@@ -258,6 +272,7 @@ export async function handleAddResult(req: Request, env: any): Promise<Response>
         competition = excluded.competition,
         scorers = excluded.scorers
     `).bind(
+      claims.tenantId,
       result.date,
       result.opponent,
       result.homeScore || 0,
@@ -279,16 +294,17 @@ export async function handleAddResult(req: Request, env: any): Promise<Response>
 
 /**
  * DELETE /fixtures/:id - Delete a fixture by ID
- * SECURITY: Requires JWT authentication
+ * SECURITY: Requires JWT authentication, validates tenant ownership
  */
 export async function handleDeleteFixture(req: Request, env: any, id: string): Promise<Response> {
   try {
     // Require JWT authentication
-    await requireJWT(req, env);
+    const claims = await requireJWT(req, env);
 
     const db = env.DB as D1Database;
 
-    await db.prepare('DELETE FROM fixtures WHERE id = ?').bind(id).run();
+    // SECURITY: Only delete if fixture belongs to tenant
+    await db.prepare('DELETE FROM fixtures WHERE id = ? AND tenant_id = ?').bind(id, claims.tenantId).run();
 
     return json({ success: true });
 
