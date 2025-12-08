@@ -53,7 +53,16 @@ async function createThrowbackPost(env: Env, config: any, now: any) {
 
   logJSON({ level: 'info', msg: 'Creating throwback post for tenant' });
 
-  // Strategy 1: "On this day" - exact date from previous years
+  // Strategy 1: Photo-based throwback (the REAL Throwback Thursday!)
+  if (config.features?.auto_throwback_photos !== false) {
+    const throwbackPhoto = await findThrowbackPhoto(env, tenant, now);
+    if (throwbackPhoto) {
+      await createPhotoThrowbackPost(env, tenant, throwbackPhoto);
+      return;
+    }
+  }
+
+  // Strategy 2: "On this day" - exact date from previous years
   const onThisDayMatch = await findOnThisDayMatch(env, tenant, now);
 
   if (onThisDayMatch) {
@@ -61,7 +70,7 @@ async function createThrowbackPost(env: Env, config: any, now: any) {
     return;
   }
 
-  // Strategy 2: Random memorable moment from history
+  // Strategy 3: Random memorable moment from history
   const memorableMatch = await findMemorableMatch(env, tenant);
 
   if (memorableMatch) {
@@ -70,6 +79,88 @@ async function createThrowbackPost(env: Env, config: any, now: any) {
   }
 
   logJSON({ level: 'info', msg: 'No throwback content found for tenant' });
+}
+
+// Find old photos for throwback
+async function findThrowbackPhoto(env: Env, tenant: string, now: any) {
+  // Check for photos from previous years
+  const oneYearAgo = now.minus({ years: 1 }).toMillis();
+
+  // Query gallery/albums from D1
+  const result = await env.DB.prepare(`
+    SELECT g.*, a.name as album_name, a.date as album_date
+    FROM gallery_photos g
+    LEFT JOIN gallery_albums a ON g.album_id = a.id
+    WHERE g.tenant_id = ?
+    AND (a.date < ? OR g.created_at < ?)
+    ORDER BY RANDOM()
+    LIMIT 10
+  `).bind(tenant, oneYearAgo, oneYearAgo).all();
+
+  if (!result.results || result.results.length === 0) {
+    return null;
+  }
+
+  // Get recently used photos to avoid repetition
+  const recentlyUsedKey = `throwback:${tenant}:recent_photos`;
+  const recentlyUsedStr = await env.KV.get(recentlyUsedKey);
+  const recentlyUsed = recentlyUsedStr ? JSON.parse(recentlyUsedStr) : [];
+
+  // Find a photo not recently used
+  for (const photo of result.results as any[]) {
+    if (!recentlyUsed.includes(photo.id)) {
+      // Add to recently used list
+      recentlyUsed.push(photo.id);
+      // Keep only last 20
+      while (recentlyUsed.length > 20) {
+        recentlyUsed.shift();
+      }
+      await env.KV.put(recentlyUsedKey, JSON.stringify(recentlyUsed), { expirationTtl: 60 * 60 * 24 * 30 }); // 30 days
+
+      return photo;
+    }
+  }
+
+  // All photos recently used, pick random anyway
+  return result.results[0];
+}
+
+// Create photo-based throwback post
+async function createPhotoThrowbackPost(env: Env, tenant: string, photo: any) {
+  const post = {
+    id: crypto.randomUUID(),
+    tenant,
+    type: 'throwback_photo',
+    photo_id: photo.id,
+    photo_url: photo.url,
+    album_name: photo.album_name,
+    caption: photo.caption || `Throwback to ${photo.album_name || 'the archives'} 📸`,
+    template: 'throwback_photo',
+    created_at: Date.now(),
+    status: 'pending',
+  };
+
+  await env.KV.put(
+    `autopost:${tenant}:${post.id}`,
+    JSON.stringify(post),
+    { expirationTtl: 60 * 60 * 24 * 7 } // 7 days
+  );
+
+  // Trigger webhook
+  const webhook = await env.KV.get(`team:${tenant}:webhook`);
+  if (webhook) {
+    await fetch(webhook, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        event: 'throwback',
+        tenant,
+        post,
+      }),
+    });
+  }
+
+  logJSON({ level: 'info', msg: 'Created photo throwback post for tenant' });
 }
 
 // Find match that happened on this day in previous years
@@ -119,7 +210,7 @@ async function findMemorableMatch(env: Env, tenant: string) {
           'json'
         );
 
-        if (!matchData) {return null;}
+        if (!matchData) { return null; }
 
         let score = 0;
 

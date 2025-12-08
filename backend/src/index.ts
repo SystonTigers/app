@@ -69,6 +69,22 @@ import {
     handleDeleteTrainingSession,
     handleGetJobStatus
 } from "./routes/coaching";
+import {
+    handleImportFixtures,
+    handleImportResults,
+    handleImportPlayers,
+    handleImportMatchEvents,
+    handleGetImportTemplate,
+    handleGetImportStatus
+} from "./routes/import";
+
+// Cron Jobs
+import { runDaily } from "./cron/daily";
+import { runThrowback } from "./cron/throwback";
+import { runMilestones, checkMilestonesAfterMatch } from "./cron/milestones";
+import { runPlayerOfPeriod } from "./cron/playerOfPeriod";
+import { runCleanup } from "./cron/cleanup";
+import { runLeague } from "./cron/league";
 
 // Export Durable Objects
 export { TenantRateLimiter } from "./do/rateLimiter";
@@ -664,6 +680,17 @@ router.post("/dev/admin-jwt", (req, env) => handleDevAdminJWT(req, env));
 router.post("/dev/magic-link", (req, env) => handleDevMagicLink(req, env));
 router.get("/dev/info", (req, env) => handleDevInfo(req, env));
 
+// CSV Import Routes
+router.post("/api/:v/import/fixtures", (req, env, corsHdrs) => handleImportFixtures(req, env, corsHdrs));
+router.post("/api/:v/import/results", (req, env, corsHdrs) => handleImportResults(req, env, corsHdrs));
+router.post("/api/:v/import/players", (req, env, corsHdrs) => handleImportPlayers(req, env, corsHdrs));
+router.post("/api/:v/import/match-events", (req, env, corsHdrs) => handleImportMatchEvents(req, env, corsHdrs));
+router.get("/api/:v/import/template/:type", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleGetImportTemplate(req, env, corsHdrs, params.type);
+});
+router.get("/api/:v/import/status", (req, env, corsHdrs) => handleGetImportStatus(req, env, corsHdrs));
+
 // Default 404
 router.all("*", () => new Response("Not Found", { status: 404 }));
 
@@ -703,6 +730,60 @@ export default {
         } catch (err: any) {
             const errorResponse = errorHandler(err, env, requestId);
             return respondWithCors(errorResponse, corsHdrs);
+        }
+    },
+
+    // Scheduled handler for cron jobs
+    async scheduled(event: ScheduledEvent, env: any, ctx: ExecutionContext): Promise<void> {
+        const scheduledTime = new Date(event.scheduledTime);
+        const hour = scheduledTime.getUTCHours();
+        const minute = scheduledTime.getUTCMinutes();
+        const dayOfWeek = scheduledTime.getUTCDay(); // 0 = Sunday, 4 = Thursday
+        const dayOfMonth = scheduledTime.getUTCDate();
+
+        logJSON({ level: 'info', msg: 'Cron triggered', hour, minute, dayOfWeek, dayOfMonth });
+
+        try {
+            // 06:00 UTC: Birthdays and daily quotes
+            if (hour === 6 && minute < 5) {
+                ctx.waitUntil(runDaily(env, ctx));
+            }
+
+            // 08:00 UTC: Match day countdowns
+            if (hour === 8 && minute < 5) {
+                ctx.waitUntil(runDaily(env, ctx, { countdownsOnly: true }));
+            }
+
+            // Thursday 19:00 UTC: Throwback Thursday (photos + on this day)
+            if (dayOfWeek === 4 && hour === 19 && minute < 5) {
+                ctx.waitUntil(runThrowback(env, ctx));
+            }
+
+            // Sunday 18:00 UTC: Player of the Week
+            if (dayOfWeek === 0 && hour === 18 && minute < 5) {
+                ctx.waitUntil(runPlayerOfPeriod(env, ctx, { period: 'week' }));
+            }
+
+            // 1st of month, 10:00 UTC: Player of the Month
+            if (dayOfMonth === 1 && hour === 10 && minute < 5) {
+                ctx.waitUntil(runPlayerOfPeriod(env, ctx, { period: 'month' }));
+            }
+
+            // Saturday/Sunday 21:00 UTC: Check for player milestones (after weekend matches)
+            if ((dayOfWeek === 0 || dayOfWeek === 6) && hour === 21 && minute < 5) {
+                ctx.waitUntil(runMilestones(env, ctx));
+            }
+
+            // Every 6 hours: League table updates
+            if (hour % 6 === 0 && minute < 5) {
+                ctx.waitUntil(runLeague(env, ctx));
+            }
+
+            // Every 5 minutes: Cleanup stale data
+            ctx.waitUntil(runCleanup(env, ctx));
+
+        } catch (error) {
+            logJSON({ level: 'error', msg: 'Cron error', error: error instanceof Error ? error.message : String(error) });
         }
     }
 };
