@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { PublicSeasonTabs } from '@/components/PublicSeasonTabs';
 
 export default function ResultsPage({ params }: { params: Promise<{ tenant: string }> }) {
@@ -34,8 +35,57 @@ export default function ResultsPage({ params }: { params: Promise<{ tenant: stri
     }
   }
 
-  // Sort by date desc
-  const sortedResults = [...results].sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+  // Navigation for discussions
+  const router = useRouter();
+
+  // Sort results by date (newest first)
+  const sortedResults = [...results].sort((a, b) =>
+    new Date(b.date).getTime() - new Date(a.date).getTime()
+  );
+
+  function startDiscussion(result: any) {
+    const discussionData = {
+      title: `Match Analysis: ${result.homeTeam} vs ${result.awayTeam}`,
+      category: 'match-analysis',
+      related_entity_type: 'match',
+      related_entity_id: result.id
+    };
+
+    // We'll create the discussion via API or redirect to a creation page. 
+    // To match current patterns, we can create it immediately or redirect.
+    // Given TrainingTools pattern, we create it.
+    // However, ResultsPage doesn't have create logic yet.
+    // Simpler approach: Redirect to discussions page with query params to start one?
+    // OR just use same API pattern as TrainingTools. 
+
+    // Let's implement creating it directly here for consistency.
+    createDiscussion(discussionData);
+  }
+
+  async function createDiscussion(data: any) {
+    try {
+      setLoading(true);
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE || ''}/api/v1/discussions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
+        },
+        body: JSON.stringify(data)
+      });
+      const json = await res.json();
+      if (json.success) {
+        router.push(`/${tenant}/team/discussions/${json.data.id}`);
+      } else {
+        console.error('Failed to create discussion:', json.error);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-black pb-20">
@@ -125,9 +175,15 @@ export default function ResultsPage({ params }: { params: Promise<{ tenant: stri
                     </div>
 
                     {/* Action Button */}
-                    <div className="flex items-center justify-center p-4 md:p-8 bg-gray-50 dark:bg-gray-900/30">
+                    <div className="flex items-center justify-center p-4 md:p-8 bg-gray-50 dark:bg-gray-900/30 gap-2">
                       <button className="w-full md:w-auto px-6 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
                         Report
+                      </button>
+                      <button
+                        onClick={() => startDiscussion(result)}
+                        className="w-full md:w-auto px-6 py-2 bg-brand text-white border border-transparent rounded-lg text-sm font-bold hover:bg-brand-dark transition-colors flex items-center gap-1"
+                      >
+                        Chat
                       </button>
                     </div>
                   </div>

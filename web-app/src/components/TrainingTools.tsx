@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
 interface TrainingSession {
     id: string;
@@ -71,6 +72,15 @@ export function TrainingTools({ tenant }: TrainingToolsProps) {
     const [selectedSession, setSelectedSession] = useState<TrainingSession | null>(null);
     const [loading, setLoading] = useState(true);
     const [view, setView] = useState<'sessions' | 'drills' | 'performance' | 'tactics'>('sessions');
+    const router = useRouter();
+
+    const [showNewSessionModal, setShowNewSessionModal] = useState(false);
+    const [newSession, setNewSession] = useState({
+        date: new Date().toISOString().split('T')[0],
+        time: '19:00',
+        team: 'First Team',
+        focus: ''
+    });
 
     // Mock performance records
     const [records, setRecords] = useState<PerformanceRecord[]>([
@@ -178,6 +188,54 @@ export function TrainingTools({ tenant }: TrainingToolsProps) {
         }
     };
 
+    const createSession = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            const res = await fetch('/api/v1/training/sessions', {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(newSession)
+            });
+            const data = await res.json();
+            if (data.success) {
+                loadSessions();
+                setShowNewSessionModal(false);
+                setNewSession({ date: new Date().toISOString().split('T')[0], time: '19:00', team: 'First Team', focus: '' });
+            }
+        } catch (error) {
+            console.error('Failed to create session:', error);
+        }
+    };
+
+    const startDiscussion = async (type: 'drill' | 'plan', item: any) => {
+        try {
+            const token = localStorage.getItem('token');
+            const res = await fetch('/api/v1/discussions', {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    category: 'training',
+                    title: `Discussing: ${type === 'drill' ? item.name : item.focus}`,
+                    video_id: type === 'drill' ? item.demo_video_url : null,
+                    related_entity_type: type,
+                    related_entity_id: item.id
+                })
+            });
+            const data = await res.json();
+            if (data.success) {
+                router.push(`/${tenant}/team/discussions/${data.data.id}`);
+            }
+        } catch (error) {
+            console.error('Failed to start discussion:', error);
+        }
+    };
+
     const loadSessions = async () => {
         try {
             const token = localStorage.getItem('token');
@@ -235,39 +293,50 @@ export function TrainingTools({ tenant }: TrainingToolsProps) {
                         <p className="text-green-100 font-medium">Plan sessions, manage drills, and track progress.</p>
                     </div>
 
-                    <div className="flex bg-black/30 p-1 rounded-xl glass-panel">
-                        <button
-                            onClick={() => setView('sessions')}
-                            className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${view === 'sessions'
-                                ? 'bg-white text-green-900 shadow-md'
-                                : 'text-white/70 hover:text-white hover:bg-white/10'}`}
-                        >
-                            Sessions
-                        </button>
-                        <button
-                            onClick={() => setView('drills')}
-                            className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${view === 'drills'
-                                ? 'bg-white text-green-900 shadow-md'
-                                : 'text-white/70 hover:text-white hover:bg-white/10'}`}
-                        >
-                            Drill Library
-                        </button>
-                        <button
-                            onClick={() => setView('performance')}
-                            className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${view === 'performance'
-                                ? 'bg-white text-green-900 shadow-md'
-                                : 'text-white/70 hover:text-white hover:bg-white/10'}`}
-                        >
-                            Records
-                        </button>
-                        <button
-                            onClick={() => setView('tactics')}
-                            className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${view === 'tactics'
-                                ? 'bg-white text-green-900 shadow-md'
-                                : 'text-white/70 hover:text-white hover:bg-white/10'}`}
-                        >
-                            ⚽ Tactics
-                        </button>
+                    <div className="flex gap-2">
+                        {view === 'sessions' && (
+                            <button
+                                onClick={() => setShowNewSessionModal(true)}
+                                className="px-6 py-2 bg-brand text-white rounded-xl font-bold hover:bg-brand/90 shadow-lg flex items-center gap-2 transition-all"
+                            >
+                                <span>+</span> Plan Session
+                            </button>
+                        )}
+
+                        <div className="flex bg-black/30 p-1 rounded-xl glass-panel">
+                            <button
+                                onClick={() => setView('sessions')}
+                                className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${view === 'sessions'
+                                    ? 'bg-white text-green-900 shadow-md'
+                                    : 'text-white/70 hover:text-white hover:bg-white/10'}`}
+                            >
+                                Sessions
+                            </button>
+                            <button
+                                onClick={() => setView('drills')}
+                                className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${view === 'drills'
+                                    ? 'bg-white text-green-900 shadow-md'
+                                    : 'text-white/70 hover:text-white hover:bg-white/10'}`}
+                            >
+                                Drill Library
+                            </button>
+                            <button
+                                onClick={() => setView('performance')}
+                                className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${view === 'performance'
+                                    ? 'bg-white text-green-900 shadow-md'
+                                    : 'text-white/70 hover:text-white hover:bg-white/10'}`}
+                            >
+                                Records
+                            </button>
+                            <button
+                                onClick={() => setView('tactics')}
+                                className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${view === 'tactics'
+                                    ? 'bg-white text-green-900 shadow-md'
+                                    : 'text-white/70 hover:text-white hover:bg-white/10'}`}
+                            >
+                                ⚽ Tactics
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -280,6 +349,12 @@ export function TrainingTools({ tenant }: TrainingToolsProps) {
                                 <div className="text-6xl mb-4">📋</div>
                                 <h3 className="text-xl font-bold">No sessions planned</h3>
                                 <p className="text-sm">Create a new training session to get started.</p>
+                                <button
+                                    onClick={() => setShowNewSessionModal(true)}
+                                    className="mt-4 px-6 py-2 bg-brand text-white rounded-lg font-bold hover:bg-brand/90"
+                                >
+                                    Create Session
+                                </button>
                             </div>
                         ) : (
                             sessions.map((session) => (
@@ -314,13 +389,85 @@ export function TrainingTools({ tenant }: TrainingToolsProps) {
                                         </span>
                                     </div>
 
-                                    <div className="mt-4 pt-2 opacity-0 group-hover:opacity-100 transition-opacity flex justify-end">
+                                    <div className="mt-4 pt-2 opacity-0 group-hover:opacity-100 transition-opacity flex justify-end gap-2">
+                                        <button
+                                            onClick={() => startDiscussion('plan', session)}
+                                            className="text-sm font-bold text-gray-900 hover:text-brand flex items-center gap-1 px-3 py-1 bg-gray-100 dark:bg-gray-900 rounded-lg hover:bg-gray-200"
+                                        >
+                                            💬 Discuss
+                                        </button>
                                         <button className="text-sm font-bold text-gray-900 hover:text-brand flex items-center gap-1">
                                             View Plan &rarr;
                                         </button>
                                     </div>
                                 </div>
                             ))
+                        )}
+
+                        {showNewSessionModal && (
+                            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                                <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 w-full max-w-md shadow-2xl">
+                                    <h3 className="text-2xl font-black uppercase text-gray-900 dark:text-white mb-4">Plan Session</h3>
+                                    <div className="space-y-4">
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="block text-sm font-bold text-gray-500 mb-1">Date</label>
+                                                <input
+                                                    type="date"
+                                                    value={newSession.date}
+                                                    onChange={e => setNewSession({ ...newSession, date: e.target.value })}
+                                                    className="w-full p-3 rounded-xl bg-gray-50 dark:bg-gray-800 border-none font-bold"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-bold text-gray-500 mb-1">Time</label>
+                                                <input
+                                                    type="time"
+                                                    value={newSession.time}
+                                                    onChange={e => setNewSession({ ...newSession, time: e.target.value })}
+                                                    className="w-full p-3 rounded-xl bg-gray-50 dark:bg-gray-800 border-none font-bold"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-bold text-gray-500 mb-1">Team</label>
+                                            <select
+                                                value={newSession.team}
+                                                onChange={e => setNewSession({ ...newSession, team: e.target.value })}
+                                                className="w-full p-3 rounded-xl bg-gray-50 dark:bg-gray-800 border-none font-bold"
+                                            >
+                                                <option>First Team</option>
+                                                <option>Reserves</option>
+                                                <option>U18s</option>
+                                                <option>U16s</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-bold text-gray-500 mb-1">Session Focus</label>
+                                            <input
+                                                value={newSession.focus}
+                                                onChange={e => setNewSession({ ...newSession, focus: e.target.value })}
+                                                placeholder="e.g. Defensive Shape"
+                                                className="w-full p-3 rounded-xl bg-gray-50 dark:bg-gray-800 border-none font-bold"
+                                            />
+                                        </div>
+                                        <div className="flex gap-2 pt-2">
+                                            <button
+                                                onClick={() => setShowNewSessionModal(false)}
+                                                className="flex-1 py-3 rounded-xl font-bold bg-gray-100 hover:bg-gray-200"
+                                            >
+                                                Cancel
+                                            </button>
+                                            <button
+                                                onClick={createSession}
+                                                className="flex-1 py-3 rounded-xl font-bold bg-brand text-white hover:bg-green-600"
+                                            >
+                                                Save Session
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         )}
                     </div>
                 ) : view === 'performance' ? (
@@ -590,8 +737,8 @@ export function TrainingTools({ tenant }: TrainingToolsProps) {
                                                             }
                                                         })}
                                                         className={`flex-1 py-3 rounded-xl font-bold uppercase text-xs transition-all ${(phase === 'attacking' ? tactics.phases?.attacking?.tempo : tactics.phases?.defensive?.aggression) === l
-                                                                ? 'bg-brand text-white'
-                                                                : 'bg-gray-100 dark:bg-gray-700'
+                                                            ? 'bg-brand text-white'
+                                                            : 'bg-gray-100 dark:bg-gray-700'
                                                             }`}
                                                     >
                                                         {l}
@@ -746,7 +893,7 @@ export function TrainingTools({ tenant }: TrainingToolsProps) {
                             drills.map((drill) => (
                                 <div
                                     key={drill.id}
-                                    className="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all border border-gray-100 dark:border-gray-700 flex flex-col"
+                                    className="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all border border-gray-100 dark:border-gray-700 flex flex-col group"
                                 >
                                     <div className={`h-2 w-full ${getDifficultyColor(drill.difficulty).replace('text-', 'bg-').split(' ')[0]}`} />
                                     <div className="p-6 flex-1 flex flex-col">
@@ -762,8 +909,19 @@ export function TrainingTools({ tenant }: TrainingToolsProps) {
                                             {drill.description}
                                         </p>
 
-                                        <div className="flex items-center gap-2 text-xs font-bold text-gray-500 bg-gray-50 dark:bg-gray-900/50 p-2 rounded-lg w-fit">
-                                            <span>⏱️ {drill.duration}</span>
+                                        <div className="flex items-center justify-between mt-4">
+                                            <div className="flex items-center gap-2 text-xs font-bold text-gray-500 bg-gray-50 dark:bg-gray-900/50 p-2 rounded-lg w-fit">
+                                                <span>⏱️ {drill.duration}</span>
+                                            </div>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    startDiscussion('drill', drill);
+                                                }}
+                                                className="px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-700 text-xs font-bold text-gray-600 dark:text-gray-300 hover:bg-brand hover:text-white transition-colors flex items-center gap-1 opacity-0 group-hover:opacity-100"
+                                            >
+                                                💬 Discuss
+                                            </button>
                                         </div>
                                     </div>
                                 </div>

@@ -196,6 +196,13 @@ export async function updateSquad(players: any[]) {
   );
 }
 
+export async function addPlayer(player: any) {
+  return http<{ success: true; id: string }>(
+    `${API_BASE}/api/v1/squad/add`,
+    { method: 'POST', body: JSON.stringify(player) }
+  );
+}
+
 export async function createFixture(data: any) {
   return http<{ success: true; id: string }>(
     `${API_BASE}/api/v1/fixtures`,

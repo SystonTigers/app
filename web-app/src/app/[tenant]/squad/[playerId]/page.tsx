@@ -1,6 +1,7 @@
 
 import { getServerSDK } from '@/lib/sdk';
 import Link from 'next/link';
+import { PlayerDiscussButton } from '@/components/PlayerDiscussButton';
 
 export default async function PlayerBioPage({ params }: { params: Promise<{ tenant: string; playerId: string }> }) {
     const { tenant, playerId } = await params;
@@ -90,8 +91,13 @@ export default async function PlayerBioPage({ params }: { params: Promise<{ tena
                         </h1>
                     </div>
 
-                    {/* Quick Action */}
-                    <div className="pb-6 hidden md:block">
+                    {/* Quick Actions */}
+                    <div className="pb-6 hidden md:flex gap-3">
+                        <PlayerDiscussButton
+                            tenant={tenant}
+                            playerId={playerId}
+                            playerName={augmentedPlayer.name}
+                        />
                         <button className="bg-white text-gray-900 hover:bg-brand hover:text-white px-8 py-3 rounded-xl font-bold uppercase tracking-widest transition-all hover:scale-105 shadow-xl">
                             Sponsor Player
                         </button>
@@ -257,7 +263,12 @@ export default async function PlayerBioPage({ params }: { params: Promise<{ tena
                     </div>
 
                     {/* Mobile CTA */}
-                    <div className="block md:hidden">
+                    <div className="block md:hidden space-y-3">
+                        <PlayerDiscussButton
+                            tenant={tenant}
+                            playerId={playerId}
+                            playerName={augmentedPlayer.name}
+                        />
                         <button className="w-full bg-brand text-white py-4 rounded-xl font-black uppercase tracking-widest shadow-lg">
                             Sponsor Player
                         </button>
