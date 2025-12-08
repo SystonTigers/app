@@ -620,6 +620,21 @@ router.get("/api/:v/seasons/:id/summary", (req, env, corsHdrs) => {
     return handleGetSeasonSummary(req, env, corsHdrs, params.id);
 });
 
+// Shop Routes
+import { handleGetProducts, handleProductSync } from "./routes/shop/products";
+import { handleCreateCart, handleGetCart, handleAddToCart, handleRemoveFromCart } from "./routes/shop/cart";
+import { handleCreateCheckout } from "./routes/shop/checkout";
+
+router.get("/api/:v/shop/products", (req, env, corsHdrs) => handleGetProducts(req, env, corsHdrs));
+router.post("/api/:v/shop/sync", (req, env, corsHdrs) => handleProductSync(req, env, corsHdrs));
+
+router.post("/api/:v/shop/cart", (req, env, corsHdrs) => handleCreateCart(req, env, corsHdrs));
+router.get("/api/:v/shop/cart/:id", (req, env, corsHdrs) => handleGetCart(req, env, corsHdrs));
+router.post("/api/:v/shop/cart/:id/items", (req, env, corsHdrs) => handleAddToCart(req, env, corsHdrs));
+router.delete("/api/:v/shop/cart/:id/items", (req, env, corsHdrs) => handleRemoveFromCart(req, env, corsHdrs));
+
+router.post("/api/:v/shop/checkout", (req, env, corsHdrs) => handleCreateCheckout(req, env, corsHdrs));
+
 // Dev Auth Routes (only in development)
 router.post("/dev/admin-jwt", (req, env) => handleDevAdminJWT(req, env));
 router.post("/dev/magic-link", (req, env) => handleDevMagicLink(req, env));
