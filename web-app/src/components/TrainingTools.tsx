@@ -893,7 +893,7 @@ export function TrainingTools({ tenant }: TrainingToolsProps) {
                             drills.map((drill) => (
                                 <div
                                     key={drill.id}
-                                    className="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all border border-gray-100 dark:border-gray-700 flex flex-col"
+                                    className="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all border border-gray-100 dark:border-gray-700 flex flex-col group"
                                 >
                                     <div className={`h-2 w-full ${getDifficultyColor(drill.difficulty).replace('text-', 'bg-').split(' ')[0]}`} />
                                     <div className="p-6 flex-1 flex flex-col">

@@ -421,6 +421,26 @@ router.delete("/api/:v/comments/:id", (req, env, corsHdrs) => {
     return handleDeleteComment(req, env, corsHdrs, params.id);
 });
 
+// Notification Routes
+import {
+    handleListNotifications,
+    handleUnreadCount,
+    handleMarkRead,
+    handleMarkAllRead
+} from "./routes/notifications";
+
+router.get("/api/:v/notifications", (req, env, corsHdrs) => handleListNotifications(req, env, corsHdrs));
+router.get("/api/:v/notifications/unread-count", (req, env, corsHdrs) => handleUnreadCount(req, env, corsHdrs));
+router.post("/api/:v/notifications/:id/read", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleMarkRead(req, env, corsHdrs, params.id);
+});
+router.post("/api/:v/notifications/read-all", (req, env, corsHdrs) => handleMarkAllRead(req, env, corsHdrs));
+
+// Member Routes (for mentions/search)
+import { handleSearchMembers } from "./routes/members";
+router.get("/api/:v/members/search", (req, env, corsHdrs) => handleSearchMembers(req, env, corsHdrs));
+
 // Video Routes
 router.post("/api/:v/videos/upload", (req, env, corsHdrs, requestId) => handleVideoUpload(req, env, corsHdrs));
 router.get("/api/:v/videos", (req, env, corsHdrs, requestId) => handleVideoList(req, env, corsHdrs));

@@ -127,7 +127,7 @@ export function PremiumNav({ tenant, teamName }: PremiumNavProps) {
                                 <SoundToggle />
                                 <ThemeToggle />
                             </div>
-                            <NotificationCenter />
+                            <NotificationCenter tenant={tenant} />
 
                             {/* Admin Link */}
                             <Link

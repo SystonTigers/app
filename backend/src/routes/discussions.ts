@@ -304,7 +304,7 @@ export async function handleDeleteDiscussion(req: Request, env: any, corsHdrs: H
 export async function handleCreateComment(req: Request, env: any, corsHdrs: Headers, discussionId: string) {
     try {
         const claims = await requireJWT(req, env);
-        const { content, parent_comment_id, video_timestamp } = await req.json() as any;
+        const { content, parent_comment_id, video_timestamp, mentions } = await req.json() as any;
 
         if (!content || content.trim().length === 0) {
             return json({ success: false, error: 'Content required' }, 400, corsHdrs);
@@ -312,7 +312,7 @@ export async function handleCreateComment(req: Request, env: any, corsHdrs: Head
 
         // Verify discussion exists and is not locked
         const discussion = await env.DB.prepare(`
-            SELECT locked FROM discussions WHERE id = ? AND tenant_id = ?
+            SELECT id, title, author_id, locked FROM discussions WHERE id = ? AND tenant_id = ?
         `).bind(discussionId, claims.tenantId).first();
 
         if (!discussion) {
@@ -346,6 +346,77 @@ export async function handleCreateComment(req: Request, env: any, corsHdrs: Head
         await env.DB.prepare(`
             UPDATE discussions SET updated_at = ? WHERE id = ?
         `).bind(now, discussionId).run();
+
+        // Create notifications (don't await to avoid blocking response)
+        const discussionLink = `/team/discussions/${discussionId}`;
+
+        // Notify discussion author (if different from commenter)
+        if (discussion.author_id && discussion.author_id !== claims.userId) {
+            const notifId = crypto.randomUUID();
+            env.DB.prepare(`
+                INSERT INTO notifications (id, tenant_id, user_id, type, title, message, link, related_id, read, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?)
+            `).bind(
+                notifId,
+                claims.tenantId,
+                discussion.author_id,
+                'discussion_comment',
+                'New Comment',
+                `${claims.name || 'Someone'} commented on "${discussion.title}"`,
+                discussionLink,
+                discussionId,
+                now
+            ).run().catch((e: any) => console.error('Notification error:', e));
+        }
+
+        // Notify parent comment author (if this is a reply)
+        if (parent_comment_id) {
+            const parentComment = await env.DB.prepare(`
+                SELECT author_id FROM discussion_comments WHERE id = ?
+            `).bind(parent_comment_id).first();
+
+            if (parentComment && parentComment.author_id !== claims.userId && parentComment.author_id !== discussion.author_id) {
+                const notifId = crypto.randomUUID();
+                env.DB.prepare(`
+                    INSERT INTO notifications (id, tenant_id, user_id, type, title, message, link, related_id, read, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?)
+                `).bind(
+                    notifId,
+                    claims.tenantId,
+                    parentComment.author_id,
+                    'comment_reply',
+                    'New Reply',
+                    `${claims.name || 'Someone'} replied to your comment`,
+                    discussionLink,
+                    discussionId,
+                    now
+                ).run().catch((e: any) => console.error('Notification error:', e));
+            }
+        }
+
+        // Notify mentioned users
+        if (Array.isArray(mentions) && mentions.length > 0) {
+            for (const mentionedUserId of mentions) {
+                if (mentionedUserId === claims.userId) continue; // Don't notify self
+
+                const notifId = crypto.randomUUID();
+                env.DB.prepare(`
+                    INSERT INTO notifications (id, tenant_id, user_id, type, title, message, link, related_id, read, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?)
+                `).bind(
+                    notifId,
+                    claims.tenantId,
+                    mentionedUserId,
+                    'mention',
+                    'New Mention',
+                    `${claims.name || 'Someone'} mentioned you in "${discussion.title}"`,
+                    discussionLink,
+                    discussionId,
+                    now
+                ).run().catch((e: any) => console.error('Notification mention error:', e));
+            }
+        }
+
 
         const comment = {
             id,

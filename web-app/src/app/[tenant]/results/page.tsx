@@ -39,10 +39,15 @@ export default function ResultsPage({ params }: { params: Promise<{ tenant: stri
   // Navigation for discussions
   const router = useRouter();
 
+  // Sort results by date (newest first)
+  const sortedResults = [...results].sort((a, b) =>
+    new Date(b.date).getTime() - new Date(a.date).getTime()
+  );
+
   function startDiscussion(result: any) {
     const discussionData = {
       title: `Match Analysis: ${result.homeTeam} vs ${result.awayTeam}`,
-      category: 'Match Analysis',
+      category: 'match-analysis',
       related_entity_type: 'match',
       related_entity_id: result.id
     };

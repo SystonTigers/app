@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { DiscussionVideoPlayer, getTimestampAtCurrentTime } from '@/components/DiscussionVideoPlayer';
+import { MentionInput } from '@/components/MentionInput';
 
 interface Comment {
     id: string;
@@ -173,6 +174,7 @@ export default function DiscussionDetailPage({
     const [newComment, setNewComment] = useState('');
     const [replyingTo, setReplyingTo] = useState<string | null>(null);
     const [submitting, setSubmitting] = useState(false);
+    const [mentions, setMentions] = useState<string[]>([]);
 
     const [relatedEntity, setRelatedEntity] = useState<any>(null);
 
@@ -233,6 +235,16 @@ export default function DiscussionDetailPage({
                         setRelatedEntity(data.data);
                     }
                 }
+            } else if (discussion.related_entity_type === 'player') {
+                // Fetch player from squad endpoint
+                const res = await fetch(`${baseUrl}/public/${tenant}/squad`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.success && Array.isArray(data.data)) {
+                        const found = data.data.find((p: any) => p.id === discussion.related_entity_id);
+                        if (found) setRelatedEntity(found);
+                    }
+                }
             }
         } catch (e) {
             console.error('Failed to load related entity:', e);
@@ -273,12 +285,14 @@ export default function DiscussionDetailPage({
                 },
                 body: JSON.stringify({
                     content: newComment,
-                    parent_comment_id: replyingTo
+                    parent_comment_id: replyingTo,
+                    mentions: mentions
                 })
             });
 
             if (res.ok) {
                 setNewComment('');
+                setMentions([]);
                 setReplyingTo(null);
                 loadDiscussion(); // Reload to show new comment
             }
@@ -435,6 +449,34 @@ export default function DiscussionDetailPage({
                                         {new Date(relatedEntity.date).toLocaleDateString()} • {relatedEntity.competition}
                                     </div>
                                 </div>
+                            ) : discussion.related_entity_type === 'player' ? (
+                                <div className="flex items-center gap-4">
+                                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-brand to-brand/60 flex items-center justify-center text-white font-black text-2xl shrink-0">
+                                        {relatedEntity.number || relatedEntity.name?.[0] || '?'}
+                                    </div>
+                                    <div className="flex-1">
+                                        <div className="font-black text-xl text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                                            <span>👤 {relatedEntity.name}</span>
+                                        </div>
+                                        <div className="text-sm font-bold text-gray-500 uppercase tracking-wide">
+                                            {relatedEntity.position || 'Player'}
+                                            {relatedEntity.number && ` • #${relatedEntity.number}`}
+                                        </div>
+                                        {relatedEntity.stats && (
+                                            <div className="flex gap-4 mt-2 text-xs">
+                                                <span className="text-gray-600 dark:text-gray-400">
+                                                    <span className="font-bold text-gray-900 dark:text-white">{relatedEntity.stats.goals || 0}</span> Goals
+                                                </span>
+                                                <span className="text-gray-600 dark:text-gray-400">
+                                                    <span className="font-bold text-gray-900 dark:text-white">{relatedEntity.stats.assists || 0}</span> Assists
+                                                </span>
+                                                <span className="text-gray-600 dark:text-gray-400">
+                                                    <span className="font-bold text-gray-900 dark:text-white">{relatedEntity.stats.appearances || 0}</span> Apps
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
                             ) : (
                                 <div className="font-bold text-lg text-brand flex items-center gap-2">
                                     {discussion.related_entity_type === 'drill' ? '🏃' : '📋'}
@@ -442,7 +484,7 @@ export default function DiscussionDetailPage({
                                 </div>
                             )}
 
-                            {relatedEntity.description && discussion.related_entity_type !== 'match' && (
+                            {relatedEntity.description && discussion.related_entity_type !== 'match' && discussion.related_entity_type !== 'player' && (
                                 <p className="text-sm text-gray-600 dark:text-gray-300 mt-1 line-clamp-2">
                                     {relatedEntity.description}
                                 </p>
@@ -454,6 +496,15 @@ export default function DiscussionDetailPage({
                                     className="mt-3 inline-block text-xs font-bold text-brand hover:underline"
                                 >
                                     View Full Result &rarr;
+                                </Link>
+                            )}
+
+                            {discussion.related_entity_type === 'player' && (
+                                <Link
+                                    href={`/${tenant}/squad/${discussion.related_entity_id}`}
+                                    className="mt-3 inline-block text-xs font-bold text-brand hover:underline"
+                                >
+                                    View Player Profile &rarr;
                                 </Link>
                             )}
 
@@ -516,10 +567,12 @@ export default function DiscussionDetailPage({
                         )}
 
                         <form onSubmit={handleSubmitComment}>
-                            <textarea
+                            <MentionInput
                                 value={newComment}
-                                onChange={(e) => setNewComment(e.target.value)}
-                                placeholder="Share your thoughts... (Use [MM:SS] for timestamps)"
+                                onChange={setNewComment}
+                                onMentionsChange={setMentions}
+                                tenant={tenant}
+                                placeholder="Share your thoughts... (Use [MM:SS] for timestamps, @ to mention)"
                                 className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 min-h-[120px] resize-y mb-2"
                                 disabled={submitting}
                             />
