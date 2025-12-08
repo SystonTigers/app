@@ -331,6 +331,33 @@ export async function handlePublicTenantRequest(
     const resource = segments[2] || "fixtures";
 
     try {
+        if (resource === "fixtures" && segments[3] && segments[3] !== "next") {
+            const fixtureId = segments[3];
+
+            // Try fetching from fixtures table first
+            const fixtureRow = await env.DB.prepare(
+                `SELECT * FROM fixtures WHERE tenant_id = ? AND id = ?`
+            ).bind(tenant.id, fixtureId).first();
+
+            // Try fetching from team_results if not found or to get result details
+            const resultRow = await env.DB.prepare(
+                `SELECT * FROM team_results WHERE tenant_id = ? AND (id = ? OR (match_date = ? AND opponent = ?))`
+            ).bind(tenant.id, fixtureId, fixtureRow?.fixture_date, fixtureRow?.opponent).first();
+
+            if (!fixtureRow && !resultRow) {
+                return json({ success: false, error: "Match not found" }, 404, corsHdrs);
+            }
+
+            // Prefer result data if available (completed match), otherwise fixture data
+            if (resultRow) {
+                const mapped = mapResultRow(resultRow, tenant.name ?? tenant.slug);
+                return json({ success: true, data: mapped }, 200, corsHdrs);
+            } else {
+                const mapped = mapFixtureRow(fixtureRow, tenant.name ?? tenant.slug);
+                return json({ success: true, data: mapped }, 200, corsHdrs);
+            }
+        }
+
         if (resource === "fixtures" && segments[3] === "next") {
             const row = await env.DB.prepare(
                 `SELECT

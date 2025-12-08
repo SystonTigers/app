@@ -31,11 +31,11 @@ export function PremiumNav({ tenant, teamName }: PremiumNavProps) {
         { label: 'Table', href: `/${tenant}/table`, icon: '📊' },
         { label: 'Squad', href: `/${tenant}/squad`, icon: '👥' },
         { label: 'Stats', href: `/${tenant}/stats`, icon: '📈' },
+        { label: 'Training', href: `/${tenant}/training`, icon: '⚽' },
         { label: 'Team', href: `/${tenant}/team`, icon: '💬' },
     ];
 
     const secondaryNav: NavItem[] = [
-        { label: 'Training', href: `/${tenant}/training`, icon: '⚽' },
         { label: 'Videos', href: `/${tenant}/videos`, icon: '🎬' },
         { label: 'Chat', href: `/${tenant}/chat`, icon: '💬' },
         { label: 'Shop', href: `/${tenant}/shop`, icon: '🛒' },
