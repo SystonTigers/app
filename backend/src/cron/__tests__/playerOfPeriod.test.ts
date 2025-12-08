@@ -131,12 +131,25 @@ describe("Player of Period Cron", () => {
         });
 
         it("does not create duplicate posts for same period", async () => {
-            const kvData = {
-                "team:tenant1:config": {
-                    team_id: "tenant1",
-                    features: { auto_player_of_week: true },
-                },
-                "pop:tenant1:week:2024-01-15": JSON.stringify({ player_id: "p1" }),
+            // Create mock that returns "already posted" for any pop:tenant1:week key
+            const mockKV = {
+                list: vi.fn().mockResolvedValue({
+                    keys: [{ name: "team:tenant1:config" }],
+                }),
+                get: vi.fn().mockImplementation((key: string, type?: string) => {
+                    if (key === "team:tenant1:config") {
+                        return Promise.resolve({
+                            team_id: "tenant1",
+                            features: { auto_player_of_week: true },
+                        });
+                    }
+                    // Return truthy for any pop key (already posted)
+                    if (key.startsWith("pop:tenant1:week:")) {
+                        return Promise.resolve(JSON.stringify({ player_id: "p1" }));
+                    }
+                    return Promise.resolve(null);
+                }),
+                put: vi.fn().mockResolvedValue(undefined),
             };
 
             const playerStats = [
@@ -144,7 +157,7 @@ describe("Player of Period Cron", () => {
             ];
 
             const env = {
-                KV: createMockKV(kvData),
+                KV: mockKV,
                 DB: createMockDb(playerStats),
             };
             const ctx = createMockCtx();

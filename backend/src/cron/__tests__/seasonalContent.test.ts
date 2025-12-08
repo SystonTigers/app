@@ -136,16 +136,29 @@ describe("Seasonal Content Cron", () => {
         });
 
         it("does not create duplicate posts for same week", async () => {
-            const kvData = {
-                "team:tenant1:config": {
-                    team_id: "tenant1",
-                    features: { auto_weekly_roundup: true },
-                },
-                "weekly:tenant1:2024-01-15": "posted",
+            // Create mock that returns "posted" for any weekly:tenant1 key
+            const mockKV = {
+                list: vi.fn().mockResolvedValue({
+                    keys: [{ name: "team:tenant1:config" }],
+                }),
+                get: vi.fn().mockImplementation((key: string, type?: string) => {
+                    if (key === "team:tenant1:config") {
+                        return Promise.resolve({
+                            team_id: "tenant1",
+                            features: { auto_weekly_roundup: true },
+                        });
+                    }
+                    // Return truthy for any weekly key (already posted)
+                    if (key.startsWith("weekly:tenant1:")) {
+                        return Promise.resolve("posted");
+                    }
+                    return Promise.resolve(null);
+                }),
+                put: vi.fn().mockResolvedValue(undefined),
             };
 
             const env = {
-                KV: createMockKV(kvData),
+                KV: mockKV,
                 DB: createMockDb([{ our_score: 2, their_score: 1 }]),
             };
             const ctx = createMockCtx();
@@ -404,19 +417,32 @@ describe("Seasonal Content Cron", () => {
                 },
             });
 
-            const kvData = {
-                "team:tenant1:config": {
-                    team_id: "tenant1",
-                    features: {
-                        auto_season_posts: true,
-                        season_dates: { start: "09-01", mid: "01-01", end: "05-31" },
-                    },
-                },
-                "season_start:tenant1:2024": "posted",
+            // Create mock that returns "posted" for any season_start key
+            const mockKV = {
+                list: vi.fn().mockResolvedValue({
+                    keys: [{ name: "team:tenant1:config" }],
+                }),
+                get: vi.fn().mockImplementation((key: string, type?: string) => {
+                    if (key === "team:tenant1:config") {
+                        return Promise.resolve({
+                            team_id: "tenant1",
+                            features: {
+                                auto_season_posts: true,
+                                season_dates: { start: "09-01", mid: "01-01", end: "05-31" },
+                            },
+                        });
+                    }
+                    // Return truthy for any season_start key (already posted)
+                    if (key.startsWith("season_start:tenant1:")) {
+                        return Promise.resolve("posted");
+                    }
+                    return Promise.resolve(null);
+                }),
+                put: vi.fn().mockResolvedValue(undefined),
             };
 
             const env = {
-                KV: createMockKV(kvData),
+                KV: mockKV,
                 DB: createMockDb(),
             };
             const ctx = createMockCtx();
