@@ -4,6 +4,7 @@ import { useState, useEffect, use } from 'react';
 import Link from 'next/link';
 import { SeasonTabs } from '@/components/SeasonTabs';
 import { FunStats } from '@/components/FunStats';
+import { createClientSDK } from '@/lib/sdk';
 
 interface PageProps {
     params: Promise<{ tenant: string }>;
@@ -18,9 +19,9 @@ interface Season {
     end_date?: string;
 }
 
-interface SeasonSummary {
+interface SeasonStats {
     season: Season;
-    record: {
+    summary: { // was record
         played: number;
         won: number;
         drawn: number;
@@ -29,8 +30,19 @@ interface SeasonSummary {
         goalsAgainst: number;
         goalDifference: number;
         points: number;
+        cleanSheets: number;
     };
-    topScorers: { player_name: string; goals: number }[];
+    topScorer?: { name: string; goals: number };
+    topAssister?: { name: string; assists: number };
+    isFrozen?: boolean;
+}
+
+interface Award {
+    id: string;
+    award_name: string;
+    player_name: string;
+    notes?: string;
+    photo_url?: string;
 }
 
 export default function HistoryPage({ params }: PageProps) {
@@ -38,7 +50,8 @@ export default function HistoryPage({ params }: PageProps) {
 
     const [seasons, setSeasons] = useState<Season[]>([]);
     const [selectedSeason, setSelectedSeason] = useState<string | null>(null);
-    const [summary, setSummary] = useState<SeasonSummary | null>(null);
+    const [stats, setStats] = useState<SeasonStats | null>(null);
+    const [awards, setAwards] = useState<Award[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -47,16 +60,14 @@ export default function HistoryPage({ params }: PageProps) {
 
     useEffect(() => {
         if (selectedSeason) {
-            loadSeasonSummary(selectedSeason);
+            loadSeasonData(selectedSeason);
         }
     }, [selectedSeason]);
 
     async function loadSeasons() {
         try {
-            const token = localStorage.getItem('token');
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE || ''}/api/v1/seasons`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            // Using tenant query param for public access if needed, or token
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE || ''}/api/v1/seasons?tenant=${tenant}`);
             const data = await res.json();
             if (data.success && data.data) {
                 setSeasons(data.data);
@@ -72,22 +83,30 @@ export default function HistoryPage({ params }: PageProps) {
         }
     }
 
-    async function loadSeasonSummary(seasonId: string) {
+    async function loadSeasonData(seasonId: string) {
+        setStats(null);
+        setAwards([]);
         try {
-            const token = localStorage.getItem('token');
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE || ''}/api/v1/seasons/${seasonId}/summary`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            const data = await res.json();
-            if (data.success) {
-                setSummary(data.data);
+            // Fetch Stats
+            const resStats = await fetch(`${process.env.NEXT_PUBLIC_API_BASE || ''}/api/v1/seasons/${seasonId}/stats?tenant=${tenant}`);
+            const dataStats = await resStats.json();
+            if (dataStats.success) {
+                setStats(dataStats);
             }
+
+            // Fetch Awards
+            const resAwards = await fetch(`${process.env.NEXT_PUBLIC_API_BASE || ''}/api/v1/seasons/${seasonId}/awards?tenant=${tenant}`);
+            const dataAwards = await resAwards.json();
+            if (dataAwards.success) {
+                setAwards(dataAwards.data);
+            }
+
         } catch (err) {
-            console.error('Failed to load summary:', err);
+            console.error('Failed to load season data:', err);
         }
     }
 
-    if (loading) return <div className="p-8">Loading...</div>;
+    if (loading) return <div className="p-8 dark:text-gray-200">Loading...</div>;
 
     return (
         <div className="container mx-auto py-8 px-4">
@@ -97,7 +116,7 @@ export default function HistoryPage({ params }: PageProps) {
             {seasons.length === 0 ? (
                 <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-8 text-center">
                     <div className="text-4xl mb-4">📅</div>
-                    <h2 className="text-xl font-semibold mb-2">No Seasons Yet</h2>
+                    <h2 className="text-xl font-semibold mb-2 dark:text-white">No Seasons Yet</h2>
                     <p className="text-gray-500 mb-4">Create your first season to start tracking history</p>
                     <Link
                         href={`/${tenant}/admin/seasons`}
@@ -113,127 +132,163 @@ export default function HistoryPage({ params }: PageProps) {
                         tenant={tenant}
                         currentSeasonId={selectedSeason || undefined}
                         onSeasonChange={(id) => setSelectedSeason(id)}
+                        seasons={seasons}
                     />
 
-                    {selectedSeason && summary && (
-                        <div className="space-y-8">
+                    {selectedSeason && stats && (
+                        <div className="space-y-8 mt-6">
                             {/* Season Header */}
-                            <div className="bg-gradient-to-r from-brand to-brand/80 rounded-2xl p-8 text-white">
-                                <div className="flex items-center gap-4 mb-4">
-                                    <h2 className="text-2xl font-bold">{summary.season.name} Season</h2>
-                                    {summary.season.is_current === 1 && (
-                                        <span className="bg-white/20 px-3 py-1 rounded-full text-sm">Current</span>
-                                    )}
-                                    {summary.season.status === 'archived' && (
-                                        <span className="bg-white/20 px-3 py-1 rounded-full text-sm">📦 Archived</span>
-                                    )}
+                            <div className="bg-gradient-to-r from-brand to-brand/80 rounded-2xl p-8 text-white relative overflow-hidden shadow-lg">
+                                <div className="relative z-10 flex flex-col md:flex-row justify-between md:items-center gap-4">
+                                    <div className="flex items-center gap-4">
+                                        <h2 className="text-3xl font-bold">{stats.season.name} Season</h2>
+                                        {stats.season.is_current === 1 && (
+                                            <span className="bg-white/20 backdrop-blur px-3 py-1 rounded-full text-sm font-medium border border-white/30">Current</span>
+                                        )}
+                                        {stats.season.status === 'archived' && (
+                                            <span className="bg-yellow-500/80 backdrop-blur px-3 py-1 rounded-full text-sm font-medium border border-yellow-300/30 flex items-center gap-1">
+                                                <span>📦</span> Archived
+                                            </span>
+                                        )}
+                                        {stats.isFrozen && (
+                                            <span className="bg-blue-500/80 backdrop-blur px-3 py-1 rounded-full text-sm font-medium border border-blue-300/30 flex items-center gap-1" title="Stats are frozen from snapshot">
+                                                <span>❄️</span> Frozen Stats
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div className="text-brand-100 font-mono">
+                                        {stats.summary.points} Pts
+                                    </div>
                                 </div>
 
                                 {/* Record */}
-                                <div className="grid grid-cols-4 md:grid-cols-8 gap-4 text-center">
+                                <div className="grid grid-cols-4 md:grid-cols-8 gap-4 text-center mt-8 pt-8 border-t border-white/20">
                                     <div>
-                                        <div className="text-3xl font-bold">{summary.record.played}</div>
+                                        <div className="text-3xl font-bold">{stats.summary.played}</div>
                                         <div className="text-sm opacity-80">Played</div>
                                     </div>
                                     <div>
-                                        <div className="text-3xl font-bold text-green-300">{summary.record.won}</div>
+                                        <div className="text-3xl font-bold text-green-300">{stats.summary.won}</div>
                                         <div className="text-sm opacity-80">Won</div>
                                     </div>
                                     <div>
-                                        <div className="text-3xl font-bold text-yellow-300">{summary.record.drawn}</div>
+                                        <div className="text-3xl font-bold text-yellow-300">{stats.summary.drawn}</div>
                                         <div className="text-sm opacity-80">Drawn</div>
                                     </div>
                                     <div>
-                                        <div className="text-3xl font-bold text-red-300">{summary.record.lost}</div>
+                                        <div className="text-3xl font-bold text-red-300">{stats.summary.lost}</div>
                                         <div className="text-sm opacity-80">Lost</div>
                                     </div>
                                     <div>
-                                        <div className="text-3xl font-bold">{summary.record.goalsFor}</div>
+                                        <div className="text-3xl font-bold">{stats.summary.goalsFor}</div>
                                         <div className="text-sm opacity-80">GF</div>
                                     </div>
                                     <div>
-                                        <div className="text-3xl font-bold">{summary.record.goalsAgainst}</div>
+                                        <div className="text-3xl font-bold">{stats.summary.goalsAgainst}</div>
                                         <div className="text-sm opacity-80">GA</div>
                                     </div>
                                     <div>
                                         <div className="text-3xl font-bold">
-                                            {summary.record.goalDifference >= 0 ? '+' : ''}{summary.record.goalDifference}
+                                            {stats.summary.goalDifference >= 0 ? '+' : ''}{stats.summary.goalDifference}
                                         </div>
                                         <div className="text-sm opacity-80">GD</div>
                                     </div>
                                     <div>
-                                        <div className="text-3xl font-bold">{summary.record.points}</div>
-                                        <div className="text-sm opacity-80">Pts</div>
+                                        <div className="text-3xl font-bold">{stats.summary.cleanSheets}</div>
+                                        <div className="text-sm opacity-80">CS</div>
                                     </div>
+                                </div>
+                            </div>
+
+                            {/* Awards and Top Players */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                {/* Awards Section */}
+                                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-100 dark:border-gray-700 overflow-hidden">
+                                    <div className="p-4 bg-gray-50 dark:bg-gray-900 border-b dark:border-gray-700">
+                                        <h3 className="text-xl font-bold dark:text-white flex items-center gap-2">
+                                            🏆 Season Awards
+                                        </h3>
+                                    </div>
+                                    <div className="p-4 space-y-4">
+                                        {awards.length === 0 ? (
+                                            <p className="text-gray-500 italic text-center py-4">No awards recorded for this season.</p>
+                                        ) : (
+                                            awards.map((award, i) => (
+                                                <div key={i} className="flex items-center gap-4 p-3 bg-yellow-50 dark:bg-yellow-900/10 rounded-lg border border-yellow-100 dark:border-yellow-900/30">
+                                                    <div className="text-3xl">🏅</div>
+                                                    <div>
+                                                        <div className="font-bold text-gray-900 dark:text-gray-100">{award.award_name}</div>
+                                                        <div className="text-brand dark:text-brand-300 font-medium">{award.player_name}</div>
+                                                        {award.notes && <div className="text-xs text-gray-500 mt-1">"{award.notes}"</div>}
+                                                    </div>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Top Performers */}
+                                <div className="space-y-4">
+                                    {stats.topScorer && (
+                                        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 flex items-center gap-4">
+                                            <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center text-2xl">⚽</div>
+                                            <div>
+                                                <div className="text-sm text-gray-500 uppercase font-semibold">Top Scorer</div>
+                                                <div className="font-bold text-lg dark:text-white">{stats.topScorer.name}</div>
+                                                <div className="text-brand font-bold">{stats.topScorer.goals} Goals</div>
+                                            </div>
+                                        </div>
+                                    )}
+                                    {stats.topAssister && (
+                                        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 flex items-center gap-4">
+                                            <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center text-2xl">👟</div>
+                                            <div>
+                                                <div className="text-sm text-gray-500 uppercase font-semibold">Most Assists</div>
+                                                <div className="font-bold text-lg dark:text-white">{stats.topAssister.name}</div>
+                                                <div className="text-brand font-bold">{stats.topAssister.assists} Assists</div>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
                             {/* Fun Stats */}
                             <div>
-                                <h3 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">📊 Season Stats</h3>
+                                <h3 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">📊 Detailed Stats</h3>
                                 <FunStats tenant={tenant} seasonId={selectedSeason} type="team" />
                             </div>
-
-                            {/* Top Scorers */}
-                            {summary.topScorers.length > 0 && (
-                                <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                                    <h3 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">⚽ Top Scorers</h3>
-                                    <div className="space-y-3">
-                                        {summary.topScorers.map((scorer, i) => (
-                                            <div key={i} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="text-2xl font-bold text-gray-300 w-8">#{i + 1}</div>
-                                                    <span className="font-medium">{scorer.player_name || 'Unknown'}</span>
-                                                </div>
-                                                <div className="text-xl font-bold text-brand">{scorer.goals} goals</div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
 
                             {/* Quick Links */}
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                 <Link
                                     href={`/${tenant}/fixtures?season=${selectedSeason}`}
-                                    className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 text-center hover:shadow-lg transition-shadow"
+                                    className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 text-center hover:bg-gray-50 dark:hover:bg-gray-700 transition"
                                 >
                                     <div className="text-3xl mb-2">📅</div>
-                                    <div className="font-medium">Fixtures</div>
+                                    <div className="font-medium dark:text-white">Fixtures</div>
                                 </Link>
                                 <Link
                                     href={`/${tenant}/results?season=${selectedSeason}`}
-                                    className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 text-center hover:shadow-lg transition-shadow"
+                                    className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 text-center hover:bg-gray-50 dark:hover:bg-gray-700 transition"
                                 >
                                     <div className="text-3xl mb-2">📊</div>
-                                    <div className="font-medium">Results</div>
+                                    <div className="font-medium dark:text-white">Results</div>
                                 </Link>
                                 <Link
                                     href={`/${tenant}/table?season=${selectedSeason}`}
-                                    className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 text-center hover:shadow-lg transition-shadow"
+                                    className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 text-center hover:bg-gray-50 dark:hover:bg-gray-700 transition"
                                 >
                                     <div className="text-3xl mb-2">🏆</div>
-                                    <div className="font-medium">League Table</div>
+                                    <div className="font-medium dark:text-white">League Table</div>
                                 </Link>
                                 <Link
                                     href={`/${tenant}/squad?season=${selectedSeason}`}
-                                    className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 text-center hover:shadow-lg transition-shadow"
+                                    className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 text-center hover:bg-gray-50 dark:hover:bg-gray-700 transition"
                                 >
                                     <div className="text-3xl mb-2">👥</div>
-                                    <div className="font-medium">Squad</div>
+                                    <div className="font-medium dark:text-white">Squad</div>
                                 </Link>
                             </div>
-                        </div>
-                    )}
-
-                    {/* All-Time View */}
-                    {!selectedSeason && (
-                        <div className="space-y-8">
-                            <div className="bg-gradient-to-r from-gray-800 to-gray-700 rounded-2xl p-8 text-white">
-                                <h2 className="text-2xl font-bold mb-2">📊 All-Time Statistics</h2>
-                                <p className="opacity-80">Combined stats across all seasons</p>
-                            </div>
-                            <FunStats tenant={tenant} type="team" />
                         </div>
                     )}
                 </>
@@ -241,3 +296,4 @@ export default function HistoryPage({ params }: PageProps) {
         </div>
     );
 }
+

@@ -70,25 +70,8 @@ CREATE INDEX IF NOT EXISTS idx_training_sessions_tenant ON training_sessions(ten
 CREATE INDEX IF NOT EXISTS idx_drills_tenant ON drills(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_session_drills_session ON session_drills(session_id);
 
--- Shop Tables
-CREATE TABLE IF NOT EXISTS products (
-    id TEXT PRIMARY KEY,
-    tenant_id TEXT NOT NULL,
-    name TEXT NOT NULL,
-    description TEXT NOT NULL,
-    price REAL NOT NULL,
-    category TEXT NOT NULL, -- 'clothing', 'accessories', 'homeware', 'custom'
-    sizes TEXT, -- JSON array
-    colors TEXT, -- JSON array
-    in_stock INTEGER NOT NULL DEFAULT 1,
-    printify_id TEXT,
-    image_url TEXT NOT NULL,
-    created_at INTEGER NOT NULL,
-    FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
-);
+-- Shop Tables (Removed: Handled by 0001/019)
 
-CREATE INDEX IF NOT EXISTS idx_products_tenant ON products(tenant_id);
-CREATE INDEX IF NOT EXISTS idx_products_category ON products(category);
 
 -- MOTM Voting Tables
 CREATE TABLE IF NOT EXISTS motm_votes (

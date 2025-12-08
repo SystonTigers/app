@@ -69,14 +69,7 @@ import {
     handleDeleteTrainingSession,
     handleGetJobStatus
 } from "./routes/coaching";
-import { handleProductSync, handleGetProducts } from "./routes/shop/products";
-import {
-    handleCreateCart,
-    handleGetCart,
-    handleAddToCart,
-    handleRemoveFromCart
-} from "./routes/shop/cart";
-import { handleCreateCheckout, handleStripeWebhook } from "./routes/shop/checkout";
+
 // Export Durable Objects
 export { TenantRateLimiter } from "./do/rateLimiter";
 export { VotingRoom } from "./do/votingRoom";
@@ -102,18 +95,6 @@ router.get("/public/*", async (req, env, corsHdrs, requestId) => {
     return handlePublicTenantRequest(req, env, new URL(req.url), corsHdrs, requestId);
 });
 
-// Shop Routes
-router.post("/api/:v/shop/products/sync", (req, env, corsHdrs) => handleProductSync(req, env, corsHdrs));
-router.get("/api/:v/shop/products", (req, env, corsHdrs) => handleGetProducts(req, env, corsHdrs));
-
-// Cart Routes
-router.post("/api/:v/shop/cart", (req, env, corsHdrs) => handleCreateCart(req, env, corsHdrs));
-router.get("/api/:v/shop/cart/:id", (req, env, corsHdrs) => handleGetCart(req, env, corsHdrs));
-router.post("/api/:v/shop/cart/:id/items", (req, env, corsHdrs) => handleAddToCart(req, env, corsHdrs));
-router.delete("/api/:v/shop/cart/:id/items", (req, env, corsHdrs) => handleRemoveFromCart(req, env, corsHdrs));
-
-// Checkout Routes
-router.post("/api/:v/shop/checkout", (req, env, corsHdrs) => handleCreateCheckout(req, env, corsHdrs));
 // Stripe Webhook (No version prefix needed, publicly accessible)
 router.post("/api/webhooks/stripe", (req, env) => handleStripeWebhook(req, env));
 
@@ -305,31 +286,7 @@ router.get("/api/:v/training/sessions/:id/drills", (req, env, corsHdrs) => {
     return handleGetSessionDrills(req, env, corsHdrs, params.id);
 });
 
-// Shop Routes
-import {
-    handleCreateProduct,
-    handleListProducts,
-    handleGetProduct,
-    handleUpdateProduct,
-    handleDeleteProduct,
-    handlePrintifySync,
-    handlePublicListProducts
-} from "./routes/shop";
-router.post("/api/:v/shop/products", (req, env, corsHdrs) => handleCreateProduct(req, env, corsHdrs));
-router.get("/api/:v/shop/products", (req, env, corsHdrs) => handleListProducts(req, env, corsHdrs));
-router.get("/api/:v/shop/products/:id", (req, env, corsHdrs) => {
-    const params = (req as any).params || {};
-    return handleGetProduct(req, env, corsHdrs, params.id);
-});
-router.put("/api/:v/shop/products/:id", (req, env, corsHdrs) => {
-    const params = (req as any).params || {};
-    return handleUpdateProduct(req, env, corsHdrs, params.id);
-});
-router.delete("/api/:v/shop/products/:id", (req, env, corsHdrs) => {
-    const params = (req as any).params || {};
-    return handleDeleteProduct(req, env, corsHdrs, params.id);
-});
-router.post("/api/:v/shop/printify/sync", (req, env, corsHdrs) => handlePrintifySync(req, env, corsHdrs));
+// Shop Routes (Moved to end of file)
 
 // MOTM Voting Routes
 import {
@@ -523,8 +480,14 @@ router.get("/api/:v/coaching/jobs/:id", (req, env, corsHdrs, requestId) => {
 });
 
 // Squad Routes
-import { handleUpdateSquad } from "./routes/squad";
+import { handleUpdateSquad, handleAddPlayer } from "./routes/squad";
 router.post("/api/:v/squad", (req, env, corsHdrs) => handleUpdateSquad(req, env, corsHdrs));
+router.post("/api/:v/squad/add", (req, env, corsHdrs) => handleAddPlayer(req, env, corsHdrs));
+import { handleGetCareerStats } from "./routes/career-stats";
+router.get("/api/:v/stats/career/:playerId", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleGetCareerStats(req, env, corsHdrs, params.playerId);
+});
 
 // Tactics Routes
 import { handleSaveTactics, handleGetTactics } from "./routes/tactics";
@@ -595,18 +558,58 @@ router.get("/api/:v/calendar/export", (req, env, corsHdrs) => handleExportCalend
 import {
     handleListSeasons, handleCreateSeason, handleSetCurrentSeason,
     handleArchiveSeason, handleGetCurrentSeason, handleAddPlayerToSeason,
-    handleGetSeasonRoster
+    handleGetSeasonRoster,
+    handleEndSeasonPreview, handleEndSeason, handleStartNewSeason,
+    handleReopenSeason, handleGetSeasonAwards, handleAddSeasonAward, handleDeleteSeasonAward,
+    handleGetSeasonStats
 } from "./routes/seasons";
+
 router.get("/api/:v/seasons", (req, env, corsHdrs) => handleListSeasons(req, env, corsHdrs));
 router.post("/api/:v/seasons", (req, env, corsHdrs) => handleCreateSeason(req, env, corsHdrs));
+router.post("/api/:v/seasons/start-new", (req, env, corsHdrs) => handleStartNewSeason(req, env, corsHdrs));
 router.get("/api/:v/seasons/current", (req, env, corsHdrs) => handleGetCurrentSeason(req, env, corsHdrs));
 router.post("/api/:v/seasons/set-current", (req, env, corsHdrs) => handleSetCurrentSeason(req, env, corsHdrs));
 router.post("/api/:v/seasons/archive", (req, env, corsHdrs) => handleArchiveSeason(req, env, corsHdrs));
+router.get("/api/:v/seasons/:id/stats", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleGetSeasonStats(req, env, corsHdrs, params.id);
+});
+
+// Season Lifecycle
+router.get("/api/:v/seasons/:id/end-preview", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleEndSeasonPreview(req, env, corsHdrs, params.id);
+});
+router.post("/api/:v/seasons/:id/end", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleEndSeason(req, env, corsHdrs, params.id);
+});
+router.post("/api/:v/seasons/:id/reopen", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleReopenSeason(req, env, corsHdrs, params.id);
+});
+
+// Season Awards
+router.get("/api/:v/seasons/:id/awards", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleGetSeasonAwards(req, env, corsHdrs, params.id);
+});
+router.post("/api/:v/seasons/:id/awards", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleAddSeasonAward(req, env, corsHdrs, params.id);
+});
+router.delete("/api/:v/seasons/:id/awards/:awardId", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleDeleteSeasonAward(req, env, corsHdrs, params.awardId);
+});
+
+// Roster
 router.post("/api/:v/seasons/:id/roster", (req, env, corsHdrs) => handleAddPlayerToSeason(req, env, corsHdrs));
 router.get("/api/:v/seasons/:id/roster", (req, env, corsHdrs) => {
     const params = (req as any).params || {};
     return handleGetSeasonRoster(req, env, corsHdrs, params.id);
 });
+
 
 // Fun Stats Routes
 import { handleGetTeamFunStats, handleGetPlayerFunStats, handleGetSeasonSummary } from "./routes/fun-stats";
@@ -623,7 +626,7 @@ router.get("/api/:v/seasons/:id/summary", (req, env, corsHdrs) => {
 // Shop Routes
 import { handleGetProducts, handleProductSync } from "./routes/shop/products";
 import { handleCreateCart, handleGetCart, handleAddToCart, handleRemoveFromCart } from "./routes/shop/cart";
-import { handleCreateCheckout } from "./routes/shop/checkout";
+import { handleCreateCheckout, handleStripeWebhook } from "./routes/shop/checkout";
 
 router.get("/api/:v/shop/products", (req, env, corsHdrs) => handleGetProducts(req, env, corsHdrs));
 router.post("/api/:v/shop/sync", (req, env, corsHdrs) => handleProductSync(req, env, corsHdrs));

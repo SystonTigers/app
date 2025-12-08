@@ -13,16 +13,22 @@ interface SeasonTabsProps {
     tenant: string;
     currentSeasonId?: string;
     onSeasonChange: (seasonId: string | null) => void;
+    seasons?: Season[];
 }
 
-export function SeasonTabs({ tenant, currentSeasonId, onSeasonChange }: SeasonTabsProps) {
-    const [seasons, setSeasons] = useState<Season[]>([]);
-    const [loading, setLoading] = useState(true);
+export function SeasonTabs({ tenant, currentSeasonId, onSeasonChange, seasons: initialSeasons }: SeasonTabsProps) {
+    const [seasons, setSeasons] = useState<Season[]>(initialSeasons || []);
+    const [loading, setLoading] = useState(!initialSeasons);
     const [selectedId, setSelectedId] = useState<string | null>(currentSeasonId || null);
 
     useEffect(() => {
-        loadSeasons();
-    }, [tenant]);
+        if (!initialSeasons) {
+            loadSeasons();
+        } else {
+            setSeasons(initialSeasons);
+            setLoading(false);
+        }
+    }, [tenant, initialSeasons]);
 
     async function loadSeasons() {
         try {
@@ -45,7 +51,7 @@ export function SeasonTabs({ tenant, currentSeasonId, onSeasonChange }: SeasonTa
         } catch (err) {
             console.error('Failed to load seasons:', err);
         } finally {
-            setLoading(false);
+            setLoading(false); // Make sure to set loading false in all cases
         }
     }
 
@@ -75,8 +81,8 @@ export function SeasonTabs({ tenant, currentSeasonId, onSeasonChange }: SeasonTa
                 aria-selected={!selectedId}
                 onClick={() => handleSelect(null)}
                 className={`px-4 py-2 rounded-lg font-medium transition-all ${!selectedId
-                        ? 'bg-brand text-white shadow-lg'
-                        : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                    ? 'bg-brand text-white shadow-lg'
+                    : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
                     }`}
             >
                 All-Time
@@ -90,8 +96,8 @@ export function SeasonTabs({ tenant, currentSeasonId, onSeasonChange }: SeasonTa
                     aria-selected={selectedId === season.id}
                     onClick={() => handleSelect(season.id)}
                     className={`px-4 py-2 rounded-lg font-medium transition-all flex items-center gap-2 ${selectedId === season.id
-                            ? 'bg-brand text-white shadow-lg'
-                            : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                        ? 'bg-brand text-white shadow-lg'
+                        : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
                         }`}
                 >
                     {season.name}
