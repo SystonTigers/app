@@ -622,6 +622,14 @@ function respondWithCors(res: Response, base: Headers) {
     return new Response(res.body, withSecurity({ status: res.status, headers }));
 }
 
+// Import cron jobs
+import { runDaily } from "./cron/daily";
+import { runThrowback } from "./cron/throwback";
+import { runOnThisDay } from "./cron/onThisDay";
+import { runCleanup } from "./cron/cleanup";
+import { runLeagueUpdate } from "./cron/league";
+import { runMilestones } from "./cron/milestones";
+
 export default {
     async fetch(req: Request, env: any, ctx: ExecutionContext): Promise<Response> {
         const requestId = newRequestId();
@@ -644,6 +652,56 @@ export default {
         } catch (err: any) {
             const errorResponse = errorHandler(err, env, requestId);
             return respondWithCors(errorResponse, corsHdrs);
+        }
+    },
+
+    /**
+     * Scheduled handler for cron jobs
+     * Runs every 5 minutes - dispatches to appropriate job based on time
+     */
+    async scheduled(event: ScheduledEvent, env: any, ctx: ExecutionContext): Promise<void> {
+        const hour = new Date(event.scheduledTime).getUTCHours();
+        const minute = new Date(event.scheduledTime).getUTCMinutes();
+        const dayOfWeek = new Date(event.scheduledTime).getUTCDay();
+
+        logJSON({ level: 'info', msg: 'Cron triggered', hour, minute, dayOfWeek });
+
+        try {
+            // Every 5 minutes: Cleanup expired data
+            ctx.waitUntil(runCleanup(env, ctx));
+
+            // 06:00 UTC: Daily birthdays and quotes
+            if (hour === 6 && minute < 5) {
+                ctx.waitUntil(runDaily(env, ctx));
+            }
+
+            // 08:00 UTC: Match day countdowns
+            if (hour === 8 && minute < 5) {
+                ctx.waitUntil(runDaily(env, ctx, { countdownsOnly: true }));
+            }
+
+            // 09:00 UTC: "On This Day" posts (daily)
+            if (hour === 9 && minute < 5) {
+                ctx.waitUntil(runOnThisDay(env, ctx));
+            }
+
+            // Thursday 19:00 UTC: Throwback Thursday (photo-based)
+            if (dayOfWeek === 4 && hour === 19 && minute < 5) {
+                ctx.waitUntil(runThrowback(env, ctx));
+            }
+
+            // Every 6 hours: League table updates (00:00, 06:00, 12:00, 18:00)
+            if (hour % 6 === 0 && minute < 5) {
+                ctx.waitUntil(runLeagueUpdate(env, ctx));
+            }
+
+            // 21:00 UTC: Player milestone checks (after matches typically end)
+            // Also runs on weekends (Sat/Sun) when most matches are played
+            if (hour === 21 && minute < 5 && (dayOfWeek === 0 || dayOfWeek === 6)) {
+                ctx.waitUntil(runMilestones(env, ctx));
+            }
+        } catch (error) {
+            logJSON({ level: 'error', msg: 'Cron error', error: error instanceof Error ? error.message : String(error) });
         }
     }
 };
