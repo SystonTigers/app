@@ -630,6 +630,7 @@ import { runCleanup } from "./cron/cleanup";
 import { runLeagueUpdate } from "./cron/league";
 import { runMilestones } from "./cron/milestones";
 import { runPlayerOfPeriod } from "./cron/playerOfPeriod";
+import { runWeeklyRoundup, runSeasonCheck } from "./cron/seasonalContent";
 
 export default {
     async fetch(req: Request, env: any, ctx: ExecutionContext): Promise<Response> {
@@ -711,6 +712,16 @@ export default {
             const dayOfMonth = new Date(event.scheduledTime).getUTCDate();
             if (dayOfMonth === 1 && hour === 10 && minute < 5) {
                 ctx.waitUntil(runPlayerOfPeriod(env, ctx, { period: 'month' }));
+            }
+
+            // Monday 10:00 UTC: Weekly stats roundup
+            if (dayOfWeek === 1 && hour === 10 && minute < 5) {
+                ctx.waitUntil(runWeeklyRoundup(env, ctx));
+            }
+
+            // Daily 07:00 UTC: Season milestone checks (start/mid/end)
+            if (hour === 7 && minute < 5) {
+                ctx.waitUntil(runSeasonCheck(env, ctx));
             }
         } catch (error) {
             logJSON({ level: 'error', msg: 'Cron error', error: error instanceof Error ? error.message : String(error) });
