@@ -2,6 +2,7 @@
 import { getServerSDK } from '@/lib/sdk';
 import Link from 'next/link';
 import { PlayerDiscussButton } from '@/components/PlayerDiscussButton';
+import { CareerHistory } from '@/components/CareerHistory';
 
 export default async function PlayerBioPage({ params }: { params: Promise<{ tenant: string; playerId: string }> }) {
     const { tenant, playerId } = await params;
@@ -222,6 +223,9 @@ export default async function PlayerBioPage({ params }: { params: Promise<{ tena
                                 </div>
                             </div>
                         )}
+
+                        {/* Career History from Other Clubs */}
+                        <CareerHistory playerId={playerId} playerName={augmentedPlayer.name} />
                     </div>
 
                     {/* Physical Attributes (New) */}

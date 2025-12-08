@@ -489,6 +489,27 @@ router.get("/api/:v/stats/career/:playerId", (req, env, corsHdrs) => {
     return handleGetCareerStats(req, env, corsHdrs, params.playerId);
 });
 
+// Player Transfer Routes
+import {
+    handleGenerateTransferCode,
+    handleVerifyTransferCode,
+    handleClaimTransfer,
+    handleGetCareerStats as handleGetTransferCareerStats
+} from "./routes/transfers";
+router.post("/api/:v/squad/:playerId/generate-transfer", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleGenerateTransferCode(req, env, corsHdrs, params.playerId);
+});
+router.get("/api/:v/transfers/:code", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleVerifyTransferCode(req, env, corsHdrs, params.code);
+});
+router.post("/api/:v/squad/claim-transfer", (req, env, corsHdrs) => handleClaimTransfer(req, env, corsHdrs));
+router.get("/api/:v/squad/:playerId/career-stats", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleGetTransferCareerStats(req, env, corsHdrs, params.playerId);
+});
+
 // Tactics Routes
 import { handleSaveTactics, handleGetTactics } from "./routes/tactics";
 router.post("/api/:v/tactics", (req, env, corsHdrs) => handleSaveTactics(req, env, corsHdrs));

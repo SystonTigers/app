@@ -3,6 +3,8 @@
 import { useState, useEffect, use } from 'react';
 import { createClientSDK, updateSquad, addPlayer } from '@/lib/sdk';
 import { AddPlayerModal } from '@/components/admin/AddPlayerModal';
+import { TransferCodeModal } from '@/components/TransferCodeModal';
+import { ClaimTransferModal } from '@/components/ClaimTransferModal';
 
 interface PageProps {
     params: Promise<{ tenant: string }>;
@@ -24,6 +26,8 @@ export default function SquadAdminPage({ params }: PageProps) {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [showAddModal, setShowAddModal] = useState(false);
+    const [transferModalPlayer, setTransferModalPlayer] = useState<Player | null>(null);
+    const [claimModalPlayer, setClaimModalPlayer] = useState<Player | null>(null);
 
     useEffect(() => {
         loadSquad();
@@ -36,7 +40,7 @@ export default function SquadAdminPage({ params }: PageProps) {
             // Data might be wrapped or array
             let list: Player[] = [];
             if (Array.isArray(data)) {
-                list = data;
+                list = data as unknown as Player[];
             } else if ((data as any).data && Array.isArray((data as any).data)) {
                 list = (data as any).data;
             }
@@ -88,6 +92,23 @@ export default function SquadAdminPage({ params }: PageProps) {
                 onClose={() => setShowAddModal(false)}
                 onSave={handleAddPlayer}
             />
+
+            {transferModalPlayer && (
+                <TransferCodeModal
+                    isOpen={!!transferModalPlayer}
+                    onClose={() => setTransferModalPlayer(null)}
+                    player={transferModalPlayer}
+                />
+            )}
+
+            {claimModalPlayer && (
+                <ClaimTransferModal
+                    isOpen={!!claimModalPlayer}
+                    onClose={() => setClaimModalPlayer(null)}
+                    newPlayer={claimModalPlayer}
+                    onSuccess={loadSquad}
+                />
+            )}
 
             <div className="flex justify-between items-center mb-8">
                 <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Squad Management</h1>
@@ -171,12 +192,26 @@ export default function SquadAdminPage({ params }: PageProps) {
                                         className="w-full p-1 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                                     />
                                 </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-right">
+                                <td className="px-6 py-4 whitespace-nowrap text-right space-x-2">
+                                    <button
+                                        onClick={() => setTransferModalPlayer(player)}
+                                        className="text-blue-600 hover:text-blue-900 dark:hover:text-blue-400 text-sm"
+                                        title="Generate transfer code for departing player"
+                                    >
+                                        🔄 Transfer
+                                    </button>
+                                    <button
+                                        onClick={() => setClaimModalPlayer(player)}
+                                        className="text-green-600 hover:text-green-900 dark:hover:text-green-400 text-sm"
+                                        title="Link career history from previous club"
+                                    >
+                                        📥 Import
+                                    </button>
                                     <button
                                         onClick={() => removePlayer(player.id)}
-                                        className="text-red-600 hover:text-red-900 dark:hover:text-red-400"
+                                        className="text-red-600 hover:text-red-900 dark:hover:text-red-400 text-sm"
                                     >
-                                        Remove
+                                        ✕
                                     </button>
                                 </td>
                             </tr>
