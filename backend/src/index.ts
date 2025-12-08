@@ -605,6 +605,35 @@ router.post("/dev/admin-jwt", (req, env) => handleDevAdminJWT(req, env));
 router.post("/dev/magic-link", (req, env) => handleDevMagicLink(req, env));
 router.get("/dev/info", (req, env) => handleDevInfo(req, env));
 
+// Feature Flags & Config Routes
+import {
+    handleGetFeatures, handleUpdateFeatures,
+    handleGetConfig, handleUpdateConfig,
+    handleGetBranding, handleUpdateBranding
+} from "./routes/features";
+router.get("/api/:v/features", (req, env, corsHdrs) => handleGetFeatures(req, env, corsHdrs));
+router.patch("/api/:v/features", (req, env, corsHdrs) => handleUpdateFeatures(req, env, corsHdrs));
+router.get("/api/:v/config", (req, env, corsHdrs) => handleGetConfig(req, env, corsHdrs));
+router.patch("/api/:v/config", (req, env, corsHdrs) => handleUpdateConfig(req, env, corsHdrs));
+router.get("/api/:v/config/branding", (req, env, corsHdrs) => handleGetBranding(req, env, corsHdrs));
+router.patch("/api/:v/config/branding", (req, env, corsHdrs) => handleUpdateBranding(req, env, corsHdrs));
+
+// CSV Import Routes
+import {
+    handleImportFixtures, handleImportResults,
+    handleImportPlayers, handleImportMatchEvents,
+    handleGetImportTemplate, handleGetImportStatus
+} from "./routes/import";
+router.post("/api/:v/import/fixtures", (req, env, corsHdrs) => handleImportFixtures(req, env, corsHdrs));
+router.post("/api/:v/import/results", (req, env, corsHdrs) => handleImportResults(req, env, corsHdrs));
+router.post("/api/:v/import/players", (req, env, corsHdrs) => handleImportPlayers(req, env, corsHdrs));
+router.post("/api/:v/import/match_events", (req, env, corsHdrs) => handleImportMatchEvents(req, env, corsHdrs));
+router.get("/api/:v/import/template/:type", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleGetImportTemplate(req, env, corsHdrs, params.type);
+});
+router.get("/api/:v/import/status", (req, env, corsHdrs) => handleGetImportStatus(req, env, corsHdrs));
+
 // Default 404
 router.all("*", () => new Response("Not Found", { status: 404 }));
 
@@ -627,7 +656,7 @@ import { runDaily } from "./cron/daily";
 import { runThrowback } from "./cron/throwback";
 import { runOnThisDay } from "./cron/onThisDay";
 import { runCleanup } from "./cron/cleanup";
-import { runLeagueUpdate } from "./cron/league";
+import { runLeague } from "./cron/league";
 import { runMilestones } from "./cron/milestones";
 import { runPlayerOfPeriod } from "./cron/playerOfPeriod";
 import { runWeeklyRoundup, runSeasonCheck } from "./cron/seasonalContent";
@@ -696,7 +725,7 @@ export default {
 
             // Every 6 hours: League table updates (00:00, 06:00, 12:00, 18:00)
             if (hour % 6 === 0 && minute < 5) {
-                ctx.waitUntil(runLeagueUpdate(env, ctx));
+                ctx.waitUntil(runLeague(env, ctx));
             }
 
             // 21:00 UTC: Player milestone checks (after matches typically end)
