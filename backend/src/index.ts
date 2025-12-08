@@ -629,6 +629,7 @@ import { runOnThisDay } from "./cron/onThisDay";
 import { runCleanup } from "./cron/cleanup";
 import { runLeagueUpdate } from "./cron/league";
 import { runMilestones } from "./cron/milestones";
+import { runPlayerOfPeriod } from "./cron/playerOfPeriod";
 
 export default {
     async fetch(req: Request, env: any, ctx: ExecutionContext): Promise<Response> {
@@ -699,6 +700,17 @@ export default {
             // Also runs on weekends (Sat/Sun) when most matches are played
             if (hour === 21 && minute < 5 && (dayOfWeek === 0 || dayOfWeek === 6)) {
                 ctx.waitUntil(runMilestones(env, ctx));
+            }
+
+            // Sunday 18:00 UTC: Player of the Week
+            if (dayOfWeek === 0 && hour === 18 && minute < 5) {
+                ctx.waitUntil(runPlayerOfPeriod(env, ctx, { period: 'week' }));
+            }
+
+            // 1st of month, 10:00 UTC: Player of the Month
+            const dayOfMonth = new Date(event.scheduledTime).getUTCDate();
+            if (dayOfMonth === 1 && hour === 10 && minute < 5) {
+                ctx.waitUntil(runPlayerOfPeriod(env, ctx, { period: 'month' }));
             }
         } catch (error) {
             logJSON({ level: 'error', msg: 'Cron error', error: error instanceof Error ? error.message : String(error) });
