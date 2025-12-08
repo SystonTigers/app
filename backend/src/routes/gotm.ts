@@ -64,10 +64,10 @@ export async function handleGetGOTMVoting(req: Request, env: any, corsHdrs: Head
             return json({ success: true, voting: null, candidates: [] }, 200, corsHdrs);
         }
 
-        // Get candidates
+        // Get candidates - SECURITY: Include tenant_id filter
         const candidates = await env.DB.prepare(
-            "SELECT * FROM gotm_candidates WHERE voting_id = ? ORDER BY votes DESC"
-        ).bind(voting.id).all();
+            "SELECT * FROM gotm_candidates WHERE voting_id = ? AND tenant_id = ? ORDER BY votes DESC"
+        ).bind(voting.id, claims.tenantId).all();
 
         return json({
             success: true,
@@ -81,21 +81,31 @@ export async function handleGetGOTMVoting(req: Request, env: any, corsHdrs: Head
 }
 
 // Cast vote for a goal
+// SECURITY: Validates tenant ownership before allowing vote
 export async function handleCastGOTMVote(req: Request, env: any, corsHdrs: Headers) {
     try {
         const claims = await requireJWT(req, env);
         const body = await req.json() as { candidateId: string; votingId: string };
 
-        // Check if voting is open
+        // SECURITY: Check if voting is open AND belongs to user's tenant
         const voting = await env.DB.prepare(
-            "SELECT * FROM gotm_voting WHERE id = ? AND status = 'open'"
-        ).bind(body.votingId).first();
+            "SELECT * FROM gotm_voting WHERE id = ? AND tenant_id = ? AND status = 'open'"
+        ).bind(body.votingId, claims.tenantId).first();
 
         if (!voting) {
             return json({ success: false, error: "Voting is closed or not found" }, 400, corsHdrs);
         }
 
-        // Check if user already voted (using simple check - could use a votes table for more control)
+        // SECURITY: Verify candidate belongs to this voting session (and thus tenant)
+        const candidate = await env.DB.prepare(
+            "SELECT id FROM gotm_candidates WHERE id = ? AND voting_id = ? AND tenant_id = ?"
+        ).bind(body.candidateId, body.votingId, claims.tenantId).first();
+
+        if (!candidate) {
+            return json({ success: false, error: "Candidate not found" }, 404, corsHdrs);
+        }
+
+        // Check if user already voted
         const existingVote = await env.DB.prepare(
             "SELECT * FROM gotm_votes WHERE voting_id = ? AND user_id = ?"
         ).bind(body.votingId, claims.sub).first();
@@ -109,10 +119,10 @@ export async function handleCastGOTMVote(req: Request, env: any, corsHdrs: Heade
             "INSERT INTO gotm_votes (id, voting_id, candidate_id, user_id, created_at) VALUES (?, ?, ?, ?, ?)"
         ).bind(crypto.randomUUID(), body.votingId, body.candidateId, claims.sub, Date.now()).run();
 
-        // Increment vote count
+        // Increment vote count - SECURITY: Include tenant_id filter
         await env.DB.prepare(
-            "UPDATE gotm_candidates SET votes = votes + 1 WHERE id = ?"
-        ).bind(body.candidateId).run();
+            "UPDATE gotm_candidates SET votes = votes + 1 WHERE id = ? AND tenant_id = ?"
+        ).bind(body.candidateId, claims.tenantId).run();
 
         return json({ success: true }, 200, corsHdrs);
     } catch (err) {
@@ -122,20 +132,30 @@ export async function handleCastGOTMVote(req: Request, env: any, corsHdrs: Heade
 }
 
 // Close voting and determine winner
+// SECURITY: Validates tenant ownership before closing voting
 export async function handleCloseGOTMVoting(req: Request, env: any, corsHdrs: Headers) {
     try {
         const claims = await requireJWT(req, env);
         const body = await req.json() as { votingId: string };
+
+        // SECURITY: Verify voting belongs to tenant before closing
+        const voting = await env.DB.prepare(
+            "SELECT id FROM gotm_voting WHERE id = ? AND tenant_id = ?"
+        ).bind(body.votingId, claims.tenantId).first();
+
+        if (!voting) {
+            return json({ success: false, error: "Voting not found" }, 404, corsHdrs);
+        }
 
         // Close voting
         await env.DB.prepare(
             "UPDATE gotm_voting SET status = 'closed' WHERE id = ? AND tenant_id = ?"
         ).bind(body.votingId, claims.tenantId).run();
 
-        // Get winner
+        // Get winner - SECURITY: Include tenant_id filter
         const winner = await env.DB.prepare(
-            "SELECT * FROM gotm_candidates WHERE voting_id = ? ORDER BY votes DESC LIMIT 1"
-        ).bind(body.votingId).first();
+            "SELECT * FROM gotm_candidates WHERE voting_id = ? AND tenant_id = ? ORDER BY votes DESC LIMIT 1"
+        ).bind(body.votingId, claims.tenantId).first();
 
         return json({ success: true, winner }, 200, corsHdrs);
     } catch (err) {
