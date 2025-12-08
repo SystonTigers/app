@@ -631,6 +631,8 @@ import { runLeagueUpdate } from "./cron/league";
 import { runMilestones } from "./cron/milestones";
 import { runPlayerOfPeriod } from "./cron/playerOfPeriod";
 import { runWeeklyRoundup, runSeasonCheck } from "./cron/seasonalContent";
+import { runBirthdays } from "./cron/birthdays";
+import { runQuotes } from "./cron/quotes";
 
 export default {
     async fetch(req: Request, env: any, ctx: ExecutionContext): Promise<Response> {
@@ -722,6 +724,16 @@ export default {
             // Daily 07:00 UTC: Season milestone checks (start/mid/end)
             if (hour === 7 && minute < 5) {
                 ctx.waitUntil(runSeasonCheck(env, ctx));
+            }
+
+            // Daily 08:00 UTC: Birthday posts
+            if (hour === 8 && minute < 5) {
+                ctx.waitUntil(runBirthdays(env, ctx));
+            }
+
+            // Monday, Wednesday, Friday 07:30 UTC: Motivational quotes
+            if ((dayOfWeek === 1 || dayOfWeek === 3 || dayOfWeek === 5) && hour === 7 && minute >= 25 && minute < 35) {
+                ctx.waitUntil(runQuotes(env, ctx));
             }
         } catch (error) {
             logJSON({ level: 'error', msg: 'Cron error', error: error instanceof Error ? error.message : String(error) });
