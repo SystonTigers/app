@@ -75,7 +75,7 @@ export async function createEvent(req: Request, env: any, requestId: string, cor
             now
         ).run();
 
-        const event = await getEventWithCounts(env, id, claims.tenantId);
+        const event = await getEventWithCounts(env, id, claims.tenantId || '');
 
         logJSON({ level: "info", requestId, msg: "EVENT_CREATED", eventId: id, tenantId: claims.tenantId });
 
@@ -96,7 +96,7 @@ export async function getEvent(req: Request, env: any, requestId: string, corsHd
     try {
         const claims = await requireJWT(req, env);
 
-        const event = await getEventWithCounts(env, id, claims.tenantId);
+        const event = await getEventWithCounts(env, id, claims.tenantId || '');
         if (!event) {
             return json({ success: false, error: { code: "NOT_FOUND", message: "Event not found" } }, 404, corsHdrs);
         }

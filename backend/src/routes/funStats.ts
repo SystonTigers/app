@@ -10,12 +10,12 @@ export async function handleGetFunStats(req: Request, env: any, corsHdrs: Header
         const seasonId = url.searchParams.get('seasonId');
 
         // Try to get cached stats first
-        let stats = await getCachedFunStats(env.DB, claims.tenantId, seasonId ?? null);
+        let stats = await getCachedFunStats(env.DB, claims.tenantId || '', seasonId ?? null);
 
         // If no cache or cache is old (> 1 hour), recompute
         if (stats.length === 0) {
-            stats = await computeFunStats(env.DB, claims.tenantId, seasonId ?? null);
-            await cacheFunStats(env.DB, claims.tenantId, seasonId ?? null, stats);
+            stats = await computeFunStats(env.DB, claims.tenantId || '', seasonId ?? null);
+            await cacheFunStats(env.DB, claims.tenantId || '', seasonId ?? null, stats);
         }
 
         return json({ success: true, data: stats }, 200, corsHdrs);
@@ -31,8 +31,8 @@ export async function handleComputeFunStats(req: Request, env: any, corsHdrs: He
         const claims = await requireJWT(req, env);
         const body = await req.json() as { seasonId?: string };
 
-        const stats = await computeFunStats(env.DB, claims.tenantId, body.seasonId ?? null);
-        await cacheFunStats(env.DB, claims.tenantId, body.seasonId ?? null, stats);
+        const stats = await computeFunStats(env.DB, claims.tenantId || '', body.seasonId ?? null);
+        await cacheFunStats(env.DB, claims.tenantId || '', body.seasonId ?? null, stats);
 
         return json({ success: true, data: stats, message: "Fun stats computed and cached" }, 200, corsHdrs);
     } catch (err) {

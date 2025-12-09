@@ -291,7 +291,7 @@ export async function handleEndSeason(req: Request, env: any, corsHdrs: Headers,
         const season = await env.DB.prepare("SELECT * FROM seasons WHERE id = ? AND tenant_id = ?").bind(seasonId, claims.tenantId).first();
         if (!season) return json({ success: false, error: "Season not found" }, 404, corsHdrs);
         // 2. Snapshot Stats
-        const stats = await calculateSeasonStats(env, seasonId, claims.tenantId, season);
+        const stats = await calculateSeasonStats(env, seasonId, claims.tenantId || '', season);
 
         await env.DB.prepare(`
             INSERT INTO season_snapshots (id, tenant_id, season_id, snapshot_type, data, created_at)
@@ -539,7 +539,7 @@ export async function handleGetSeasonStats(req: Request, env: any, corsHdrs: Hea
         if (!tenantId) {
             try {
                 const claims = await requireJWT(req, env);
-                tenantId = claims.tenantId;
+                tenantId = claims.tenantId ?? null;
             } catch (e) {
                 return json({ success: false, error: "Missing tenant" }, 401, corsHdrs);
             }
@@ -564,7 +564,7 @@ export async function handleGetSeasonStats(req: Request, env: any, corsHdrs: Hea
             }
         }
 
-        const stats = await calculateSeasonStats(env, seasonId, tenantId!, season);
+        const stats = await calculateSeasonStats(env, seasonId, tenantId || '', season);
         return json({
             success: true,
             season,

@@ -12,6 +12,8 @@ const FixtureSyncSchema = z.object({
     time: z.string().optional(),
     status: z.string().optional(),
     source: z.string().optional(),
+    homeTeam: z.string().optional(),
+    awayTeam: z.string().optional(),
   }))
 });
 
@@ -174,7 +176,7 @@ export async function handleGetAllFixtures(req: Request, env: any): Promise<Resp
       WHERE tenant_id = ?
     `;
 
-    const params: (string | number)[] = [claims.tenantId];
+    const params: (string | number)[] = [claims.tenantId || ''];
 
     if (status) {
       query += ' AND status = ?';
