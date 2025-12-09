@@ -14,7 +14,7 @@
  * - XbotGo scoreboard integration
  */
 
-// ==================== ENHANCED EVENTS MANAGER CLASS ====================
+// ====== ENHANCED EVENTS MANAGER CLASS ======
 
 /**
  * Enhanced Events Manager - Handles all live match event processing
@@ -49,7 +49,7 @@ class EnhancedEventsManager {
     return this._logger;
   }
 
-  // ==================== GOAL EVENT PROCESSING ====================
+  // ====== GOAL EVENT PROCESSING ======
 
   /**
    * Process goal event - Auto-detects team vs opposition goals
@@ -219,7 +219,7 @@ class EnhancedEventsManager {
     }
   }
 
-  // ==================== CARD EVENT PROCESSING ====================
+  // ====== CARD EVENT PROCESSING ======
 
   /**
    * Process card event - Auto-detects team vs opposition cards
@@ -439,7 +439,7 @@ class EnhancedEventsManager {
     }
   }
 
-  // ==================== SUBSTITUTION PROCESSING ====================
+  // ====== SUBSTITUTION PROCESSING ======
 
   /**
    * Process substitution with player swapping (NEW: Enhanced from spec)
@@ -491,7 +491,7 @@ class EnhancedEventsManager {
     }
   }
 
-  // ==================== MATCH STATUS EVENTS ====================
+  // ====== MATCH STATUS EVENTS ======
 
   /**
    * Process kick-off event
@@ -649,7 +649,7 @@ class EnhancedEventsManager {
     }
   }
 
-  // ==================== PLAYER MINUTES TRACKING ====================
+  // ====== PLAYER MINUTES TRACKING ======
 
   /**
    * Initialize player minutes tracking at kick-off
@@ -771,7 +771,7 @@ class EnhancedEventsManager {
     }
   }
 
-  // ==================== UTILITY METHODS ====================
+  // ====== UTILITY METHODS ======
 
   /**
    * Get current match scores
@@ -1129,7 +1129,7 @@ class EnhancedEventsManager {
     return players;
   }
 
-  // ==================== LOGGING METHODS ====================
+  // ====== LOGGING METHODS ======
 
   /**
    * Log player event
@@ -1199,7 +1199,7 @@ class EnhancedEventsManager {
   }
 }
 
-// ==================== PUBLIC API FUNCTIONS ====================
+// ====== PUBLIC API FUNCTIONS ======
 
 /**
  * Process goal event (public API)

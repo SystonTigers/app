@@ -5,7 +5,7 @@
  * @description SECURITY PATCHES for critical vulnerabilities
  */
 
-// ==================== SECURITY PATCHES ====================
+// ====== SECURITY PATCHES ======
 
 /**
  * Enhanced Security Manager with Critical Fixes
@@ -599,7 +599,7 @@ class EnhancedSecurityManager {
   }
 }
 
-// ==================== GLOBAL ENHANCED SECURITY ====================
+// ====== GLOBAL ENHANCED SECURITY ======
 
 /**
  * Global enhanced security manager instance
@@ -727,7 +727,7 @@ function validateWebhookUrlSecure(webhookUrl) {
   return EnhancedSecurity.validateWebhookSecurity(webhookUrl);
 }
 
-// ==================== SESSION TIMEOUT PUBLIC API ====================
+// ====== SESSION TIMEOUT PUBLIC API ======
 
 /**
  * Get session status with timeout information

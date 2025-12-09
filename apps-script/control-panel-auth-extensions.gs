@@ -5,9 +5,9 @@
  * @description Authentication functions for secure control panel access
  */
 
-// ==================== AUTHENTICATION FUNCTIONS ====================
+// ====== AUTHENTICATION FUNCTIONS ======
 
-// ==================== ENHANCED SECURITY HELPERS ====================
+// ====== ENHANCED SECURITY HELPERS ======
 
 /**
  * Enhanced permission check using encrypted session validation
@@ -368,7 +368,7 @@ function controlPanelLogout(sessionToken) {
   }
 }
 
-// ==================== EMERGENCY FUNCTIONS ====================
+// ====== EMERGENCY FUNCTIONS ======
 
 /**
  * Perform emergency system recovery

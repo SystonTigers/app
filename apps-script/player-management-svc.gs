@@ -14,7 +14,7 @@
  * - Manual stat input for historical data
  */
 
-// ==================== PLAYER MANAGEMENT MANAGER CLASS ====================
+// ====== PLAYER MANAGEMENT MANAGER CLASS ======
 
 /**
  * Player Management Manager - Handles all player-related operations
@@ -45,7 +45,7 @@ class PlayerManagementManager {
     return this._logger;
   }
 
-  // ==================== PLAYER STATISTICS UPDATES ====================
+  // ====== PLAYER STATISTICS UPDATES ======
 
   /**
    * Update player goal statistics
@@ -204,7 +204,7 @@ class PlayerManagementManager {
     }
   }
 
-  // ==================== PLAYER MINUTES TRACKING ====================
+  // ====== PLAYER MINUTES TRACKING ======
 
   /**
    * Calculate player minutes for match
@@ -314,7 +314,7 @@ class PlayerManagementManager {
     }
   }
 
-  // ==================== SUBSTITUTION MANAGEMENT ====================
+  // ====== SUBSTITUTION MANAGEMENT ======
 
   /**
    * Log substitution in Subs Log sheet
@@ -411,7 +411,7 @@ class PlayerManagementManager {
     }
   }
 
-  // ==================== PLAYER STATISTICS SUMMARY ====================
+  // ====== PLAYER STATISTICS SUMMARY ======
 
   /**
    * Post player statistics summary (NEW: From spec - bi-monthly)
@@ -479,7 +479,7 @@ class PlayerManagementManager {
     }
   }
 
-  // ==================== DATA RETRIEVAL METHODS ====================
+  // ====== DATA RETRIEVAL METHODS ======
 
   /**
    * Get all player statistics
@@ -591,7 +591,7 @@ class PlayerManagementManager {
     }
   }
 
-  // ==================== STATISTICS CALCULATION ====================
+  // ====== STATISTICS CALCULATION ======
 
   /**
    * Calculate summary statistics from all players
@@ -693,7 +693,7 @@ class PlayerManagementManager {
     return summary;
   }
 
-  // ==================== PAYLOAD CREATION ====================
+  // ====== PAYLOAD CREATION ======
 
   /**
    * Create player stats summary payload
@@ -758,7 +758,7 @@ class PlayerManagementManager {
     };
   }
 
-  // ==================== UTILITY METHODS ====================
+  // ====== UTILITY METHODS ======
 
   /**
    * Update individual player statistic
@@ -1002,7 +1002,7 @@ class PlayerManagementManager {
   }
 }
 
-// ==================== PUBLIC API FUNCTIONS ====================
+// ====== PUBLIC API FUNCTIONS ======
 
 /**
  * Update player statistics after goal (public API)

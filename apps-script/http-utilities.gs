@@ -465,7 +465,7 @@ class HttpClient {
   }
 }
 
-// ==================== GLOBAL HTTP UTILITIES ====================
+// ====== GLOBAL HTTP UTILITIES ======
 
 /** @type {HttpClient|null} */
 let __httpClientInstance = null;

@@ -935,7 +935,7 @@ function getFixturesList() {
   }
 }
 
-// ==================== DYNAMIC CONFIG TESTING ====================
+// ====== DYNAMIC CONFIG TESTING ======
 
 /**
  * Test the dynamic configuration system

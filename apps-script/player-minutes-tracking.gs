@@ -5,7 +5,7 @@
  * @description Additional player minutes tracking functions to add to player-management-svc.gs
  */
 
-// ==================== PLAYER MINUTES TRACKING ====================
+// ====== PLAYER MINUTES TRACKING ======
 
 /**
  * Track player minutes for a match
@@ -270,7 +270,7 @@ function updatePlayerTotalMinutes(playerMinutes) {
   }
 }
 
-// ==================== HELPER FUNCTIONS ====================
+// ====== HELPER FUNCTIONS ======
 
 /**
  * Calculate minutes played for a player

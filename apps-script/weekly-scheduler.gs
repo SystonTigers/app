@@ -16,7 +16,7 @@
  * Sunday: MATCH DAY
  */
 
-// ==================== WEEKLY SCHEDULER CLASS ====================
+// ====== WEEKLY SCHEDULER CLASS ======
 
 /**
  * Weekly Scheduler Class - Bible-compliant implementation
@@ -51,7 +51,7 @@ class WeeklyScheduler {
     return this._logger;
   }
 
-  // ==================== MAIN SCHEDULE RUNNER ====================
+  // ====== MAIN SCHEDULE RUNNER ======
 
   /**
    * Run weekly schedule automation (Bible compliance)
@@ -130,7 +130,7 @@ class WeeklyScheduler {
     }
   }
 
-  // ==================== MONDAY: FIXTURES OR NO MATCH ====================
+  // ====== MONDAY: FIXTURES OR NO MATCH ======
 
   /**
    * Post Monday fixtures or "no match scheduled" (Bible compliance)
@@ -176,7 +176,7 @@ class WeeklyScheduler {
     }
   }
 
-  // ==================== TUESDAY: QUOTES ====================
+  // ====== TUESDAY: QUOTES ======
 
   /**
    * Post Tuesday motivational quotes (Bible compliance)
@@ -240,7 +240,7 @@ class WeeklyScheduler {
     }
   }
 
-  // ==================== WEDNESDAY: STATS OR OPPOSITION ====================
+  // ====== WEDNESDAY: STATS OR OPPOSITION ======
 
   /**
    * Post Wednesday stats or opposition analysis (Bible compliance)
@@ -296,7 +296,7 @@ class WeeklyScheduler {
     }
   }
 
-  // ==================== THURSDAY: THROWBACK OR COUNTDOWN ====================
+  // ====== THURSDAY: THROWBACK OR COUNTDOWN ======
 
   /**
    * Post Thursday throwback or countdown (Bible compliance)
@@ -349,7 +349,7 @@ class WeeklyScheduler {
     }
   }
 
-  // ==================== FRIDAY: 2 DAYS TO GO ====================
+  // ====== FRIDAY: 2 DAYS TO GO ======
 
   /**
    * Post Friday countdown - 2 days to go (Bible compliance)
@@ -401,7 +401,7 @@ class WeeklyScheduler {
     }
   }
 
-  // ==================== SATURDAY: 1 DAY TO GO ====================
+  // ====== SATURDAY: 1 DAY TO GO ======
 
   /**
    * Post Saturday countdown - 1 day to go (Bible compliance)
@@ -453,7 +453,7 @@ class WeeklyScheduler {
     }
   }
 
-  // ==================== SUNDAY: MATCH DAY ====================
+  // ====== SUNDAY: MATCH DAY ======
 
   /**
    * Handle Sunday match day (Bible compliance)
@@ -497,7 +497,7 @@ class WeeklyScheduler {
     }
   }
 
-  // ==================== DATA RETRIEVAL METHODS ====================
+  // ====== DATA RETRIEVAL METHODS ======
 
   /**
    * Get this week's fixtures
@@ -937,7 +937,7 @@ class WeeklyScheduler {
     return currentDate <= 7; // First week of month
   }
 
-  // ==================== PAYLOAD CREATION METHODS ====================
+  // ====== PAYLOAD CREATION METHODS ======
 
   /**
    * Build template variant collection for a post type.
@@ -1454,7 +1454,7 @@ class WeeklyScheduler {
     };
   }
 
-  // ==================== UTILITY METHODS ====================
+  // ====== UTILITY METHODS ======
 
   /**
    * Send payload to Make.com
@@ -1677,7 +1677,7 @@ class WeeklyScheduler {
   }
 }
 
-// ==================== BIRTHDAY AUTOMATION ====================
+// ====== BIRTHDAY AUTOMATION ======
 
 class BirthdayAutomation {
 
@@ -2104,7 +2104,7 @@ class BirthdayAutomation {
   }
 }
 
-// ==================== PUBLIC API FUNCTIONS ====================
+// ====== PUBLIC API FUNCTIONS ======
 
 /**
  * Initialize Weekly Scheduler

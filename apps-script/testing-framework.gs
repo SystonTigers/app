@@ -15,7 +15,7 @@
  * - Continuous testing automation
  */
 
-// ==================== TESTING FRAMEWORK CORE ====================
+// ====== TESTING FRAMEWORK CORE ======
 
 /**
  * Testing Framework Manager - QUnit-style testing for Google Apps Script
@@ -59,7 +59,7 @@ class TestingFramework {
     return this._logger;
   }
 
-  // ==================== TEST SUITE MANAGEMENT ====================
+  // ====== TEST SUITE MANAGEMENT ======
 
   /**
    * Create a new test suite
@@ -132,7 +132,7 @@ class TestingFramework {
     }
   }
 
-  // ==================== TEST DEFINITION ====================
+  // ====== TEST DEFINITION ======
 
   /**
    * Define a test case
@@ -193,7 +193,7 @@ class TestingFramework {
     this.test(testName, testFunction, { ...options, only: true });
   }
 
-  // ==================== ASSERTIONS ====================
+  // ====== ASSERTIONS ======
 
   /**
    * Assert that a condition is true
@@ -347,7 +347,7 @@ class TestingFramework {
     }
   }
 
-  // ==================== MOCKING AND STUBBING ====================
+  // ====== MOCKING AND STUBBING ======
 
   /**
    * Create a mock function
@@ -413,7 +413,7 @@ class TestingFramework {
     this.stubs.clear();
   }
 
-  // ==================== TEST EXECUTION ====================
+  // ====== TEST EXECUTION ======
 
   /**
    * Run all test suites
@@ -600,7 +600,7 @@ class TestingFramework {
     };
   }
 
-  // ==================== UTILITY METHODS ====================
+  // ====== UTILITY METHODS ======
 
   /**
    * Deep equality check for objects
@@ -707,7 +707,7 @@ class TestingFramework {
   }
 }
 
-// ==================== SIMPLE TESTING FUNCTIONS ====================
+// ====== SIMPLE TESTING FUNCTIONS ======
 
 // Global variables for simple testing
 var _globalTestSuites = [];

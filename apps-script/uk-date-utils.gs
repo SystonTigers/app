@@ -12,7 +12,7 @@
  * - Fixture date helpers
  */
 
-// ==================== UK DATE FORMATTING CONSTANTS ====================
+// ====== UK DATE FORMATTING CONSTANTS ======
 
 const UK_DATE_FORMATS = {
   STANDARD: 'DD/MM/YYYY',
@@ -26,7 +26,7 @@ const UK_DATE_FORMATS = {
 
 const UK_TIMEZONE = 'Europe/London';
 
-// ==================== CORE UK DATE FUNCTIONS ====================
+// ====== CORE UK DATE FUNCTIONS ======
 
 /**
  * Format date in UK standard DD/MM/YYYY format
@@ -309,7 +309,7 @@ function getCurrentSeasonString() {
   return `${startYear}/${endYear.toString().slice(-2)}`;
 }
 
-// ==================== FOOTBALL-SPECIFIC DATE HELPERS ====================
+// ====== FOOTBALL-SPECIFIC DATE HELPERS ======
 
 /**
  * Format match result date for social media
@@ -368,7 +368,7 @@ function getFixtureCountdownText(fixtureDate) {
   }
 }
 
-// ==================== VALIDATION AND UTILITY FUNCTIONS ====================
+// ====== VALIDATION AND UTILITY FUNCTIONS ======
 
 /**
  * Validate if string is valid UK date format
@@ -427,7 +427,7 @@ function fromHTMLDateFormat(htmlDate) {
   }
 }
 
-// ==================== TESTING FUNCTIONS ====================
+// ====== TESTING FUNCTIONS ======
 
 /**
  * Test UK date formatting functions

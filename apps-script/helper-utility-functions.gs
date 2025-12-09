@@ -5,7 +5,7 @@
  * @description Additional helper functions to add to utils.gs or enhanced-events.gs
  */
 
-// ==================== CARD NORMALIZATION HELPERS ====================
+// ====== CARD NORMALIZATION HELPERS ======
 
 /**
  * Normalize card type to standard values
@@ -56,7 +56,7 @@ function getCardDisplayName(cardType) {
   return displayNames[cardType] || 'Card';
 }
 
-// ==================== TEAM INFORMATION HELPERS ====================
+// ====== TEAM INFORMATION HELPERS ======
 
 /**
  * Get opposition team name from match data
@@ -170,7 +170,7 @@ function isHomeTeam(matchData) {
   }
 }
 
-// ==================== SCORE HELPERS ====================
+// ====== SCORE HELPERS ======
 
 /**
  * Get current scores for a match
@@ -262,7 +262,7 @@ function updateMatchScores(matchId, scores) {
   }
 }
 
-// ==================== FEATURE CHECK HELPERS ====================
+// ====== FEATURE CHECK HELPERS ======
 
 /**
  * Check if a feature is enabled
@@ -289,7 +289,7 @@ function getWebhookUrl() {
   }
 }
 
-// ==================== LOGGING HELPERS ====================
+// ====== LOGGING HELPERS ======
 
 /**
  * Log opposition event for audit trail

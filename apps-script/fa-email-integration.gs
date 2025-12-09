@@ -13,7 +13,7 @@
  * - UK date format compliance
  */
 
-// ==================== FA EMAIL CONSTANTS ====================
+// ====== FA EMAIL CONSTANTS ======
 
 const FA_EMAIL_CONFIG = {
   // FA email addresses to monitor
@@ -31,22 +31,18 @@ const FA_EMAIL_CONFIG = {
     'kick off',
     'postponed',
     'rearranged',
-    'cancelled',
-    'resigned',
-    'withdrawn',
-    'dropped out'
+    'cancelled'
   ],
 
   // Fixture status keywords
   STATUS_KEYWORDS: {
     confirmed: ['confirmed', 'scheduled', 'arranged'],
     postponed: ['postponed', 'delayed', 'rearranged'],
-    cancelled: ['cancelled', 'called off', 'abandoned'],
-    resigned: ['resigned', 'withdrawn', 'dropped out', 'left the league', 'removed from league']
+    cancelled: ['cancelled', 'called off', 'abandoned']
   }
 };
 
-// ==================== EMAIL PARSING FUNCTIONS ====================
+// ====== EMAIL PARSING FUNCTIONS ======
 
 /**
  * Main function to check for new FA fixture emails
@@ -61,7 +57,6 @@ function checkForNewFAEmails() {
       emailsChecked: 0,
       fixturesFound: 0,
       fixturesAdded: 0,
-      resignationsProcessed: 0,
       errors: []
     };
 
@@ -80,19 +75,6 @@ function checkForNewFAEmails() {
       const messages = thread.getMessages();
 
       for (const message of messages) {
-        // Check for resignation emails first
-        const resignedTeam = parseResignationFromEmail(message);
-        if (resignedTeam) {
-          const resignResult = processResignation(resignedTeam);
-          if (resignResult.success) {
-            results.resignationsProcessed++;
-            console.log(`✅ Processed resignation: ${resignedTeam}`);
-          } else {
-            results.errors.push(`Failed to process resignation for: ${resignedTeam}`);
-          }
-          continue; // Skip fixture parsing for resignation emails
-        }
-
         const fixtureData = parseFixtureFromEmail(message);
 
         if (fixtureData) {
@@ -120,7 +102,7 @@ function checkForNewFAEmails() {
       }
     }
 
-    console.log(`📊 FA Email Check Complete: ${results.fixturesAdded} fixtures added, ${results.resignationsProcessed} resignations processed`);
+    console.log(`📊 FA Email Check Complete: ${results.fixturesAdded} fixtures added`);
     return results;
 
   } catch (error) {
@@ -130,310 +112,6 @@ function checkForNewFAEmails() {
       error: error.toString()
     };
   }
-}
-
-/**
- * Parse resignation information from FA email
- * @param {GmailMessage} message - Gmail message object
- * @returns {string|null} Team name that resigned or null
- */
-function parseResignationFromEmail(message) {
-  try {
-    const subject = message.getSubject().toLowerCase();
-    const body = message.getPlainBody().toLowerCase();
-    const text = `${subject} ${body}`;
-
-    // Check if this is a resignation email
-    const isResignation = FA_EMAIL_CONFIG.STATUS_KEYWORDS.resigned.some(keyword =>
-      text.includes(keyword.toLowerCase())
-    );
-
-    if (!isResignation) {
-      return null;
-    }
-
-    console.log(`📧 Found resignation email: ${subject}`);
-
-    // Extract team name patterns
-    const patterns = [
-      /([A-Za-z\s]+(?:FC|AFC|United|City|Town|Rovers)?)\s+(?:has|have)\s+(?:resigned|withdrawn)/i,
-      /(?:resigned|withdrawn)[:\s]+([A-Za-z\s]+(?:FC|AFC|United|City|Town|Rovers)?)/i,
-      /([A-Za-z\s]+(?:FC|AFC|United|City|Town|Rovers)?)\s+(?:dropped out|left the league)/i,
-      /team[:\s]+([A-Za-z\s]+)(?:\s+has)?\s+(?:resigned|withdrawn)/i
-    ];
-
-    for (const pattern of patterns) {
-      const match = text.match(pattern);
-      if (match && match[1]) {
-        const teamName = cleanTeamName(match[1].trim());
-        if (teamName && teamName.length > 2) {
-          return teamName;
-        }
-      }
-    }
-
-    return null;
-
-  } catch (error) {
-    console.error('Error parsing resignation email:', error);
-    return null;
-  }
-}
-
-/**
- * Process team resignation - call backend API to remove team
- * @param {string} teamName - Name of the team that resigned
- * @returns {Object} Processing result
- */
-function processResignation(teamName) {
-  try {
-    const props = PropertiesService.getScriptProperties();
-    const backendUrl = props.getProperty('BACKEND_API_URL') || 'https://syston-postbus.team-platform-2025.workers.dev';
-    const jwt = props.getProperty('BACKEND_JWT');
-
-    if (!jwt) {
-      console.warn('No backend JWT configured - cannot process resignation via API');
-      // Fall back to local sheet processing
-      return removeResignedTeamFromSheets(teamName);
-    }
-
-    // Call backend API to resign team
-    const response = UrlFetchApp.fetch(`${backendUrl}/api/v1/table/resign`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${jwt}`
-      },
-      payload: JSON.stringify({ teamName: teamName }),
-      muteHttpExceptions: true
-    });
-
-    const responseCode = response.getResponseCode();
-    if (responseCode >= 200 && responseCode < 300) {
-      console.log(`✅ Team ${teamName} resigned via API`);
-      // Also update local sheets
-      removeResignedTeamFromSheets(teamName);
-      return { success: true };
-    } else {
-      console.error(`❌ API error: ${response.getContentText()}`);
-      // Fall back to local processing
-      return removeResignedTeamFromSheets(teamName);
-    }
-
-  } catch (error) {
-    console.error('Error processing resignation:', error);
-    // Fall back to local processing
-    return removeResignedTeamFromSheets(teamName);
-  }
-}
-
-/**
- * Remove resigned team from local Google Sheets and recalculate league table
- * @param {string} teamName - Team name to remove
- * @returns {Object} Result
- */
-function removeResignedTeamFromSheets(teamName) {
-  try {
-    const spreadsheetId = PropertiesService.getScriptProperties().getProperty('SPREADSHEET_ID');
-    const spreadsheet = SpreadsheetApp.openById(spreadsheetId);
-    let removed = 0;
-
-    // Step 1: Get results against the resigned team BEFORE deleting
-    const resultsSheet = spreadsheet.getSheetByName('Results');
-    const resultsToDeduct = [];
-    
-    if (resultsSheet) {
-      const resultsData = resultsSheet.getDataRange().getValues();
-      const teamLower = teamName.toLowerCase();
-      
-      // Find matches against the resigned team (typically: Date, Opposition, OurScore, TheirScore, ...)
-      for (let i = 1; i < resultsData.length; i++) {
-        const row = resultsData[i];
-        const opponent = String(row[1] || '').toLowerCase();
-        
-        if (opponent.includes(teamLower)) {
-          resultsToDeduct.push({
-            ourScore: Number(row[2]) || 0,
-            theirScore: Number(row[3]) || 0
-          });
-        }
-      }
-      
-      // Now remove the rows
-      removed += removeTeamRowsFromSheet(resultsSheet, teamName, 1);
-    }
-
-    // Step 2: Remove from Fixtures sheet
-    const fixturesSheet = spreadsheet.getSheetByName('Fixtures');
-    if (fixturesSheet) {
-      removed += removeTeamRowsFromSheet(fixturesSheet, teamName, 1); // Column B (opposition)
-    }
-
-    // Step 3: Update League Table - recalculate based on removed results
-    const tableSheet = spreadsheet.getSheetByName('League Table');
-    if (tableSheet && resultsToDeduct.length > 0) {
-      recalculateLeagueTableAfterResignation(tableSheet, teamName, resultsToDeduct);
-    } else if (tableSheet) {
-      // Just remove the resigned team row
-      removeTeamRowsFromSheet(tableSheet, teamName, 0);
-    }
-
-    console.log(`✅ Removed ${removed} rows for resigned team: ${teamName}`);
-    return { success: true, rowsRemoved: removed };
-
-  } catch (error) {
-    console.error('Error removing resigned team from sheets:', error);
-    return { success: false, error: error.toString() };
-  }
-}
-
-/**
- * Recalculate league table after a team resignation
- * Deducts points/goals from your team based on matches played against resigned team
- * @param {Sheet} tableSheet - League Table sheet
- * @param {string} resignedTeam - Name of resigned team
- * @param {Array} resultsToDeduct - Array of {ourScore, theirScore} for matches against resigned team
- */
-function recalculateLeagueTableAfterResignation(tableSheet, resignedTeam, resultsToDeduct) {
-  const config = getDynamicConfig();
-  const ourTeamName = config.TEAM_NAME || config.TEAM_SHORT;
-  
-  const data = tableSheet.getDataRange().getValues();
-  const headers = data[0];
-  
-  // Find column indices (typical: Position, Team, P, W, D, L, GF, GA, GD, Pts)
-  const cols = {
-    team: headers.findIndex(h => /team/i.test(h)),
-    played: headers.findIndex(h => /^p$/i.test(h) || /played/i.test(h)),
-    won: headers.findIndex(h => /^w$/i.test(h) || /won/i.test(h)),
-    drawn: headers.findIndex(h => /^d$/i.test(h) || /drawn/i.test(h)),
-    lost: headers.findIndex(h => /^l$/i.test(h) || /lost/i.test(h)),
-    gf: headers.findIndex(h => /^gf$/i.test(h) || /goals?\s*for/i.test(h)),
-    ga: headers.findIndex(h => /^ga$/i.test(h) || /goals?\s*against/i.test(h)),
-    gd: headers.findIndex(h => /^gd$/i.test(h) || /goal\s*diff/i.test(h)),
-    pts: headers.findIndex(h => /^pts$/i.test(h) || /points/i.test(h))
-  };
-  
-  // Calculate deductions from our team
-  let deductPlayed = 0, deductWon = 0, deductDrawn = 0, deductLost = 0;
-  let deductGF = 0, deductGA = 0, deductPts = 0;
-  
-  for (const match of resultsToDeduct) {
-    deductPlayed++;
-    deductGF += match.ourScore;
-    deductGA += match.theirScore;
-    
-    if (match.ourScore > match.theirScore) {
-      deductWon++;
-      deductPts += 3;
-    } else if (match.ourScore === match.theirScore) {
-      deductDrawn++;
-      deductPts += 1;
-    } else {
-      deductLost++;
-    }
-  }
-  
-  // Find and update our team's row
-  const resignedLower = resignedTeam.toLowerCase();
-  const ourTeamLower = ourTeamName.toLowerCase();
-  const rowsToDelete = [];
-  
-  for (let i = 1; i < data.length; i++) {
-    const teamCell = String(data[i][cols.team] || '').toLowerCase();
-    
-    // Remove resigned team
-    if (teamCell.includes(resignedLower)) {
-      rowsToDelete.push(i + 1); // 1-indexed
-      continue;
-    }
-    
-    // Update our team's stats
-    if (teamCell.includes(ourTeamLower)) {
-      const row = i + 1; // 1-indexed for sheet
-      
-      if (cols.played >= 0) {
-        const current = Number(data[i][cols.played]) || 0;
-        tableSheet.getRange(row, cols.played + 1).setValue(Math.max(0, current - deductPlayed));
-      }
-      if (cols.won >= 0) {
-        const current = Number(data[i][cols.won]) || 0;
-        tableSheet.getRange(row, cols.won + 1).setValue(Math.max(0, current - deductWon));
-      }
-      if (cols.drawn >= 0) {
-        const current = Number(data[i][cols.drawn]) || 0;
-        tableSheet.getRange(row, cols.drawn + 1).setValue(Math.max(0, current - deductDrawn));
-      }
-      if (cols.lost >= 0) {
-        const current = Number(data[i][cols.lost]) || 0;
-        tableSheet.getRange(row, cols.lost + 1).setValue(Math.max(0, current - deductLost));
-      }
-      if (cols.gf >= 0) {
-        const current = Number(data[i][cols.gf]) || 0;
-        tableSheet.getRange(row, cols.gf + 1).setValue(Math.max(0, current - deductGF));
-      }
-      if (cols.ga >= 0) {
-        const current = Number(data[i][cols.ga]) || 0;
-        tableSheet.getRange(row, cols.ga + 1).setValue(Math.max(0, current - deductGA));
-      }
-      if (cols.pts >= 0) {
-        const current = Number(data[i][cols.pts]) || 0;
-        tableSheet.getRange(row, cols.pts + 1).setValue(Math.max(0, current - deductPts));
-      }
-      
-      // Recalculate GD if column exists
-      if (cols.gd >= 0 && cols.gf >= 0 && cols.ga >= 0) {
-        const newGF = Number(tableSheet.getRange(row, cols.gf + 1).getValue()) || 0;
-        const newGA = Number(tableSheet.getRange(row, cols.ga + 1).getValue()) || 0;
-        tableSheet.getRange(row, cols.gd + 1).setValue(newGF - newGA);
-      }
-      
-      console.log(`✅ Updated ${ourTeamName}: -${deductPlayed}P, -${deductPts}pts, -${deductGF}GF, -${deductGA}GA`);
-    }
-  }
-  
-  // Delete resigned team rows (backwards to avoid index shifting)
-  rowsToDelete.reverse().forEach(rowIndex => {
-    tableSheet.deleteRow(rowIndex);
-  });
-  
-  // Sort table by points (descending), then GD
-  if (cols.pts >= 0) {
-    const dataRange = tableSheet.getRange(2, 1, tableSheet.getLastRow() - 1, tableSheet.getLastColumn());
-    dataRange.sort([
-      { column: cols.pts + 1, ascending: false },
-      { column: cols.gd >= 0 ? cols.gd + 1 : cols.pts + 1, ascending: false }
-    ]);
-    
-    // Update positions
-    for (let i = 2; i <= tableSheet.getLastRow(); i++) {
-      tableSheet.getRange(i, 1).setValue(i - 1); // Position column
-    }
-  }
-}
-
-/**
- * Remove rows containing team name from a sheet
- * @param {Sheet} sheet - Google Sheet
- * @param {string} teamName - Team name to match
- * @param {number} columnIndex - Column index to check (0-based)
- * @returns {number} Number of rows removed
- */
-function removeTeamRowsFromSheet(sheet, teamName, columnIndex) {
-  const data = sheet.getDataRange().getValues();
-  const teamLower = teamName.toLowerCase();
-  let removed = 0;
-
-  // Find rows to delete (iterate backwards to avoid index shifting)
-  for (let i = data.length - 1; i >= 1; i--) { // Skip header row
-    const cellValue = String(data[i][columnIndex] || '').toLowerCase();
-    if (cellValue.includes(teamLower)) {
-      sheet.deleteRow(i + 1); // Sheet rows are 1-indexed
-      removed++;
-    }
-  }
-
-  return removed;
 }
 
 /**
@@ -759,7 +437,7 @@ function extractNotes(body) {
   return notes.join('; ');
 }
 
-// ==================== HELPER FUNCTIONS ====================
+// ====== HELPER FUNCTIONS ======
 
 /**
  * Clean team name (remove common prefixes/suffixes)
@@ -855,7 +533,7 @@ function addFixtureToSheet(fixtureData) {
   }
 }
 
-// ==================== CALENDAR INTEGRATION ====================
+// ====== CALENDAR INTEGRATION ======
 
 /**
  * Add fixture to Google Calendar
@@ -914,7 +592,7 @@ Added automatically from FA email
   }
 }
 
-// ==================== AUTOMATION FUNCTIONS ====================
+// ====== AUTOMATION FUNCTIONS ======
 
 /**
  * Set up automatic FA email checking (daily trigger)

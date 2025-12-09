@@ -5,7 +5,7 @@
  * @description Generates monthly fixtures/results recaps with Make.com delivery, caching, and sheet logging
  */
 
-// ==================== MONTHLY SUMMARIES MANAGER ====================
+// ====== MONTHLY SUMMARIES MANAGER ======
 
 /**
  * MonthlySummariesManager orchestrates monthly fixtures/results summaries.
@@ -49,7 +49,7 @@ class MonthlySummariesManager {
     return this._logger;
   }
 
-  // ==================== PUBLIC SUMMARIES ====================
+  // ====== PUBLIC SUMMARIES ======
 
   /**
    * Post monthly fixtures summary (preview for upcoming fixtures).
@@ -675,7 +675,7 @@ class MonthlySummariesManager {
     }
   }
 
-  // ==================== DATA GATHERING ====================
+  // ====== DATA GATHERING ======
 
   /**
    * Gather fixtures for the target month.
@@ -822,7 +822,7 @@ class MonthlySummariesManager {
     }
   }
 
-  // ==================== STATISTICS BUILDERS ====================
+  // ====== STATISTICS BUILDERS ======
 
   /**
    * Calculate fixture statistics.
@@ -948,7 +948,7 @@ class MonthlySummariesManager {
     return stats;
   }
 
-  // ==================== GOTM PAYLOAD BUILDERS ====================
+  // ====== GOTM PAYLOAD BUILDERS ======
 
   /**
    * Create GOTM voting payload.
@@ -1024,7 +1024,7 @@ class MonthlySummariesManager {
     };
   }
 
-  // ==================== PAYLOAD BUILDERS ====================
+  // ====== PAYLOAD BUILDERS ======
 
   /**
    * Build template variant collection for a post type.
@@ -1162,7 +1162,7 @@ class MonthlySummariesManager {
     };
   }
 
-  // ==================== IDEMPOTENCY & LOGGING ====================
+  // ====== IDEMPOTENCY & LOGGING ======
 
   /**
    * Determine if summary already processed recently.
@@ -1275,7 +1275,7 @@ class MonthlySummariesManager {
     }
   }
 
-  // ==================== HELPERS ====================
+  // ====== HELPERS ======
 
   /**
    * Resolve month parameters and defaulting rules.
@@ -1520,7 +1520,7 @@ class MonthlySummariesManager {
     return this.monthlySheet;
   }
 
-  // ==================== GOTM HELPER METHODS ====================
+  // ====== GOTM HELPER METHODS ======
 
   /**
    * Store GOTM voting data.
@@ -1632,7 +1632,7 @@ class MonthlySummariesManager {
     };
   }
 
-  // ==================== GOAL OF THE SEASON (GOTS) FUNCTIONALITY ====================
+  // ====== GOAL OF THE SEASON (GOTS) FUNCTIONALITY ======
 
   /**
    * Add GOTM winner and runner-up to Goal of the Season pool.
@@ -2054,7 +2054,7 @@ class MonthlySummariesManager {
   }
 }
 
-// ==================== INITIALIZATION & PUBLIC API ====================
+// ====== INITIALIZATION & PUBLIC API ======
 
 /**
  * Initialize monthly summaries module.

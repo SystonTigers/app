@@ -17,7 +17,7 @@ import type {
   ApiResponse,
 } from './types-phase3';
 
-// ==================== SELF-SERVE SIGNUP ====================
+// ====== SELF-SERVE SIGNUP ======
 
 /**
  * Step 1: Create tenant account (PUBLIC - no auth required)
@@ -67,7 +67,7 @@ async signupProConfirm(): Promise<void> {
   }
 }
 
-// ==================== USAGE TRACKING ====================
+// ====== USAGE TRACKING ======
 
 /**
  * Get current month's usage stats
@@ -91,7 +91,7 @@ async incrementUsage(): Promise<UsageResponse> {
   return response.data.usage;
 }
 
-// ==================== ADMIN/OWNER CONSOLE ====================
+// ====== ADMIN/OWNER CONSOLE ======
 
 /**
  * Get dashboard statistics (admin only)

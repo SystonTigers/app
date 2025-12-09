@@ -4,7 +4,7 @@
  * @description Scrapes fixtures and results directly from FA Full-Time website
  */
 
-// ==================== CONFIGURATION ====================
+// ====== CONFIGURATION ======
 
 const FA_SCRAPER_CONFIG = {
   // Your team's FA Full-Time page URL
@@ -18,7 +18,7 @@ const FA_SCRAPER_CONFIG = {
   RETRY_DELAY_MS: 2000
 };
 
-// ==================== FA WEBSITE SCRAPER CLASS ====================
+// ====== FA WEBSITE SCRAPER CLASS ======
 
 class FAWebsiteScraper {
 
@@ -27,7 +27,7 @@ class FAWebsiteScraper {
     this.cache = CacheService.getScriptCache();
   }
 
-  // ==================== PUBLIC METHODS ====================
+  // ====== PUBLIC METHODS ======
 
   /**
    * Scrape all fixtures from FA website
@@ -117,7 +117,7 @@ class FAWebsiteScraper {
     }
   }
 
-  // ==================== PRIVATE METHODS ====================
+  // ====== PRIVATE METHODS ======
 
   /**
    * Get team page URL from config
@@ -451,7 +451,7 @@ class FAWebsiteScraper {
     return results;
   }
 
-  // ==================== HELPER METHODS ====================
+  // ====== HELPER METHODS ======
 
   /**
    * Get our team name
@@ -540,7 +540,7 @@ class FAWebsiteScraper {
   }
 }
 
-// ==================== GLOBAL FUNCTIONS ====================
+// ====== GLOBAL FUNCTIONS ======
 
 /**
  * Scrape fixtures from FA website (global function)

@@ -138,9 +138,9 @@ create table if not exists public.events (
   created_at timestamptz default now()
 );
 
--- ============================
+-- 
 -- Row Level Security
--- ============================
+-- 
 
 alter table public.profiles enable row level security;
 alter table public.teams enable row level security;

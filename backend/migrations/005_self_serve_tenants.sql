@@ -1,9 +1,9 @@
 -- Migration 005: Self-Serve Signup System
 -- Adds multi-tenant support with Starter vs Pro plans, usage caps, promo codes, and owner console
 
--- ============================================================
+-- ====
 -- TENANTS TABLE: Core tenant/organization data
--- ============================================================
+-- ====
 CREATE TABLE IF NOT EXISTS tenants (
   id TEXT PRIMARY KEY,  -- UUID
   slug TEXT NOT NULL UNIQUE,  -- URL-safe identifier (e.g., "syston-tigers")
@@ -24,9 +24,9 @@ CREATE INDEX IF NOT EXISTS idx_tenants_email ON tenants(email);
 CREATE INDEX IF NOT EXISTS idx_tenants_status ON tenants(status);
 CREATE INDEX IF NOT EXISTS idx_tenants_plan ON tenants(plan);
 
--- ============================================================
+-- ====
 -- TENANT BRAND: Visual identity (colors, badge)
--- ============================================================
+-- ====
 CREATE TABLE IF NOT EXISTS tenant_brand (
   tenant_id TEXT PRIMARY KEY,  -- 1:1 with tenants
   primary_color TEXT NOT NULL DEFAULT '#FFD700',  -- Hex color
@@ -37,9 +37,9 @@ CREATE TABLE IF NOT EXISTS tenant_brand (
   FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
 );
 
--- ============================================================
+-- ====
 -- USAGE COUNTERS: Monthly action tracking for Starter plan
--- ============================================================
+-- ====
 CREATE TABLE IF NOT EXISTS usage_counters (
   id TEXT PRIMARY KEY,  -- UUID
   tenant_id TEXT NOT NULL,
@@ -53,9 +53,9 @@ CREATE TABLE IF NOT EXISTS usage_counters (
 
 CREATE INDEX IF NOT EXISTS idx_usage_tenant_month ON usage_counters(tenant_id, month);
 
--- ============================================================
+-- ====
 -- PROMO CODES: Discount codes for signup
--- ============================================================
+-- ====
 CREATE TABLE IF NOT EXISTS promo_codes (
   id TEXT PRIMARY KEY,  -- UUID
   code TEXT NOT NULL UNIQUE,  -- e.g., "SYSTON100", "LAUNCH50"
@@ -69,9 +69,9 @@ CREATE TABLE IF NOT EXISTS promo_codes (
 CREATE INDEX IF NOT EXISTS idx_promo_code ON promo_codes(code);
 CREATE INDEX IF NOT EXISTS idx_promo_valid_until ON promo_codes(valid_until);
 
--- ============================================================
+-- ====
 -- PROMO REDEMPTIONS: Track which tenants used which promos
--- ============================================================
+-- ====
 CREATE TABLE IF NOT EXISTS promo_redemptions (
   id TEXT PRIMARY KEY,  -- UUID
   tenant_id TEXT NOT NULL,
@@ -85,9 +85,9 @@ CREATE TABLE IF NOT EXISTS promo_redemptions (
 CREATE INDEX IF NOT EXISTS idx_redemption_tenant ON promo_redemptions(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_redemption_promo ON promo_redemptions(promo_code_id);
 
--- ============================================================
+-- ====
 -- MAKE CONNECTIONS: Starter plan Make.com webhook setup
--- ============================================================
+-- ====
 CREATE TABLE IF NOT EXISTS make_connections (
   id TEXT PRIMARY KEY,  -- UUID
   tenant_id TEXT NOT NULL UNIQUE,  -- 1:1 with Starter plan tenants
@@ -101,9 +101,9 @@ CREATE TABLE IF NOT EXISTS make_connections (
 
 CREATE INDEX IF NOT EXISTS idx_make_tenant ON make_connections(tenant_id);
 
--- ============================================================
+-- ====
 -- PRO AUTOMATION: Pro plan Cloudflare-native Apps Script setup
--- ============================================================
+-- ====
 CREATE TABLE IF NOT EXISTS pro_automation (
   id TEXT PRIMARY KEY,  -- UUID
   tenant_id TEXT NOT NULL UNIQUE,  -- 1:1 with Pro plan tenants
@@ -116,9 +116,9 @@ CREATE TABLE IF NOT EXISTS pro_automation (
 
 CREATE INDEX IF NOT EXISTS idx_pro_tenant ON pro_automation(tenant_id);
 
--- ============================================================
+-- ====
 -- SEED DATA: Initial promo codes for launch
--- ============================================================
+-- ====
 
 -- SYSTON100: 100% off for Syston Tigers (permanent)
 INSERT OR IGNORE INTO promo_codes (id, code, discount_percent, max_uses, valid_until)

@@ -70,7 +70,7 @@ function invokeTestHook_(hookName, payload, localHooks) {
   return undefined;
 }
 
-// ==================== TEMPLATE VARIANT BUILDER ====================
+// ====== TEMPLATE VARIANT BUILDER ======
 
 /**
  * Builds Canva template variant payloads enriched with buyer intake branding.
@@ -427,7 +427,7 @@ function buildTemplateVariantsForEvent(eventType, context = {}) {
   }
 }
 
-// ==================== MAKE INTEGRATION MANAGER CLASS ====================
+// ====== MAKE INTEGRATION MANAGER CLASS ======
 
 /**
  * Make Integration Manager - Enhanced webhook management
@@ -478,7 +478,7 @@ class MakeIntegration {
     return this._logger;
   }
 
-  // ==================== BACKEND API INTEGRATION ====================
+  // ====== BACKEND API INTEGRATION ======
 
   /**
    * Check if backend API posting is enabled
@@ -651,7 +651,7 @@ class MakeIntegration {
     }
   }
 
-  // ==================== ENHANCED WEBHOOK SENDING ====================
+  // ====== ENHANCED WEBHOOK SENDING ======
 
   /**
    * Send payload to Make.com with enhanced error handling
@@ -860,7 +860,7 @@ class MakeIntegration {
     }
   }
 
-  // ==================== WEBHOOK EXECUTION WITH RETRY ====================
+  // ====== WEBHOOK EXECUTION WITH RETRY ======
 
   /**
    * Execute webhook call with retry logic
@@ -982,7 +982,7 @@ class MakeIntegration {
     };
   }
 
-  // ==================== PAYLOAD ENHANCEMENT ====================
+  // ====== PAYLOAD ENHANCEMENT ======
 
   /**
    * Enhance payload with system metadata
@@ -1070,7 +1070,7 @@ class MakeIntegration {
     };
   }
 
-  // ==================== RATE LIMITING ====================
+  // ====== RATE LIMITING ======
 
   /**
    * Apply rate limiting between webhook calls
@@ -1087,7 +1087,7 @@ class MakeIntegration {
     this.rateLimiter.lastCall = Date.now();
   }
 
-  // ==================== ROUTER MANAGEMENT ====================
+  // ====== ROUTER MANAGEMENT ======
 
   /**
    * Get router hint for event type
@@ -1220,7 +1220,7 @@ class MakeIntegration {
     }
   }
 
-  // ==================== WEBHOOK SIGNATURE VALIDATION ====================
+  // ====== WEBHOOK SIGNATURE VALIDATION ======
 
   /**
    * Generate webhook signature for outgoing payloads
@@ -1496,7 +1496,7 @@ class MakeIntegration {
     }
   }
 
-  // ==================== UTILITY METHODS ====================
+  // ====== UTILITY METHODS ======
 
   /**
    * Determine payload priority
@@ -1699,7 +1699,7 @@ class MakeIntegration {
     };
   }
 
-  // ==================== HEALTH MONITORING ====================
+  // ====== HEALTH MONITORING ======
 
   /**
    * Check webhook health
@@ -1800,7 +1800,7 @@ class MakeIntegration {
   }
 }
 
-// ==================== PUBLIC API FUNCTIONS ====================
+// ====== PUBLIC API FUNCTIONS ======
 
 /**
  * Send payload to Make.com (public API)

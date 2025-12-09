@@ -378,20 +378,20 @@ npm run setup
 
 ```
 PATH A: MOBILE APP
-==================
+====
 1. User opens app → Videos tab
 2. Record OR select video
 3. Upload → POST /api/v1/videos/upload
 4. [Joins Path B at AI Processing]
 
 PATH B: SERVER-SIDE
-===================
+=====
 1. Upload to Google Drive
 2. Apps Script exports JSON
 3. [Joins Path A at AI Processing]
 
 SHARED AI PROCESSING
-====================
+======
 4. highlights_bot detects events
 5. Cuts and edits clips
 6. Processor queues jobs

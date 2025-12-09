@@ -23,7 +23,7 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeApp();
 });
 
-// ==================== APP INITIALIZATION ====================
+// ====== APP INITIALIZATION ======
 
 function initializeApp() {
     showStatus('Initializing Club Console...', 'info');
@@ -78,7 +78,7 @@ function hideLoading() {
     document.getElementById('main-app').style.display = 'block';
 }
 
-// ==================== EVENT LISTENERS ====================
+// ====== EVENT LISTENERS ======
 
 function setupEventListeners() {
     // Tab navigation
@@ -292,7 +292,7 @@ function setupModalListeners() {
     });
 }
 
-// ==================== TAB MANAGEMENT ====================
+// ====== TAB MANAGEMENT ======
 
 function switchTab(tabName) {
     // Update tab buttons
@@ -316,7 +316,7 @@ function switchTab(tabName) {
     }
 }
 
-// ==================== CONFIGURATION MANAGEMENT ====================
+// ====== CONFIGURATION MANAGEMENT ======
 
 async function loadConfiguration() {
     try {
@@ -454,7 +454,7 @@ async function saveConfiguration() {
     }
 }
 
-// ==================== PLAYER MANAGEMENT ====================
+// ====== PLAYER MANAGEMENT ======
 
 async function loadPlayers() {
     try {
@@ -551,7 +551,7 @@ async function saveNewPlayer() {
     }
 }
 
-// ==================== MATCH MANAGEMENT ====================
+// ====== MATCH MANAGEMENT ======
 
 function selectPeriod(period) {
     document.querySelectorAll('.period-btn').forEach(btn => {
@@ -593,7 +593,7 @@ function updateMatchStatus(status) {
     }
 }
 
-// ==================== EVENT RECORDING ====================
+// ====== EVENT RECORDING ======
 
 function recordGoal(team) {
     if (team === 'Home') {
@@ -699,7 +699,7 @@ function updateScoreDisplay() {
     if (awayScore) awayScore.textContent = window.ClubConsole.awayScore;
 }
 
-// ==================== MODAL MANAGEMENT ====================
+// ====== MODAL MANAGEMENT ======
 
 function showPlayerModal(title, eventType, showAssist = false, cardType = null) {
     const modal = document.getElementById('player-modal');
@@ -784,7 +784,7 @@ function hideAllModals() {
     });
 }
 
-// ==================== EVENTS DISPLAY ====================
+// ====== EVENTS DISPLAY ======
 
 async function loadRecentEvents() {
     try {
@@ -841,7 +841,7 @@ function formatEventDescription(event) {
     }
 }
 
-// ==================== HOMEPAGE WIDGET ====================
+// ====== HOMEPAGE WIDGET ======
 
 function startHomepageWidgetRefresh() {
     if (window.ClubConsole.homepageWidgetIntervalId) {
@@ -939,7 +939,7 @@ function renderHomepageWidgetSummary(response) {
     `;
 }
 
-// ==================== ARCHIVE ====================
+// ====== ARCHIVE ======
 
 async function loadArchiveEvents(options = {}) {
     const { manual = false } = options || {};
@@ -992,7 +992,7 @@ function displayArchiveEvents(events) {
     timeline.innerHTML = rows;
 }
 
-// ==================== PLAYER STATS DISPLAY ====================
+// ====== PLAYER STATS DISPLAY ======
 
 function renderPlayerStats(players = window.ClubConsole.players || []) {
     const roster = Array.isArray(players) ? [...players] : [];
@@ -1058,7 +1058,7 @@ function renderPlayerStats(players = window.ClubConsole.players || []) {
     table.innerHTML = header + rows;
 }
 
-// ==================== UTILITY FUNCTIONS ====================
+// ====== UTILITY FUNCTIONS ======
 
 function showStatus(message, type = 'info') {
     const statusMessages = document.getElementById('status-messages');
@@ -1199,7 +1199,7 @@ async function testWebhookConnection() {
     }
 }
 
-// ==================== SERVER COMMUNICATION ====================
+// ====== SERVER COMMUNICATION ======
 
 async function callServerFunction(functionName, data = {}) {
     return new Promise((resolve, reject) => {
@@ -1225,7 +1225,7 @@ async function callServerFunction(functionName, data = {}) {
     });
 }
 
-// ==================== PLACEHOLDER FUNCTIONS ====================
+// ====== PLACEHOLDER FUNCTIONS ======
 
 function editPlayer(number) {
     showStatus('Edit player functionality coming soon', 'info');

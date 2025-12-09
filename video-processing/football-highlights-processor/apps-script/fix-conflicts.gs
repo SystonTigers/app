@@ -1,7 +1,7 @@
 // Fix for Google Apps Script conflicts - Standalone Script Configuration
 // This file contains the corrected code to resolve the merge conflicts
 
-// ==================== UPDATED .clasp.json ====================
+// ====== UPDATED .clasp.json ======
 // Replace your .clasp.json with:
 /*
 {
@@ -11,7 +11,7 @@
 }
 */
 
-// ==================== SPREADSHEET ID CONFIGURATION ====================
+// ====== SPREADSHEET ID CONFIGURATION ======
 // In your config.gs file, update the SHEETS configuration:
 
 const SYSTEM_CONFIG = {
@@ -62,7 +62,7 @@ const SYSTEM_CONFIG = {
   // ... rest of config ...
 };
 
-// ==================== FIXED HELPER FUNCTIONS ====================
+// ====== FIXED HELPER FUNCTIONS ======
 
 /**
  * Initialize the script with proper spreadsheet ID
@@ -189,7 +189,7 @@ function getSheet(sheetName, options = {}) {
   }
 }
 
-// ==================== FIXED CODE SEGMENTS ====================
+// ====== FIXED CODE SEGMENTS ======
 
 /**
  * Fixed version of getPlayersForWeb
@@ -319,7 +319,7 @@ function getRecentEventsForWeb(limit = 10) {
   }
 }
 
-// ==================== BATCH FIXTURES FIXES ====================
+// ====== BATCH FIXTURES FIXES ======
 
 class BatchFixturesManager {
   // ... existing code ...
@@ -377,7 +377,7 @@ function initBatchFixtures() {
   }
 }
 
-// ==================== SYSTEM HEALTH FIXES ====================
+// ====== SYSTEM HEALTH FIXES ======
 
 /**
  * Fixed version of checkSheets
@@ -455,7 +455,7 @@ function simulateLiveMatchUpdate() {
   }
 }
 
-// ==================== MONITORING FIXES ====================
+// ====== MONITORING FIXES ======
 
 /**
  * Fixed version of checkSheetAccess for monitoring
@@ -492,7 +492,7 @@ function checkSheetAccess() {
   }
 }
 
-// ==================== UTILS FIXES ====================
+// ====== UTILS FIXES ======
 
 const SheetUtils = {
   /**
@@ -528,7 +528,7 @@ const SheetUtils = {
   // ... rest of SheetUtils methods ...
 };
 
-// ==================== TESTING FIXES ====================
+// ====== TESTING FIXES ======
 
 /**
  * Fixed version of testSheetOperations
@@ -581,7 +581,7 @@ function testSheetOperations() {
   }
 }
 
-// ==================== INSTALLATION HELPER ====================
+// ====== INSTALLATION HELPER ======
 
 /**
  * Auto-installation function that sets up all required components
@@ -658,7 +658,7 @@ function completeSetup() {
   }
 }
 
-// ==================== WEB APP FUNCTIONS ====================
+// ====== WEB APP FUNCTIONS ======
 
 /**
  * Handle GET requests (if you need a web interface)
@@ -703,7 +703,7 @@ function doPost(e) {
   }
 }
 
-// ==================== INSTRUCTIONS FOR SETUP ====================
+// ====== INSTRUCTIONS FOR SETUP ======
 
 /**
  * SETUP INSTRUCTIONS:

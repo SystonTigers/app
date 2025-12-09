@@ -5,7 +5,7 @@
  * @description Critical performance improvements and memory leak fixes
  */
 
-// ==================== PERFORMANCE FIXES ====================
+// ====== PERFORMANCE FIXES ======
 
 /**
  * Enhanced Performance Manager with Critical Fixes
@@ -20,7 +20,7 @@ class OptimizedPerformanceManager extends PerformanceCacheManager {
     this.setupAutomaticCleanup();
   }
 
-  // ==================== BATCH OPERATIONS (CRITICAL FIX) ====================
+  // ====== BATCH OPERATIONS (CRITICAL FIX) ======
 
   /**
    * FIXED: Batch Google Sheets operations to reduce API calls
@@ -303,7 +303,7 @@ class OptimizedPerformanceManager extends PerformanceCacheManager {
     }
   }
 
-  // ==================== UTILITY METHODS ====================
+  // ====== UTILITY METHODS ======
 
   /**
    * Chunk array into smaller batches
@@ -512,7 +512,7 @@ class OptimizedPerformanceManager extends PerformanceCacheManager {
   }
 }
 
-// ==================== GLOBAL OPTIMIZED PERFORMANCE ====================
+// ====== GLOBAL OPTIMIZED PERFORMANCE ======
 
 /**
  * Global optimized performance manager

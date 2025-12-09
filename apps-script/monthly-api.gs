@@ -5,7 +5,7 @@
  * @description Public API functions and module initialization (split from monthly-summaries.gs)
  */
 
-// ==================== PUBLIC API FUNCTIONS ====================
+// ====== PUBLIC API FUNCTIONS ======
 
 /**
  * Initialize monthly summaries system
@@ -264,7 +264,7 @@ function runMonthlyScheduledTasks() {
   }
 }
 
-// ==================== SPECIAL EVENT HANDLERS ====================
+// ====== SPECIAL EVENT HANDLERS ======
 
 /**
  * Post postponed match notification
@@ -361,7 +361,7 @@ function postSecondHalfKickoff(matchData) {
   }
 }
 
-// ==================== MODULE HEALTH CHECK ====================
+// ====== MODULE HEALTH CHECK ======
 
 /**
  * Test monthly summaries modules
