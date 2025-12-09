@@ -738,12 +738,15 @@ export default {
         const scheduledTime = new Date(event.scheduledTime);
         const hour = scheduledTime.getUTCHours();
         const minute = scheduledTime.getUTCMinutes();
-        const dayOfWeek = scheduledTime.getUTCDay(); // 0 = Sunday, 4 = Thursday
+        const dayOfWeek = scheduledTime.getUTCDay();
         const dayOfMonth = scheduledTime.getUTCDate();
 
         logJSON({ level: 'info', msg: 'Cron triggered', hour, minute, dayOfWeek, dayOfMonth });
 
         try {
+            // Every 5 minutes: Cleanup expired data
+            ctx.waitUntil(runCleanup(env, ctx));
+
             // 06:00 UTC: Birthdays and daily quotes
             if (hour === 6 && minute < 5) {
                 ctx.waitUntil(runDaily(env, ctx));
@@ -769,7 +772,7 @@ export default {
                 ctx.waitUntil(runPlayerOfPeriod(env, ctx, { period: 'month' }));
             }
 
-            // Saturday/Sunday 21:00 UTC: Check for player milestones (after weekend matches)
+            // Saturday/Sunday 21:00 UTC: Check for player milestones
             if ((dayOfWeek === 0 || dayOfWeek === 6) && hour === 21 && minute < 5) {
                 ctx.waitUntil(runMilestones(env, ctx));
             }
@@ -778,9 +781,6 @@ export default {
             if (hour % 6 === 0 && minute < 5) {
                 ctx.waitUntil(runLeague(env, ctx));
             }
-
-            // Every 5 minutes: Cleanup stale data
-            ctx.waitUntil(runCleanup(env, ctx));
 
         } catch (error) {
             logJSON({ level: 'error', msg: 'Cron error', error: error instanceof Error ? error.message : String(error) });

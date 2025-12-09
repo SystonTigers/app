@@ -8,6 +8,7 @@ import { nowUTC } from '../utils/time';
  * - Finding memorable moments from past seasons
  * - Creating nostalgia posts with old match highlights
  * - "On this day" posts
+ * - Photo-based throwbacks
  */
 export const runThrowback = async (env: Env, ctx: ExecutionContext) => {
   const now = nowUTC();
@@ -16,14 +17,13 @@ export const runThrowback = async (env: Env, ctx: ExecutionContext) => {
   logJSON({ level: 'info', msg: 'Running Throwback Thursday cron job for today' });
 
   try {
-    // Get all active tenants with throwback feature enabled
     const tenants = await getTenantsWithThrowbacks(env);
 
     for (const tenant of tenants) {
       await createThrowbackPost(env, tenant, now);
     }
 
-    logJSON({ level: 'info', msg: 'Throwback posts created for tenants.length tenants' });
+    logJSON({ level: 'info', msg: 'Throwback posts created', tenantCount: tenants.length });
   } catch (error) {
     logJSON({ level: 'error', msg: 'Throwback cron error', error: error instanceof Error ? error.message : String(error) });
   }
@@ -38,8 +38,12 @@ async function getTenantsWithThrowbacks(env: Env): Promise<any[]> {
     if (key.name.endsWith(':config')) {
       const config: any = await env.KV.get(key.name, 'json');
 
-      if (config?.features?.auto_throwbacks) {
-        tenants.push(config);
+      if (config?.features?.auto_throwbacks || config?.features?.auto_throwback_photos) {
+        tenants.push({
+          ...config,
+          throwback_photos_enabled: config?.features?.auto_throwback_photos !== false,
+          throwback_matches_enabled: config?.features?.auto_throwbacks !== false,
+        });
       }
     }
   }
@@ -51,10 +55,10 @@ async function getTenantsWithThrowbacks(env: Env): Promise<any[]> {
 async function createThrowbackPost(env: Env, config: any, now: any) {
   const tenant = config.team_id;
 
-  logJSON({ level: 'info', msg: 'Creating throwback post for tenant' });
+  logJSON({ level: 'info', msg: 'Creating throwback post for tenant', tenant });
 
-  // Strategy 1: Photo-based throwback (the REAL Throwback Thursday!)
-  if (config.features?.auto_throwback_photos !== false) {
+  // Strategy 1: Photo-based throwback
+  if (config.throwback_photos_enabled !== false) {
     const throwbackPhoto = await findThrowbackPhoto(env, tenant, now);
     if (throwbackPhoto) {
       await createPhotoThrowbackPost(env, tenant, throwbackPhoto);
@@ -63,65 +67,57 @@ async function createThrowbackPost(env: Env, config: any, now: any) {
   }
 
   // Strategy 2: "On this day" - exact date from previous years
-  const onThisDayMatch = await findOnThisDayMatch(env, tenant, now);
+  if (config.throwback_matches_enabled !== false) {
+    const onThisDayMatch = await findOnThisDayMatch(env, tenant, now);
+    if (onThisDayMatch) {
+      await createOnThisDayPost(env, tenant, onThisDayMatch);
+      return;
+    }
 
-  if (onThisDayMatch) {
-    await createOnThisDayPost(env, tenant, onThisDayMatch);
-    return;
+    // Strategy 3: Random memorable moment from history
+    const memorableMatch = await findMemorableMatch(env, tenant);
+    if (memorableMatch) {
+      await createMemorablePost(env, tenant, memorableMatch);
+      return;
+    }
   }
 
-  // Strategy 3: Random memorable moment from history
-  const memorableMatch = await findMemorableMatch(env, tenant);
-
-  if (memorableMatch) {
-    await createMemorablePost(env, tenant, memorableMatch);
-    return;
-  }
-
-  logJSON({ level: 'info', msg: 'No throwback content found for tenant' });
+  logJSON({ level: 'info', msg: 'No throwback content found for tenant', tenant });
 }
 
 // Find old photos for throwback
 async function findThrowbackPhoto(env: Env, tenant: string, now: any) {
-  // Check for photos from previous years
   const oneYearAgo = now.minus({ years: 1 }).toMillis();
 
-  // Query gallery/albums from D1
   const result = await env.DB.prepare(`
-    SELECT g.*, a.name as album_name, a.date as album_date
-    FROM gallery_photos g
-    LEFT JOIN gallery_albums a ON g.album_id = a.id
-    WHERE g.tenant_id = ?
-    AND (a.date < ? OR g.created_at < ?)
-    ORDER BY RANDOM()
-    LIMIT 10
-  `).bind(tenant, oneYearAgo, oneYearAgo).all();
+        SELECT g.*, a.name as album_name, a.date as album_date
+        FROM gallery_photos g
+        LEFT JOIN gallery_albums a ON g.album_id = a.id
+        WHERE g.tenant_id = ?
+        AND (a.date < ? OR g.created_at < ?)
+        ORDER BY RANDOM()
+        LIMIT 10
+    `).bind(tenant, oneYearAgo, oneYearAgo).all();
 
   if (!result.results || result.results.length === 0) {
     return null;
   }
 
-  // Get recently used photos to avoid repetition
   const recentlyUsedKey = `throwback:${tenant}:recent_photos`;
   const recentlyUsedStr = await env.KV.get(recentlyUsedKey);
   const recentlyUsed = recentlyUsedStr ? JSON.parse(recentlyUsedStr) : [];
 
-  // Find a photo not recently used
   for (const photo of result.results as any[]) {
     if (!recentlyUsed.includes(photo.id)) {
-      // Add to recently used list
       recentlyUsed.push(photo.id);
-      // Keep only last 20
       while (recentlyUsed.length > 20) {
         recentlyUsed.shift();
       }
-      await env.KV.put(recentlyUsedKey, JSON.stringify(recentlyUsed), { expirationTtl: 60 * 60 * 24 * 30 }); // 30 days
-
+      await env.KV.put(recentlyUsedKey, JSON.stringify(recentlyUsed), { expirationTtl: 60 * 60 * 24 * 30 });
       return photo;
     }
   }
 
-  // All photos recently used, pick random anyway
   return result.results[0];
 }
 
@@ -143,10 +139,9 @@ async function createPhotoThrowbackPost(env: Env, tenant: string, photo: any) {
   await env.KV.put(
     `autopost:${tenant}:${post.id}`,
     JSON.stringify(post),
-    { expirationTtl: 60 * 60 * 24 * 7 } // 7 days
+    { expirationTtl: 60 * 60 * 24 * 7 }
   );
 
-  // Trigger webhook
   const webhook = await env.KV.get(`team:${tenant}:webhook`);
   if (webhook) {
     await fetch(webhook, {
@@ -160,25 +155,23 @@ async function createPhotoThrowbackPost(env: Env, tenant: string, photo: any) {
     });
   }
 
-  logJSON({ level: 'info', msg: 'Created photo throwback post for tenant' });
+  logJSON({ level: 'info', msg: 'Created photo throwback post for tenant', tenant });
 }
 
 // Find match that happened on this day in previous years
 async function findOnThisDayMatch(env: Env, tenant: string, now: any) {
-  const monthDay = now.toFormat('MM-dd'); // e.g., "10-12"
+  const monthDay = now.toFormat('MM-dd');
 
-  // Query D1 for matches on this date in past years
   const result = await env.DB.prepare(`
-    SELECT * FROM matches
-    WHERE team_id = ?
-    AND status IN ('completed', 'final')
-    AND strftime('%m-%d', datetime(date_utc, 'unixepoch')) = ?
-    ORDER BY date_utc DESC
-    LIMIT 1
-  `).bind(tenant, monthDay).first();
+        SELECT * FROM matches
+        WHERE team_id = ?
+        AND status IN ('completed', 'final')
+        AND strftime('%m-%d', datetime(date_utc, 'unixepoch')) = ?
+        ORDER BY date_utc DESC
+        LIMIT 1
+    `).bind(tenant, monthDay).first();
 
   if (result) {
-    // Get extended match data from KV
     const matchData = await env.KV.get(
       `match:${tenant}:${result.id}`,
       'json'
@@ -191,18 +184,16 @@ async function findOnThisDayMatch(env: Env, tenant: string, now: any) {
 
 // Find a memorable match from history
 async function findMemorableMatch(env: Env, tenant: string) {
-  // Get matches with big wins or important games
   const result = await env.DB.prepare(`
-    SELECT * FROM matches
-    WHERE team_id = ?
-    AND status IN ('completed', 'final')
-    AND date_utc < ?
-    ORDER BY RANDOM()
-    LIMIT 5
-  `).bind(tenant, Math.floor(Date.now() / 1000) - (365 * 24 * 60 * 60)).all();
+        SELECT * FROM matches
+        WHERE team_id = ?
+        AND status IN ('completed', 'final')
+        AND date_utc < ?
+        ORDER BY RANDOM()
+        LIMIT 5
+    `).bind(tenant, Math.floor(Date.now() / 1000) - (365 * 24 * 60 * 60)).all();
 
   if (result.results && result.results.length > 0) {
-    // Score the matches by "memorability"
     const scoredMatches = await Promise.all(
       result.results.map(async (match: any) => {
         const matchData: any = await env.KV.get(
@@ -210,20 +201,16 @@ async function findMemorableMatch(env: Env, tenant: string) {
           'json'
         );
 
-        if (!matchData) { return null; }
+        if (!matchData) return null;
 
         let score = 0;
 
-        // Big win
         if (matchData.home_score && matchData.away_score) {
           const margin = Math.abs(matchData.home_score - matchData.away_score);
           score += margin * 10;
-
-          // High-scoring game
           score += (matchData.home_score + matchData.away_score) * 5;
         }
 
-        // Important competition
         if (matchData.competition?.toLowerCase().includes('cup')) {
           score += 50;
         }
@@ -235,7 +222,6 @@ async function findMemorableMatch(env: Env, tenant: string) {
       })
     );
 
-    // Pick highest scoring match
     const validMatches = scoredMatches.filter((m) => m !== null);
     if (validMatches.length > 0) {
       validMatches.sort((a, b) => b!.score - a!.score);
@@ -266,10 +252,9 @@ async function createOnThisDayPost(env: Env, tenant: string, match: any) {
   await env.KV.put(
     `autopost:${tenant}:${post.id}`,
     JSON.stringify(post),
-    { expirationTtl: 60 * 60 * 24 * 7 } // 7 days
+    { expirationTtl: 60 * 60 * 24 * 7 }
   );
 
-  // Trigger webhook
   const webhook = await env.KV.get(`team:${tenant}:webhook`);
   if (webhook) {
     await fetch(webhook, {
@@ -283,7 +268,7 @@ async function createOnThisDayPost(env: Env, tenant: string, match: any) {
     });
   }
 
-  logJSON({ level: 'info', msg: 'Created "On This Day" post for tenant: yearsAgo years ago' });
+  logJSON({ level: 'info', msg: `Created "On This Day" post: ${yearsAgo} years ago`, tenant });
 }
 
 // Create memorable moment post
@@ -301,10 +286,9 @@ async function createMemorablePost(env: Env, tenant: string, match: any) {
   await env.KV.put(
     `autopost:${tenant}:${post.id}`,
     JSON.stringify(post),
-    { expirationTtl: 60 * 60 * 24 * 7 } // 7 days
+    { expirationTtl: 60 * 60 * 24 * 7 }
   );
 
-  // Trigger webhook
   const webhook = await env.KV.get(`team:${tenant}:webhook`);
   if (webhook) {
     await fetch(webhook, {
@@ -318,5 +302,5 @@ async function createMemorablePost(env: Env, tenant: string, match: any) {
     });
   }
 
-  logJSON({ level: 'info', msg: 'Created memorable moment post for tenant' });
+  logJSON({ level: 'info', msg: 'Created memorable moment post for tenant', tenant });
 }

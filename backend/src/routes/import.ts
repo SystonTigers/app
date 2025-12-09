@@ -11,12 +11,10 @@ function parseCSV(csvText: string): any[] {
     const lines = csvText.trim().split('\n');
     if (lines.length < 2) return [];
 
-    // Parse header row
     const headers = lines[0].split(',').map(h =>
         h.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_').replace(/^_+|_+$/g, '')
     );
 
-    // Parse data rows
     const data = [];
     for (let i = 1; i < lines.length; i++) {
         const values = parseCSVLine(lines[i]);
@@ -74,7 +72,7 @@ export async function handleImportFixtures(req: Request, env: any, corsHdrs: Hea
         }
 
         let imported = 0;
-        let errors: string[] = [];
+        const errors: string[] = [];
 
         for (let i = 0; i < rows.length; i++) {
             const row = rows[i];
@@ -106,7 +104,7 @@ export async function handleImportFixtures(req: Request, env: any, corsHdrs: Hea
             success: true,
             imported,
             total: rows.length,
-            errors: errors.length > 0 ? errors : undefined
+            errors: errors.length > 0 ? errors.slice(0, 10) : undefined
         }, 200, corsHdrs);
 
     } catch (err: any) {
@@ -128,7 +126,7 @@ export async function handleImportResults(req: Request, env: any, corsHdrs: Head
         }
 
         let imported = 0;
-        let errors: string[] = [];
+        const errors: string[] = [];
 
         for (let i = 0; i < rows.length; i++) {
             const row = rows[i];
@@ -136,7 +134,6 @@ export async function handleImportResults(req: Request, env: any, corsHdrs: Head
                 const id = crypto.randomUUID();
                 const matchDate = row.date || row.match_date;
 
-                // Parse score (e.g., "3-1" or separate columns)
                 let homeScore = parseInt(row.home_score || row.score_home || row.our_goals || '0');
                 let awayScore = parseInt(row.away_score || row.score_away || row.their_goals || '0');
 
@@ -171,7 +168,7 @@ export async function handleImportResults(req: Request, env: any, corsHdrs: Head
             success: true,
             imported,
             total: rows.length,
-            errors: errors.length > 0 ? errors : undefined
+            errors: errors.length > 0 ? errors.slice(0, 10) : undefined
         }, 200, corsHdrs);
 
     } catch (err: any) {
@@ -193,7 +190,7 @@ export async function handleImportPlayers(req: Request, env: any, corsHdrs: Head
         }
 
         let imported = 0;
-        let errors: string[] = [];
+        const errors: string[] = [];
         const players = [];
 
         for (let i = 0; i < rows.length; i++) {
@@ -237,15 +234,17 @@ export async function handleImportPlayers(req: Request, env: any, corsHdrs: Head
         }
 
         // Also update KV list
-        const listStr = await env.KV_IDEMP.get(`squad:${tenant}:list`);
-        const existingList = listStr ? JSON.parse(listStr) : [];
-        await env.KV_IDEMP.put(`squad:${tenant}:list`, JSON.stringify([...existingList, ...players]));
+        if (players.length > 0) {
+            const listStr = await env.KV_IDEMP.get(`squad:${tenant}:list`);
+            const existingList = listStr ? JSON.parse(listStr) : [];
+            await env.KV_IDEMP.put(`squad:${tenant}:list`, JSON.stringify([...existingList, ...players]));
+        }
 
         return json({
             success: true,
             imported,
             total: rows.length,
-            errors: errors.length > 0 ? errors : undefined
+            errors: errors.length > 0 ? errors.slice(0, 10) : undefined
         }, 200, corsHdrs);
 
     } catch (err: any) {
@@ -281,7 +280,7 @@ export async function handleImportMatchEvents(req: Request, env: any, corsHdrs: 
         }
 
         let imported = 0;
-        let errors: string[] = [];
+        const errors: string[] = [];
 
         for (let i = 0; i < rows.length; i++) {
             const row = rows[i];
@@ -329,7 +328,7 @@ export async function handleImportMatchEvents(req: Request, env: any, corsHdrs: 
             success: true,
             imported,
             total: rows.length,
-            errors: errors.length > 0 ? errors : undefined
+            errors: errors.length > 0 ? errors.slice(0, 10) : undefined
         }, 200, corsHdrs);
 
     } catch (err: any) {
@@ -351,7 +350,6 @@ export async function handleGetImportTemplate(req: Request, env: any, corsHdrs: 
         return json({ success: false, error: `Unknown template type: ${type}` }, 400, corsHdrs);
     }
 
-    // Return as downloadable CSV
     const headers = new Headers(corsHdrs);
     headers.set('Content-Type', 'text/csv');
     headers.set('Content-Disposition', `attachment; filename="${type}_template.csv"`);
@@ -365,7 +363,6 @@ export async function handleGetImportStatus(req: Request, env: any, corsHdrs: He
         const claims = await requireJWT(req, env);
         const tenant = claims.tenantId;
 
-        // Get counts of existing data
         const [fixturesCount, matchesCount, playersCount, eventsCount] = await Promise.all([
             env.DB.prepare(`SELECT COUNT(*) as count FROM fixtures WHERE tenant_id = ?`).bind(tenant).first(),
             env.DB.prepare(`SELECT COUNT(*) as count FROM matches WHERE team_id = ?`).bind(tenant).first(),

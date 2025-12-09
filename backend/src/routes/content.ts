@@ -32,6 +32,85 @@ export async function handleDeleteFixture(req: Request, env: any, corsHdrs: Head
     }
 }
 
+// Update fixture
+export async function handleUpdateFixture(req: Request, env: any, corsHdrs: Headers, id: string) {
+    try {
+        const claims = await requireJWT(req, env);
+        const body = await req.json() as any;
+
+        // Build update query dynamically
+        const updates: string[] = [];
+        const params: any[] = [];
+
+        if (body.date !== undefined) {
+            updates.push("fixture_date = ?");
+            params.push(body.date);
+        }
+        if (body.time !== undefined) {
+            updates.push("kick_off_time = ?");
+            params.push(body.time);
+        }
+        if (body.opponent !== undefined) {
+            updates.push("opponent = ?");
+            params.push(body.opponent);
+        }
+        if (body.venue !== undefined) {
+            updates.push("venue = ?");
+            params.push(body.venue);
+        }
+        if (body.competition !== undefined) {
+            updates.push("competition = ?");
+            params.push(body.competition);
+        }
+        if (body.status !== undefined) {
+            updates.push("status = ?");
+            params.push(body.status);
+        }
+        if (body.homeScore !== undefined) {
+            updates.push("home_score = ?");
+            params.push(body.homeScore);
+        }
+        if (body.awayScore !== undefined) {
+            updates.push("away_score = ?");
+            params.push(body.awayScore);
+        }
+
+        if (updates.length === 0) {
+            return json({ success: false, error: "No fields to update" }, 400, corsHdrs);
+        }
+
+        params.push(id, claims.tenantId);
+
+        await env.DB.prepare(
+            `UPDATE fixtures SET ${updates.join(", ")} WHERE id = ? AND tenant_id = ?`
+        ).bind(...params).run();
+
+        return json({ success: true }, 200, corsHdrs);
+    } catch (err) {
+        console.error('Update fixture error:', err);
+        return json({ success: false, error: "Failed to update fixture" }, 500, corsHdrs);
+    }
+}
+
+// Get single fixture
+export async function handleGetFixture(req: Request, env: any, corsHdrs: Headers, id: string) {
+    try {
+        const claims = await requireJWT(req, env);
+
+        const fixture = await env.DB.prepare(
+            "SELECT * FROM fixtures WHERE id = ? AND tenant_id = ?"
+        ).bind(id, claims.tenantId).first();
+
+        if (!fixture) {
+            return json({ success: false, error: "Fixture not found" }, 404, corsHdrs);
+        }
+
+        return json({ success: true, data: fixture }, 200, corsHdrs);
+    } catch (err) {
+        return json({ success: false, error: "Failed to get fixture" }, 500, corsHdrs);
+    }
+}
+
 // Results
 export async function handleCreateResult(req: Request, env: any, corsHdrs: Headers) {
     try {
@@ -64,6 +143,81 @@ export async function handleDeleteResult(req: Request, env: any, corsHdrs: Heade
     }
 }
 
+// Update result
+export async function handleUpdateResult(req: Request, env: any, corsHdrs: Headers, id: string) {
+    try {
+        const claims = await requireJWT(req, env);
+        const body = await req.json() as any;
+
+        // Build update query dynamically
+        const updates: string[] = [];
+        const params: any[] = [];
+
+        if (body.date !== undefined) {
+            updates.push("match_date = ?");
+            params.push(body.date);
+        }
+        if (body.opponent !== undefined) {
+            updates.push("opponent = ?");
+            params.push(body.opponent);
+        }
+        if (body.venue !== undefined) {
+            updates.push("venue = ?");
+            params.push(body.venue);
+        }
+        if (body.competition !== undefined) {
+            updates.push("competition = ?");
+            params.push(body.competition);
+        }
+        if (body.ourScore !== undefined) {
+            updates.push("our_score = ?");
+            params.push(body.ourScore);
+        }
+        if (body.theirScore !== undefined) {
+            updates.push("their_score = ?");
+            params.push(body.theirScore);
+        }
+        if (body.scorers !== undefined) {
+            updates.push("scorers = ?");
+            params.push(body.scorers);
+        }
+
+        if (updates.length === 0) {
+            return json({ success: false, error: "No fields to update" }, 400, corsHdrs);
+        }
+
+        params.push(id, claims.tenantId);
+
+        await env.DB.prepare(
+            `UPDATE team_results SET ${updates.join(", ")} WHERE id = ? AND tenant_id = ?`
+        ).bind(...params).run();
+
+        return json({ success: true }, 200, corsHdrs);
+    } catch (err) {
+        console.error('Update result error:', err);
+        return json({ success: false, error: "Failed to update result" }, 500, corsHdrs);
+    }
+}
+
+// Get single result
+export async function handleGetResult(req: Request, env: any, corsHdrs: Headers, id: string) {
+    try {
+        const claims = await requireJWT(req, env);
+
+        const result = await env.DB.prepare(
+            "SELECT * FROM team_results WHERE id = ? AND tenant_id = ?"
+        ).bind(id, claims.tenantId).first();
+
+        if (!result) {
+            return json({ success: false, error: "Result not found" }, 404, corsHdrs);
+        }
+
+        return json({ success: true, data: result }, 200, corsHdrs);
+    } catch (err) {
+        return json({ success: false, error: "Failed to get result" }, 500, corsHdrs);
+    }
+}
+
 // Feed
 export async function handleCreatePost(req: Request, env: any, corsHdrs: Headers) {
     try {
@@ -92,6 +246,73 @@ export async function handleDeletePost(req: Request, env: any, corsHdrs: Headers
         return json({ success: true }, 200, corsHdrs);
     } catch (err) {
         return json({ success: false, error: "Failed to delete post" }, 500, corsHdrs);
+    }
+}
+
+// Update post
+export async function handleUpdatePost(req: Request, env: any, corsHdrs: Headers, id: string) {
+    try {
+        const claims = await requireJWT(req, env);
+        const body = await req.json() as any;
+
+        // Build update query dynamically
+        const updates: string[] = [];
+        const params: any[] = [];
+
+        if (body.title !== undefined) {
+            updates.push("title = ?");
+            params.push(body.title);
+        }
+        if (body.content !== undefined) {
+            updates.push("content = ?");
+            params.push(body.content);
+        }
+        if (body.author !== undefined) {
+            updates.push("author = ?");
+            params.push(body.author);
+        }
+        if (body.imageUrl !== undefined) {
+            updates.push("image_url = ?");
+            params.push(body.imageUrl);
+        }
+
+        if (updates.length === 0) {
+            return json({ success: false, error: "No fields to update" }, 400, corsHdrs);
+        }
+
+        // Add updated_at timestamp
+        updates.push("updated_at = ?");
+        params.push(Date.now());
+
+        params.push(id, claims.tenantId);
+
+        await env.DB.prepare(
+            `UPDATE feed_posts SET ${updates.join(", ")} WHERE id = ? AND tenant_id = ?`
+        ).bind(...params).run();
+
+        return json({ success: true }, 200, corsHdrs);
+    } catch (err) {
+        console.error('Update post error:', err);
+        return json({ success: false, error: "Failed to update post" }, 500, corsHdrs);
+    }
+}
+
+// Get single post
+export async function handleGetPost(req: Request, env: any, corsHdrs: Headers, id: string) {
+    try {
+        const claims = await requireJWT(req, env);
+
+        const post = await env.DB.prepare(
+            "SELECT * FROM feed_posts WHERE id = ? AND tenant_id = ?"
+        ).bind(id, claims.tenantId).first();
+
+        if (!post) {
+            return json({ success: false, error: "Post not found" }, 404, corsHdrs);
+        }
+
+        return json({ success: true, data: post }, 200, corsHdrs);
+    } catch (err) {
+        return json({ success: false, error: "Failed to get post" }, 500, corsHdrs);
     }
 }
 
