@@ -1,6 +1,34 @@
 import { json } from "../services/util";
 import { requireJWT } from "../services/auth";
 
+// Types for season management
+interface EndSeasonPreview {
+    season: any;
+    summary: {
+        played: number;
+        won: number;
+        drawn: number;
+        lost: number;
+        goalsFor: number;
+        goalsAgainst: number;
+        goalDifference: number;
+        points: number;
+        cleanSheets: number;
+    };
+    topScorer: { playerId: string; name: string; goals: number } | null;
+    topAssister: { playerId: string; name: string; assists: number } | null;
+    mostAppearances: { playerId: string; name: string; appearances: number } | null;
+    motmLeader: { playerId: string; name: string; count: number } | null;
+    warnings: string[];
+}
+
+interface SeasonAward {
+    awardType: string;
+    playerId: string;
+    customName?: string;
+    notes?: string;
+}
+
 // List all seasons for tenant
 export async function handleListSeasons(req: Request, env: any, corsHdrs: Headers) {
     try {
@@ -156,7 +184,7 @@ export async function handleGetSeasonRoster(req: Request, env: any, corsHdrs: He
         const claims = await requireJWT(req, env);
 
         const result = await env.DB.prepare(
-            `SELECT ps.*, p.name, p.photo_url 
+            `SELECT ps.*, p.name, p.photo_url
              FROM player_seasons ps
              LEFT JOIN squad p ON ps.player_id = p.id
              WHERE ps.season_id = ? AND ps.tenant_id = ?
@@ -167,5 +195,701 @@ export async function handleGetSeasonRoster(req: Request, env: any, corsHdrs: He
     } catch (err) {
         console.error('Get season roster error:', err);
         return json({ success: false, error: "Failed to get roster" }, 500, corsHdrs);
+    }
+}
+
+// ============================================
+// END SEASON FLOW
+// ============================================
+
+// Get end season preview - summary stats before archiving
+export async function handleEndSeasonPreview(req: Request, env: any, corsHdrs: Headers, seasonId: string) {
+    try {
+        const claims = await requireJWT(req, env);
+        const warnings: string[] = [];
+
+        // Get season details
+        const season = await env.DB.prepare(
+            "SELECT * FROM seasons WHERE id = ? AND tenant_id = ?"
+        ).bind(seasonId, claims.tenantId).first();
+
+        if (!season) {
+            return json({ success: false, error: "Season not found" }, 404, corsHdrs);
+        }
+
+        if (season.status === 'archived') {
+            return json({ success: false, error: "Season is already archived" }, 400, corsHdrs);
+        }
+
+        // Get team results for the season
+        const results = await env.DB.prepare(
+            "SELECT * FROM team_results WHERE tenant_id = ? AND season_id = ?"
+        ).bind(claims.tenantId, seasonId).all();
+
+        const matches = results.results || [];
+
+        if (matches.length === 0) {
+            warnings.push("No matches recorded this season");
+        }
+
+        // Calculate summary
+        let won = 0, drawn = 0, lost = 0, goalsFor = 0, goalsAgainst = 0, cleanSheets = 0;
+        for (const m of matches as any[]) {
+            const gf = Number(m.our_score || m.goals_for || 0);
+            const ga = Number(m.their_score || m.goals_against || 0);
+            goalsFor += gf;
+            goalsAgainst += ga;
+            if (ga === 0) cleanSheets++;
+            if (gf > ga) won++;
+            else if (gf === ga) drawn++;
+            else lost++;
+        }
+
+        const played = won + drawn + lost;
+        const points = won * 3 + drawn;
+
+        // Get top scorer
+        const topScorerResult = await env.DB.prepare(
+            `SELECT me.player_id, s.name, COUNT(*) as goals
+             FROM match_events me
+             JOIN fixtures f ON me.fixture_id = f.id
+             LEFT JOIN squad s ON me.player_id = s.id
+             WHERE f.tenant_id = ? AND f.season_id = ? AND me.event_type = 'goal'
+             GROUP BY me.player_id
+             ORDER BY goals DESC
+             LIMIT 1`
+        ).bind(claims.tenantId, seasonId).first();
+
+        const topScorer = topScorerResult ? {
+            playerId: topScorerResult.player_id,
+            name: topScorerResult.name || 'Unknown',
+            goals: topScorerResult.goals
+        } : null;
+
+        // Get top assister
+        const topAssisterResult = await env.DB.prepare(
+            `SELECT me.player_id, s.name, COUNT(*) as assists
+             FROM match_events me
+             JOIN fixtures f ON me.fixture_id = f.id
+             LEFT JOIN squad s ON me.player_id = s.id
+             WHERE f.tenant_id = ? AND f.season_id = ? AND me.event_type = 'assist'
+             GROUP BY me.player_id
+             ORDER BY assists DESC
+             LIMIT 1`
+        ).bind(claims.tenantId, seasonId).first();
+
+        const topAssister = topAssisterResult ? {
+            playerId: topAssisterResult.player_id,
+            name: topAssisterResult.name || 'Unknown',
+            assists: topAssisterResult.assists
+        } : null;
+
+        // Get most appearances
+        const mostAppsResult = await env.DB.prepare(
+            `SELECT me.player_id, s.name, COUNT(DISTINCT me.fixture_id) as appearances
+             FROM match_events me
+             JOIN fixtures f ON me.fixture_id = f.id
+             LEFT JOIN squad s ON me.player_id = s.id
+             WHERE f.tenant_id = ? AND f.season_id = ?
+             GROUP BY me.player_id
+             ORDER BY appearances DESC
+             LIMIT 1`
+        ).bind(claims.tenantId, seasonId).first();
+
+        const mostAppearances = mostAppsResult ? {
+            playerId: mostAppsResult.player_id,
+            name: mostAppsResult.name || 'Unknown',
+            appearances: mostAppsResult.appearances
+        } : null;
+
+        // Get MOTM leader
+        const motmResult = await env.DB.prepare(
+            `SELECT me.player_id, s.name, COUNT(*) as count
+             FROM match_events me
+             JOIN fixtures f ON me.fixture_id = f.id
+             LEFT JOIN squad s ON me.player_id = s.id
+             WHERE f.tenant_id = ? AND f.season_id = ? AND me.event_type = 'motm'
+             GROUP BY me.player_id
+             ORDER BY count DESC
+             LIMIT 1`
+        ).bind(claims.tenantId, seasonId).first();
+
+        const motmLeader = motmResult ? {
+            playerId: motmResult.player_id,
+            name: motmResult.name || 'Unknown',
+            count: motmResult.count
+        } : null;
+
+        // Add warnings for missing data
+        if (!topScorer) warnings.push("No goals recorded this season");
+        if (!topAssister) warnings.push("No assists recorded this season");
+
+        const preview: EndSeasonPreview = {
+            season,
+            summary: {
+                played,
+                won,
+                drawn,
+                lost,
+                goalsFor,
+                goalsAgainst,
+                goalDifference: goalsFor - goalsAgainst,
+                points,
+                cleanSheets
+            },
+            topScorer,
+            topAssister,
+            mostAppearances,
+            motmLeader,
+            warnings
+        };
+
+        return json({ success: true, data: preview }, 200, corsHdrs);
+    } catch (err) {
+        console.error('End season preview error:', err);
+        return json({ success: false, error: "Failed to get preview" }, 500, corsHdrs);
+    }
+}
+
+// End season - archive with snapshots and optional awards
+export async function handleEndSeason(req: Request, env: any, corsHdrs: Headers, seasonId: string) {
+    try {
+        const claims = await requireJWT(req, env);
+        const body = await req.json() as {
+            awards?: SeasonAward[];
+            notes?: string;
+            confirmName: string; // Must match season name for safety
+        };
+
+        // Get season details
+        const season = await env.DB.prepare(
+            "SELECT * FROM seasons WHERE id = ? AND tenant_id = ?"
+        ).bind(seasonId, claims.tenantId).first();
+
+        if (!season) {
+            return json({ success: false, error: "Season not found" }, 404, corsHdrs);
+        }
+
+        if (season.status === 'archived') {
+            return json({ success: false, error: "Season is already archived" }, 400, corsHdrs);
+        }
+
+        // Verify confirmation
+        if (body.confirmName !== season.name) {
+            return json({ success: false, error: "Season name confirmation does not match" }, 400, corsHdrs);
+        }
+
+        const now = Date.now();
+
+        // Get preview data for snapshots
+        const results = await env.DB.prepare(
+            "SELECT * FROM team_results WHERE tenant_id = ? AND season_id = ?"
+        ).bind(claims.tenantId, seasonId).all();
+
+        const matches = results.results || [];
+        let won = 0, drawn = 0, lost = 0, goalsFor = 0, goalsAgainst = 0, cleanSheets = 0;
+        for (const m of matches as any[]) {
+            const gf = Number(m.our_score || m.goals_for || 0);
+            const ga = Number(m.their_score || m.goals_against || 0);
+            goalsFor += gf;
+            goalsAgainst += ga;
+            if (ga === 0) cleanSheets++;
+            if (gf > ga) won++;
+            else if (gf === ga) drawn++;
+            else lost++;
+        }
+
+        // Create team record snapshot
+        const teamRecordSnapshot = {
+            played: won + drawn + lost,
+            won, drawn, lost,
+            goalsFor, goalsAgainst,
+            goalDifference: goalsFor - goalsAgainst,
+            points: won * 3 + drawn,
+            cleanSheets
+        };
+
+        await env.DB.prepare(
+            `INSERT INTO season_snapshots (id, tenant_id, season_id, snapshot_type, data, created_at)
+             VALUES (?, ?, ?, 'team_record', ?, ?)`
+        ).bind(crypto.randomUUID(), claims.tenantId, seasonId, JSON.stringify(teamRecordSnapshot), now).run();
+
+        // Create player stats snapshot
+        const playerStats = await env.DB.prepare(
+            `SELECT
+                me.player_id,
+                s.name as player_name,
+                COUNT(DISTINCT me.fixture_id) as appearances,
+                SUM(CASE WHEN me.event_type = 'goal' THEN 1 ELSE 0 END) as goals,
+                SUM(CASE WHEN me.event_type = 'assist' THEN 1 ELSE 0 END) as assists,
+                SUM(CASE WHEN me.event_type = 'yellow_card' THEN 1 ELSE 0 END) as yellow_cards,
+                SUM(CASE WHEN me.event_type = 'red_card' THEN 1 ELSE 0 END) as red_cards,
+                SUM(CASE WHEN me.event_type = 'motm' THEN 1 ELSE 0 END) as motm_count
+             FROM match_events me
+             JOIN fixtures f ON me.fixture_id = f.id
+             LEFT JOIN squad s ON me.player_id = s.id
+             WHERE f.tenant_id = ? AND f.season_id = ?
+             GROUP BY me.player_id`
+        ).bind(claims.tenantId, seasonId).all();
+
+        await env.DB.prepare(
+            `INSERT INTO season_snapshots (id, tenant_id, season_id, snapshot_type, data, created_at)
+             VALUES (?, ?, ?, 'player_stats', ?, ?)`
+        ).bind(crypto.randomUUID(), claims.tenantId, seasonId, JSON.stringify(playerStats.results || []), now).run();
+
+        // Create top performers snapshot
+        const topPerformers = {
+            topScorer: (playerStats.results || []).sort((a: any, b: any) => b.goals - a.goals)[0] || null,
+            topAssister: (playerStats.results || []).sort((a: any, b: any) => b.assists - a.assists)[0] || null,
+            motmLeader: (playerStats.results || []).sort((a: any, b: any) => b.motm_count - a.motm_count)[0] || null,
+            mostAppearances: (playerStats.results || []).sort((a: any, b: any) => b.appearances - a.appearances)[0] || null
+        };
+
+        await env.DB.prepare(
+            `INSERT INTO season_snapshots (id, tenant_id, season_id, snapshot_type, data, created_at)
+             VALUES (?, ?, ?, 'top_performers', ?, ?)`
+        ).bind(crypto.randomUUID(), claims.tenantId, seasonId, JSON.stringify(topPerformers), now).run();
+
+        // Create league position snapshot
+        const leaguePosition = await env.DB.prepare(
+            `SELECT * FROM league_standings WHERE tenant_id = ? AND season_id = ? ORDER BY position ASC`
+        ).bind(claims.tenantId, seasonId).all();
+
+        await env.DB.prepare(
+            `INSERT INTO season_snapshots (id, tenant_id, season_id, snapshot_type, data, created_at)
+             VALUES (?, ?, ?, 'league_position', ?, ?)`
+        ).bind(crypto.randomUUID(), claims.tenantId, seasonId, JSON.stringify(leaguePosition.results || []), now).run();
+
+        // Store awards if provided
+        if (body.awards && body.awards.length > 0) {
+            for (const award of body.awards) {
+                await env.DB.prepare(
+                    `INSERT INTO season_awards (id, tenant_id, season_id, award_type, award_name, player_id, notes, created_at)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+                ).bind(
+                    crypto.randomUUID(),
+                    claims.tenantId,
+                    seasonId,
+                    award.awardType,
+                    award.customName || null,
+                    award.playerId,
+                    award.notes || null,
+                    now
+                ).run();
+            }
+        }
+
+        // Auto-create Top Scorer and Most Assists awards if not manually provided
+        const awardTypes = (body.awards || []).map(a => a.awardType);
+
+        if (!awardTypes.includes('top_scorer') && topPerformers.topScorer) {
+            await env.DB.prepare(
+                `INSERT INTO season_awards (id, tenant_id, season_id, award_type, player_id, notes, created_at)
+                 VALUES (?, ?, ?, 'top_scorer', ?, ?, ?)`
+            ).bind(
+                crypto.randomUUID(),
+                claims.tenantId,
+                seasonId,
+                topPerformers.topScorer.player_id,
+                `${topPerformers.topScorer.goals} goals`,
+                now
+            ).run();
+        }
+
+        if (!awardTypes.includes('most_assists') && topPerformers.topAssister && topPerformers.topAssister.assists > 0) {
+            await env.DB.prepare(
+                `INSERT INTO season_awards (id, tenant_id, season_id, award_type, player_id, notes, created_at)
+                 VALUES (?, ?, ?, 'most_assists', ?, ?, ?)`
+            ).bind(
+                crypto.randomUUID(),
+                claims.tenantId,
+                seasonId,
+                topPerformers.topAssister.player_id,
+                `${topPerformers.topAssister.assists} assists`,
+                now
+            ).run();
+        }
+
+        // Update season status
+        await env.DB.prepare(
+            `UPDATE seasons SET
+                status = 'archived',
+                is_current = 0,
+                archived_at = ?,
+                notes = ?,
+                end_date = ?
+             WHERE id = ? AND tenant_id = ?`
+        ).bind(
+            now,
+            body.notes || null,
+            new Date().toISOString().split('T')[0], // Set end_date to today
+            seasonId,
+            claims.tenantId
+        ).run();
+
+        return json({
+            success: true,
+            message: "Season archived successfully",
+            snapshots: ['team_record', 'player_stats', 'top_performers', 'league_position']
+        }, 200, corsHdrs);
+    } catch (err) {
+        console.error('End season error:', err);
+        return json({ success: false, error: "Failed to end season" }, 500, corsHdrs);
+    }
+}
+
+// Reopen a recently archived season (within 24 hours)
+export async function handleReopenSeason(req: Request, env: any, corsHdrs: Headers, seasonId: string) {
+    try {
+        const claims = await requireJWT(req, env);
+
+        // Get season details
+        const season = await env.DB.prepare(
+            "SELECT * FROM seasons WHERE id = ? AND tenant_id = ?"
+        ).bind(seasonId, claims.tenantId).first();
+
+        if (!season) {
+            return json({ success: false, error: "Season not found" }, 404, corsHdrs);
+        }
+
+        if (season.status !== 'archived') {
+            return json({ success: false, error: "Season is not archived" }, 400, corsHdrs);
+        }
+
+        // Check 24-hour window
+        const now = Date.now();
+        const archivedAt = season.archived_at || 0;
+        const hoursSinceArchive = (now - archivedAt) / (1000 * 60 * 60);
+
+        if (hoursSinceArchive > 24) {
+            return json({
+                success: false,
+                error: "Cannot reopen season. The 24-hour window has passed."
+            }, 400, corsHdrs);
+        }
+
+        // Delete snapshots
+        await env.DB.prepare(
+            "DELETE FROM season_snapshots WHERE season_id = ? AND tenant_id = ?"
+        ).bind(seasonId, claims.tenantId).run();
+
+        // Delete auto-generated awards (keep manually added ones? For now delete all)
+        await env.DB.prepare(
+            "DELETE FROM season_awards WHERE season_id = ? AND tenant_id = ?"
+        ).bind(seasonId, claims.tenantId).run();
+
+        // Reopen season
+        await env.DB.prepare(
+            `UPDATE seasons SET
+                status = 'active',
+                archived_at = NULL,
+                end_date = NULL
+             WHERE id = ? AND tenant_id = ?`
+        ).bind(seasonId, claims.tenantId).run();
+
+        return json({
+            success: true,
+            message: "Season reopened successfully"
+        }, 200, corsHdrs);
+    } catch (err) {
+        console.error('Reopen season error:', err);
+        return json({ success: false, error: "Failed to reopen season" }, 500, corsHdrs);
+    }
+}
+
+// ============================================
+// START NEW SEASON FLOW
+// ============================================
+
+// Start a new season with squad options
+export async function handleStartNewSeason(req: Request, env: any, corsHdrs: Headers) {
+    try {
+        const claims = await requireJWT(req, env);
+        const body = await req.json() as {
+            name: string;
+            startDate: string;
+            competition?: string;
+            ageGroup?: string;
+            squadOption: 'carryover' | 'fresh' | 'selective';
+            selectedPlayerIds?: string[];
+        };
+
+        // Validate required fields
+        if (!body.name || !body.startDate) {
+            return json({ success: false, error: "Name and start date are required" }, 400, corsHdrs);
+        }
+
+        // Check for existing season with same name
+        const existing = await env.DB.prepare(
+            "SELECT id FROM seasons WHERE tenant_id = ? AND name = ?"
+        ).bind(claims.tenantId, body.name).first();
+
+        if (existing) {
+            return json({ success: false, error: "A season with this name already exists" }, 400, corsHdrs);
+        }
+
+        // Get current season for squad carryover
+        const currentSeason = await env.DB.prepare(
+            "SELECT id FROM seasons WHERE tenant_id = ? AND is_current = 1"
+        ).bind(claims.tenantId).first();
+
+        const now = Date.now();
+        const newSeasonId = crypto.randomUUID();
+
+        // Unset current season
+        await env.DB.prepare(
+            "UPDATE seasons SET is_current = 0 WHERE tenant_id = ?"
+        ).bind(claims.tenantId).run();
+
+        // Create new season
+        await env.DB.prepare(
+            `INSERT INTO seasons (id, tenant_id, name, start_date, is_current, status, competition, age_group, created_at)
+             VALUES (?, ?, ?, ?, 1, 'active', ?, ?, ?)`
+        ).bind(
+            newSeasonId,
+            claims.tenantId,
+            body.name,
+            body.startDate,
+            body.competition || null,
+            body.ageGroup || null,
+            now
+        ).run();
+
+        // Handle squad based on option
+        let playersAdded = 0;
+
+        if (body.squadOption === 'carryover' && currentSeason) {
+            // Get all active players from previous season
+            const previousPlayers = await env.DB.prepare(
+                `SELECT player_id, squad_number, position
+                 FROM player_seasons
+                 WHERE season_id = ? AND tenant_id = ? AND status = 'active'`
+            ).bind(currentSeason.id, claims.tenantId).all();
+
+            for (const player of (previousPlayers.results || []) as any[]) {
+                await env.DB.prepare(
+                    `INSERT INTO player_seasons (id, tenant_id, season_id, player_id, squad_number, position, status, created_at)
+                     VALUES (?, ?, ?, ?, ?, ?, 'active', ?)`
+                ).bind(
+                    crypto.randomUUID(),
+                    claims.tenantId,
+                    newSeasonId,
+                    player.player_id,
+                    player.squad_number,
+                    player.position,
+                    now
+                ).run();
+                playersAdded++;
+            }
+        } else if (body.squadOption === 'selective' && body.selectedPlayerIds && body.selectedPlayerIds.length > 0) {
+            // Get details of selected players from current squad
+            for (const playerId of body.selectedPlayerIds) {
+                const player = await env.DB.prepare(
+                    `SELECT ps.squad_number, ps.position
+                     FROM player_seasons ps
+                     WHERE ps.player_id = ? AND ps.tenant_id = ? AND ps.status = 'active'
+                     ORDER BY ps.created_at DESC LIMIT 1`
+                ).bind(playerId, claims.tenantId).first();
+
+                await env.DB.prepare(
+                    `INSERT INTO player_seasons (id, tenant_id, season_id, player_id, squad_number, position, status, created_at)
+                     VALUES (?, ?, ?, ?, ?, ?, 'active', ?)`
+                ).bind(
+                    crypto.randomUUID(),
+                    claims.tenantId,
+                    newSeasonId,
+                    playerId,
+                    player?.squad_number || null,
+                    player?.position || null,
+                    now
+                ).run();
+                playersAdded++;
+            }
+        }
+        // 'fresh' option = don't add any players
+
+        return json({
+            success: true,
+            seasonId: newSeasonId,
+            playersAdded,
+            message: `New season "${body.name}" created with ${playersAdded} players`
+        }, 200, corsHdrs);
+    } catch (err: any) {
+        console.error('Start new season error:', err);
+        if (err.message?.includes('UNIQUE')) {
+            return json({ success: false, error: "Season with this name already exists" }, 400, corsHdrs);
+        }
+        return json({ success: false, error: "Failed to start new season" }, 500, corsHdrs);
+    }
+}
+
+// Get available players for selective squad setup
+export async function handleGetAvailablePlayers(req: Request, env: any, corsHdrs: Headers) {
+    try {
+        const claims = await requireJWT(req, env);
+
+        // Get current season
+        const currentSeason = await env.DB.prepare(
+            "SELECT id FROM seasons WHERE tenant_id = ? AND is_current = 1"
+        ).bind(claims.tenantId).first();
+
+        if (!currentSeason) {
+            // No current season, get all squad players
+            const players = await env.DB.prepare(
+                `SELECT id, name, photo_url, position FROM squad WHERE tenant_id = ?`
+            ).bind(claims.tenantId).all();
+
+            return json({ success: true, data: players.results || [] }, 200, corsHdrs);
+        }
+
+        // Get players from current season
+        const players = await env.DB.prepare(
+            `SELECT s.id, s.name, s.photo_url, ps.position, ps.squad_number, ps.status
+             FROM squad s
+             LEFT JOIN player_seasons ps ON s.id = ps.player_id AND ps.season_id = ?
+             WHERE s.tenant_id = ?`
+        ).bind(currentSeason.id, claims.tenantId).all();
+
+        return json({ success: true, data: players.results || [] }, 200, corsHdrs);
+    } catch (err) {
+        console.error('Get available players error:', err);
+        return json({ success: false, error: "Failed to get players" }, 500, corsHdrs);
+    }
+}
+
+// ============================================
+// SEASON AWARDS
+// ============================================
+
+// Get awards for a season
+export async function handleGetSeasonAwards(req: Request, env: any, corsHdrs: Headers, seasonId: string) {
+    try {
+        const claims = await requireJWT(req, env);
+
+        const awards = await env.DB.prepare(
+            `SELECT sa.*, s.name as player_name, s.photo_url as player_photo
+             FROM season_awards sa
+             LEFT JOIN squad s ON sa.player_id = s.id
+             WHERE sa.season_id = ? AND sa.tenant_id = ?
+             ORDER BY sa.created_at ASC`
+        ).bind(seasonId, claims.tenantId).all();
+
+        return json({ success: true, data: awards.results || [] }, 200, corsHdrs);
+    } catch (err) {
+        console.error('Get season awards error:', err);
+        return json({ success: false, error: "Failed to get awards" }, 500, corsHdrs);
+    }
+}
+
+// Add award to season
+export async function handleAddSeasonAward(req: Request, env: any, corsHdrs: Headers, seasonId: string) {
+    try {
+        const claims = await requireJWT(req, env);
+        const body = await req.json() as SeasonAward;
+
+        const id = crypto.randomUUID();
+
+        await env.DB.prepare(
+            `INSERT INTO season_awards (id, tenant_id, season_id, award_type, award_name, player_id, notes, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+        ).bind(
+            id,
+            claims.tenantId,
+            seasonId,
+            body.awardType,
+            body.customName || null,
+            body.playerId,
+            body.notes || null,
+            Date.now()
+        ).run();
+
+        return json({ success: true, id }, 200, corsHdrs);
+    } catch (err) {
+        console.error('Add season award error:', err);
+        return json({ success: false, error: "Failed to add award" }, 500, corsHdrs);
+    }
+}
+
+// Delete award from season
+export async function handleDeleteSeasonAward(req: Request, env: any, corsHdrs: Headers, seasonId: string, awardId: string) {
+    try {
+        const claims = await requireJWT(req, env);
+
+        await env.DB.prepare(
+            "DELETE FROM season_awards WHERE id = ? AND season_id = ? AND tenant_id = ?"
+        ).bind(awardId, seasonId, claims.tenantId).run();
+
+        return json({ success: true }, 200, corsHdrs);
+    } catch (err) {
+        console.error('Delete season award error:', err);
+        return json({ success: false, error: "Failed to delete award" }, 500, corsHdrs);
+    }
+}
+
+// ============================================
+// SEASON SNAPSHOTS
+// ============================================
+
+// Get snapshots for a season
+export async function handleGetSeasonSnapshots(req: Request, env: any, corsHdrs: Headers, seasonId: string) {
+    try {
+        const claims = await requireJWT(req, env);
+
+        const snapshots = await env.DB.prepare(
+            `SELECT * FROM season_snapshots WHERE season_id = ? AND tenant_id = ?`
+        ).bind(seasonId, claims.tenantId).all();
+
+        // Parse JSON data in snapshots
+        const parsed = (snapshots.results || []).map((s: any) => ({
+            ...s,
+            data: JSON.parse(s.data)
+        }));
+
+        return json({ success: true, data: parsed }, 200, corsHdrs);
+    } catch (err) {
+        console.error('Get season snapshots error:', err);
+        return json({ success: false, error: "Failed to get snapshots" }, 500, corsHdrs);
+    }
+}
+
+// ============================================
+// PLAYER DEPARTURES
+// ============================================
+
+// Mark player as departed from current season
+export async function handleMarkPlayerDeparted(req: Request, env: any, corsHdrs: Headers) {
+    try {
+        const claims = await requireJWT(req, env);
+        const body = await req.json() as {
+            playerId: string;
+            departedDate?: string;
+            reason?: string;
+        };
+
+        // Get current season
+        const currentSeason = await env.DB.prepare(
+            "SELECT id FROM seasons WHERE tenant_id = ? AND is_current = 1"
+        ).bind(claims.tenantId).first();
+
+        if (!currentSeason) {
+            return json({ success: false, error: "No active season" }, 400, corsHdrs);
+        }
+
+        await env.DB.prepare(
+            `UPDATE player_seasons
+             SET status = 'departed', departed_date = ?, departure_reason = ?
+             WHERE player_id = ? AND season_id = ? AND tenant_id = ?`
+        ).bind(
+            body.departedDate || new Date().toISOString().split('T')[0],
+            body.reason || 'left_club',
+            body.playerId,
+            currentSeason.id,
+            claims.tenantId
+        ).run();
+
+        return json({ success: true }, 200, corsHdrs);
+    } catch (err) {
+        console.error('Mark player departed error:', err);
+        return json({ success: false, error: "Failed to mark player as departed" }, 500, corsHdrs);
     }
 }
