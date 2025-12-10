@@ -9,7 +9,7 @@ function createSDK(tenant = 'demo') {
 function mockClient(sdk, responder) {
   const calls = [];
   const client = {
-    interceptors: { request: { use: () => {} } },
+    interceptors: { request: { use: () => { } } },
     get: async (url, config) => {
       const result = await responder(url, config ?? {});
       calls.push({ url, config: config ?? {}, result });
@@ -39,7 +39,7 @@ test('listFixtures uses public endpoint with limit', async () => {
   }];
   const calls = mockClient(sdk, async (url, config) => {
     assert.equal(url, '/public/demo/fixtures');
-    assert.equal(config?.params?.limit, 5);
+    assert.equal(config.params?.limit, 5);
     return okResponse(fixturesPayload);
   });
 

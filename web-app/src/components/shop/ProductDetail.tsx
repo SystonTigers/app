@@ -39,13 +39,19 @@ export function ProductDetail({ tenantId, product, onBack, onAddToCart }: Produc
                 const res = await sdk.createCart();
                 if (res.success && res.cart) {
                     cartId = res.cart.id;
-                    localStorage.setItem(`cart_${tenantId}`, cartId);
+                    if (cartId) {
+                        localStorage.setItem(`cart_${tenantId}`, cartId);
+                    }
                 } else {
                     throw new Error('Failed to create cart');
                 }
             }
 
-            await sdk.addToCart(cartId!, selectedVariantId, 1);
+            if (!cartId) {
+                throw new Error('Cart ID is missing');
+            }
+
+            await sdk.addToCart(cartId, selectedVariantId, 1);
             onAddToCart();
         } catch (e) {
             console.error('Add to cart failed', e);
@@ -99,8 +105,8 @@ export function ProductDetail({ tenantId, product, onBack, onAddToCart }: Produc
                                         key={variant.id}
                                         onClick={() => setSelectedVariantId(variant.id)}
                                         className={`px-4 py-2 rounded border ${selectedVariantId === variant.id
-                                                ? 'bg-brand text-white border-brand'
-                                                : 'bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600'
+                                            ? 'bg-brand text-white border-brand'
+                                            : 'bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600'
                                             }`}
                                     >
                                         {variant.title} - £{(variant.price_gbp / 100).toFixed(2)}

@@ -496,7 +496,6 @@ router.get("/api/:v/coaching/jobs/:id", (req, env, corsHdrs, requestId) => {
 });
 
 // Squad Routes
-busy-satoshi
 import {
     handleUpdateSquad, handleGetSquad, handleGetPlayer,
     handleAddPlayer, handleUpdatePlayer, handleDeletePlayer,
@@ -517,13 +516,6 @@ router.put("/api/:v/squad/:id", (req, env, corsHdrs) => {
 router.delete("/api/:v/squad/:id", (req, env, corsHdrs) => {
     const params = (req as any).params || {};
     return handleDeletePlayer(req, env, corsHdrs, params.id);
-import { handleUpdateSquad, handleAddPlayer } from "./routes/squad";
-router.post("/api/:v/squad", (req, env, corsHdrs) => handleUpdateSquad(req, env, corsHdrs));
-router.post("/api/:v/squad/add", (req, env, corsHdrs) => handleAddPlayer(req, env, corsHdrs));
-import { handleGetCareerStats } from "./routes/career-stats";
-router.get("/api/:v/stats/career/:playerId", (req, env, corsHdrs) => {
-    const params = (req as any).params || {};
-    return handleGetCareerStats(req, env, corsHdrs, params.playerId);
 });
 
 // Player Transfer Routes
@@ -617,14 +609,11 @@ import {
     handleListSeasons, handleCreateSeason, handleSetCurrentSeason,
     handleArchiveSeason, handleGetCurrentSeason, handleAddPlayerToSeason,
     handleGetSeasonRoster,
-  
     // New season management endpoints
     handleEndSeasonPreview, handleEndSeason, handleReopenSeason,
     handleStartNewSeason, handleGetAvailablePlayers,
     handleGetSeasonAwards, handleAddSeasonAward, handleDeleteSeasonAward,
-    handleGetSeasonSnapshots, handleMarkPlayerDeparted
-    handleEndSeasonPreview, handleEndSeason, handleStartNewSeason,
-    handleReopenSeason, handleGetSeasonAwards, handleAddSeasonAward, handleDeleteSeasonAward,
+    handleGetSeasonSnapshots, handleMarkPlayerDeparted,
     handleGetSeasonStats
 } from "./routes/seasons";
 
@@ -664,7 +653,7 @@ router.post("/api/:v/seasons/:id/awards", (req, env, corsHdrs) => {
 });
 router.delete("/api/:v/seasons/:id/awards/:awardId", (req, env, corsHdrs) => {
     const params = (req as any).params || {};
-    return handleDeleteSeasonAward(req, env, corsHdrs, params.awardId);
+    return handleDeleteSeasonAward(req, env, corsHdrs, params.id, params.awardId);
 });
 
 // Roster

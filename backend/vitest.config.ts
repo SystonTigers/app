@@ -32,6 +32,9 @@ export default defineWorkersConfig({
     alias: {
       // Mock isomorphic-dompurify for tests since it requires DOM
       'isomorphic-dompurify': new URL('./src/__mocks__/dompurify.ts', import.meta.url).pathname,
+      // Mock p-limit and yocto-queue for Cloudflare Workers compatibility
+      'p-limit': new URL('./src/__mocks__/p-limit.ts', import.meta.url).pathname,
+      'yocto-queue': new URL('./src/__mocks__/yocto-queue.ts', import.meta.url).pathname,
     },
   },
 });

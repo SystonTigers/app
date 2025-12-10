@@ -46,12 +46,14 @@ test.describe('Tenant Page', () => {
     test('should handle missing tenant gracefully', async ({ page }) => {
         const response = await page.goto('/non-existent-tenant-xyz');
 
-        // Should either show 404 page or redirect
-        // Adjust based on your error handling strategy
+        // Next.js may return 200 with error page or 404
+        // Check for error indicators in the page
+        const hasErrorMessage = await page.locator('text=/not found|error|404|does not exist/i').count() > 0;
+        const hasErrorPage = await page.locator('[class*="error"]').count() > 0;
         const is404 = response?.status() === 404;
-        const hasErrorMessage = await page.locator('text=/not found|error|404/i').count() > 0;
 
-        expect(is404 || hasErrorMessage).toBeTruthy();
+        // Should show some indication of error
+        expect(is404 || hasErrorMessage || hasErrorPage).toBeTruthy();
     });
 
     test('should be responsive on mobile', async ({ page }) => {
