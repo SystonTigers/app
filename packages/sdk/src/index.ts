@@ -181,6 +181,10 @@ export class TeamPlatformSDK {
     const t = this.requireTenant(tenant);
     try {
       const response = await this.client.get(`/public/${t}/fixtures/next`);
+      // Check if response indicates success
+      if (response.data && 'success' in response.data && !response.data.success) {
+        return null;
+      }
       return response.data?.fixture || response.data || null;
     } catch {
       return null;
@@ -189,87 +193,180 @@ export class TeamPlatformSDK {
 
   /**
    * List fixtures (public)
+   * Supports multiple signatures:
+   * - listFixtures(5) - limit only, uses default tenant
+   * - listFixtures('tenant', 5) - tenant + limit
    */
-  async listFixtures(tenant?: string, limit: number = 20): Promise<Fixture[]> {
-    // Check if being called with tenant parameter (new signature)
-    if (tenant && typeof tenant === 'string' && !tenant.includes('/')) {
-      const t = tenant;
+  async listFixtures(tenantOrLimit?: string | number, limit?: number): Promise<Fixture[]> {
+    // Determine if first parameter is limit (number) or tenant (string)
+    let tenant: string | undefined;
+    let actualLimit: number;
+
+    if (typeof tenantOrLimit === 'number') {
+      // First param is limit, no tenant override
+      actualLimit = tenantOrLimit;
+      tenant = this.tenant;
+    } else if (typeof tenantOrLimit === 'string') {
+      // First param is tenant, second is limit
+      tenant = tenantOrLimit;
+      actualLimit = limit ?? 20;
+    } else {
+      // No parameters, use defaults
+      tenant = this.tenant;
+      actualLimit = limit ?? 20;
+    }
+
+    // If tenant specified, use public API
+    if (tenant) {
       try {
-        const response = await this.client.get(`/public/${t}/fixtures`, {
-          params: { limit },
+        const response = await this.client.get(`/public/${tenant}/fixtures`, {
+          params: { limit: actualLimit },
         });
-        return response.data?.fixtures || response.data || [];
+        return response.data?.data || response.data?.fixtures || response.data || [];
       } catch {
         return [];
       }
     }
 
-    // Legacy signature or no tenant - use private API
+    // No tenant - use private API
     const response = await this.client.get('/api/v1/fixtures');
-    return response.data?.fixtures || response.data || [];
+    return response.data?.data || response.data?.fixtures || response.data || [];
   }
 
   /**
    * List feed posts (public)
+   * Supports multiple signatures:
+   * - listFeed() - uses default tenant with defaults (page 1, pageSize 10)
+   * - listFeed(2, 4) - page 2, pageSize 4, uses default tenant
+   * - listFeed(2, 4, 'tenant') - page 2, pageSize 4, tenant override
    */
   async listFeed(page: number = 1, pageSize: number = 10, tenant?: string): Promise<FeedPost[]> {
-    // If tenant is provided as third parameter, use public API
-    if (tenant) {
+    const t = tenant ?? this.tenant;
+
+    // If tenant available, use public API
+    if (t) {
       try {
-        const response = await this.client.get(`/public/${tenant}/feed`, {
+        const response = await this.client.get(`/public/${t}/feed`, {
           params: { page, pageSize },
         });
-        return response.data?.posts || response.data || [];
+        return response.data?.data || response.data?.posts || response.data || [];
       } catch {
         return [];
       }
     }
 
-    // Legacy signature - use private API
+    // No tenant - use private API
     const response = await this.client.get(`/api/v1/feed`, {
       params: { page, limit: pageSize },
     });
-    return response.data?.posts || response.data || [];
+    return response.data?.data || response.data?.posts || response.data || [];
   }
 
   /**
    * Get league table (public)
+   * Supports multiple signatures:
+   * - getLeagueTable() - uses default tenant
+   * - getLeagueTable('tenant') - tenant override
+   * - getLeagueTable(undefined, 'league-1') - default tenant with competition filter
+   * - getLeagueTable('tenant', 'league-1') - tenant + competition filter
    */
-  async getLeagueTable(tenant?: string): Promise<LeagueTableRow[]> {
-    // If tenant provided, use public API
-    if (tenant && typeof tenant === 'string' && !tenant.includes('/')) {
+  async getLeagueTable(tenant?: string, competition?: string): Promise<LeagueTableRow[]> {
+    const t = tenant ?? this.tenant;
+
+    // If tenant available, use public API
+    if (t) {
       try {
-        const response = await this.client.get(`/public/${tenant}/table`);
-        return response.data?.table || response.data || [];
+        const params: any = {};
+        if (competition) {
+          params.competition = competition;
+        }
+        const response = await this.client.get(`/public/${t}/table`, { params });
+        return response.data?.data || response.data?.table || response.data || [];
       } catch {
         return [];
       }
     }
 
-    // Legacy signature - use private API
+    // No tenant - use private API
     const params: any = {};
+    if (competition) {
+      params.competition = competition;
+    }
     const response = await this.client.get('/api/v1/table', { params });
-    return response.data?.table || response.data || [];
+    return response.data?.data || response.data?.table || response.data || [];
   }
 
   // ====== FIXTURES & RESULTS (Private API) ======
 
   /**
    * Get past results
+   * Supports multiple signatures:
+   * - listResults() - uses default tenant
+   * - listResults(6) - limit, uses default tenant
+   * - listResults('tenant', 6) - tenant + limit
    */
-  async listResults(): Promise<Result[]> {
+  async listResults(tenantOrLimit?: string | number, limit?: number): Promise<Result[]> {
+    // Determine if first parameter is limit (number) or tenant (string)
+    let tenant: string | undefined;
+    let actualLimit: number | undefined;
+
+    if (typeof tenantOrLimit === 'number') {
+      // First param is limit
+      actualLimit = tenantOrLimit;
+      tenant = this.tenant;
+    } else if (typeof tenantOrLimit === 'string') {
+      // First param is tenant
+      tenant = tenantOrLimit;
+      actualLimit = limit;
+    } else {
+      // No parameters
+      tenant = this.tenant;
+      actualLimit = limit;
+    }
+
+    // If tenant available, use public API (results are just completed fixtures)
+    if (tenant) {
+      try {
+        const params: any = { status: 'completed' };
+        if (actualLimit) {
+          params.limit = actualLimit;
+        }
+        const response = await this.client.get(`/public/${tenant}/fixtures`, { params });
+        return response.data?.data || response.data?.fixtures || response.data || [];
+      } catch {
+        return [];
+      }
+    }
+
+    // No tenant - use private API
     const response = await this.client.get('/api/v1/results');
-    return response.data?.results || response.data || [];
+    return response.data?.data || response.data?.results || response.data || [];
   }
 
   // ====== SQUAD ======
 
   /**
    * Get team squad
+   * Supports multiple signatures:
+   * - getSquad() - uses default tenant (public API if available)
+   * - getSquad('tenant') - tenant override
    */
-  async getSquad(): Promise<Player[]> {
+  async getSquad(tenant?: string): Promise<Player[]> {
+    const t = tenant ?? this.tenant;
+
+    // If tenant available, use public API
+    if (t) {
+      try {
+        const response = await this.client.get(`/public/${t}/squad`);
+        return response.data?.data || response.data?.squad || response.data || [];
+      } catch {
+        return [];
+      }
+    }
+
+    // No tenant - use private API
     const response = await this.client.get('/api/v1/squad');
-    return response.data?.squad || response.data || [];
+    return response.data?.data || response.data?.squad || response.data || [];
   }
 
   /**
@@ -293,10 +390,27 @@ export class TeamPlatformSDK {
 
   /**
    * Get team statistics
+   * Supports multiple signatures:
+   * - getTeamStats() - uses default tenant (public API if available)
+   * - getTeamStats('tenant') - tenant override
    */
-  async getTeamStats(): Promise<TeamStats> {
+  async getTeamStats(tenant?: string): Promise<TeamStats> {
+    const t = tenant ?? this.tenant;
+
+    // If tenant available, use public API
+    if (t) {
+      try {
+        const response = await this.client.get(`/public/${t}/stats`);
+        return response.data?.data || response.data?.stats || response.data;
+      } catch (error) {
+        // Return empty stats on error
+        return {} as TeamStats;
+      }
+    }
+
+    // No tenant - use private API
     const response = await this.client.get('/api/v1/stats/team');
-    return response.data?.stats || response.data;
+    return response.data?.data || response.data?.stats || response.data;
   }
 
   /**
