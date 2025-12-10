@@ -496,6 +496,27 @@ router.get("/api/:v/coaching/jobs/:id", (req, env, corsHdrs, requestId) => {
 });
 
 // Squad Routes
+busy-satoshi
+import {
+    handleUpdateSquad, handleGetSquad, handleGetPlayer,
+    handleAddPlayer, handleUpdatePlayer, handleDeletePlayer,
+    handlePreviewWelcomePost
+} from "./routes/squad";
+router.get("/api/:v/squad", (req, env, corsHdrs) => handleGetSquad(req, env, corsHdrs));
+router.post("/api/:v/squad", (req, env, corsHdrs) => handleUpdateSquad(req, env, corsHdrs)); // Legacy bulk update
+router.post("/api/:v/squad/add", (req, env, corsHdrs) => handleAddPlayer(req, env, corsHdrs));
+router.post("/api/:v/squad/welcome-preview", (req, env, corsHdrs) => handlePreviewWelcomePost(req, env, corsHdrs));
+router.get("/api/:v/squad/:id", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleGetPlayer(req, env, corsHdrs, params.id);
+});
+router.put("/api/:v/squad/:id", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleUpdatePlayer(req, env, corsHdrs, params.id);
+});
+router.delete("/api/:v/squad/:id", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleDeletePlayer(req, env, corsHdrs, params.id);
 import { handleUpdateSquad, handleAddPlayer } from "./routes/squad";
 router.post("/api/:v/squad", (req, env, corsHdrs) => handleUpdateSquad(req, env, corsHdrs));
 router.post("/api/:v/squad/add", (req, env, corsHdrs) => handleAddPlayer(req, env, corsHdrs));
@@ -596,6 +617,12 @@ import {
     handleListSeasons, handleCreateSeason, handleSetCurrentSeason,
     handleArchiveSeason, handleGetCurrentSeason, handleAddPlayerToSeason,
     handleGetSeasonRoster,
+  
+    // New season management endpoints
+    handleEndSeasonPreview, handleEndSeason, handleReopenSeason,
+    handleStartNewSeason, handleGetAvailablePlayers,
+    handleGetSeasonAwards, handleAddSeasonAward, handleDeleteSeasonAward,
+    handleGetSeasonSnapshots, handleMarkPlayerDeparted
     handleEndSeasonPreview, handleEndSeason, handleStartNewSeason,
     handleReopenSeason, handleGetSeasonAwards, handleAddSeasonAward, handleDeleteSeasonAward,
     handleGetSeasonStats
@@ -646,6 +673,48 @@ router.get("/api/:v/seasons/:id/roster", (req, env, corsHdrs) => {
     const params = (req as any).params || {};
     return handleGetSeasonRoster(req, env, corsHdrs, params.id);
 });
+
+// New Season Management Routes
+router.post("/api/:v/seasons/start-new", (req, env, corsHdrs) => handleStartNewSeason(req, env, corsHdrs));
+router.get("/api/:v/seasons/available-players", (req, env, corsHdrs) => handleGetAvailablePlayers(req, env, corsHdrs));
+router.post("/api/:v/seasons/player-departed", (req, env, corsHdrs) => handleMarkPlayerDeparted(req, env, corsHdrs));
+router.get("/api/:v/seasons/:id/end-preview", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleEndSeasonPreview(req, env, corsHdrs, params.id);
+});
+router.post("/api/:v/seasons/:id/end", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleEndSeason(req, env, corsHdrs, params.id);
+});
+router.post("/api/:v/seasons/:id/reopen", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleReopenSeason(req, env, corsHdrs, params.id);
+});
+router.get("/api/:v/seasons/:id/awards", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleGetSeasonAwards(req, env, corsHdrs, params.id);
+});
+router.post("/api/:v/seasons/:id/awards", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleAddSeasonAward(req, env, corsHdrs, params.id);
+});
+router.delete("/api/:v/seasons/:seasonId/awards/:awardId", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleDeleteSeasonAward(req, env, corsHdrs, params.seasonId, params.awardId);
+});
+router.get("/api/:v/seasons/:id/snapshots", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleGetSeasonSnapshots(req, env, corsHdrs, params.id);
+});
+
+// Career Stats Routes
+import { handleGetCareerStats, handleCompareCareerStats, handleGetAllTimeRecords } from "./routes/career-stats";
+router.get("/api/:v/players/:id/career-stats", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleGetCareerStats(req, env, corsHdrs, params.id);
+});
+router.get("/api/:v/stats/compare", (req, env, corsHdrs) => handleCompareCareerStats(req, env, corsHdrs));
+router.get("/api/:v/stats/records", (req, env, corsHdrs) => handleGetAllTimeRecords(req, env, corsHdrs));
 
 
 // Fun Stats Routes
