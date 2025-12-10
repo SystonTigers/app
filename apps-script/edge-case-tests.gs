@@ -13,7 +13,7 @@
  * - System recovery after failures
  */
 
-// ==================== DUPLICATE EDIT TESTS ====================
+// ====== DUPLICATE EDIT TESTS ======
 
 /**
  * Test suite for duplicate edit detection and prevention
@@ -148,7 +148,7 @@ function testDuplicateEditPrevention() {
   });
 }
 
-// ==================== RATE LIMITING TESTS ====================
+// ====== RATE LIMITING TESTS ======
 
 /**
  * Test suite for rate limiting enforcement
@@ -282,7 +282,7 @@ function testRateLimitingEnforcement() {
   });
 }
 
-// ==================== VIDEO HIGHLIGHTS EDGE CASE TESTS ====================
+// ====== VIDEO HIGHLIGHTS EDGE CASE TESTS ======
 
 /**
  * Edge case tests for highlights export flow
@@ -508,7 +508,7 @@ function createHighlightsDriveStub_() {
   };
 }
 
-// ==================== IDEMPOTENCY TESTS ====================
+// ====== IDEMPOTENCY TESTS ======
 
 /**
  * Test suite for idempotency validation
@@ -583,7 +583,7 @@ function testIdempotencyValidation() {
   });
 }
 
-// ==================== CONCURRENCY TESTS ====================
+// ====== CONCURRENCY TESTS ======
 
 /**
  * Test suite for concurrent operations
@@ -659,7 +659,7 @@ function testConcurrentOperations() {
   });
 }
 
-// ==================== ERROR RECOVERY TESTS ====================
+// ====== ERROR RECOVERY TESTS ======
 
 /**
  * Test suite for error recovery and system resilience
@@ -835,7 +835,7 @@ function testErrorRecoveryResilience() {
   });
 }
 
-// ==================== TEST HELPER FUNCTIONS ====================
+// ====== TEST HELPER FUNCTIONS ======
 
 /**
  * Get goal count for specific player in specific match
@@ -891,7 +891,7 @@ function clearTestData() {
   }
 }
 
-// ==================== MAIN TEST RUNNER ====================
+// ====== MAIN TEST RUNNER ======
 
 /**
  * Run all edge case tests
@@ -899,7 +899,7 @@ function clearTestData() {
  */
 function runAllEdgeCaseTests() {
   console.log('🧪 Starting Comprehensive Edge Case Tests');
-  console.log('==========================================');
+  console.log('');
 
   const testResults = {
     totalTests: 0,
@@ -951,7 +951,7 @@ function runAllEdgeCaseTests() {
 
     // Generate summary
     console.log('\n🏁 Edge Case Test Results Summary');
-    console.log('================================');
+    console.log('====');
     console.log(`Total Test Suites: ${testResults.totalTests}`);
     console.log(`Passed: ${testResults.passedTests}`);
     console.log(`Failed: ${testResults.failedTests}`);

@@ -71,9 +71,9 @@ create table if not exists public.events (
   created_at timestamptz default now()
 );
 
--- ============================
+-- 
 -- Row Level Security
--- ============================
+-- 
 
 alter table public.profiles enable row level security;
 alter table public.teams enable row level security;
@@ -211,9 +211,9 @@ create policy "events_insert_if_staff" on public.events
     public.is_staff((select team_id from public.matches where id = match_id))
   );
 
--- ============================
+-- 
 -- Transfer Ownership Function
--- ============================
+-- 
 
 create or replace function public.transfer_team_manager(team uuid, new_manager uuid)
 returns boolean
@@ -241,9 +241,9 @@ begin
   return true;
 end $$;
 
--- ============================
+-- 
 -- Accept Invite Function
--- ============================
+-- 
 
 create or replace function public.accept_invite(invite_code text)
 returns boolean language plpgsql security definer as $$

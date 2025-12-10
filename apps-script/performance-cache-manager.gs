@@ -15,7 +15,7 @@
  * - Background optimization tasks
  */
 
-// ==================== PERFORMANCE CACHE MANAGER ====================
+// ====== PERFORMANCE CACHE MANAGER ======
 
 /**
  * Performance Cache Manager - Advanced caching and optimization
@@ -57,7 +57,7 @@ class PerformanceCacheManager {
     return this._logger;
   }
 
-  // ==================== CACHING SYSTEM ====================
+  // ====== CACHING SYSTEM ======
 
   /**
    * Get data from cache with fallback chain
@@ -254,7 +254,7 @@ class PerformanceCacheManager {
     }
   }
 
-  // ==================== CACHE TIER IMPLEMENTATIONS ====================
+  // ====== CACHE TIER IMPLEMENTATIONS ======
 
   /**
    * Get from memory cache
@@ -401,7 +401,7 @@ class PerformanceCacheManager {
     }
   }
 
-  // ==================== PERFORMANCE MONITORING ====================
+  // ====== PERFORMANCE MONITORING ======
 
   /**
    * Monitor performance of a function
@@ -524,7 +524,7 @@ class PerformanceCacheManager {
     });
   }
 
-  // ==================== OPTIMIZATION FEATURES ====================
+  // ====== OPTIMIZATION FEATURES ======
 
   /**
    * Batch multiple operations for efficiency
@@ -642,7 +642,7 @@ class PerformanceCacheManager {
     return operation();
   }
 
-  // ==================== ANALYTICS AND REPORTING ====================
+  // ====== ANALYTICS AND REPORTING ======
 
   /**
    * Get performance analytics
@@ -752,7 +752,7 @@ class PerformanceCacheManager {
     return recommendations;
   }
 
-  // ==================== UTILITY METHODS ====================
+  // ====== UTILITY METHODS ======
 
   /**
    * Update average response time
@@ -849,7 +849,7 @@ class PerformanceCacheManager {
   }
 }
 
-// ==================== GLOBAL PERFORMANCE FUNCTIONS ====================
+// ====== GLOBAL PERFORMANCE FUNCTIONS ======
 
 /**
  * Global performance cache manager instance

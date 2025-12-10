@@ -267,7 +267,7 @@ class AdvancedFeaturesManager {
     }
   }
 
-  // ==================== HEALTH CHECK METHODS ====================
+  // ====== HEALTH CHECK METHODS ======
 
   /**
    * Check configuration health
@@ -528,7 +528,7 @@ class AdvancedFeaturesManager {
     }
   }
 
-  // ==================== PERFORMANCE AND MAINTENANCE ====================
+  // ====== PERFORMANCE AND MAINTENANCE ======
 
   /**
    * Gather performance metrics
@@ -662,7 +662,7 @@ class AdvancedFeaturesManager {
     }
   }
 
-  // ==================== UTILITY METHODS ====================
+  // ====== UTILITY METHODS ======
 
   /**
    * Check if health check should run
@@ -775,7 +775,7 @@ class AdvancedFeaturesManager {
     }
   }
 
-  // ==================== MULTI-TENANT PREPARATION ====================
+  // ====== MULTI-TENANT PREPARATION ======
 
   /**
    * Check database separation readiness
@@ -891,7 +891,7 @@ class AdvancedFeaturesManager {
 }
 
 
-// ==================== PUBLIC API FUNCTIONS ====================
+// ====== PUBLIC API FUNCTIONS ======
 
 /**
  * Initialize Advanced Features Manager
@@ -1017,7 +1017,7 @@ function importControlPanelSettings(settingsData) {
   return controlPanel.importSettings(settingsData);
 }
 
-// ==================== TESTING FUNCTIONS ====================
+// ====== TESTING FUNCTIONS ======
 
 /**
  * Test advanced features functionality

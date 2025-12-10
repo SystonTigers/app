@@ -10,14 +10,16 @@ export async function handleMatchUpdates(
 ): Promise<Response> {
     const claims = await requireJWT(req, env);
 
-    // 1. Fetch match details
-    const match = await env.DB.prepare("SELECT * FROM matches WHERE id = ?").bind(matchId).first();
+    // 1. Fetch match details - SECURITY: Filter by tenant_id to prevent cross-tenant access
+    const match = await env.DB.prepare(
+        "SELECT * FROM matches WHERE id = ? AND tenant_id = ?"
+    ).bind(matchId, claims.tenantId).first();
 
     if (!match) {
         return json({ success: false, error: "Match not found" }, 404, corsHdrs);
     }
 
-    // 2. Fetch all events for this match
+    // 2. Fetch all events for this match (safe since we verified match ownership above)
     const { results: events } = await env.DB.prepare(
         "SELECT * FROM events WHERE match_id = ? ORDER BY minute ASC, ts ASC"
     ).bind(matchId).all();
@@ -57,6 +59,7 @@ export async function handleMatchUpdates(
 }
 
 // POST /api/v1/matches/:id/events
+// SECURITY: Validates match belongs to tenant before creating event
 export async function handleCreateMatchEvent(
     req: Request,
     env: any,
@@ -66,6 +69,14 @@ export async function handleCreateMatchEvent(
     try {
         const claims = await requireJWT(req, env);
         const body = await req.json() as any;
+
+        // SECURITY: Verify match belongs to tenant before creating event
+        const match = await env.DB.prepare(
+            "SELECT id FROM matches WHERE id = ? AND tenant_id = ?"
+        ).bind(matchId, claims.tenantId).first();
+        if (!match) {
+            return json({ success: false, error: "Match not found" }, 404, corsHdrs);
+        }
 
         // Body: { type: 'goal', minute: 45, player_id: '...', home_score: 2, away_score: 1, text: '...', image: 'base64...' }
 

@@ -683,7 +683,7 @@ function runLoadTests() {
  */
 function runAllComprehensiveTests() {
   console.log('🚀 Starting Comprehensive Test Suite - 100% Coverage');
-  console.log('=====================================================');
+  console.log('====');
 
   AdvancedTestFramework.reset();
 
@@ -700,7 +700,7 @@ function runAllComprehensiveTests() {
   const finalResults = AdvancedTestFramework.getTestResults();
 
   console.log('\n📊 FINAL TEST RESULTS');
-  console.log('=====================');
+  console.log('');
   console.log(`Total Tests: ${finalResults.summary.total}`);
   console.log(`Passed: ${finalResults.summary.passed}`);
   console.log(`Failed: ${finalResults.summary.failed}`);

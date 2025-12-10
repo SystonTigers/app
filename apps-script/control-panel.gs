@@ -14,7 +14,7 @@
  * - Emergency controls and recovery options
  */
 
-// ==================== CONTROL PANEL MANAGER ====================
+// ====== CONTROL PANEL MANAGER ======
 
 /**
  * Control Panel Manager - Handles all control panel operations
@@ -45,7 +45,7 @@ class SystemControlPanel {
     return this._logger;
   }
 
-  // ==================== CONTROL PANEL UI ====================
+  // ====== CONTROL PANEL UI ======
 
   /**
    * Show the main control panel sidebar with authentication
@@ -1183,7 +1183,7 @@ class SystemControlPanel {
     `).join('');
   }
 
-  // ==================== SETTINGS MANAGEMENT ====================
+  // ====== SETTINGS MANAGEMENT ======
 
   /**
    * Get current system settings
@@ -1262,7 +1262,7 @@ class SystemControlPanel {
     }
   }
 
-  // ==================== FEATURE MANAGEMENT ====================
+  // ====== FEATURE MANAGEMENT ======
 
   /**
    * Toggle a feature on/off
@@ -1359,7 +1359,7 @@ class SystemControlPanel {
   }
 }
 
-// ==================== GLOBAL CONTROL PANEL FUNCTIONS ====================
+// ====== GLOBAL CONTROL PANEL FUNCTIONS ======
 
 /**
  * Global control panel manager instance
@@ -1518,7 +1518,7 @@ function updateControlPanelSettings(settings) {
   }
 }
 
-// ==================== LIVE MATCH CONSOLE WEB METHODS ====================
+// ====== LIVE MATCH CONSOLE WEB METHODS ======
 
 /**
  * Retrieve state for the live match console UI
@@ -1894,7 +1894,7 @@ function recordLiveMatchNote(payload) {
   }
 }
 
-// ==================== LIVE MATCH CONSOLE HELPERS ====================
+// ====== LIVE MATCH CONSOLE HELPERS ======
 
 /**
  * Guard repeated submissions using request identifiers

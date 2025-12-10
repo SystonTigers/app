@@ -8,7 +8,7 @@
  * REPLACE EXISTING utils.js - This contains everything from Script 6.1 plus additional functions
  */
 
-// ==================== SHEET UTILITIES ====================
+// ====== SHEET UTILITIES ======
 
 const sheetLogger = logger.scope('SheetUtils');
 
@@ -553,7 +553,7 @@ const SheetUtils = {
   }
 };
 
-// ==================== DATE UTILITIES ====================
+// ====== DATE UTILITIES ======
 
 /**
  * Enhanced date utilities for consistent date handling
@@ -728,7 +728,7 @@ const DateUtils = {
   }
 };
 
-// ==================== STRING UTILITIES ====================
+// ====== STRING UTILITIES ======
 
 /**
  * String utilities for text processing and validation
@@ -840,7 +840,7 @@ const StringUtils = {
   }
 };
 
-// ==================== VALIDATION UTILITIES ====================
+// ====== VALIDATION UTILITIES ======
 
 /**
  * Validation utilities for data checking
@@ -932,7 +932,7 @@ const ValidationUtils = {
   }
 };
 
-// ==================== ARRAY UTILITIES ====================
+// ====== ARRAY UTILITIES ======
 
 /**
  * Array utilities for data manipulation
@@ -1037,7 +1037,7 @@ const ArrayUtils = {
   }
 };
 
-// ==================== UTILITY INITIALIZATION ====================
+// ====== UTILITY INITIALIZATION ======
 
 /**
  * Initialize utilities system

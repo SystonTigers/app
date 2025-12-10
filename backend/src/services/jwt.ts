@@ -15,6 +15,7 @@ export type Claims = {
   roles: string[];
   tenantId?: string;
   userId?: string;
+  name?: string;
   iat?: number;
   exp?: number;
 };
@@ -33,6 +34,8 @@ export function normalizeClaims(c: RawClaims): Claims {
     sub: c.sub,
     roles,
     tenantId,
+    userId: c.sub,
+    name: (c as any).name,
     iat: c.iat,
     exp: c.exp,
   };

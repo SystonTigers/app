@@ -6,7 +6,7 @@
  *              and provides idempotent integrations with Make.com. Monthly summaries are delegated.
  */
 
-// ==================== IDEMPOTENCY HELPERS (PERSISTENT) ====================
+// ====== IDEMPOTENCY HELPERS (PERSISTENT) ======
 
 /** @returns {GoogleAppsScript.Properties.Properties} */
 function __bf_prop__() { return PropertiesService.getScriptProperties(); }
@@ -19,7 +19,7 @@ const __BF_IDEMP__ = Object.freeze({
   CACHE_TTL: 6 * 60 * 60 // 6 hours
 });
 
-// ==================== BATCH FIXTURES MANAGER CLASS ====================
+// ====== BATCH FIXTURES MANAGER CLASS ======
 
 /**
  * Batch Fixtures Manager - Handles all batch posting operations
@@ -33,7 +33,7 @@ class BatchFixturesManager {
     this.variantBuilderAvailable = typeof buildTemplateVariantCollection === 'function';
   }
 
-  // ==================== PUBLIC ENTRY POINTS ====================
+  // ====== PUBLIC ENTRY POINTS ======
 
   /**
    * Post league fixtures batch (1–5) for a given period
@@ -163,7 +163,7 @@ class BatchFixturesManager {
     }
   }
 
-  // ==================== MONTHLY SUMMARY DELEGATION ====================
+  // ====== MONTHLY SUMMARY DELEGATION ======
 
   /**
    * Delegate to monthly summaries handler for fixtures
@@ -205,7 +205,7 @@ class BatchFixturesManager {
     }
   }
 
-  // ==================== POSTPONED MATCH HANDLING ====================
+  // ====== POSTPONED MATCH HANDLING ======
 
   /**
    * Post postponed match notification (NEW: From spec)
@@ -260,7 +260,7 @@ class BatchFixturesManager {
     }
   }
 
-  // ==================== DATA RETRIEVAL METHODS ====================
+  // ====== DATA RETRIEVAL METHODS ======
 
   /**
    * Get league fixtures for date range
@@ -361,7 +361,7 @@ class BatchFixturesManager {
     }
   }
 
-  // ==================== PARSING HELPERS ====================
+  // ====== PARSING HELPERS ======
 
   /**
    * Normalize a fixture row using parsing helpers
@@ -429,7 +429,7 @@ class BatchFixturesManager {
     return isNaN(parsed.getTime()) ? null : parsed;
   }
 
-  // ==================== TEMPLATE VARIANT SUPPORT ====================
+  // ====== TEMPLATE VARIANT SUPPORT ======
 
   /**
    * Build template variant collection for a post type.
@@ -498,7 +498,7 @@ class BatchFixturesManager {
     };
   }
 
-  // ==================== PAYLOAD CREATION ====================
+  // ====== PAYLOAD CREATION ======
 
   /** Create fixtures batch payload */
   createFixturesBatchPayload(fixtures, eventType, roundId) {
@@ -661,7 +661,7 @@ class BatchFixturesManager {
     }
   }
 
-  // ==================== UTILITY METHODS ====================
+  // ====== UTILITY METHODS ======
 
   /**
    * Send batch payload to Make.com (with retry/backoff + alerting)
@@ -892,7 +892,7 @@ class BatchFixturesManager {
   }
 }
 
-// ==================== PUBLIC ENTRY FUNCTIONS ====================
+// ====== PUBLIC ENTRY FUNCTIONS ======
 
 /**
  * Post 1–5 upcoming fixtures (batched) that are marked Send=TRUE & not Posted.

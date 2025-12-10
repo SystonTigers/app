@@ -1,39 +1,15 @@
 /**
- * ============================================================================
- * DEPRECATED: This file is being phased out in favor of modular config files
- * ============================================================================
- *
- * NEW LOCATION: Use config/index.gs instead
- *
- * This file has been split into modular components:
- * - config/tenant.gs    → Tenant IDs, sheet IDs, folder IDs
- * - config/features.gs  → Feature flags
- * - config/api.gs       → API endpoints and keys
- * - config/youtube.gs   → YouTube settings
- * - config/webhooks.gs  → Make.com webhooks
- * - config/index.gs     → Central export + helper functions
- *
- * Migration Guide: See CONFIG_MIGRATION_GUIDE.md
- *
- * TODO: Update all references to use new helper functions from config/index.gs
- * TODO: Remove this file after all references are updated (target: 2 weeks)
- *
- * For now, this file remains to ensure existing code doesn't break.
- * ============================================================================
- */
-
-/**
  * @fileoverview Centralized configuration for Football Club Automation System
  * @version 6.2.0
  * @author Senior Software Architect
  * @description All system configuration in one place - no globals elsewhere
- *
+ * 
  * CRITICAL: This is the single source of truth for all configuration.
  * No hard-coded values anywhere else in the system.
  * Test: GitHub Actions deployment configured
  */
 
-// ==================== SYSTEM CONFIGURATION ====================
+// ====== SYSTEM CONFIGURATION ======
 
 /**
  * Global config for Football Club Automation System
@@ -139,7 +115,7 @@ function mergeUniqueArrays() {
  */
 const SYSTEM_CONFIG = {
   
-  // ==================== SYSTEM METADATA ====================
+  // ====== SYSTEM METADATA ======
   SYSTEM: {
     VERSION: '6.2.0',
     NAME: 'Football Club Automation System',
@@ -160,7 +136,7 @@ const SYSTEM_CONFIG = {
     PLAYER_MINUTES_AUTO_CALC: true
   },
 
-  // ==================== BRANDING & CUSTOMER EXPERIENCE ====================
+  // ====== BRANDING & CUSTOMER EXPERIENCE ======
   BRANDING: {
     PRIMARY_COLOR: '#ff6600',
     SECONDARY_COLOR: '#000000',
@@ -196,7 +172,7 @@ const SYSTEM_CONFIG = {
     ACTIVE_PROFILE: null
   },
 
-  // ==================== FEATURE FLAGS ====================
+  // ====== FEATURE FLAGS ======
   FEATURES: {
     // Core features
     LIVE_MATCH_PROCESSING: true,
@@ -270,7 +246,7 @@ const SYSTEM_CONFIG = {
     }
   },
 
-  // ==================== DOCUMENTATION REFERENCE ====================
+  // ====== DOCUMENTATION REFERENCE ======
   DOCUMENTATION: {
     VERSION: '6.2.0',
     SOURCE_FILES: {
@@ -464,7 +440,7 @@ const SYSTEM_CONFIG = {
     }
   },
 
-  // ==================== GOOGLE SHEETS CONFIGURATION ====================
+  // ====== GOOGLE SHEETS CONFIGURATION ======
   SHEETS: {
     // SPREADSHEET_ID removed - use getConfiguredSheetId_() helper instead
     TAB_NAMES: {
@@ -631,7 +607,7 @@ const SYSTEM_CONFIG = {
     }
   },
 
-  // ==================== MAKE.COM INTEGRATION ====================
+  // ====== MAKE.COM INTEGRATION ======
   MAKE: {
     WEBHOOK_URL_PROPERTY: 'MAKE_WEBHOOK_URL', // PropertiesService key
     WEBHOOK_TIMEOUT_MS: 30000,
@@ -777,7 +753,7 @@ const SYSTEM_CONFIG = {
     }
   },
 
-  // ==================== PRIVACY & CONSENT MANAGEMENT ====================
+  // ====== PRIVACY & CONSENT MANAGEMENT ======
   PRIVACY: {
     FAIL_CLOSED: true,
     MINOR_AGE_THRESHOLD: 16,
@@ -804,7 +780,7 @@ const SYSTEM_CONFIG = {
     }
   },
 
-  // ==================== MONITORING & ALERTS ====================
+  // ====== MONITORING & ALERTS ======
   MONITORING: {
     EMAIL_RECIPIENTS: '',
     ALERT_EMAIL_ONLY: true,
@@ -817,7 +793,7 @@ const SYSTEM_CONFIG = {
     SUMMARY_METRICS: ['quota_usage', 'error_count', 'last_post', 'disabled_features']
   },
 
-  // ==================== CANVA INTEGRATION ====================
+  // ====== CANVA INTEGRATION ======
   CANVA: {
     TEMPLATE_PROPERTY_PREFIX: 'CANVA_TEMPLATE_',
     PLACEHOLDERS: {
@@ -1321,7 +1297,7 @@ const SYSTEM_CONFIG = {
     }
   },
 
-  // ==================== LOGGING CONFIGURATION ====================
+  // ====== LOGGING CONFIGURATION ======
   LOGGING: {
     ENABLED: true,
     LOG_SHEET_NAME: 'Logs',
@@ -1344,7 +1320,7 @@ const SYSTEM_CONFIG = {
     AUDIT_TRAIL: true
   },
 
-  // ==================== PERFORMANCE SETTINGS ====================
+  // ====== PERFORMANCE SETTINGS ======
   PERFORMANCE: {
     CACHE_ENABLED: true,
     CACHE_DURATION_MINUTES: 30,
@@ -1355,7 +1331,7 @@ const SYSTEM_CONFIG = {
     API_RATE_LIMIT_MS: 500
   },
 
-  // ==================== PLAYER DIRECTORY SETTINGS ====================
+  // ====== PLAYER DIRECTORY SETTINGS ======
   PLAYERS: {
     OPPOSITION_ENTRIES: ['Goal', 'Opposition', 'Own Goal', 'Unknown'],
     POSITIONS: [
@@ -1372,7 +1348,7 @@ const SYSTEM_CONFIG = {
     ]
   },
 
-  // ==================== PLAYER MANAGEMENT ====================
+  // ====== PLAYER MANAGEMENT ======
   PLAYER_MANAGEMENT: {
     AUTO_CALCULATE_MINUTES: true,
     AUTO_UPDATE_STATS: true,
@@ -1388,7 +1364,7 @@ const SYSTEM_CONFIG = {
     BI_MONTHLY_STATS_DAY: 14 // 14th of every other month
   },
 
-  // ==================== VIDEO INTEGRATION ====================
+  // ====== VIDEO INTEGRATION ======
   VIDEO: {
     ENABLED: false, // Enable when ready
     AUTO_CLIP_CREATION: true,
@@ -1421,7 +1397,7 @@ const SYSTEM_CONFIG = {
     NOTE_TYPES: ['big_chance', 'goal', 'skill', 'good_play', 'card', 'other']
   },
 
-  // ==================== XBOTGO INTEGRATION ====================
+  // ====== XBOTGO INTEGRATION ======
   XBOTGO: {
     ENABLED: false, // Enable when API configured
     API_URL: '',
@@ -1442,7 +1418,7 @@ const SYSTEM_CONFIG = {
     RETRY_DELAY_MS: 1000
   },
 
-  // ==================== WEEKLY SCHEDULE CONFIGURATION ====================
+  // ====== WEEKLY SCHEDULE CONFIGURATION ======
   WEEKLY_SCHEDULE: {
     ENABLED: true, // Bible compliance requirement
     TIMEZONE: 'Europe/London',
@@ -1569,7 +1545,7 @@ const SYSTEM_CONFIG = {
     CONTENT_COOLDOWN_DAYS: 30
   },
 
-  // ==================== MONTHLY CONTENT CONFIGURATION ====================
+  // ====== MONTHLY CONTENT CONFIGURATION ======
   MONTHLY_CONTENT: {
     ENABLED: true,
 
@@ -1613,7 +1589,7 @@ const SYSTEM_CONFIG = {
     STAMP_PROPERTY: 'LEAGUE_TABLE_HTML_HASH'
   },
 
-  // ==================== MONTHLY EVENTS (LEGACY SUPPORT) ====================
+  // ====== MONTHLY EVENTS (LEGACY SUPPORT) ======
   MONTHLY: {
     GOTM: {
       VOTING_PERIOD_DAYS: 5,
@@ -1634,7 +1610,7 @@ const SYSTEM_CONFIG = {
       ENABLED: true
     }
   },
-  // ==================== MONTHLY SUMMARY SETTINGS ====================
+  // ====== MONTHLY SUMMARY SETTINGS ======
   MONTHLY_SUMMARIES: {
     ENABLED: true,
     CACHE_TTL_SECONDS: 21600,
@@ -1644,7 +1620,7 @@ const SYSTEM_CONFIG = {
     IMPORTANT_COMPETITIONS: ['league cup', 'fa cup', 'county cup']
   },
 
-  // ==================== OPPOSITION HANDLING ====================
+  // ====== OPPOSITION HANDLING ======
   OPPOSITION_HANDLING: {
     // Bible compliance: Auto-detection required
     AUTO_GOAL_DETECTION: true, // "Goal" player = opposition goal
@@ -1663,7 +1639,7 @@ const SYSTEM_CONFIG = {
     TRACK_SEPARATELY: true // Keep opposition events separate
   },
 
-  // ==================== VALIDATION RULES ====================
+  // ====== VALIDATION RULES ======
   VALIDATION: {
     REQUIRED_FIELDS: {
       GOAL: ['minute', 'player'],
@@ -1683,7 +1659,7 @@ const SYSTEM_CONFIG = {
     }
   },
 
-  // ==================== ERROR HANDLING ====================
+  // ====== ERROR HANDLING ======
   ERROR_HANDLING: {
     GRACEFUL_FALLBACKS: true,
     RETRY_LOGIC: true,
@@ -1711,7 +1687,7 @@ const SYSTEM_CONFIG = {
     ]
   },
 
-  // ==================== SECURITY SETTINGS ====================
+  // ====== SECURITY SETTINGS ======
   SECURITY: {
     // Authentication settings
     AUTHENTICATION: {
@@ -1754,7 +1730,7 @@ const SYSTEM_CONFIG = {
     }
   },
 
-  // ==================== DEVELOPMENT SETTINGS ====================
+  // ====== DEVELOPMENT SETTINGS ======
   DEVELOPMENT: {
     DEBUG_MODE: false,
     VERBOSE_LOGGING: false,
@@ -1765,7 +1741,7 @@ const SYSTEM_CONFIG = {
   }
 };
 
-// ==================== RUNTIME CONFIG OVERRIDES ====================
+// ====== RUNTIME CONFIG OVERRIDES ======
 
 const RUNTIME_CONFIG_CACHE_DEFAULT_TTL_MS = 60 * 1000;
 let runtimeConfigCache_ = null;
@@ -1945,7 +1921,7 @@ function getHydratedConfig_(forceRefresh = false) {
   return runtimeConfigCache_;
 }
 
-// ==================== CONFIGURATION UTILITIES ====================
+// ====== CONFIGURATION UTILITIES ======
 
 function clearConfigOverrideCache_() {
   CONFIG_SCRIPT_PROPERTY_CACHE = null;
@@ -2137,7 +2113,7 @@ function validateConfiguration() {
   };
 }
 
-// ==================== BUYER CONFIGURATION MANAGEMENT ====================
+// ====== BUYER CONFIGURATION MANAGEMENT ======
 
 /**
  * Ensure buyer profile ID exists
@@ -2541,7 +2517,7 @@ function initializeConfig() {
   }
 }
 
-// ==================== EXPORT FOR TESTING ====================
+// ====== EXPORT FOR TESTING ======
 
 /**
  * Export configuration for testing purposes

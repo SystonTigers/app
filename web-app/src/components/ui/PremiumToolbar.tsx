@@ -25,13 +25,13 @@ export function PremiumToolbar({ tenant }: PremiumToolbarProps) {
 }
 
 // Header toolbar items that can be integrated into existing header
-export function HeaderToolbarItems() {
+export function HeaderToolbarItems({ tenant }: { tenant?: string }) {
     return (
         <div className="flex items-center gap-2">
             <CommandPaletteTrigger />
             <SoundToggle />
             <ThemeToggle />
-            <NotificationCenter />
+            <NotificationCenter tenant={tenant} />
         </div>
     );
 }

@@ -17,7 +17,7 @@
  * - Predictive analytics
  */
 
-// ==================== MONITORING AND ALERTING SYSTEM ====================
+// ====== MONITORING AND ALERTING SYSTEM ======
 
 /**
  * Monitoring and Alerting System - Comprehensive system health tracking
@@ -56,7 +56,7 @@ class MonitoringAlertingSystem {
     return this._logger;
   }
 
-  // ==================== SYSTEM MONITORING ====================
+  // ====== SYSTEM MONITORING ======
 
   /**
    * Start continuous monitoring
@@ -127,7 +127,7 @@ class MonitoringAlertingSystem {
     this.startPeriodicMonitoring({ interval: 10000 }); // More frequent checks
   }
 
-  // ==================== HEALTH CHECKS ====================
+  // ====== HEALTH CHECKS ======
 
   /**
    * Perform comprehensive system health check
@@ -423,7 +423,7 @@ class MonitoringAlertingSystem {
     }
   }
 
-  // ==================== ALERTING SYSTEM ====================
+  // ====== ALERTING SYSTEM ======
 
   /**
    * Evaluate alerts based on current metrics
@@ -592,7 +592,7 @@ class MonitoringAlertingSystem {
     }
   }
 
-  // ==================== METRICS COLLECTION ====================
+  // ====== METRICS COLLECTION ======
 
   /**
    * Collect system metrics
@@ -690,7 +690,7 @@ class MonitoringAlertingSystem {
     };
   }
 
-  // ==================== CONFIGURATION ====================
+  // ====== CONFIGURATION ======
 
   /**
    * Initialize alert thresholds
@@ -751,7 +751,7 @@ class MonitoringAlertingSystem {
     };
   }
 
-  // ==================== UTILITY METHODS ====================
+  // ====== UTILITY METHODS ======
 
   /**
    * Calculate overall health from individual checks
@@ -930,7 +930,7 @@ ${clubName} Automation System
   }
 }
 
-// ==================== GLOBAL MONITORING FUNCTIONS ====================
+// ====== GLOBAL MONITORING FUNCTIONS ======
 
 /**
  * Global monitoring system instance

@@ -8,7 +8,7 @@
  * REPLACE EXISTING logger.js - This contains everything from Script 6.1 plus additional features
  */
 
-// ==================== ENHANCED LOGGER CLASS ====================
+// ====== ENHANCED LOGGER CLASS ======
 
 /**
  * Enhanced Logger Class with comprehensive features
@@ -58,7 +58,7 @@ class Logger {
     this.auditEvents = [];
   }
 
-  // ==================== CORE LOGGING METHODS ====================
+  // ====== CORE LOGGING METHODS ======
 
   /**
    * Log debug message
@@ -163,7 +163,7 @@ class Logger {
     }
   }
 
-  // ==================== PERFORMANCE TRACKING ====================
+  // ====== PERFORMANCE TRACKING ======
 
   /**
    * Start performance timer
@@ -204,7 +204,7 @@ class Logger {
     };
   }
 
-  // ==================== AUDIT TRAIL ====================
+  // ====== AUDIT TRAIL ======
 
   /**
    * Log audit event
@@ -249,7 +249,7 @@ class Logger {
     });
   }
 
-  // ==================== SCOPED LOGGERS ====================
+  // ====== SCOPED LOGGERS ======
 
   /**
    * Create scoped logger for component
@@ -287,7 +287,7 @@ class Logger {
     };
   }
 
-  // ==================== INTERNAL METHODS ====================
+  // ====== INTERNAL METHODS ======
 
   /**
    * Internal logging method
@@ -479,7 +479,7 @@ class Logger {
     return 'N/A';
   }
 
-  // ==================== PUBLIC UTILITY METHODS ====================
+  // ====== PUBLIC UTILITY METHODS ======
 
   /**
    * Get logging statistics
@@ -619,7 +619,7 @@ class Logger {
   }
 }
 
-// ==================== GLOBAL LOGGER INSTANCE ====================
+// ====== GLOBAL LOGGER INSTANCE ======
 
 /**
  * Global logger instance (lazy initialized)
@@ -681,7 +681,7 @@ const logger = {
   get _cleanOldLogs() { return getLogger()._cleanOldLogs.bind(getLogger()); }
 };
 
-// ==================== UTILITY FUNCTIONS ====================
+// ====== UTILITY FUNCTIONS ======
 
 /**
  * Log system startup
@@ -731,7 +731,7 @@ function securityLog(event, details = {}) {
   logger.security(event, details);
 }
 
-// ==================== INITIALIZATION ====================
+// ====== INITIALIZATION ======
 
 /**
  * Initialize logging system

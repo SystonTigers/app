@@ -43,6 +43,20 @@ const nextConfig = {
 
 
 
+  // API rewrites to proxy to backend
+  async rewrites() {
+    return [
+      {
+        source: '/public/:path*',
+        destination: 'http://127.0.0.1:3001/public/:path*'
+      },
+      {
+        source: '/api/:path*',
+        destination: 'http://127.0.0.1:3001/api/:path*'
+      }
+    ];
+  },
+
   // Turbopack config
   turbopack: {},
 

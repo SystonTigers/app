@@ -196,6 +196,97 @@ export async function updateSquad(players: any[]) {
   );
 }
 
+export async function addPlayer(player: any) {
+  return http<{ success: true; id: string }>(
+    `${API_BASE}/api/v1/squad/add`,
+    { method: 'POST', body: JSON.stringify(player) }
+  );
+}
+
+// ---- Player Transfer endpoints ----
+
+export interface TransferCodeResult {
+  transferCode: string;
+  playerName: string;
+  stats: {
+    goals: number;
+    assists: number;
+    appearances: number;
+    yellowCards: number;
+    redCards: number;
+  };
+  expiresAt: string;
+}
+
+export interface TransferVerifyResult {
+  valid: boolean;
+  playerName: string;
+  fromClub: string;
+  stats: {
+    goals: number;
+    assists: number;
+    appearances: number;
+    yellowCards: number;
+    redCards: number;
+  };
+  expiresAt: string;
+}
+
+export interface CareerStatsResult {
+  playerId: string;
+  playerName: string;
+  hasCareerHistory: boolean;
+  careerTotals: {
+    goals: number;
+    assists: number;
+    appearances: number;
+    yellowCards: number;
+    redCards: number;
+    clubs: number;
+  };
+  clubHistory: Array<{
+    club: string;
+    isCurrent: boolean;
+    stats: {
+      goals: number;
+      assists: number;
+      appearances: number;
+      yellowCards: number;
+      redCards: number;
+    };
+  }>;
+}
+
+export async function generateTransferCode(playerId: string) {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
+  return http<TransferCodeResult>(
+    `${API_BASE}/api/v1/squad/${playerId}/generate-transfer`,
+    { method: 'POST', headers: { Authorization: `Bearer ${token}` } }
+  );
+}
+
+export async function verifyTransferCode(code: string) {
+  return http<TransferVerifyResult>(
+    `${API_BASE}/api/v1/transfers/${code.toUpperCase()}`
+  );
+}
+
+export async function claimTransfer(transferCode: string, newPlayerId: string) {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
+  return http<{ success: boolean; message: string; linkedStats: { goals: number; assists: number; appearances: number } }>(
+    `${API_BASE}/api/v1/squad/claim-transfer`,
+    { method: 'POST', body: JSON.stringify({ transferCode, newPlayerId }), headers: { Authorization: `Bearer ${token}` } }
+  );
+}
+
+export async function getPlayerCareerStats(playerId: string) {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
+  return http<CareerStatsResult>(
+    `${API_BASE}/api/v1/squad/${playerId}/career-stats`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+}
+
 export async function createFixture(data: any) {
   return http<{ success: true; id: string }>(
     `${API_BASE}/api/v1/fixtures`,

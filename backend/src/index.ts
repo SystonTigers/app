@@ -69,14 +69,23 @@ import {
     handleDeleteTrainingSession,
     handleGetJobStatus
 } from "./routes/coaching";
-import { handleProductSync, handleGetProducts } from "./routes/shop/products";
 import {
-    handleCreateCart,
-    handleGetCart,
-    handleAddToCart,
-    handleRemoveFromCart
-} from "./routes/shop/cart";
-import { handleCreateCheckout, handleStripeWebhook } from "./routes/shop/checkout";
+    handleImportFixtures,
+    handleImportResults,
+    handleImportPlayers,
+    handleImportMatchEvents,
+    handleGetImportTemplate,
+    handleGetImportStatus
+} from "./routes/import";
+
+// Cron Jobs
+import { runDaily } from "./cron/daily";
+import { runThrowback } from "./cron/throwback";
+import { runMilestones, checkMilestonesAfterMatch } from "./cron/milestones";
+import { runPlayerOfPeriod } from "./cron/playerOfPeriod";
+import { runCleanup } from "./cron/cleanup";
+import { runLeague } from "./cron/league";
+
 // Export Durable Objects
 export { TenantRateLimiter } from "./do/rateLimiter";
 export { VotingRoom } from "./do/votingRoom";
@@ -102,18 +111,6 @@ router.get("/public/*", async (req, env, corsHdrs, requestId) => {
     return handlePublicTenantRequest(req, env, new URL(req.url), corsHdrs, requestId);
 });
 
-// Shop Routes
-router.post("/api/:v/shop/products/sync", (req, env, corsHdrs) => handleProductSync(req, env, corsHdrs));
-router.get("/api/:v/shop/products", (req, env, corsHdrs) => handleGetProducts(req, env, corsHdrs));
-
-// Cart Routes
-router.post("/api/:v/shop/cart", (req, env, corsHdrs) => handleCreateCart(req, env, corsHdrs));
-router.get("/api/:v/shop/cart/:id", (req, env, corsHdrs) => handleGetCart(req, env, corsHdrs));
-router.post("/api/:v/shop/cart/:id/items", (req, env, corsHdrs) => handleAddToCart(req, env, corsHdrs));
-router.delete("/api/:v/shop/cart/:id/items", (req, env, corsHdrs) => handleRemoveFromCart(req, env, corsHdrs));
-
-// Checkout Routes
-router.post("/api/:v/shop/checkout", (req, env, corsHdrs) => handleCreateCheckout(req, env, corsHdrs));
 // Stripe Webhook (No version prefix needed, publicly accessible)
 router.post("/api/webhooks/stripe", (req, env) => handleStripeWebhook(req, env));
 
@@ -305,31 +302,7 @@ router.get("/api/:v/training/sessions/:id/drills", (req, env, corsHdrs) => {
     return handleGetSessionDrills(req, env, corsHdrs, params.id);
 });
 
-// Shop Routes
-import {
-    handleCreateProduct,
-    handleListProducts,
-    handleGetProduct,
-    handleUpdateProduct,
-    handleDeleteProduct,
-    handlePrintifySync,
-    handlePublicListProducts
-} from "./routes/shop";
-router.post("/api/:v/shop/products", (req, env, corsHdrs) => handleCreateProduct(req, env, corsHdrs));
-router.get("/api/:v/shop/products", (req, env, corsHdrs) => handleListProducts(req, env, corsHdrs));
-router.get("/api/:v/shop/products/:id", (req, env, corsHdrs) => {
-    const params = (req as any).params || {};
-    return handleGetProduct(req, env, corsHdrs, params.id);
-});
-router.put("/api/:v/shop/products/:id", (req, env, corsHdrs) => {
-    const params = (req as any).params || {};
-    return handleUpdateProduct(req, env, corsHdrs, params.id);
-});
-router.delete("/api/:v/shop/products/:id", (req, env, corsHdrs) => {
-    const params = (req as any).params || {};
-    return handleDeleteProduct(req, env, corsHdrs, params.id);
-});
-router.post("/api/:v/shop/printify/sync", (req, env, corsHdrs) => handlePrintifySync(req, env, corsHdrs));
+// Shop Routes (Moved to end of file)
 
 // MOTM Voting Routes
 import {
@@ -421,6 +394,26 @@ router.delete("/api/:v/comments/:id", (req, env, corsHdrs) => {
     return handleDeleteComment(req, env, corsHdrs, params.id);
 });
 
+// Notification Routes
+import {
+    handleListNotifications,
+    handleUnreadCount,
+    handleMarkRead,
+    handleMarkAllRead
+} from "./routes/notifications";
+
+router.get("/api/:v/notifications", (req, env, corsHdrs) => handleListNotifications(req, env, corsHdrs));
+router.get("/api/:v/notifications/unread-count", (req, env, corsHdrs) => handleUnreadCount(req, env, corsHdrs));
+router.post("/api/:v/notifications/:id/read", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleMarkRead(req, env, corsHdrs, params.id);
+});
+router.post("/api/:v/notifications/read-all", (req, env, corsHdrs) => handleMarkAllRead(req, env, corsHdrs));
+
+// Member Routes (for mentions/search)
+import { handleSearchMembers } from "./routes/members";
+router.get("/api/:v/members/search", (req, env, corsHdrs) => handleSearchMembers(req, env, corsHdrs));
+
 // Video Routes
 router.post("/api/:v/videos/upload", (req, env, corsHdrs, requestId) => handleVideoUpload(req, env, corsHdrs));
 router.get("/api/:v/videos", (req, env, corsHdrs, requestId) => handleVideoList(req, env, corsHdrs));
@@ -503,6 +496,7 @@ router.get("/api/:v/coaching/jobs/:id", (req, env, corsHdrs, requestId) => {
 });
 
 // Squad Routes
+busy-satoshi
 import {
     handleUpdateSquad, handleGetSquad, handleGetPlayer,
     handleAddPlayer, handleUpdatePlayer, handleDeletePlayer,
@@ -523,6 +517,34 @@ router.put("/api/:v/squad/:id", (req, env, corsHdrs) => {
 router.delete("/api/:v/squad/:id", (req, env, corsHdrs) => {
     const params = (req as any).params || {};
     return handleDeletePlayer(req, env, corsHdrs, params.id);
+import { handleUpdateSquad, handleAddPlayer } from "./routes/squad";
+router.post("/api/:v/squad", (req, env, corsHdrs) => handleUpdateSquad(req, env, corsHdrs));
+router.post("/api/:v/squad/add", (req, env, corsHdrs) => handleAddPlayer(req, env, corsHdrs));
+import { handleGetCareerStats } from "./routes/career-stats";
+router.get("/api/:v/stats/career/:playerId", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleGetCareerStats(req, env, corsHdrs, params.playerId);
+});
+
+// Player Transfer Routes
+import {
+    handleGenerateTransferCode,
+    handleVerifyTransferCode,
+    handleClaimTransfer,
+    handleGetCareerStats as handleGetTransferCareerStats
+} from "./routes/transfers";
+router.post("/api/:v/squad/:playerId/generate-transfer", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleGenerateTransferCode(req, env, corsHdrs, params.playerId);
+});
+router.get("/api/:v/transfers/:code", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleVerifyTransferCode(req, env, corsHdrs, params.code);
+});
+router.post("/api/:v/squad/claim-transfer", (req, env, corsHdrs) => handleClaimTransfer(req, env, corsHdrs));
+router.get("/api/:v/squad/:playerId/career-stats", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleGetTransferCareerStats(req, env, corsHdrs, params.playerId);
 });
 
 // Tactics Routes
@@ -595,17 +617,57 @@ import {
     handleListSeasons, handleCreateSeason, handleSetCurrentSeason,
     handleArchiveSeason, handleGetCurrentSeason, handleAddPlayerToSeason,
     handleGetSeasonRoster,
+  
     // New season management endpoints
     handleEndSeasonPreview, handleEndSeason, handleReopenSeason,
     handleStartNewSeason, handleGetAvailablePlayers,
     handleGetSeasonAwards, handleAddSeasonAward, handleDeleteSeasonAward,
     handleGetSeasonSnapshots, handleMarkPlayerDeparted
+    handleEndSeasonPreview, handleEndSeason, handleStartNewSeason,
+    handleReopenSeason, handleGetSeasonAwards, handleAddSeasonAward, handleDeleteSeasonAward,
+    handleGetSeasonStats
 } from "./routes/seasons";
+
 router.get("/api/:v/seasons", (req, env, corsHdrs) => handleListSeasons(req, env, corsHdrs));
 router.post("/api/:v/seasons", (req, env, corsHdrs) => handleCreateSeason(req, env, corsHdrs));
+router.post("/api/:v/seasons/start-new", (req, env, corsHdrs) => handleStartNewSeason(req, env, corsHdrs));
 router.get("/api/:v/seasons/current", (req, env, corsHdrs) => handleGetCurrentSeason(req, env, corsHdrs));
 router.post("/api/:v/seasons/set-current", (req, env, corsHdrs) => handleSetCurrentSeason(req, env, corsHdrs));
 router.post("/api/:v/seasons/archive", (req, env, corsHdrs) => handleArchiveSeason(req, env, corsHdrs));
+router.get("/api/:v/seasons/:id/stats", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleGetSeasonStats(req, env, corsHdrs, params.id);
+});
+
+// Season Lifecycle
+router.get("/api/:v/seasons/:id/end-preview", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleEndSeasonPreview(req, env, corsHdrs, params.id);
+});
+router.post("/api/:v/seasons/:id/end", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleEndSeason(req, env, corsHdrs, params.id);
+});
+router.post("/api/:v/seasons/:id/reopen", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleReopenSeason(req, env, corsHdrs, params.id);
+});
+
+// Season Awards
+router.get("/api/:v/seasons/:id/awards", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleGetSeasonAwards(req, env, corsHdrs, params.id);
+});
+router.post("/api/:v/seasons/:id/awards", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleAddSeasonAward(req, env, corsHdrs, params.id);
+});
+router.delete("/api/:v/seasons/:id/awards/:awardId", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleDeleteSeasonAward(req, env, corsHdrs, params.awardId);
+});
+
+// Roster
 router.post("/api/:v/seasons/:id/roster", (req, env, corsHdrs) => handleAddPlayerToSeason(req, env, corsHdrs));
 router.get("/api/:v/seasons/:id/roster", (req, env, corsHdrs) => {
     const params = (req as any).params || {};
@@ -654,6 +716,7 @@ router.get("/api/:v/players/:id/career-stats", (req, env, corsHdrs) => {
 router.get("/api/:v/stats/compare", (req, env, corsHdrs) => handleCompareCareerStats(req, env, corsHdrs));
 router.get("/api/:v/stats/records", (req, env, corsHdrs) => handleGetAllTimeRecords(req, env, corsHdrs));
 
+
 // Fun Stats Routes
 import { handleGetTeamFunStats, handleGetPlayerFunStats, handleGetSeasonSummary } from "./routes/fun-stats";
 router.get("/api/:v/stats/fun", (req, env, corsHdrs) => handleGetTeamFunStats(req, env, corsHdrs));
@@ -666,10 +729,36 @@ router.get("/api/:v/seasons/:id/summary", (req, env, corsHdrs) => {
     return handleGetSeasonSummary(req, env, corsHdrs, params.id);
 });
 
+// Shop Routes
+import { handleGetProducts, handleProductSync } from "./routes/shop/products";
+import { handleCreateCart, handleGetCart, handleAddToCart, handleRemoveFromCart } from "./routes/shop/cart";
+import { handleCreateCheckout, handleStripeWebhook } from "./routes/shop/checkout";
+
+router.get("/api/:v/shop/products", (req, env, corsHdrs) => handleGetProducts(req, env, corsHdrs));
+router.post("/api/:v/shop/sync", (req, env, corsHdrs) => handleProductSync(req, env, corsHdrs));
+
+router.post("/api/:v/shop/cart", (req, env, corsHdrs) => handleCreateCart(req, env, corsHdrs));
+router.get("/api/:v/shop/cart/:id", (req, env, corsHdrs) => handleGetCart(req, env, corsHdrs));
+router.post("/api/:v/shop/cart/:id/items", (req, env, corsHdrs) => handleAddToCart(req, env, corsHdrs));
+router.delete("/api/:v/shop/cart/:id/items", (req, env, corsHdrs) => handleRemoveFromCart(req, env, corsHdrs));
+
+router.post("/api/:v/shop/checkout", (req, env, corsHdrs) => handleCreateCheckout(req, env, corsHdrs));
+
 // Dev Auth Routes (only in development)
 router.post("/dev/admin-jwt", (req, env) => handleDevAdminJWT(req, env));
 router.post("/dev/magic-link", (req, env) => handleDevMagicLink(req, env));
 router.get("/dev/info", (req, env) => handleDevInfo(req, env));
+
+// CSV Import Routes
+router.post("/api/:v/import/fixtures", (req, env, corsHdrs) => handleImportFixtures(req, env, corsHdrs));
+router.post("/api/:v/import/results", (req, env, corsHdrs) => handleImportResults(req, env, corsHdrs));
+router.post("/api/:v/import/players", (req, env, corsHdrs) => handleImportPlayers(req, env, corsHdrs));
+router.post("/api/:v/import/match-events", (req, env, corsHdrs) => handleImportMatchEvents(req, env, corsHdrs));
+router.get("/api/:v/import/template/:type", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleGetImportTemplate(req, env, corsHdrs, params.type);
+});
+router.get("/api/:v/import/status", (req, env, corsHdrs) => handleGetImportStatus(req, env, corsHdrs));
 
 // Default 404
 router.all("*", () => new Response("Not Found", { status: 404 }));
@@ -710,6 +799,60 @@ export default {
         } catch (err: any) {
             const errorResponse = errorHandler(err, env, requestId);
             return respondWithCors(errorResponse, corsHdrs);
+        }
+    },
+
+    // Scheduled handler for cron jobs
+    async scheduled(event: ScheduledEvent, env: any, ctx: ExecutionContext): Promise<void> {
+        const scheduledTime = new Date(event.scheduledTime);
+        const hour = scheduledTime.getUTCHours();
+        const minute = scheduledTime.getUTCMinutes();
+        const dayOfWeek = scheduledTime.getUTCDay();
+        const dayOfMonth = scheduledTime.getUTCDate();
+
+        logJSON({ level: 'info', msg: 'Cron triggered', hour, minute, dayOfWeek, dayOfMonth });
+
+        try {
+            // Every 5 minutes: Cleanup expired data
+            ctx.waitUntil(runCleanup(env, ctx));
+
+            // 06:00 UTC: Birthdays and daily quotes
+            if (hour === 6 && minute < 5) {
+                ctx.waitUntil(runDaily(env, ctx));
+            }
+
+            // 08:00 UTC: Match day countdowns
+            if (hour === 8 && minute < 5) {
+                ctx.waitUntil(runDaily(env, ctx, { countdownsOnly: true }));
+            }
+
+            // Thursday 19:00 UTC: Throwback Thursday (photos + on this day)
+            if (dayOfWeek === 4 && hour === 19 && minute < 5) {
+                ctx.waitUntil(runThrowback(env, ctx));
+            }
+
+            // Sunday 18:00 UTC: Player of the Week
+            if (dayOfWeek === 0 && hour === 18 && minute < 5) {
+                ctx.waitUntil(runPlayerOfPeriod(env, ctx, { period: 'week' }));
+            }
+
+            // 1st of month, 10:00 UTC: Player of the Month
+            if (dayOfMonth === 1 && hour === 10 && minute < 5) {
+                ctx.waitUntil(runPlayerOfPeriod(env, ctx, { period: 'month' }));
+            }
+
+            // Saturday/Sunday 21:00 UTC: Check for player milestones
+            if ((dayOfWeek === 0 || dayOfWeek === 6) && hour === 21 && minute < 5) {
+                ctx.waitUntil(runMilestones(env, ctx));
+            }
+
+            // Every 6 hours: League table updates
+            if (hour % 6 === 0 && minute < 5) {
+                ctx.waitUntil(runLeague(env, ctx));
+            }
+
+        } catch (error) {
+            logJSON({ level: 'error', msg: 'Cron error', error: error instanceof Error ? error.message : String(error) });
         }
     }
 };

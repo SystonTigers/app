@@ -15,6 +15,7 @@ export function MobileBottomNav({ tenant }: MobileNavProps) {
         { label: 'Fixtures', href: `/${tenant}/fixtures`, icon: '📅' },
         { label: 'Results', href: `/${tenant}/results`, icon: '🏆' },
         { label: 'Squad', href: `/${tenant}/squad`, icon: '👥' },
+        { label: 'Training', href: `/${tenant}/training`, icon: '⚽' },
         { label: 'Team', href: `/${tenant}/team`, icon: '💬' },
     ];
 

@@ -2,10 +2,16 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
     handleCreateFixture,
     handleDeleteFixture,
+    handleUpdateFixture,
+    handleGetFixture,
     handleCreateResult,
     handleDeleteResult,
+    handleUpdateResult,
+    handleGetResult,
     handleCreatePost,
     handleDeletePost,
+    handleUpdatePost,
+    handleGetPost,
     handleUpdateTable,
 } from "../content";
 
@@ -29,16 +35,17 @@ vi.stubGlobal("crypto", {
 });
 
 describe("Content Routes", () => {
-    const createMockDb = () => ({
+    const createMockDb = (firstResult?: any) => ({
         prepare: vi.fn().mockReturnValue({
             bind: vi.fn().mockReturnThis(),
             run: vi.fn().mockResolvedValue({ success: true }),
+            first: vi.fn().mockResolvedValue(firstResult),
         }),
         batch: vi.fn().mockResolvedValue([]),
     });
 
-    const createMockEnv = () => ({
-        DB: createMockDb(),
+    const createMockEnv = (firstResult?: any) => ({
+        DB: createMockDb(firstResult),
     });
 
     const createCorsHeaders = () => new Headers({
@@ -102,6 +109,99 @@ describe("Content Routes", () => {
                 expect(body.success).toBe(true);
             });
         });
+
+        describe("handleUpdateFixture", () => {
+            it("updates fixture with new values", async () => {
+                const env = createMockEnv();
+                const corsHdrs = createCorsHeaders();
+
+                const req = new Request("https://api.test.com/content/fixtures/abc123", {
+                    method: "PATCH",
+                    body: JSON.stringify({
+                        opponent: "New Rival FC",
+                        venue: "Away Stadium",
+                    }),
+                });
+
+                const response = await handleUpdateFixture(req, env, corsHdrs, "abc123");
+                const body = await response.json() as any;
+
+                expect(body.success).toBe(true);
+            });
+
+            it("returns error when no fields provided", async () => {
+                const env = createMockEnv();
+                const corsHdrs = createCorsHeaders();
+
+                const req = new Request("https://api.test.com/content/fixtures/abc123", {
+                    method: "PATCH",
+                    body: JSON.stringify({}),
+                });
+
+                const response = await handleUpdateFixture(req, env, corsHdrs, "abc123");
+                const body = await response.json() as any;
+
+                expect(body.success).toBe(false);
+                expect(body.error).toBe("No fields to update");
+            });
+
+            it("updates multiple fields at once", async () => {
+                const env = createMockEnv();
+                const corsHdrs = createCorsHeaders();
+
+                const req = new Request("https://api.test.com/content/fixtures/abc123", {
+                    method: "PATCH",
+                    body: JSON.stringify({
+                        date: "2025-02-15",
+                        time: "19:30",
+                        opponent: "Updated FC",
+                        status: "completed",
+                        homeScore: 2,
+                        awayScore: 1,
+                    }),
+                });
+
+                const response = await handleUpdateFixture(req, env, corsHdrs, "abc123");
+                const body = await response.json() as any;
+
+                expect(body.success).toBe(true);
+                expect(env.DB.prepare).toHaveBeenCalled();
+            });
+        });
+
+        describe("handleGetFixture", () => {
+            it("returns fixture when found", async () => {
+                const mockFixture = {
+                    id: "abc123",
+                    opponent: "Rival FC",
+                    fixture_date: "2025-01-20",
+                    venue: "Home Stadium",
+                };
+                const env = createMockEnv(mockFixture);
+                const corsHdrs = createCorsHeaders();
+
+                const req = new Request("https://api.test.com/content/fixtures/abc123");
+
+                const response = await handleGetFixture(req, env, corsHdrs, "abc123");
+                const body = await response.json() as any;
+
+                expect(body.success).toBe(true);
+                expect(body.data.opponent).toBe("Rival FC");
+            });
+
+            it("returns 404 when fixture not found", async () => {
+                const env = createMockEnv(null);
+                const corsHdrs = createCorsHeaders();
+
+                const req = new Request("https://api.test.com/content/fixtures/notfound");
+
+                const response = await handleGetFixture(req, env, corsHdrs, "notfound");
+                const body = await response.json() as any;
+
+                expect(body.success).toBe(false);
+                expect(body.error).toBe("Fixture not found");
+            });
+        });
     });
 
     describe("Results", () => {
@@ -146,6 +246,77 @@ describe("Content Routes", () => {
                 expect(body.success).toBe(true);
             });
         });
+
+        describe("handleUpdateResult", () => {
+            it("updates result with new score", async () => {
+                const env = createMockEnv();
+                const corsHdrs = createCorsHeaders();
+
+                const req = new Request("https://api.test.com/content/results/xyz789", {
+                    method: "PATCH",
+                    body: JSON.stringify({
+                        ourScore: 4,
+                        theirScore: 2,
+                        scorers: "Player A x2, Player B x2",
+                    }),
+                });
+
+                const response = await handleUpdateResult(req, env, corsHdrs, "xyz789");
+                const body = await response.json() as any;
+
+                expect(body.success).toBe(true);
+            });
+
+            it("returns error when no fields provided", async () => {
+                const env = createMockEnv();
+                const corsHdrs = createCorsHeaders();
+
+                const req = new Request("https://api.test.com/content/results/xyz789", {
+                    method: "PATCH",
+                    body: JSON.stringify({}),
+                });
+
+                const response = await handleUpdateResult(req, env, corsHdrs, "xyz789");
+                const body = await response.json() as any;
+
+                expect(body.success).toBe(false);
+                expect(body.error).toBe("No fields to update");
+            });
+        });
+
+        describe("handleGetResult", () => {
+            it("returns result when found", async () => {
+                const mockResult = {
+                    id: "xyz789",
+                    opponent: "Rival FC",
+                    our_score: 3,
+                    their_score: 1,
+                };
+                const env = createMockEnv(mockResult);
+                const corsHdrs = createCorsHeaders();
+
+                const req = new Request("https://api.test.com/content/results/xyz789");
+
+                const response = await handleGetResult(req, env, corsHdrs, "xyz789");
+                const body = await response.json() as any;
+
+                expect(body.success).toBe(true);
+                expect(body.data.our_score).toBe(3);
+            });
+
+            it("returns 404 when result not found", async () => {
+                const env = createMockEnv(null);
+                const corsHdrs = createCorsHeaders();
+
+                const req = new Request("https://api.test.com/content/results/notfound");
+
+                const response = await handleGetResult(req, env, corsHdrs, "notfound");
+                const body = await response.json() as any;
+
+                expect(body.success).toBe(false);
+                expect(body.error).toBe("Result not found");
+            });
+        });
     });
 
     describe("Feed Posts", () => {
@@ -185,6 +356,76 @@ describe("Content Routes", () => {
                 const body = await response.json() as any;
 
                 expect(body.success).toBe(true);
+            });
+        });
+
+        describe("handleUpdatePost", () => {
+            it("updates post content", async () => {
+                const env = createMockEnv();
+                const corsHdrs = createCorsHeaders();
+
+                const req = new Request("https://api.test.com/content/posts/post123", {
+                    method: "PATCH",
+                    body: JSON.stringify({
+                        title: "Updated Title",
+                        content: "Updated content here",
+                    }),
+                });
+
+                const response = await handleUpdatePost(req, env, corsHdrs, "post123");
+                const body = await response.json() as any;
+
+                expect(body.success).toBe(true);
+            });
+
+            it("returns error when no fields provided", async () => {
+                const env = createMockEnv();
+                const corsHdrs = createCorsHeaders();
+
+                const req = new Request("https://api.test.com/content/posts/post123", {
+                    method: "PATCH",
+                    body: JSON.stringify({}),
+                });
+
+                const response = await handleUpdatePost(req, env, corsHdrs, "post123");
+                const body = await response.json() as any;
+
+                expect(body.success).toBe(false);
+                expect(body.error).toBe("No fields to update");
+            });
+        });
+
+        describe("handleGetPost", () => {
+            it("returns post when found", async () => {
+                const mockPost = {
+                    id: "post123",
+                    title: "Match Day!",
+                    content: "Get ready",
+                    author: "Admin",
+                };
+                const env = createMockEnv(mockPost);
+                const corsHdrs = createCorsHeaders();
+
+                const req = new Request("https://api.test.com/content/posts/post123");
+
+                const response = await handleGetPost(req, env, corsHdrs, "post123");
+                const body = await response.json() as any;
+
+                expect(body.success).toBe(true);
+                expect(body.data.title).toBe("Match Day!");
+            });
+
+            it("returns 404 when post not found", async () => {
+                const env = createMockEnv(null);
+                const corsHdrs = createCorsHeaders();
+
+                const req = new Request("https://api.test.com/content/posts/notfound");
+
+                const response = await handleGetPost(req, env, corsHdrs, "notfound");
+                const body = await response.json() as any;
+
+                expect(body.success).toBe(false);
+                expect(body.error).toBe("Post not found");
             });
         });
     });

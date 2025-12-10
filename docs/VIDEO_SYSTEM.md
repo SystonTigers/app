@@ -55,7 +55,7 @@ Complete end-to-end video processing system with two entry points (mobile app + 
 └───────────────────────────────────────────────────────┘
 
 PATH A: MOBILE APP                PATH B: SERVER-SIDE
-==================                ====================
+====                ======
 1. Record/select video            1. Upload to Drive
 2. Upload to R2                   2. Apps Script exports JSON
 3. API: POST /api/v1/videos/upload 3. JSON with timestamps

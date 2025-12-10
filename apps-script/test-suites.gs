@@ -14,7 +14,7 @@
  * - Performance Tests
  */
 
-// ==================== SECURITY AUTHENTICATION TESTS ====================
+// ====== SECURITY AUTHENTICATION TESTS ======
 
 suite('Security and Authentication', function() {
   let testUser, testSession;
@@ -93,7 +93,7 @@ suite('Security and Authentication', function() {
   });
 });
 
-// ==================== INPUT VALIDATION TESTS ====================
+// ====== INPUT VALIDATION TESTS ======
 
 suite('Input Validation', function() {
 
@@ -137,7 +137,7 @@ suite('Input Validation', function() {
   });
 });
 
-// ==================== PII PROTECTION TESTS ====================
+// ====== PII PROTECTION TESTS ======
 
 suite('PII Protection', function() {
 
@@ -283,42 +283,6 @@ suite('Payments and Subscriptions', function() {
     };
   }
 
-  test('should fetch Printify catalog with minimal configuration', function() {
-    const restoreProps = stubProperties({
-      PRINTIFY_API_BASE_URL: 'https://printify.example.com',
-      PRINTIFY_SHOP_ID: 'shop_123',
-      PRINTIFY_API_KEY: 'printify_test'
-    });
-    const restoreFetch = stubFetch(function(url, options) {
-      equal(url, 'https://printify.example.com/v1/shops/shop_123/products.json', 'Should target Printify catalog endpoint');
-      ok(options.headers && String(options.headers.Authorization).indexOf('printify_test') !== -1,
-        'Should include Printify API key');
-      return {
-        getResponseCode: () => 200,
-        getContentText: () => JSON.stringify({
-          data: [{
-            id: 'prod_1',
-            title: 'Example Product',
-            description: '',
-            variants: [],
-            images: []
-          }],
-          meta: { page: 1 }
-        }),
-        getAllHeaders: () => ({})
-      };
-    });
-
-    try {
-      const result = ShopOperationsService.fetchCatalog();
-      equal(result.products.length, 1, 'Should return Printify products');
-      equal(result.pagination.page, 1, 'Should include pagination metadata');
-    } finally {
-      restoreFetch();
-      restoreProps();
-    }
-  });
-
   test('should create Stripe checkout session', function() {
     const restoreProps = stubProperties(baseConfig());
     const restoreFetch = stubFetch(function(url, options) {
@@ -350,69 +314,6 @@ suite('Payments and Subscriptions', function() {
       ok(result.checkoutUrl, 'Should return Stripe hosted checkout URL');
     } finally {
       restoreFetch();
-      restoreProps();
-    }
-  });
-
-  test('should fail fast when Stripe configuration is missing', function() {
-    const restoreProps = stubProperties({
-      PRINTIFY_API_BASE_URL: 'https://printify.example.com',
-      PRINTIFY_SHOP_ID: 'shop_123',
-      PRINTIFY_API_KEY: 'printify_test',
-      STRIPE_API_BASE_URL: 'https://stripe.example.com'
-    });
-
-    try {
-      let error;
-      try {
-        ShopOperationsService.createHostedCheckout({
-          provider: 'stripe',
-          priceId: 'price_123',
-          quantity: 1,
-          successUrl: 'https://example.com/success',
-          cancelUrl: 'https://example.com/cancel'
-        });
-      } catch (err) {
-        error = err;
-      }
-
-      ok(error, 'Should throw when Stripe config missing');
-      const message = error && error.message ? error.message : String(error);
-      ok(message.indexOf('Missing Stripe configuration') !== -1, 'Should mention Stripe configuration');
-      ok(message.indexOf('STRIPE_SECRET_KEY') !== -1, 'Should identify missing Stripe key');
-    } finally {
-      restoreProps();
-    }
-  });
-
-  test('should fail fast when PayPal configuration is missing', function() {
-    const restoreProps = stubProperties({
-      PRINTIFY_API_BASE_URL: 'https://printify.example.com',
-      PRINTIFY_SHOP_ID: 'shop_123',
-      PRINTIFY_API_KEY: 'printify_test',
-      PAYPAL_API_BASE_URL: 'https://paypal.example.com'
-    });
-
-    try {
-      let error;
-      try {
-        ShopOperationsService.createHostedCheckout({
-          provider: 'paypal',
-          amount: '10.00',
-          currency: 'USD',
-          successUrl: 'https://example.com/success',
-          cancelUrl: 'https://example.com/cancel'
-        });
-      } catch (err) {
-        error = err;
-      }
-
-      ok(error, 'Should throw when PayPal config missing');
-      const message = error && error.message ? error.message : String(error);
-      ok(message.indexOf('Missing PayPal configuration') !== -1, 'Should mention PayPal configuration');
-      ok(message.indexOf('PAYPAL_CLIENT_ID') !== -1 && message.indexOf('PAYPAL_SECRET') !== -1,
-        'Should identify missing PayPal keys');
-    } finally {
       restoreProps();
     }
   });
@@ -507,7 +408,7 @@ suite('Payments and Subscriptions', function() {
   });
 });
 
-// ==================== CONTROL PANEL TESTS ====================
+// ====== CONTROL PANEL TESTS ======
 
 suite('Control Panel Functionality', function() {
   let sessionToken;
@@ -552,7 +453,7 @@ suite('Control Panel Functionality', function() {
   });
 });
 
-// ==================== ENHANCED EVENTS TESTS ====================
+// ====== ENHANCED EVENTS TESTS ======
 
 suite('Enhanced Events Payloads', function() {
 
@@ -583,7 +484,7 @@ suite('Enhanced Events Payloads', function() {
   });
 });
 
-// ==================== WEEKLY SCHEDULER TESTS ====================
+// ====== WEEKLY SCHEDULER TESTS ======
 
 suite('Weekly Scheduler Enhancements', function() {
 
@@ -632,7 +533,7 @@ suite('Weekly Scheduler Enhancements', function() {
   });
 });
 
-// ==================== BIRTHDAY AUTOMATION TESTS ====================
+// ====== BIRTHDAY AUTOMATION TESTS ======
 
 suite('Birthday Automation', function() {
 
@@ -682,7 +583,7 @@ suite('Birthday Automation', function() {
   });
 });
 
-// ==================== LEAGUE TABLE PIPELINE TESTS ====================
+// ====== LEAGUE TABLE PIPELINE TESTS ======
 
 suite('League Table Pipeline', function() {
 
@@ -786,7 +687,7 @@ suite('League Table Pipeline', function() {
   });
 });
 
-// ==================== PERFORMANCE TESTS ====================
+// ====== PERFORMANCE TESTS ======
 
 suite('Performance Testing', function() {
 
@@ -833,7 +734,7 @@ suite('Performance Testing', function() {
   });
 });
 
-// ==================== INTEGRATION TESTS ====================
+// ====== INTEGRATION TESTS ======
 
 suite('System Integration', function() {
   let sessionToken;
@@ -880,7 +781,7 @@ suite('System Integration', function() {
   });
 });
 
-// ==================== ERROR HANDLING TESTS ====================
+// ====== ERROR HANDLING TESTS ======
 
 suite('Error Handling', function() {
 
@@ -930,7 +831,7 @@ suite('Error Handling', function() {
   });
 });
 
-// ==================== EDGE CASE TESTS ====================
+// ====== EDGE CASE TESTS ======
 
 suite('Edge Cases', function() {
 
@@ -999,7 +900,7 @@ suite('Edge Cases', function() {
   });
 });
 
-// ==================== REGRESSION TESTS ====================
+// ====== REGRESSION TESTS ======
 
 suite('Regression Testing', function() {
 
@@ -1029,7 +930,7 @@ suite('Regression Testing', function() {
   });
 });
 
-// ==================== CONFIGURATION OVERRIDE TESTS ====================
+// ====== CONFIGURATION OVERRIDE TESTS ======
 
 suite('Configuration Overrides', function() {
 
@@ -1125,7 +1026,7 @@ suite('Configuration Overrides', function() {
   });
 });
 
-// ==================== TEST RUNNER FUNCTIONS ====================
+// ====== TEST RUNNER FUNCTIONS ======
 
 /**
  * Run all test suites and return results

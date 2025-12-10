@@ -410,7 +410,7 @@ class XbotGoIntegration {
   }
 }
 
-// ==================== PUBLIC API FUNCTIONS ====================
+// ====== PUBLIC API FUNCTIONS ======
 
 /**
  * Initialize XbotGo Integration
@@ -539,7 +539,7 @@ function setXbotGoEnabled(enabled) {
   }
 }
 
-// ==================== TESTING FUNCTIONS ====================
+// ====== TESTING FUNCTIONS ======
 
 /**
  * Test XbotGo integration functionality

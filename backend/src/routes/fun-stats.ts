@@ -21,7 +21,7 @@ export async function handleGetTeamFunStats(req: Request, env: any, corsHdrs: He
         const url = new URL(req.url);
         const seasonId = url.searchParams.get('seasonId');
 
-        const stats = await calculateTeamFunStats(env, claims.tenantId, seasonId);
+        const stats = await calculateTeamFunStats(env, claims.tenantId || '', seasonId);
 
         return json({ success: true, data: stats }, 200, corsHdrs);
     } catch (err) {
@@ -37,7 +37,7 @@ export async function handleGetPlayerFunStats(req: Request, env: any, corsHdrs: 
         const url = new URL(req.url);
         const seasonId = url.searchParams.get('seasonId');
 
-        const stats = await calculatePlayerFunStats(env, claims.tenantId, playerId, seasonId);
+        const stats = await calculatePlayerFunStats(env, claims.tenantId || '', playerId, seasonId);
 
         return json({ success: true, data: stats }, 200, corsHdrs);
     } catch (err) {

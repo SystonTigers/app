@@ -12,7 +12,7 @@
  * - Calendar export functionality
  */
 
-// ==================== CALENDAR CONSTANTS ====================
+// ====== CALENDAR CONSTANTS ======
 
 const CALENDAR_CONFIG = {
   // Event colors (Google Calendar color IDs)
@@ -39,7 +39,7 @@ const CALENDAR_CONFIG = {
   }
 };
 
-// ==================== CALENDAR MANAGEMENT ====================
+// ====== CALENDAR MANAGEMENT ======
 
 /**
  * Get or create football club calendar
@@ -236,7 +236,7 @@ function determineEventLocation(fixtureData, config) {
   return 'Venue TBC';
 }
 
-// ==================== CALENDAR UPDATES ====================
+// ====== CALENDAR UPDATES ======
 
 /**
  * Update existing calendar event
@@ -355,7 +355,7 @@ function cancelCalendarEvent(opposition, originalDate) {
   }
 }
 
-// ==================== CALENDAR SHARING ====================
+// ====== CALENDAR SHARING ======
 
 /**
  * Share club calendar with team members
@@ -418,7 +418,7 @@ function getCalendarSharingURL() {
   }
 }
 
-// ==================== FIXTURE SYNCHRONIZATION ====================
+// ====== FIXTURE SYNCHRONIZATION ======
 
 /**
  * Sync all fixtures from sheet to calendar
@@ -530,7 +530,7 @@ function findCalendarEvent(opposition, date) {
   }
 }
 
-// ==================== CALENDAR EXPORT ====================
+// ====== CALENDAR EXPORT ======
 
 /**
  * Export calendar as ICS file
@@ -618,7 +618,7 @@ function formatDateForICS(date) {
   return date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
 }
 
-// ==================== TESTING FUNCTIONS ====================
+// ====== TESTING FUNCTIONS ======
 
 /**
  * Test calendar integration functionality

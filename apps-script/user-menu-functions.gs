@@ -5,7 +5,7 @@
  * @description Simple user menu functions to add to main.gs
  */
 
-// ==================== USER MENU FUNCTIONS ====================
+// ====== USER MENU FUNCTIONS ======
 
 /**
  * Create custom menu when spreadsheet opens
@@ -462,7 +462,7 @@ function testSystemQuick() {
   }
 }
 
-// ==================== COMPREHENSIVE TEST RUNNER ====================
+// ====== COMPREHENSIVE TEST RUNNER ======
 
 /**
  * Run the full comprehensive test suite and display results

@@ -438,7 +438,7 @@ The platform offers **TWO MODES** for video processing, both using the same AI b
 └────────────────────────────────────────────────────────────┘
 
 PATH A: MOBILE APP (Quick Clips)
-================================
+====
 1. USER OPENS APP
    └─> mobile/src/screens/VideoScreen.tsx
    └─> Record (expo-av) OR Select (expo-image-picker)
@@ -451,7 +451,7 @@ PATH A: MOBILE APP (Quick Clips)
 3. [Joins Path B at AI Processing]
 
 PATH B: SERVER-SIDE (Full Match)
-=================================
+=====
 1. MATCH VIDEO UPLOAD
    └─> Upload to Google Drive folder
 
@@ -463,7 +463,7 @@ PATH B: SERVER-SIDE (Full Match)
 3. [Joins Path A at AI Processing]
 
 SHARED AI PROCESSING (Both Paths Converge)
-===========================================
+=
 4. HIGHLIGHTS BOT (Python AI)
    └─> video-processing/highlights_bot/
    └─> detect.py: AI detection of goals, cards, moments

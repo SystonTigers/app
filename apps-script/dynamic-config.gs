@@ -12,7 +12,7 @@
  * - Customer-configurable everything
  */
 
-// ==================== CONFIGURATION CONSTANTS ====================
+// ====== CONFIGURATION CONSTANTS ======
 
 const CONFIG_SHEET_NAME = 'CONFIG';  // Match CustomerInstaller sheet name
 const CONFIG_CACHE_KEY = 'APP_CONFIG_CACHE';
@@ -44,7 +44,7 @@ const DEFAULT_CONFIG_VALUES = {
   'GROUND_CAPACITY': ''
 };
 
-// ==================== CORE CONFIG FUNCTIONS ====================
+// ====== CORE CONFIG FUNCTIONS ======
 
 /**
  * Get configuration with caching
@@ -109,7 +109,7 @@ function getConfigWithQuery_(e) {
   return base;
 }
 
-// ==================== SHEET OPERATIONS ====================
+// ====== SHEET OPERATIONS ======
 
 /**
  * Read configuration from Config sheet
@@ -235,7 +235,7 @@ function updateConfig(key, value) {
   }
 }
 
-// ==================== VALIDATION FUNCTIONS ====================
+// ====== VALIDATION FUNCTIONS ======
 
 /**
  * Validate required configuration keys
@@ -281,7 +281,7 @@ function applyDefaults_(cfg, defaults) {
   }
 }
 
-// ==================== HTML TEMPLATE RENDERING ====================
+// ====== HTML TEMPLATE RENDERING ======
 
 /**
  * Render HTML template with configuration injection
@@ -353,7 +353,7 @@ function include(filename) {
   return HtmlService.createHtmlOutputFromFile(filename).getContent();
 }
 
-// ==================== PAYLOAD BUILDING ====================
+// ====== PAYLOAD BUILDING ======
 
 /**
  * Build Make.com payload with configuration
@@ -393,7 +393,7 @@ function buildConfiguredPayload(eventData) {
   };
 }
 
-// ==================== UTILITY FUNCTIONS ====================
+// ====== UTILITY FUNCTIONS ======
 
 /**
  * Get all configuration as object (for debugging)

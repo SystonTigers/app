@@ -18,12 +18,15 @@ const RsvpSchema = z.object({
 });
 
 // Helper to get event with RSVP counts
-async function getEventWithCounts(env: any, eventId: string) {
-    const event = await env.DB.prepare("SELECT * FROM calendar_events WHERE id = ?").bind(eventId).first();
+// SECURITY: Always requires tenantId to prevent cross-tenant data access
+async function getEventWithCounts(env: any, eventId: string, tenantId: string) {
+    const event = await env.DB.prepare(
+        "SELECT * FROM calendar_events WHERE id = ? AND tenant_id = ?"
+    ).bind(eventId, tenantId).first();
     if (!event) { return null; }
 
     const counts = await env.DB.prepare(`
-    SELECT 
+    SELECT
       SUM(CASE WHEN status = 'yes' THEN 1 ELSE 0 END) as yes_count,
       SUM(CASE WHEN status = 'no' THEN 1 ELSE 0 END) as no_count,
       SUM(CASE WHEN status = 'maybe' THEN 1 ELSE 0 END) as maybe_count
@@ -72,7 +75,7 @@ export async function createEvent(req: Request, env: any, requestId: string, cor
             now
         ).run();
 
-        const event = await getEventWithCounts(env, id);
+        const event = await getEventWithCounts(env, id, claims.tenantId || '');
 
         logJSON({ level: "info", requestId, msg: "EVENT_CREATED", eventId: id, tenantId: claims.tenantId });
 
@@ -88,11 +91,12 @@ export async function createEvent(req: Request, env: any, requestId: string, cor
 }
 
 // GET /api/v1/events/:id
+// SECURITY: Validates tenant ownership before returning event data
 export async function getEvent(req: Request, env: any, requestId: string, corsHdrs: Headers, id: string) {
     try {
-        await requireJWT(req, env); // Ensure auth
+        const claims = await requireJWT(req, env);
 
-        const event = await getEventWithCounts(env, id);
+        const event = await getEventWithCounts(env, id, claims.tenantId || '');
         if (!event) {
             return json({ success: false, error: { code: "NOT_FOUND", message: "Event not found" } }, 404, corsHdrs);
         }
@@ -171,14 +175,17 @@ export async function deleteEvent(req: Request, env: any, requestId: string, cor
 }
 
 // POST /api/v1/events/:id/rsvp
+// SECURITY: Validates tenant ownership before allowing RSVP
 export async function rsvpEvent(req: Request, env: any, requestId: string, corsHdrs: Headers, id: string) {
     try {
         const claims = await requireJWT(req, env);
         const body = await req.json();
         const data = RsvpSchema.parse(body);
 
-        // Check if event exists
-        const event = await env.DB.prepare("SELECT id FROM calendar_events WHERE id = ?").bind(id).first();
+        // Check if event exists AND belongs to user's tenant
+        const event = await env.DB.prepare(
+            "SELECT id FROM calendar_events WHERE id = ? AND tenant_id = ?"
+        ).bind(id, claims.tenantId).first();
         if (!event) {
             return json({ success: false, error: { code: "NOT_FOUND", message: "Event not found" } }, 404, corsHdrs);
         }
@@ -215,9 +222,18 @@ export async function rsvpEvent(req: Request, env: any, requestId: string, corsH
 }
 
 // GET /api/v1/events/:id/rsvps
+// SECURITY: Validates tenant ownership before returning RSVPs
 export async function getEventRsvps(req: Request, env: any, requestId: string, corsHdrs: Headers, id: string) {
     try {
-        await requireJWT(req, env);
+        const claims = await requireJWT(req, env);
+
+        // First verify the event belongs to the tenant
+        const event = await env.DB.prepare(
+            "SELECT id FROM calendar_events WHERE id = ? AND tenant_id = ?"
+        ).bind(id, claims.tenantId).first();
+        if (!event) {
+            return json({ success: false, error: { code: "NOT_FOUND", message: "Event not found" } }, 404, corsHdrs);
+        }
 
         const rsvps = await env.DB.prepare("SELECT * FROM event_rsvps WHERE event_id = ?").bind(id).all();
 
@@ -230,9 +246,18 @@ export async function getEventRsvps(req: Request, env: any, requestId: string, c
 }
 
 // DELETE /api/v1/events/:id/rsvp
+// SECURITY: Validates tenant ownership before allowing RSVP cancellation
 export async function cancelRsvp(req: Request, env: any, requestId: string, corsHdrs: Headers, id: string) {
     try {
         const claims = await requireJWT(req, env);
+
+        // Verify the event belongs to the tenant before deleting RSVP
+        const event = await env.DB.prepare(
+            "SELECT id FROM calendar_events WHERE id = ? AND tenant_id = ?"
+        ).bind(id, claims.tenantId).first();
+        if (!event) {
+            return json({ success: false, error: { code: "NOT_FOUND", message: "Event not found" } }, 404, corsHdrs);
+        }
 
         await env.DB.prepare("DELETE FROM event_rsvps WHERE event_id = ? AND user_id = ?").bind(id, claims.sub).run();
 

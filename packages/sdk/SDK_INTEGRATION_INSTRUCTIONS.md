@@ -57,7 +57,7 @@ export * from './types-phase3';
 In `src/index.ts`, add these sections to the `TeamPlatformSDK` class (before the closing brace around line 319):
 
 ```typescript
-  // ==================== SELF-SERVE SIGNUP ====================
+  // ====== SELF-SERVE SIGNUP ======
 
   /**
    * Step 1: Create tenant account (PUBLIC - no auth required)
@@ -107,7 +107,7 @@ In `src/index.ts`, add these sections to the `TeamPlatformSDK` class (before the
     }
   }
 
-  // ==================== USAGE TRACKING ====================
+  // ====== USAGE TRACKING ======
 
   /**
    * Get current month's usage stats
@@ -131,7 +131,7 @@ In `src/index.ts`, add these sections to the `TeamPlatformSDK` class (before the
     return response.data.usage;
   }
 
-  // ==================== ADMIN/OWNER CONSOLE ====================
+  // ====== ADMIN/OWNER CONSOLE ======
 
   /**
    * Get dashboard statistics (admin only)

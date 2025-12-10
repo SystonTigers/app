@@ -5,14 +5,14 @@
  * @description Handles monthly fixtures/results gathering and payload building (split from monthly-summaries.gs)
  */
 
-// ==================== MONTHLY FIXTURES & RESULTS ====================
+// ====== MONTHLY FIXTURES & RESULTS ======
 
 /**
  * Extends MonthlySummariesManager with fixtures/results functionality
  */
 if (typeof MonthlySummariesManager !== 'undefined') {
 
-  // ==================== PUBLIC SUMMARIES ====================
+  // ====== PUBLIC SUMMARIES ======
 
   /**
    * Post monthly fixtures summary (preview for upcoming fixtures)
@@ -154,7 +154,7 @@ if (typeof MonthlySummariesManager !== 'undefined') {
     }
   };
 
-  // ==================== DATA GATHERING ====================
+  // ====== DATA GATHERING ======
 
   /**
    * Gather monthly fixtures data
@@ -216,7 +216,7 @@ if (typeof MonthlySummariesManager !== 'undefined') {
     }
   };
 
-  // ==================== STATISTICS BUILDERS ====================
+  // ====== STATISTICS BUILDERS ======
 
   /**
    * Build fixture statistics
@@ -262,7 +262,7 @@ if (typeof MonthlySummariesManager !== 'undefined') {
     };
   };
 
-  // ==================== PAYLOAD BUILDERS ====================
+  // ====== PAYLOAD BUILDERS ======
 
   /**
    * Build monthly fixtures payload
@@ -335,7 +335,7 @@ if (typeof MonthlySummariesManager !== 'undefined') {
     };
   };
 
-  // ==================== HELPER METHODS ====================
+  // ====== HELPER METHODS ======
 
   /**
    * Determine match result

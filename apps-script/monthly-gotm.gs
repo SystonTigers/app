@@ -5,7 +5,7 @@
  * @description Handles GOTM voting, winner announcements, and Goal of the Season (split from monthly-summaries.gs)
  */
 
-// ==================== GOAL OF THE MONTH (GOTM) ====================
+// ====== GOAL OF THE MONTH (GOTM) ======
 
 /**
  * Extends MonthlySummariesManager with GOTM functionality
@@ -187,7 +187,7 @@ if (typeof MonthlySummariesManager !== 'undefined') {
     }
   };
 
-  // ==================== GOTM DATA GATHERING ====================
+  // ====== GOTM DATA GATHERING ======
 
   /**
    * Gather monthly goals for GOTM
@@ -235,7 +235,7 @@ if (typeof MonthlySummariesManager !== 'undefined') {
     }
   };
 
-  // ==================== GOTM PAYLOAD BUILDERS ====================
+  // ====== GOTM PAYLOAD BUILDERS ======
 
   /**
    * Create GOTM voting payload
@@ -296,7 +296,7 @@ if (typeof MonthlySummariesManager !== 'undefined') {
     };
   };
 
-  // ==================== GOTM DATA STORAGE ====================
+  // ====== GOTM DATA STORAGE ======
 
   /**
    * Store GOTM voting data
@@ -359,7 +359,7 @@ if (typeof MonthlySummariesManager !== 'undefined') {
     }
   };
 
-  // ==================== GOAL OF THE SEASON (GOTS) ====================
+  // ====== GOAL OF THE SEASON (GOTS) ======
 
   /**
    * Update GOTS tracking with new GOTM winner

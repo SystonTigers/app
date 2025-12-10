@@ -13,7 +13,7 @@
  * - Customer success dashboard
  */
 
-// ==================== SETUP WIZARD CONSTANTS ====================
+// ====== SETUP WIZARD CONSTANTS ======
 
 const SETUP_WIZARD_CONFIG = {
   STEPS: {
@@ -72,7 +72,7 @@ const SETUP_WIZARD_CONFIG = {
   ]
 };
 
-// ==================== SETUP WIZARD INTERFACE ====================
+// ====== SETUP WIZARD INTERFACE ======
 
 /**
  * Create customer setup wizard interface
@@ -118,7 +118,7 @@ function handleSetupWizardSubmission(params) {
   }
 }
 
-// ==================== STEP 1: ACCOUNTS SETUP ====================
+// ====== STEP 1: ACCOUNTS SETUP ======
 
 /**
  * Handle accounts setup step
@@ -202,7 +202,7 @@ function storeCustomerAccountInfo(accountChecks) {
   }
 }
 
-// ==================== STEP 2: CONFIGURATION SETUP ====================
+// ====== STEP 2: CONFIGURATION SETUP ======
 
 /**
  * Handle configuration setup step
@@ -321,7 +321,7 @@ function applyCustomerConfiguration(configData) {
   }
 }
 
-// ==================== STEP 3: DEPLOYMENT SETUP ====================
+// ====== STEP 3: DEPLOYMENT SETUP ======
 
 /**
  * Handle deployment setup step
@@ -475,7 +475,7 @@ function buildDeploymentResult(success, results, message) {
   };
 }
 
-// ==================== DEPLOYMENT FUNCTIONS ====================
+// ====== DEPLOYMENT FUNCTIONS ======
 
 /**
  * Validate system configuration for deployment
@@ -741,7 +741,7 @@ function generateCustomerDashboard() {
   }
 }
 
-// ==================== UTILITY FUNCTIONS ====================
+// ====== UTILITY FUNCTIONS ======
 
 /**
  * Update customer setup progress
@@ -815,7 +815,7 @@ function getCustomerSetupStatus() {
   }
 }
 
-// ==================== TESTING FUNCTIONS ====================
+// ====== TESTING FUNCTIONS ======
 
 /**
  * Test complete customer setup wizard

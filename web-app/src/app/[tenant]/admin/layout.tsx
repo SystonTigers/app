@@ -48,6 +48,12 @@ export default async function TenantAdminLayout({ children, params }: TenantAdmi
                                     <Link href={`/${tenant}/admin/table`} className="text-gray-600 hover:text-brand dark:text-gray-300 dark:hover:text-white transition-colors">
                                         Table
                                     </Link>
+                                    <Link href={`/${tenant}/admin/import`} className="text-gray-600 hover:text-brand dark:text-gray-300 dark:hover:text-white transition-colors">
+                                        Import
+                                    </Link>
+                                    <Link href={`/${tenant}/admin/settings/features`} className="text-gray-600 hover:text-brand dark:text-gray-300 dark:hover:text-white transition-colors">
+                                        Features
+                                    </Link>
                                     <Link href={`/${tenant}/admin/settings`} className="text-gray-600 hover:text-brand dark:text-gray-300 dark:hover:text-white transition-colors">
                                         Settings
                                     </Link>

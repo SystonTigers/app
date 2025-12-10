@@ -963,7 +963,7 @@ class ControlPanelManager {
     }
   }
 
-  // ==================== HELPER FUNCTIONS ====================
+  // ====== HELPER FUNCTIONS ======
 
   /**
    * Format Control Panel sheet for better usability
@@ -1524,7 +1524,7 @@ class ControlPanelManager {
   }
 }
 
-// ==================== PUBLIC API FUNCTIONS ====================
+// ====== PUBLIC API FUNCTIONS ======
 
 /**
  * Initialize Control Panel (public API)
@@ -1622,7 +1622,7 @@ function importControlPanelSettings(settingsData) {
   return manager.importSettings(settingsData);
 }
 
-// ==================== TEST FUNCTIONS ====================
+// ====== TEST FUNCTIONS ======
 
 /**
  * Test Control Panel initialization

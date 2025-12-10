@@ -14,7 +14,7 @@
  * - Control panel input validation
  */
 
-// ==================== PLAYER MANAGEMENT VALIDATION ====================
+// ====== PLAYER MANAGEMENT VALIDATION ======
 
 /**
  * Enhanced Player Management with Input Validation
@@ -197,7 +197,7 @@ class EnhancedPlayerManagement {
   }
 }
 
-// ==================== EVENT PROCESSING VALIDATION ====================
+// ====== EVENT PROCESSING VALIDATION ======
 
 /**
  * Enhanced Event Processing with Input Validation
@@ -432,7 +432,7 @@ class EnhancedEventProcessing {
   }
 }
 
-// ==================== MAKE.COM INTEGRATION VALIDATION ====================
+// ====== MAKE.COM INTEGRATION VALIDATION ======
 
 /**
  * Enhanced Make.com Integration with Input Validation
@@ -649,7 +649,7 @@ class EnhancedMakeIntegration {
   }
 }
 
-// ==================== GLOBAL ENHANCED FUNCTIONS ====================
+// ====== GLOBAL ENHANCED FUNCTIONS ======
 
 /**
  * Global enhanced instances
@@ -724,7 +724,7 @@ function sendToMakeSecure(eventType, payload, options = {}) {
   return EnhancedMakeInt.sendToMake(eventType, payload, options);
 }
 
-// ==================== VALIDATION WRAPPERS ====================
+// ====== VALIDATION WRAPPERS ======
 
 /**
  * Validate and process any system input

@@ -17,7 +17,7 @@
  * - Privacy impact assessments
  */
 
-// ==================== PRIVACY COMPLIANCE MANAGER ====================
+// ====== PRIVACY COMPLIANCE MANAGER ======
 
 /**
  * Privacy Compliance Manager - Comprehensive data privacy and GDPR compliance
@@ -73,7 +73,7 @@ class PrivacyComplianceManager {
     return this._logger;
   }
 
-  // ==================== PII DETECTION AND CLASSIFICATION ====================
+  // ====== PII DETECTION AND CLASSIFICATION ======
 
   /**
    * Detect and classify PII in data
@@ -365,7 +365,7 @@ class PrivacyComplianceManager {
     }
   }
 
-  // ==================== CONSENT DATA PERSISTENCE & EVALUATION ====================
+  // ====== CONSENT DATA PERSISTENCE & EVALUATION ======
 
   /**
    * Refresh cached consent data from Google Sheets
@@ -1439,7 +1439,7 @@ class PrivacyComplianceManager {
     return Math.abs(ageDate.getUTCFullYear() - 1970);
   }
 
-  // ==================== GDPR COMPLIANCE FEATURES ====================
+  // ====== GDPR COMPLIANCE FEATURES ======
 
   /**
    * Process data subject request (GDPR Article 15)
@@ -1656,7 +1656,7 @@ class PrivacyComplianceManager {
     }
   }
 
-  // ==================== DATA RETENTION MANAGEMENT ====================
+  // ====== DATA RETENTION MANAGEMENT ======
 
   /**
    * Apply data retention policies
@@ -1736,7 +1736,7 @@ class PrivacyComplianceManager {
     return rules;
   }
 
-  // ==================== DATA ANONYMIZATION ====================
+  // ====== DATA ANONYMIZATION ======
 
   /**
    * Anonymize player data while preserving statistical value
@@ -1813,7 +1813,7 @@ class PrivacyComplianceManager {
     return 'Outfield';
   }
 
-  // ==================== UTILITY METHODS ====================
+  // ====== UTILITY METHODS ======
 
   /**
    * Check if string is an email
@@ -2046,14 +2046,14 @@ class PrivacyComplianceManager {
   applyRetentionToCategory(category, rules) { return { reviewed: 0, deleted: 0, anonymized: 0 }; }
 }
 
-// ==================== GLOBAL PRIVACY FUNCTIONS ====================
+// ====== GLOBAL PRIVACY FUNCTIONS ======
 
 /**
  * Global privacy compliance manager instance
  */
 const PrivacyManager = new PrivacyComplianceManager();
 
-// ==================== CONSENT GATE HELPER ====================
+// ====== CONSENT GATE HELPER ======
 
 /**
  * ConsentGate provides reusable consent evaluation for outbound posts
