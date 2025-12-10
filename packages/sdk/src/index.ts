@@ -33,9 +33,9 @@ export * from './types';
 
 export type ProvisionState = {
   tenantId: string;
-  plan: 'starter'|'pro';
-  status: 'idle'|'running'|'completed'|'failed';
-  currentStep: string|null;
+  plan: 'starter' | 'pro';
+  status: 'idle' | 'running' | 'completed' | 'failed';
+  currentStep: string | null;
   checkpoints: Record<string, { status: string; error?: string }>;
   startedAt?: number; completedAt?: number; error?: string;
 };
@@ -190,21 +190,35 @@ export class TeamPlatformSDK {
   /**
    * List fixtures (public)
    */
-  async listFixtures(tenant?: string, limit: number = 20): Promise<Fixture[]> {
-    // Check if being called with tenant parameter (new signature)
-    if (tenant && typeof tenant === 'string' && !tenant.includes('/')) {
-      const t = tenant;
+  async listFixtures(tenantOrLimit?: string | number, limit: number = 20): Promise<Fixture[]> {
+    // If first param is a number, it's the limit (legacy/simple usage)
+    if (typeof tenantOrLimit === 'number') {
+      const actualLimit = tenantOrLimit;
+      const t = this.requireTenant();
       try {
         const response = await this.client.get(`/public/${t}/fixtures`, {
-          params: { limit },
+          params: { limit: actualLimit },
         });
-        return response.data?.fixtures || response.data || [];
+        return response.data?.data || response.data?.fixtures || response.data || [];
       } catch {
         return [];
       }
     }
 
-    // Legacy signature or no tenant - use private API
+    // If first param is a string, it's the tenant
+    if (typeof tenantOrLimit === 'string' && !tenantOrLimit.includes('/')) {
+      const t = tenantOrLimit;
+      try {
+        const response = await this.client.get(`/public/${t}/fixtures`, {
+          params: { limit },
+        });
+        return response.data?.data || response.data?.fixtures || response.data || [];
+      } catch {
+        return [];
+      }
+    }
+
+    // No params or undefined - use private API
     const response = await this.client.get('/api/v1/fixtures');
     return response.data?.fixtures || response.data || [];
   }
@@ -213,13 +227,13 @@ export class TeamPlatformSDK {
    * List feed posts (public)
    */
   async listFeed(page: number = 1, pageSize: number = 10, tenant?: string): Promise<FeedPost[]> {
-    // If tenant is provided as third parameter, use public API
-    if (tenant) {
+    const t = tenant || this.tenant;
+    if (t) {
       try {
-        const response = await this.client.get(`/public/${tenant}/feed`, {
+        const response = await this.client.get(`/public/${t}/feed`, {
           params: { page, pageSize },
         });
-        return response.data?.posts || response.data || [];
+        return response.data?.data || response.data?.posts || response.data || [];
       } catch {
         return [];
       }
@@ -235,12 +249,14 @@ export class TeamPlatformSDK {
   /**
    * Get league table (public)
    */
-  async getLeagueTable(tenant?: string): Promise<LeagueTableRow[]> {
-    // If tenant provided, use public API
-    if (tenant && typeof tenant === 'string' && !tenant.includes('/')) {
+  async getLeagueTable(tenant?: string, competition?: string): Promise<LeagueTableRow[]> {
+    const t = tenant || this.tenant;
+    if (t) {
       try {
-        const response = await this.client.get(`/public/${tenant}/table`);
-        return response.data?.table || response.data || [];
+        const params: any = {};
+        if (competition) params.competition = competition;
+        const response = await this.client.get(`/public/${t}/table`, { params });
+        return response.data?.data || response.data?.table || response.data || [];
       } catch {
         return [];
       }
@@ -248,6 +264,7 @@ export class TeamPlatformSDK {
 
     // Legacy signature - use private API
     const params: any = {};
+    if (competition) params.competition = competition;
     const response = await this.client.get('/api/v1/table', { params });
     return response.data?.table || response.data || [];
   }
@@ -257,7 +274,19 @@ export class TeamPlatformSDK {
   /**
    * Get past results
    */
-  async listResults(): Promise<Result[]> {
+  async listResults(limit: number = 20, tenant?: string): Promise<Result[]> {
+    const t = tenant || this.tenant;
+    if (t) {
+      try {
+        const response = await this.client.get(`/public/${t}/fixtures`, {
+          params: { status: 'completed', limit },
+        });
+        return response.data?.data || response.data?.results || response.data || [];
+      } catch {
+        return [];
+      }
+    }
+
     const response = await this.client.get('/api/v1/results');
     return response.data?.results || response.data || [];
   }
@@ -267,7 +296,17 @@ export class TeamPlatformSDK {
   /**
    * Get team squad
    */
-  async getSquad(): Promise<Player[]> {
+  async getSquad(tenant?: string): Promise<Player[]> {
+    const t = tenant || this.tenant;
+    if (t) {
+      try {
+        const response = await this.client.get(`/public/${t}/squad`);
+        return response.data?.data || response.data?.squad || response.data || [];
+      } catch {
+        return [];
+      }
+    }
+
     const response = await this.client.get('/api/v1/squad');
     return response.data?.squad || response.data || [];
   }
@@ -294,7 +333,17 @@ export class TeamPlatformSDK {
   /**
    * Get team statistics
    */
-  async getTeamStats(): Promise<TeamStats> {
+  async getTeamStats(tenant?: string): Promise<TeamStats> {
+    const t = tenant || this.tenant;
+    if (t) {
+      try {
+        const response = await this.client.get(`/public/${t}/stats`);
+        return response.data?.data || response.data?.stats || response.data;
+      } catch (error) {
+        throw error;
+      }
+    }
+
     const response = await this.client.get('/api/v1/stats/team');
     return response.data?.stats || response.data;
   }

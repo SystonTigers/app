@@ -77,6 +77,15 @@ import {
     handleGetImportTemplate,
     handleGetImportStatus
 } from "./routes/import";
+import {
+    handleSyncFromWebsite,
+    handleSyncFromSnippet,
+    handleParseEmail,
+    handleEmailWebhook,
+    handleSyncAll,
+    handleGetFAConfig,
+    handleSetFAConfig
+} from "./routes/fa-sync";
 
 // Cron Jobs
 import { runDaily } from "./cron/daily";
@@ -85,6 +94,7 @@ import { runMilestones, checkMilestonesAfterMatch } from "./cron/milestones";
 import { runPlayerOfPeriod } from "./cron/playerOfPeriod";
 import { runCleanup } from "./cron/cleanup";
 import { runLeague } from "./cron/league";
+import { runFASync } from "./cron/fa-sync";
 
 // Export Durable Objects
 export { TenantRateLimiter } from "./do/rateLimiter";
@@ -749,6 +759,16 @@ router.get("/api/:v/import/template/:type", (req, env, corsHdrs) => {
 });
 router.get("/api/:v/import/status", (req, env, corsHdrs) => handleGetImportStatus(req, env, corsHdrs));
 
+// FA Sync Routes (Fixture data from FA Full-Time)
+router.post("/api/:v/fixtures/sync/website", (req, env, corsHdrs) => handleSyncFromWebsite(req, env, corsHdrs));
+router.post("/api/:v/fixtures/sync/snippet", (req, env, corsHdrs) => handleSyncFromSnippet(req, env, corsHdrs));
+router.post("/api/:v/fixtures/sync/email", (req, env, corsHdrs) => handleParseEmail(req, env, corsHdrs));
+router.post("/api/:v/fixtures/sync/all", (req, env, corsHdrs) => handleSyncAll(req, env, corsHdrs));
+router.get("/api/:v/fixtures/fa-config", (req, env, corsHdrs) => handleGetFAConfig(req, env, corsHdrs));
+router.put("/api/:v/fixtures/fa-config", (req, env, corsHdrs) => handleSetFAConfig(req, env, corsHdrs));
+// Email webhook for Cloudflare Email Workers
+router.post("/webhooks/fa-email", (req, env, corsHdrs) => handleEmailWebhook(req, env, corsHdrs));
+
 // Default 404
 router.all("*", () => new Response("Not Found", { status: 404 }));
 
@@ -838,6 +858,11 @@ export default {
             // Every 6 hours: League table updates
             if (hour % 6 === 0 && minute < 5) {
                 ctx.waitUntil(runLeague(env, ctx));
+            }
+
+            // 06:00 UTC: FA Full-Time Sync
+            if (hour === 6 && minute < 5) {
+                ctx.waitUntil(runFASync(env, ctx));
             }
 
         } catch (error) {
