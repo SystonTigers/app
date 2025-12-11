@@ -13,7 +13,7 @@ interface DashboardStats {
     starterPlans: number;
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8787';
+const API_BASE = 'http://localhost:8787'; // Forced local for debugging
 
 export default function DashboardPage() {
     const [stats, setStats] = useState<DashboardStats | null>(null);

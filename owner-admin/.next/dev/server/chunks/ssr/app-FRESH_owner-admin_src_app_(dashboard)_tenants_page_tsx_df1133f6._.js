@@ -15,7 +15,7 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$adm
 ;
 ;
 ;
-const API_BASE = ("TURBOPACK compile-time value", "https://syston-postbus.team-platform-2025.workers.dev") || 'http://localhost:8787';
+const API_BASE = 'http://localhost:8787'; // Forced local for debugging
 const PROTECTED_SLUGS = [
     'syston-town-tigers',
     'syston',

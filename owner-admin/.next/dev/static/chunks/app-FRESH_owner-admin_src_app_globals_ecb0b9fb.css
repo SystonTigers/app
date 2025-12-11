@@ -348,6 +348,10 @@ img, video {
   z-index: 50;
 }
 
+.z-\[100\] {
+  z-index: 100;
+}
+
 .mx-2 {
   margin-left: .5rem;
   margin-right: .5rem;
@@ -720,6 +724,12 @@ img, video {
   margin-bottom: calc(1.5rem * var(--tw-space-y-reverse));
 }
 
+.space-y-3 > :not([hidden]) ~ :not([hidden]) {
+  --tw-space-y-reverse: 0;
+  margin-top: calc(.75rem * calc(1 - var(--tw-space-y-reverse)));
+  margin-bottom: calc(.75rem * var(--tw-space-y-reverse));
+}
+
 .divide-y > :not([hidden]) ~ :not([hidden]) {
   --tw-divide-y-reverse: 0;
   border-top-width: calc(1px * calc(1 - var(--tw-divide-y-reverse)));
@@ -978,6 +988,10 @@ img, video {
   background-color: #22c55e1a;
 }
 
+.bg-gray-500\/20 {
+  background-color: #6b728033;
+}
+
 .bg-gradient-to-br {
   background-image: linear-gradient(to bottom right, var(--tw-gradient-stops));
 }
@@ -1229,6 +1243,10 @@ img, video {
   text-transform: capitalize;
 }
 
+.italic {
+  font-style: italic;
+}
+
 .tracking-wider {
   letter-spacing: .05em;
 }
@@ -1303,6 +1321,11 @@ img, video {
   color: rgb(251 146 60 / var(--tw-text-opacity, 1));
 }
 
+.text-green-300 {
+  --tw-text-opacity: 1;
+  color: rgb(134 239 172 / var(--tw-text-opacity, 1));
+}
+
 .placeholder-gray-500::placeholder {
   --tw-placeholder-opacity: 1;
   color: rgb(107 114 128 / var(--tw-placeholder-opacity, 1));
@@ -1314,6 +1337,10 @@ img, video {
 
 .opacity-60 {
   opacity: .6;
+}
+
+.opacity-0 {
+  opacity: 0;
 }
 
 .blur-3xl {
@@ -1711,6 +1738,14 @@ body {
   background-color: #eab30833;
 }
 
+.hover\:bg-gray-500\/30:hover {
+  background-color: #6b72804d;
+}
+
+.hover\:bg-green-500\/30:hover {
+  background-color: #22c55e4d;
+}
+
 .hover\:text-primary-300:hover {
   --tw-text-opacity: 1;
   color: rgb(125 211 252 / var(--tw-text-opacity, 1));
@@ -1724,6 +1759,11 @@ body {
 .hover\:text-gray-400:hover {
   --tw-text-opacity: 1;
   color: rgb(156 163 175 / var(--tw-text-opacity, 1));
+}
+
+.hover\:text-red-400:hover {
+  --tw-text-opacity: 1;
+  color: rgb(248 113 113 / var(--tw-text-opacity, 1));
 }
 
 .focus\:border-transparent:focus {
@@ -1776,6 +1816,10 @@ body {
 .group:hover .group-hover\:text-white {
   --tw-text-opacity: 1;
   color: rgb(255 255 255 / var(--tw-text-opacity, 1));
+}
+
+.group:hover .group-hover\:opacity-100 {
+  opacity: 1;
 }
 
 @media (min-width: 640px) {

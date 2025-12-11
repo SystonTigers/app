@@ -1,9 +1,11 @@
 import { z } from "zod";
+import { SignJWT } from "jose";
 import { json, readIdempotencyKey } from "../services/util";
 import { ensureIdempotent } from "../services/idempotency";
 import { parse, isValidationError } from "../lib/validate";
 import { registerUser, authenticateUser } from "../services/users";
 import { issueTenantAdminJWT, issueTenantMemberJWT } from "../services/jwt";
+import { sendVerificationEmail } from "../lib/email";
 import { rateLimit } from "../middleware/rateLimit";
 
 const RegisterSchema = z.object({
@@ -598,8 +600,140 @@ export async function handleFanLogin(req: Request, env: any, corsHdrs: Headers) 
 }
 
 /**
+ * Handle initial owner registration
+ * Creates partial tenant and user, sends verification email
+ * POST /api/v1/auth/register-owner
+ */
+export async function handleRegisterOwner(req: Request, env: any, corsHdrs: Headers) {
+  try {
+    const rateLimitResult = await rateLimit(req, env, {
+      scope: "auth:register-owner",
+      limit: 3,
+      windowSeconds: 3600,
+      path: "/api/v1/auth/register-owner"
+    });
+
+    if (!rateLimitResult.ok) {
+      return json({
+        success: false,
+        error: { code: "RATE_LIMITED", message: "Too many attempts. Please try again later." }
+      }, 429, corsHdrs);
+    }
+
+    const body = await req.json().catch(() => ({}));
+    const data = parse(RegisterSchema, body);
+
+    // 1. Create unique tenant slug for setup
+    const setupId = crypto.randomUUID();
+    const tenantId = `tenant_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    const tenantSlug = `setup-${setupId.substring(0, 8)}`; // Temporary slug
+
+    // 2. Check if email exists (globally unique for owners ideally, but definitely per tenant)
+    // For this flow, we check if this email owns any tenant to prevent spam, or just allow it.
+    // Let's allow multiple tenants per email for now, but in this specific flow we are creating a NEW tenant.
+
+    // 3. Hash password
+    const bcrypt = await import('bcryptjs');
+    const passwordHash = await bcrypt.hash(data.password, 10);
+
+    // 4. Create Tenant (Onboarding status)
+    await env.DB.prepare(`
+      INSERT INTO tenants (id, slug, name, email, status, created_at, updated_at)
+      VALUES (?, ?, ?, ?, 'onboarding', unixepoch(), unixepoch())
+    `).bind(tenantId, tenantSlug, 'New Club', data.email).run();
+
+    // 5. Create User (Owner)
+    const userId = crypto.randomUUID();
+    await env.DB.prepare(`
+      INSERT INTO auth_users (id, tenant_id, email, password_hash, roles, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, unixepoch(), unixepoch())
+    `).bind(userId, tenantId, data.email, passwordHash, '["owner","tenant_admin"]').run();
+
+    // 6. Generate Verification Token (Short lived JWT)
+    // We use a special subject or claim to indicate this is for verification
+    const verificationToken = await new SignJWT({
+      sub: data.email,
+      tenant_id: tenantId,
+      purpose: 'verify_email',
+      user_id: userId
+    })
+      .setProtectedHeader({ alg: "HS256", typ: "JWT" })
+      .setExpirationTime('24h')
+      .sign(new TextEncoder().encode(env.JWT_SECRET));
+
+    // 7. Send Verification Email
+    // Using the hardcoded setup URL or constructing it from referer/origin if needed.
+    // We assume the frontend is at the same domain origin usually, but for dev it might differ.
+    // For now, let's use a standard path relative to the app base.
+    const appBase = env.APP_BASE_URL || 'http://localhost:3000'; // Fallback
+    const link = `${appBase}/verify-email?token=${verificationToken}`;
+
+    await sendVerificationEmail(data.email, link, env);
+
+    return json({
+      success: true,
+      message: "Verification email sent"
+    }, 201, corsHdrs);
+
+  } catch (err: any) {
+    if (isValidationError(err)) {
+      return json({ success: false, error: { code: "INVALID_REQUEST", issues: err.issues } }, 400, corsHdrs);
+    }
+    console.error('Register owner error:', err);
+    return json({ success: false, error: { code: "REGISTRATION_FAILED", message: err.message } }, 500, corsHdrs);
+  }
+}
+
+
+
+/**
+ * Verify email token and return session
+ * POST /api/v1/auth/verify-email
+ */
+export async function handleVerifyEmail(req: Request, env: any, corsHdrs: Headers) {
+  try {
+    const body = await req.json().catch(() => ({})) as any;
+    if (!body.token) {
+      return json({ success: false, error: { code: "MISSING_TOKEN", message: "Token required" } }, 400, corsHdrs);
+    }
+
+    // Verify token
+    const decoded = await verifyJWT(env, body.token);
+    if (!decoded || decoded.purpose !== 'verify_email') {
+      return json({ success: false, error: { code: "INVALID_TOKEN", message: "Invalid or expired verification link" } }, 401, corsHdrs);
+    }
+
+    const { tenant_id, user_id, sub: email } = decoded;
+
+    // Issue real session tokens
+    const token = await issueTenantAdminJWT(env, { tenant_id, ttlMinutes: 10080 }); // 7 days
+
+    // Return user info similar to login
+    return json({
+      success: true,
+      data: {
+        token,
+        user: {
+          id: user_id,
+          email,
+          tenant_id,
+          roles: ['owner', 'tenant_admin']
+        },
+        redirect: '/setup' // Tell frontend where to go next
+      }
+    }, 200, corsHdrs);
+
+  } catch (err: any) {
+    if (err instanceof Response) return err;
+    console.log('Verify email error:', err);
+    return json({ success: false, error: { code: "VERIFY_FAILED", message: err.message || "Unknown error" } }, 500, corsHdrs);
+  }
+}
+
+/**
  * Generate a session token
  */
+
 async function generateSessionToken(env: any, payload: {
   sessionId: string;
   tenantId: string;

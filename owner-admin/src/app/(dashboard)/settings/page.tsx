@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8787';
+const API_BASE = 'http://localhost:8787'; // Forced local for debugging
 
 interface FeatureFlag {
     id: string;

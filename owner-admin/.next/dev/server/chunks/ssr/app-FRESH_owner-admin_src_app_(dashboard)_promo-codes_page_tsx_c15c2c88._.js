@@ -13,7 +13,7 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$node_modules
 ;
 ;
 ;
-const API_BASE = ("TURBOPACK compile-time value", "https://syston-postbus.team-platform-2025.workers.dev") || 'http://localhost:8787';
+const API_BASE = 'http://localhost:8787'; // Forced local for debugging
 function PromoCodesPage() {
     const [promoCodes, setPromoCodes] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])([]);
     const [loading, setLoading] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(true);
@@ -49,7 +49,7 @@ function PromoCodesPage() {
             }
             const data = await response.json();
             if (data.success) {
-                setPromoCodes(data.codes || []);
+                setPromoCodes(data.promoCodes || []);
             }
         } catch (err) {
             setError(err.message || 'Failed to load promo codes');
@@ -100,24 +100,24 @@ function PromoCodesPage() {
             setCreateLoading(false);
         }
     };
-    const handleDeactivate = async (code)=>{
-        if (!confirm(`Deactivate promo code "${code}"?`)) return;
+    const handleToggle = async (code)=>{
         try {
             const token = localStorage.getItem('owner_token');
-            const response = await fetch(`${API_BASE}/api/v1/admin/promo-codes/${code}/deactivate`, {
+            const response = await fetch(`${API_BASE}/api/v1/admin/promo-codes/${code}/toggle`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }
             });
             if (response.ok) {
+                const data = await response.json();
                 setPromoCodes((prev)=>prev.map((p)=>p.code === code ? {
                             ...p,
-                            is_active: false
+                            is_active: data.active
                         } : p));
             }
         } catch (err) {
-            alert('Failed to deactivate promo code');
+            alert('Failed to toggle promo code');
         }
     };
     if (loading) {
@@ -127,12 +127,12 @@ function PromoCodesPage() {
                 className: "w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full animate-spin"
             }, void 0, false, {
                 fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/promo-codes/page.tsx",
-                lineNumber: 144,
+                lineNumber: 143,
                 columnNumber: 17
             }, this)
         }, void 0, false, {
             fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/promo-codes/page.tsx",
-            lineNumber: 143,
+            lineNumber: 142,
             columnNumber: 13
         }, this);
     }
@@ -149,7 +149,7 @@ function PromoCodesPage() {
                                 children: "Promo Codes"
                             }, void 0, false, {
                                 fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/promo-codes/page.tsx",
-                                lineNumber: 154,
+                                lineNumber: 153,
                                 columnNumber: 21
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -157,13 +157,13 @@ function PromoCodesPage() {
                                 children: "Manage discount codes and promotions"
                             }, void 0, false, {
                                 fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/promo-codes/page.tsx",
-                                lineNumber: 155,
+                                lineNumber: 154,
                                 columnNumber: 21
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/promo-codes/page.tsx",
-                        lineNumber: 153,
+                        lineNumber: 152,
                         columnNumber: 17
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -182,25 +182,25 @@ function PromoCodesPage() {
                                     d: "M12 4v16m8-8H4"
                                 }, void 0, false, {
                                     fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/promo-codes/page.tsx",
-                                    lineNumber: 159,
+                                    lineNumber: 158,
                                     columnNumber: 25
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/promo-codes/page.tsx",
-                                lineNumber: 158,
+                                lineNumber: 157,
                                 columnNumber: 21
                             }, this),
                             "Create Code"
                         ]
                     }, void 0, true, {
                         fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/promo-codes/page.tsx",
-                        lineNumber: 157,
+                        lineNumber: 156,
                         columnNumber: 17
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/promo-codes/page.tsx",
-                lineNumber: 152,
+                lineNumber: 151,
                 columnNumber: 13
             }, this),
             error && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -208,11 +208,11 @@ function PromoCodesPage() {
                 children: error
             }, void 0, false, {
                 fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/promo-codes/page.tsx",
-                lineNumber: 166,
+                lineNumber: 165,
                 columnNumber: 17
             }, this),
             showCreate && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                className: "fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4",
+                className: "fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4",
                 children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$node_modules$2f$framer$2d$motion$2f$dist$2f$es$2f$render$2f$components$2f$motion$2f$proxy$2e$mjs__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["motion"].div, {
                     initial: {
                         opacity: 0,
@@ -229,7 +229,7 @@ function PromoCodesPage() {
                             children: "Create Promo Code"
                         }, void 0, false, {
                             fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/promo-codes/page.tsx",
-                            lineNumber: 179,
+                            lineNumber: 178,
                             columnNumber: 25
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("form", {
@@ -243,7 +243,7 @@ function PromoCodesPage() {
                                             children: "Code"
                                         }, void 0, false, {
                                             fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/promo-codes/page.tsx",
-                                            lineNumber: 182,
+                                            lineNumber: 181,
                                             columnNumber: 33
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -258,13 +258,13 @@ function PromoCodesPage() {
                                             required: true
                                         }, void 0, false, {
                                             fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/promo-codes/page.tsx",
-                                            lineNumber: 183,
+                                            lineNumber: 182,
                                             columnNumber: 33
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/promo-codes/page.tsx",
-                                    lineNumber: 181,
+                                    lineNumber: 180,
                                     columnNumber: 29
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -277,7 +277,7 @@ function PromoCodesPage() {
                                                     children: "Discount %"
                                                 }, void 0, false, {
                                                     fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/promo-codes/page.tsx",
-                                                    lineNumber: 195,
+                                                    lineNumber: 194,
                                                     columnNumber: 37
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -293,13 +293,13 @@ function PromoCodesPage() {
                                                     required: true
                                                 }, void 0, false, {
                                                     fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/promo-codes/page.tsx",
-                                                    lineNumber: 196,
+                                                    lineNumber: 195,
                                                     columnNumber: 37
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/promo-codes/page.tsx",
-                                            lineNumber: 194,
+                                            lineNumber: 193,
                                             columnNumber: 33
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -309,7 +309,7 @@ function PromoCodesPage() {
                                                     children: "Plan Lock"
                                                 }, void 0, false, {
                                                     fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/promo-codes/page.tsx",
-                                                    lineNumber: 207,
+                                                    lineNumber: 206,
                                                     columnNumber: 37
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("select", {
@@ -325,7 +325,7 @@ function PromoCodesPage() {
                                                             children: "Any Plan"
                                                         }, void 0, false, {
                                                             fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/promo-codes/page.tsx",
-                                                            lineNumber: 213,
+                                                            lineNumber: 212,
                                                             columnNumber: 41
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -333,7 +333,7 @@ function PromoCodesPage() {
                                                             children: "Starter Only"
                                                         }, void 0, false, {
                                                             fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/promo-codes/page.tsx",
-                                                            lineNumber: 214,
+                                                            lineNumber: 213,
                                                             columnNumber: 41
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -341,25 +341,25 @@ function PromoCodesPage() {
                                                             children: "Pro Only"
                                                         }, void 0, false, {
                                                             fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/promo-codes/page.tsx",
-                                                            lineNumber: 215,
+                                                            lineNumber: 214,
                                                             columnNumber: 41
                                                         }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/promo-codes/page.tsx",
-                                                    lineNumber: 208,
+                                                    lineNumber: 207,
                                                     columnNumber: 37
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/promo-codes/page.tsx",
-                                            lineNumber: 206,
+                                            lineNumber: 205,
                                             columnNumber: 33
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/promo-codes/page.tsx",
-                                    lineNumber: 193,
+                                    lineNumber: 192,
                                     columnNumber: 29
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -372,7 +372,7 @@ function PromoCodesPage() {
                                                     children: "Max Uses"
                                                 }, void 0, false, {
                                                     fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/promo-codes/page.tsx",
-                                                    lineNumber: 222,
+                                                    lineNumber: 221,
                                                     columnNumber: 37
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -387,13 +387,13 @@ function PromoCodesPage() {
                                                     placeholder: "Unlimited"
                                                 }, void 0, false, {
                                                     fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/promo-codes/page.tsx",
-                                                    lineNumber: 223,
+                                                    lineNumber: 222,
                                                     columnNumber: 37
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/promo-codes/page.tsx",
-                                            lineNumber: 221,
+                                            lineNumber: 220,
                                             columnNumber: 33
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -403,7 +403,7 @@ function PromoCodesPage() {
                                                     children: "Expires"
                                                 }, void 0, false, {
                                                     fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/promo-codes/page.tsx",
-                                                    lineNumber: 233,
+                                                    lineNumber: 232,
                                                     columnNumber: 37
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -416,19 +416,19 @@ function PromoCodesPage() {
                                                     className: "input"
                                                 }, void 0, false, {
                                                     fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/promo-codes/page.tsx",
-                                                    lineNumber: 234,
+                                                    lineNumber: 233,
                                                     columnNumber: 37
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/promo-codes/page.tsx",
-                                            lineNumber: 232,
+                                            lineNumber: 231,
                                             columnNumber: 33
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/promo-codes/page.tsx",
-                                    lineNumber: 220,
+                                    lineNumber: 219,
                                     columnNumber: 29
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -438,7 +438,7 @@ function PromoCodesPage() {
                                             children: "Whitelist (comma separated slugs)"
                                         }, void 0, false, {
                                             fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/promo-codes/page.tsx",
-                                            lineNumber: 244,
+                                            lineNumber: 243,
                                             columnNumber: 33
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -452,13 +452,13 @@ function PromoCodesPage() {
                                             placeholder: "team-a, team-b"
                                         }, void 0, false, {
                                             fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/promo-codes/page.tsx",
-                                            lineNumber: 245,
+                                            lineNumber: 244,
                                             columnNumber: 33
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/promo-codes/page.tsx",
-                                    lineNumber: 243,
+                                    lineNumber: 242,
                                     columnNumber: 29
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -475,7 +475,7 @@ function PromoCodesPage() {
                                             className: "w-4 h-4 rounded border-white/20 bg-white/5"
                                         }, void 0, false, {
                                             fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/promo-codes/page.tsx",
-                                            lineNumber: 255,
+                                            lineNumber: 254,
                                             columnNumber: 33
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("label", {
@@ -484,13 +484,13 @@ function PromoCodesPage() {
                                             children: "Lifetime access (100% off forever)"
                                         }, void 0, false, {
                                             fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/promo-codes/page.tsx",
-                                            lineNumber: 262,
+                                            lineNumber: 261,
                                             columnNumber: 33
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/promo-codes/page.tsx",
-                                    lineNumber: 254,
+                                    lineNumber: 253,
                                     columnNumber: 29
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -503,7 +503,7 @@ function PromoCodesPage() {
                                             children: "Cancel"
                                         }, void 0, false, {
                                             fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/promo-codes/page.tsx",
-                                            lineNumber: 268,
+                                            lineNumber: 267,
                                             columnNumber: 33
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -513,30 +513,30 @@ function PromoCodesPage() {
                                             children: createLoading ? 'Creating...' : 'Create Code'
                                         }, void 0, false, {
                                             fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/promo-codes/page.tsx",
-                                            lineNumber: 275,
+                                            lineNumber: 274,
                                             columnNumber: 33
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/promo-codes/page.tsx",
-                                    lineNumber: 267,
+                                    lineNumber: 266,
                                     columnNumber: 29
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/promo-codes/page.tsx",
-                            lineNumber: 180,
+                            lineNumber: 179,
                             columnNumber: 25
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/promo-codes/page.tsx",
-                    lineNumber: 174,
+                    lineNumber: 173,
                     columnNumber: 21
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/promo-codes/page.tsx",
-                lineNumber: 173,
+                lineNumber: 172,
                 columnNumber: 17
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -553,7 +553,7 @@ function PromoCodesPage() {
                         transition: {
                             delay: i * 0.05
                         },
-                        className: `glass-card p-5 ${!promo.is_active ? 'opacity-60' : ''}`,
+                        className: `glass-card p-5 ${!promo.is_active ? 'opacity-60 border-dashed' : ''}`,
                         children: [
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                 className: "flex items-start justify-between mb-3",
@@ -565,18 +565,19 @@ function PromoCodesPage() {
                                                 children: promo.code
                                             }, void 0, false, {
                                                 fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/promo-codes/page.tsx",
-                                                lineNumber: 296,
+                                                lineNumber: 295,
                                                 columnNumber: 33
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                                 className: "flex items-center gap-2 mt-1",
                                                 children: [
-                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
-                                                        className: promo.is_active ? 'badge-success' : 'badge-neutral',
+                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                                                        onClick: ()=>handleToggle(promo.code),
+                                                        className: `px-2 py-0.5 rounded text-xs font-medium transition-colors ${promo.is_active ? 'bg-green-500/20 text-green-300 hover:bg-green-500/30' : 'bg-gray-500/20 text-gray-400 hover:bg-gray-500/30'}`,
                                                         children: promo.is_active ? 'Active' : 'Inactive'
                                                     }, void 0, false, {
                                                         fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/promo-codes/page.tsx",
-                                                        lineNumber: 298,
+                                                        lineNumber: 297,
                                                         columnNumber: 37
                                                     }, this),
                                                     promo.lifetime && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -584,19 +585,19 @@ function PromoCodesPage() {
                                                         children: "Lifetime"
                                                     }, void 0, false, {
                                                         fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/promo-codes/page.tsx",
-                                                        lineNumber: 302,
+                                                        lineNumber: 307,
                                                         columnNumber: 41
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/promo-codes/page.tsx",
-                                                lineNumber: 297,
+                                                lineNumber: 296,
                                                 columnNumber: 33
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/promo-codes/page.tsx",
-                                        lineNumber: 295,
+                                        lineNumber: 294,
                                         columnNumber: 29
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -610,7 +611,7 @@ function PromoCodesPage() {
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/promo-codes/page.tsx",
-                                                lineNumber: 309,
+                                                lineNumber: 314,
                                                 columnNumber: 33
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -618,19 +619,19 @@ function PromoCodesPage() {
                                                 children: "off"
                                             }, void 0, false, {
                                                 fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/promo-codes/page.tsx",
-                                                lineNumber: 310,
+                                                lineNumber: 315,
                                                 columnNumber: 33
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/promo-codes/page.tsx",
-                                        lineNumber: 308,
+                                        lineNumber: 313,
                                         columnNumber: 29
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/promo-codes/page.tsx",
-                                lineNumber: 294,
+                                lineNumber: 293,
                                 columnNumber: 25
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -644,7 +645,7 @@ function PromoCodesPage() {
                                                 children: "Plan"
                                             }, void 0, false, {
                                                 fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/promo-codes/page.tsx",
-                                                lineNumber: 317,
+                                                lineNumber: 322,
                                                 columnNumber: 37
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -655,13 +656,13 @@ function PromoCodesPage() {
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/promo-codes/page.tsx",
-                                                lineNumber: 318,
+                                                lineNumber: 323,
                                                 columnNumber: 37
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/promo-codes/page.tsx",
-                                        lineNumber: 316,
+                                        lineNumber: 321,
                                         columnNumber: 33
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -672,7 +673,7 @@ function PromoCodesPage() {
                                                 children: "Uses"
                                             }, void 0, false, {
                                                 fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/promo-codes/page.tsx",
-                                                lineNumber: 322,
+                                                lineNumber: 327,
                                                 columnNumber: 33
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -684,13 +685,13 @@ function PromoCodesPage() {
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/promo-codes/page.tsx",
-                                                lineNumber: 323,
+                                                lineNumber: 328,
                                                 columnNumber: 33
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/promo-codes/page.tsx",
-                                        lineNumber: 321,
+                                        lineNumber: 326,
                                         columnNumber: 29
                                     }, this),
                                     promo.expires_at && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -701,7 +702,7 @@ function PromoCodesPage() {
                                                 children: "Expires"
                                             }, void 0, false, {
                                                 fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/promo-codes/page.tsx",
-                                                lineNumber: 329,
+                                                lineNumber: 334,
                                                 columnNumber: 37
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -709,39 +710,30 @@ function PromoCodesPage() {
                                                 children: new Date(promo.expires_at).toLocaleDateString()
                                             }, void 0, false, {
                                                 fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/promo-codes/page.tsx",
-                                                lineNumber: 330,
+                                                lineNumber: 335,
                                                 columnNumber: 37
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/promo-codes/page.tsx",
-                                        lineNumber: 328,
+                                        lineNumber: 333,
                                         columnNumber: 33
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/promo-codes/page.tsx",
-                                lineNumber: 314,
+                                lineNumber: 319,
                                 columnNumber: 25
-                            }, this),
-                            promo.is_active && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
-                                onClick: ()=>handleDeactivate(promo.code),
-                                className: "w-full mt-4 btn-danger text-xs",
-                                children: "Deactivate"
-                            }, void 0, false, {
-                                fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/promo-codes/page.tsx",
-                                lineNumber: 338,
-                                columnNumber: 29
                             }, this)
                         ]
                     }, promo.code, true, {
                         fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/promo-codes/page.tsx",
-                        lineNumber: 287,
+                        lineNumber: 286,
                         columnNumber: 21
                     }, this))
             }, void 0, false, {
                 fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/promo-codes/page.tsx",
-                lineNumber: 285,
+                lineNumber: 284,
                 columnNumber: 13
             }, this),
             promoCodes.length === 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -759,12 +751,12 @@ function PromoCodesPage() {
                             d: "M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
                         }, void 0, false, {
                             fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/promo-codes/page.tsx",
-                            lineNumber: 352,
+                            lineNumber: 348,
                             columnNumber: 25
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/promo-codes/page.tsx",
-                        lineNumber: 351,
+                        lineNumber: 347,
                         columnNumber: 21
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -772,7 +764,7 @@ function PromoCodesPage() {
                         children: "No promo codes yet"
                     }, void 0, false, {
                         fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/promo-codes/page.tsx",
-                        lineNumber: 354,
+                        lineNumber: 350,
                         columnNumber: 21
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -781,19 +773,19 @@ function PromoCodesPage() {
                         children: "Create Your First Code"
                     }, void 0, false, {
                         fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/promo-codes/page.tsx",
-                        lineNumber: 355,
+                        lineNumber: 351,
                         columnNumber: 21
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/promo-codes/page.tsx",
-                lineNumber: 350,
+                lineNumber: 346,
                 columnNumber: 17
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/promo-codes/page.tsx",
-        lineNumber: 150,
+        lineNumber: 149,
         columnNumber: 9
     }, this);
 }

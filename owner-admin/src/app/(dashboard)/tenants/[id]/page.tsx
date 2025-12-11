@@ -19,7 +19,7 @@ interface TenantDetails {
     logo_url?: string;
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8787';
+const API_BASE = 'http://localhost:8787'; // Forced local for debugging
 
 export default function TenantDetailPage() {
     const params = useParams();
@@ -38,16 +38,83 @@ export default function TenantDetailPage() {
         status: '',
     });
 
+    const [promos, setPromos] = useState<any[]>([]);
+    const [newPromoCode, setNewPromoCode] = useState('');
+
     useEffect(() => {
         if (tenantId) {
             fetchTenant();
+            fetchPromos();
         }
     }, [tenantId]);
 
+    const fetchPromos = async () => {
+        try {
+            const token = localStorage.getItem('owner_token');
+            const response = await fetch(`${API_BASE}/api/v1/admin/tenants/${tenantId}/promos`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (response.ok) {
+                const data = await response.json();
+                setPromos(data.promos || []);
+            }
+        } catch (err) {
+            console.error('Failed to fetch promos', err);
+        }
+    };
+
+    const handleAddPromo = async () => {
+        if (!newPromoCode) return;
+        try {
+            const token = localStorage.getItem('owner_token');
+            const response = await fetch(`${API_BASE}/api/v1/admin/tenants/${tenantId}/promos`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ code: newPromoCode })
+            });
+
+            if (response.ok) {
+                setNewPromoCode('');
+                fetchPromos();
+            } else {
+                const data = await response.json();
+                alert(data.error?.message || 'Failed to add promo');
+            }
+        } catch (err) {
+            alert('Failed to add promo code');
+        }
+    };
+
+    const handleRemovePromo = async (code: string) => {
+        if (!confirm('Remove this promo code from tenant?')) return;
+        try {
+            const token = localStorage.getItem('owner_token');
+            const response = await fetch(`${API_BASE}/api/v1/admin/tenants/${tenantId}/promos/${code}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            if (response.ok) {
+                fetchPromos();
+            } else {
+                alert('Failed to remove promo');
+            }
+        } catch (err) {
+            alert('Error removing promo code');
+        }
+    };
+
     const fetchTenant = async () => {
         try {
+            const token = localStorage.getItem('owner_token');
             const response = await fetch(`${API_BASE}/api/v1/admin/tenants/${tenantId}`, {
                 credentials: 'include',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
             });
 
             if (!response.ok) {
@@ -80,9 +147,13 @@ export default function TenantDetailPage() {
 
         setSaving(true);
         try {
+            const token = localStorage.getItem('owner_token');
             const response = await fetch(`${API_BASE}/api/v1/admin/tenants/${tenantId}`, {
                 method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
                 credentials: 'include',
                 body: JSON.stringify(editForm),
             });
@@ -287,6 +358,58 @@ export default function TenantDetailPage() {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.3 }}
+                        className="glass-card p-4"
+                    >
+                        <h3 className="text-sm font-medium text-gray-400 mb-3">Promotions</h3>
+
+                        <div className="space-y-3 mb-4">
+                            {promos.length === 0 ? (
+                                <p className="text-xs text-gray-500 italic">No active promotions</p>
+                            ) : (
+                                promos.map(promo => (
+                                    <div key={promo.id} className="flex justify-between items-start text-sm group">
+                                        <div>
+                                            <div className="font-mono font-medium text-white">{promo.code}</div>
+                                            <div className="text-xs text-gray-500">
+                                                {promo.discount_percent}% off {promo.lifetime ? '(Lifetime)' : ''}
+                                            </div>
+                                        </div>
+                                        <button
+                                            onClick={() => handleRemovePromo(promo.code)}
+                                            className="text-gray-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
+                                            title="Remove promo"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+
+                        <div className="flex gap-2">
+                            <input
+                                type="text"
+                                value={newPromoCode}
+                                onChange={(e) => setNewPromoCode(e.target.value.toUpperCase())}
+                                placeholder="PROMO-CODE"
+                                className="input py-1 px-2 text-sm font-mono"
+                            />
+                            <button
+                                onClick={handleAddPromo}
+                                disabled={!newPromoCode}
+                                className="btn-primary py-1 px-3 text-sm disabled:opacity-50"
+                            >
+                                Add
+                            </button>
+                        </div>
+                    </motion.div>
+
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.4 }}
                         className="glass-card p-4"
                     >
                         <h3 className="text-sm font-medium text-gray-400 mb-3">Usage Stats</h3>

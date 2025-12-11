@@ -6,13 +6,16 @@ import { newRequestId, logJSON } from "./lib/log";
 import { withSecurity } from "./middleware/securityHeaders";
 import { healthz, readyz } from "./routes/health";
 import { registerTenantRoutes } from "./routes/tenants";
+import { updateTenantMe, getTenantMe } from "./routes/tenant-self";
 import {
     handleAuthRegister,
     handleAuthLogin,
     handleSetPassword,
     handleCheckPasswordStatus,
     handleCodeLogin,
-    handleFanLogin
+    handleFanLogin,
+    handleRegisterOwner,
+    handleVerifyEmail
 } from "./routes/auth";
 import {
     signupStart,
@@ -34,7 +37,11 @@ import {
     listUsers,
     upsertPromoCode,
     getSystemConfig,
-    updateSystemConfig
+    updateSystemConfig,
+    togglePromoCode,
+    listTenantPromos,
+    applyTenantPromo,
+    removeTenantPromo
 } from "./routes/admin";
 import {
     handleProvisionQueue,
@@ -148,7 +155,14 @@ router.get("/public/*", async (req, env, corsHdrs, requestId) => {
 router.post("/api/webhooks/stripe", (req, env) => handleStripeWebhook(req, env));
 
 // Auth Routes
+router.post("/api/:v/auth/register-owner", (req, env, corsHdrs) => {
+    // Check if new registration logic
+    return handleRegisterOwner(req, env, corsHdrs);
+});
+router.post("/api/:v/auth/verify-email", (req, env, corsHdrs) => handleVerifyEmail(req, env, corsHdrs));
 router.post("/api/:v/auth/register", (req, env, corsHdrs) => handleAuthRegister(req, env, corsHdrs));
+
+
 router.post("/api/:v/auth/login", (req, env, corsHdrs) => handleAuthLogin(req, env, corsHdrs));
 router.post("/api/:v/auth/set-password", (req, env, corsHdrs) => handleSetPassword(req, env, corsHdrs));
 router.get("/api/:v/auth/password-status", (req, env, corsHdrs) => handleCheckPasswordStatus(req, env, corsHdrs));
@@ -161,6 +175,8 @@ router.post("/api/:v/magic/verify", (req, env, corsHdrs) => handleMagicVerify(re
 
 // Tenant Routes
 registerTenantRoutes(router);
+router.patch("/api/:v/tenants/me", (req, env, corsHdrs) => updateTenantMe(req, env, corsHdrs));
+router.get("/api/:v/tenants/me", (req, env, corsHdrs) => getTenantMe(req, env, corsHdrs));
 
 // Signup Routes
 router.post("/public/signup/start", (req, env, corsHdrs, requestId) => signupStart(req, env, requestId, corsHdrs));
@@ -194,6 +210,23 @@ router.post("/api/:v/admin/promo-codes/:code/deactivate", (req, env, corsHdrs, r
     const params = (req as any).params || {};
     return deactivatePromoCode(req, env, requestId, corsHdrs, params.code);
 });
+router.post("/api/:v/admin/promo-codes/:code/toggle", (req, env, corsHdrs, requestId) => {
+    const params = (req as any).params || {};
+    return togglePromoCode(req, env, requestId, corsHdrs, params.code);
+});
+router.get("/api/:v/admin/tenants/:id/promos", (req, env, corsHdrs, requestId) => {
+    const params = (req as any).params || {};
+    return listTenantPromos(req, env, requestId, corsHdrs, params.id);
+});
+router.post("/api/:v/admin/tenants/:id/promos", (req, env, corsHdrs, requestId) => {
+    const params = (req as any).params || {};
+    return applyTenantPromo(req, env, requestId, corsHdrs, params.id);
+});
+router.delete("/api/:v/admin/tenants/:id/promos/:code", (req, env, corsHdrs, requestId) => {
+    const params = (req as any).params || {};
+    return removeTenantPromo(req, env, requestId, corsHdrs, params.id, params.code);
+});
+
 router.get("/api/:v/admin/stats", (req, env, corsHdrs, requestId) => getAdminStats(req, env, requestId, corsHdrs));
 router.get("/api/:v/admin/users", (req, env, corsHdrs, requestId) => listUsers(req, env, requestId, corsHdrs));
 // Alias for legacy tests

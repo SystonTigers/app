@@ -16,7 +16,7 @@ interface PromoCode {
     whitelist?: string[];
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8787';
+const API_BASE = 'http://localhost:8787'; // Forced local for debugging
 
 export default function PromoCodesPage() {
     const [promoCodes, setPromoCodes] = useState<PromoCode[]>([]);
@@ -58,7 +58,7 @@ export default function PromoCodesPage() {
 
             const data = await response.json();
             if (data.success) {
-                setPromoCodes(data.codes || []);
+                setPromoCodes(data.promoCodes || []);
             }
         } catch (err: any) {
             setError(err.message || 'Failed to load promo codes');
@@ -116,12 +116,10 @@ export default function PromoCodesPage() {
         }
     };
 
-    const handleDeactivate = async (code: string) => {
-        if (!confirm(`Deactivate promo code "${code}"?`)) return;
-
+    const handleToggle = async (code: string) => {
         try {
             const token = localStorage.getItem('owner_token');
-            const response = await fetch(`${API_BASE}/api/v1/admin/promo-codes/${code}/deactivate`, {
+            const response = await fetch(`${API_BASE}/api/v1/admin/promo-codes/${code}/toggle`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`
@@ -129,12 +127,13 @@ export default function PromoCodesPage() {
             });
 
             if (response.ok) {
+                const data = await response.json();
                 setPromoCodes((prev) =>
-                    prev.map((p) => (p.code === code ? { ...p, is_active: false } : p))
+                    prev.map((p) => (p.code === code ? { ...p, is_active: data.active } : p))
                 );
             }
         } catch (err) {
-            alert('Failed to deactivate promo code');
+            alert('Failed to toggle promo code');
         }
     };
 
@@ -170,7 +169,7 @@ export default function PromoCodesPage() {
 
             {/* Create Modal */}
             {showCreate && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
                     <motion.div
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
@@ -289,15 +288,21 @@ export default function PromoCodesPage() {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: i * 0.05 }}
-                        className={`glass-card p-5 ${!promo.is_active ? 'opacity-60' : ''}`}
+                        className={`glass-card p-5 ${!promo.is_active ? 'opacity-60 border-dashed' : ''}`}
                     >
                         <div className="flex items-start justify-between mb-3">
                             <div>
                                 <h3 className="font-mono text-lg font-bold text-white">{promo.code}</h3>
                                 <div className="flex items-center gap-2 mt-1">
-                                    <span className={promo.is_active ? 'badge-success' : 'badge-neutral'}>
+                                    <button
+                                        onClick={() => handleToggle(promo.code)}
+                                        className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${promo.is_active
+                                            ? 'bg-green-500/20 text-green-300 hover:bg-green-500/30'
+                                            : 'bg-gray-500/20 text-gray-400 hover:bg-gray-500/30'
+                                            }`}
+                                    >
                                         {promo.is_active ? 'Active' : 'Inactive'}
-                                    </span>
+                                    </button>
                                     {promo.lifetime && (
                                         <span className="badge bg-gradient-to-r from-yellow-500/30 to-orange-500/30 text-yellow-300">
                                             Lifetime
@@ -333,15 +338,6 @@ export default function PromoCodesPage() {
                                 </div>
                             )}
                         </div>
-
-                        {promo.is_active && (
-                            <button
-                                onClick={() => handleDeactivate(promo.code)}
-                                className="w-full mt-4 btn-danger text-xs"
-                            >
-                                Deactivate
-                            </button>
-                        )}
                     </motion.div>
                 ))}
             </div>

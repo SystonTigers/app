@@ -14,7 +14,7 @@ interface Tenant {
     created_at: number;
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8787';
+const API_BASE = 'http://localhost:8787'; // Forced local for debugging
 const PROTECTED_SLUGS = ['syston-town-tigers', 'syston', 'syston-tigers'];
 
 export default function TenantsPage() {

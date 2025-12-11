@@ -9,6 +9,7 @@
   "/(dashboard)/revenue/page": "app/(dashboard)/revenue/page.js",
   "/(dashboard)/settings/page": "app/(dashboard)/settings/page.js",
   "/(dashboard)/support/page": "app/(dashboard)/support/page.js",
+  "/(dashboard)/tenants/[id]/page": "app/(dashboard)/tenants/[id]/page.js",
   "/(dashboard)/tenants/page": "app/(dashboard)/tenants/page.js",
   "/audit-log/page": "app/audit-log/page.js",
   "/health/page": "app/health/page.js",

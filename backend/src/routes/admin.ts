@@ -652,3 +652,132 @@ export async function updateSystemConfig(req: Request, env: any, requestId: stri
     return json({ success: false, error: { code: "SERVER_ERROR", message: err.message } }, 500, corsHdrs);
   }
 }
+
+// POST /api/v1/admin/promo-codes/:code/toggle - Toggle active status
+export async function togglePromoCode(req: Request, env: any, requestId: string, corsHdrs: Headers, code: string): Promise<Response> {
+  try {
+    const claims = await requireAdmin(req, env);
+    await withCsrfProtection(req, env, undefined, claims.userId);
+
+    const existing = await env.DB.prepare("SELECT id, active FROM promo_codes WHERE code = ?").bind(code).first();
+    if (!existing) {
+      return json({ success: false, error: { code: "NOT_FOUND", message: "Promo code not found" } }, 404, corsHdrs);
+    }
+
+    const newStatus = existing.active ? 0 : 1;
+    await env.DB.prepare(`UPDATE promo_codes SET active = ? WHERE code = ?`).bind(newStatus, code).run();
+
+    logJSON({ level: "info", requestId, msg: "PROMO_CODE_TOGGLED", code, newStatus: newStatus === 1 });
+    return json({ success: true, active: newStatus === 1 }, 200, corsHdrs);
+
+  } catch (err: any) {
+    if (err instanceof Response) { throw err; }
+    logJSON({ level: "error", requestId, msg: "TOGGLE_PROMO_CODE_ERROR", error: err.message });
+    return json({ success: false, error: { code: "SERVER_ERROR", message: err.message } }, 500, corsHdrs);
+  }
+}
+
+// GET /api/v1/admin/tenants/:id/promos - List applied promos for tenant
+export async function listTenantPromos(req: Request, env: any, requestId: string, corsHdrs: Headers, tenantId: string): Promise<Response> {
+  try {
+    await requireAdmin(req, env);
+
+    const promos = await env.DB.prepare(`
+      SELECT pr.id, pr.redeemed_at, pc.code, pc.discount_percent, pc.plan, pc.lifetime
+      FROM promo_redemptions pr
+      JOIN promo_codes pc ON pr.promo_code_id = pc.id
+      WHERE pr.tenant_id = ?
+      ORDER BY pr.redeemed_at DESC
+    `).bind(tenantId).all();
+
+    return json({
+      success: true,
+      promos: promos.results || []
+    }, 200, corsHdrs);
+
+  } catch (err: any) {
+    if (err instanceof Response) { throw err; }
+    logJSON({ level: "error", requestId, msg: "LIST_TENANT_PROMOS_ERROR", error: err.message });
+    return json({ success: false, error: { code: "SERVER_ERROR", message: err.message } }, 500, corsHdrs);
+  }
+}
+
+// POST /api/v1/admin/tenants/:id/promos - Apply promo to tenant manually
+export async function applyTenantPromo(req: Request, env: any, requestId: string, corsHdrs: Headers, tenantId: string): Promise<Response> {
+  try {
+    const claims = await requireAdmin(req, env);
+    const body = await req.json().catch(() => ({}));
+    await withCsrfProtection(req, env, body, claims.userId);
+
+    const Schema = z.object({ code: z.string() });
+    const data = parse(Schema, body);
+
+    // Get promo
+    const promo = await env.DB.prepare(`SELECT id, code, active FROM promo_codes WHERE code = ?`).bind(data.code).first();
+    if (!promo) {
+      return json({ success: false, error: { code: "NOT_FOUND", message: "Promo code not found" } }, 404, corsHdrs);
+    }
+
+    // Check if already applied
+    const existing = await env.DB.prepare(`
+      SELECT id FROM promo_redemptions WHERE tenant_id = ? AND promo_code_id = ?
+    `).bind(tenantId, promo.id).first();
+
+    if (existing) {
+      return json({ success: false, error: { code: "ALREADY_APPLIED", message: "Promo already applied to this tenant" } }, 400, corsHdrs);
+    }
+
+    // Apply
+    const redemptionId = `redemption_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    await env.DB.prepare(`
+      INSERT INTO promo_redemptions (id, tenant_id, promo_code_id, redeemed_at)
+      VALUES (?, ?, ?, unixepoch())
+    `).bind(redemptionId, tenantId, promo.id).run();
+
+    // Increment count
+    await env.DB.prepare(`UPDATE promo_codes SET used_count = used_count + 1 WHERE id = ?`).bind(promo.id).run();
+
+    logJSON({ level: "info", requestId, msg: "TENANT_PROMO_APPLIED", tenantId, code: promo.code });
+    return json({ success: true }, 200, corsHdrs);
+
+  } catch (err: any) {
+    if (err instanceof Response) { throw err; }
+    if (isValidationError(err)) {
+      return json({ success: false, error: { code: "INVALID", message: "Validation failed" } }, 400, corsHdrs);
+    }
+    logJSON({ level: "error", requestId, msg: "APPLY_TENANT_PROMO_ERROR", error: err.message });
+    return json({ success: false, error: { code: "SERVER_ERROR", message: err.message } }, 500, corsHdrs);
+  }
+}
+
+// DELETE /api/v1/admin/tenants/:id/promos/:code - Remove promo from tenant
+export async function removeTenantPromo(req: Request, env: any, requestId: string, corsHdrs: Headers, tenantId: string, code: string): Promise<Response> {
+  try {
+    const claims = await requireAdmin(req, env);
+    await withCsrfProtection(req, env, undefined, claims.userId);
+
+    // Get promo id
+    const promo = await env.DB.prepare(`SELECT id FROM promo_codes WHERE code = ?`).bind(code).first();
+    if (!promo) {
+      return json({ success: false, error: { code: "NOT_FOUND", message: "Promo code not found" } }, 404, corsHdrs);
+    }
+
+    // Delete redemption
+    const res = await env.DB.prepare(`
+      DELETE FROM promo_redemptions WHERE tenant_id = ? AND promo_code_id = ?
+    `).bind(tenantId, promo.id).run();
+
+    if (res.meta.changes > 0) {
+      // Decrement count just to keep stats vaguely accurate
+      await env.DB.prepare(`UPDATE promo_codes SET used_count = MAX(0, used_count - 1) WHERE id = ?`).bind(promo.id).run();
+    }
+
+    logJSON({ level: "info", requestId, msg: "TENANT_PROMO_REMOVED", tenantId, code });
+    return json({ success: true }, 200, corsHdrs);
+
+  } catch (err: any) {
+    if (err instanceof Response) { throw err; }
+    logJSON({ level: "error", requestId, msg: "REMOVE_TENANT_PROMO_ERROR", error: err.message });
+    return json({ success: false, error: { code: "SERVER_ERROR", message: err.message } }, 500, corsHdrs);
+  }
+}

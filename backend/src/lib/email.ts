@@ -32,7 +32,8 @@ export async function sendEmail(
       level: "warn",
       msg: "email_not_sent_no_api_key",
       to: options.to,
-      subject: options.subject
+      subject: options.subject,
+      html: options.html
     });
     return {
       success: true,
@@ -305,6 +306,100 @@ export async function sendWelcomeEmail(
     {
       to: email,
       subject: `⚙️ Setting up ${clubName} - Almost Ready!`,
+      html,
+    },
+    env
+  );
+}
+
+/**
+ * Send email verification link
+ */
+export async function sendVerificationEmail(
+  email: string,
+  link: string,
+  env: { RESEND_API_KEY?: string; RESEND_FROM_EMAIL?: string }
+): Promise<EmailResult> {
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      padding: 40px 20px;
+      text-align: center;
+      border-radius: 8px 8px 0 0;
+    }
+    .header h1 {
+      color: white;
+      margin: 0;
+      font-size: 28px;
+    }
+    .content {
+      background: #ffffff;
+      padding: 40px;
+      border: 1px solid #e0e0e0;
+      border-top: none;
+    }
+    .button {
+      display: inline-block;
+      background: #667eea;
+      color: white;
+      padding: 14px 32px;
+      text-decoration: none;
+      border-radius: 6px;
+      font-weight: 600;
+      margin: 20px 0;
+    }
+    .button:hover {
+      background: #5568d3;
+    }
+    .footer {
+      text-align: center;
+      padding: 20px;
+      color: #666;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Verify your email</h1>
+  </div>
+  <div class="content">
+    <h2>You're almost there!</h2>
+    <p>Hi there,</p>
+    <p>Please verify your email address to complete your account setup and start building your team platform.</p>
+
+    <div style="text-align: center;">
+      <a href="${link}" class="button">Verify Email & Start Setup</a>
+    </div>
+
+    <p>If you didn't create an account, you can safely ignore this email.</p>
+  </div>
+  <div class="footer">
+    <p>This is an automated email. Please do not reply directly.</p>
+    <p>If you're having trouble with the button above, copy and paste this link into your browser:</p>
+    <p style="font-size: 12px; word-break: break-all;">${link}</p>
+  </div>
+</body>
+</html>
+  `.trim();
+
+  return sendEmail(
+    {
+      to: email,
+      subject: `Verify your email for Syston`,
       html,
     },
     env
