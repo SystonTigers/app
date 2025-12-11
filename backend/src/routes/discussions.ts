@@ -40,10 +40,39 @@ export async function handleListDiscussions(req: Request, env: any, corsHdrs: He
     try {
         const claims = await requireJWT(req, env);
         const url = new URL(req.url);
-        const category = url.searchParams.get('category');
+        let category = url.searchParams.get('category');
         const pinnedOnly = url.searchParams.get('pinned') === 'true';
         const limit = Math.min(parseInt(url.searchParams.get('limit') || '50'), 100);
         const offset = parseInt(url.searchParams.get('offset') || '0');
+
+        // Role-based access control
+        const role = (claims as any).role || 'parent';
+
+        // Fans cannot access discussions at all
+        if (role === 'fan') {
+            return json({
+                success: false,
+                error: { code: 'FORBIDDEN', message: 'Fans do not have access to discussions' }
+            }, 403, corsHdrs);
+        }
+
+        // Players and parents can only see 'general' and 'match-analysis' categories
+        const restrictedRoles = ['player', 'parent'];
+        const allowedCategories = ['general', 'match-analysis'];
+
+        if (restrictedRoles.includes(role) && category && !allowedCategories.includes(category)) {
+            return json({
+                success: false,
+                error: { code: 'FORBIDDEN', message: 'You do not have access to this category' }
+            }, 403, corsHdrs);
+        }
+
+        // For restricted roles without category filter, limit to allowed categories
+        let categoryFilter = category;
+        if (restrictedRoles.includes(role) && !category) {
+            // Will add IN clause below
+            categoryFilter = null; // Flag to use IN clause
+        }
 
         let query = `
             SELECT d.*, 
@@ -54,7 +83,10 @@ export async function handleListDiscussions(req: Request, env: any, corsHdrs: He
         `;
         const binds: any[] = [claims.tenantId];
 
-        if (category) {
+        // Apply category restriction for limited roles
+        if (restrictedRoles.includes(role) && !category) {
+            query += ` AND d.category IN ('general', 'match-analysis')`;
+        } else if (category) {
             query += ` AND d.category = ?`;
             binds.push(category);
         }

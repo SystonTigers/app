@@ -1,0 +1,8 @@
+(globalThis.TURBOPACK_CHUNK_LISTS || (globalThis.TURBOPACK_CHUNK_LISTS = [])).push({
+    script: typeof document === "object" ? document.currentScript : undefined,
+    chunks: [
+  "static/chunks/app-FRESH_50d37d6a._.js",
+  "static/chunks/app-FRESH_owner-admin_src_app_(auth)_login_page_tsx_bd1c820a._.js"
+],
+    source: "dynamic"
+});

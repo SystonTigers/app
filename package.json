@@ -6,9 +6,13 @@
     "backend",
     "web",
     "web-app",
+    "owner-admin",
     "packages/*"
   ],
   "scripts": {
+    "dev:web": "npm --prefix web-app run dev",
+    "dev:owner": "npm --prefix owner-admin run dev",
+    "dev:all": "npm run dev:web & npm run dev:owner",
     "test": "npm run test:backend && npm run test:web && npm run test:apps",
     "test:backend": "npm --prefix backend test",
     "test:web": "npm --prefix web test && npm --prefix web run test:e2e",

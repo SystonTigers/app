@@ -5,6 +5,7 @@ import { createClientSDK, updateSquad, addPlayer } from '@/lib/sdk';
 import { AddPlayerModal } from '@/components/admin/AddPlayerModal';
 import { TransferCodeModal } from '@/components/TransferCodeModal';
 import { ClaimTransferModal } from '@/components/ClaimTransferModal';
+import Link from 'next/link';
 
 interface PageProps {
     params: Promise<{ tenant: string }>;
@@ -193,6 +194,13 @@ export default function SquadAdminPage({ params }: PageProps) {
                                     />
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-right space-x-2">
+                                    <Link
+                                        href={`/${tenant}/admin/players/${player.id}`}
+                                        className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white text-sm"
+                                        title="Edit player details, contacts, and login code"
+                                    >
+                                        ✏️ Edit
+                                    </Link>
                                     <button
                                         onClick={() => setTransferModalPlayer(player)}
                                         className="text-blue-600 hover:text-blue-900 dark:hover:text-blue-400 text-sm"

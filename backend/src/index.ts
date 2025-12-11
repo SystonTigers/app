@@ -10,7 +10,9 @@ import {
     handleAuthRegister,
     handleAuthLogin,
     handleSetPassword,
-    handleCheckPasswordStatus
+    handleCheckPasswordStatus,
+    handleCodeLogin,
+    handleFanLogin
 } from "./routes/auth";
 import {
     signupStart,
@@ -86,6 +88,25 @@ import {
     handleGetFAConfig,
     handleSetFAConfig
 } from "./routes/fa-sync";
+import {
+    handleListDevices,
+    handleCreateDevice,
+    handleGetDevice,
+    handleUpdateDevice,
+    handleDeleteDevice,
+    handleListSessions as handleListWearableSessions,
+    handleCreateSession as handleCreateWearableSession,
+    handleGetSession as handleGetWearableSession,
+    handleGetGPSTrack,
+    handleSyncData,
+    handleManualEntry,
+    handleGetPlayerMetrics,
+    handleGetPlayerSummary,
+    handleGetFatigueAssessment,
+    handleListPitches,
+    handleCreatePitch,
+    handleImportData
+} from "./routes/wearables";
 
 // Cron Jobs
 import { runDaily } from "./cron/daily";
@@ -129,6 +150,8 @@ router.post("/api/:v/auth/register", (req, env, corsHdrs) => handleAuthRegister(
 router.post("/api/:v/auth/login", (req, env, corsHdrs) => handleAuthLogin(req, env, corsHdrs));
 router.post("/api/:v/auth/set-password", (req, env, corsHdrs) => handleSetPassword(req, env, corsHdrs));
 router.get("/api/:v/auth/password-status", (req, env, corsHdrs) => handleCheckPasswordStatus(req, env, corsHdrs));
+router.post("/api/:v/auth/code-login", (req, env, corsHdrs) => handleCodeLogin(req, env, corsHdrs));
+router.post("/api/:v/auth/fan-login", (req, env, corsHdrs) => handleFanLogin(req, env, corsHdrs));
 
 // Magic Link Routes
 router.post("/api/:v/magic/start", (req, env, corsHdrs) => handleMagicStart(req, env, corsHdrs));
@@ -351,7 +374,16 @@ router.put("/api/:v/social/config", (req, env, corsHdrs) => handleUpdateSocialCo
 router.get("/api/:v/social/config", (req, env, corsHdrs) => handleGetSocialConfig(req, env, corsHdrs));
 
 // Player Photo Routes
-import { handlePlayerPhotoUpload, handlePlayerPhotoDelete, handleGetPlayerGoals } from "./routes/players";
+import {
+    handlePlayerPhotoUpload,
+    handlePlayerPhotoDelete,
+    handleGetPlayerGoals,
+    handleGetPlayer as handleGetPlayerDetails,
+    handleUpdatePlayer as handleUpdatePlayerDetails,
+    handleRegenerateCode,
+    handleGenerateCoachCode,
+    handleGetFanCode
+} from "./routes/players";
 router.post("/api/:v/players/:id/photo", (req, env, corsHdrs) => {
     const params = (req as any).params || {};
     return handlePlayerPhotoUpload(req, env, corsHdrs);
@@ -364,6 +396,22 @@ router.get("/api/:v/players/:id/goals", (req, env, corsHdrs) => {
     const params = (req as any).params || {};
     return handleGetPlayerGoals(req, env, corsHdrs, params.id);
 });
+// Player details with contacts and login code
+router.get("/api/:v/players/:id", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleGetPlayerDetails(req, env, corsHdrs, params.id);
+});
+router.put("/api/:v/players/:id", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleUpdatePlayerDetails(req, env, corsHdrs, params.id);
+});
+router.post("/api/:v/players/:id/regenerate-code", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleRegenerateCode(req, env, corsHdrs, params.id);
+});
+// Coach and Fan code management
+router.post("/api/:v/codes/coach", (req, env, corsHdrs) => handleGenerateCoachCode(req, env, corsHdrs));
+router.get("/api/:v/codes/fan", (req, env, corsHdrs) => handleGetFanCode(req, env, corsHdrs));
 
 // Team Discussion Routes
 import {
@@ -768,6 +816,59 @@ router.get("/api/:v/fixtures/fa-config", (req, env, corsHdrs) => handleGetFAConf
 router.put("/api/:v/fixtures/fa-config", (req, env, corsHdrs) => handleSetFAConfig(req, env, corsHdrs));
 // Email webhook for Cloudflare Email Workers
 router.post("/webhooks/fa-email", (req, env, corsHdrs) => handleEmailWebhook(req, env, corsHdrs));
+
+// ===== WEARABLES / GPS TRACKING ROUTES =====
+
+// Device Management
+router.get("/api/:v/wearables/devices", (req, env, corsHdrs) => handleListDevices(req, env, corsHdrs));
+router.post("/api/:v/wearables/devices", (req, env, corsHdrs) => handleCreateDevice(req, env, corsHdrs));
+router.get("/api/:v/wearables/devices/:id", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleGetDevice(req, env, corsHdrs, params.id);
+});
+router.put("/api/:v/wearables/devices/:id", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleUpdateDevice(req, env, corsHdrs, params.id);
+});
+router.delete("/api/:v/wearables/devices/:id", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleDeleteDevice(req, env, corsHdrs, params.id);
+});
+
+// Sessions
+router.get("/api/:v/wearables/sessions", (req, env, corsHdrs) => handleListWearableSessions(req, env, corsHdrs));
+router.post("/api/:v/wearables/sessions", (req, env, corsHdrs) => handleCreateWearableSession(req, env, corsHdrs));
+router.get("/api/:v/wearables/sessions/:id", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleGetWearableSession(req, env, corsHdrs, params.id);
+});
+router.get("/api/:v/wearables/sessions/:id/gps-track", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleGetGPSTrack(req, env, corsHdrs, params.id);
+});
+
+// Data Sync & Manual Entry
+router.post("/api/:v/wearables/sync", (req, env, corsHdrs) => handleSyncData(req, env, corsHdrs));
+router.post("/api/:v/wearables/manual", (req, env, corsHdrs) => handleManualEntry(req, env, corsHdrs));
+router.post("/api/:v/wearables/import", (req, env, corsHdrs) => handleImportData(req, env, corsHdrs));
+
+// Metrics & Analytics
+router.get("/api/:v/wearables/metrics/:playerId", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleGetPlayerMetrics(req, env, corsHdrs, params.playerId);
+});
+router.get("/api/:v/wearables/summary/:playerId", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleGetPlayerSummary(req, env, corsHdrs, params.playerId);
+});
+router.get("/api/:v/wearables/fatigue/:playerId", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleGetFatigueAssessment(req, env, corsHdrs, params.playerId);
+});
+
+// Pitch Definitions
+router.get("/api/:v/wearables/pitches", (req, env, corsHdrs) => handleListPitches(req, env, corsHdrs));
+router.post("/api/:v/wearables/pitches", (req, env, corsHdrs) => handleCreatePitch(req, env, corsHdrs));
 
 // Default 404
 router.all("*", () => new Response("Not Found", { status: 404 }));

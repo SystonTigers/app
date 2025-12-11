@@ -49,6 +49,7 @@ import DrillLibraryScreen from './src/screens/DrillLibraryScreen';
 // Stats & Analytics
 import StatsScreen from './src/screens/StatsScreen';
 import LeagueTableScreen from './src/screens/LeagueTableScreen';
+import WearablesScreen from './src/screens/WearablesScreen';
 
 // Shop & Commerce
 import ShopScreen from './src/screens/ShopScreen';
@@ -282,6 +283,17 @@ export default function App() {
                 drawerLabel: 'League Table',
                 drawerIcon: ({ color, size }) => (
                   <MaterialCommunityIcons name="table" size={size} color={color} />
+                ),
+              }}
+            />
+            <Drawer.Screen
+              name="Wearables"
+              component={WearablesScreen}
+              options={{
+                title: 'GPS & Fitness',
+                drawerLabel: 'GPS & Fitness',
+                drawerIcon: ({ color, size }) => (
+                  <MaterialCommunityIcons name="watch" size={size} color={color} />
                 ),
               }}
             />

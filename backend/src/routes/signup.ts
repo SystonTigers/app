@@ -191,6 +191,32 @@ export async function signupStart(req: Request, env: any, requestId: string, cor
       VALUES (?, '#FFD700', '#000000')
     `).bind(tenantId).run();
 
+    // Generate fan code for the tenant
+    const prefix = data.clubName.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 7) || 'TEAM';
+    const fanCode = `${prefix}-FAN`;
+    await env.DB.prepare(`
+      UPDATE tenants SET fan_code = ? WHERE id = ?
+    `).bind(fanCode, tenantId).run();
+
+    // Create default discussion group types for the tenant
+    const groupTypes = ['main', 'coaches', 'players'];
+    for (const groupType of groupTypes) {
+      const groupId = `group_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      try {
+        await env.DB.prepare(`
+          INSERT INTO discussion_group_types (id, tenant_id, group_type, name, is_default)
+          VALUES (?, ?, ?, ?, 1)
+        `).bind(
+          groupId,
+          tenantId,
+          groupType,
+          groupType === 'main' ? 'Main' : groupType === 'coaches' ? 'Coaches' : 'Players'
+        ).run();
+      } catch {
+        // Ignore if already exists
+      }
+    }
+
     // Record promo redemption if applicable
     if (promoId) {
       const redemptionId = `redemption_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
@@ -255,7 +281,7 @@ export async function signupBrand(req: Request, env: any, requestId: string, cor
     return json({ success: true }, 200, corsHdrs);
 
   } catch (err: any) {
-    if (err instanceof Response) {throw err;}
+    if (err instanceof Response) { throw err; }
     if (isValidationError(err)) {
       return json({
         success: false,
@@ -312,7 +338,7 @@ export async function signupStarterMake(req: Request, env: any, requestId: strin
     return json({ success: true }, 200, corsHdrs);
 
   } catch (err: any) {
-    if (err instanceof Response) {throw err;}
+    if (err instanceof Response) { throw err; }
     if (isValidationError(err)) {
       return json({
         success: false,
@@ -355,7 +381,7 @@ export async function signupProConfirm(req: Request, env: any, requestId: string
     return json({ success: true }, 200, corsHdrs);
 
   } catch (err: any) {
-    if (err instanceof Response) {throw err;}
+    if (err instanceof Response) { throw err; }
     logJSON({ level: "error", requestId, msg: "PRO_CONFIRM_ERROR", error: err.message });
     return json({ success: false, error: { code: "PRO_CONFIRM_FAILED", message: err.message } }, 500, corsHdrs);
   }
@@ -507,7 +533,7 @@ export async function signupVerifyPromo(req: Request, env: any, requestId: strin
         }
       }, err.status, corsHdrs);
     }
-    if (err instanceof Response) {throw err;}
+    if (err instanceof Response) { throw err; }
     logJSON({ level: "error", requestId, msg: "VERIFY_PROMO_ERROR", error: err.message });
     return json({ success: false, error: { code: "VERIFY_PROMO_FAILED", message: err.message } }, 500, corsHdrs);
   }

@@ -1,0 +1,18 @@
+{
+  "/(auth)/login/page": "app/(auth)/login/page.js",
+  "/(dashboard)/audit-log/page": "app/(dashboard)/audit-log/page.js",
+  "/(dashboard)/health/page": "app/(dashboard)/health/page.js",
+  "/(dashboard)/notifications/page": "app/(dashboard)/notifications/page.js",
+  "/(dashboard)/page": "app/(dashboard)/page.js",
+  "/audit-log/page": "app/audit-log/page.js",
+  "/health/page": "app/health/page.js",
+  "/login/page": "app/login/page.js",
+  "/maintenance/page": "app/maintenance/page.js",
+  "/notifications/page": "app/notifications/page.js",
+  "/page": "app/page.js",
+  "/promo-codes/page": "app/promo-codes/page.js",
+  "/revenue/page": "app/revenue/page.js",
+  "/settings/page": "app/settings/page.js",
+  "/support/page": "app/support/page.js",
+  "/tenants/page": "app/tenants/page.js"
+}

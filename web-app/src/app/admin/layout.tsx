@@ -11,16 +11,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-8">
                                 <Link href="/admin" className="text-xl font-bold text-gray-900 dark:text-white no-underline flex items-center gap-2">
-                                    <span className="bg-black text-white px-2 py-0.5 rounded text-sm">ADMIN</span>
-                                    <span>Console</span>
+                                    <span className="bg-blue-600 text-white px-2 py-0.5 rounded text-sm">TEAM</span>
+                                    <span>Admin</span>
                                 </Link>
 
                                 <div className="hidden md:flex gap-6 text-sm font-medium">
                                     <Link href="/admin" className="text-gray-600 hover:text-black dark:text-gray-300 dark:hover:text-white transition-colors">
                                         Dashboard
-                                    </Link>
-                                    <Link href="/admin/tenants" className="text-gray-600 hover:text-black dark:text-gray-300 dark:hover:text-white transition-colors">
-                                        Tenants
                                     </Link>
                                     <Link href="/admin/squad" className="text-gray-600 hover:text-black dark:text-gray-300 dark:hover:text-white transition-colors">
                                         Squad
@@ -44,10 +41,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                                         Table
                                     </Link>
                                     <Link href="/admin/push" className="text-gray-600 hover:text-black dark:text-gray-300 dark:hover:text-white transition-colors">
-                                        Push Notifications
-                                    </Link>
-                                    <Link href="/admin/security" className="text-gray-600 hover:text-black dark:text-gray-300 dark:hover:text-white transition-colors">
-                                        Security
+                                        Push
                                     </Link>
                                     <Link href="/admin/settings" className="text-gray-600 hover:text-black dark:text-gray-300 dark:hover:text-white transition-colors">
                                         Settings

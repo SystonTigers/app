@@ -7,11 +7,13 @@ import { NotificationCenter } from './NotificationCenter';
 import { ThemeToggle } from './ThemeProvider';
 import { SoundToggle } from './SoundEffects';
 import { CommandPaletteTrigger } from './CommandPalette';
+import { useUserRole, canAccessAdmin, canAccess } from '@/hooks/useUserRole';
 
 interface NavItem {
     label: string;
     href: string;
     icon: string;
+    feature?: string; // Feature name for access control
 }
 
 interface PremiumNavProps {
@@ -23,25 +25,36 @@ export function PremiumNav({ tenant, teamName }: PremiumNavProps) {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isScrolled, setIsScrolled] = useState(false);
     const pathname = usePathname();
+    const { role, isLoggedIn } = useUserRole();
 
-    const mainNav: NavItem[] = [
+    const allMainNav: NavItem[] = [
         { label: 'Home', href: `/${tenant}`, icon: '🏠' },
-        { label: 'Fixtures', href: `/${tenant}/fixtures`, icon: '📅' },
-        { label: 'Results', href: `/${tenant}/results`, icon: '🏆' },
-        { label: 'Table', href: `/${tenant}/table`, icon: '📊' },
-        { label: 'Squad', href: `/${tenant}/squad`, icon: '👥' },
-        { label: 'Stats', href: `/${tenant}/stats`, icon: '📈' },
-        { label: 'Training', href: `/${tenant}/training`, icon: '⚽' },
-        { label: 'Team', href: `/${tenant}/team`, icon: '💬' },
+        { label: 'Fixtures', href: `/${tenant}/fixtures`, icon: '📅', feature: 'fixtures' },
+        { label: 'Results', href: `/${tenant}/results`, icon: '🏆', feature: 'results' },
+        { label: 'Table', href: `/${tenant}/table`, icon: '📊', feature: 'table' },
+        { label: 'Squad', href: `/${tenant}/squad`, icon: '👥', feature: 'squad' },
+        { label: 'Stats', href: `/${tenant}/stats`, icon: '📈', feature: 'stats' },
+        { label: 'Training', href: `/${tenant}/training`, icon: '⚽', feature: 'training' },
+        { label: 'Team', href: `/${tenant}/team`, icon: '💬', feature: 'discussions' },
     ];
 
-    const secondaryNav: NavItem[] = [
+    const allSecondaryNav: NavItem[] = [
         { label: 'Videos', href: `/${tenant}/videos`, icon: '🎬' },
-        { label: 'Chat', href: `/${tenant}/chat`, icon: '💬' },
+        { label: 'Chat', href: `/${tenant}/chat`, icon: '💬', feature: 'discussions' },
         { label: 'Shop', href: `/${tenant}/shop`, icon: '🛒' },
         { label: 'Calendar', href: `/${tenant}/calendar`, icon: '📆' },
         { label: 'Gallery', href: `/${tenant}/gallery`, icon: '🖼️' },
     ];
+
+    // Filter navigation based on role
+    const mainNav = allMainNav.filter(item =>
+        !item.feature || canAccess(role, item.feature)
+    );
+    const secondaryNav = allSecondaryNav.filter(item =>
+        !item.feature || canAccess(role, item.feature)
+    );
+
+    const showAdmin = canAccessAdmin(role);
 
     useEffect(() => {
         const handleScroll = () => {
@@ -129,14 +142,16 @@ export function PremiumNav({ tenant, teamName }: PremiumNavProps) {
                             </div>
                             <NotificationCenter tenant={tenant} />
 
-                            {/* Admin Link */}
-                            <Link
-                                href={`/${tenant}/admin`}
-                                className="hidden sm:flex items-center gap-2 px-3 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-xl text-sm font-bold transition-colors"
-                            >
-                                <span>⚙️</span>
-                                <span className="hidden lg:inline">Admin</span>
-                            </Link>
+                            {/* Admin Link - Only for managers and coaches */}
+                            {showAdmin && (
+                                <Link
+                                    href={`/${tenant}/admin`}
+                                    className="hidden sm:flex items-center gap-2 px-3 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-xl text-sm font-bold transition-colors"
+                                >
+                                    <span>⚙️</span>
+                                    <span className="hidden lg:inline">Admin</span>
+                                </Link>
+                            )}
 
                             {/* Mobile Menu Button */}
                             <button
@@ -193,14 +208,16 @@ export function PremiumNav({ tenant, teamName }: PremiumNavProps) {
                             </div>
 
                             <div className="border-t border-gray-200 dark:border-gray-700 pt-6 space-y-4">
-                                <Link
-                                    href={`/${tenant}/admin`}
-                                    onClick={() => setIsMobileMenuOpen(false)}
-                                    className="flex items-center gap-4 px-4 py-3 bg-gray-100 dark:bg-gray-800 rounded-xl font-medium"
-                                >
-                                    <span>⚙️</span>
-                                    Admin Dashboard
-                                </Link>
+                                {showAdmin && (
+                                    <Link
+                                        href={`/${tenant}/admin`}
+                                        onClick={() => setIsMobileMenuOpen(false)}
+                                        className="flex items-center gap-4 px-4 py-3 bg-gray-100 dark:bg-gray-800 rounded-xl font-medium"
+                                    >
+                                        <span>⚙️</span>
+                                        Admin Dashboard
+                                    </Link>
+                                )}
 
                                 <div className="flex items-center justify-center gap-4">
                                     <SoundToggle />

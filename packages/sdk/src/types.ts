@@ -199,3 +199,6 @@ export interface ApiResponse<T> {
 
 // Export Phase 3 types
 export * from './types-phase3';
+
+// Export Wearables/GPS types
+export * from './types-wearables';
