@@ -230,6 +230,22 @@ function LoginPage() {
                                                 fileName: "[project]/app-FRESH/owner-admin/src/app/(auth)/login/page.tsx",
                                                 lineNumber: 108,
                                                 columnNumber: 29
+                                            }, this),
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                className: "text-right mt-2",
+                                                children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("a", {
+                                                    href: "/forgot-password",
+                                                    className: "text-xs text-indigo-400 hover:underline",
+                                                    children: "Forgot password?"
+                                                }, void 0, false, {
+                                                    fileName: "[project]/app-FRESH/owner-admin/src/app/(auth)/login/page.tsx",
+                                                    lineNumber: 117,
+                                                    columnNumber: 33
+                                                }, this)
+                                            }, void 0, false, {
+                                                fileName: "[project]/app-FRESH/owner-admin/src/app/(auth)/login/page.tsx",
+                                                lineNumber: 116,
+                                                columnNumber: 29
                                             }, this)
                                         ]
                                     }, void 0, true, {
@@ -247,7 +263,7 @@ function LoginPage() {
                                                     className: "w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"
                                                 }, void 0, false, {
                                                     fileName: "[project]/app-FRESH/owner-admin/src/app/(auth)/login/page.tsx",
-                                                    lineNumber: 125,
+                                                    lineNumber: 130,
                                                     columnNumber: 37
                                                 }, this),
                                                 "Signing in..."
@@ -266,12 +282,12 @@ function LoginPage() {
                                                         d: "M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"
                                                     }, void 0, false, {
                                                         fileName: "[project]/app-FRESH/owner-admin/src/app/(auth)/login/page.tsx",
-                                                        lineNumber: 131,
+                                                        lineNumber: 136,
                                                         columnNumber: 41
                                                     }, this)
                                                 }, void 0, false, {
                                                     fileName: "[project]/app-FRESH/owner-admin/src/app/(auth)/login/page.tsx",
-                                                    lineNumber: 130,
+                                                    lineNumber: 135,
                                                     columnNumber: 37
                                                 }, this),
                                                 "Sign In"
@@ -279,7 +295,7 @@ function LoginPage() {
                                         }, void 0, true)
                                     }, void 0, false, {
                                         fileName: "[project]/app-FRESH/owner-admin/src/app/(auth)/login/page.tsx",
-                                        lineNumber: 118,
+                                        lineNumber: 123,
                                         columnNumber: 25
                                     }, this)
                                 ]
@@ -299,7 +315,7 @@ function LoginPage() {
                         children: "This is a restricted area for platform administrators only."
                     }, void 0, false, {
                         fileName: "[project]/app-FRESH/owner-admin/src/app/(auth)/login/page.tsx",
-                        lineNumber: 141,
+                        lineNumber: 146,
                         columnNumber: 17
                     }, this)
                 ]

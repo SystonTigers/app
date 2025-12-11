@@ -5,7 +5,7 @@ import { ensureIdempotent } from "../services/idempotency";
 import { parse, isValidationError } from "../lib/validate";
 import { registerUser, authenticateUser } from "../services/users";
 import { issueTenantAdminJWT, issueTenantMemberJWT } from "../services/jwt";
-import { sendVerificationEmail } from "../lib/email";
+import { sendVerificationEmail, sendPasswordResetEmail } from "../lib/email";
 import { rateLimit } from "../middleware/rateLimit";
 
 const RegisterSchema = z.object({
@@ -1036,6 +1036,136 @@ async function autoAssignGroups(env: any, params: {
     }
   } catch (err) {
     console.error('Auto-assign groups error:', err);
-    // Don't fail login if group assignment fails
   }
 }
+
+/**
+ * Request password reset - sends magic link to email
+ */
+export async function handleRequestPasswordReset(req: Request, env: any, corsHdrs: Headers) {
+  try {
+    const data = await req.json().catch(() => ({})) as { email?: string };
+
+    if (!data.email) {
+      return json({
+        success: false,
+        error: { code: "MISSING_EMAIL", message: "Email required" }
+      }, 400, corsHdrs);
+    }
+
+    const email = data.email.trim().toLowerCase();
+
+    // Find user (check ALL tenants for this email)
+    const user = await env.DB.prepare(
+      `SELECT id, tenant_id, email FROM auth_users WHERE email = ? LIMIT 1`
+    ).bind(email).first();
+
+    // Always return success (don't reveal if email exists)
+    if (!user) {
+      return json({ success: true, message: "If the email exists, a reset link has been sent" }, 200, corsHdrs);
+    }
+
+    // Generate password reset token (1 hour expiry)
+    const secret = new TextEncoder().encode(env.JWT_SECRET);
+    const token = await new SignJWT({
+      email: user.email,
+      purpose: "password-reset",
+      tenant_id: user.tenant_id
+    })
+      .setProtectedHeader({ alg: "HS256" })
+      .setIssuedAt()
+      .setExpirationTime("1h")
+      .sign(secret);
+
+    // Generate reset link
+    const baseUrl = env.FRONTEND_URL || 'http://localhost:3000';
+    const resetLink = `${baseUrl}/reset-password?token=${token}`;
+
+    // Send email
+    const { sendPasswordResetEmail } = await import("../lib/email");
+    await sendPasswordResetEmail(user.email, resetLink, env);
+
+    return json({
+      success: true,
+      message: "If the email exists, a reset link has been sent"
+    }, 200, corsHdrs);
+
+  } catch (err: any) {
+    console.error('Password reset request error:', err);
+    return json({
+      success: false,
+      error: { code: "RESET_FAILED", message: err.message }
+    }, 500, corsHdrs);
+  }
+}
+
+/**
+ * Reset password using token
+ */
+export async function handleResetPassword(req: Request, env: any, corsHdrs: Headers) {
+  try {
+    const data = await req.json().catch(() => ({})) as {
+      token?: string;
+      newPassword?: string;
+    };
+
+    if (!data.token || !data.newPassword) {
+      return json({
+        success: false,
+        error: { code: "MISSING_FIELDS", message: "Token and new password required" }
+      }, 400, corsHdrs);
+    }
+
+    if (data.newPassword.length < 8) {
+      return json({
+        success: false,
+        error: { code: "WEAK_PASSWORD", message: "Password must be at least 8 characters" }
+      }, 400, corsHdrs);
+    }
+
+    // Verify token
+    const { jwtVerify } = await import("jose");
+    const secret = new TextEncoder().encode(env.JWT_SECRET);
+
+    let payload;
+    try {
+      const result = await jwtVerify(data.token, secret);
+      payload = result.payload as { email: string; purpose: string; tenant_id: string };
+    } catch (err) {
+      return json({
+        success: false,
+        error: { code: "INVALID_TOKEN", message: "Invalid or expired reset token" }
+      }, 401, corsHdrs);
+    }
+
+    // Check purpose
+    if (payload.purpose !== "password-reset") {
+      return json({
+        success: false,
+        error: { code: "INVALID_TOKEN", message: "Invalid token type" }
+      }, 401, corsHdrs);
+    }
+
+    // Hash new password
+    const bcrypt = await import('bcryptjs');
+    const passwordHash = await bcrypt.hash(data.newPassword, 10);
+
+    // Update password in database
+    await env.DB.prepare(
+      `UPDATE auth_users SET password_hash = ?, updated_at = unixepoch() WHERE email = ? AND tenant_id = ?`
+    ).bind(passwordHash, payload.email, payload.tenant_id).run();
+
+    return json({
+      success: true,
+      message: "Password successfully reset. Please login with your new password."
+    }, 200, corsHdrs);
+
+  } catch (err: any) {
+    console.error('Password reset error:', err);
+    return json({
+      success: false,
+      error: { code: "RESET_FAILED", message: err.message }
+    }, 500, corsHdrs);
+  }
+}
+

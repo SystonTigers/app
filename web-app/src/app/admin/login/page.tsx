@@ -72,6 +72,11 @@ export default function AdminLoginPage() {
               required
               className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
             />
+            <div className="text-right mt-2">
+              <a href="/forgot-password" className="text-xs text-blue-600 hover:underline">
+                Forgot password?
+              </a>
+            </div>
           </div>
 
           {error && (

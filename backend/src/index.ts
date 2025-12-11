@@ -18,7 +18,9 @@ import {
     handleVerifyEmail,
     handleSwitchTenant,
     handleLinkPlayer,
-    handleGetMyTenants
+    handleGetMyTenants,
+    handleRequestPasswordReset,
+    handleResetPassword
 } from "./routes/auth";
 import {
     signupStart,
@@ -174,6 +176,8 @@ router.post("/api/:v/auth/link-player", (req, env, corsHdrs) => handleLinkPlayer
 router.get("/api/:v/auth/me/tenants", (req, env, corsHdrs) => handleGetMyTenants(req, env, corsHdrs));
 router.post("/api/:v/auth/code-login", (req, env, corsHdrs) => handleCodeLogin(req, env, corsHdrs));
 router.post("/api/:v/auth/fan-login", (req, env, corsHdrs) => handleFanLogin(req, env, corsHdrs));
+router.post("/api/:v/auth/request-password-reset", (req, env, corsHdrs) => handleRequestPasswordReset(req, env, corsHdrs));
+router.post("/api/:v/auth/reset-password", (req, env, corsHdrs) => handleResetPassword(req, env, corsHdrs));
 
 // Magic Link Routes
 router.post("/api/:v/magic/start", (req, env, corsHdrs) => handleMagicStart(req, env, corsHdrs));

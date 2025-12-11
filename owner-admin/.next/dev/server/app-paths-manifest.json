@@ -11,6 +11,7 @@
   "/(dashboard)/support/page": "app/(dashboard)/support/page.js",
   "/(dashboard)/tenants/[id]/page": "app/(dashboard)/tenants/[id]/page.js",
   "/(dashboard)/tenants/page": "app/(dashboard)/tenants/page.js",
+  "/_not-found/page": "app/_not-found/page.js",
   "/audit-log/page": "app/audit-log/page.js",
   "/health/page": "app/health/page.js",
   "/login/page": "app/login/page.js",

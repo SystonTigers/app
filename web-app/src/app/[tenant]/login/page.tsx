@@ -202,7 +202,7 @@ export default function LoginPage() {
             <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 px-4">
                 <div className="max-w-md w-full bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
                     <h2 className="text-xl font-bold mb-4 text-center">Select Your Team</h2>
-                    <p className="text-gray-500 text-center mb-6">
+                    <p className="text-gray-600 dark:text-gray-300 text-center mb-6">
                         Your email is associated with multiple teams. Choose one to continue.
                     </p>
                     <div className="space-y-3">
@@ -290,7 +290,7 @@ export default function LoginPage() {
                                         className="w-full px-4 py-3 text-center text-lg font-mono tracking-wider border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 uppercase"
                                         required
                                     />
-                                    <p className="text-xs text-gray-500 mt-1.5">
+                                    <p className="text-xs text-gray-600 dark:text-gray-300 mt-1.5">
                                         Enter the code provided by your team manager
                                     </p>
                                 </div>
@@ -371,6 +371,11 @@ export default function LoginPage() {
                                         className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                         required
                                     />
+                                    <div className="text-right mt-2">
+                                        <a href="/forgot-password" className="text-xs text-blue-600 dark:text-blue-400 hover:underline">
+                                            Forgot password?
+                                        </a>
+                                    </div>
                                 </div>
                             </>
                         )}
@@ -405,7 +410,7 @@ export default function LoginPage() {
                                         className="w-full px-4 py-3 text-center font-mono tracking-wider border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 uppercase"
                                         required
                                     />
-                                    <p className="text-xs text-gray-500 mt-1.5">
+                                    <p className="text-xs text-gray-600 dark:text-gray-300 mt-1.5">
                                         Ask the team for their fan access code
                                     </p>
                                 </div>
@@ -431,7 +436,7 @@ export default function LoginPage() {
                 </div>
 
                 {/* Manager Link */}
-                <p className="text-center text-sm text-gray-500 mt-6">
+                <p className="text-center text-sm text-gray-600 dark:text-gray-300 mt-6">
                     Team manager?{' '}
                     <a href={`/${tenant}/admin/login`} className="text-blue-600 hover:underline">
                         Sign in here
