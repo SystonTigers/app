@@ -17,8 +17,8 @@ var _s = __turbopack_context__.k.signature();
 ;
 const API_BASE = ("TURBOPACK compile-time value", "https://syston-postbus.team-platform-2025.workers.dev") || 'https://syston-postbus.team-platform-2025.workers.dev';
 // Hardcoded owner credentials (in production, this would be in environment variables or a secure database)
-const OWNER_EMAIL = 'admin@syston.team';
-const OWNER_PASSWORD = 'SystonAdmin2024!'; // Change this!
+const OWNER_EMAIL = 'clayts1985@gmail.com';
+const OWNER_PASSWORD = 'Password';
 function LoginPage() {
     _s();
     const [email, setEmail] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])('');

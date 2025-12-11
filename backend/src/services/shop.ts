@@ -55,7 +55,7 @@ export const customize = async (req: any, env: Env) => {
 // Get shop products for tenant (Syned from Printify)
 export const getProducts = async (req: any, env: Env) => {
   try {
-    const printify = new PrintifyService(env);
+    const printify = new PrintifyService(env.PRINTIFY_API_TOKEN, env.PRINTIFY_SHOP_ID);
     const printifyProducts = await printify.getProducts();
 
     // Transform for our frontend
@@ -116,7 +116,7 @@ export const createOrder = async (req: any, env: Env) => {
   const order_id = crypto.randomUUID();
 
   try {
-    const printify = new PrintifyService(env);
+    const printify = new PrintifyService(env.PRINTIFY_API_TOKEN, env.PRINTIFY_SHOP_ID);
 
     const payload: PrintifyOrderPayload = {
       external_id: order_id,

@@ -19,43 +19,69 @@ vi.stubGlobal("crypto", {
 });
 
 // Mock fetch
-vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true }));
+const mockFetch = vi.fn().mockResolvedValue({ ok: true });
+vi.stubGlobal("fetch", mockFetch);
 
 describe("Milestones Cron", () => {
     const createMockKV = (data: Record<string, any> = {}) => ({
-        list: vi.fn().mockResolvedValue({
-            keys: Object.keys(data).map((name) => ({ name })),
+        list: vi.fn().mockImplementation(({ prefix }: { prefix: string }) => {
+            const matchingKeys = Object.keys(data)
+                .filter(k => k.startsWith(prefix))
+                .map(name => ({ name }));
+            return Promise.resolve({ keys: matchingKeys });
         }),
         get: vi.fn().mockImplementation((key: string, type?: string) => {
             const value = data[key];
-            if (type === "json" && value) {
+            if (value === undefined) return Promise.resolve(null);
+            if (type === "json" && typeof value === "object") {
                 return Promise.resolve(value);
             }
-            return Promise.resolve(value?.toString() || null);
+            // For string values or non-json types, return as-is
+            if (typeof value === "string") {
+                return Promise.resolve(value);
+            }
+            return Promise.resolve(typeof value === "object" ? null : String(value));
         }),
         put: vi.fn().mockResolvedValue(undefined),
     });
 
-    const createMockDb = (goalCounts: any[] = [], assistCounts: any[] = [], appearanceCounts: any[] = [], player?: any) => ({
+    // More accurate mock matching actual DB queries
+    const createMockDb = (
+        goalCount: number = 0,
+        assistCount: number = 0,
+        appearanceCount: number = 0,
+        players: any[] = []
+    ) => ({
         prepare: vi.fn().mockImplementation((query: string) => ({
             bind: vi.fn().mockReturnThis(),
             all: vi.fn().mockImplementation(() => {
-                if (query.includes("event_type = 'goal'")) {
-                    return Promise.resolve({ results: goalCounts });
-                } else if (query.includes("event_type = 'assist'")) {
-                    return Promise.resolve({ results: assistCounts });
-                } else if (query.includes("COUNT(DISTINCT me.fixture_id)")) {
-                    return Promise.resolve({ results: appearanceCounts });
-                } else if (query.includes("DISTINCT player_id")) {
-                    return Promise.resolve({ results: [{ player_id: "player1" }] });
+                // List all players in tenant
+                if (query.includes("SELECT id, name FROM squad WHERE tenant_id")) {
+                    return Promise.resolve({ results: players });
+                }
+                // Get event counts
+                if (query.includes("GROUP BY event_type")) {
+                    const results: any[] = [];
+                    if (goalCount > 0) results.push({ event_type: 'goal', count: goalCount });
+                    if (assistCount > 0) results.push({ event_type: 'assist', count: assistCount });
+                    return Promise.resolve({ results });
+                }
+                // Get distinct players in match
+                if (query.includes("DISTINCT player_id")) {
+                    return Promise.resolve({ results: players.map(p => ({ player_id: p.id })) });
                 }
                 return Promise.resolve({ results: [] });
             }),
             first: vi.fn().mockImplementation(() => {
-                if (query.includes("FROM squad_players")) {
-                    return Promise.resolve(player || null);
+                // Get player by id
+                if (query.includes("SELECT id, name, photo_url FROM squad WHERE")) {
+                    return Promise.resolve(players[0] || null);
                 }
-                return Promise.resolve({ goals: 10, assists: 5, appearances: 15 });
+                // Get appearance count
+                if (query.includes("COUNT(DISTINCT fixture_id)")) {
+                    return Promise.resolve({ count: appearanceCount });
+                }
+                return Promise.resolve(null);
             }),
         })),
     });
@@ -66,6 +92,7 @@ describe("Milestones Cron", () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
+        mockFetch.mockClear();
     });
 
     describe("runMilestones", () => {
@@ -121,12 +148,11 @@ describe("Milestones Cron", () => {
                 },
             };
 
-            const goalCounts = [{ player_id: "player1", total_goals: 10 }];
-            const player = { id: "player1", name: "John Smith", position: "Forward" };
+            const players = [{ id: "player1", name: "John Smith", photo_url: null }];
 
             const env = {
                 KV: createMockKV(kvData),
-                DB: createMockDb(goalCounts, [], [], player),
+                DB: createMockDb(10, 0, 0, players), // 10 goals
             };
             const ctx = createMockCtx();
 
@@ -142,15 +168,15 @@ describe("Milestones Cron", () => {
                     team_id: "tenant1",
                     features: { auto_milestones: true },
                 },
-                "milestone:tenant1:player1:goal": "10", // Already celebrated 10 goals
+                "milestone:tenant1:player1:goals:10": "true", // Already celebrated 10 goals
+                "milestone:tenant1:player1:goals:5": "true", // Also celebrated 5 goals
             };
 
-            const goalCounts = [{ player_id: "player1", total_goals: 10 }];
-            const player = { id: "player1", name: "John Smith", position: "Forward" };
+            const players = [{ id: "player1", name: "John Smith", photo_url: null }];
 
             const env = {
                 KV: createMockKV(kvData),
-                DB: createMockDb(goalCounts, [], [], player),
+                DB: createMockDb(10, 0, 0, players),
             };
             const ctx = createMockCtx();
 
@@ -168,15 +194,14 @@ describe("Milestones Cron", () => {
                     team_id: "tenant1",
                     features: { auto_milestones: true },
                 },
-                "milestone:tenant1:player1:goal": "10", // Already celebrated 10 goals
+                "milestone:tenant1:player1:goals:10": "true", // Already celebrated 10 goals
             };
 
-            const goalCounts = [{ player_id: "player1", total_goals: 25 }]; // Now at 25
-            const player = { id: "player1", name: "John Smith", position: "Forward" };
+            const players = [{ id: "player1", name: "John Smith", photo_url: null }];
 
             const env = {
                 KV: createMockKV(kvData),
-                DB: createMockDb(goalCounts, [], [], player),
+                DB: createMockDb(25, 0, 0, players), // Now at 25 goals
             };
             const ctx = createMockCtx();
 
@@ -196,11 +221,11 @@ describe("Milestones Cron", () => {
                 },
             };
 
-            const player = { id: "player1", name: "John Smith", position: "Forward" };
+            const players = [{ id: "player1", name: "John Smith", photo_url: null }];
 
             const env = {
                 KV: createMockKV(kvData),
-                DB: createMockDb([], [], [], player),
+                DB: createMockDb(0, 0, 0, players),
             };
 
             await checkMilestonesAfterMatch(env as any, "tenant1", "fixture123");
@@ -225,8 +250,7 @@ describe("Milestones Cron", () => {
             await checkMilestonesAfterMatch(env as any, "tenant1", "fixture123");
 
             // Should not query DB when feature disabled
-            const prepCalls = (env.DB.prepare as any).mock.calls.length;
-            expect(prepCalls).toBe(0);
+            expect(env.DB.prepare).not.toHaveBeenCalled();
         });
     });
 
@@ -239,12 +263,11 @@ describe("Milestones Cron", () => {
                 },
             };
 
-            const goalCounts = [{ player_id: "player1", total_goals: 5 }];
-            const player = { id: "player1", name: "John Smith", position: "Forward" };
+            const players = [{ id: "player1", name: "John Smith", photo_url: null }];
 
             const env = {
                 KV: createMockKV(kvData),
-                DB: createMockDb(goalCounts, [], [], player),
+                DB: createMockDb(5, 0, 0, players),
             };
             const ctx = createMockCtx();
 
@@ -261,12 +284,11 @@ describe("Milestones Cron", () => {
                 },
             };
 
-            const assistCounts = [{ player_id: "player1", total_assists: 10 }];
-            const player = { id: "player1", name: "John Smith", position: "Midfielder" };
+            const players = [{ id: "player1", name: "John Smith", photo_url: null }];
 
             const env = {
                 KV: createMockKV(kvData),
-                DB: createMockDb([], assistCounts, [], player),
+                DB: createMockDb(0, 10, 0, players), // 10 assists
             };
             const ctx = createMockCtx();
 
@@ -283,12 +305,11 @@ describe("Milestones Cron", () => {
                 },
             };
 
-            const appearanceCounts = [{ player_id: "player1", total_appearances: 50 }];
-            const player = { id: "player1", name: "John Smith", position: "Defender" };
+            const players = [{ id: "player1", name: "John Smith", photo_url: null }];
 
             const env = {
                 KV: createMockKV(kvData),
-                DB: createMockDb([], [], appearanceCounts, player),
+                DB: createMockDb(0, 0, 50, players), // 50 appearances
             };
             const ctx = createMockCtx();
 
@@ -308,19 +329,18 @@ describe("Milestones Cron", () => {
                 "team:tenant1:webhook": "https://hook.make.com/test123",
             };
 
-            const goalCounts = [{ player_id: "player1", total_goals: 10 }];
-            const player = { id: "player1", name: "John Smith", position: "Forward" };
+            const players = [{ id: "player1", name: "John Smith", photo_url: null }];
 
             const env = {
                 KV: createMockKV(kvData),
-                DB: createMockDb(goalCounts, [], [], player),
+                DB: createMockDb(10, 0, 0, players), // 10 goals triggers milestone
             };
             const ctx = createMockCtx();
 
             await runMilestones(env as any, ctx as any);
 
             // Should call webhook
-            expect(fetch).toHaveBeenCalledWith(
+            expect(mockFetch).toHaveBeenCalledWith(
                 "https://hook.make.com/test123",
                 expect.objectContaining({
                     method: "POST",

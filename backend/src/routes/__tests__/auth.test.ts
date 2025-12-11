@@ -274,3 +274,122 @@ test("rejects invalid login credentials", async () => {
   expect(badJson.error.code).toBe("INVALID_CREDENTIALS");
 });
 
+// =============================================================================
+// Code Login Tests
+// =============================================================================
+
+describe("Code Login", () => {
+  test("returns error when code is missing", async () => {
+    const env = createEnv();
+    await seedTenant(env, "demo");
+
+    const req = new Request("https://example.com/api/v1/auth/code-login", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ role: "parent", tenant: "demo" }),
+    });
+
+    // Import dynamically since handleCodeLogin may not exist yet
+    const { handleCodeLogin } = await import("../auth");
+    const response = await handleCodeLogin(req, env, new Headers(corsHeaders));
+    expect(response.status).toBe(400);
+  });
+
+  test("returns error when role is missing", async () => {
+    const env = createEnv();
+    await seedTenant(env, "demo");
+
+    const req = new Request("https://example.com/api/v1/auth/code-login", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ code: "DEMO-1234", tenant: "demo" }),
+    });
+
+    const { handleCodeLogin } = await import("../auth");
+    const response = await handleCodeLogin(req, env, new Headers(corsHeaders));
+    expect(response.status).toBe(400);
+  });
+
+  test("returns error when tenant is missing", async () => {
+    const env = createEnv();
+
+    const req = new Request("https://example.com/api/v1/auth/code-login", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ code: "DEMO-1234", role: "parent" }),
+    });
+
+    const { handleCodeLogin } = await import("../auth");
+    const response = await handleCodeLogin(req, env, new Headers(corsHeaders));
+    expect(response.status).toBe(400);
+  });
+});
+
+// =============================================================================
+// Fan Login Tests
+// =============================================================================
+
+describe("Fan Login", () => {
+  test("returns error when email is missing", async () => {
+    const env = createEnv();
+    await seedTenant(env, "demo");
+
+    const req = new Request("https://example.com/api/v1/auth/fan-login", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ fanCode: "DEMO-FAN", tenant: "demo" }),
+    });
+
+    const { handleFanLogin } = await import("../auth");
+    const response = await handleFanLogin(req, env, new Headers(corsHeaders));
+    expect(response.status).toBe(400);
+  });
+
+  test("returns error when fanCode is missing", async () => {
+    const env = createEnv();
+    await seedTenant(env, "demo");
+
+    const req = new Request("https://example.com/api/v1/auth/fan-login", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ email: "fan@example.com", tenant: "demo" }),
+    });
+
+    const { handleFanLogin } = await import("../auth");
+    const response = await handleFanLogin(req, env, new Headers(corsHeaders));
+    expect(response.status).toBe(400);
+  });
+
+  test("returns error when tenant is missing", async () => {
+    const env = createEnv();
+
+    const req = new Request("https://example.com/api/v1/auth/fan-login", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ email: "fan@example.com", fanCode: "DEMO-FAN" }),
+    });
+
+    const { handleFanLogin } = await import("../auth");
+    const response = await handleFanLogin(req, env, new Headers(corsHeaders));
+    expect(response.status).toBe(400);
+  });
+
+  test("validates email format", async () => {
+    const env = createEnv();
+    await seedTenant(env, "demo");
+
+    const req = new Request("https://example.com/api/v1/auth/fan-login", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        email: "not-an-email",
+        fanCode: "DEMO-FAN",
+        tenant: "demo"
+      }),
+    });
+
+    const { handleFanLogin } = await import("../auth");
+    const response = await handleFanLogin(req, env, new Headers(corsHeaders));
+    expect(response.status).toBe(400);
+  });
+});

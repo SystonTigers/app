@@ -7,11 +7,21 @@ vi.mock("../../lib/log", () => ({
 }));
 
 // Mock time utils
-vi.mock("../../utils/time", () => ({
-    nowUTC: vi.fn().mockReturnValue({
-        toFormat: (fmt: string) => fmt === 'yyyy-MM-dd' ? "2024-01-15" : "01-15",
-    }),
-}));
+vi.mock("../../utils/time", () => {
+    const mockToFormat = (fmt: string) => {
+        if (fmt === 'yyyy-MM-dd') return "2024-01-15";
+        if (fmt === 'yyyy-WW') return "2024-W03";
+        if (fmt === 'yyyy-MM') return "2024-01";
+        return "01-15";
+    };
+    return {
+        nowUTC: vi.fn().mockReturnValue({
+            toFormat: mockToFormat,
+            minus: vi.fn().mockReturnThis(),
+            toMillis: vi.fn().mockReturnValue(Date.now() - 7 * 24 * 60 * 60 * 1000),
+        }),
+    };
+});
 
 // Mock crypto.randomUUID
 vi.stubGlobal("crypto", {
@@ -19,33 +29,34 @@ vi.stubGlobal("crypto", {
 });
 
 // Mock fetch
-vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true }));
+const mockFetch = vi.fn().mockResolvedValue({ ok: true });
+vi.stubGlobal("fetch", mockFetch);
 
 describe("Player of Period Cron", () => {
     const createMockKV = (data: Record<string, any> = {}) => ({
-        list: vi.fn().mockResolvedValue({
-            keys: Object.keys(data).map((name) => ({ name })),
+        list: vi.fn().mockImplementation(({ prefix }: { prefix: string }) => {
+            const matchingKeys = Object.keys(data)
+                .filter(k => k.startsWith(prefix))
+                .map(name => ({ name }));
+            return Promise.resolve({ keys: matchingKeys });
         }),
         get: vi.fn().mockImplementation((key: string, type?: string) => {
             const value = data[key];
-            if (type === "json" && value) {
+            if (value === undefined) return Promise.resolve(null);
+            if (type === "json" && typeof value === "object") {
                 return Promise.resolve(value);
             }
-            return Promise.resolve(value?.toString() || null);
+            return Promise.resolve(typeof value === "string" ? value : JSON.stringify(value));
         }),
         put: vi.fn().mockResolvedValue(undefined),
     });
 
-    const createMockDb = (stats: any[] = [], player?: any) => ({
-        prepare: vi.fn().mockImplementation((query: string) => ({
+    // Mock DB that returns match_events format
+    const createMockDb = (events: any[] = []) => ({
+        prepare: vi.fn().mockImplementation(() => ({
             bind: vi.fn().mockReturnThis(),
-            all: vi.fn().mockResolvedValue({ results: stats }),
-            first: vi.fn().mockImplementation(() => {
-                if (query.includes("FROM squad_players")) {
-                    return Promise.resolve(player || null);
-                }
-                return Promise.resolve(null);
-            }),
+            all: vi.fn().mockResolvedValue({ results: events }),
+            first: vi.fn().mockResolvedValue(null),
         })),
     });
 
@@ -55,6 +66,7 @@ describe("Player of Period Cron", () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
+        mockFetch.mockClear();
     });
 
     describe("runPlayerOfPeriod", () => {
@@ -66,16 +78,16 @@ describe("Player of Period Cron", () => {
                 },
             };
 
-            const playerStats = [
-                { player_id: "p1", goals: 3, assists: 2, motm_awards: 1, matches_played: 2 },
-                { player_id: "p2", goals: 2, assists: 1, motm_awards: 0, matches_played: 2 },
+            // Match events format as used by the actual implementation
+            const matchEvents = [
+                { player_id: "p1", event_type: "goal", count: 3, player_name: "John Smith", photo_url: null },
+                { player_id: "p1", event_type: "assist", count: 2, player_name: "John Smith", photo_url: null },
+                { player_id: "p1", event_type: "motm", count: 1, player_name: "John Smith", photo_url: null },
             ];
-
-            const player = { id: "p1", name: "John Smith", position: "Forward" };
 
             const env = {
                 KV: createMockKV(kvData),
-                DB: createMockDb(playerStats, player),
+                DB: createMockDb(matchEvents),
             };
             const ctx = createMockCtx();
 
@@ -93,15 +105,13 @@ describe("Player of Period Cron", () => {
                 },
             };
 
-            const playerStats = [
-                { player_id: "p1", goals: 8, assists: 5, motm_awards: 2, matches_played: 4 },
+            const matchEvents = [
+                { player_id: "p1", event_type: "goal", count: 8, player_name: "John Smith", photo_url: null },
             ];
-
-            const player = { id: "p1", name: "John Smith", position: "Forward" };
 
             const env = {
                 KV: createMockKV(kvData),
-                DB: createMockDb(playerStats, player),
+                DB: createMockDb(matchEvents),
             };
             const ctx = createMockCtx();
 
@@ -131,34 +141,22 @@ describe("Player of Period Cron", () => {
         });
 
         it("does not create duplicate posts for same period", async () => {
-            // Create mock that returns "already posted" for any pop:tenant1:week key
-            const mockKV = {
-                list: vi.fn().mockResolvedValue({
-                    keys: [{ name: "team:tenant1:config" }],
-                }),
-                get: vi.fn().mockImplementation((key: string, type?: string) => {
-                    if (key === "team:tenant1:config") {
-                        return Promise.resolve({
-                            team_id: "tenant1",
-                            features: { auto_player_of_week: true },
-                        });
-                    }
-                    // Return truthy for any pop key (already posted)
-                    if (key.startsWith("pop:tenant1:week:")) {
-                        return Promise.resolve(JSON.stringify({ player_id: "p1" }));
-                    }
-                    return Promise.resolve(null);
-                }),
-                put: vi.fn().mockResolvedValue(undefined),
+            const kvData = {
+                "team:tenant1:config": {
+                    team_id: "tenant1",
+                    features: { auto_player_of_week: true },
+                },
+                // Already posted for this period
+                "player_of_week:tenant1:2024-W03": "true",
             };
 
-            const playerStats = [
-                { player_id: "p1", goals: 3, assists: 2, motm_awards: 1, matches_played: 2 },
+            const matchEvents = [
+                { player_id: "p1", event_type: "goal", count: 3, player_name: "John Smith", photo_url: null },
             ];
 
             const env = {
-                KV: mockKV,
-                DB: createMockDb(playerStats),
+                KV: createMockKV(kvData),
+                DB: createMockDb(matchEvents),
             };
             const ctx = createMockCtx();
 
@@ -180,7 +178,7 @@ describe("Player of Period Cron", () => {
 
             const env = {
                 KV: createMockKV(kvData),
-                DB: createMockDb([]), // No stats
+                DB: createMockDb([]), // No events
             };
             const ctx = createMockCtx();
 
@@ -202,18 +200,18 @@ describe("Player of Period Cron", () => {
                 },
             };
 
-            // Player 1: 2 goals (10) + 1 assist (3) + 1 MOTM (10) + 2 matches (2) = 25
-            // Player 2: 3 goals (15) + 0 assists (0) + 0 MOTM (0) + 2 matches (2) = 17
-            const playerStats = [
-                { player_id: "p1", goals: 2, assists: 1, motm_awards: 1, matches_played: 2 },
-                { player_id: "p2", goals: 3, assists: 0, motm_awards: 0, matches_played: 2 },
+            // Player 1: 2 goals (10) + 1 assist (3) + 1 MOTM (10) = 23
+            // Player 2: 3 goals (15) + 0 assists (0) + 0 MOTM (0) = 15
+            const matchEvents = [
+                { player_id: "p1", event_type: "goal", count: 2, player_name: "Player One", photo_url: null },
+                { player_id: "p1", event_type: "assist", count: 1, player_name: "Player One", photo_url: null },
+                { player_id: "p1", event_type: "motm", count: 1, player_name: "Player One", photo_url: null },
+                { player_id: "p2", event_type: "goal", count: 3, player_name: "Player Two", photo_url: null },
             ];
-
-            const player1 = { id: "p1", name: "Player One", position: "Midfielder" };
 
             const env = {
                 KV: createMockKV(kvData),
-                DB: createMockDb(playerStats, player1),
+                DB: createMockDb(matchEvents),
             };
             const ctx = createMockCtx();
 
@@ -225,40 +223,57 @@ describe("Player of Period Cron", () => {
             expect(autopostCall).toBeDefined();
 
             const postData = JSON.parse(autopostCall[1]);
-            expect(postData.winner.player_id).toBe("p1");
+            expect(postData.player_id).toBe("p1");
         });
     });
 
     describe("getPlayerOfPeriodLeaderboard", () => {
         it("returns ranked list of players", async () => {
-            const playerStats = [
-                { player_id: "p1", goals: 3, assists: 2, motm_awards: 0, matches_played: 2 },
-                { player_id: "p2", goals: 5, assists: 1, motm_awards: 1, matches_played: 2 },
+            const matchEvents = [
+                { player_id: "p1", event_type: "goal", count: 3, player_name: "Player One", photo_url: null },
+                { player_id: "p2", event_type: "goal", count: 5, player_name: "Player Two", photo_url: null },
             ];
 
             const env = {
                 KV: createMockKV({}),
-                DB: createMockDb(playerStats, { id: "test", name: "Test Player", position: "Forward" }),
+                DB: createMockDb(matchEvents),
             };
 
             const leaderboard = await getPlayerOfPeriodLeaderboard(env as any, "tenant1", "week");
 
             expect(leaderboard.length).toBe(2);
-            expect(leaderboard[0].rank).toBe(1);
-            expect(leaderboard[1].rank).toBe(2);
+            // Player 2 should be first with 5 goals = 25 points
+            expect(leaderboard[0].id).toBe("p2");
+            expect(leaderboard[1].id).toBe("p1");
         });
     });
 
     describe("getPastWinners", () => {
         it("returns list of past winners", async () => {
             const kvData = {
-                "pop:tenant1:week:2024-01-08": { player_id: "p1", posted_at: 1704700000000 },
-                "pop:tenant1:week:2024-01-01": { player_id: "p2", posted_at: 1704100000000 },
+                "player_of_week:tenant1:2024-W02": "true",
+                "player_of_week:tenant1:2024-W01": "true",
+                "autopost:tenant1:post1": {
+                    type: "player_of_week",
+                    period: "2024-W02",
+                    player_name: "Player One",
+                    player_id: "p1",
+                    stats: { goals: 3 },
+                    created_at: 1704700000000,
+                },
+                "autopost:tenant1:post2": {
+                    type: "player_of_week",
+                    period: "2024-W01",
+                    player_name: "Player Two",
+                    player_id: "p2",
+                    stats: { goals: 2 },
+                    created_at: 1704100000000,
+                },
             };
 
             const env = {
                 KV: createMockKV(kvData),
-                DB: createMockDb([], { id: "p1", name: "Player One", position: "Forward" }),
+                DB: createMockDb([]),
             };
 
             const winners = await getPastWinners(env as any, "tenant1", "week", 10);
@@ -277,22 +292,20 @@ describe("Player of Period Cron", () => {
                 "team:tenant1:webhook": "https://hook.make.com/test123",
             };
 
-            const playerStats = [
-                { player_id: "p1", goals: 3, assists: 2, motm_awards: 1, matches_played: 2 },
+            const matchEvents = [
+                { player_id: "p1", event_type: "goal", count: 3, player_name: "John Smith", photo_url: null },
             ];
-
-            const player = { id: "p1", name: "John Smith", position: "Forward" };
 
             const env = {
                 KV: createMockKV(kvData),
-                DB: createMockDb(playerStats, player),
+                DB: createMockDb(matchEvents),
             };
             const ctx = createMockCtx();
 
             await runPlayerOfPeriod(env as any, ctx as any, { period: "week" });
 
             // Should call webhook
-            expect(fetch).toHaveBeenCalledWith(
+            expect(mockFetch).toHaveBeenCalledWith(
                 "https://hook.make.com/test123",
                 expect.objectContaining({
                     method: "POST",

@@ -3,13 +3,26 @@ interface PrintifyProduct {
     id: string;
     title: string;
     description: string;
-    images: Array<{ src: string; position: number }>;
+    images: Array<{ src: string; position: number; is_default?: boolean }>;
     variants: Array<{
         id: number;
         title: string;
         price: number; // In cents
         sku: string;
+        is_enabled?: boolean;
     }>;
+}
+
+export interface PrintifyOrderPayload {
+    external_id: string;
+    line_items: Array<{
+        product_id: string;
+        variant_id: number;
+        quantity: number;
+    }>;
+    shipping_method: number;
+    send_shipping_notification: boolean;
+    address_to: any;
 }
 
 export class PrintifyService {
@@ -37,11 +50,7 @@ export class PrintifyService {
         return json.data;
     }
 
-    async createOrder(orderId: string, items: Array<{
-        printifyProductId: string;
-        printifyVariantId: number;
-        quantity: number;
-    }>, shippingAddress: any) {
+    async createOrder(payload: PrintifyOrderPayload): Promise<{ id: string }> {
         const response = await fetch(
             `https://api.printify.com/v1/shops/${this.shopId}/orders.json`,
             {
@@ -50,26 +59,7 @@ export class PrintifyService {
                     'Authorization': `Bearer ${this.apiKey}`,
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({
-                    external_id: orderId,
-                    line_items: items.map(item => ({
-                        product_id: item.printifyProductId,
-                        variant_id: item.printifyVariantId,
-                        quantity: item.quantity
-                    })),
-                    address_to: {
-                        first_name: shippingAddress.firstName,
-                        last_name: shippingAddress.lastName,
-                        email: shippingAddress.email,
-                        phone: shippingAddress.phone,
-                        country: shippingAddress.country,
-                        region: shippingAddress.region,
-                        address1: shippingAddress.address1,
-                        address2: shippingAddress.address2,
-                        city: shippingAddress.city,
-                        zip: shippingAddress.zip
-                    }
-                })
+                body: JSON.stringify(payload)
             }
         );
 
@@ -78,7 +68,7 @@ export class PrintifyService {
             throw new Error(`Printify order creation failed: ${error}`);
         }
 
-        return response.json();
+        return response.json() as Promise<{ id: string }>;
     }
 }
 

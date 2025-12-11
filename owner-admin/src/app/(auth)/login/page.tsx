@@ -6,8 +6,8 @@ import { motion } from 'framer-motion';
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'https://syston-postbus.team-platform-2025.workers.dev';
 
 // Hardcoded owner credentials (in production, this would be in environment variables or a secure database)
-const OWNER_EMAIL = 'admin@syston.team';
-const OWNER_PASSWORD = 'SystonAdmin2024!'; // Change this!
+const OWNER_EMAIL = 'clayts1985@gmail.com';
+const OWNER_PASSWORD = 'Password';
 
 export default function LoginPage() {
     const [email, setEmail] = useState('');
