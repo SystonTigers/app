@@ -70,7 +70,7 @@ export async function listTenants(req: Request, env: any, requestId: string, cor
     }, 200, corsHdrs);
 
   } catch (err: any) {
-    if (err instanceof Response) {throw err;}
+    if (err instanceof Response) { throw err; }
     logJSON({ level: "error", requestId, msg: "LIST_TENANTS_ERROR", error: err.message });
     return json({ success: false, error: { code: "SERVER_ERROR", message: err.message } }, 500, corsHdrs);
   }
@@ -122,7 +122,7 @@ export async function getTenant(req: Request, env: any, requestId: string, corsH
     }, 200, corsHdrs);
 
   } catch (err: any) {
-    if (err instanceof Response) {throw err;}
+    if (err instanceof Response) { throw err; }
     logJSON({ level: "error", requestId, msg: "GET_TENANT_ERROR", error: err.message });
     return json({ success: false, error: { code: "SERVER_ERROR", message: err.message } }, 500, corsHdrs);
   }
@@ -176,7 +176,7 @@ export async function updateTenant(req: Request, env: any, requestId: string, co
     return json({ success: true }, 200, corsHdrs);
 
   } catch (err: any) {
-    if (err instanceof Response) {throw err;}
+    if (err instanceof Response) { throw err; }
     if (isValidationError(err)) {
       return json({
         success: false,
@@ -205,7 +205,7 @@ export async function listPromoCodes(req: Request, env: any, requestId: string, 
     }, 200, corsHdrs);
 
   } catch (err: any) {
-    if (err instanceof Response) {throw err;}
+    if (err instanceof Response) { throw err; }
     logJSON({ level: "error", requestId, msg: "LIST_PROMO_CODES_ERROR", error: err.message });
     return json({ success: false, error: { code: "SERVER_ERROR", message: err.message } }, 500, corsHdrs);
   }
@@ -253,7 +253,7 @@ export async function createPromoCode(req: Request, env: any, requestId: string,
     }, 201, corsHdrs);
 
   } catch (err: any) {
-    if (err instanceof Response) {throw err;}
+    if (err instanceof Response) { throw err; }
     if (isValidationError(err)) {
       return json({
         success: false,
@@ -290,7 +290,7 @@ export async function deactivateTenant(req: Request, env: any, requestId: string
     return json({ success: true }, 200, corsHdrs);
 
   } catch (err: any) {
-    if (err instanceof Response) {throw err;}
+    if (err instanceof Response) { throw err; }
     logJSON({ level: "error", requestId, msg: "DEACTIVATE_TENANT_ERROR", error: err.message });
     return json({ success: false, error: { code: "SERVER_ERROR", message: err.message } }, 500, corsHdrs);
   }
@@ -330,7 +330,7 @@ export async function deleteTenant(req: Request, env: any, requestId: string, co
     return json({ success: true }, 200, corsHdrs);
 
   } catch (err: any) {
-    if (err instanceof Response) {throw err;}
+    if (err instanceof Response) { throw err; }
     logJSON({ level: "error", requestId, msg: "DELETE_TENANT_ERROR", error: err.message });
     return json({ success: false, error: { code: "SERVER_ERROR", message: err.message } }, 500, corsHdrs);
   }
@@ -357,7 +357,7 @@ export async function deactivatePromoCode(req: Request, env: any, requestId: str
     return json({ success: true }, 200, corsHdrs);
 
   } catch (err: any) {
-    if (err instanceof Response) {throw err;}
+    if (err instanceof Response) { throw err; }
     logJSON({ level: "error", requestId, msg: "DEACTIVATE_PROMO_CODE_ERROR", error: err.message });
     return json({ success: false, error: { code: "SERVER_ERROR", message: err.message } }, 500, corsHdrs);
   }
@@ -402,7 +402,7 @@ export async function getAdminStats(req: Request, env: any, requestId: string, c
     }, 200, corsHdrs);
 
   } catch (err: any) {
-    if (err instanceof Response) {throw err;}
+    if (err instanceof Response) { throw err; }
     logJSON({ level: "error", requestId, msg: "GET_ADMIN_STATS_ERROR", error: err.message });
     return json({ success: false, error: { code: "SERVER_ERROR", message: err.message } }, 500, corsHdrs);
   }
@@ -480,7 +480,7 @@ export async function listUsers(req: Request, env: any, requestId: string, corsH
     }, 200, corsHdrs);
 
   } catch (err: any) {
-    if (err instanceof Response) {throw err;}
+    if (err instanceof Response) { throw err; }
     logJSON({ level: "error", requestId, msg: "LIST_USERS_ERROR", error: err.message });
     return json({ success: false, error: { code: "SERVER_ERROR", message: err.message } }, 500, corsHdrs);
   }
@@ -579,7 +579,7 @@ export async function upsertPromoCode(req: Request, env: any, requestId: string,
     }, existing ? 200 : 201, corsHdrs);
 
   } catch (err: any) {
-    if (err instanceof Response) {throw err;}
+    if (err instanceof Response) { throw err; }
     if (isValidationError(err)) {
       return json({
         success: false,
@@ -587,6 +587,68 @@ export async function upsertPromoCode(req: Request, env: any, requestId: string,
       }, 400, corsHdrs);
     }
     logJSON({ level: "error", requestId, msg: "UPSERT_PROMO_CODE_ERROR", error: err.message });
+    return json({ success: false, error: { code: "SERVER_ERROR", message: err.message } }, 500, corsHdrs);
+  }
+}
+
+// GET /api/v1/admin/system/config - Get system configuration
+export async function getSystemConfig(req: Request, env: any, requestId: string, corsHdrs: Headers): Promise<Response> {
+  try {
+    await requireAdmin(req, env);
+
+    const config = await env.KV.get("system:config", "json");
+
+    return json({
+      success: true,
+      config: config || {}
+    }, 200, corsHdrs);
+
+  } catch (err: any) {
+    if (err instanceof Response) { throw err; }
+    logJSON({ level: "error", requestId, msg: "GET_SYSTEM_CONFIG_ERROR", error: err.message });
+    return json({ success: false, error: { code: "SERVER_ERROR", message: err.message } }, 500, corsHdrs);
+  }
+}
+
+// PUT /api/v1/admin/system/config - Update system configuration
+export async function updateSystemConfig(req: Request, env: any, requestId: string, corsHdrs: Headers): Promise<Response> {
+  try {
+    const claims = await requireAdmin(req, env);
+
+    const body = await req.json().catch(() => ({}));
+    // CSRF Protection
+    await withCsrfProtection(req, env, body, claims.userId);
+
+    const ConfigSchema = z.object({
+      printifyApiToken: z.string().optional(),
+      printifyShopId: z.string().optional(),
+    });
+
+    const data = parse(ConfigSchema, body);
+
+    // Get existing config
+    const existing = await env.KV.get("system:config", "json") || {};
+
+    const newConfig = {
+      ...existing,
+      ...data
+    };
+
+    await env.KV.put("system:config", JSON.stringify(newConfig));
+
+    logJSON({ level: "info", requestId, msg: "SYSTEM_CONFIG_UPDATED", userId: claims.userId });
+
+    return json({ success: true, config: newConfig }, 200, corsHdrs);
+
+  } catch (err: any) {
+    if (err instanceof Response) { throw err; }
+    if (isValidationError(err)) {
+      return json({
+        success: false,
+        error: { code: "INVALID_REQUEST", message: "Validation failed", issues: err.issues }
+      }, 400, corsHdrs);
+    }
+    logJSON({ level: "error", requestId, msg: "UPDATE_SYSTEM_CONFIG_ERROR", error: err.message });
     return json({ success: false, error: { code: "SERVER_ERROR", message: err.message } }, 500, corsHdrs);
   }
 }

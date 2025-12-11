@@ -32,7 +32,9 @@ import {
     deactivatePromoCode,
     getAdminStats,
     listUsers,
-    upsertPromoCode
+    upsertPromoCode,
+    getSystemConfig,
+    updateSystemConfig
 } from "./routes/admin";
 import {
     handleProvisionQueue,
@@ -196,6 +198,9 @@ router.get("/api/:v/admin/stats", (req, env, corsHdrs, requestId) => getAdminSta
 router.get("/api/:v/admin/users", (req, env, corsHdrs, requestId) => listUsers(req, env, requestId, corsHdrs));
 // Alias for legacy tests
 router.get("/api/:v/users", (req, env, corsHdrs, requestId) => listUsers(req, env, requestId, corsHdrs));
+
+router.get("/api/:v/admin/system/config", (req, env, corsHdrs, requestId) => getSystemConfig(req, env, requestId, corsHdrs));
+router.put("/api/:v/admin/system/config", (req, env, corsHdrs, requestId) => updateSystemConfig(req, env, requestId, corsHdrs));
 
 // Provisioning Routes
 router.post("/internal/provision/queue", (req, env, corsHdrs, requestId) => handleProvisionQueue(req, env));

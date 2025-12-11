@@ -1,7 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'https://syston-postbus.team-platform-2025.workers.dev';
 
 interface FeatureFlag {
     id: string;
@@ -23,6 +25,59 @@ export default function SettingsPage() {
     const [flags, setFlags] = useState<FeatureFlag[]>(defaultFlags);
     const [platformEmail, setPlatformEmail] = useState('');
 
+    // Shop Config State
+    const [printifyApiToken, setPrintifyApiToken] = useState('');
+    const [printifyShopId, setPrintifyShopId] = useState('');
+    const [shopLoading, setShopLoading] = useState(false);
+    const [shopMessage, setShopMessage] = useState({ text: '', type: '' });
+
+    useEffect(() => {
+        fetchSystemConfig();
+    }, []);
+
+    const fetchSystemConfig = async () => {
+        try {
+            const res = await fetch(`${API_BASE}/api/v1/admin/system/config`, {
+                credentials: 'include'
+            });
+            if (res.ok) {
+                const data = await res.json();
+                if (data.success && data.config) {
+                    setPrintifyApiToken(data.config.printifyApiToken || '');
+                    setPrintifyShopId(data.config.printifyShopId || '');
+                }
+            }
+        } catch (err) {
+            console.error("Failed to load config", err);
+        }
+    };
+
+    const saveShopConfig = async () => {
+        setShopLoading(true);
+        setShopMessage({ text: '', type: '' });
+        try {
+            const res = await fetch(`${API_BASE}/api/v1/admin/system/config`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({
+                    printifyApiToken,
+                    printifyShopId
+                })
+            });
+
+            if (res.ok) {
+                setShopMessage({ text: 'Settings saved successfully', type: 'success' });
+            } else {
+                setShopMessage({ text: 'Failed to save settings', type: 'error' });
+            }
+        } catch (err) {
+            setShopMessage({ text: 'Error saving settings', type: 'error' });
+        } finally {
+            setShopLoading(false);
+        }
+    };
+
     const toggleFlag = (id: string) => {
         setFlags((prev) =>
             prev.map((f) => (f.id === id ? { ...f, enabled: !f.enabled } : f))
@@ -35,6 +90,58 @@ export default function SettingsPage() {
             <div>
                 <h1 className="text-2xl font-bold text-white">Settings</h1>
                 <p className="text-gray-500 mt-1">Platform configuration and feature flags</p>
+            </div>
+
+            {/* Shop Integration */}
+            <div className="glass-card p-6">
+                <div className="flex items-center justify-between mb-4">
+                    <div>
+                        <h2 className="font-semibold text-white">Shop Integration (Printify)</h2>
+                        <p className="text-sm text-gray-500">Configure global Printify credentials for the merchandise shop</p>
+                    </div>
+                    <div className="w-10 h-10 rounded-full bg-brand-500/10 flex items-center justify-center text-brand-400">
+                        🛍️
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-sm text-gray-400 mb-1">Printify API Token</label>
+                        <input
+                            type="password"
+                            className="input font-mono text-sm"
+                            value={printifyApiToken}
+                            onChange={(e) => setPrintifyApiToken(e.target.value)}
+                            placeholder="access_token_..."
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm text-gray-400 mb-1">Printify Shop ID</label>
+                        <input
+                            type="text"
+                            className="input font-mono text-sm"
+                            value={printifyShopId}
+                            onChange={(e) => setPrintifyShopId(e.target.value)}
+                            placeholder="1234567"
+                        />
+                    </div>
+                </div>
+
+                {shopMessage.text && (
+                    <div className={`mt-4 p-3 rounded-lg text-sm ${shopMessage.type === 'success' ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
+                        {shopMessage.text}
+                    </div>
+                )}
+
+                <div className="mt-4 flex justify-end">
+                    <button
+                        onClick={saveShopConfig}
+                        disabled={shopLoading}
+                        className="btn-primary"
+                    >
+                        {shopLoading ? 'Saving...' : 'Save Keys'}
+                    </button>
+                </div>
             </div>
 
             {/* Feature Flags */}

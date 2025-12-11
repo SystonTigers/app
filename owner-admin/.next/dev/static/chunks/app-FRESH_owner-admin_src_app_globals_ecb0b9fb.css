@@ -974,6 +974,10 @@ img, video {
   background-color: #0ea5e94d;
 }
 
+.bg-green-500\/10 {
+  background-color: #22c55e1a;
+}
+
 .bg-gradient-to-br {
   background-image: linear-gradient(to bottom right, var(--tw-gradient-stops));
 }

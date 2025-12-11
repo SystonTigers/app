@@ -2,6 +2,14 @@ import type { Env } from '../env';
 import { PrintifyService, PrintifyOrderPayload } from './printify';
 import { json } from './util'; // Assuming a util exists, or we use Response directly
 
+async function getPrintifyConfig(env: Env) {
+  const config = await env.KV.get('system:config', 'json') as any;
+  return {
+    apiToken: config?.printifyApiToken || env.PRINTIFY_API_TOKEN,
+    shopId: config?.printifyShopId || env.PRINTIFY_SHOP_ID
+  };
+}
+
 // Customize Printify product with team branding
 export const customize = async (req: any, env: Env) => {
   const {
@@ -55,7 +63,8 @@ export const customize = async (req: any, env: Env) => {
 // Get shop products for tenant (Syned from Printify)
 export const getProducts = async (req: any, env: Env) => {
   try {
-    const printify = new PrintifyService(env.PRINTIFY_API_TOKEN, env.PRINTIFY_SHOP_ID);
+    const { apiToken, shopId } = await getPrintifyConfig(env);
+    const printify = new PrintifyService(apiToken, shopId);
     const printifyProducts = await printify.getProducts();
 
     // Transform for our frontend
@@ -116,7 +125,8 @@ export const createOrder = async (req: any, env: Env) => {
   const order_id = crypto.randomUUID();
 
   try {
-    const printify = new PrintifyService(env.PRINTIFY_API_TOKEN, env.PRINTIFY_SHOP_ID);
+    const { apiToken, shopId } = await getPrintifyConfig(env);
+    const printify = new PrintifyService(apiToken, shopId);
 
     const payload: PrintifyOrderPayload = {
       external_id: order_id,
