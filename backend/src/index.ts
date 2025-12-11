@@ -329,7 +329,9 @@ import {
     handleListPosts as handleListSocialPosts,
     handleDeletePost as handleDeleteSocialPost,
     handleUpdateSocialConfig,
-    handleGetSocialConfig
+    handleGetSocialConfig,
+    handleGetSocialUsage,
+    handlePostWithAI
 } from "./routes/social";
 router.post("/api/:v/social/posts", (req, env, corsHdrs) => handleCreateSocialPost(req, env, corsHdrs));
 router.get("/api/:v/social/posts", (req, env, corsHdrs) => handleListSocialPosts(req, env, corsHdrs));
@@ -339,6 +341,8 @@ router.delete("/api/:v/social/posts/:id", (req, env, corsHdrs) => {
 });
 router.put("/api/:v/social/config", (req, env, corsHdrs) => handleUpdateSocialConfig(req, env, corsHdrs));
 router.get("/api/:v/social/config", (req, env, corsHdrs) => handleGetSocialConfig(req, env, corsHdrs));
+router.get("/api/:v/social/usage", (req, env, corsHdrs) => handleGetSocialUsage(req, env, corsHdrs));
+router.post("/api/:v/social/post-with-ai", (req, env, corsHdrs) => handlePostWithAI(req, env, corsHdrs));
 
 // Player Photo Routes
 import { handlePlayerPhotoUpload, handlePlayerPhotoDelete, handleGetPlayerGoals } from "./routes/players";
