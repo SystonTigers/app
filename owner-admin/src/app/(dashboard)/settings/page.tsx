@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'https://syston-postbus.team-platform-2025.workers.dev';
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8787';
 
 interface FeatureFlag {
     id: string;
@@ -37,8 +37,11 @@ export default function SettingsPage() {
 
     const fetchSystemConfig = async () => {
         try {
+            const token = localStorage.getItem('owner_token');
             const res = await fetch(`${API_BASE}/api/v1/admin/system/config`, {
-                credentials: 'include'
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
             });
             if (res.ok) {
                 const data = await res.json();
@@ -56,10 +59,13 @@ export default function SettingsPage() {
         setShopLoading(true);
         setShopMessage({ text: '', type: '' });
         try {
+            const token = localStorage.getItem('owner_token');
             const res = await fetch(`${API_BASE}/api/v1/admin/system/config`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
                 body: JSON.stringify({
                     printifyApiToken,
                     printifyShopId

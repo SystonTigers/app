@@ -18,7 +18,7 @@ interface SystemMetric {
     description: string;
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'https://syston-postbus.team-platform-2025.workers.dev';
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8787';
 
 export default function HealthPage() {
     const [checks, setChecks] = useState<HealthCheck[]>([
@@ -152,10 +152,10 @@ export default function HealthPage() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 className={`glass-card p-6 border-l-4 ${allHealthy
-                        ? 'border-green-500 bg-green-500/5'
-                        : anyDown
-                            ? 'border-red-500 bg-red-500/5'
-                            : 'border-yellow-500 bg-yellow-500/5'
+                    ? 'border-green-500 bg-green-500/5'
+                    : anyDown
+                        ? 'border-red-500 bg-red-500/5'
+                        : 'border-yellow-500 bg-yellow-500/5'
                     }`}
             >
                 <div className="flex items-center gap-4">
@@ -234,7 +234,7 @@ export default function HealthPage() {
                                 {metric.trend && (
                                     <svg
                                         className={`w-4 h-4 ${metric.trend === 'up' ? 'text-green-400' :
-                                                metric.trend === 'down' ? 'text-red-400' : 'text-gray-400'
+                                            metric.trend === 'down' ? 'text-red-400' : 'text-gray-400'
                                             }`}
                                         fill="none"
                                         viewBox="0 0 24 24"

@@ -13,7 +13,7 @@ interface DashboardStats {
     starterPlans: number;
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'https://syston-postbus.team-platform-2025.workers.dev';
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8787';
 
 export default function DashboardPage() {
     const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -32,8 +32,11 @@ export default function DashboardPage() {
 
     const fetchStats = async () => {
         try {
+            const token = localStorage.getItem('owner_token');
             const response = await fetch(`${API_BASE}/api/v1/admin/stats`, {
-                credentials: 'include',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
             });
 
             if (!response.ok) {

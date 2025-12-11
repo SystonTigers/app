@@ -19,7 +19,7 @@ interface TenantDetails {
     logo_url?: string;
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'https://syston-postbus.team-platform-2025.workers.dev';
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8787';
 
 export default function TenantDetailPage() {
     const params = useParams();

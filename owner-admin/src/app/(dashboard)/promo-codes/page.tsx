@@ -16,7 +16,7 @@ interface PromoCode {
     whitelist?: string[];
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'https://syston-postbus.team-platform-2025.workers.dev';
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8787';
 
 export default function PromoCodesPage() {
     const [promoCodes, setPromoCodes] = useState<PromoCode[]>([]);
@@ -41,8 +41,11 @@ export default function PromoCodesPage() {
 
     const fetchPromoCodes = async () => {
         try {
+            const token = localStorage.getItem('owner_token');
             const response = await fetch(`${API_BASE}/api/v1/admin/promo-codes`, {
-                credentials: 'include',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
             });
 
             if (!response.ok) {
@@ -83,10 +86,13 @@ export default function PromoCodesPage() {
                 payload.whitelist = newCode.whitelist.split(',').map((s) => s.trim());
             }
 
+            const token = localStorage.getItem('owner_token');
             const response = await fetch(`${API_BASE}/api/v1/admin/promo/upsert`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
                 body: JSON.stringify(payload),
             });
 
@@ -114,9 +120,12 @@ export default function PromoCodesPage() {
         if (!confirm(`Deactivate promo code "${code}"?`)) return;
 
         try {
+            const token = localStorage.getItem('owner_token');
             const response = await fetch(`${API_BASE}/api/v1/admin/promo-codes/${code}/deactivate`, {
                 method: 'POST',
-                credentials: 'include',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
             });
 
             if (response.ok) {

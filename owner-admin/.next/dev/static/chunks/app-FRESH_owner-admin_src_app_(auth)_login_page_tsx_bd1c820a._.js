@@ -6,7 +6,6 @@ __turbopack_context__.s([
     "default",
     ()=>LoginPage
 ]);
-var __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$build$2f$polyfills$2f$process$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = /*#__PURE__*/ __turbopack_context__.i("[project]/app-FRESH/owner-admin/node_modules/next/dist/build/polyfills/process.js [app-client] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/app-FRESH/owner-admin/node_modules/next/dist/compiled/react/jsx-dev-runtime.js [app-client] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/app-FRESH/owner-admin/node_modules/next/dist/compiled/react/index.js [app-client] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$node_modules$2f$framer$2d$motion$2f$dist$2f$es$2f$render$2f$components$2f$motion$2f$proxy$2e$mjs__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/app-FRESH/node_modules/framer-motion/dist/es/render/components/motion/proxy.mjs [app-client] (ecmascript)");
@@ -15,7 +14,8 @@ var _s = __turbopack_context__.k.signature();
 'use client';
 ;
 ;
-const API_BASE = ("TURBOPACK compile-time value", "https://syston-postbus.team-platform-2025.workers.dev") || 'https://syston-postbus.team-platform-2025.workers.dev';
+const API_BASE = 'http://localhost:8787'; // Forced local for debugging
+// const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://127.0.0.1:8787';
 // Hardcoded owner credentials (in production, this would be in environment variables or a secure database)
 const OWNER_EMAIL = 'clayts1985@gmail.com';
 const OWNER_PASSWORD = 'Password';
@@ -29,13 +29,36 @@ function LoginPage() {
         e.preventDefault();
         setLoading(true);
         setError('');
-        // Simple email/password check for owner access
-        // In production, this should verify against a secure backend
+        // Simple owner check
         if (email === OWNER_EMAIL && password === OWNER_PASSWORD) {
-            // Set a session cookie or localStorage to indicate logged in
-            localStorage.setItem('owner_authenticated', 'true');
-            localStorage.setItem('owner_email', email);
-            window.location.href = '/';
+            try {
+                // Get a real token for backend calls
+                const res = await fetch(`${API_BASE}/dev/admin-jwt`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        tenantId: 'system',
+                        email
+                    })
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.success && data.token) {
+                        localStorage.setItem('owner_authenticated', 'true');
+                        localStorage.setItem('owner_email', email);
+                        localStorage.setItem('owner_token', data.token);
+                        window.location.href = '/';
+                        return;
+                    }
+                }
+                throw new Error('Failed to obtain session token');
+            } catch (err) {
+                console.error("Login Error:", err);
+                setError('Login succeeded but session creation failed. Backend might be offline.');
+                setLoading(false);
+            }
         } else {
             setError('Invalid email or password');
             setLoading(false);
@@ -51,20 +74,20 @@ function LoginPage() {
                         className: "absolute top-1/4 left-1/4 w-96 h-96 bg-primary-500/10 rounded-full blur-3xl"
                     }, void 0, false, {
                         fileName: "[project]/app-FRESH/owner-admin/src/app/(auth)/login/page.tsx",
-                        lineNumber: 40,
+                        lineNumber: 60,
                         columnNumber: 17
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                         className: "absolute bottom-1/4 right-1/4 w-96 h-96 bg-accent/10 rounded-full blur-3xl"
                     }, void 0, false, {
                         fileName: "[project]/app-FRESH/owner-admin/src/app/(auth)/login/page.tsx",
-                        lineNumber: 41,
+                        lineNumber: 61,
                         columnNumber: 17
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/app-FRESH/owner-admin/src/app/(auth)/login/page.tsx",
-                lineNumber: 39,
+                lineNumber: 59,
                 columnNumber: 13
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$node_modules$2f$framer$2d$motion$2f$dist$2f$es$2f$render$2f$components$2f$motion$2f$proxy$2e$mjs__$5b$app$2d$client$5d$__$28$ecmascript$29$__["motion"].div, {
@@ -95,17 +118,17 @@ function LoginPage() {
                                         d: "M13 10V3L4 14h7v7l9-11h-7z"
                                     }, void 0, false, {
                                         fileName: "[project]/app-FRESH/owner-admin/src/app/(auth)/login/page.tsx",
-                                        lineNumber: 53,
+                                        lineNumber: 73,
                                         columnNumber: 29
                                     }, this)
                                 }, void 0, false, {
                                     fileName: "[project]/app-FRESH/owner-admin/src/app/(auth)/login/page.tsx",
-                                    lineNumber: 52,
+                                    lineNumber: 72,
                                     columnNumber: 25
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/app-FRESH/owner-admin/src/app/(auth)/login/page.tsx",
-                                lineNumber: 51,
+                                lineNumber: 71,
                                 columnNumber: 21
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h1", {
@@ -113,7 +136,7 @@ function LoginPage() {
                                 children: "Owner Admin"
                             }, void 0, false, {
                                 fileName: "[project]/app-FRESH/owner-admin/src/app/(auth)/login/page.tsx",
-                                lineNumber: 56,
+                                lineNumber: 76,
                                 columnNumber: 21
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -121,13 +144,13 @@ function LoginPage() {
                                 children: "Platform Control Center"
                             }, void 0, false, {
                                 fileName: "[project]/app-FRESH/owner-admin/src/app/(auth)/login/page.tsx",
-                                lineNumber: 57,
+                                lineNumber: 77,
                                 columnNumber: 21
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/app-FRESH/owner-admin/src/app/(auth)/login/page.tsx",
-                        lineNumber: 50,
+                        lineNumber: 70,
                         columnNumber: 17
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -138,7 +161,7 @@ function LoginPage() {
                                 children: "Sign in to continue"
                             }, void 0, false, {
                                 fileName: "[project]/app-FRESH/owner-admin/src/app/(auth)/login/page.tsx",
-                                lineNumber: 62,
+                                lineNumber: 82,
                                 columnNumber: 21
                             }, this),
                             error && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -146,7 +169,7 @@ function LoginPage() {
                                 children: error
                             }, void 0, false, {
                                 fileName: "[project]/app-FRESH/owner-admin/src/app/(auth)/login/page.tsx",
-                                lineNumber: 67,
+                                lineNumber: 87,
                                 columnNumber: 25
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("form", {
@@ -160,7 +183,7 @@ function LoginPage() {
                                                 children: "Email Address"
                                             }, void 0, false, {
                                                 fileName: "[project]/app-FRESH/owner-admin/src/app/(auth)/login/page.tsx",
-                                                lineNumber: 74,
+                                                lineNumber: 94,
                                                 columnNumber: 29
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -173,13 +196,13 @@ function LoginPage() {
                                                 autoFocus: true
                                             }, void 0, false, {
                                                 fileName: "[project]/app-FRESH/owner-admin/src/app/(auth)/login/page.tsx",
-                                                lineNumber: 75,
+                                                lineNumber: 95,
                                                 columnNumber: 29
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/app-FRESH/owner-admin/src/app/(auth)/login/page.tsx",
-                                        lineNumber: 73,
+                                        lineNumber: 93,
                                         columnNumber: 25
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -189,7 +212,7 @@ function LoginPage() {
                                                 children: "Password"
                                             }, void 0, false, {
                                                 fileName: "[project]/app-FRESH/owner-admin/src/app/(auth)/login/page.tsx",
-                                                lineNumber: 87,
+                                                lineNumber: 107,
                                                 columnNumber: 29
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -201,13 +224,13 @@ function LoginPage() {
                                                 required: true
                                             }, void 0, false, {
                                                 fileName: "[project]/app-FRESH/owner-admin/src/app/(auth)/login/page.tsx",
-                                                lineNumber: 88,
+                                                lineNumber: 108,
                                                 columnNumber: 29
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/app-FRESH/owner-admin/src/app/(auth)/login/page.tsx",
-                                        lineNumber: 86,
+                                        lineNumber: 106,
                                         columnNumber: 25
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -220,7 +243,7 @@ function LoginPage() {
                                                     className: "w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"
                                                 }, void 0, false, {
                                                     fileName: "[project]/app-FRESH/owner-admin/src/app/(auth)/login/page.tsx",
-                                                    lineNumber: 105,
+                                                    lineNumber: 125,
                                                     columnNumber: 37
                                                 }, this),
                                                 "Signing in..."
@@ -239,12 +262,12 @@ function LoginPage() {
                                                         d: "M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"
                                                     }, void 0, false, {
                                                         fileName: "[project]/app-FRESH/owner-admin/src/app/(auth)/login/page.tsx",
-                                                        lineNumber: 111,
+                                                        lineNumber: 131,
                                                         columnNumber: 41
                                                     }, this)
                                                 }, void 0, false, {
                                                     fileName: "[project]/app-FRESH/owner-admin/src/app/(auth)/login/page.tsx",
-                                                    lineNumber: 110,
+                                                    lineNumber: 130,
                                                     columnNumber: 37
                                                 }, this),
                                                 "Sign In"
@@ -252,19 +275,19 @@ function LoginPage() {
                                         }, void 0, true)
                                     }, void 0, false, {
                                         fileName: "[project]/app-FRESH/owner-admin/src/app/(auth)/login/page.tsx",
-                                        lineNumber: 98,
+                                        lineNumber: 118,
                                         columnNumber: 25
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/app-FRESH/owner-admin/src/app/(auth)/login/page.tsx",
-                                lineNumber: 72,
+                                lineNumber: 92,
                                 columnNumber: 21
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/app-FRESH/owner-admin/src/app/(auth)/login/page.tsx",
-                        lineNumber: 61,
+                        lineNumber: 81,
                         columnNumber: 17
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -272,19 +295,19 @@ function LoginPage() {
                         children: "This is a restricted area for platform administrators only."
                     }, void 0, false, {
                         fileName: "[project]/app-FRESH/owner-admin/src/app/(auth)/login/page.tsx",
-                        lineNumber: 121,
+                        lineNumber: 141,
                         columnNumber: 17
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/app-FRESH/owner-admin/src/app/(auth)/login/page.tsx",
-                lineNumber: 44,
+                lineNumber: 64,
                 columnNumber: 13
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/app-FRESH/owner-admin/src/app/(auth)/login/page.tsx",
-        lineNumber: 37,
+        lineNumber: 57,
         columnNumber: 9
     }, this);
 }

@@ -15,7 +15,7 @@ var _s = __turbopack_context__.k.signature();
 'use client';
 ;
 ;
-const API_BASE = ("TURBOPACK compile-time value", "https://syston-postbus.team-platform-2025.workers.dev") || 'https://syston-postbus.team-platform-2025.workers.dev';
+const API_BASE = ("TURBOPACK compile-time value", "https://syston-postbus.team-platform-2025.workers.dev") || 'http://localhost:8787';
 function HealthPage() {
     _s();
     const [checks, setChecks] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])([

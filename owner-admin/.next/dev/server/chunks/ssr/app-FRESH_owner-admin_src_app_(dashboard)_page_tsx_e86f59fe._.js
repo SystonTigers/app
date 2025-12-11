@@ -13,7 +13,7 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$node_modules
 ;
 ;
 ;
-const API_BASE = ("TURBOPACK compile-time value", "https://syston-postbus.team-platform-2025.workers.dev") || 'https://syston-postbus.team-platform-2025.workers.dev';
+const API_BASE = ("TURBOPACK compile-time value", "https://syston-postbus.team-platform-2025.workers.dev") || 'http://localhost:8787';
 function DashboardPage() {
     const [stats, setStats] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(null);
     const [loading, setLoading] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(true);
@@ -29,8 +29,11 @@ function DashboardPage() {
     }, []);
     const fetchStats = async ()=>{
         try {
+            const token = localStorage.getItem('owner_token');
             const response = await fetch(`${API_BASE}/api/v1/admin/stats`, {
-                credentials: 'include'
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
             });
             if (!response.ok) {
                 if (response.status === 401) {
@@ -78,12 +81,12 @@ function DashboardPage() {
                 className: "w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full animate-spin"
             }, void 0, false, {
                 fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/page.tsx",
-                lineNumber: 85,
+                lineNumber: 88,
                 columnNumber: 17
             }, this)
         }, void 0, false, {
             fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/page.tsx",
-            lineNumber: 84,
+            lineNumber: 87,
             columnNumber: 13
         }, this);
     }
@@ -96,7 +99,7 @@ function DashboardPage() {
                     children: error
                 }, void 0, false, {
                     fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/page.tsx",
-                    lineNumber: 93,
+                    lineNumber: 96,
                     columnNumber: 17
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -105,13 +108,13 @@ function DashboardPage() {
                     children: "Retry"
                 }, void 0, false, {
                     fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/page.tsx",
-                    lineNumber: 94,
+                    lineNumber: 97,
                     columnNumber: 17
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/page.tsx",
-            lineNumber: 92,
+            lineNumber: 95,
             columnNumber: 13
         }, this);
     }
@@ -125,7 +128,7 @@ function DashboardPage() {
                         children: "Dashboard"
                     }, void 0, false, {
                         fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/page.tsx",
-                        lineNumber: 105,
+                        lineNumber: 108,
                         columnNumber: 17
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -133,13 +136,13 @@ function DashboardPage() {
                         children: "Platform overview and key metrics"
                     }, void 0, false, {
                         fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/page.tsx",
-                        lineNumber: 106,
+                        lineNumber: 109,
                         columnNumber: 17
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/page.tsx",
-                lineNumber: 104,
+                lineNumber: 107,
                 columnNumber: 13
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -152,13 +155,13 @@ function DashboardPage() {
                         changeType: "positive",
                         icon: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(RevenueIcon, {}, void 0, false, {
                             fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/page.tsx",
-                            lineNumber: 116,
+                            lineNumber: 119,
                             columnNumber: 27
                         }, void 0),
                         delay: 0
                     }, void 0, false, {
                         fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/page.tsx",
-                        lineNumber: 111,
+                        lineNumber: 114,
                         columnNumber: 17
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(StatCard, {
@@ -167,13 +170,13 @@ function DashboardPage() {
                         subtitle: `${stats?.trialTenants || 0} in trial`,
                         icon: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(TenantsIcon, {}, void 0, false, {
                             fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/page.tsx",
-                            lineNumber: 123,
+                            lineNumber: 126,
                             columnNumber: 27
                         }, void 0),
                         delay: 0.1
                     }, void 0, false, {
                         fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/page.tsx",
-                        lineNumber: 119,
+                        lineNumber: 122,
                         columnNumber: 17
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(StatCard, {
@@ -182,13 +185,13 @@ function DashboardPage() {
                         subtitle: `${stats?.starterPlans || 0} starter`,
                         icon: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(ProIcon, {}, void 0, false, {
                             fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/page.tsx",
-                            lineNumber: 130,
+                            lineNumber: 133,
                             columnNumber: 27
                         }, void 0),
                         delay: 0.2
                     }, void 0, false, {
                         fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/page.tsx",
-                        lineNumber: 126,
+                        lineNumber: 129,
                         columnNumber: 17
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(StatCard, {
@@ -197,19 +200,19 @@ function DashboardPage() {
                         subtitle: "Last 30 days",
                         icon: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(SignupIcon, {}, void 0, false, {
                             fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/page.tsx",
-                            lineNumber: 137,
+                            lineNumber: 140,
                             columnNumber: 27
                         }, void 0),
                         delay: 0.3
                     }, void 0, false, {
                         fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/page.tsx",
-                        lineNumber: 133,
+                        lineNumber: 136,
                         columnNumber: 17
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/page.tsx",
-                lineNumber: 110,
+                lineNumber: 113,
                 columnNumber: 13
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -225,7 +228,7 @@ function DashboardPage() {
                                     children: "Quick Actions"
                                 }, void 0, false, {
                                     fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/page.tsx",
-                                    lineNumber: 147,
+                                    lineNumber: 150,
                                     columnNumber: 25
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -236,7 +239,7 @@ function DashboardPage() {
                                             label: "View All Tenants"
                                         }, void 0, false, {
                                             fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/page.tsx",
-                                            lineNumber: 149,
+                                            lineNumber: 152,
                                             columnNumber: 29
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(QuickAction, {
@@ -244,7 +247,7 @@ function DashboardPage() {
                                             label: "Create Promo Code"
                                         }, void 0, false, {
                                             fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/page.tsx",
-                                            lineNumber: 150,
+                                            lineNumber: 153,
                                             columnNumber: 29
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(QuickAction, {
@@ -252,7 +255,7 @@ function DashboardPage() {
                                             label: "Check Support Tickets"
                                         }, void 0, false, {
                                             fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/page.tsx",
-                                            lineNumber: 151,
+                                            lineNumber: 154,
                                             columnNumber: 29
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(QuickAction, {
@@ -260,24 +263,24 @@ function DashboardPage() {
                                             label: "Platform Settings"
                                         }, void 0, false, {
                                             fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/page.tsx",
-                                            lineNumber: 152,
+                                            lineNumber: 155,
                                             columnNumber: 29
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/page.tsx",
-                                    lineNumber: 148,
+                                    lineNumber: 151,
                                     columnNumber: 25
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/page.tsx",
-                            lineNumber: 146,
+                            lineNumber: 149,
                             columnNumber: 21
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/page.tsx",
-                        lineNumber: 145,
+                        lineNumber: 148,
                         columnNumber: 17
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -290,7 +293,7 @@ function DashboardPage() {
                                     children: "Platform Health"
                                 }, void 0, false, {
                                     fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/page.tsx",
-                                    lineNumber: 160,
+                                    lineNumber: 163,
                                     columnNumber: 25
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -302,7 +305,7 @@ function DashboardPage() {
                                             status: "healthy"
                                         }, void 0, false, {
                                             fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/page.tsx",
-                                            lineNumber: 162,
+                                            lineNumber: 165,
                                             columnNumber: 29
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(HealthMetric, {
@@ -311,7 +314,7 @@ function DashboardPage() {
                                             status: "healthy"
                                         }, void 0, false, {
                                             fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/page.tsx",
-                                            lineNumber: 163,
+                                            lineNumber: 166,
                                             columnNumber: 29
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(HealthMetric, {
@@ -320,7 +323,7 @@ function DashboardPage() {
                                             status: "healthy"
                                         }, void 0, false, {
                                             fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/page.tsx",
-                                            lineNumber: 164,
+                                            lineNumber: 167,
                                             columnNumber: 29
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(HealthMetric, {
@@ -329,30 +332,30 @@ function DashboardPage() {
                                             status: "neutral"
                                         }, void 0, false, {
                                             fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/page.tsx",
-                                            lineNumber: 165,
+                                            lineNumber: 168,
                                             columnNumber: 29
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/page.tsx",
-                                    lineNumber: 161,
+                                    lineNumber: 164,
                                     columnNumber: 25
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/page.tsx",
-                            lineNumber: 159,
+                            lineNumber: 162,
                             columnNumber: 21
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/page.tsx",
-                        lineNumber: 158,
+                        lineNumber: 161,
                         columnNumber: 17
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/page.tsx",
-                lineNumber: 143,
+                lineNumber: 146,
                 columnNumber: 13
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -363,7 +366,7 @@ function DashboardPage() {
                         children: "Revenue Trend"
                     }, void 0, false, {
                         fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/page.tsx",
-                        lineNumber: 173,
+                        lineNumber: 176,
                         columnNumber: 17
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -383,19 +386,19 @@ function DashboardPage() {
                                         d: "M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"
                                     }, void 0, false, {
                                         fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/page.tsx",
-                                        lineNumber: 177,
+                                        lineNumber: 180,
                                         columnNumber: 29
                                     }, this)
                                 }, void 0, false, {
                                     fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/page.tsx",
-                                    lineNumber: 176,
+                                    lineNumber: 179,
                                     columnNumber: 25
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
                                     children: "Revenue chart coming soon"
                                 }, void 0, false, {
                                     fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/page.tsx",
-                                    lineNumber: 179,
+                                    lineNumber: 182,
                                     columnNumber: 25
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -403,30 +406,30 @@ function DashboardPage() {
                                     children: "Connect Stripe for detailed analytics"
                                 }, void 0, false, {
                                     fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/page.tsx",
-                                    lineNumber: 180,
+                                    lineNumber: 183,
                                     columnNumber: 25
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/page.tsx",
-                            lineNumber: 175,
+                            lineNumber: 178,
                             columnNumber: 21
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/page.tsx",
-                        lineNumber: 174,
+                        lineNumber: 177,
                         columnNumber: 17
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/page.tsx",
-                lineNumber: 172,
+                lineNumber: 175,
                 columnNumber: 13
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/page.tsx",
-        lineNumber: 102,
+        lineNumber: 105,
         columnNumber: 9
     }, this);
 }
@@ -456,7 +459,7 @@ function StatCard({ title, value, change, changeType, subtitle, icon, delay = 0 
                             children: title
                         }, void 0, false, {
                             fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/page.tsx",
-                            lineNumber: 215,
+                            lineNumber: 218,
                             columnNumber: 21
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -464,7 +467,7 @@ function StatCard({ title, value, change, changeType, subtitle, icon, delay = 0 
                             children: value
                         }, void 0, false, {
                             fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/page.tsx",
-                            lineNumber: 216,
+                            lineNumber: 219,
                             columnNumber: 21
                         }, this),
                         change && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -475,7 +478,7 @@ function StatCard({ title, value, change, changeType, subtitle, icon, delay = 0 
                             ]
                         }, void 0, true, {
                             fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/page.tsx",
-                            lineNumber: 218,
+                            lineNumber: 221,
                             columnNumber: 25
                         }, this),
                         subtitle && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -483,13 +486,13 @@ function StatCard({ title, value, change, changeType, subtitle, icon, delay = 0 
                             children: subtitle
                         }, void 0, false, {
                             fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/page.tsx",
-                            lineNumber: 222,
+                            lineNumber: 225,
                             columnNumber: 34
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/page.tsx",
-                    lineNumber: 214,
+                    lineNumber: 217,
                     columnNumber: 17
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -497,18 +500,18 @@ function StatCard({ title, value, change, changeType, subtitle, icon, delay = 0 
                     children: icon
                 }, void 0, false, {
                     fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/page.tsx",
-                    lineNumber: 224,
+                    lineNumber: 227,
                     columnNumber: 17
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/page.tsx",
-            lineNumber: 213,
+            lineNumber: 216,
             columnNumber: 13
         }, this)
     }, void 0, false, {
         fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/page.tsx",
-        lineNumber: 207,
+        lineNumber: 210,
         columnNumber: 9
     }, this);
 }
@@ -532,17 +535,17 @@ function QuickAction({ href, label }) {
                         d: "M9 5l7 7-7 7"
                     }, void 0, false, {
                         fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/page.tsx",
-                        lineNumber: 241,
+                        lineNumber: 244,
                         columnNumber: 21
                     }, this)
                 }, void 0, false, {
                     fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/page.tsx",
-                    lineNumber: 240,
+                    lineNumber: 243,
                     columnNumber: 17
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/page.tsx",
-                lineNumber: 239,
+                lineNumber: 242,
                 columnNumber: 13
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -550,13 +553,13 @@ function QuickAction({ href, label }) {
                 children: label
             }, void 0, false, {
                 fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/page.tsx",
-                lineNumber: 244,
+                lineNumber: 247,
                 columnNumber: 13
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/page.tsx",
-        lineNumber: 235,
+        lineNumber: 238,
         columnNumber: 9
     }, this);
 }
@@ -578,7 +581,7 @@ function HealthMetric({ label, value, status }) {
                         className: `w-2 h-2 rounded-full ${statusColors[status]}`
                     }, void 0, false, {
                         fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/page.tsx",
-                        lineNumber: 261,
+                        lineNumber: 264,
                         columnNumber: 17
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -586,13 +589,13 @@ function HealthMetric({ label, value, status }) {
                         children: value
                     }, void 0, false, {
                         fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/page.tsx",
-                        lineNumber: 262,
+                        lineNumber: 265,
                         columnNumber: 17
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/page.tsx",
-                lineNumber: 260,
+                lineNumber: 263,
                 columnNumber: 13
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -600,13 +603,13 @@ function HealthMetric({ label, value, status }) {
                 children: label
             }, void 0, false, {
                 fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/page.tsx",
-                lineNumber: 264,
+                lineNumber: 267,
                 columnNumber: 13
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/page.tsx",
-        lineNumber: 259,
+        lineNumber: 262,
         columnNumber: 9
     }, this);
 }
@@ -624,12 +627,12 @@ function RevenueIcon() {
             d: "M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
         }, void 0, false, {
             fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/page.tsx",
-            lineNumber: 273,
+            lineNumber: 276,
             columnNumber: 13
         }, this)
     }, void 0, false, {
         fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/page.tsx",
-        lineNumber: 272,
+        lineNumber: 275,
         columnNumber: 9
     }, this);
 }
@@ -646,12 +649,12 @@ function TenantsIcon() {
             d: "M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"
         }, void 0, false, {
             fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/page.tsx",
-            lineNumber: 281,
+            lineNumber: 284,
             columnNumber: 13
         }, this)
     }, void 0, false, {
         fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/page.tsx",
-        lineNumber: 280,
+        lineNumber: 283,
         columnNumber: 9
     }, this);
 }
@@ -668,12 +671,12 @@ function ProIcon() {
             d: "M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"
         }, void 0, false, {
             fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/page.tsx",
-            lineNumber: 289,
+            lineNumber: 292,
             columnNumber: 13
         }, this)
     }, void 0, false, {
         fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/page.tsx",
-        lineNumber: 288,
+        lineNumber: 291,
         columnNumber: 9
     }, this);
 }
@@ -690,12 +693,12 @@ function SignupIcon() {
             d: "M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"
         }, void 0, false, {
             fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/page.tsx",
-            lineNumber: 297,
+            lineNumber: 300,
             columnNumber: 13
         }, this)
     }, void 0, false, {
         fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/page.tsx",
-        lineNumber: 296,
+        lineNumber: 299,
         columnNumber: 9
     }, this);
 }

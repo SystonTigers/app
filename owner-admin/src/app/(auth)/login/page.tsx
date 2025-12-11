@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'https://syston-postbus.team-platform-2025.workers.dev';
+const API_BASE = 'http://localhost:8787'; // Forced local for debugging
+// const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://127.0.0.1:8787';
 
 // Hardcoded owner credentials (in production, this would be in environment variables or a secure database)
 const OWNER_EMAIL = 'clayts1985@gmail.com';
@@ -20,13 +21,32 @@ export default function LoginPage() {
         setLoading(true);
         setError('');
 
-        // Simple email/password check for owner access
-        // In production, this should verify against a secure backend
+        // Simple owner check
         if (email === OWNER_EMAIL && password === OWNER_PASSWORD) {
-            // Set a session cookie or localStorage to indicate logged in
-            localStorage.setItem('owner_authenticated', 'true');
-            localStorage.setItem('owner_email', email);
-            window.location.href = '/';
+            try {
+                // Get a real token for backend calls
+                const res = await fetch(`${API_BASE}/dev/admin-jwt`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ tenantId: 'system', email })
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.success && data.token) {
+                        localStorage.setItem('owner_authenticated', 'true');
+                        localStorage.setItem('owner_email', email);
+                        localStorage.setItem('owner_token', data.token);
+                        window.location.href = '/';
+                        return;
+                    }
+                }
+                throw new Error('Failed to obtain session token');
+            } catch (err) {
+                console.error("Login Error:", err);
+                setError('Login succeeded but session creation failed. Backend might be offline.');
+                setLoading(false);
+            }
         } else {
             setError('Invalid email or password');
             setLoading(false);

@@ -14,7 +14,7 @@ interface Tenant {
     created_at: number;
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'https://syston-postbus.team-platform-2025.workers.dev';
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8787';
 const PROTECTED_SLUGS = ['syston-town-tigers', 'syston', 'syston-tigers'];
 
 export default function TenantsPage() {
@@ -35,8 +35,11 @@ export default function TenantsPage() {
             if (filter.plan) params.set('plan', filter.plan);
             params.set('limit', '100');
 
+            const token = localStorage.getItem('owner_token');
             const response = await fetch(`${API_BASE}/api/v1/admin/tenants?${params}`, {
-                credentials: 'include',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
             });
 
             if (!response.ok) {
@@ -74,9 +77,12 @@ export default function TenantsPage() {
 
         setActionLoading(tenant.id);
         try {
+            const token = localStorage.getItem('owner_token');
             const response = await fetch(`${API_BASE}/api/v1/admin/tenants/${tenant.id}/deactivate`, {
                 method: 'POST',
-                credentials: 'include',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
             });
 
             if (response.ok) {
@@ -102,9 +108,12 @@ export default function TenantsPage() {
 
         setActionLoading(tenant.id);
         try {
+            const token = localStorage.getItem('owner_token');
             const response = await fetch(`${API_BASE}/api/v1/admin/tenants/${tenant.id}`, {
                 method: 'DELETE',
-                credentials: 'include',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
             });
 
             if (response.ok) {
