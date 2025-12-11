@@ -11,6 +11,7 @@ interface Tenant {
     email: string;
     plan: 'starter' | 'pro';
     status: 'trial' | 'active' | 'suspended' | 'cancelled' | 'deactivated';
+    manager_name?: string;
     created_at: number;
 }
 
@@ -23,6 +24,13 @@ export default function TenantsPage() {
     const [error, setError] = useState('');
     const [filter, setFilter] = useState<{ status?: string; plan?: string; search?: string }>({});
     const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+    // Promo Modal State
+    const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null);
+    const [tenantPromos, setTenantPromos] = useState<any[]>([]);
+    const [promoLoading, setPromoLoading] = useState(false);
+    const [newPromoCode, setNewPromoCode] = useState('');
+    const [addPromoError, setAddPromoError] = useState('');
 
     useEffect(() => {
         fetchTenants();
@@ -44,7 +52,6 @@ export default function TenantsPage() {
 
             if (!response.ok) {
                 if (response.status === 401) {
-                    // Don't set error, just redirect silently
                     setLoading(false);
                     window.location.href = '/login';
                     return;
@@ -58,12 +65,81 @@ export default function TenantsPage() {
             }
             setLoading(false);
         } catch (err: any) {
-            // Ignore NEXT_REDIRECT errors
-            if (err.message?.includes('NEXT_REDIRECT')) {
-                return;
-            }
+            if (err.message?.includes('NEXT_REDIRECT')) return;
             setError(err.message || 'Failed to load tenants');
             setLoading(false);
+        }
+    };
+
+    const fetchTenantPromos = async (tenantId: string) => {
+        setPromoLoading(true);
+        try {
+            const token = localStorage.getItem('owner_token');
+            const response = await fetch(`${API_BASE}/api/v1/admin/tenants/${tenantId}/promos`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await response.json();
+            if (data.success) {
+                setTenantPromos(data.promos || []);
+            }
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setPromoLoading(false);
+        }
+    };
+
+    const handleOpenPromos = (tenant: Tenant) => {
+        setSelectedTenant(tenant);
+        setTenantPromos([]);
+        setNewPromoCode('');
+        setAddPromoError('');
+        fetchTenantPromos(tenant.id);
+    };
+
+    const handleAddPromo = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!selectedTenant || !newPromoCode.trim()) return;
+
+        setAddPromoError('');
+        try {
+            const token = localStorage.getItem('owner_token');
+            const response = await fetch(`${API_BASE}/api/v1/admin/tenants/${selectedTenant.id}/promos`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ code: newPromoCode.trim().toUpperCase() })
+            });
+            const data = await response.json();
+
+            if (data.success) {
+                setNewPromoCode('');
+                fetchTenantPromos(selectedTenant.id);
+            } else {
+                setAddPromoError(data.error?.message || 'Failed to add promo');
+            }
+        } catch (err) {
+            setAddPromoError('Failed to add promo');
+        }
+    };
+
+    const handleRemovePromo = async (code: string) => {
+        if (!selectedTenant || !confirm(`Remove promo "${code}" from this tenant?`)) return;
+
+        try {
+            const token = localStorage.getItem('owner_token');
+            const response = await fetch(`${API_BASE}/api/v1/admin/tenants/${selectedTenant.id}/promos/${code}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            if (response.ok) {
+                fetchTenantPromos(selectedTenant.id);
+            }
+        } catch (err) {
+            alert('Failed to remove promo');
         }
     };
 
@@ -241,7 +317,7 @@ export default function TenantsPage() {
                                     Tenant
                                 </th>
                                 <th className="text-left px-6 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Contact
+                                    Manager
                                 </th>
                                 <th className="text-left px-6 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Plan
@@ -279,12 +355,21 @@ export default function TenantsPage() {
                                             <div className="text-sm text-gray-500 font-mono">{tenant.slug}</div>
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4 text-sm text-gray-400">{tenant.email}</td>
+                                    <td className="px-6 py-4">
+                                        <div className="text-sm text-white">{tenant.manager_name || '—'}</div>
+                                        <div className="text-xs text-gray-500">{tenant.email}</div>
+                                    </td>
                                     <td className="px-6 py-4">{planBadge(tenant.plan)}</td>
                                     <td className="px-6 py-4">{statusBadge(tenant.status)}</td>
                                     <td className="px-6 py-4 text-sm text-gray-500">{formatDate(tenant.created_at)}</td>
                                     <td className="px-6 py-4 text-right">
                                         <div className="flex items-center justify-end gap-2">
+                                            <button
+                                                onClick={() => handleOpenPromos(tenant)}
+                                                className="px-3 py-1.5 text-xs bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 rounded-lg transition-colors"
+                                            >
+                                                Promos
+                                            </button>
                                             <Link
                                                 href={`/tenants/${tenant.id}`}
                                                 className="px-3 py-1.5 text-xs bg-white/5 hover:bg-white/10 text-gray-300 rounded-lg transition-colors"
@@ -303,7 +388,7 @@ export default function TenantsPage() {
                                                 disabled={PROTECTED_SLUGS.includes(tenant.slug) || actionLoading === tenant.id}
                                                 className="px-3 py-1.5 text-xs bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                             >
-                                                {actionLoading === tenant.id ? '...' : 'Delete'}
+                                                {actionLoading === tenant.id ? '...' : 'Del'}
                                             </button>
                                         </div>
                                     </td>
@@ -319,6 +404,73 @@ export default function TenantsPage() {
                     </div>
                 )}
             </div>
+
+            {/* Manage Promos Modal */}
+            {selectedTenant && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="glass-card p-6 max-w-lg w-full"
+                    >
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-xl font-bold text-white">Promos for {selectedTenant.name}</h2>
+                            <button onClick={() => setSelectedTenant(null)} className="text-gray-400 hover:text-white">
+                                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        {/* Add Promo Form */}
+                        <form onSubmit={handleAddPromo} className="flex gap-2 mb-6">
+                            <input
+                                type="text"
+                                value={newPromoCode}
+                                onChange={(e) => setNewPromoCode(e.target.value.toUpperCase())}
+                                placeholder="Enter promo code"
+                                className="input flex-1"
+                            />
+                            <button type="submit" disabled={!newPromoCode.trim()} className="btn-primary whitespace-nowrap">
+                                Apply
+                            </button>
+                        </form>
+                        {addPromoError && (
+                            <div className="text-red-400 text-sm mb-4 bg-red-500/10 p-2 rounded">
+                                {addPromoError}
+                            </div>
+                        )}
+
+                        {/* Promos List */}
+                        <div className="space-y-3 max-h-60 overflow-y-auto">
+                            {promoLoading ? (
+                                <div className="text-center py-4 text-gray-500">Loading...</div>
+                            ) : tenantPromos.length === 0 ? (
+                                <div className="text-center py-4 text-gray-500 border border-dashed border-white/10 rounded-lg">
+                                    No active promotions
+                                </div>
+                            ) : (
+                                tenantPromos.map((promo: any) => (
+                                    <div key={promo.id} className="flex items-center justify-between p-3 bg-white/5 rounded-lg border border-white/5">
+                                        <div>
+                                            <div className="font-mono font-bold text-white text-lg">{promo.code}</div>
+                                            <div className="text-xs text-gray-400">
+                                                {promo.discount_percent}% off • {promo.lifetime ? 'Lifetime' : 'One-time'}
+                                            </div>
+                                        </div>
+                                        <button
+                                            onClick={() => handleRemovePromo(promo.code)}
+                                            className="text-red-400 hover:text-red-300 p-2 hover:bg-red-500/10 rounded transition-colors"
+                                        >
+                                            Remove
+                                        </button>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </motion.div>
+                </div>
+            )}
         </div>
     );
 }

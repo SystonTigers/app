@@ -29,6 +29,12 @@ function TenantsPage() {
     const [error, setError] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])('');
     const [filter, setFilter] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])({});
     const [actionLoading, setActionLoading] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(null);
+    // Promo Modal State
+    const [selectedTenant, setSelectedTenant] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(null);
+    const [tenantPromos, setTenantPromos] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])([]);
+    const [promoLoading, setPromoLoading] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(false);
+    const [newPromoCode, setNewPromoCode] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])('');
+    const [addPromoError, setAddPromoError] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])('');
     (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useEffect"])({
         "TenantsPage.useEffect": ()=>{
             fetchTenants();
@@ -51,7 +57,6 @@ function TenantsPage() {
             });
             if (!response.ok) {
                 if (response.status === 401) {
-                    // Don't set error, just redirect silently
                     setLoading(false);
                     window.location.href = '/login';
                     return;
@@ -64,12 +69,79 @@ function TenantsPage() {
             }
             setLoading(false);
         } catch (err) {
-            // Ignore NEXT_REDIRECT errors
-            if (err.message?.includes('NEXT_REDIRECT')) {
-                return;
-            }
+            if (err.message?.includes('NEXT_REDIRECT')) return;
             setError(err.message || 'Failed to load tenants');
             setLoading(false);
+        }
+    };
+    const fetchTenantPromos = async (tenantId)=>{
+        setPromoLoading(true);
+        try {
+            const token = localStorage.getItem('owner_token');
+            const response = await fetch(`${API_BASE}/api/v1/admin/tenants/${tenantId}/promos`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            const data = await response.json();
+            if (data.success) {
+                setTenantPromos(data.promos || []);
+            }
+        } catch (err) {
+            console.error(err);
+        } finally{
+            setPromoLoading(false);
+        }
+    };
+    const handleOpenPromos = (tenant)=>{
+        setSelectedTenant(tenant);
+        setTenantPromos([]);
+        setNewPromoCode('');
+        setAddPromoError('');
+        fetchTenantPromos(tenant.id);
+    };
+    const handleAddPromo = async (e)=>{
+        e.preventDefault();
+        if (!selectedTenant || !newPromoCode.trim()) return;
+        setAddPromoError('');
+        try {
+            const token = localStorage.getItem('owner_token');
+            const response = await fetch(`${API_BASE}/api/v1/admin/tenants/${selectedTenant.id}/promos`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    code: newPromoCode.trim().toUpperCase()
+                })
+            });
+            const data = await response.json();
+            if (data.success) {
+                setNewPromoCode('');
+                fetchTenantPromos(selectedTenant.id);
+            } else {
+                setAddPromoError(data.error?.message || 'Failed to add promo');
+            }
+        } catch (err) {
+            setAddPromoError('Failed to add promo');
+        }
+    };
+    const handleRemovePromo = async (code)=>{
+        if (!selectedTenant || !confirm(`Remove promo "${code}" from this tenant?`)) return;
+        try {
+            const token = localStorage.getItem('owner_token');
+            const response = await fetch(`${API_BASE}/api/v1/admin/tenants/${selectedTenant.id}/promos/${code}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            if (response.ok) {
+                fetchTenantPromos(selectedTenant.id);
+            }
+        } catch (err) {
+            alert('Failed to remove promo');
         }
     };
     const handleDeactivate = async (tenant)=>{
@@ -151,7 +223,7 @@ function TenantsPage() {
             children: status
         }, void 0, false, {
             fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/tenants/page.tsx",
-            lineNumber: 158,
+            lineNumber: 234,
             columnNumber: 13
         }, this);
     };
@@ -161,14 +233,14 @@ function TenantsPage() {
             children: "PRO"
         }, void 0, false, {
             fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/tenants/page.tsx",
-            lineNumber: 166,
+            lineNumber: 242,
             columnNumber: 13
         }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
             className: "badge-neutral",
             children: "Starter"
         }, void 0, false, {
             fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/tenants/page.tsx",
-            lineNumber: 170,
+            lineNumber: 246,
             columnNumber: 13
         }, this);
     };
@@ -179,12 +251,12 @@ function TenantsPage() {
                 className: "w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full animate-spin"
             }, void 0, false, {
                 fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/tenants/page.tsx",
-                lineNumber: 177,
+                lineNumber: 253,
                 columnNumber: 17
             }, this)
         }, void 0, false, {
             fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/tenants/page.tsx",
-            lineNumber: 176,
+            lineNumber: 252,
             columnNumber: 13
         }, this);
     }
@@ -200,7 +272,7 @@ function TenantsPage() {
                             children: "Tenants"
                         }, void 0, false, {
                             fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/tenants/page.tsx",
-                            lineNumber: 187,
+                            lineNumber: 263,
                             columnNumber: 21
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -211,18 +283,18 @@ function TenantsPage() {
                             ]
                         }, void 0, true, {
                             fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/tenants/page.tsx",
-                            lineNumber: 188,
+                            lineNumber: 264,
                             columnNumber: 21
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/tenants/page.tsx",
-                    lineNumber: 186,
+                    lineNumber: 262,
                     columnNumber: 17
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/tenants/page.tsx",
-                lineNumber: 185,
+                lineNumber: 261,
                 columnNumber: 13
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -243,12 +315,12 @@ function TenantsPage() {
                                 className: "input"
                             }, void 0, false, {
                                 fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/tenants/page.tsx",
-                                lineNumber: 196,
+                                lineNumber: 272,
                                 columnNumber: 25
                             }, this)
                         }, void 0, false, {
                             fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/tenants/page.tsx",
-                            lineNumber: 195,
+                            lineNumber: 271,
                             columnNumber: 21
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("select", {
@@ -264,7 +336,7 @@ function TenantsPage() {
                                     children: "All Status"
                                 }, void 0, false, {
                                     fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/tenants/page.tsx",
-                                    lineNumber: 209,
+                                    lineNumber: 285,
                                     columnNumber: 25
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -272,7 +344,7 @@ function TenantsPage() {
                                     children: "Trial"
                                 }, void 0, false, {
                                     fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/tenants/page.tsx",
-                                    lineNumber: 210,
+                                    lineNumber: 286,
                                     columnNumber: 25
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -280,7 +352,7 @@ function TenantsPage() {
                                     children: "Active"
                                 }, void 0, false, {
                                     fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/tenants/page.tsx",
-                                    lineNumber: 211,
+                                    lineNumber: 287,
                                     columnNumber: 25
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -288,7 +360,7 @@ function TenantsPage() {
                                     children: "Suspended"
                                 }, void 0, false, {
                                     fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/tenants/page.tsx",
-                                    lineNumber: 212,
+                                    lineNumber: 288,
                                     columnNumber: 25
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -296,7 +368,7 @@ function TenantsPage() {
                                     children: "Cancelled"
                                 }, void 0, false, {
                                     fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/tenants/page.tsx",
-                                    lineNumber: 213,
+                                    lineNumber: 289,
                                     columnNumber: 25
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -304,13 +376,13 @@ function TenantsPage() {
                                     children: "Deactivated"
                                 }, void 0, false, {
                                     fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/tenants/page.tsx",
-                                    lineNumber: 214,
+                                    lineNumber: 290,
                                     columnNumber: 25
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/tenants/page.tsx",
-                            lineNumber: 204,
+                            lineNumber: 280,
                             columnNumber: 21
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("select", {
@@ -326,7 +398,7 @@ function TenantsPage() {
                                     children: "All Plans"
                                 }, void 0, false, {
                                     fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/tenants/page.tsx",
-                                    lineNumber: 221,
+                                    lineNumber: 297,
                                     columnNumber: 25
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -334,7 +406,7 @@ function TenantsPage() {
                                     children: "Starter"
                                 }, void 0, false, {
                                     fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/tenants/page.tsx",
-                                    lineNumber: 222,
+                                    lineNumber: 298,
                                     columnNumber: 25
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -342,24 +414,24 @@ function TenantsPage() {
                                     children: "Pro"
                                 }, void 0, false, {
                                     fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/tenants/page.tsx",
-                                    lineNumber: 223,
+                                    lineNumber: 299,
                                     columnNumber: 25
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/tenants/page.tsx",
-                            lineNumber: 216,
+                            lineNumber: 292,
                             columnNumber: 21
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/tenants/page.tsx",
-                    lineNumber: 194,
+                    lineNumber: 270,
                     columnNumber: 17
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/tenants/page.tsx",
-                lineNumber: 193,
+                lineNumber: 269,
                 columnNumber: 13
             }, this),
             error && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -367,7 +439,7 @@ function TenantsPage() {
                 children: error
             }, void 0, false, {
                 fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/tenants/page.tsx",
-                lineNumber: 229,
+                lineNumber: 305,
                 columnNumber: 17
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -387,15 +459,15 @@ function TenantsPage() {
                                                 children: "Tenant"
                                             }, void 0, false, {
                                                 fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/tenants/page.tsx",
-                                                lineNumber: 240,
+                                                lineNumber: 316,
                                                 columnNumber: 33
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
                                                 className: "text-left px-6 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider",
-                                                children: "Contact"
+                                                children: "Manager"
                                             }, void 0, false, {
                                                 fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/tenants/page.tsx",
-                                                lineNumber: 243,
+                                                lineNumber: 319,
                                                 columnNumber: 33
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -403,7 +475,7 @@ function TenantsPage() {
                                                 children: "Plan"
                                             }, void 0, false, {
                                                 fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/tenants/page.tsx",
-                                                lineNumber: 246,
+                                                lineNumber: 322,
                                                 columnNumber: 33
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -411,7 +483,7 @@ function TenantsPage() {
                                                 children: "Status"
                                             }, void 0, false, {
                                                 fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/tenants/page.tsx",
-                                                lineNumber: 249,
+                                                lineNumber: 325,
                                                 columnNumber: 33
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -419,7 +491,7 @@ function TenantsPage() {
                                                 children: "Created"
                                             }, void 0, false, {
                                                 fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/tenants/page.tsx",
-                                                lineNumber: 252,
+                                                lineNumber: 328,
                                                 columnNumber: 33
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -427,18 +499,18 @@ function TenantsPage() {
                                                 children: "Actions"
                                             }, void 0, false, {
                                                 fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/tenants/page.tsx",
-                                                lineNumber: 255,
+                                                lineNumber: 331,
                                                 columnNumber: 33
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/tenants/page.tsx",
-                                        lineNumber: 239,
+                                        lineNumber: 315,
                                         columnNumber: 29
                                     }, this)
                                 }, void 0, false, {
                                     fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/tenants/page.tsx",
-                                    lineNumber: 238,
+                                    lineNumber: 314,
                                     columnNumber: 25
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("tbody", {
@@ -469,13 +541,13 @@ function TenantsPage() {
                                                                         children: "Protected"
                                                                     }, void 0, false, {
                                                                         fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/tenants/page.tsx",
-                                                                        lineNumber: 274,
+                                                                        lineNumber: 350,
                                                                         columnNumber: 53
                                                                     }, this)
                                                                 ]
                                                             }, void 0, true, {
                                                                 fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/tenants/page.tsx",
-                                                                lineNumber: 271,
+                                                                lineNumber: 347,
                                                                 columnNumber: 45
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -483,26 +555,43 @@ function TenantsPage() {
                                                                 children: tenant.slug
                                                             }, void 0, false, {
                                                                 fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/tenants/page.tsx",
-                                                                lineNumber: 279,
+                                                                lineNumber: 355,
                                                                 columnNumber: 45
                                                             }, this)
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/tenants/page.tsx",
-                                                        lineNumber: 270,
+                                                        lineNumber: 346,
                                                         columnNumber: 41
                                                     }, this)
                                                 }, void 0, false, {
                                                     fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/tenants/page.tsx",
-                                                    lineNumber: 269,
+                                                    lineNumber: 345,
                                                     columnNumber: 37
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
-                                                    className: "px-6 py-4 text-sm text-gray-400",
-                                                    children: tenant.email
-                                                }, void 0, false, {
+                                                    className: "px-6 py-4",
+                                                    children: [
+                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                            className: "text-sm text-white",
+                                                            children: tenant.manager_name || '—'
+                                                        }, void 0, false, {
+                                                            fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/tenants/page.tsx",
+                                                            lineNumber: 359,
+                                                            columnNumber: 41
+                                                        }, this),
+                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                            className: "text-xs text-gray-500",
+                                                            children: tenant.email
+                                                        }, void 0, false, {
+                                                            fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/tenants/page.tsx",
+                                                            lineNumber: 360,
+                                                            columnNumber: 41
+                                                        }, this)
+                                                    ]
+                                                }, void 0, true, {
                                                     fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/tenants/page.tsx",
-                                                    lineNumber: 282,
+                                                    lineNumber: 358,
                                                     columnNumber: 37
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -510,7 +599,7 @@ function TenantsPage() {
                                                     children: planBadge(tenant.plan)
                                                 }, void 0, false, {
                                                     fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/tenants/page.tsx",
-                                                    lineNumber: 283,
+                                                    lineNumber: 362,
                                                     columnNumber: 37
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -518,7 +607,7 @@ function TenantsPage() {
                                                     children: statusBadge(tenant.status)
                                                 }, void 0, false, {
                                                     fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/tenants/page.tsx",
-                                                    lineNumber: 284,
+                                                    lineNumber: 363,
                                                     columnNumber: 37
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -526,7 +615,7 @@ function TenantsPage() {
                                                     children: formatDate(tenant.created_at)
                                                 }, void 0, false, {
                                                     fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/tenants/page.tsx",
-                                                    lineNumber: 285,
+                                                    lineNumber: 364,
                                                     columnNumber: 37
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -534,13 +623,22 @@ function TenantsPage() {
                                                     children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                                         className: "flex items-center justify-end gap-2",
                                                         children: [
+                                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                                                                onClick: ()=>handleOpenPromos(tenant),
+                                                                className: "px-3 py-1.5 text-xs bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 rounded-lg transition-colors",
+                                                                children: "Promos"
+                                                            }, void 0, false, {
+                                                                fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/tenants/page.tsx",
+                                                                lineNumber: 367,
+                                                                columnNumber: 45
+                                                            }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$client$2f$app$2d$dir$2f$link$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {
                                                                 href: `/tenants/${tenant.id}`,
                                                                 className: "px-3 py-1.5 text-xs bg-white/5 hover:bg-white/10 text-gray-300 rounded-lg transition-colors",
                                                                 children: "View"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/tenants/page.tsx",
-                                                                lineNumber: 288,
+                                                                lineNumber: 373,
                                                                 columnNumber: 45
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -550,50 +648,50 @@ function TenantsPage() {
                                                                 children: "Deactivate"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/tenants/page.tsx",
-                                                                lineNumber: 294,
+                                                                lineNumber: 379,
                                                                 columnNumber: 45
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
                                                                 onClick: ()=>handleDelete(tenant),
                                                                 disabled: PROTECTED_SLUGS.includes(tenant.slug) || actionLoading === tenant.id,
                                                                 className: "px-3 py-1.5 text-xs bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed",
-                                                                children: actionLoading === tenant.id ? '...' : 'Delete'
+                                                                children: actionLoading === tenant.id ? '...' : 'Del'
                                                             }, void 0, false, {
                                                                 fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/tenants/page.tsx",
-                                                                lineNumber: 301,
+                                                                lineNumber: 386,
                                                                 columnNumber: 45
                                                             }, this)
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/tenants/page.tsx",
-                                                        lineNumber: 287,
+                                                        lineNumber: 366,
                                                         columnNumber: 41
                                                     }, this)
                                                 }, void 0, false, {
                                                     fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/tenants/page.tsx",
-                                                    lineNumber: 286,
+                                                    lineNumber: 365,
                                                     columnNumber: 37
                                                 }, this)
                                             ]
                                         }, tenant.id, true, {
                                             fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/tenants/page.tsx",
-                                            lineNumber: 262,
+                                            lineNumber: 338,
                                             columnNumber: 33
                                         }, this))
                                 }, void 0, false, {
                                     fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/tenants/page.tsx",
-                                    lineNumber: 260,
+                                    lineNumber: 336,
                                     columnNumber: 25
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/tenants/page.tsx",
-                            lineNumber: 237,
+                            lineNumber: 313,
                             columnNumber: 21
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/tenants/page.tsx",
-                        lineNumber: 236,
+                        lineNumber: 312,
                         columnNumber: 17
                     }, this),
                     filteredTenants.length === 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -601,23 +699,201 @@ function TenantsPage() {
                         children: "No tenants found"
                     }, void 0, false, {
                         fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/tenants/page.tsx",
-                        lineNumber: 317,
+                        lineNumber: 402,
                         columnNumber: 21
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/tenants/page.tsx",
-                lineNumber: 235,
+                lineNumber: 311,
                 columnNumber: 13
+            }, this),
+            selectedTenant && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                className: "fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4",
+                children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$node_modules$2f$framer$2d$motion$2f$dist$2f$es$2f$render$2f$components$2f$motion$2f$proxy$2e$mjs__$5b$app$2d$client$5d$__$28$ecmascript$29$__["motion"].div, {
+                    initial: {
+                        opacity: 0,
+                        scale: 0.95
+                    },
+                    animate: {
+                        opacity: 1,
+                        scale: 1
+                    },
+                    className: "glass-card p-6 max-w-lg w-full",
+                    children: [
+                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                            className: "flex justify-between items-center mb-6",
+                            children: [
+                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h2", {
+                                    className: "text-xl font-bold text-white",
+                                    children: [
+                                        "Promos for ",
+                                        selectedTenant.name
+                                    ]
+                                }, void 0, true, {
+                                    fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/tenants/page.tsx",
+                                    lineNumber: 417,
+                                    columnNumber: 29
+                                }, this),
+                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                                    onClick: ()=>setSelectedTenant(null),
+                                    className: "text-gray-400 hover:text-white",
+                                    children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("svg", {
+                                        className: "w-6 h-6",
+                                        fill: "none",
+                                        viewBox: "0 0 24 24",
+                                        stroke: "currentColor",
+                                        children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("path", {
+                                            strokeLinecap: "round",
+                                            strokeLinejoin: "round",
+                                            strokeWidth: 2,
+                                            d: "M6 18L18 6M6 6l12 12"
+                                        }, void 0, false, {
+                                            fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/tenants/page.tsx",
+                                            lineNumber: 420,
+                                            columnNumber: 37
+                                        }, this)
+                                    }, void 0, false, {
+                                        fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/tenants/page.tsx",
+                                        lineNumber: 419,
+                                        columnNumber: 33
+                                    }, this)
+                                }, void 0, false, {
+                                    fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/tenants/page.tsx",
+                                    lineNumber: 418,
+                                    columnNumber: 29
+                                }, this)
+                            ]
+                        }, void 0, true, {
+                            fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/tenants/page.tsx",
+                            lineNumber: 416,
+                            columnNumber: 25
+                        }, this),
+                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("form", {
+                            onSubmit: handleAddPromo,
+                            className: "flex gap-2 mb-6",
+                            children: [
+                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
+                                    type: "text",
+                                    value: newPromoCode,
+                                    onChange: (e)=>setNewPromoCode(e.target.value.toUpperCase()),
+                                    placeholder: "Enter promo code",
+                                    className: "input flex-1"
+                                }, void 0, false, {
+                                    fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/tenants/page.tsx",
+                                    lineNumber: 427,
+                                    columnNumber: 29
+                                }, this),
+                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                                    type: "submit",
+                                    disabled: !newPromoCode.trim(),
+                                    className: "btn-primary whitespace-nowrap",
+                                    children: "Apply"
+                                }, void 0, false, {
+                                    fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/tenants/page.tsx",
+                                    lineNumber: 434,
+                                    columnNumber: 29
+                                }, this)
+                            ]
+                        }, void 0, true, {
+                            fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/tenants/page.tsx",
+                            lineNumber: 426,
+                            columnNumber: 25
+                        }, this),
+                        addPromoError && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                            className: "text-red-400 text-sm mb-4 bg-red-500/10 p-2 rounded",
+                            children: addPromoError
+                        }, void 0, false, {
+                            fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/tenants/page.tsx",
+                            lineNumber: 439,
+                            columnNumber: 29
+                        }, this),
+                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                            className: "space-y-3 max-h-60 overflow-y-auto",
+                            children: promoLoading ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                className: "text-center py-4 text-gray-500",
+                                children: "Loading..."
+                            }, void 0, false, {
+                                fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/tenants/page.tsx",
+                                lineNumber: 447,
+                                columnNumber: 33
+                            }, this) : tenantPromos.length === 0 ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                className: "text-center py-4 text-gray-500 border border-dashed border-white/10 rounded-lg",
+                                children: "No active promotions"
+                            }, void 0, false, {
+                                fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/tenants/page.tsx",
+                                lineNumber: 449,
+                                columnNumber: 33
+                            }, this) : tenantPromos.map((promo)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                    className: "flex items-center justify-between p-3 bg-white/5 rounded-lg border border-white/5",
+                                    children: [
+                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                            children: [
+                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                    className: "font-mono font-bold text-white text-lg",
+                                                    children: promo.code
+                                                }, void 0, false, {
+                                                    fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/tenants/page.tsx",
+                                                    lineNumber: 456,
+                                                    columnNumber: 45
+                                                }, this),
+                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                    className: "text-xs text-gray-400",
+                                                    children: [
+                                                        promo.discount_percent,
+                                                        "% off • ",
+                                                        promo.lifetime ? 'Lifetime' : 'One-time'
+                                                    ]
+                                                }, void 0, true, {
+                                                    fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/tenants/page.tsx",
+                                                    lineNumber: 457,
+                                                    columnNumber: 45
+                                                }, this)
+                                            ]
+                                        }, void 0, true, {
+                                            fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/tenants/page.tsx",
+                                            lineNumber: 455,
+                                            columnNumber: 41
+                                        }, this),
+                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2d$FRESH$2f$owner$2d$admin$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                                            onClick: ()=>handleRemovePromo(promo.code),
+                                            className: "text-red-400 hover:text-red-300 p-2 hover:bg-red-500/10 rounded transition-colors",
+                                            children: "Remove"
+                                        }, void 0, false, {
+                                            fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/tenants/page.tsx",
+                                            lineNumber: 461,
+                                            columnNumber: 41
+                                        }, this)
+                                    ]
+                                }, promo.id, true, {
+                                    fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/tenants/page.tsx",
+                                    lineNumber: 454,
+                                    columnNumber: 37
+                                }, this))
+                        }, void 0, false, {
+                            fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/tenants/page.tsx",
+                            lineNumber: 445,
+                            columnNumber: 25
+                        }, this)
+                    ]
+                }, void 0, true, {
+                    fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/tenants/page.tsx",
+                    lineNumber: 411,
+                    columnNumber: 21
+                }, this)
+            }, void 0, false, {
+                fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/tenants/page.tsx",
+                lineNumber: 410,
+                columnNumber: 17
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/app-FRESH/owner-admin/src/app/(dashboard)/tenants/page.tsx",
-        lineNumber: 183,
+        lineNumber: 259,
         columnNumber: 9
     }, this);
 }
-_s(TenantsPage, "tMvgsn3GsCsVwUmKZMAUZOKA9j0=");
+_s(TenantsPage, "Xb5GhtDyehALMUPG+MYcwnpM5I0=");
 _c = TenantsPage;
 var _c;
 __turbopack_context__.k.register(_c, "TenantsPage");

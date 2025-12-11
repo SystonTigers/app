@@ -15,7 +15,10 @@ import {
     handleCodeLogin,
     handleFanLogin,
     handleRegisterOwner,
-    handleVerifyEmail
+    handleVerifyEmail,
+    handleSwitchTenant,
+    handleLinkPlayer,
+    handleGetMyTenants
 } from "./routes/auth";
 import {
     signupStart,
@@ -41,7 +44,8 @@ import {
     togglePromoCode,
     listTenantPromos,
     applyTenantPromo,
-    removeTenantPromo
+    removeTenantPromo,
+    deletePromoCode
 } from "./routes/admin";
 import {
     handleProvisionQueue,
@@ -116,7 +120,6 @@ import {
     handleCreatePitch,
     handleImportData
 } from "./routes/wearables";
-
 // Cron Jobs
 import { runDaily } from "./cron/daily";
 import { runThrowback } from "./cron/throwback";
@@ -152,7 +155,7 @@ router.get("/public/*", async (req, env, corsHdrs, requestId) => {
 });
 
 // Stripe Webhook (No version prefix needed, publicly accessible)
-router.post("/api/webhooks/stripe", (req, env) => handleStripeWebhook(req, env));
+// router.post("/api/webhooks/stripe", (req, env) => handleStripeWebhook(req, env));
 
 // Auth Routes
 router.post("/api/:v/auth/register-owner", (req, env, corsHdrs) => {
@@ -166,6 +169,9 @@ router.post("/api/:v/auth/register", (req, env, corsHdrs) => handleAuthRegister(
 router.post("/api/:v/auth/login", (req, env, corsHdrs) => handleAuthLogin(req, env, corsHdrs));
 router.post("/api/:v/auth/set-password", (req, env, corsHdrs) => handleSetPassword(req, env, corsHdrs));
 router.get("/api/:v/auth/password-status", (req, env, corsHdrs) => handleCheckPasswordStatus(req, env, corsHdrs));
+router.post("/api/:v/auth/switch-tenant", (req, env, corsHdrs) => handleSwitchTenant(req, env, corsHdrs));
+router.post("/api/:v/auth/link-player", (req, env, corsHdrs) => handleLinkPlayer(req, env, corsHdrs)); // Changed from handleAddPlayer
+router.get("/api/:v/auth/me/tenants", (req, env, corsHdrs) => handleGetMyTenants(req, env, corsHdrs));
 router.post("/api/:v/auth/code-login", (req, env, corsHdrs) => handleCodeLogin(req, env, corsHdrs));
 router.post("/api/:v/auth/fan-login", (req, env, corsHdrs) => handleFanLogin(req, env, corsHdrs));
 
@@ -213,6 +219,10 @@ router.post("/api/:v/admin/promo-codes/:code/deactivate", (req, env, corsHdrs, r
 router.post("/api/:v/admin/promo-codes/:code/toggle", (req, env, corsHdrs, requestId) => {
     const params = (req as any).params || {};
     return togglePromoCode(req, env, requestId, corsHdrs, params.code);
+});
+router.delete("/api/:v/admin/promo-codes/:code", (req, env, corsHdrs, requestId) => {
+    const params = (req as any).params || {};
+    return deletePromoCode(req, env, requestId, corsHdrs, params.code);
 });
 router.get("/api/:v/admin/tenants/:id/promos", (req, env, corsHdrs, requestId) => {
     const params = (req as any).params || {};

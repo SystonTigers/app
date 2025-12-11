@@ -137,6 +137,28 @@ export default function PromoCodesPage() {
         }
     };
 
+    const handleDelete = async (code: string) => {
+        if (!confirm(`Are you sure you want to delete promo code "${code}"? This action cannot be undone.`)) return;
+
+        try {
+            const token = localStorage.getItem('owner_token');
+            const response = await fetch(`${API_BASE}/api/v1/admin/promo-codes/${code}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (response.ok) {
+                setPromoCodes((prev) => prev.filter((p) => p.code !== code));
+            } else {
+                throw new Error('Failed to delete promo code');
+            }
+        } catch (err) {
+            alert('Failed to delete promo code');
+        }
+    };
+
     if (loading) {
         return (
             <div className="flex items-center justify-center h-96">
@@ -146,28 +168,115 @@ export default function PromoCodesPage() {
     }
 
     return (
-        <div className="space-y-6 animate-in">
-            {/* Page Header */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-2xl font-bold text-white">Promo Codes</h1>
-                    <p className="text-gray-500 mt-1">Manage discount codes and promotions</p>
+        <>
+            <div className="space-y-6 animate-in">
+                {/* Page Header */}
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h1 className="text-2xl font-bold text-white">Promo Codes</h1>
+                        <p className="text-gray-500 mt-1">Manage discount codes and promotions</p>
+                    </div>
+                    <button onClick={() => setShowCreate(true)} className="btn-primary flex items-center gap-2">
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                        </svg>
+                        Create Code
+                    </button>
                 </div>
-                <button onClick={() => setShowCreate(true)} className="btn-primary flex items-center gap-2">
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                    </svg>
-                    Create Code
-                </button>
+
+                {error && (
+                    <div className="glass-card p-4 border-red-500/30 bg-red-500/10 text-red-400">
+                        {error}
+                    </div>
+                )}
+
+                {/* Promo Codes Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {promoCodes.map((promo, i) => (
+                        <motion.div
+                            key={promo.code}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: i * 0.05 }}
+                            className={`glass-card p-5 ${!promo.is_active ? 'opacity-60 border-dashed' : ''}`}
+                        >
+                            <div className="flex items-start justify-between mb-3">
+                                <div>
+                                    <h3 className="font-mono text-lg font-bold text-white">{promo.code}</h3>
+                                    <div className="flex items-center gap-2 mt-1">
+                                        <button
+                                            onClick={() => handleToggle(promo.code)}
+                                            className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${promo.is_active
+                                                ? 'bg-green-500/20 text-green-300 hover:bg-green-500/30'
+                                                : 'bg-gray-500/20 text-gray-400 hover:bg-gray-500/30'
+                                                }`}
+                                        >
+                                            {promo.is_active ? 'Active' : 'Inactive'}
+                                        </button>
+                                        {promo.lifetime && (
+                                            <span className="badge bg-gradient-to-r from-yellow-500/30 to-orange-500/30 text-yellow-300">
+                                                Lifetime
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                    <div className="text-2xl font-bold text-primary-400">{promo.discount_percent}%</div>
+                                    <div className="flex items-center justify-end gap-2">
+                                        <div className="text-xs text-gray-500">off</div>
+                                        <button
+                                            onClick={() => handleDelete(promo.code)}
+                                            className="text-red-400 hover:text-red-300 transition-colors p-1"
+                                            title="Delete Code"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="space-y-2 text-sm">
+                                {promo.plan && (
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-500">Plan</span>
+                                        <span className="text-gray-300 capitalize">{promo.plan} only</span>
+                                    </div>
+                                )}
+                                <div className="flex justify-between">
+                                    <span className="text-gray-500">Uses</span>
+                                    <span className="text-gray-300">
+                                        {promo.current_uses} / {promo.max_uses || '∞'}
+                                    </span>
+                                </div>
+                                {promo.expires_at && (
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-500">Expires</span>
+                                        <span className="text-gray-300">
+                                            {new Date(promo.expires_at).toLocaleDateString()}
+                                        </span>
+                                    </div>
+                                )}
+                            </div>
+                        </motion.div>
+                    ))}
+                </div>
+
+                {promoCodes.length === 0 && (
+                    <div className="glass-card p-12 text-center">
+                        <svg className="w-12 h-12 mx-auto mb-3 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                        </svg>
+                        <p className="text-gray-500">No promo codes yet</p>
+                        <button onClick={() => setShowCreate(true)} className="btn-primary mt-4">
+                            Create Your First Code
+                        </button>
+                    </div>
+                )}
             </div>
 
-            {error && (
-                <div className="glass-card p-4 border-red-500/30 bg-red-500/10 text-red-400">
-                    {error}
-                </div>
-            )}
-
-            {/* Create Modal */}
+            {/* Create Modal - Outside animate-in container to fix z-index stacking context */}
             {showCreate && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
                     <motion.div
@@ -279,80 +388,6 @@ export default function PromoCodesPage() {
                     </motion.div>
                 </div>
             )}
-
-            {/* Promo Codes Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {promoCodes.map((promo, i) => (
-                    <motion.div
-                        key={promo.code}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: i * 0.05 }}
-                        className={`glass-card p-5 ${!promo.is_active ? 'opacity-60 border-dashed' : ''}`}
-                    >
-                        <div className="flex items-start justify-between mb-3">
-                            <div>
-                                <h3 className="font-mono text-lg font-bold text-white">{promo.code}</h3>
-                                <div className="flex items-center gap-2 mt-1">
-                                    <button
-                                        onClick={() => handleToggle(promo.code)}
-                                        className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${promo.is_active
-                                            ? 'bg-green-500/20 text-green-300 hover:bg-green-500/30'
-                                            : 'bg-gray-500/20 text-gray-400 hover:bg-gray-500/30'
-                                            }`}
-                                    >
-                                        {promo.is_active ? 'Active' : 'Inactive'}
-                                    </button>
-                                    {promo.lifetime && (
-                                        <span className="badge bg-gradient-to-r from-yellow-500/30 to-orange-500/30 text-yellow-300">
-                                            Lifetime
-                                        </span>
-                                    )}
-                                </div>
-                            </div>
-                            <div className="text-right">
-                                <div className="text-2xl font-bold text-primary-400">{promo.discount_percent}%</div>
-                                <div className="text-xs text-gray-500">off</div>
-                            </div>
-                        </div>
-
-                        <div className="space-y-2 text-sm">
-                            {promo.plan && (
-                                <div className="flex justify-between">
-                                    <span className="text-gray-500">Plan</span>
-                                    <span className="text-gray-300 capitalize">{promo.plan} only</span>
-                                </div>
-                            )}
-                            <div className="flex justify-between">
-                                <span className="text-gray-500">Uses</span>
-                                <span className="text-gray-300">
-                                    {promo.current_uses} / {promo.max_uses || '∞'}
-                                </span>
-                            </div>
-                            {promo.expires_at && (
-                                <div className="flex justify-between">
-                                    <span className="text-gray-500">Expires</span>
-                                    <span className="text-gray-300">
-                                        {new Date(promo.expires_at).toLocaleDateString()}
-                                    </span>
-                                </div>
-                            )}
-                        </div>
-                    </motion.div>
-                ))}
-            </div>
-
-            {promoCodes.length === 0 && (
-                <div className="glass-card p-12 text-center">
-                    <svg className="w-12 h-12 mx-auto mb-3 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                    </svg>
-                    <p className="text-gray-500">No promo codes yet</p>
-                    <button onClick={() => setShowCreate(true)} className="btn-primary mt-4">
-                        Create Your First Code
-                    </button>
-                </div>
-            )}
-        </div>
+        </>
     );
 }

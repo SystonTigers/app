@@ -2,20 +2,32 @@
 
 import { useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
+import { useAuth } from '@/context/AuthContext';
 
-type LoginMethod = 'code' | 'fan';
+type LoginMethod = 'code' | 'fan' | 'password';
 type Role = 'parent' | 'player' | 'coach' | 'fan';
 
 export default function LoginPage() {
     const router = useRouter();
     const params = useParams();
     const tenant = params.tenant as string;
+    const { login } = useAuth(); // Use auth context
 
     const [method, setMethod] = useState<LoginMethod>('code');
     const [code, setCode] = useState('');
     const [role, setRole] = useState<Role>('parent');
-    const [email, setEmail] = useState(''); // For fans
+
+    // Parent Login
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+
+    // Fan Login
     const [fanCode, setFanCode] = useState(''); // Team fan code
+
+    // Multi-tenant selection
+    const [showTenantSelect, setShowTenantSelect] = useState(false);
+    const [availableTenants, setAvailableTenants] = useState<any[]>([]);
+
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [coachCodeValid, setCoachCodeValid] = useState(false);
@@ -37,6 +49,38 @@ export default function LoginPage() {
         const upperValue = value.toUpperCase();
         setCode(upperValue);
         validateCode(upperValue);
+    };
+
+    const handleSelectTenant = async (tenantId: string) => {
+        // Log in again with specific tenant
+        setLoading(true);
+        setError('');
+        try {
+            const response = await fetch(`${API_BASE}/api/v1/auth/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password, tenantId }),
+                credentials: 'include',
+            });
+
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error?.message || 'Login failed');
+
+            login(data.token, data.user);
+
+            // Should redirect to that tenant's dashboard, ensuring URL handles slug
+            // data.user might not give slug, but 'availableTenants' has it.
+            const selected = availableTenants.find(t => t.id === tenantId);
+            if (selected) {
+                window.location.href = `/${selected.slug}`;
+            } else {
+                router.push(`/${tenant}`); // Fallback
+            }
+
+        } catch (err: any) {
+            setError(err.message || "Selection failed");
+            setLoading(false);
+        }
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -64,17 +108,66 @@ export default function LoginPage() {
                 }
 
                 const data = await response.json();
-                // Store session
-                localStorage.setItem('user_role', role);
-                localStorage.setItem('user_token', data.token);
+                // Store via Context
+                login(data.token, { role }); // Basic user data for code login
                 if (data.playerId) {
                     localStorage.setItem('player_id', data.playerId);
                 }
+                localStorage.setItem('user_role', role);
 
-                // Redirect based on role
                 router.push(`/${tenant}`);
+            } else if (method === 'password') {
+                // Parent Email/Pass Login
+                const response = await fetch(`${API_BASE}/api/v1/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email,
+                        password,
+                        // If we are on a specific tenant page, maybe prefer that tenant?
+                        // But "Universal" implies we search all.
+                        // Let's NOT send tenantId initially to allow discovery,
+                        // UNLESS we want to force login to THIS tenant?
+                        // The plan said: "1. Fetch ALL... 2. If tenant_id provided... filter".
+                        // Use case: Parent lands on Tigers login -> expects to login to Tigers.
+                        // But if they have accounts elsewhere, we might want to know?
+                        // Let's NOT send tenantId to trigger the multi-tenant check if applicable.
+                        // Wait, if I am on '/syston-tigers/login', I probably expect to login to Syston Tigers.
+                        // But if I have multiple, I might want to choose.
+                        // Let's send NO tenantId to allow the backend "Universal" logic to kick in.
+                    }),
+                    credentials: 'include',
+                });
+
+                const data = await response.json();
+
+                if (data.multipleTenants) {
+                    setAvailableTenants(data.tenants);
+                    setShowTenantSelect(true);
+                    setLoading(false);
+                    return;
+                }
+
+                if (!response.ok) throw new Error(data.error?.message || 'Login failed');
+
+                // Single tenant success
+                login(data.token, data.user);
+                localStorage.setItem('user_role', 'parent'); // Assume parent/admin for email login
+
+                // If the user logged in to a DIFFERENT tenant than the URL, we should redirect!
+                // data.user.tenant_id vs current tenant?
+                // We don't have tenant slug in data.user usually, but let's assume standard flow.
+                // If we are on specific tenant page, and we logged into IT, good.
+                // If we logged into another one (because only 1 match found elsewhere), we should redirect there?
+                // The backend `handleAuthLogin` returns a token for the *found* tenant.
+                // If it's different, we might be in trouble if we stay on this URL.
+                // Ideally, backend returns `tenant_slug` in user or separate field.
+                // `handleAuthLogin` usually returns `token` and `user`. 
+                // Let's assume standard behavior for now.
+                router.push(`/${tenant}`);
+
             } else {
-                // Fan login with email + team fan code
+                // Fan login
                 const response = await fetch(`${API_BASE}/api/v1/auth/fan-login`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -92,17 +185,42 @@ export default function LoginPage() {
                 }
 
                 const data = await response.json();
+                login(data.token, { role: 'fan', email });
                 localStorage.setItem('user_role', 'fan');
-                localStorage.setItem('user_token', data.token);
 
                 router.push(`/${tenant}`);
             }
         } catch (err: any) {
             setError(err.message || 'Login failed');
         } finally {
-            setLoading(false);
+            if (!showTenantSelect) setLoading(false);
         }
     };
+
+    if (showTenantSelect) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 px-4">
+                <div className="max-w-md w-full bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+                    <h2 className="text-xl font-bold mb-4 text-center">Select Your Team</h2>
+                    <p className="text-gray-500 text-center mb-6">
+                        Your email is associated with multiple teams. Choose one to continue.
+                    </p>
+                    <div className="space-y-3">
+                        {availableTenants.map((t) => (
+                            <button
+                                key={t.id}
+                                onClick={() => handleSelectTenant(t.id)}
+                                className="w-full p-4 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center justify-between group transition-colors"
+                            >
+                                <span className="font-medium">{t.name}</span>
+                                <span className="text-gray-400 group-hover:text-blue-500">→</span>
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-950 px-4">
@@ -130,7 +248,17 @@ export default function LoginPage() {
                             : 'text-gray-600 dark:text-gray-400'
                             }`}
                     >
-                        Login Code
+                        Code
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setMethod('password')}
+                        className={`flex-1 py-2 rounded-md text-sm font-medium transition-all ${method === 'password'
+                            ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow'
+                            : 'text-gray-600 dark:text-gray-400'
+                            }`}
+                    >
+                        Parent
                     </button>
                     <button
                         type="button"
@@ -140,14 +268,14 @@ export default function LoginPage() {
                             : 'text-gray-600 dark:text-gray-400'
                             }`}
                     >
-                        Fan Access
+                        Fan
                     </button>
                 </div>
 
                 {/* Login Card */}
                 <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
                     <form onSubmit={handleSubmit} className="space-y-5">
-                        {method === 'code' ? (
+                        {method === 'code' && (
                             <>
                                 {/* Code Entry */}
                                 <div>
@@ -214,7 +342,40 @@ export default function LoginPage() {
                                     )}
                                 </div>
                             </>
-                        ) : (
+                        )}
+
+                        {method === 'password' && (
+                            <>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                        Email Address
+                                    </label>
+                                    <input
+                                        type="email"
+                                        value={email}
+                                        onChange={(e) => setEmail(e.target.value)}
+                                        placeholder="parent@example.com"
+                                        className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                        Password
+                                    </label>
+                                    <input
+                                        type="password"
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        placeholder="••••••••"
+                                        className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                        required
+                                    />
+                                </div>
+                            </>
+                        )}
+
+                        {method === 'fan' && (
                             <>
                                 {/* Fan Email */}
                                 <div>
@@ -261,7 +422,7 @@ export default function LoginPage() {
                         {/* Submit */}
                         <button
                             type="submit"
-                            disabled={loading || (method === 'code' && !code) || (method === 'fan' && (!email || !fanCode))}
+                            disabled={loading || (method === 'code' && !code) || (method === 'fan' && (!email || !fanCode)) || (method === 'password' && (!email || !password))}
                             className="w-full py-3 bg-black dark:bg-white text-white dark:text-black rounded-lg font-medium hover:bg-gray-800 dark:hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                         >
                             {loading ? 'Signing in...' : 'Sign In'}

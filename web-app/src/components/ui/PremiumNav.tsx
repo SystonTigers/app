@@ -8,6 +8,7 @@ import { ThemeToggle } from './ThemeProvider';
 import { SoundToggle } from './SoundEffects';
 import { CommandPaletteTrigger } from './CommandPalette';
 import { useUserRole, canAccessAdmin, canAccess } from '@/hooks/useUserRole';
+import { TenantSwitcher } from '../TenantSwitcher';
 
 interface NavItem {
     label: string;
@@ -140,6 +141,7 @@ export function PremiumNav({ tenant, teamName }: PremiumNavProps) {
                                 <SoundToggle />
                                 <ThemeToggle />
                             </div>
+                            <TenantSwitcher />
                             <NotificationCenter tenant={tenant} />
 
                             {/* Admin Link - Only for managers and coaches */}

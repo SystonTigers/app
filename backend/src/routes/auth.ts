@@ -308,12 +308,48 @@ export async function handleAuthLogin(req: Request, env: any, corsHdrs: Headers)
     }
 
     if (!tenantId) {
-      return json({
-        success: false,
-        error: { code: "INVALID_CREDENTIALS", message: "Invalid email or password" }
-      }, 401, corsHdrs);
+      // Find ALL users with this email across all tenants
+      const allUsers = await env.DB.prepare(
+        `SELECT u.*, t.name as tenant_name, t.slug as tenant_slug 
+         FROM auth_users u 
+         JOIN tenants t ON u.tenant_id = t.id 
+         WHERE u.email = ?`
+      ).bind(data.email.trim().toLowerCase()).all();
+
+      const validUsers: any[] = [];
+      const bcrypt = await import('bcryptjs');
+
+      for (const u of (allUsers.results || [])) {
+        if (await bcrypt.compare(data.password, u.password_hash)) {
+          validUsers.push(u);
+        }
+      }
+
+      if (validUsers.length === 0) {
+        return json({
+          success: false,
+          error: { code: "INVALID_CREDENTIALS", message: "Invalid email or password" }
+        }, 401, corsHdrs);
+      }
+
+      if (validUsers.length > 1) {
+        // Return list for selection
+        return json({
+          success: true,
+          multipleTenants: true,
+          tenants: validUsers.map(u => ({
+            id: u.tenant_id,
+            name: u.tenant_name,
+            slug: u.tenant_slug
+          }))
+        }, 200, corsHdrs);
+      }
+
+      // Single match, proceed as normal
+      tenantId = validUsers[0].tenant_id;
     }
 
+    const start = Date.now();
     const user = await authenticateUser(env, {
       tenantId,
       email: data.email,
@@ -346,6 +382,188 @@ export async function handleAuthLogin(req: Request, env: any, corsHdrs: Headers)
     }
     if (err instanceof Response) { return err; }
     return json({ success: false, error: { code: "LOGIN_FAILED", message: err?.message || "unexpected error" } }, 500, corsHdrs);
+  }
+}
+
+// POST /api/v1/auth/switch-tenant
+export async function handleSwitchTenant(req: Request, env: any, corsHdrs: Headers) {
+  try {
+    const claims = await verifyJWT(env, (req.headers.get('Authorization') || '').substring(7));
+    if (!claims || !claims.email && !claims.sub) { // .sub might be email for legacy tokens
+      // For new tokens email is in claims.email
+      // If not found, cant switch safely
+      return json({ success: false, error: { code: "UNAUTHORIZED", message: "Invalid token" } }, 401, corsHdrs);
+    }
+    const email = claims.email || claims.sub; // Fallback
+
+    const body = await req.json().catch(() => ({})) as any;
+    if (!body.targetTenantId) {
+      return json({ success: false, error: { code: "MISSING_TENANT", message: "Target tenant required" } }, 400, corsHdrs);
+    }
+
+    // Check if user exists in target tenant with same email
+    const user = await env.DB.prepare(
+      `SELECT * FROM auth_users WHERE tenant_id = ? AND email = ?`
+    ).bind(body.targetTenantId, email).first();
+
+    if (!user) {
+      return json({ success: false, error: { code: "FORBIDDEN", message: "Access denied to this tenant" } }, 403, corsHdrs);
+    }
+
+    const roles = JSON.parse(user.roles || '[]');
+    const isAdmin = roles.includes("tenant_admin");
+
+    // Generate new token
+    const token = isAdmin
+      ? await issueTenantAdminJWT(env, { tenant_id: user.tenant_id, ttlMinutes: 60 })
+      : await issueTenantMemberJWT(env, { tenant_id: user.tenant_id, user_id: user.id, roles });
+
+    // Parse profile safely
+    let profile = {};
+    try {
+      profile = JSON.parse(user.profile || '{}');
+    } catch (e) { }
+
+    return json({
+      success: true,
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+        tenant_id: user.tenant_id,
+        roles,
+        profile,
+        created_at: user.created_at
+      }
+    }, 200, corsHdrs);
+
+  } catch (err: any) {
+    console.error('Switch tenant error:', err);
+    return json({ success: false, error: { code: "SWITCH_FAILED", message: err.message } }, 500, corsHdrs);
+  }
+}
+
+// GET /api/v1/auth/me/tenants
+export async function handleGetMyTenants(req: Request, env: any, corsHdrs: Headers) {
+  try {
+    const claims = await verifyJWT(env, (req.headers.get('Authorization') || '').substring(7));
+    if (!claims) return json({ success: false, error: "Unauthorized" }, 401, corsHdrs);
+
+    const email = claims.email || claims.sub;
+
+    const tenants = await env.DB.prepare(
+      `SELECT t.id, t.name, t.slug, u.roles 
+         FROM auth_users u
+         JOIN tenants t ON u.tenant_id = t.id
+         WHERE u.email = ?
+         ORDER BY t.created_at DESC`
+    ).bind(email).all();
+
+    return json({ success: true, tenants: tenants.results || [] }, 200, corsHdrs);
+  } catch (err: any) {
+    return json({ success: false, error: err.message }, 500, corsHdrs);
+  }
+}
+
+// POST /api/v1/auth/link-player
+// Link current user to a player via code (add to auth_user_players)
+// OR create a new user record in that tenant if needed
+export async function handleLinkPlayer(req: Request, env: any, corsHdrs: Headers) {
+  try {
+    const claims = await verifyJWT(env, (req.headers.get('Authorization') || '').substring(7));
+    if (!claims) return json({ success: false, error: "Unauthorized" }, 401, corsHdrs);
+
+    const email = claims.email || claims.sub;
+    const body = await req.json().catch(() => ({})) as any;
+
+    if (!body.code) return json({ success: false, error: "Code required" }, 400, corsHdrs);
+
+    // 1. Find the code
+    const codeRecord = await env.DB.prepare(`
+            SELECT lc.*, t.id as tenant_id, t.name as tenant_name
+            FROM login_codes lc
+            JOIN tenants t ON lc.tenant_id = t.id
+            WHERE lc.code = ? AND lc.is_active = 1 AND lc.code_type = 'player'
+        `).bind(body.code.replace(/\s/g, '').toUpperCase()).first();
+
+    // Also check players.login_code legacy
+    let targetTenantId, playerId, tenantName;
+
+    if (codeRecord) {
+      targetTenantId = codeRecord.tenant_id;
+      playerId = codeRecord.player_id;
+      tenantName = codeRecord.tenant_name;
+    } else {
+      // Legacy check
+      // This is tricky because we need to know WHICH tenant the code belongs to if it's unique only per tenant
+      // Assumption: Login codes in players table assumed unique globally or we scan all tenants?
+      // Actually `login_codes` table is the new way. If not found there, fail?
+      // Let's check `players` table across all tenants? Expensive.
+      // Let's assume user provides tenant slug? No, they just give code.
+      // We can search players table index if it exists.
+      const player = await env.DB.prepare(
+        `SELECT id, tenant_id FROM players WHERE login_code = ? LIMIT 1`
+      ).bind(body.code.toUpperCase(),).first();
+
+      if (player) {
+        playerId = player.id;
+        targetTenantId = player.tenant_id;
+        // fetch tenant name 
+        const t = await env.DB.prepare('SELECT name FROM tenants WHERE id = ?').bind(targetTenantId).first();
+        tenantName = t?.name;
+      } else {
+        return json({ success: false, error: { code: "INVALID_CODE", message: "Invalid player code" } }, 404, corsHdrs);
+      }
+    }
+
+    // 2. Check if this user (email) exists in target tenant
+    let targetUser = await env.DB.prepare(
+      `SELECT * FROM auth_users WHERE tenant_id = ? AND email = ?`
+    ).bind(targetTenantId, email).first();
+
+    let addedTenant = false;
+
+    if (!targetUser) {
+      // Create user in new tenant
+      const newUserId = crypto.randomUUID();
+      // We need the password hash. We can't get it from JWT.
+      // But we can get it from the CURRENT user record if we query it.
+      // Get current user's password hash
+      const currentUser = await env.DB.prepare(
+        `SELECT password_hash FROM auth_users WHERE tenant_id = ? AND email = ?`
+      ).bind(claims.tenant_id, email).first();
+
+      if (!currentUser) return json({ success: false, error: "Current user not found" }, 500, corsHdrs);
+
+      await env.DB.prepare(`
+                INSERT INTO auth_users (id, tenant_id, email, password_hash, roles, created_at, updated_at)
+                VALUES (?, ?, ?, ?, '["parent"]', unixepoch(), unixepoch())
+            `).bind(newUserId, targetTenantId, email, currentUser.password_hash).run();
+
+      targetUser = { id: newUserId };
+      addedTenant = true;
+    }
+
+    // 3. Link to player in auth_user_players
+    try {
+      await env.DB.prepare(`
+                INSERT INTO auth_user_players (user_id, player_id, tenant_id)
+                VALUES (?, ?, ?)
+            `).bind(targetUser.id, playerId, targetTenantId).run();
+    } catch (e: any) {
+      // Ignore unique constraint (already linked)
+      if (!e.message.includes('UNIQUE')) throw e;
+    }
+
+    return json({
+      success: true,
+      addedTenant,
+      tenant: { id: targetTenantId, name: tenantName }
+    }, 200, corsHdrs);
+
+  } catch (err: any) {
+    console.error('Link player error:', err);
+    return json({ success: false, error: err.message }, 500, corsHdrs);
   }
 }
 

@@ -22,27 +22,44 @@ export async function listTenants(req: Request, env: any, requestId: string, cor
 
     let query = `
       SELECT
-        id, slug, name, email, plan, status, comped,
-        trial_ends_at, created_at, updated_at
-      FROM tenants
+        t.id, t.slug, t.name, t.email, t.plan, t.status, t.comped,
+        t.trial_ends_at, t.created_at, t.updated_at,
+        (SELECT profile FROM auth_users WHERE tenant_id = t.id ORDER BY created_at ASC LIMIT 1) as owner_profile
+      FROM tenants t
       WHERE 1=1
     `;
     const params: any[] = [];
 
     if (status) {
-      query += " AND status = ?";
+      query += " AND t.status = ?";
       params.push(status);
     }
     if (plan) {
-      query += " AND plan = ?";
+      query += " AND t.plan = ?";
       params.push(plan);
     }
 
-    query += " ORDER BY created_at DESC LIMIT ? OFFSET ?";
+    query += " ORDER BY t.created_at DESC LIMIT ? OFFSET ?";
     params.push(limit, offset);
 
     const stmt = env.DB.prepare(query);
     const results = await stmt.bind(...params).all();
+
+    // Parse owner profile
+    const tenants = (results.results || []).map((t: any) => {
+      let managerName = null;
+      try {
+        if (t.owner_profile) {
+          const profile = JSON.parse(t.owner_profile);
+          managerName = profile.name;
+        }
+      } catch (e) { }
+
+      return {
+        ...t,
+        manager_name: managerName
+      };
+    });
 
     // Get total count
     let countQuery = "SELECT COUNT(*) as total FROM tenants WHERE 1=1";
@@ -60,7 +77,7 @@ export async function listTenants(req: Request, env: any, requestId: string, cor
 
     return json({
       success: true,
-      tenants: results.results || [],
+      tenants: tenants,
       pagination: {
         total,
         limit,
@@ -778,6 +795,34 @@ export async function removeTenantPromo(req: Request, env: any, requestId: strin
   } catch (err: any) {
     if (err instanceof Response) { throw err; }
     logJSON({ level: "error", requestId, msg: "REMOVE_TENANT_PROMO_ERROR", error: err.message });
+    return json({ success: false, error: { code: "SERVER_ERROR", message: err.message } }, 500, corsHdrs);
+  }
+}
+
+// DELETE /api/v1/admin/promo-codes/:code - Delete promo code (hard delete)
+export async function deletePromoCode(req: Request, env: any, requestId: string, corsHdrs: Headers, code: string): Promise<Response> {
+  try {
+    const claims = await requireAdmin(req, env);
+    await withCsrfProtection(req, env, undefined, claims.userId);
+
+    const existing = await env.DB.prepare("SELECT id FROM promo_codes WHERE code = ?").bind(code).first();
+    if (!existing) {
+      return json({ success: false, error: { code: "NOT_FOUND", message: "Promo code not found" } }, 404, corsHdrs);
+    }
+
+    // Check usage - fail if used? Or cascade?
+    // Let's cascade delete redemptions first
+    await env.DB.prepare("DELETE FROM promo_redemptions WHERE promo_code_id = ?").bind(existing.id).run();
+
+    // Delete code
+    await env.DB.prepare("DELETE FROM promo_codes WHERE id = ?").bind(existing.id).run();
+
+    logJSON({ level: "info", requestId, msg: "PROMO_CODE_DELETED", code });
+    return json({ success: true }, 200, corsHdrs);
+
+  } catch (err: any) {
+    if (err instanceof Response) { throw err; }
+    logJSON({ level: "error", requestId, msg: "DELETE_PROMO_CODE_ERROR", error: err.message });
     return json({ success: false, error: { code: "SERVER_ERROR", message: err.message } }, 500, corsHdrs);
   }
 }
