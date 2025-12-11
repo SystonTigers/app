@@ -326,6 +326,38 @@ export async function handleAuthLogin(req: Request, env: any, corsHdrs: Headers)
       }
 
       if (validUsers.length === 0) {
+        // Try finding in 'users' table (tenant-less users)
+        const simpleUser = await env.DB.prepare(
+          `SELECT * FROM users WHERE email = ?`
+        ).bind(data.email.trim().toLowerCase()).first();
+
+        if (simpleUser && await bcrypt.compare(data.password, simpleUser.password_hash)) {
+          // Issue session token for simple user
+          const secret = new TextEncoder().encode(env.JWT_SECRET);
+          const token = await new SignJWT({
+            user_id: simpleUser.id,
+            email: simpleUser.email,
+            purpose: "session"
+          })
+            .setProtectedHeader({ alg: "HS256" })
+            .setIssuedAt()
+            .setExpirationTime("7d")
+            .sign(secret);
+
+          return json({
+            success: true,
+            data: {
+              token,
+              user: {
+                id: simpleUser.id,
+                email: simpleUser.email,
+                name: simpleUser.name
+                // No tenant_id
+              }
+            }
+          }, 200, corsHdrs);
+        }
+
         return json({
           success: false,
           error: { code: "INVALID_CREDENTIALS", message: "Invalid email or password" }
@@ -347,6 +379,13 @@ export async function handleAuthLogin(req: Request, env: any, corsHdrs: Headers)
 
       // Single match, proceed as normal
       tenantId = validUsers[0].tenant_id;
+    }
+
+    if (!tenantId) {
+      return json({
+        success: false,
+        error: { code: "INVALID_REQUEST", message: "Tenant context missing" }
+      }, 400, corsHdrs);
     }
 
     const start = Date.now();
@@ -1168,4 +1207,167 @@ export async function handleResetPassword(req: Request, env: any, corsHdrs: Head
     }, 500, corsHdrs);
   }
 }
+
+/**
+ * Simple Signup - Create user without tenant, send verification email
+ * User will join a team later via code entry
+ */
+const SignupSchema = z.object({
+  name: z.string().min(1, "Name required"),
+  email: z.string().email("Valid email required"),
+  password: z.string().min(8, "Password must be at least 8 characters")
+});
+
+export async function handleSignup(req: Request, env: any, corsHdrs: Headers) {
+  try {
+    // Rate limit: 5 signups per hour per IP
+    const rateLimitResult = await rateLimit(req, env, {
+      scope: "auth:signup",
+      limit: 5,
+      windowSeconds: 3600,
+      path: "/api/v1/auth/signup"
+    });
+
+    if (!rateLimitResult.ok) {
+      const headers = new Headers(corsHdrs);
+      if (rateLimitResult.retryAfter) headers.set("Retry-After", String(rateLimitResult.retryAfter));
+      return json({
+        success: false,
+        error: { code: "RATE_LIMITED", message: "Too many signup attempts" }
+      }, 429, headers);
+    }
+
+    const body = await req.json().catch(() => ({}));
+    const data = parse(SignupSchema, body);
+
+    const email = data.email.trim().toLowerCase();
+
+    // Check if email already exists
+    const existing = await env.DB.prepare(
+      `SELECT id FROM users WHERE email = ?`
+    ).bind(email).first();
+
+    if (existing) {
+      return json({
+        success: false,
+        error: { code: "EMAIL_EXISTS", message: "An account with this email already exists. Please login instead." }
+      }, 409, corsHdrs);
+    }
+
+    // Hash password
+    const bcrypt = await import('bcryptjs');
+    const passwordHash = await bcrypt.hash(data.password, 10);
+
+    // Create user (no tenant)
+    const userId = crypto.randomUUID();
+    await env.DB.prepare(`
+      INSERT INTO users (id, email, name, password_hash, email_verified, created_at, updated_at)
+      VALUES (?, ?, ?, ?, 0, unixepoch(), unixepoch())
+    `).bind(userId, email, data.name, passwordHash).run();
+
+    // Generate verification token (24h expiry)
+    const secret = new TextEncoder().encode(env.JWT_SECRET);
+    const token = await new SignJWT({
+      user_id: userId,
+      email,
+      purpose: "verify_signup"
+    })
+      .setProtectedHeader({ alg: "HS256" })
+      .setIssuedAt()
+      .setExpirationTime("24h")
+      .sign(secret);
+
+    // Send verification email
+    const baseUrl = env.FRONTEND_URL || 'http://localhost:3000';
+    const verifyLink = `${baseUrl}/verify?token=${token}`;
+
+    await sendVerificationEmail(email, verifyLink, env);
+
+    return json({
+      success: true,
+      message: "Account created! Check your email for a verification link."
+    }, 201, corsHdrs);
+
+  } catch (err: any) {
+    if (isValidationError(err)) {
+      return json({
+        success: false,
+        error: { code: "VALIDATION_ERROR", message: err.message, issues: err.issues }
+      }, 400, corsHdrs);
+    }
+    console.error('Signup error:', err);
+    return json({
+      success: false,
+      error: { code: "SIGNUP_FAILED", message: err.message }
+    }, 500, corsHdrs);
+  }
+}
+
+/**
+ * Verify signup email and auto-login
+ */
+export async function handleVerifySignup(req: Request, env: any, corsHdrs: Headers) {
+  try {
+    const body = await req.json().catch(() => ({})) as { token?: string };
+
+    if (!body.token) {
+      return json({ success: false, error: { code: "MISSING_TOKEN", message: "Token required" } }, 400, corsHdrs);
+    }
+
+    // Verify token
+    const { jwtVerify } = await import("jose");
+    const secret = new TextEncoder().encode(env.JWT_SECRET);
+
+    let payload;
+    try {
+      const result = await jwtVerify(body.token, secret);
+      payload = result.payload as { user_id: string; email: string; purpose: string };
+    } catch (err) {
+      return json({ success: false, error: { code: "INVALID_TOKEN", message: "Invalid or expired link" } }, 401, corsHdrs);
+    }
+
+    if (payload.purpose !== "verify_signup") {
+      return json({ success: false, error: { code: "INVALID_TOKEN", message: "Invalid token type" } }, 401, corsHdrs);
+    }
+
+    // Mark email as verified
+    await env.DB.prepare(
+      `UPDATE users SET email_verified = 1, updated_at = unixepoch() WHERE id = ?`
+    ).bind(payload.user_id).run();
+
+    // Get user
+    const user = await env.DB.prepare(
+      `SELECT id, email, name FROM users WHERE id = ?`
+    ).bind(payload.user_id).first();
+
+    // Issue session token (no tenant yet)
+    const sessionToken = await new SignJWT({
+      user_id: payload.user_id,
+      email: payload.email,
+      purpose: "session"
+    })
+      .setProtectedHeader({ alg: "HS256" })
+      .setIssuedAt()
+      .setExpirationTime("7d")
+      .sign(secret);
+
+    return json({
+      success: true,
+      data: {
+        token: sessionToken,
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name
+        },
+        redirect: '/join' // After verify, go to join page to enter code
+      }
+    }, 200, corsHdrs);
+
+  } catch (err: any) {
+    console.error('Verify signup error:', err);
+    return json({ success: false, error: { code: "VERIFY_FAILED", message: err.message } }, 500, corsHdrs);
+  }
+}
+
 

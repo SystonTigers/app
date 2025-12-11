@@ -1,3 +1,3 @@
 UPDATE auth_users 
-SET password_hash = '$2a$10$1UPaWjnHlVSwkQWRg5mu5uPy910VaZ7UGSn0wG1c1dNVVH2wkZNAx.'
+SET password_hash = '$2a$10$T3gDDjeRkrvv2d3xl1U2F.PNPAl3tcZwJAb9ABXCPqVttEFinoYPIi'
 WHERE email = 'systontowntigersfc@gmail.com';

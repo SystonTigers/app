@@ -48,11 +48,11 @@ const nextConfig = {
     return [
       {
         source: '/public/:path*',
-        destination: 'http://127.0.0.1:3001/public/:path*'
+        destination: 'http://127.0.0.1:8787/public/:path*'
       },
       {
         source: '/api/:path*',
-        destination: 'http://127.0.0.1:3001/api/:path*'
+        destination: 'http://127.0.0.1:8787/api/:path*'
       }
     ];
   },

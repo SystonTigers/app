@@ -1,203 +1,57 @@
-// app/signup/page.tsx
 'use client';
 
-import { Suspense, useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useState } from 'react';
 import Link from 'next/link';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'https://syston-postbus.team-platform-2025.workers.dev';
-
-function SignupPageContent() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-
-  // State
-  const [authStatus, setAuthStatus] = useState<'loading' | 'unauthenticated' | 'authenticated'>('loading');
-  const [tenantStatus, setTenantStatus] = useState<'loading' | 'onboarding' | 'active' | 'error'>('loading');
-  const [step, setStep] = useState<number>(1);
+export default function SignupPage() {
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [token, setToken] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
 
-  // Form Data
-  const [regData, setRegData] = useState({
-    name: '',
-    email: '',
-    password: '',
-    confirmPassword: ''
-  });
-
-  const [setupData, setSetupData] = useState({
-    clubName: '',
-    clubSlug: '',
-    primaryColor: '#000000', // Default black
-    secondaryColor: '#ffffff' // Default white
-  });
-
-  const [slugDirty, setSlugDirty] = useState(false);
-
-  // Check Auth on Mount
-  useEffect(() => {
-    const storedToken = localStorage.getItem('session_token');
-    if (storedToken) {
-      setToken(storedToken);
-      setAuthStatus('authenticated');
-      fetchTenantStatus(storedToken);
-    } else {
-      setAuthStatus('unauthenticated');
-      setStep(1); // Registration
-    }
-  }, []);
-
-  const fetchTenantStatus = async (authToken: string) => {
-    try {
-      setTenantStatus('loading');
-      const res = await fetch(`${API_BASE}/api/v1/tenants/me`, {
-        headers: { 'Authorization': `Bearer ${authToken}` }
-      });
-      const data = await res.json();
-
-      if (data.success && data.tenant) {
-        if (data.tenant.status === 'active') {
-          setTenantStatus('active');
-          router.push('/dashboard');
-        } else {
-          setTenantStatus('onboarding');
-          setStep(2); // Setup Wizard
-          // Prefill
-          setSetupData(prev => ({
-            ...prev,
-            clubName: data.tenant.name || '',
-            clubSlug: data.tenant.slug || '',
-            primaryColor: data.tenant.primary_color || '#000000',
-            secondaryColor: data.tenant.secondary_color || '#ffffff'
-          }));
-        }
-      } else {
-        // Invalid token or tenant not found
-        localStorage.removeItem('session_token');
-        setAuthStatus('unauthenticated');
-        setStep(1);
-      }
-    } catch (e) {
-      console.error('Failed to fetch tenant status', e);
-      setTenantStatus('error');
-    }
-  };
-
-  // Step 1: Registration Submit
-  const handleRegister = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (regData.password !== regData.confirmPassword) {
-      setError('Passwords do not match');
-      return;
-    }
-    setLoading(true);
     setError('');
+    setLoading(true);
 
     try {
-      const res = await fetch(`${API_BASE}/api/v1/auth/register-owner`, {
+      const response = await fetch('/api/v1/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: regData.name, // Although currently handleRegisterOwner might not take name, we should add it or ignore it? Schema says email/password.
-          email: regData.email,
-          password: regData.password
-        })
+        body: JSON.stringify({ name, email, password })
       });
 
-      const data = await res.json();
+      const data = await response.json();
 
-      if (data.success) {
-        // Show verification sent message
-        setStep(1.5); // Intermediate state
-      } else {
-        setError(data.error?.message || 'Registration failed');
+      if (!response.ok || !data.success) {
+        throw new Error(data.error?.message || 'Signup failed');
       }
+
+      setSuccess(true);
     } catch (err: any) {
-      setError(err.message || 'Connection failed');
+      setError(err.message);
     } finally {
       setLoading(false);
     }
   };
 
-  // Step 2: Setup Submit
-  const handleSetup = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError('');
-
-    try {
-      const res = await fetch(`${API_BASE}/api/v1/tenants/me`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          name: setupData.clubName,
-          slug: setupData.clubSlug,
-          primaryColor: setupData.primaryColor,
-          secondaryColor: setupData.secondaryColor,
-          status: 'active' // Mark as active on completion
-        })
-      });
-
-      const data = await res.json();
-
-      if (data.success) {
-        // Update local session if slug changed?
-        // Usually slug change doesn't invalidate token (token has ID).
-        // Redirect to dashboard
-        window.location.href = '/dashboard'; // Hard reload to ensure context updates
-      } else {
-        setError(data.error?.message || 'Setup failed');
-      }
-    } catch (err: any) {
-      setError(err.message || 'Connection failed');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Slugify helper
-  const slugify = (input: string) => {
-    return input
-      .toLowerCase()
-      .trim()
-      .replace(/[^\w\s-]/g, '')
-      .replace(/[\s_-]+/g, '-')
-      .replace(/^-+|-+$/g, '');
-  };
-
-  useEffect(() => {
-    if (authStatus === 'authenticated' && !slugDirty && setupData.clubName) {
-      setSetupData(prev => ({ ...prev, clubSlug: slugify(prev.clubName) }));
-    }
-  }, [setupData.clubName, authStatus, slugDirty]);
-
-
-  if (authStatus === 'loading') {
-    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
-  }
-
-  // Verification Sent View
-  if (step === 1.5) {
+  if (success) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="max-w-md w-full bg-white rounded-xl shadow-lg p-8 text-center">
-          <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-600 to-purple-700 px-4">
+        <div className="max-w-md w-full bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8 text-center">
+          <div className="w-16 h-16 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center mx-auto mb-6">
+            <svg className="w-8 h-8 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Check your email</h2>
-          <p className="text-gray-600 mb-6">
-            We've sent a verification link to <strong>{regData.email}</strong>.
-            Please click the link to continue your setup.
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Check your email!</h2>
+          <p className="text-gray-600 dark:text-gray-300 mb-6">
+            We've sent a verification link to <span className="font-semibold">{email}</span>
           </p>
-          <p className="text-sm text-gray-500">
-            Once verified, you'll be redirected to complete your club setup.
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Click the link in your email to complete your registration.
           </p>
         </div>
       </div>
@@ -205,173 +59,114 @@ function SignupPageContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <div className="max-w-md w-full bg-white rounded-xl shadow-lg p-8">
-        {step === 1 ? (
-          // Registration Form
-          <form onSubmit={handleRegister}>
-            <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">Create Account</h2>
-            {error && <div className="mb-4 p-3 bg-red-50 text-red-700 rounded text-sm">{error}</div>}
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-600 to-purple-700 px-4">
+      <div className="max-w-md w-full">
+        {/* Logo/Brand */}
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-bold text-white mb-2">Create Account</h1>
+          <p className="text-blue-100">Join your team in seconds</p>
+        </div>
 
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-                <input
-                  type="text"
-                  required
-                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500"
-                  value={regData.name}
-                  onChange={e => setRegData({ ...regData, name: e.target.value })}
-                />
+        {/* Form Card */}
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8">
+          <form onSubmit={handleSubmit} className="space-y-5">
+            {error && (
+              <div className="p-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg">
+                <p className="text-red-600 dark:text-red-400 text-sm">{error}</p>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                <input
-                  type="email"
-                  required
-                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500"
-                  value={regData.email}
-                  onChange={e => setRegData({ ...regData, email: e.target.value })}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-                <input
-                  type="password"
-                  required
-                  minLength={8}
-                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500"
-                  value={regData.password}
-                  onChange={e => setRegData({ ...regData, password: e.target.value })}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Confirm Password</label>
-                <input
-                  type="password"
-                  required
-                  minLength={8}
-                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500"
-                  value={regData.confirmPassword}
-                  onChange={e => setRegData({ ...regData, confirmPassword: e.target.value })}
-                />
-              </div>
+            )}
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-indigo-600 text-white py-2 rounded-lg font-semibold hover:bg-indigo-700 disabled:opacity-50"
-              >
-                {loading ? 'Creating...' : 'Sign Up'}
-              </button>
+            <div>
+              <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Your Name
+              </label>
+              <input
+                id="name"
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="John Smith"
+                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg 
+                                         bg-white dark:bg-gray-700 text-gray-900 dark:text-white
+                                         focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                required
+              />
             </div>
-            <p className="mt-4 text-center text-sm text-gray-600">
-              Already have an account? <Link href="/login" className="text-indigo-600 font-medium">Log in</Link>
+
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Email Address
+              </label>
+              <input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg 
+                                         bg-white dark:bg-gray-700 text-gray-900 dark:text-white
+                                         focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                required
+              />
+            </div>
+
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Password
+              </label>
+              <input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Min. 8 characters"
+                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg 
+                                         bg-white dark:bg-gray-700 text-gray-900 dark:text-white
+                                         focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                minLength={8}
+                required
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3 px-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold 
+                                     rounded-lg hover:from-blue-700 hover:to-purple-700 focus:ring-2 focus:ring-blue-500 
+                                     focus:ring-offset-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  Creating account...
+                </span>
+              ) : (
+                'Create Account'
+              )}
+            </button>
+          </form>
+
+          <div className="mt-6 text-center">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Already have an account?{' '}
+              <Link href="/login" className="text-blue-600 hover:text-blue-700 font-medium">
+                Sign in
+              </Link>
             </p>
-          </form>
-        ) : (
-          // Setup Wizard (Step 2)
-          <form onSubmit={handleSetup}>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2 text-center">Setup Your Club</h2>
-            <p className="text-center text-gray-500 mb-6 text-sm">Design your team's look and feel.</p>
-            {error && <div className="mb-4 p-3 bg-red-50 text-red-700 rounded text-sm">{error}</div>}
+          </div>
+        </div>
 
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Club Name</label>
-                <input
-                  type="text"
-                  required
-                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500"
-                  value={setupData.clubName}
-                  onChange={e => setSetupData({ ...setupData, clubName: e.target.value })}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  URL Slug <span className="text-gray-400 font-normal">(yourapp.com/{setupData.clubSlug})</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  pattern="^[a-z0-9-]+$"
-                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 font-mono text-sm"
-                  value={setupData.clubSlug}
-                  onChange={e => {
-                    setSlugDirty(true);
-                    setSetupData({ ...setupData, clubSlug: e.target.value });
-                  }}
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Primary Color</label>
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="color"
-                      className="h-10 w-10 rounded border p-0 cursor-pointer"
-                      value={setupData.primaryColor}
-                      onChange={e => setSetupData({ ...setupData, primaryColor: e.target.value })}
-                    />
-                    <input
-                      type="text"
-                      className="w-full px-2 py-2 border rounded-lg text-sm font-mono"
-                      value={setupData.primaryColor}
-                      onChange={e => setSetupData({ ...setupData, primaryColor: e.target.value })}
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Secondary Color</label>
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="color"
-                      className="h-10 w-10 rounded border p-0 cursor-pointer"
-                      value={setupData.secondaryColor}
-                      onChange={e => setSetupData({ ...setupData, secondaryColor: e.target.value })}
-                    />
-                    <input
-                      type="text"
-                      className="w-full px-2 py-2 border rounded-lg text-sm font-mono"
-                      value={setupData.secondaryColor}
-                      onChange={e => setSetupData({ ...setupData, secondaryColor: e.target.value })}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Preview */}
-              <div className="mt-4 border rounded-lg p-4 bg-gray-50 flex items-center justify-center">
-                <div
-                  className="rounded-lg shadow-lg p-6 w-full max-w-xs text-center transition-colors"
-                  style={{ backgroundColor: setupData.primaryColor, color: setupData.secondaryColor }}
-                >
-                  <h3 className="font-bold text-xl">{setupData.clubName || 'My Club'}</h3>
-                  <p className="text-xs opacity-90 mt-1">Official Team App</p>
-                  <div className="mt-4 bg-white/20 rounded h-2 w-20 mx-auto"></div>
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-700 disabled:opacity-50 mt-4"
-              >
-                {loading ? 'Saving...' : 'Finish Setup 🚀'}
-              </button>
-            </div>
-          </form>
-        )}
+        {/* Terms */}
+        <p className="text-center text-xs text-blue-100 mt-6">
+          By creating an account, you agree to our{' '}
+          <a href="#" className="underline">Terms of Service</a>
+          {' '}and{' '}
+          <a href="#" className="underline">Privacy Policy</a>
+        </p>
       </div>
     </div>
-  );
-}
-
-export default function SignupPage() {
-  return (
-    <Suspense fallback={<div>Loading...</div>}>
-      <SignupPageContent />
-    </Suspense>
   );
 }

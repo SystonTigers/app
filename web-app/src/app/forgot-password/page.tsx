@@ -11,7 +11,7 @@ export default function ForgotPasswordPage() {
     const [error, setError] = useState('');
     const [success, setSuccess] = useState(false);
 
-    const API_BASE = process.env.NEXT_PUBLIC_API_BASE || '';
+    const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8787';
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();

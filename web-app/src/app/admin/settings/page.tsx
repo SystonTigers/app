@@ -38,7 +38,7 @@ export default function SettingsPage() {
     const [generatingCoachCode, setGeneratingCoachCode] = useState(false);
     const [newCoachCode, setNewCoachCode] = useState<string | null>(null);
 
-    const API_BASE = process.env.NEXT_PUBLIC_API_BASE || '';
+    const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8787';
 
     // Team Details
     const [teamName, setTeamName] = useState('Syston Tigers');

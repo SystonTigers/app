@@ -32,7 +32,8 @@ export default function LoginPage() {
     const [error, setError] = useState('');
     const [coachCodeValid, setCoachCodeValid] = useState(false);
 
-    const API_BASE = process.env.NEXT_PUBLIC_API_BASE || '';
+    // Use relative URL to go through Next.js proxy (which handles CORS)
+    const API_BASE = '';
 
     const validateCode = async (inputCode: string) => {
         // Check if code is a coach code (format: TEAM-CXXXX)
