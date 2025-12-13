@@ -64,10 +64,15 @@ export async function handleCastVote(req: Request, env: any, corsHdrs: Headers, 
         ).bind(matchId, claims.userId).first();
 
         if (existing) {
-            // Update existing vote
-            await env.DB.prepare(
-                `UPDATE motm_votes SET player_id = ?, voted_at = ? WHERE id = ?`
-            ).bind(body.playerId, Date.now(), existing.id).run();
+            // Update existing vote (SECURITY: Verify match belongs to tenant)
+            await env.DB.prepare(`
+                UPDATE motm_votes
+                SET player_id = ?, voted_at = ?
+                WHERE id = ?
+                  AND match_id IN (
+                      SELECT id FROM team_results WHERE tenant_id = ?
+                  )
+            `).bind(body.playerId, Date.now(), existing.id, claims.tenantId).run();
         } else {
             // Create new vote
             await env.DB.prepare(

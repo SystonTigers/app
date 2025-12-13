@@ -435,13 +435,13 @@ export async function handleResignTeam(req: Request, env: any, corsHdrs: Headers
              WHERE tenant_id = ? ORDER BY points DESC, gd DESC`
         ).bind(claims.tenantId).all();
 
-        // Update positions
+        // Update positions (SECURITY: Verify tenant ownership)
         const positionUpdates = [];
         let position = 1;
         for (const team of (updatedStandings.results || [])) {
             positionUpdates.push(
-                env.DB.prepare("UPDATE league_standings SET position = ? WHERE id = ?")
-                    .bind(position++, team.id)
+                env.DB.prepare("UPDATE league_standings SET position = ? WHERE id = ? AND tenant_id = ?")
+                    .bind(position++, team.id, claims.tenantId)
             );
         }
         if (positionUpdates.length > 0) {
