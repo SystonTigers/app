@@ -39,8 +39,8 @@ API_VERSION = "v1"
 JWT_ISSUER = "syston.app"
 JWT_AUDIENCE = "syston-mobile"
 APP_VERSION = "7.0.0"
-TEMPLATE_SPREADSHEET_ID = "1YourTemplateSpreadsheetId"
-YOUTUBE_API_KEY = "AIzaSyREPLACE"
+# TEMPLATE_SPREADSHEET_ID - Set via: wrangler secret put TEMPLATE_SPREADSHEET_ID
+# YOUTUBE_API_KEY - Set via: wrangler secret put YOUTUBE_API_KEY
 FIXTURES_REFRESH_URL = "https://syston-fixtures.team-platform-2025.workers.dev/refresh"
 ALLOWED_WEBHOOK_HOSTS = "hook.make.com,hook.eu2.make.com,hook.us1.make.com,*.make.com,webhook.site"
 SETUP_URL = "https://setup-console.team-platform-2025.workers.dev"
@@ -60,12 +60,12 @@ ENVIRONMENT = "production"
 PYTHON_COACHING_SERVICE_URL = "http://localhost:8000"
 GAS_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbwMEAZaXwn_1mvpa_XWFB4ywU8oP795NFVyVu6RmyCXpLIOA0MurWVVuWbocmWakF3O/exec"
 # GAS_HMAC_SECRET - Set via: wrangler secret put GAS_HMAC_SECRET --env production
-SUPABASE_URL = "https://prod-supabase.example.com"
-SUPABASE_ANON_KEY = "prod-anon-key"
-SUPABASE_SERVICE_ROLE = "prod-service-role"
-EBAY_CLIENT_ID = "prod-ebay-client-id"
-EBAY_CLIENT_SECRET = "prod-ebay-client-secret"
-SENTRY_DSN = "https://prod-sentry.example.com/1"
+# SUPABASE_URL - Set via: wrangler secret put SUPABASE_URL
+# SUPABASE_ANON_KEY - Set via: wrangler secret put SUPABASE_ANON_KEY
+# SUPABASE_SERVICE_ROLE - Set via: wrangler secret put SUPABASE_SERVICE_ROLE
+# EBAY_CLIENT_ID - Set via: wrangler secret put EBAY_CLIENT_ID
+# EBAY_CLIENT_SECRET - Set via: wrangler secret put EBAY_CLIENT_SECRET
+# SENTRY_DSN - Set via: wrangler secret put SENTRY_DSN (Optional: error tracking)
 DRY_RUN = "false"
 MAKE_VALIDATE_STRICT = "true"
 
@@ -149,8 +149,8 @@ API_VERSION = "v1"
 JWT_ISSUER = "syston.app"
 JWT_AUDIENCE = "syston-mobile"
 APP_VERSION = "7.0.0"
-TEMPLATE_SPREADSHEET_ID = "1YourTemplateSpreadsheetId"
-YOUTUBE_API_KEY = "AIzaSyREPLACE"
+# TEMPLATE_SPREADSHEET_ID - Set via: wrangler secret put TEMPLATE_SPREADSHEET_ID
+# YOUTUBE_API_KEY - Set via: wrangler secret put YOUTUBE_API_KEY
 FIXTURES_REFRESH_URL = "https://syston-fixtures.team-platform-2025.workers.dev/refresh"
 ALLOWED_WEBHOOK_HOSTS = "hook.make.com,hook.eu2.make.com,hook.us1.make.com,*.make.com,webhook.site"
 SETUP_URL = "https://setup-console.team-platform-2025.workers.dev"
@@ -170,12 +170,12 @@ ENVIRONMENT = "preview"
 PYTHON_COACHING_SERVICE_URL = "http://localhost:8000"
 GAS_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbwMEAZaXwn_1mvpa_XWFB4ywU8oP795NFVyVu6RmyCXpLIOA0MurWVVuWbocmWakF3O/exec"
 # GAS_HMAC_SECRET - Set via: wrangler secret put GAS_HMAC_SECRET --env preview
-SUPABASE_URL = "https://preview-supabase.example.com"
-SUPABASE_ANON_KEY = "preview-anon-key"
-SUPABASE_SERVICE_ROLE = "preview-service-role"
-EBAY_CLIENT_ID = "preview-ebay-client-id"
-EBAY_CLIENT_SECRET = "preview-ebay-client-secret"
-SENTRY_DSN = "https://preview-sentry.example.com/1"
+# SUPABASE_URL - Set via: wrangler secret put SUPABASE_URL --env preview
+# SUPABASE_ANON_KEY - Set via: wrangler secret put SUPABASE_ANON_KEY --env preview
+# SUPABASE_SERVICE_ROLE - Set via: wrangler secret put SUPABASE_SERVICE_ROLE --env preview
+# EBAY_CLIENT_ID - Set via: wrangler secret put EBAY_CLIENT_ID --env preview
+# EBAY_CLIENT_SECRET - Set via: wrangler secret put EBAY_CLIENT_SECRET --env preview
+# SENTRY_DSN - Set via: wrangler secret put SENTRY_DSN --env preview (Optional: error tracking)
 DRY_RUN = "true"
 MAKE_VALIDATE_STRICT = "false"
 
