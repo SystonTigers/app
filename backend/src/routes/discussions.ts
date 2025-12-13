@@ -374,10 +374,10 @@ export async function handleCreateComment(req: Request, env: any, corsHdrs: Head
             now
         ).run();
 
-        // Update discussion updated_at
+        // Update discussion updated_at (SECURITY: Verify tenant ownership)
         await env.DB.prepare(`
-            UPDATE discussions SET updated_at = ? WHERE id = ?
-        `).bind(now, discussionId).run();
+            UPDATE discussions SET updated_at = ? WHERE id = ? AND tenant_id = ?
+        `).bind(now, discussionId, claims.tenantId).run();
 
         // Create notifications (don't await to avoid blocking response)
         const discussionLink = `/team/discussions/${discussionId}`;
@@ -403,9 +403,13 @@ export async function handleCreateComment(req: Request, env: any, corsHdrs: Head
 
         // Notify parent comment author (if this is a reply)
         if (parent_comment_id) {
+            // SECURITY: Verify parent comment belongs to same tenant via discussion
             const parentComment = await env.DB.prepare(`
-                SELECT author_id FROM discussion_comments WHERE id = ?
-            `).bind(parent_comment_id).first();
+                SELECT dc.author_id
+                FROM discussion_comments dc
+                JOIN discussions d ON dc.discussion_id = d.id
+                WHERE dc.id = ? AND d.tenant_id = ?
+            `).bind(parent_comment_id, claims.tenantId).first();
 
             if (parentComment && parentComment.author_id !== claims.userId && parentComment.author_id !== discussion.author_id) {
                 const notifId = crypto.randomUUID();
@@ -480,9 +484,13 @@ export async function handleUpdateComment(req: Request, env: any, corsHdrs: Head
             return json({ success: false, error: 'Content required' }, 400, corsHdrs);
         }
 
+        // SECURITY: Verify comment belongs to current tenant via discussion
         const comment = await env.DB.prepare(`
-            SELECT * FROM discussion_comments WHERE id = ?
-        `).bind(commentId).first();
+            SELECT dc.*
+            FROM discussion_comments dc
+            JOIN discussions d ON dc.discussion_id = d.id
+            WHERE dc.id = ? AND d.tenant_id = ?
+        `).bind(commentId, claims.tenantId).first();
 
         if (!comment) {
             return json({ success: false, error: 'Comment not found' }, 404, corsHdrs);
@@ -493,11 +501,15 @@ export async function handleUpdateComment(req: Request, env: any, corsHdrs: Head
             return json({ success: false, error: 'Unauthorized to edit this comment' }, 403, corsHdrs);
         }
 
+        // SECURITY: Double-check tenant in UPDATE (defense in depth)
         await env.DB.prepare(`
-            UPDATE discussion_comments 
-            SET content = ?, updated_at = ? 
+            UPDATE discussion_comments
+            SET content = ?, updated_at = ?
             WHERE id = ?
-        `).bind(content, Date.now(), commentId).run();
+              AND discussion_id IN (
+                  SELECT id FROM discussions WHERE tenant_id = ?
+              )
+        `).bind(content, Date.now(), commentId, claims.tenantId).run();
 
         return json({ success: true }, 200, corsHdrs);
     } catch (err) {
@@ -512,9 +524,13 @@ export async function handleDeleteComment(req: Request, env: any, corsHdrs: Head
     try {
         const claims = await requireJWT(req, env);
 
+        // SECURITY: Verify comment belongs to current tenant via discussion
         const comment = await env.DB.prepare(`
-            SELECT * FROM discussion_comments WHERE id = ?
-        `).bind(commentId).first();
+            SELECT dc.*
+            FROM discussion_comments dc
+            JOIN discussions d ON dc.discussion_id = d.id
+            WHERE dc.id = ? AND d.tenant_id = ?
+        `).bind(commentId, claims.tenantId).first();
 
         if (!comment) {
             return json({ success: false, error: 'Comment not found' }, 404, corsHdrs);
@@ -525,9 +541,14 @@ export async function handleDeleteComment(req: Request, env: any, corsHdrs: Head
             return json({ success: false, error: 'Unauthorized to delete this comment' }, 403, corsHdrs);
         }
 
+        // SECURITY: Double-check tenant in DELETE (defense in depth)
         await env.DB.prepare(`
-            DELETE FROM discussion_comments WHERE id = ?
-        `).bind(commentId).run();
+            DELETE FROM discussion_comments
+            WHERE id = ?
+              AND discussion_id IN (
+                  SELECT id FROM discussions WHERE tenant_id = ?
+              )
+        `).bind(commentId, claims.tenantId).run();
 
         return json({ success: true }, 200, corsHdrs);
     } catch (err) {

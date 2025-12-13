@@ -239,9 +239,10 @@ export async function handleRegenerateCode(req: Request, env: any, corsHdrs: Hea
         `).bind(playerId, claims.tenantId).first();
 
         if (existingCode) {
+            // SECURITY: Verify tenant ownership when updating
             await env.DB.prepare(`
-                UPDATE login_codes SET code = ? WHERE id = ?
-            `).bind(newCode, existingCode.id).run();
+                UPDATE login_codes SET code = ? WHERE id = ? AND tenant_id = ?
+            `).bind(newCode, existingCode.id, claims.tenantId).run();
         } else {
             await env.DB.prepare(`
                 INSERT INTO login_codes (id, tenant_id, code, code_type, player_id, is_active, created_at)
