@@ -402,6 +402,7 @@ export async function sendVerificationEmail(
       subject: `Verify your email for Syston`,
       html,
     },
+    env
   );
 }
 

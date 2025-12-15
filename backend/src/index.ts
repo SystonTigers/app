@@ -32,6 +32,108 @@ import {
     signupVerifyPromo
 } from "./routes/signup";
 import {
+    handleListOpponents,
+    handleCreateOpponent,
+    handleConfirmBadge,
+    handleSearchBadge,
+    handleSearchLibrary,
+    handleDeleteOpponent,
+    handleUploadBadge
+} from "./routes/opponents";
+import {
+    handleYouTubeGetUploadUrl,
+    handleYouTubeUpload,
+    handleYouTubeStatus
+} from "./routes/youtube-upload";
+import {
+    handleListFriendlyRequests,
+    handleCreateFriendlyRequest,
+    handleGetMyFriendlyRequests,
+    handleDeleteFriendlyRequest,
+    handleRequestMatch,
+    handleGetFriendlyInbox,
+    handleRespondToMatch,
+    handleGetSentRequests
+} from "./routes/friendlies";
+import {
+    handleCreateCheckout,
+    handleBillingPortal,
+    handleBillingStatus,
+    handleStripeWebhook
+} from "./routes/billing";
+import {
+    handleGetOrganization,
+    handleAddTeam,
+    handleRemoveTeam,
+    handleGetPlans,
+    handleInviteTeam,
+    handleAcceptInvite,
+    handleGetPendingInvites
+} from "./routes/organization";
+import {
+    handleCreatePaymentRequest,
+    handleListPaymentRequests,
+    handlePaymentRequestStatus,
+    handleCreateDuesPayment,
+    handleConfirmDuesPayment,
+    handleSendReminder,
+    handleClosePaymentRequest
+} from "./routes/dues";
+import {
+    handleCreateSubscriptionPlan,
+    handleListSubscriptionPlans,
+    handleCreateRegistrationFee,
+    handleListRegistrationFees,
+    handleCreateDocument,
+    handleListDocuments,
+    handleSignDocument,
+    handleGetPlayerAgreements,
+    handleCreateDiscount,
+    handleListDiscounts,
+    handleLinkStaffChild,
+    handleListStaffChildren
+} from "./routes/registration";
+import {
+    handleGetPersonalizedProducts,
+    handleAddPhrase,
+    handleListPhrases,
+    handleDeletePhrase,
+    handleAddClubProduct,
+    handleListClubProducts,
+    handleCreateShopOrder,
+    handleConfirmShopOrder
+} from "./routes/personalized-shop";
+import {
+    handleGetRevenueSummary,
+    handleGetRevenueByTenant,
+    handleGetRevenueProjections
+} from "./routes/owner-revenue";
+import {
+    handleUploadHeadshot,
+    handleDeleteHeadshot,
+    handleUploadDocument,
+    handleUploadProductImage
+} from "./routes/upload";
+import {
+    handleListPrintifyShops,
+    handleGetPrintifyCatalog,
+    handleGetPrintProviders,
+    handleGetVariants,
+    handleCreatePrintifyProduct,
+    handleListPrintifyProducts,
+    handleUploadToPrintify,
+    handleCreatePrintifyOrder,
+    handleSendOrderToProduction,
+    handleGetPrintifyOrder,
+    handlePrintifyWebhook
+} from "./routes/printify";
+import {
+    handleGenerateDesign,
+    handleUploadDesignToPrintify,
+    handleCreatePersonalizedOrder,
+    handleGetPlayerPreview
+} from "./routes/personalization";
+import {
     listTenants,
     getTenant,
     updateTenant,
@@ -247,6 +349,109 @@ router.delete("/api/:v/admin/tenants/:id/promos/:code", (req, env, corsHdrs, req
 
 router.get("/api/:v/admin/stats", (req, env, corsHdrs, requestId) => getAdminStats(req, env, requestId, corsHdrs));
 router.get("/api/:v/admin/users", (req, env, corsHdrs, requestId) => listUsers(req, env, requestId, corsHdrs));
+
+// Opponent Badge Management Routes
+router.get("/api/:v/opponents", (req, env, corsHdrs) => handleListOpponents(req, env, corsHdrs));
+router.post("/api/:v/opponents", (req, env, corsHdrs) => handleCreateOpponent(req, env, corsHdrs));
+router.post("/api/:v/opponents/search-badge", (req, env, corsHdrs) => handleSearchBadge(req, env, corsHdrs));
+router.post("/api/:v/opponents/:id/confirm", (req, env, corsHdrs) => handleConfirmBadge(req, env, corsHdrs));
+router.post("/api/:v/opponents/:id/upload-badge", (req, env, corsHdrs) => handleUploadBadge(req, env, corsHdrs));
+router.delete("/api/:v/opponents/:id", (req, env, corsHdrs) => handleDeleteOpponent(req, env, corsHdrs));
+router.get("/api/:v/badge-library/search", (req, env, corsHdrs) => handleSearchLibrary(req, env, corsHdrs));
+
+// YouTube Video Upload Routes
+router.post("/api/:v/youtube/upload-url", (req, env, corsHdrs) => handleYouTubeGetUploadUrl(req, env, corsHdrs));
+router.post("/api/:v/youtube/upload", (req, env, corsHdrs) => handleYouTubeUpload(req, env, corsHdrs));
+router.get("/api/:v/youtube/status", (req, env, corsHdrs) => handleYouTubeStatus(req, env, corsHdrs));
+
+// Friendly Matchmaking Marketplace Routes
+router.get("/api/:v/friendlies", (req, env, corsHdrs) => handleListFriendlyRequests(req, env, corsHdrs));
+router.post("/api/:v/friendlies", (req, env, corsHdrs) => handleCreateFriendlyRequest(req, env, corsHdrs));
+router.get("/api/:v/friendlies/mine", (req, env, corsHdrs) => handleGetMyFriendlyRequests(req, env, corsHdrs));
+router.get("/api/:v/friendlies/inbox", (req, env, corsHdrs) => handleGetFriendlyInbox(req, env, corsHdrs));
+router.get("/api/:v/friendlies/sent", (req, env, corsHdrs) => handleGetSentRequests(req, env, corsHdrs));
+router.delete("/api/:v/friendlies/:id", (req, env, corsHdrs) => handleDeleteFriendlyRequest(req, env, corsHdrs));
+router.post("/api/:v/friendlies/:id/request", (req, env, corsHdrs) => handleRequestMatch(req, env, corsHdrs));
+router.post("/api/:v/friendlies/match/:id/respond", (req, env, corsHdrs) => handleRespondToMatch(req, env, corsHdrs));
+
+// Billing Routes
+router.post("/api/:v/billing/checkout", (req, env, corsHdrs) => handleCreateCheckout(req, env, corsHdrs));
+router.post("/api/:v/billing/portal", (req, env, corsHdrs) => handleBillingPortal(req, env, corsHdrs));
+router.get("/api/:v/billing/status", (req, env, corsHdrs) => handleBillingStatus(req, env, corsHdrs));
+router.post("/webhooks/stripe", (req, env) => handleStripeWebhook(req, env));
+
+// Organization Routes (Multi-Team Management)
+router.get("/api/:v/organization", (req, env, corsHdrs) => handleGetOrganization(req, env, corsHdrs));
+router.post("/api/:v/organization/teams", (req, env, corsHdrs) => handleAddTeam(req, env, corsHdrs));
+router.delete("/api/:v/organization/teams/:id", (req, env, corsHdrs) => handleRemoveTeam(req, env, corsHdrs));
+router.get("/api/:v/organization/plans", (req, env, corsHdrs) => handleGetPlans(req, env, corsHdrs));
+router.post("/api/:v/organization/invite-team", (req, env, corsHdrs) => handleInviteTeam(req, env, corsHdrs));
+router.post("/api/:v/organization/accept-invite", (req, env, corsHdrs) => handleAcceptInvite(req, env, corsHdrs));
+router.get("/api/:v/organization/pending-invites", (req, env, corsHdrs) => handleGetPendingInvites(req, env, corsHdrs));
+
+// Member Dues Collection Routes
+router.post("/api/:v/dues/requests", (req, env, corsHdrs) => handleCreatePaymentRequest(req, env, corsHdrs));
+router.get("/api/:v/dues/requests", (req, env, corsHdrs) => handleListPaymentRequests(req, env, corsHdrs));
+router.get("/api/:v/dues/requests/:id/status", (req, env, corsHdrs) => handlePaymentRequestStatus(req, env, corsHdrs));
+router.put("/api/:v/dues/requests/:id/close", (req, env, corsHdrs) => handleClosePaymentRequest(req, env, corsHdrs));
+router.post("/api/:v/dues/pay", (req, env, corsHdrs) => handleCreateDuesPayment(req, env, corsHdrs));
+router.post("/api/:v/dues/confirm", (req, env, corsHdrs) => handleConfirmDuesPayment(req, env, corsHdrs));
+router.post("/api/:v/dues/remind", (req, env, corsHdrs) => handleSendReminder(req, env, corsHdrs));
+
+// Registration System Routes
+router.post("/api/:v/registration/plans", (req, env, corsHdrs) => handleCreateSubscriptionPlan(req, env, corsHdrs));
+router.get("/api/:v/registration/plans", (req, env, corsHdrs) => handleListSubscriptionPlans(req, env, corsHdrs));
+router.post("/api/:v/registration/fees", (req, env, corsHdrs) => handleCreateRegistrationFee(req, env, corsHdrs));
+router.get("/api/:v/registration/fees", (req, env, corsHdrs) => handleListRegistrationFees(req, env, corsHdrs));
+router.post("/api/:v/registration/documents", (req, env, corsHdrs) => handleCreateDocument(req, env, corsHdrs));
+router.get("/api/:v/registration/documents", (req, env, corsHdrs) => handleListDocuments(req, env, corsHdrs));
+router.post("/api/:v/registration/sign", (req, env, corsHdrs) => handleSignDocument(req, env, corsHdrs));
+router.get("/api/:v/registration/agreements/:playerId", (req, env, corsHdrs) => handleGetPlayerAgreements(req, env, corsHdrs));
+router.post("/api/:v/registration/discounts", (req, env, corsHdrs) => handleCreateDiscount(req, env, corsHdrs));
+router.get("/api/:v/registration/discounts", (req, env, corsHdrs) => handleListDiscounts(req, env, corsHdrs));
+router.post("/api/:v/registration/staff-children", (req, env, corsHdrs) => handleLinkStaffChild(req, env, corsHdrs));
+router.get("/api/:v/registration/staff-children", (req, env, corsHdrs) => handleListStaffChildren(req, env, corsHdrs));
+
+// Personalized Shop Routes
+router.get("/api/:v/shop/personalized", (req, env, corsHdrs) => handleGetPersonalizedProducts(req, env, corsHdrs));
+router.post("/api/:v/shop/phrases", (req, env, corsHdrs) => handleAddPhrase(req, env, corsHdrs));
+router.get("/api/:v/shop/phrases", (req, env, corsHdrs) => handleListPhrases(req, env, corsHdrs));
+router.delete("/api/:v/shop/phrases/:id", (req, env, corsHdrs) => handleDeletePhrase(req, env, corsHdrs));
+router.post("/api/:v/shop/club-products", (req, env, corsHdrs) => handleAddClubProduct(req, env, corsHdrs));
+router.get("/api/:v/shop/club-products", (req, env, corsHdrs) => handleListClubProducts(req, env, corsHdrs));
+router.post("/api/:v/shop/orders", (req, env, corsHdrs) => handleCreateShopOrder(req, env, corsHdrs));
+router.post("/api/:v/shop/orders/:id/confirm", (req, env, corsHdrs) => handleConfirmShopOrder(req, env, corsHdrs));
+
+// Owner Revenue Routes (requires OWNER_API_KEY)
+router.get("/owner-api/revenue/summary", (req, env) => handleGetRevenueSummary(req, env));
+router.get("/owner-api/revenue/by-tenant", (req, env) => handleGetRevenueByTenant(req, env));
+router.get("/owner-api/revenue/projections", (req, env) => handleGetRevenueProjections(req, env));
+
+// Upload Routes (R2 Storage)
+router.post("/api/:v/upload/headshot", (req, env, corsHdrs) => handleUploadHeadshot(req, env, corsHdrs));
+router.delete("/api/:v/upload/headshot/:playerId", (req, env, corsHdrs) => handleDeleteHeadshot(req, env, corsHdrs));
+router.post("/api/:v/upload/document", (req, env, corsHdrs) => handleUploadDocument(req, env, corsHdrs));
+router.post("/api/:v/upload/product-image", (req, env, corsHdrs) => handleUploadProductImage(req, env, corsHdrs));
+
+// Printify Integration Routes
+router.get("/api/:v/printify/shops", (req, env, corsHdrs) => handleListPrintifyShops(req, env, corsHdrs));
+router.get("/api/:v/printify/catalog", (req, env, corsHdrs) => handleGetPrintifyCatalog(req, env, corsHdrs));
+router.get("/api/:v/printify/catalog/:blueprintId/providers", (req, env, corsHdrs) => handleGetPrintProviders(req, env, corsHdrs));
+router.get("/api/:v/printify/catalog/:blueprintId/providers/:providerId/variants", (req, env, corsHdrs) => handleGetVariants(req, env, corsHdrs));
+router.post("/api/:v/printify/products", (req, env, corsHdrs) => handleCreatePrintifyProduct(req, env, corsHdrs));
+router.get("/api/:v/printify/products/:shopId", (req, env, corsHdrs) => handleListPrintifyProducts(req, env, corsHdrs));
+router.post("/api/:v/printify/uploads", (req, env, corsHdrs) => handleUploadToPrintify(req, env, corsHdrs));
+router.post("/api/:v/printify/orders", (req, env, corsHdrs) => handleCreatePrintifyOrder(req, env, corsHdrs));
+router.post("/api/:v/printify/orders/:orderId/send", (req, env, corsHdrs) => handleSendOrderToProduction(req, env, corsHdrs));
+router.get("/api/:v/printify/orders/:shopId/:orderId", (req, env, corsHdrs) => handleGetPrintifyOrder(req, env, corsHdrs));
+router.post("/webhooks/printify", (req, env) => handlePrintifyWebhook(req, env));
+
+// Personalization Routes (Dynamic merchandise generation)
+router.post("/api/:v/personalization/generate", (req, env, corsHdrs) => handleGenerateDesign(req, env, corsHdrs));
+router.post("/api/:v/personalization/upload-to-printify", (req, env, corsHdrs) => handleUploadDesignToPrintify(req, env, corsHdrs));
+router.post("/api/:v/personalization/order", (req, env, corsHdrs) => handleCreatePersonalizedOrder(req, env, corsHdrs));
+router.get("/api/:v/personalization/preview/:playerId", (req, env, corsHdrs) => handleGetPlayerPreview(req, env, corsHdrs));
+
 // Alias for legacy tests
 router.get("/api/:v/users", (req, env, corsHdrs, requestId) => listUsers(req, env, requestId, corsHdrs));
 
@@ -835,7 +1040,7 @@ router.get("/api/:v/seasons/:id/summary", (req, env, corsHdrs) => {
 // Shop Routes
 import { handleGetProducts, handleProductSync } from "./routes/shop/products";
 import { handleCreateCart, handleGetCart, handleAddToCart, handleRemoveFromCart } from "./routes/shop/cart";
-import { handleCreateCheckout, handleStripeWebhook } from "./routes/shop/checkout";
+import { handleCreateCheckout as handleShopCheckout, handleStripeWebhook as handleShopWebhook } from "./routes/shop/checkout";
 
 router.get("/api/:v/shop/products", (req, env, corsHdrs) => handleGetProducts(req, env, corsHdrs));
 router.post("/api/:v/shop/sync", (req, env, corsHdrs) => handleProductSync(req, env, corsHdrs));
@@ -845,7 +1050,7 @@ router.get("/api/:v/shop/cart/:id", (req, env, corsHdrs) => handleGetCart(req, e
 router.post("/api/:v/shop/cart/:id/items", (req, env, corsHdrs) => handleAddToCart(req, env, corsHdrs));
 router.delete("/api/:v/shop/cart/:id/items", (req, env, corsHdrs) => handleRemoveFromCart(req, env, corsHdrs));
 
-router.post("/api/:v/shop/checkout", (req, env, corsHdrs) => handleCreateCheckout(req, env, corsHdrs));
+router.post("/api/:v/shop/checkout", (req, env, corsHdrs) => handleShopCheckout(req, env, corsHdrs));
 
 // Dev Auth Routes (only in development)
 router.post("/dev/admin-jwt", (req, env) => handleDevAdminJWT(req, env));

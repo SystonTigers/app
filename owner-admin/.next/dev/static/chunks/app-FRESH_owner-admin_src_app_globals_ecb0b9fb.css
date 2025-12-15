@@ -461,6 +461,14 @@ img, video {
   margin-top: .75rem;
 }
 
+.ml-2 {
+  margin-left: .5rem;
+}
+
+.mr-2 {
+  margin-right: .5rem;
+}
+
 .block {
   display: block;
 }
@@ -627,6 +635,14 @@ img, video {
 
 .w-32 {
   width: 8rem;
+}
+
+.w-1\/2 {
+  width: 50%;
+}
+
+.w-3\/4 {
+  width: 75%;
 }
 
 .min-w-\[200px\] {
@@ -898,6 +914,22 @@ img, video {
   border-color: #0ea5e980;
 }
 
+.border-blue-500\/20 {
+  border-color: #3b82f633;
+}
+
+.border-green-500\/20 {
+  border-color: #22c55e33;
+}
+
+.border-orange-500\/20 {
+  border-color: #f9731633;
+}
+
+.border-purple-500\/20 {
+  border-color: #a855f733;
+}
+
 .border-t-transparent {
   border-top-color: #0000;
 }
@@ -1038,6 +1070,11 @@ img, video {
   background-color: #a855f71a;
 }
 
+.bg-gray-700 {
+  --tw-bg-opacity: 1;
+  background-color: rgb(55 65 81 / var(--tw-bg-opacity, 1));
+}
+
 .bg-gradient-to-br {
   background-image: linear-gradient(to bottom right, var(--tw-gradient-stops));
 }
@@ -1076,6 +1113,30 @@ img, video {
   --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
 }
 
+.from-blue-500\/20 {
+  --tw-gradient-from: #3b82f633 var(--tw-gradient-from-position);
+  --tw-gradient-to: #3b82f600 var(--tw-gradient-to-position);
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
+}
+
+.from-green-500\/20 {
+  --tw-gradient-from: #22c55e33 var(--tw-gradient-from-position);
+  --tw-gradient-to: #22c55e00 var(--tw-gradient-to-position);
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
+}
+
+.from-orange-500\/20 {
+  --tw-gradient-from: #f9731633 var(--tw-gradient-from-position);
+  --tw-gradient-to: #f9731600 var(--tw-gradient-to-position);
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
+}
+
+.from-purple-500\/20 {
+  --tw-gradient-from: #a855f733 var(--tw-gradient-from-position);
+  --tw-gradient-to: #a855f700 var(--tw-gradient-to-position);
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
+}
+
 .via-gray-900 {
   --tw-gradient-to: #11182700 var(--tw-gradient-to-position);
   --tw-gradient-stops: var(--tw-gradient-from), #111827 var(--tw-gradient-via-position), var(--tw-gradient-to);
@@ -1099,6 +1160,22 @@ img, video {
 
 .to-orange-500\/30 {
   --tw-gradient-to: #f973164d var(--tw-gradient-to-position);
+}
+
+.to-blue-600\/10 {
+  --tw-gradient-to: #2563eb1a var(--tw-gradient-to-position);
+}
+
+.to-green-600\/10 {
+  --tw-gradient-to: #16a34a1a var(--tw-gradient-to-position);
+}
+
+.to-orange-600\/10 {
+  --tw-gradient-to: #ea580c1a var(--tw-gradient-to-position);
+}
+
+.to-purple-600\/10 {
+  --tw-gradient-to: #9333ea1a var(--tw-gradient-to-position);
 }
 
 .p-12 {

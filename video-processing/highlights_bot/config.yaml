@@ -347,9 +347,10 @@ performance:
   cleanup_temp: true         # Delete temp files after processing
   keep_intermediate: false   # Keep intermediate clips for debugging
 
-  # Optimization
-  use_gpu: false             # Use GPU acceleration (if available)
+  # GPU Optimization
+  use_gpu: auto              # 'auto' = detect and use if available, true = force, false = disable
   gpu_device: 0
+  gpu_fallback: true         # Fall back to CPU if GPU fails
 
 # ============================================
 # INTEGRATION

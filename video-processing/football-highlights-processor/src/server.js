@@ -10,6 +10,7 @@ import winston from 'winston';
 import { fileURLToPath } from 'url';
 import path from 'path';
 import fs from 'fs-extra';
+import * as Sentry from '@sentry/node';
 
 import { VideoProcessor } from './processors/video-processor.js';
 import { MatchNotesParser } from './parsers/match-notes-parser.js';
@@ -18,6 +19,10 @@ import { DriveManager } from './storage/drive-manager.js';
 import { StorageCoordinator } from './storage/storage-coordinator.js';
 import { createStorageDashboard } from './storage/storage-dashboard.js';
 import { HealthMonitor } from './monitoring/health-monitor.js';
+import { CleanupScheduler } from './monitoring/cleanup-scheduler.js';
+import { verifyJWT, uploadRateLimiter, statusRateLimiter, apiRateLimiter } from './middleware/auth.js';
+import { GPUHelper } from './processing/gpu-helper.js';
+import { registerMobileRoutes } from './integrations/mobile-upload.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -45,11 +50,28 @@ const logger = winston.createLogger({
 const app = express();
 const port = process.env.PORT || 8080;
 
+// Initialize Sentry for error monitoring
+if (process.env.SENTRY_DSN) {
+  Sentry.init({
+    dsn: process.env.SENTRY_DSN,
+    environment: process.env.NODE_ENV || 'development',
+    tracesSampleRate: 0.1,
+    integrations: [
+      Sentry.expressIntegration({ app }),
+      Sentry.httpIntegration(),
+    ],
+  });
+  logger.info('📊 Sentry monitoring enabled');
+}
+
 // Security middleware
 app.use(helmet());
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Global rate limiting
+app.use(apiRateLimiter);
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
@@ -131,9 +153,11 @@ app.get('/health', async (req, res) => {
   }
 });
 
-// Main video processing endpoint
-app.post('/process', upload.single('video'), async (req, res) => {
+// Main video processing endpoint - SECURED
+app.post('/process', verifyJWT, uploadRateLimiter, upload.single('video'), async (req, res) => {
   try {
+    // Log tenant for audit
+    logger.info('Processing request from tenant', { tenantId: req.tenant?.id });
     const {
       clubName,
       opponent,
@@ -204,8 +228,8 @@ app.post('/process', upload.single('video'), async (req, res) => {
   }
 });
 
-// Job status endpoint
-app.get('/status/:jobId', async (req, res) => {
+// Job status endpoint - SECURED
+app.get('/status/:jobId', verifyJWT, statusRateLimiter, async (req, res) => {
   try {
     const job = await videoQueue.getJob(req.params.jobId);
 
@@ -241,8 +265,8 @@ app.get('/status/:jobId', async (req, res) => {
   }
 });
 
-// Parse match notes endpoint (for testing)
-app.post('/parse-notes', async (req, res) => {
+// Parse match notes endpoint - SECURED
+app.post('/parse-notes', verifyJWT, async (req, res) => {
   try {
     const { matchNotes } = req.body;
 
@@ -274,8 +298,8 @@ app.post('/parse-notes', async (req, res) => {
   }
 });
 
-// Queue statistics endpoint
-app.get('/stats', async (req, res) => {
+// Queue statistics endpoint - SECURED
+app.get('/stats', verifyJWT, async (req, res) => {
   try {
     const waiting = await videoQueue.getWaiting();
     const active = await videoQueue.getActive();
@@ -307,8 +331,8 @@ app.get('/stats', async (req, res) => {
   }
 });
 
-// Storage management endpoints
-app.get('/storage/status', async (req, res) => {
+// Storage management endpoints - SECURED
+app.get('/storage/status', verifyJWT, async (req, res) => {
   try {
     const status = await storageCoordinator.getStorageStatus();
     res.json({
@@ -515,7 +539,7 @@ videoQueue.process('process-match', 3, async (job) => {
 
     // Step 7: Cleanup temporary files
     if (job.data.videoUrl && inputPath) {
-      await fs.remove(inputPath).catch(() => {}); // Ignore cleanup errors
+      await fs.remove(inputPath).catch(() => { }); // Ignore cleanup errors
     }
 
     logger.info('Video processing completed', {
@@ -538,7 +562,7 @@ videoQueue.process('process-match', 3, async (job) => {
           status: 'failed',
           error: error.message
         })
-      }).catch(() => {}); // Ignore notification errors
+      }).catch(() => { }); // Ignore notification errors
     }
 
     throw error;
@@ -592,11 +616,43 @@ process.on('SIGINT', async () => {
   process.exit(0);
 });
 
+// Initialize cleanup scheduler
+const cleanupScheduler = new CleanupScheduler(logger, storageCoordinator);
+cleanupScheduler.start();
+
+// Initialize GPU helper
+const gpuHelper = new GPUHelper(logger);
+
+// Register mobile upload routes
+registerMobileRoutes(app, videoQueue, logger);
+
 // Start server
-app.listen(port, '0.0.0.0', () => {
-  logger.info(`🎬 Football Highlights Processor started on port ${port}`);
-  logger.info(`📊 Queue dashboard: http://localhost:${port}/admin/queues`);
-  logger.info(`🔍 Health check: http://localhost:${port}/health`);
+const startServer = async () => {
+  // Detect GPU availability
+  const gpuAvailable = await gpuHelper.detect();
+
+  app.listen(port, '0.0.0.0', () => {
+    logger.info(`🎬 Football Highlights Processor started on port ${port}`);
+    logger.info(`📊 Queue dashboard: http://localhost:${port}/admin/queues`);
+    logger.info(`🔍 Health check: http://localhost:${port}/health`);
+    logger.info(`🔒 JWT authentication: ENABLED`);
+    logger.info(`⚡ Rate limiting: ENABLED`);
+    logger.info(`📅 Cleanup scheduler: ENABLED`);
+    logger.info(`📱 Mobile uploads: ENABLED`);
+    if (gpuAvailable) {
+      logger.info(`🎮 GPU acceleration: ENABLED (${gpuHelper.getSpeedEstimate()})`);
+    } else {
+      logger.info(`💻 GPU acceleration: DISABLED (using CPU)`);
+    }
+    if (process.env.SENTRY_DSN) {
+      logger.info(`📊 Sentry monitoring: ENABLED`);
+    }
+  });
+};
+
+startServer().catch(err => {
+  logger.error('Failed to start server', err);
+  process.exit(1);
 });
 
 export default app;

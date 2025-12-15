@@ -97,7 +97,8 @@
     "stream-to-buffer": "^0.1.0",
     "chalk": "^5.3.0",
     "ora": "^7.0.1",
-    "inquirer": "^9.2.12"
+    "inquirer": "^9.2.12",
+    "@sentry/node": "^8.0.0"
   },
   "devDependencies": {
     "jest": "^29.7.0",
@@ -198,9 +199,16 @@
     "unsafe-perm": true
   },
   "nodemonConfig": {
-    "watch": ["src"],
+    "watch": [
+      "src"
+    ],
     "ext": "js,json",
-    "ignore": ["tests/", "node_modules/", "logs/", "coverage/"],
+    "ignore": [
+      "tests/",
+      "node_modules/",
+      "logs/",
+      "coverage/"
+    ],
     "env": {
       "NODE_ENV": "development",
       "LOG_LEVEL": "debug"

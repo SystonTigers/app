@@ -1,74 +1,49 @@
-# Brand Assets for Broadcast Overlays
+# Brand Assets Setup Guide
 
-This directory contains all brand assets used for creating professional broadcast overlays.
+## Quick Start
 
-## Directory Structure
+This directory contains brand assets for professional broadcast-quality overlays.
 
-```
-brand/
-├── badges/
-│   ├── home_team.png       # Home team badge/logo
-│   └── away_team.png       # Away team badge/logo
-├── fonts/
-│   ├── Inter-Bold.ttf      # Bold font for titles
-│   └── Inter-Regular.ttf   # Regular font for subtitles
-├── templates/
-│   ├── scorebug_template.png      # 400x100, transparent background
-│   ├── lower_third_template.png   # 1920x200, semi-transparent
-│   ├── opening_slate_bg.png       # 1920x1080
-│   └── closing_slate_bg.png       # 1920x1080
-├── stinger.mov                    # 0.5s transition with alpha channel
-└── luts/
-    └── club_lut.cube              # Optional color grading LUT
-```
+## Required Assets
 
-## Asset Requirements
+### 1. Badges (`badges/`)
+Place your team badges here:
+- `club_badge.png` - Your main club badge (recommended: 256x256px, transparent PNG)
+- `home_team.png` - Home team badge (used in scorebugs)
+- `away_team.png` - Away team badge (used in scorebugs)
 
-### Images (PNG)
-- **All PNGs must have transparency (alpha channel)**
-- Team badges: Recommended size 200x200px
-- Scorebug template: 400x100px with transparent background
-- Lower-third template: 1920x200px with semi-transparent background
-- Slate backgrounds: 1920x1080px
+### 2. Fonts (`fonts/`)
+Custom fonts for overlays:
+- `Inter-Bold.ttf` - Bold font for titles, scores
+- `Inter-Regular.ttf` - Regular font for descriptions
 
-### Fonts
-- Must be TrueType (.ttf) or OpenType (.otf) format
-- Recommended: Inter, Roboto, or any clean sans-serif font
-- Need both Bold and Regular weights
+**Free fonts:** Download Inter from https://fonts.google.com/specimen/Inter
 
-### Stinger Transition
-- Duration: 0.25-0.5 seconds
-- Format: ProRes 4444 or H.264 with alpha channel
-- Must have transparency for overlay effect
+### 3. Templates (`templates/`)
+Overlay background templates:
+- `scorebug_template.png` - Scorebug background (420x60px recommended)
+- `lower_third_template.png` - Lower-third background (1920x200px)
+- `opening_slate_bg.png` - Opening slate (1920x1080px)
+- `closing_slate_bg.png` - Closing slate (1920x1080px)
 
-### LUT (Optional)
-- Format: .cube format only
-- Used for color grading to match club brand colors
+### 4. LUTs (`luts/`)
+Color grading LUTs:
+- `club_lut.cube` - Optional custom color grading
+
+### 5. Transitions
+- `stinger.mov` - Animated transition (optional, 1-2 seconds)
 
 ## Fallback Behavior
 
-If assets are not provided, the system will:
-- Use default fonts (system fonts)
-- Generate templates from scratch with semi-transparent backgrounds
-- Skip stinger transitions
-- Use default colors and layouts
+If any asset is missing, the system will:
+1. Use solid color backgrounds instead
+2. Use system fonts (may look less professional)
+3. Skip overlays that require missing assets
 
-## Usage
+## How to Get Started
 
-Place your assets in the appropriate directories and update your configuration file to reference them:
-
-```json
-{
-  "brand_assets": {
-    "home_badge": "brand/badges/home_team.png",
-    "away_badge": "brand/badges/away_team.png",
-    "club_badge": "brand/badges/club.png",
-    "font_bold": "brand/fonts/Inter-Bold.ttf",
-    "font_regular": "brand/fonts/Inter-Regular.ttf",
-    "scorebug_template": "brand/templates/scorebug_template.png",
-    "lower_third_template": "brand/templates/lower_third_template.png",
-    "stinger_path": "brand/stinger.mov",
-    "club_lut": "brand/luts/club_lut.cube"
-  }
-}
-```
+1. Export your club badge as a transparent PNG
+2. Download Inter fonts from Google Fonts
+3. Create simple templates in Canva/Photoshop
+4. Place files in appropriate directories
+5. Update `config.yaml` if using custom filenames
