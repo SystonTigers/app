@@ -1,1194 +1,1322 @@
-# 🏆 Syston Tigers Platform - Complete System Guide for Claude
+# 🏆 Syston Tigers Platform - Complete System Guide for AI Assistants
+
+**Last Updated:** 2026-01-14
+**Platform Version:** 7.0.0
+**Status:** Production-Ready Multi-Tenant SaaS
+
+---
 
 ## 📋 Table of Contents
+
 1. [System Overview](#system-overview)
-2. [Architecture](#architecture)
-3. [Repositories](#repositories)
-4. [Key Features](#key-features)
-5. [Video Processing System](#video-processing-system)
-6. [Technology Stack](#technology-stack)
-7. [Deployment Guide](#deployment-guide)
-8. [Mobile App](#mobile-app)
-9. [API Reference](#api-reference)
-10. [Current Status](#current-status)
-11. [Next Steps](#next-steps)
+2. [Repository Structure](#repository-structure)
+3. [Architecture](#architecture)
+4. [Technology Stack](#technology-stack)
+5. [Development Workflow](#development-workflow)
+6. [API Routes Reference](#api-routes-reference)
+7. [Database Schema](#database-schema)
+8. [Deployment Guide](#deployment-guide)
+9. [Key Conventions](#key-conventions)
+10. [Testing Strategy](#testing-strategy)
+11. [Troubleshooting](#troubleshooting)
 
 ---
 
 ## System Overview
 
-**What is this?**
-A multi-tenant SaaS platform for grassroots football clubs, starting with Syston Tigers U13 Boys team.
+### What is This?
 
-**Business Model:**
-- Multi-tenant architecture (unlimited clubs/teams)
-- Each tenant gets isolated data, configs, and branding
-- JWT-based authentication and authorization
-- Cloudflare Workers backend ($5/month for unlimited tenants)
+A **complete multi-tenant SaaS platform for grassroots football clubs**. Starting with Syston Tigers U16, the platform provides:
 
-**Key Value Proposition:**
-- Replace WhatsApp groups, spreadsheets, Facebook for team management
-- Unified platform: fixtures, events, RSVP, news, training, store
-- Smart notifications (geo-aware)
+- 📱 **Mobile App** (React Native/Expo) - iOS & Android
+- 🌐 **Web Apps** - Next.js tenant-facing and admin consoles
+- ☁️ **Cloudflare Workers Backend** - Serverless API
+- 🎥 **Video Processing** - AI-powered highlights
+- 🛍️ **E-commerce** - Team store with Printify
+- 📊 **Analytics** - Usage tracking and revenue reporting
+- 🔔 **Push Notifications** - Geo-aware smart notifications
+
+### Business Model
+
+- **Multi-tenant architecture** - Unlimited clubs on single deployment
+- **Pricing tiers**: Starter (Free) → Pro (£29.99/mo) → Elite (Custom)
+- **Promo codes** - Discount and lifetime access management
+- **Stripe integration** - Subscription billing
+- **Cost**: ~$5-15/month for entire platform (unlimited tenants)
+
+### Key Value Proposition
+
+Replace WhatsApp groups, spreadsheets, and Facebook with a unified platform:
 - Independent news feed with social media cross-posting
+- Calendar with RSVP tracking
+- Live match updates with geo-aware notifications
+- Training tools, tactics boards, drill library
+- Team store with personalized merchandise
+- Video highlights with AI processing
+
+---
+
+## Repository Structure
+
+### Monorepo Layout
+
+```
+/home/user/app/
+├── backend/                 # Cloudflare Workers API (main backend)
+│   ├── src/
+│   │   ├── index.ts        # Main API entry point
+│   │   ├── routes/         # API route handlers (60+ files)
+│   │   ├── services/       # Business logic services
+│   │   ├── middleware/     # Auth, CORS, validation
+│   │   ├── schema/         # D1 database schema
+│   │   ├── do/             # Durable Objects (ChatRoom, MatchRoom, etc.)
+│   │   └── cron/           # Scheduled tasks
+│   ├── wrangler.toml       # Cloudflare configuration
+│   └── package.json        # Backend dependencies
+│
+├── mobile/                  # React Native mobile app (Expo)
+│   ├── src/
+│   │   ├── screens/        # Screen components
+│   │   ├── components/     # Reusable UI components
+│   │   ├── services/       # API clients, auth
+│   │   ├── i18n/           # Internationalization (en, fr, es)
+│   │   └── theme/          # Colors, typography, spacing
+│   ├── App.tsx             # App entry point
+│   ├── app.json            # Expo configuration
+│   └── package.json        # Mobile dependencies
+│
+├── web-app/                 # Next.js tenant-facing web app
+│   ├── src/
+│   │   ├── app/            # Next.js App Router pages
+│   │   ├── components/     # React components
+│   │   └── lib/            # Utilities, API clients
+│   ├── next.config.js      # Next.js configuration
+│   └── package.json        # Web app dependencies
+│
+├── owner-admin/             # Next.js platform admin console
+│   ├── src/
+│   │   └── app/
+│   │       ├── (auth)/     # Login pages
+│   │       └── (dashboard)/ # Admin dashboard pages
+│   ├── next.config.js
+│   └── package.json
+│
+├── web/                     # Legacy/alternate web interface
+│
+├── workers/                 # Specialized Cloudflare Workers
+│   ├── fixtures/           # Fixture sync worker
+│   ├── highlights-orchestrator/  # Video processing orchestration
+│   └── highlights-uploader/      # Video upload handler
+│
+├── packages/                # Shared packages (monorepo)
+│   ├── sdk/                # Platform SDK
+│   │   ├── client.ts       # API client
+│   │   └── types.ts        # SDK types
+│   └── types/              # Shared TypeScript types
+│       └── index.ts        # Type definitions
+│
+├── video-processing/        # AI video tools (Python/Docker)
+│   ├── highlights_bot/     # Python AI video editor
+│   ├── football-highlights-processor/  # Docker production setup
+│   └── football-highlights-installer/  # CLI installer
+│
+├── docs/                    # Documentation
+│   ├── ARCHITECTURE.md     # System architecture
+│   ├── RUNBOOK.md          # Operations guide
+│   └── ERROR_CODES.md      # Error reference
+│
+├── scripts/                 # Build and deployment scripts
+├── qa/                      # QA testing and evidence
+├── archive/                 # Archived code and docs
+│
+├── package.json            # Root workspace config
+├── wrangler.toml           # Backend worker config
+├── CLAUDE.md               # This file
+├── PRODUCT_ROADMAP.md      # Feature roadmap
+├── README.md               # Main README
+└── START_HERE.md           # Quick start guide
+```
 
 ---
 
 ## Architecture
 
-### Multi-Tenant Design
+### High-Level System Design
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    Mobile App (React Native)                 │
-│              syston-mobile/ (Expo + TypeScript)              │
-└─────────────────┬───────────────────────────────────────────┘
-                  │
-                  │ HTTPS
-                  ▼
-┌─────────────────────────────────────────────────────────────┐
-│              Cloudflare Workers (Backend)                    │
-│  ┌──────────────┬──────────────┬──────────────┬──────────┐  │
-│  │ syston-      │ integration- │ data-        │ admin-   │  │
-│  │ postbus      │ worker       │ manager      │ worker   │  │
-│  │ (API Gateway)│ (Make.com)   │ (YouTube/YT) │ (Tenant  │  │
-│  │              │              │              │  CRUD)   │  │
-│  └──────┬───────┴──────┬───────┴──────┬───────┴─────┬────┘  │
-│         │              │              │             │        │
-│         ▼              ▼              ▼             ▼        │
-│  ┌──────────────────────────────────────────────────────┐   │
-│  │           Cloudflare KV (Key-Value Store)            │   │
-│  │  • tenant:{id} → config                              │   │
-│  │  • feed:{tenant}:{id} → posts                        │   │
-│  │  • event:{tenant}:{id} → events                      │   │
-│  │  • fixture:{tenant}:{id} → matches                   │   │
-│  │  • squad:{tenant}:{id} → players                     │   │
-│  └──────────────────────────────────────────────────────┘   │
-│                                                              │
-│  ┌──────────────────────────────────────────────────────┐   │
-│  │      Durable Objects (Stateful Coordination)          │   │
-│  │  • Rate limiting per tenant                           │   │
-│  │  • Geo-fencing for smart notifications                │   │
-│  │  • Real-time event coordination                       │   │
-│  └──────────────────────────────────────────────────────┘   │
-│                                                              │
-│  ┌──────────────────────────────────────────────────────┐   │
-│  │         R2 Storage (Media/Videos/Images)              │   │
-│  │  • Match videos                                       │   │
-│  │  • Player photos                                      │   │
-│  │  • Gallery albums                                     │   │
-│  └──────────────────────────────────────────────────────┘   │
-└──────────────────┬──────────────────┬────────────────────────┘
-                   │                  │
-                   ▼                  ▼
-         ┌──────────────────┐  ┌──────────────────┐
-         │   Make.com       │  │  YouTube Data    │
-         │   Webhooks       │  │  API v3          │
-         │ (Social Posts)   │  │ (Video Import)   │
-         └──────────────────┘  └──────────────────┘
-                   │
-                   ▼
-         ┌──────────────────────────────┐
-         │  Social Media Platforms      │
-         │  • X/Twitter                 │
-         │  • Instagram                 │
-         │  • Facebook                  │
-         └──────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                     CLIENT APPLICATIONS                          │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐          │
+│  │  Mobile App  │  │  Web App     │  │ Owner Admin  │          │
+│  │  (Expo)      │  │  (Next.js)   │  │  (Next.js)   │          │
+│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘          │
+└─────────┼──────────────────┼──────────────────┼─────────────────┘
+          │                  │                  │
+          │         HTTPS/JSON API             │
+          │                  │                  │
+          ▼                  ▼                  ▼
+┌─────────────────────────────────────────────────────────────────┐
+│              CLOUDFLARE WORKERS PLATFORM                         │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │  Main Backend Worker (app)                                │  │
+│  │  - API Gateway (itty-router)                              │  │
+│  │  - 60+ route handlers                                     │  │
+│  │  - Auth middleware (JWT, sessions, CSRF)                  │  │
+│  │  - Multi-tenant isolation                                 │  │
+│  └────────────────────┬──────────────────────────────────────┘  │
+│                       │                                          │
+│  ┌────────────────────┴──────────────────────────────────────┐  │
+│  │  Specialized Workers                                       │  │
+│  │  ┌────────────┐ ┌────────────┐ ┌────────────┐            │  │
+│  │  │ Fixtures   │ │ Highlights │ │ Highlights │            │  │
+│  │  │ Sync       │ │ Orchestr.  │ │ Uploader   │            │  │
+│  │  └────────────┘ └────────────┘ └────────────┘            │  │
+│  └────────────────────────────────────────────────────────────┘  │
+│                       │                                          │
+│  ┌────────────────────┴──────────────────────────────────────┐  │
+│  │  Cloudflare Data Layer                                     │  │
+│  │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐     │  │
+│  │  │ D1 (SQL) │ │ KV Store │ │ R2 (S3)  │ │ Queues   │     │  │
+│  │  │ Database │ │ (Tenants)│ │ (Media)  │ │ (Async)  │     │  │
+│  │  └──────────┘ └──────────┘ └──────────┘ └──────────┘     │  │
+│  │                                                             │  │
+│  │  ┌──────────────────────────────────────────────────────┐  │  │
+│  │  │ Durable Objects (Stateful)                           │  │  │
+│  │  │ - ChatRoom      - MatchRoom    - VotingRoom          │  │  │
+│  │  │ - GeoFenceManager - TenantRateLimiter                │  │  │
+│  │  └──────────────────────────────────────────────────────┘  │  │
+│  └────────────────────────────────────────────────────────────┘  │
+└──────────────────────┬──────────────────────────────────────────┘
+                       │
+         ┌─────────────┴─────────────┐
+         │                           │
+         ▼                           ▼
+┌──────────────────┐        ┌──────────────────┐
+│  External APIs   │        │  Integrations    │
+│  - Supabase      │        │  - Make.com      │
+│  - Stripe        │        │  - Printify      │
+│  - YouTube       │        │  - Google Apps   │
+│  - eBay          │        │    Script        │
+└──────────────────┘        └──────────────────┘
 ```
 
-### Data Isolation
+### Multi-Tenant Isolation
 
-**Per-Tenant Storage:**
-```javascript
-// Each tenant's data is isolated by key prefixes
-tenant:syston-tigers → { name, colors, logo, webhook, ... }
-feed:syston-tigers:post123 → { content, channels, timestamp, ... }
-event:syston-tigers:evt456 → { type, date, rsvps, ... }
-```
+**Data Isolation Strategy:**
 
-**JWT-Based Access:**
-```javascript
-// JWT payload includes tenant ID
-{
-  "tenant_id": "syston-tigers",
-  "user_id": "user123",
-  "role": "admin|coach|player|parent"
-}
-```
+1. **D1 Database**: `team_id` column in all tables
+2. **KV Storage**: Key prefixes (`tenant:${id}:...`)
+3. **R2 Storage**: Folder structure (`/${tenant_id}/...`)
+4. **Durable Objects**: Namespaced by tenant ID
 
----
+**Request Flow:**
 
-## Repositories
-
-### 1. **Automation_script** (QA/Testing/DevOps)
-**Location:** `C:\Users\clayt\Automation_script`
-**GitHub:** https://github.com/SystonTigers/Automation_script.git
-
-**Purpose:**
-- QA automation and testing infrastructure
-- Deployment scripts and CI/CD
-- Documentation for testing
-
-**Key Files:**
-- `backend/tests/` - Test suites
-- `qa/` - QA documentation and evidence
-- `CODEX_10_10_INSTRUCTIONS.md` - Roadmap to production
-- `TESTING_GUIDE_TODAY.md` - What's testable now
-
-**Current Status:** 7/10 - Tests written but need real execution with live credentials
-
----
-
-### 2. **app** (Backend Workers)
-**Location:** `C:\Users\clayt\app`
-**GitHub:** https://github.com/SystonTigers/app.git
-
-**Purpose:**
-- Cloudflare Workers backend
-- Multi-tenant API
-- Admin endpoints for tenant management
-
-**Key Files:**
-```
-app/
-├── backend/
-│   └── src/
-│       ├── index.ts          # Main API Gateway (syston-postbus)
-│       ├── admin.ts          # Tenant CRUD endpoints
-│       ├── integration.ts    # Make.com webhook handler
-│       └── data-manager.ts   # YouTube API integration
-├── wrangler.toml             # Worker configuration
-├── PRODUCT_ROADMAP.md        # 6-month feature plan
-├── ARCHITECTURE_CLARIFICATION.md  # Multi-tenant design docs
-└── CLAUDE.md                 # This file
-```
-
-**Deployment:**
-```bash
-cd ~/app/backend
-wrangler deploy --name syston-postbus
-wrangler deploy --name integration-worker
-wrangler deploy --name data-manager-worker
-wrangler deploy --name admin-worker
-```
-
----
-
-### 3. **app/mobile/** (Mobile App Frontend)
-**Location:** `C:\Users\clayt\app\mobile`
-**GitHub:** Consolidated into app repo
-
-**Purpose:**
-- React Native mobile app
-- Expo for cross-platform (iOS + Android)
-- Consumer-facing interface
-- Video recording and upload
-
-**Key Files:**
-```
-mobile/
-├── src/
-│   ├── config.ts                 # API URL, colors, tenant ID
-│   ├── services/
-│   │   └── api.ts               # API client (axios)
-│   └── screens/
-│       ├── HomeScreen.tsx       # Next event + news feed
-│       ├── CalendarScreen.tsx   # Events + RSVP
-│       ├── FixturesScreen.tsx   # Matches + results
-│       ├── SquadScreen.tsx      # Player roster
-│       └── VideoScreen.tsx      # Video recording/upload (NEW)
-├── App.tsx                       # Navigation setup
-├── package.json
-└── README.md                     # Mobile app docs
-```
-
-**Run Development Server:**
-```bash
-cd ~/app/mobile
-npm start
-# Access QR code at http://localhost:8081
-```
-
----
-
-### 4. **app/video-processing/** (AI Video Tools)
-**Location:** `C:\Users\clayt\app\video-processing`
-**GitHub:** Consolidated into app repo
-
-**Purpose:**
-- AI-powered video highlight detection
-- Automated video editing and production
-- Server-side match video processing
-- Integration with mobile app and Apps Script
-
-**Contains 3 Production Tools:**
-
-#### 4.1 highlights_bot (Python AI Editor)
-```
-video-processing/highlights_bot/
-├── main.py           # Entry point
-├── detect.py         # AI detection engine (20KB)
-├── edit.py           # Video editing logic (25KB)
-├── edl.py            # Edit Decision List generator
-├── config.yaml       # Configuration
-└── requirements.txt  # Python dependencies
-```
-
-**What it does:**
-- Analyzes match videos using AI/ML
-- Detects key moments (goals, cards, near-misses)
-- Automatically cuts and edits highlight clips
-- Exports finished highlights
-
-#### 4.2 football-highlights-processor (Docker Production)
-```
-video-processing/football-highlights-processor/
-├── Dockerfile              # Container definition
-├── docker-compose.yml      # Multi-service orchestration
-├── apps-script/            # Apps Script integration
-├── integration/            # System integrations
-└── monitoring/             # Health checks
-```
-
-**What it does:**
-- Production-ready Docker-based processing
-- Integrates with Apps Script
-- Monitoring and alerting
-- Scalable processing queue
-
-#### 4.3 football-highlights-installer (Node.js Setup)
-```
-video-processing/football-highlights-installer/
-├── bin/            # CLI tools
-├── lib/            # Core libraries
-├── templates/      # Setup templates
-└── package.json    # npm package
-```
-
-**What it does:**
-- One-command installation
-- Sets up all dependencies
-- Configures integrations
-- Creates templates
-
-**See `video-processing/README.md` for complete documentation.**
-
----
-
-## Key Features
-
-### ✅ Currently Built (Mock Data)
-
-#### 1. **News Feed System**
-- **Independent posts** (NOT copied from social media)
-- Per-post channel toggles:
-  ```json
-  {
-    "content": "Great win today! 3-1",
-    "channels": {
-      "app_feed": true,      // Shows in mobile app
-      "twitter": true,       // Posts to X/Twitter
-      "instagram": false,    // Skip Instagram
-      "facebook": false      // Skip Facebook
-    }
-  }
-  ```
-- Like/comment/share actions
-- Pull to refresh
-
-#### 2. **Event Management**
-- Calendar view with visual event markers
-- Event types: Match, Training, Social
-- RSVP system (Going / Maybe / Can't Go)
-- Attendee tracking
-- Export .ics files for native calendars
-- Color-coded event dots
-
-#### 3. **Fixtures & Results**
-- Upcoming matches display
-- Past results with scores
-- Scorers and cards listed
-- Competition badges
-- Venue information
-
-#### 4. **Squad Management**
-- Player cards with avatars
-- Stats: Goals, Assists, Appearances, Cards
-- Position badges (color-coded)
-- Tap for player details
-
-#### 5. **Video Recording & Upload (NEW)**
-- **📹 Record Video** directly in app (5 min max)
-- **📁 Select Video** from phone library
-- **🎬 Video Preview** with playback controls
-- **☁️ Upload to Server** for AI processing
-- **📊 Recent Highlights** with status tracking
-- **💡 Pro Tips** for best quality
-- **🤖 AI Processing** explanation
-
-#### 6. **Bottom Tab Navigation**
-- 🏠 Home - Next event widget + scrollable feed
-- 📅 Calendar - Visual calendar + RSVP
-- ⚽ Fixtures - Matches and results
-- 👥 Squad - Team roster
-- 🎬 Videos - Record/upload/view highlights (NEW)
-
----
-
-### 🚧 Planned Features (Roadmap)
-
-#### Phase 1: Smart Notifications (Q1 2025)
-**Geo-aware Push Notifications**
-- Match notifications: Goals, cards, HT, FT
-- **Smart Geo-fencing:** Only send if user NOT at venue (500m radius)
-- Powered by Durable Objects + Expo Notifications
-- Free implementation (no third-party costs)
-
-**Implementation:**
-```javascript
-// Durable Object: GeoFenceManager
-class GeoFenceManager {
-  async shouldNotify(userId, matchId, eventType) {
-    const userLocation = await this.getUserLocation(userId);
-    const venueLocation = await this.getVenueLocation(matchId);
-    const distance = calculateDistance(userLocation, venueLocation);
-    return distance > 500; // Only notify if >500m away
-  }
-}
-```
-
-#### Phase 2: Training Tools (Q2 2025)
-- Session planner
-- Drill library (searchable)
-- Drill designer (visual)
-- Tactics board
-- Coach-only access via role-based auth
-
-#### Phase 3: Team Store (Q2 2025)
-- Printify integration
-- Custom merchandise per team
-- Team badge, colors, slogans
-- Parent/player ordering
-- Admin dashboard for orders
-
-#### Phase 4: Gallery (Q3 2025)
-- Photo albums
-- Match day photos
-- R2 storage for images
-- Upload from mobile app
-
-#### Phase 5: Chat/Messaging (Q3 2025)
-- Team chat
-- Direct messages
-- Coach announcements
-- Push notifications for messages
-
----
-
-## Video Processing System
-
-### 🎯 Two Ways to Create Highlights
-
-The platform offers **TWO MODES** for video processing, both using the same AI backend:
-
-#### 📱 Mode 1: Mobile App (Quick Clips)
-**Perfect for**: Parents, players, quick clips, social sharing
-
-**User Flow:**
-1. Open mobile app → Videos tab
-2. Tap "Record Video" or "Select Video"
-3. Record (5 min max) OR select from library
-4. Preview with playback controls
-5. Tap "Upload" button
-6. AI processes automatically
-7. Get notified when ready!
-
-**Use Cases:**
-- Parent records goal from stands
-- Player records training drill
-- Quick 30-second clips
-- Instant social sharing
-
-#### 🖥️ Mode 2: Server-Side (Full Match Automation)
-**Perfect for**: Coaches, full matches, professional highlights
-
-**Workflow:**
-1. Upload full 90-minute match video to Google Drive
-2. Apps Script creates metadata and exports JSON
-3. AI detects ALL highlight moments automatically
-4. Auto-creates professional clips
-5. Uploads to YouTube
-6. Posts to social media (X, Instagram, Facebook)
-
-**Use Cases:**
-- Full match highlight reels
-- Season compilations
-- Player spotlight videos
-- Professional editing
-
-**BOTH modes converge at the same AI processing backend!**
-
----
-
-### 🏗️ Video Architecture
-
-```
-┌────────────────────────────────────────────────────────────┐
-│                  TWO ENTRY POINTS                           │
-└────────────────────────────────────────────────────────────┘
-
-PATH A: MOBILE APP (Quick Clips)
-====
-1. USER OPENS APP
-   └─> mobile/src/screens/VideoScreen.tsx
-   └─> Record (expo-av) OR Select (expo-image-picker)
-
-2. PREVIEW & UPLOAD
-   └─> Video preview with controls
-   └─> Upload via API: POST /api/v1/videos/upload
-   └─> Progress bar + notification
-
-3. [Joins Path B at AI Processing]
-
-PATH B: SERVER-SIDE (Full Match)
-=====
-1. MATCH VIDEO UPLOAD
-   └─> Upload to Google Drive folder
-
-2. APPS SCRIPT TRACKING
-   └─> apps-script/video-clips.gs
-   └─> Creates metadata in Google Sheets
-   └─> Exports JSON with event timestamps
-
-3. [Joins Path A at AI Processing]
-
-SHARED AI PROCESSING (Both Paths Converge)
-=
-4. HIGHLIGHTS BOT (Python AI)
-   └─> video-processing/highlights_bot/
-   └─> detect.py: AI detection of goals, cards, moments
-   └─> edit.py: Cuts clips at exact timestamps
-   └─> Edits and produces highlights
-
-5. PROCESSOR (Docker Production)
-   └─> video-processing/football-highlights-processor/
-   └─> Queues processing jobs
-   └─> Monitors progress
-   └─> Handles errors and retries
-   └─> Scales with demand
-
-6. FINAL UPLOAD & DISTRIBUTION
-   └─> Apps Script uploads to YouTube
-   └─> Updates metadata in Sheets
-   └─> Triggers Make.com webhooks
-   └─> Posts to social media (X, Instagram, Facebook)
-
-7. USER NOTIFICATION
-   └─> Push notification: "Your highlights are ready!"
-   └─> Mobile app: Shows in "Recent Highlights"
-   └─> Email: Link to YouTube video
-```
-
----
-
-### 🔧 Video Processing Components
-
-#### Mobile App (expo-av + expo-image-picker)
-**File:** `mobile/src/screens/VideoScreen.tsx`
-
-**Features:**
-- Camera recording with 5-minute limit
-- Video library selection
-- Preview with native controls
-- Upload with progress tracking
-- Recent highlights list
-
-**Code Example:**
 ```typescript
-const recordVideo = async () => {
-  const result = await ImagePicker.launchCameraAsync({
-    mediaTypes: ImagePicker.MediaTypeOptions.Videos,
-    allowsEditing: true,
-    aspect: [16, 9],
-    quality: 1,
-    videoMaxDuration: 300, // 5 minutes max
-  });
+// 1. Extract tenant from request
+const tenant = req.headers.get('x-tenant-id') || extractFromJWT(token);
 
-  if (!result.canceled && result.assets[0].uri) {
-    setSelectedVideo(result.assets[0].uri);
-  }
-};
+// 2. Validate tenant exists
+const tenantConfig = await env.TENANTS.get(`tenant:${tenant}`);
+if (!tenantConfig) return error(404, 'Tenant not found');
+
+// 3. Filter all queries by tenant
+const matches = await env.DB.prepare(
+  'SELECT * FROM matches WHERE team_id = ?'
+).bind(tenant).all();
+
+// 4. All responses scoped to tenant
+return json({ tenant, data: matches });
 ```
-
-#### Apps Script Integration
-**Files:**
-- `apps-script/video-clips.gs`
-- `apps-script/video/`
-- `apps-script/user-menu-functions.gs`
-
-**What it does:**
-- Tracks clip metadata in Google Sheets
-- Manages YouTube uploads
-- Organizes clips by player
-- Generates graphics overlays
-- Exports JSON for AI processing
-
-**JSON Format:**
-```json
-{
-  "match_id": "20251007_syston_vs_panthers",
-  "events": [
-    {"minute": 23, "type": "goal", "player": "John Smith"},
-    {"minute": 45, "type": "yellow_card", "player": "Mike Jones"}
-  ],
-  "video_url": "https://drive.google.com/...",
-  "clips": [
-    {"start": 1380, "end": 1410, "event": "goal"}
-  ]
-}
-```
-
-#### highlights_bot (Python AI)
-**File:** `video-processing/highlights_bot/main.py`
-
-**Usage:**
-```bash
-cd video-processing/highlights_bot
-python main.py --json events.json --video match.mp4 --output highlights/
-```
-
-**What it does:**
-1. Reads event timestamps from JSON
-2. Uses AI to refine clip boundaries (detect.py)
-3. Cuts video at exact moments (edit.py)
-4. Adds transitions and effects
-5. Exports finished highlight clips
-
-**Configuration:** `config.yaml`
-```yaml
-input_dir: ./in
-output_dir: ./out
-detection:
-  model: yolov8
-  confidence: 0.7
-editing:
-  transition: fade
-  duration_before: 5  # seconds before event
-  duration_after: 5   # seconds after event
-export:
-  format: mp4
-  quality: high
-  codec: h264
-```
-
-#### football-highlights-processor (Docker)
-**File:** `video-processing/football-highlights-processor/docker-compose.yml`
-
-**Usage:**
-```bash
-cd video-processing/football-highlights-processor
-docker-compose up -d  # Start processor
-docker-compose logs -f  # View logs
-docker-compose down  # Stop processor
-```
-
-**What it does:**
-- Monitors input folder for new videos
-- Queues processing jobs
-- Runs highlights_bot on each video
-- Uploads finished clips
-- Sends webhooks when complete
-
-**Performance:**
-- **10-minute video**: ~2-3 minutes to process
-- **Full 90-minute match**: ~15-20 minutes
-- **Concurrent jobs**: 5 videos at once
-- **Queue size**: Unlimited
-
----
-
-### 📊 Video System Comparison
-
-| Feature | Apps Script | Video Tools | Mobile App |
-|---------|-------------|-------------|------------|
-| **Metadata tracking** | ✅ Google Sheets | ❌ No | ❌ No |
-| **YouTube upload** | ✅ Yes | ❌ No | ❌ No |
-| **Video analysis** | ❌ No | ✅ AI-powered | ❌ No |
-| **Video cutting** | ❌ No | ✅ Automatic | ❌ No |
-| **Video editing** | ❌ No | ✅ Full editor | ❌ No |
-| **Production scale** | ❌ Limited | ✅ Docker queue | ❌ No |
-| **User recording** | ❌ No | ❌ No | ✅ In-app |
-| **Quick upload** | ❌ No | ❌ No | ✅ Yes |
-| **Automation** | 🟡 Partial | ✅ Full | 🟡 Upload only |
-
-**Together**: Complete end-to-end solution! 🚀
-
----
-
-### 🚀 Video Setup & Deployment
-
-#### Prerequisites
-- Python 3.8+ (for highlights_bot)
-- Docker & Docker Compose (for processor)
-- Node.js 18+ (for installer)
-- Google Apps Script access (already configured)
-- Expo (for mobile app)
-
-#### Quick Start: Mobile Video Features
-**Already working!** No setup needed for mobile recording/upload.
-
-1. Open mobile app
-2. Go to Videos tab
-3. Record or select video
-4. Upload and wait
-
-Server-side processing happens automatically when backend is deployed.
-
-#### Setup: Server-Side Processing
-
-**Option 1: Use Installer (Easiest)**
-```bash
-cd video-processing/football-highlights-installer
-npm install
-npm run setup
-```
-
-**Option 2: Manual Setup**
-
-**Step 1: Install highlights_bot**
-```bash
-cd video-processing/highlights_bot
-pip install -r requirements.txt
-python main.py --help
-```
-
-**Step 2: Configure**
-```bash
-nano highlights_bot/config.yaml
-# Set input/output paths and AI settings
-```
-
-**Step 3: Test with sample video**
-```bash
-python main.py --input in/sample_match.mp4 --output out/
-```
-
-**Step 4: Deploy processor (Production)**
-```bash
-cd video-processing/football-highlights-processor
-docker-compose up -d --scale worker=3  # 3 workers
-```
-
----
-
-### 📚 Video Documentation
-
-Each tool has comprehensive documentation:
-- `mobile/README.md` - Mobile video features
-- `video-processing/README.md` - Complete video system guide
-- `highlights_bot/README.md` - Bot usage guide
-- `highlights_bot/apps_script_integration.md` - Integration guide
-- `football-highlights-installer/README.md` - Installation guide
-- `football-highlights-installer/USAGE.md` - Usage examples
 
 ---
 
 ## Technology Stack
 
-### Backend
-- **Cloudflare Workers** - Serverless compute ($5/month unlimited)
-- **Cloudflare KV** - Key-value storage (included)
-- **Durable Objects** - Stateful coordination (included)
-- **Cloudflare R2** - Object storage (~$0.50/month)
-- **Wrangler CLI** - Deployment tool
+### Backend (Cloudflare Workers)
 
-### Frontend (Mobile)
-- **React Native** - Cross-platform mobile framework
-- **Expo** - Development platform and tooling
-- **TypeScript** - Type safety
-- **React Navigation** - Bottom tabs navigation
-- **React Native Paper** - Material Design 3 UI components
-- **Axios** - HTTP client
-- **Zustand** - State management
-- **react-native-calendars** - Calendar UI
-- **Expo Notifications** - Push notifications
-- **Expo Location** - Geo-fencing
-- **expo-av** - Video recording and playback
-- **expo-image-picker** - Video/photo library access
-- **expo-media-library** - Media permissions
-- **expo-video-thumbnails** - Thumbnail generation
+- **Runtime**: Cloudflare Workers (V8 Isolates)
+- **Router**: itty-router v4
+- **Auth**: jose (JWT), bcryptjs (password hashing)
+- **Database**: D1 (SQLite)
+- **Storage**: R2 (S3-compatible), KV (key-value)
+- **Queues**: Cloudflare Queues (post-queue, highlights-queue)
+- **Durable Objects**: Stateful WebSocket coordination
+- **Validation**: Zod schemas
+- **Build**: esbuild, wrangler CLI
+- **Testing**: Vitest (unit + integration)
 
-### Video Processing (Server-Side)
-- **Python 3.8+** - Highlights bot runtime
-- **OpenCV** - Video processing
-- **TensorFlow/PyTorch** - AI detection models
-- **YOLOv8** - Object detection for sports events
-- **FFmpeg** - Video encoding/decoding
-- **Docker & Docker Compose** - Production containerization
-- **Node.js** - Installer CLI tool
+### Frontend - Mobile (React Native)
+
+- **Framework**: React Native 0.81 + Expo 54
+- **Language**: TypeScript 5.9
+- **Navigation**: React Navigation 7 (drawer + stack + tabs)
+- **State**: Zustand 5 (simple, performant)
+- **UI**: React Native Paper 5 (Material Design)
+- **HTTP**: Axios 1.12
+- **Calendar**: react-native-calendars
+- **Auth**: Expo SecureStore + Supabase
+- **Push**: Expo Notifications
+- **Video**: expo-av, expo-image-picker
+- **Maps**: Expo Location
+- **i18n**: Expo Localization (en, fr, es)
+
+### Frontend - Web (Next.js)
+
+- **Framework**: Next.js 16 (App Router)
+- **Language**: TypeScript 5
+- **Styling**: TailwindCSS 3
+- **Animation**: Framer Motion 12
+- **HTTP**: SWR 2 (stale-while-revalidate)
+- **Testing**: Vitest + Playwright (E2E)
+- **Build**: Turbopack (Next.js built-in)
+
+### Video Processing (Python/Docker)
+
+- **Runtime**: Python 3.8+
+- **AI**: YOLOv8, OpenCV, TensorFlow/PyTorch
+- **Encoding**: FFmpeg
+- **Orchestration**: Docker Compose
+- **Storage**: R2 buckets (VIDEOS_BUCKET, HIGHLIGHTS_BUCKET)
 
 ### Integrations
-- **Make.com** - Automation for social posts (Free or $9/month)
-- **YouTube Data API v3** - Video imports (Free)
-- **Printify API** - Merchandise (Pay per order)
 
-### Total Cost
-- **Minimum:** $5/month (Cloudflare only, unlimited tenants)
-- **Maximum:** $15/month (Cloudflare + Make.com Pro)
+- **Supabase**: User management, real-time subscriptions
+- **Stripe**: Subscription billing, payment processing
+- **Make.com**: Social media automation (X, Instagram, Facebook)
+- **YouTube Data API v3**: Video uploads
+- **Printify**: Print-on-demand merchandise
+- **Google Apps Script**: Legacy spreadsheet automation
+- **eBay**: (Future) Merchandise marketplace
+
+### Cost Breakdown (Monthly)
+
+| Service | Cost | Notes |
+|---------|------|-------|
+| Cloudflare Workers Paid | $5.00 | Unlimited requests, CPU, Durable Objects |
+| R2 Storage (50GB) | $0.75 | $0.015/GB |
+| D1 Database | $5.00 | 25M reads, 50M writes included |
+| Queues | Free | Included in Workers plan |
+| Expo Push Notifications | Free | Unlimited |
+| Supabase (Free tier) | $0 | Up to 50K users |
+| Make.com | $0-9 | Free tier or Core plan |
+| **TOTAL** | **$10-20/mo** | **Unlimited tenants** |
+
+---
+
+## Development Workflow
+
+### Initial Setup
+
+```bash
+# 1. Clone repository
+git clone https://github.com/SystonTigers/app.git
+cd app
+
+# 2. Install dependencies (root + all workspaces)
+npm install
+
+# 3. Setup backend database
+cd backend
+npx wrangler d1 execute DB --local --file=./src/schema/d1.sql
+
+# 4. Seed Syston Tigers tenant (optional)
+npx wrangler d1 execute DB --local --file=./scripts/seed-syston.sql
+
+# 5. Copy environment files
+cp env.sample .env.local
+```
+
+### Daily Development
+
+**Terminal 1: Backend**
+```bash
+cd backend
+npm run dev
+# Runs on http://localhost:8787
+```
+
+**Terminal 2: Web App**
+```bash
+cd web-app
+npm run dev
+# Runs on http://localhost:3000
+```
+
+**Terminal 3: Mobile App**
+```bash
+cd mobile
+npm start
+# Expo DevTools on http://localhost:8081
+# Scan QR with Expo Go app
+```
+
+**Terminal 4: Owner Admin (optional)**
+```bash
+cd owner-admin
+npm run dev
+# Runs on http://localhost:3001
+```
+
+### Testing
+
+```bash
+# Backend unit tests
+cd backend
+npm test
+
+# Backend test coverage
+npm run test:coverage
+
+# Web app unit tests
+cd web-app
+npm test
+
+# Web app E2E tests
+npm run test:e2e
+
+# Mobile snapshot tests
+cd mobile
+npm test
+```
+
+### Code Quality
+
+```bash
+# Lint backend
+cd backend
+npm run lint
+
+# Lint and fix
+npm run lint -- --fix
+
+# Type check (no build)
+npm run typecheck
+```
+
+### Git Workflow
+
+**Branch Strategy:**
+- `main` - Production-ready code
+- `develop` - Integration branch
+- `claude/claude-md-*` - Feature branches (AI-generated)
+- `feature/*` - Manual feature branches
+- `hotfix/*` - Emergency fixes
+
+**Commit Convention:**
+```bash
+# Format: <type>(<scope>): <subject>
+
+git commit -m "feat(mobile): add video recording screen"
+git commit -m "fix(backend): resolve CORS issue in admin routes"
+git commit -m "docs(claude): update CLAUDE.md with monorepo structure"
+git commit -m "test(backend): add unit tests for auth service"
+```
+
+**Types**: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`
+
+---
+
+## API Routes Reference
+
+### Base URLs
+
+- **Local Development**: `http://localhost:8787`
+- **Preview**: `https://app-preview.team-platform-2025.workers.dev`
+- **Production**: `https://syston-postbus.team-platform-2025.workers.dev`
+
+### Route Categories
+
+The backend has **60+ route files** organized by feature:
+
+#### Core Routes
+
+| Route File | Path Prefix | Description |
+|------------|-------------|-------------|
+| `auth.ts` | `/api/v1/auth/*` | Login, logout, password reset, JWT refresh |
+| `admin.ts` | `/api/v1/admin/*` | Tenant management, feature flags, analytics |
+| `health.ts` | `/__meta/*` | Health checks, ping, version |
+
+#### Content & Social
+
+| Route File | Path Prefix | Description |
+|------------|-------------|-------------|
+| `content.ts` | `/api/v1/content/*` | News feed posts, comments, likes |
+| `social.ts` | `/api/v1/social/*` | Social media cross-posting |
+| `discussions.ts` | `/api/v1/discussions/*` | Team discussions, threads |
+| `chat.ts` | `/api/v1/chat/*` | Real-time chat (Durable Objects) |
+
+#### Matches & Events
+
+| Route File | Path Prefix | Description |
+|------------|-------------|-------------|
+| `matches.ts` | `/api/v1/matches/*` | Match CRUD operations |
+| `fixtures.ts` | `/api/v1/fixtures/*` | Fixture schedule, results |
+| `friendlies.ts` | `/api/v1/friendlies/*` | Friendly match management |
+| `events.ts` | `/api/v1/events/*` | Match events (goals, cards, subs) |
+| `calendar.ts` | `/api/v1/calendar/*` | Calendar events, RSVPs |
+
+#### Team Management
+
+| Route File | Path Prefix | Description |
+|------------|-------------|-------------|
+| `squad.ts` | `/api/v1/squad/*` | Squad roster, player details |
+| `players.ts` | `/api/v1/players/*` | Player profiles, stats |
+| `career-stats.ts` | `/api/v1/career-stats/*` | Player career statistics |
+| `transfers.ts` | `/api/v1/transfers/*` | Player transfers, loans |
+| `registration.ts` | `/api/v1/registration/*` | Player registration, onboarding |
+
+#### Coaching & Training
+
+| Route File | Path Prefix | Description |
+|------------|-------------|-------------|
+| `coaching.ts` | `/api/v1/coaching/*` | Coaching tools, session plans |
+| `training.ts` | `/api/v1/training/*` | Training sessions, attendance |
+| `tactics.ts` | `/api/v1/tactics/*` | Tactics boards, formations |
+
+#### Media & Video
+
+| Route File | Path Prefix | Description |
+|------------|-------------|-------------|
+| `videos.ts` | `/api/v1/videos/*` | Video uploads, highlights |
+| `gallery.ts` | `/api/v1/gallery/*` | Photo galleries, albums |
+| `youtube-upload.ts` | `/api/v1/youtube/*` | YouTube video uploads |
+| `upload.ts` | `/api/v1/upload/*` | Generic file uploads (R2) |
+
+#### E-commerce
+
+| Route File | Path Prefix | Description |
+|------------|-------------|-------------|
+| `personalized-shop.ts` | `/api/v1/shop/*` | Personalized team store |
+| `printify.ts` | `/api/v1/printify/*` | Printify integration |
+| `wearables.ts` | `/api/v1/wearables/*` | Team wearables, kits |
+
+#### Engagement
+
+| Route File | Path Prefix | Description |
+|------------|-------------|-------------|
+| `motm.ts` | `/api/v1/motm/*` | Man of the Match voting |
+| `gotm.ts` | `/api/v1/gotm/*` | Goal of the Month voting |
+| `fun-stats.ts` | `/api/v1/fun-stats/*` | Fun player statistics |
+| `match-report.ts` | `/api/v1/match-report/*` | Match reports, summaries |
+
+#### Administration
+
+| Route File | Path Prefix | Description |
+|------------|-------------|-------------|
+| `billing.ts` | `/api/v1/billing/*` | Stripe subscriptions, invoices |
+| `dues.ts` | `/api/v1/dues/*` | Team dues, payments |
+| `members.ts` | `/api/v1/members/*` | Member management |
+| `organization.ts` | `/api/v1/organization/*` | Multi-team organizations |
+| `seasons.ts` | `/api/v1/seasons/*` | Season management |
+
+#### Integrations
+
+| Route File | Path Prefix | Description |
+|------------|-------------|-------------|
+| `fa-sync.ts` | `/api/v1/fa-sync/*` | Football Association data sync |
+| `opponents.ts` | `/api/v1/opponents/*` | Opponent team data |
+| `import.ts` | `/api/v1/import/*` | CSV/JSON data imports |
+| `provisioning.ts` | `/api/v1/provision/*` | Tenant provisioning (Durable Object) |
+
+#### Utilities
+
+| Route File | Path Prefix | Description |
+|------------|-------------|-------------|
+| `push.ts` | `/api/v1/push/*` | Push notification registration |
+| `notifications.ts` | `/api/v1/notifications/*` | Notification preferences |
+| `settings.ts` | `/api/v1/settings/*` | User/tenant settings |
+| `usage.ts` | `/api/v1/usage/*` | Usage tracking, analytics |
+| `features.ts` | `/api/v1/features/*` | Feature flag management |
+
+### Authentication
+
+**JWT-based authentication** with optional session cookies.
+
+**Headers Required:**
+```http
+Authorization: Bearer <JWT_TOKEN>
+X-Tenant-ID: syston-tigers
+Content-Type: application/json
+```
+
+**Example Request:**
+```bash
+curl -X GET \
+  -H "Authorization: Bearer eyJhbGc..." \
+  -H "X-Tenant-ID: syston-tigers" \
+  https://syston-postbus.team-platform-2025.workers.dev/api/v1/squad
+```
+
+**JWT Payload:**
+```json
+{
+  "sub": "user_123abc",
+  "tenant_id": "syston-tigers",
+  "role": "coach",
+  "iat": 1705234567,
+  "exp": 1705320967
+}
+```
+
+---
+
+## Database Schema
+
+### Core Tables
+
+**Teams** (`teams`)
+```sql
+CREATE TABLE teams (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  badge_url TEXT,
+  colors_json TEXT,
+  slogan TEXT,
+  timezone TEXT DEFAULT 'Europe/London',
+  plan TEXT DEFAULT 'starter',  -- starter, pro, elite
+  team_code TEXT UNIQUE
+);
+```
+
+**Users** (`users`)
+```sql
+CREATE TABLE users (
+  id TEXT PRIMARY KEY,
+  email TEXT UNIQUE,
+  role TEXT NOT NULL,  -- manager, coach, player, parent
+  team_id TEXT,
+  FOREIGN KEY(team_id) REFERENCES teams(id)
+);
+```
+
+**Matches** (`matches`)
+```sql
+CREATE TABLE matches (
+  id TEXT PRIMARY KEY,
+  team_id TEXT NOT NULL,
+  date_utc INTEGER NOT NULL,
+  venue TEXT,
+  lat REAL,
+  lon REAL,
+  status TEXT DEFAULT 'scheduled',  -- scheduled, live, completed
+  FOREIGN KEY(team_id) REFERENCES teams(id)
+);
+```
+
+**Match Events** (`events`)
+```sql
+CREATE TABLE events (
+  id TEXT PRIMARY KEY,
+  match_id TEXT NOT NULL,
+  type TEXT NOT NULL,  -- goal, assist, card_yellow, card_red, sub
+  minute INTEGER,
+  player_id TEXT,
+  assist_id TEXT,
+  payload_json TEXT,
+  ts INTEGER NOT NULL,
+  FOREIGN KEY(match_id) REFERENCES matches(id)
+);
+```
+
+**Calendar Events** (`calendar_events`)
+```sql
+CREATE TABLE calendar_events (
+  id TEXT PRIMARY KEY,
+  tenant_id TEXT NOT NULL,
+  title TEXT NOT NULL,
+  start_time TEXT NOT NULL,
+  end_time TEXT,
+  location TEXT,
+  description TEXT,
+  created_at INTEGER NOT NULL
+);
+```
+
+**RSVPs** (`event_rsvps`)
+```sql
+CREATE TABLE event_rsvps (
+  id TEXT PRIMARY KEY,
+  event_id TEXT NOT NULL,
+  user_id TEXT NOT NULL,
+  status TEXT NOT NULL,  -- yes, no, maybe
+  created_at INTEGER NOT NULL,
+  FOREIGN KEY(event_id) REFERENCES calendar_events(id) ON DELETE CASCADE,
+  UNIQUE(event_id, user_id)
+);
+```
+
+**Devices** (Push Notifications)
+```sql
+CREATE TABLE devices (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  tenant_id TEXT NOT NULL,
+  token TEXT NOT NULL,
+  platform TEXT NOT NULL,  -- ios, android
+  created_at INTEGER NOT NULL
+);
+```
+
+### Schema Migrations
+
+**Location**: `backend/src/schema/d1.sql`
+
+**Apply locally:**
+```bash
+cd backend
+npx wrangler d1 execute DB --local --file=./src/schema/d1.sql
+```
+
+**Apply to production:**
+```bash
+npx wrangler d1 execute DB --env production --file=./src/schema/d1.sql
+```
+
+**Migration tracking**: Cloudflare D1 automatically tracks applied migrations.
 
 ---
 
 ## Deployment Guide
 
-### One-Time Setup (Secrets)
+### Prerequisites
 
-**These are set ONCE globally, NOT per tenant:**
+1. **Cloudflare Account** with Workers Paid plan ($5/month)
+2. **Wrangler CLI** installed globally: `npm install -g wrangler`
+3. **Authenticated**: `wrangler login`
+
+### One-Time Setup
+
+#### 1. Create Resources
 
 ```bash
-# Navigate to backend
-cd ~/app/backend
+# Create D1 database
+wrangler d1 create syston-db
 
-# Set secrets (ONE TIME ONLY)
-wrangler secret put JWT_SECRET              # Random 32+ char string
-wrangler secret put YT_CLIENT_ID            # YouTube OAuth Client ID
-wrangler secret put YT_CLIENT_SECRET        # YouTube OAuth Secret
-wrangler secret put YT_REFRESH_TOKEN        # YouTube Refresh Token
-wrangler secret put PRINTIFY_API_KEY        # Printify API key (future)
+# Create KV namespaces
+wrangler kv:namespace create TENANTS --env production
+wrangler kv:namespace create KV_IDEMP --env production
+wrangler kv:namespace create FEATURE_FLAGS --env production
+
+# Create R2 buckets
+wrangler r2 bucket create syston-media
+wrangler r2 bucket create oa-videos
+wrangler r2 bucket create oa-highlights
+
+# Create queues
+wrangler queues create post-queue
+wrangler queues create highlights-queue
+wrangler queues create dead-letter
+```
+
+#### 2. Update `wrangler.toml`
+
+Copy the resource IDs from step 1 into `backend/wrangler.toml` under `[env.production]`.
+
+#### 3. Set Secrets
+
+```bash
+cd backend
+
+# Required secrets
+wrangler secret put JWT_SECRET --env production
+wrangler secret put SUPABASE_URL --env production
+wrangler secret put SUPABASE_SERVICE_ROLE --env production
+wrangler secret put STRIPE_SECRET_KEY --env production
+wrangler secret put STRIPE_WEBHOOK_SECRET --env production
+
+# Optional secrets
+wrangler secret put GAS_WEBAPP_URL --env production
+wrangler secret put GAS_HMAC_SECRET --env production
+wrangler secret put GOOGLE_SERVICE_ACCOUNT_KEY --env production
+wrangler secret put RESEND_API_KEY --env production
+wrangler secret put YT_CLIENT_ID --env production
+wrangler secret put YT_CLIENT_SECRET --env production
+wrangler secret put YT_REFRESH_TOKEN --env production
+```
+
+#### 4. Initialize Database
+
+```bash
+# Apply schema
+npx wrangler d1 execute DB --env production --file=./src/schema/d1.sql
+
+# (Optional) Seed Syston Tigers tenant
+npx wrangler d1 execute DB --env production --file=./scripts/seed-syston.sql
 ```
 
 ### Deploy Workers
 
 ```bash
-# Deploy all 4 workers
-wrangler deploy --name syston-postbus        # Main API Gateway
-wrangler deploy --name integration-worker    # Make.com handler
-wrangler deploy --name data-manager-worker   # YouTube API
-wrangler deploy --name admin-worker          # Tenant CRUD
+# Deploy main backend
+cd backend
+npm run build
+wrangler deploy --env production
 
-# Get deployed URLs
-wrangler deployments list
+# Deploy fixtures worker
+cd ../workers/fixtures
+wrangler deploy --env production
+
+# Deploy highlights workers
+cd ../highlights-orchestrator
+wrangler deploy --env production
+
+cd ../highlights-uploader
+wrangler deploy --env production
 ```
 
-**Expected URLs:**
-- `https://syston-postbus.team-platform-2025.workers.dev`
-- `https://integration-worker.team-platform-2025.workers.dev`
-- `https://data-manager-worker.team-platform-2025.workers.dev`
-- `https://admin-worker.team-platform-2025.workers.dev`
+### Deploy Web Apps
+
+**Web App (Next.js):**
+```bash
+cd web-app
+npm run build
+
+# Deploy to Cloudflare Pages
+npx wrangler pages deploy .next --project-name syston-web-app
+```
+
+**Owner Admin (Next.js):**
+```bash
+cd owner-admin
+npm run build
+npx wrangler pages deploy .next --project-name syston-owner-admin
+```
+
+### Mobile App
+
+**Build for iOS:**
+```bash
+cd mobile
+eas build --platform ios --profile production
+```
+
+**Build for Android:**
+```bash
+eas build --platform android --profile production
+```
+
+**Submit to App Stores:**
+```bash
+eas submit --platform ios
+eas submit --platform android
+```
 
 ### Create New Tenant
 
-**ONE API CALL (No re-deployment needed):**
+Once deployed, create tenants via API:
 
 ```bash
-curl -X POST https://admin-worker.team-platform-2025.workers.dev/api/v1/admin/tenants \
+# Generate admin JWT
+cd backend/scripts
+node print-admin-jwt.js
+
+# Create tenant
+curl -X POST \
+  -H "Authorization: Bearer <ADMIN_JWT>" \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer YOUR_ADMIN_JWT" \
   -d '{
-    "tenant_id": "new-club-name",
-    "name": "New Club FC",
-    "primary_color": "#FF0000",
-    "secondary_color": "#FFFFFF",
-    "logo_url": "https://...",
-    "webhook_url": "https://hook.us1.make.com/...",
-    "youtube_channel_id": "UC...",
-    "admin_email": "admin@newclub.com"
-  }'
+    "tenant": "new-club",
+    "name": "New Football Club",
+    "email": "admin@newclub.com",
+    "plan": "starter"
+  }' \
+  https://syston-postbus.team-platform-2025.workers.dev/api/v1/admin/tenant/create
 ```
 
-Done! New tenant is live immediately.
+**That's it!** New tenant is live. No re-deployment needed.
 
 ---
 
-## Mobile App
+## Key Conventions
 
-### Current Setup
+### File Naming
 
-**Development Server Running:**
-```bash
-# Already running in background (bash ID: 7507c0)
-cd ~/syston-mobile && npx expo start
-```
+- **Components**: PascalCase (`PlayerCard.tsx`, `MatchList.tsx`)
+- **Utilities**: camelCase (`formatDate.ts`, `validateEmail.ts`)
+- **Routes**: kebab-case (`career-stats.ts`, `match-report.ts`)
+- **Types**: PascalCase with `.types.ts` suffix (`User.types.ts`)
 
-**Access QR Code:**
-1. Open browser: http://localhost:8081
-2. Click "Scan QR Code" tab
-3. Scan with Expo Go app on phone
+### Code Organization
 
-**Or Manual Connection:**
-1. Open Expo Go app
-2. Tap "Enter URL manually"
-3. Enter: `exp://192.168.1.X:8081` (check terminal for your IP)
-
-### Configuration
-
-**File:** `src/config.ts`
+**Backend Route Structure:**
 ```typescript
-export const API_BASE_URL = 'https://syston-postbus.team-platform-2025.workers.dev';
-export const TENANT_ID = 'syston-tigers';
+// backend/src/routes/example.ts
 
-export const COLORS = {
-  primary: '#FFD700',      // Syston Yellow
-  secondary: '#000000',    // Black
-  accent: '#FFA500',       // Orange
-  background: '#F5F5F5',   // Light gray
-  surface: '#FFFFFF',      // White
-  text: '#000000',         // Black
-  textLight: '#666666',    // Gray
-  success: '#4CAF50',      // Green
-  warning: '#FF9800',      // Orange
-  error: '#F44336',        // Red
-};
+import { IRequest } from 'itty-router';
+import { Env } from '../types';
+
+export async function handleExample(req: IRequest, env: Env) {
+  // 1. Extract tenant
+  const tenant = req.params.tenant;
+
+  // 2. Validate tenant
+  const tenantConfig = await env.TENANTS.get(`tenant:${tenant}`);
+  if (!tenantConfig) {
+    return new Response('Tenant not found', { status: 404 });
+  }
+
+  // 3. Business logic
+  const data = await env.DB.prepare(
+    'SELECT * FROM table WHERE team_id = ?'
+  ).bind(tenant).all();
+
+  // 4. Return response
+  return new Response(JSON.stringify(data), {
+    headers: { 'Content-Type': 'application/json' }
+  });
+}
 ```
 
-### Connect Real Backend
-
-**Step 1:** Deploy backend workers (see Deployment Guide above)
-
-**Step 2:** Update config with deployed URL:
+**Mobile Screen Structure:**
 ```typescript
-// src/config.ts
-export const API_BASE_URL = 'https://syston-postbus.YOUR-SUBDOMAIN.workers.dev';
-```
+// mobile/src/screens/ExampleScreen.tsx
 
-**Step 3:** Reload app
-```bash
-# In terminal where Expo is running, press 'r'
-# Or shake device and tap "Reload"
-```
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet } from 'react-native';
+import { useTheme } from '../theme';
+import { api } from '../services/api';
 
-**Step 4:** Data flows automatically!
+export default function ExampleScreen() {
+  const theme = useTheme();
+  const [data, setData] = useState([]);
 
----
+  useEffect(() => {
+    loadData();
+  }, []);
 
-## API Reference
+  const loadData = async () => {
+    const result = await api.get('/api/v1/example');
+    setData(result.data);
+  };
 
-### Base URL
-```
-https://syston-postbus.team-platform-2025.workers.dev
-```
+  return (
+    <View style={styles.container}>
+      <Text style={[styles.title, { color: theme.colors.primary }]}>
+        Example
+      </Text>
+    </View>
+  );
+}
 
-### Authentication
-```javascript
-// Include in headers
-Authorization: Bearer YOUR_JWT_TOKEN
-```
-
-### Endpoints
-
-#### News Feed
-```
-GET  /api/v1/feed?tenant=syston-tigers&page=1&limit=20
-POST /api/v1/feed/create
-POST /api/v1/feed/:id/like
-POST /api/v1/feed/:id/comment
-```
-
-#### Events/Calendar
-```
-GET  /api/v1/events?tenant=syston-tigers&limit=10
-GET  /api/v1/events/:id?tenant=syston-tigers
-POST /api/v1/events/:id/rsvp
-GET  /api/v1/events/:id/attendees?tenant=syston-tigers
-```
-
-#### Fixtures
-```
-GET /api/v1/fixtures?tenant=syston-tigers
-GET /api/v1/results?tenant=syston-tigers
-GET /api/v1/table?tenant=syston-tigers
-```
-
-#### Squad
-```
-GET /api/v1/squad?tenant=syston-tigers
-GET /api/v1/squad/:id?tenant=syston-tigers
-```
-
-#### Videos (NEW)
-```
-POST /api/v1/videos/upload              # Upload video from mobile app
-GET  /api/v1/videos?tenant=syston-tigers  # Get recent videos
-GET  /api/v1/videos/:id?tenant=syston-tigers  # Get video details
-GET  /api/v1/videos/:id/status?tenant=syston-tigers  # Processing status
-```
-
-**Upload Example:**
-```typescript
-const formData = new FormData();
-formData.append('video', {
-  uri: videoUri,
-  name: 'video.mp4',
-  type: 'video/mp4'
-});
-formData.append('tenant', TENANT_ID);
-formData.append('user_id', userId);
-
-await api.post('/api/v1/videos/upload', formData, {
-  headers: { 'Content-Type': 'multipart/form-data' }
+const styles = StyleSheet.create({
+  container: { flex: 1, padding: 16 },
+  title: { fontSize: 24, fontWeight: 'bold' }
 });
 ```
 
-#### Admin (Tenant Management)
-```
-POST   /api/v1/admin/tenants          # Create tenant
-GET    /api/v1/admin/tenants          # List all tenants
-GET    /api/v1/admin/tenants/:id      # Get tenant details
-PUT    /api/v1/admin/tenants/:id      # Update tenant
-DELETE /api/v1/admin/tenants/:id      # Delete tenant
-```
+### Error Handling
 
-### Example API Call from Mobile App
-
+**Backend:**
 ```typescript
-// src/services/api.ts
-import axios from 'axios';
-import { API_BASE_URL, TENANT_ID } from '../config';
-
-const api = axios.create({
-  baseURL: API_BASE_URL,
-  timeout: 10000,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+// Standardized error responses
+return new Response(JSON.stringify({
+  error: 'ERROR_CODE',
+  message: 'Human-readable message',
+  details: { ... }
+}), {
+  status: 400,
+  headers: { 'Content-Type': 'application/json' }
 });
+```
 
-// Get events
-export const eventsApi = {
-  getEvents: async (limit = 10) => {
-    const response = await api.get('/api/v1/events', {
-      params: { tenant: TENANT_ID, limit },
-    });
-    return response.data;
-  },
+**Mobile:**
+```typescript
+try {
+  const result = await api.get('/api/v1/data');
+  setData(result.data);
+} catch (error) {
+  if (error.response?.status === 401) {
+    // Redirect to login
+    navigation.navigate('Login');
+  } else {
+    // Show error toast
+    Alert.alert('Error', error.message);
+  }
+}
+```
 
-  rsvp: async (eventId: string, status: 'going' | 'not_going' | 'maybe') => {
-    const response = await api.post(`/api/v1/events/${eventId}/rsvp`, {
-      tenant: TENANT_ID,
-      status,
-      user_id: 'current-user-id', // TODO: Get from auth
-    });
-    return response.data;
-  },
-};
+### Type Safety
+
+**Shared Types** (`packages/types/index.ts`):
+```typescript
+export interface Match {
+  id: string;
+  team_id: string;
+  date_utc: number;
+  venue: string;
+  lat?: number;
+  lon?: number;
+  status: 'scheduled' | 'live' | 'completed';
+}
+
+export interface Player {
+  id: string;
+  name: string;
+  position: string;
+  number: number;
+  team_id: string;
+}
+```
+
+**Import in backend:**
+```typescript
+import { Match, Player } from '@team-platform/types';
+```
+
+**Import in mobile:**
+```typescript
+import type { Match, Player } from '@team-platform/types';
+```
+
+### Environment Variables
+
+**Backend** (`backend/.dev.vars`):
+```bash
+JWT_SECRET=local-dev-secret-min-32-chars
+SUPABASE_URL=http://localhost:54321
+SUPABASE_SERVICE_ROLE=local-service-role-key
+```
+
+**Web App** (`.env.local`):
+```bash
+NEXT_PUBLIC_API_BASE=/api/admin
+NEXT_PUBLIC_TENANT_ID=syston-tigers
+```
+
+**Mobile** (`mobile/.env`):
+```bash
+EXPO_PUBLIC_API_URL=https://syston-postbus.team-platform-2025.workers.dev
+EXPO_PUBLIC_TENANT_ID=syston-tigers
 ```
 
 ---
 
-## Current Status
+## Testing Strategy
 
-### ✅ Completed
-- [x] Multi-tenant backend architecture designed
-- [x] 4 Cloudflare Workers created
-- [x] Mobile app scaffolding (React Native + Expo)
-- [x] 5 main screens built (Home, Calendar, Fixtures, Squad, Videos)
-- [x] Bottom tab navigation
-- [x] API integration layer ready
-- [x] Mock data working in all screens
-- [x] Video recording/upload UI (mobile app)
-- [x] Video processing tools integrated (highlights_bot, processor, installer)
-- [x] Apps Script video integration ready
-- [x] QA test infrastructure created
-- [x] Documentation (this file!)
+### Backend Testing
 
-### 🚧 In Progress
-- [ ] Deploy backend workers to get live URLs
-- [ ] Connect mobile app to real backend
-- [ ] Replace mock data with API calls
-- [ ] Set up video processing backend (Python + Docker)
-- [ ] Test video upload from mobile app
-
-### ⏳ Blocked/Waiting
-- Backend deployment (needs Cloudflare account setup)
-- YouTube API credentials (for video import)
-- Make.com webhook URLs (for social posting)
-- Printify API key (for store feature)
-
-### 🐛 Known Issues
-1. **QA Evidence Files are Mock Data** - Tests exist but need real execution
-2. **No Authentication Yet** - JWT system designed but not implemented
-3. **QR Code Not Showing in Terminal** - Use http://localhost:8081 instead
-
----
-
-## Next Steps
-
-### Immediate (This Week)
-1. **Deploy Backend Workers**
-   ```bash
-   cd ~/app/backend
-   wrangler login
-   wrangler secret put JWT_SECRET
-   wrangler deploy --name syston-postbus
-   ```
-
-2. **Get Worker URL and Update Mobile App**
-   ```typescript
-   // src/config.ts
-   export const API_BASE_URL = 'https://syston-postbus.YOUR-URL.workers.dev';
-   ```
-
-3. **Test with Real Data**
-   - Create first tenant via admin API
-   - Add test events, fixtures, squad data
-   - Verify mobile app loads real data
-
-### Short Term (Next 2 Weeks)
-4. **Add Authentication**
-   - Build login screen
-   - Implement JWT token storage
-   - Add token to API headers
-
-5. **Set Up Make.com Webhooks**
-   - Create Make.com scenario for social posting
-   - Get webhook URL
-   - Add to tenant config
-
-6. **Set Up YouTube API**
-   - Create YouTube OAuth credentials
-   - Add refresh token to secrets
-   - Test video import
-
-### Medium Term (Next Month)
-7. **Build Remaining Screens**
-   - Gallery screen
-   - Chat/messaging screen
-   - Training tools (coaches only)
-   - Store (Printify integration)
-
-8. **Implement Geo-fencing**
-   - Create Durable Object for geo-fence management
-   - Connect Expo Location API
-   - Test smart notifications
-
-9. **QA Testing with Real Credentials**
-   - Run all tests in staging environment
-   - Replace mock evidence files
-   - Get to 10/10 functional status
-
-### Long Term (Next 3 Months)
-10. **Launch Syston Tigers to Parents/Players**
-    - Distribute app to team
-    - Gather feedback
-    - Iterate on features
-
-11. **Add Second Tenant**
-    - Onboard another club
-    - Validate multi-tenant isolation
-    - Refine onboarding process
-
-12. **Scale to 10 Clubs**
-    - Build marketing/sales process
-    - Add billing (Stripe integration?)
-    - Automate tenant provisioning
-
----
-
-## Quick Reference Commands
-
-### Backend Development
+**Unit Tests** (Vitest):
 ```bash
-# Navigate to backend
-cd ~/app/backend
-
-# Install dependencies
-npm install
-
-# Run locally
-wrangler dev
-
-# Deploy to production
-wrangler deploy --name syston-postbus
-
-# View logs
-wrangler tail syston-postbus
-
-# Manage secrets
-wrangler secret put SECRET_NAME
-wrangler secret list
+cd backend
+npm test
 ```
 
-### Mobile App Development
-```bash
-# Navigate to mobile app
-cd ~/app/mobile
+**Test file location**: `src/routes/__tests__/route-name.test.ts`
 
-# Install dependencies
-npm install
+**Example:**
+```typescript
+import { describe, it, expect } from 'vitest';
+import { handleExample } from '../example';
 
-# Start dev server
-npm start
+describe('Example Route', () => {
+  it('should return data for valid tenant', async () => {
+    const req = { params: { tenant: 'test' } };
+    const env = { /* mock env */ };
 
-# Start with cache clear
-npm start --clear
+    const response = await handleExample(req, env);
+    const data = await response.json();
 
-# Build for iOS (Mac only)
-eas build --platform ios
-
-# Build for Android
-eas build --platform android
+    expect(response.status).toBe(200);
+    expect(data).toHaveProperty('results');
+  });
+});
 ```
 
-### Git Workflow
-```bash
-# Pull latest changes
-cd ~/Automation_script && git pull origin main
-cd ~/app && git pull origin main
+**Coverage target**: 80%
 
-# Commit and push
-git add .
-git commit -m "Description"
-git push origin main
+### Web App Testing
+
+**Unit Tests** (Vitest + React Testing Library):
+```bash
+cd web-app
+npm test
 ```
+
+**E2E Tests** (Playwright):
+```bash
+npm run test:e2e
+npm run test:e2e:ui  # Interactive mode
+```
+
+**Test file location**: `tests/e2e/feature.spec.ts`
+
+### Mobile Testing
+
+**Snapshot Tests**:
+```bash
+cd mobile
+npm test
+```
+
+**Manual Testing**: Use Expo Go app on physical device
+
+**Beta Testing**: TestFlight (iOS), Google Play Internal Testing (Android)
 
 ---
 
 ## Troubleshooting
 
-### "QR code not showing in terminal"
-**Solution:** Open http://localhost:8081 in browser to see QR code
+### Common Issues
 
-### "API calls failing with 404"
-**Solution:** Check that backend workers are deployed and API_BASE_URL is correct in src/config.ts
+#### Backend won't start
 
-### "No data showing in app"
-**Solution:** App uses mock data by default. Deploy backend and update API_BASE_URL to see real data.
+**Symptom**: `wrangler dev` fails with binding errors
 
-### "Wrangler command not found"
-**Solution:**
+**Solution**:
 ```bash
-npm install -g wrangler
-wrangler login
+# 1. Check wrangler.toml has correct database_id
+# 2. Recreate local database
+npx wrangler d1 execute DB --local --file=./src/schema/d1.sql
+
+# 3. Clear wrangler cache
+rm -rf .wrangler
 ```
 
-### "Expo Go app won't connect"
-**Solution:** Ensure phone and computer are on same WiFi network
+#### CORS errors in browser
+
+**Symptom**: `Access-Control-Allow-Origin` errors
+
+**Solution**: Check middleware is applied:
+```typescript
+// backend/src/index.ts
+import { cors } from './middleware/cors';
+
+router.all('*', cors);  // Must be before routes
+```
+
+#### Authentication fails
+
+**Symptom**: 401 Unauthorized responses
+
+**Solution**:
+```bash
+# 1. Check JWT_SECRET is set
+wrangler secret list
+
+# 2. Verify token format
+# Header: Authorization: Bearer <token>
+
+# 3. Check token expiry
+# Decode at jwt.io
+```
+
+#### Mobile app won't connect to backend
+
+**Symptom**: Network request failed
+
+**Solution**:
+```typescript
+// Check API URL in mobile/src/config.ts
+export const API_BASE_URL = 'http://YOUR_IP:8787';  // Not localhost!
+
+// Use computer's local IP, not localhost
+// Find IP: ipconfig (Windows) or ifconfig (Mac/Linux)
+```
+
+#### Database queries return empty
+
+**Symptom**: API returns `[]` for valid requests
+
+**Solution**:
+```bash
+# 1. Check data exists
+npx wrangler d1 execute DB --local --command "SELECT * FROM teams"
+
+# 2. Verify team_id matches
+# All queries filter by team_id/tenant_id
+
+# 3. Re-seed if needed
+npx wrangler d1 execute DB --local --file=./scripts/seed-syston.sql
+```
+
+### Debug Tools
+
+**Backend Logs**:
+```bash
+# Local development
+wrangler dev --log-level debug
+
+# Production logs
+wrangler tail app --env production
+```
+
+**Database Inspection**:
+```bash
+# Local
+npx wrangler d1 execute DB --local --command "SELECT * FROM teams"
+
+# Production
+npx wrangler d1 execute DB --env production --command "SELECT * FROM teams"
+```
+
+**KV Storage**:
+```bash
+# List keys
+wrangler kv:key list --namespace-id=<ID>
+
+# Get value
+wrangler kv:key get "tenant:syston-tigers" --namespace-id=<ID>
+```
+
+**R2 Storage**:
+```bash
+# List objects
+wrangler r2 object list syston-media
+
+# Download object
+wrangler r2 object get syston-media/path/to/file.jpg
+```
+
+### Getting Help
+
+1. **Check Documentation**:
+   - `README.md` - Project overview
+   - `START_HERE.md` - Quick start guide
+   - `PRODUCT_ROADMAP.md` - Feature roadmap
+   - `docs/RUNBOOK.md` - Operations guide
+   - `docs/ERROR_CODES.md` - Error reference
+
+2. **Search Issues**: Check GitHub issues for similar problems
+
+3. **Ask Team**: Post in team chat with:
+   - What you're trying to do
+   - What you've tried
+   - Error messages (full stack trace)
+   - Environment (local/preview/production)
 
 ---
 
-## Support & Resources
+## Key Files Reference
 
-### Documentation
-- Cloudflare Workers: https://developers.cloudflare.com/workers/
-- Expo: https://docs.expo.dev/
-- React Native: https://reactnative.dev/
-- React Navigation: https://reactnavigation.org/
+### Must-Read Documentation
 
-### GitHub Repositories
-- Backend: https://github.com/SystonTigers/app.git
-- QA/Testing: https://github.com/SystonTigers/Automation_script.git
-- Mobile: (Not yet created)
+| File | Purpose |
+|------|---------|
+| `README.md` | Main project overview, quick start |
+| `CLAUDE.md` | This file - complete AI assistant guide |
+| `START_HERE.md` | Step-by-step setup for new developers |
+| `PRODUCT_ROADMAP.md` | Feature roadmap, 6-month plan |
+| `docs/ARCHITECTURE.md` | System architecture deep-dive |
+| `docs/RUNBOOK.md` | Operations, deployment, incident response |
+| `docs/ERROR_CODES.md` | Complete error code reference |
 
-### Key Files for Claude
-- `PRODUCT_ROADMAP.md` - 6-month feature plan
-- `ARCHITECTURE_CLARIFICATION.md` - Multi-tenant design
-- `CODEX_10_10_INSTRUCTIONS.md` - Path to production
-- `APP_READY.md` - Mobile app current status
-- `CLAUDE.md` - This comprehensive guide
+### Configuration Files
+
+| File | Purpose |
+|------|---------|
+| `package.json` | Root workspace config |
+| `backend/wrangler.toml` | Cloudflare Workers config |
+| `mobile/app.json` | Expo/React Native config |
+| `web-app/next.config.js` | Next.js web app config |
+| `owner-admin/next.config.js` | Next.js admin config |
+
+### Database & Schema
+
+| File | Purpose |
+|------|---------|
+| `backend/src/schema/d1.sql` | D1 database schema |
+| `backend/scripts/seed-syston.sql` | Syston Tigers seed data |
+| `backend/tenant-config.json` | Default tenant configuration |
+
+### Key Source Files
+
+| File | Purpose |
+|------|---------|
+| `backend/src/index.ts` | Main API gateway (58KB) |
+| `backend/src/routes/` | API route handlers (60+ files) |
+| `mobile/App.tsx` | Mobile app entry point |
+| `packages/types/index.ts` | Shared TypeScript types |
+| `packages/sdk/client.ts` | Platform SDK |
 
 ---
 
-**Last Updated:** 2025-10-07
-**System Status:** Development (Mock Data + Video Features Added)
-**Next Milestone:** Deploy backend workers, connect real data, set up video processing
-**Overall Progress:** 8/10 towards production-ready
-**Video System:** Mobile UI complete, server-side tools integrated, needs deployment
+## AI Assistant Guidelines
+
+### When Working on This Codebase
+
+1. **Always read relevant files first** - Use Read tool before making changes
+2. **Respect monorepo structure** - Understand workspace dependencies
+3. **Maintain type safety** - Use TypeScript strictly
+4. **Follow conventions** - See "Key Conventions" section
+5. **Test before committing** - Run tests locally
+6. **Write clear commit messages** - Follow commit convention
+7. **Update documentation** - Keep this file current
+
+### Making Changes
+
+**Backend Changes:**
+1. Identify route file in `backend/src/routes/`
+2. Read existing code
+3. Make minimal, focused changes
+4. Add/update tests in `__tests__/`
+5. Run `npm test`
+6. Update API documentation if endpoints changed
+
+**Mobile Changes:**
+1. Identify screen in `mobile/src/screens/`
+2. Check theme usage for consistency
+3. Update i18n files if adding text
+4. Test on iOS and Android
+5. Update snapshot tests if UI changed
+
+**Database Changes:**
+1. Update `backend/src/schema/d1.sql`
+2. Create migration script
+3. Test locally first
+4. Document breaking changes
+5. Update seed scripts if needed
+
+### Common Tasks
+
+**Add new API endpoint:**
+```bash
+# 1. Create or update route file
+# File: backend/src/routes/new-feature.ts
+
+# 2. Register route in index.ts
+# File: backend/src/index.ts
+
+# 3. Add tests
+# File: backend/src/routes/__tests__/new-feature.test.ts
+
+# 4. Update this documentation
+# Section: API Routes Reference
+```
+
+**Add new mobile screen:**
+```bash
+# 1. Create screen component
+# File: mobile/src/screens/NewFeatureScreen.tsx
+
+# 2. Add navigation
+# File: mobile/App.tsx
+
+# 3. Add i18n strings
+# Files: mobile/src/i18n/locales/{en,fr,es}.json
+
+# 4. Test on device
+# Command: npm start
+```
+
+**Add new database table:**
+```bash
+# 1. Update schema
+# File: backend/src/schema/d1.sql
+
+# 2. Apply migration locally
+npx wrangler d1 execute DB --local --file=./src/schema/d1.sql
+
+# 3. Update types
+# File: packages/types/index.ts
+
+# 4. Create seed data (optional)
+# File: backend/scripts/seed-data.sql
+```
+
+---
+
+**Last Updated:** 2026-01-14
+**Maintainer:** Claude (AI Assistant)
+**Status:** Production-Ready
+
+**For questions or updates, refer to the team chat or GitHub issues.**
