@@ -1080,6 +1080,34 @@ router.put("/api/:v/fixtures/fa-config", (req, env, corsHdrs) => handleSetFAConf
 // Email webhook for Cloudflare Email Workers
 router.post("/webhooks/fa-email", (req, env, corsHdrs) => handleEmailWebhook(req, env, corsHdrs));
 
+// Season Scraper Configuration Routes
+import {
+    handleGetScraperConfigs,
+    handleGetScraperConfig,
+    handleSaveScraperConfig,
+    handleDeleteScraperConfig,
+    handleRunScraperForSeason
+} from "./routes/scraper";
+router.get("/api/:v/scraper/configs", (req, env, corsHdrs) => handleGetScraperConfigs(req, env, corsHdrs));
+router.get("/api/:v/scraper/configs/:seasonId", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleGetScraperConfig(req, env, corsHdrs, params.seasonId);
+});
+router.post("/api/:v/scraper/configs", (req, env, corsHdrs) => handleSaveScraperConfig(req, env, corsHdrs));
+router.delete("/api/:v/scraper/configs/:seasonId", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleDeleteScraperConfig(req, env, corsHdrs, params.seasonId);
+});
+router.post("/api/:v/scraper/run/:seasonId", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleRunScraperForSeason(req, env, corsHdrs, params.seasonId);
+});
+
+// Seasons Management Routes
+import { handleListSeasons, handleCreateSeason } from "./routes/seasons";
+router.get("/api/:v/seasons", (req, env, corsHdrs) => handleListSeasons(req, env, corsHdrs));
+router.post("/api/:v/seasons", (req, env, corsHdrs) => handleCreateSeason(req, env, corsHdrs));
+
 // ===== WEARABLES / GPS TRACKING ROUTES =====
 
 // Device Management

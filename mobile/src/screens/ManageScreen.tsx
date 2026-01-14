@@ -27,6 +27,13 @@ const managementCards: ManagementCard[] = [
     color: '#2196F3',
   },
   {
+    title: 'Import Data',
+    description: 'Bulk upload players, fixtures from CSV/Excel',
+    icon: '📊',
+    screen: 'ImportData',
+    color: '#03A9F4',
+  },
+  {
     title: 'Events & Calendar',
     description: 'Create events, training sessions, social gatherings',
     icon: '📅',

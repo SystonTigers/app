@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { createClientSDK } from '@/lib/sdk';
 
 type ImportType = 'fixtures' | 'results' | 'players' | 'match-events';
@@ -20,9 +20,32 @@ export default function ImportPage({ params }: { params: { tenant: string } }) {
     const [importing, setImporting] = useState(false);
     const [result, setResult] = useState<ImportResult | null>(null);
     const [counts, setCounts] = useState<any>(null);
+    const [seasons, setSeasons] = useState<any[]>([]);
+    const [selectedSeasonId, setSelectedSeasonId] = useState<string>('');
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const sdk = createClientSDK(params.tenant);
+
+    // Load seasons on mount
+    useEffect(() => {
+        loadSeasons();
+        loadCounts();
+    }, []);
+
+    // Load seasons
+    const loadSeasons = async () => {
+        try {
+            const res = await fetch(`/api/v1/seasons`, {
+                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+            });
+            const data = await res.json();
+            if (data.success) {
+                setSeasons(data.data || []);
+            }
+        } catch (err) {
+            console.error('Failed to load seasons', err);
+        }
+    };
 
     // Load current data counts
     const loadCounts = async () => {
@@ -68,7 +91,12 @@ export default function ImportPage({ params }: { params: { tenant: string } }) {
         setResult(null);
 
         try {
-            const res = await fetch(`/api/v1/import/${importType}`, {
+            // Add seasonId to URL if selected
+            const url = selectedSeasonId
+                ? `/api/v1/import/${importType}?seasonId=${selectedSeasonId}`
+                : `/api/v1/import/${importType}`;
+
+            const res = await fetch(url, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'text/csv',
@@ -138,6 +166,26 @@ export default function ImportPage({ params }: { params: { tenant: string } }) {
             )}
 
             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+                {/* Season Selection */}
+                <div className="mb-6 pb-6 border-b border-gray-200 dark:border-gray-700">
+                    <h3 className="text-lg font-bold mb-3">Select Season (Optional)</h3>
+                    <select
+                        value={selectedSeasonId}
+                        onChange={(e) => setSelectedSeasonId(e.target.value)}
+                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                    >
+                        <option value="">Current Season (Default)</option>
+                        {seasons.map((season) => (
+                            <option key={season.id} value={season.id}>
+                                {season.name} {season.is_current === 1 && '(Current)'}
+                            </option>
+                        ))}
+                    </select>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                        💡 Select a historical season to import data for that specific season
+                    </p>
+                </div>
+
                 {/* Step 1: Select Type */}
                 <div className="mb-6">
                     <h3 className="text-lg font-bold mb-3">1. Select Data Type</h3>
@@ -147,8 +195,8 @@ export default function ImportPage({ params }: { params: { tenant: string } }) {
                                 key={opt.value}
                                 onClick={() => setImportType(opt.value as ImportType)}
                                 className={`p-4 rounded-xl border-2 transition-all text-left ${importType === opt.value
-                                        ? 'border-brand bg-brand/5'
-                                        : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
+                                    ? 'border-brand bg-brand/5'
+                                    : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
                                     }`}
                             >
                                 <div className="text-2xl mb-1">{opt.icon}</div>
@@ -235,8 +283,8 @@ export default function ImportPage({ params }: { params: { tenant: string } }) {
                 {/* Result */}
                 {result && (
                     <div className={`mb-6 p-4 rounded-xl ${result.success
-                            ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800'
-                            : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'
+                        ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800'
+                        : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'
                         }`}>
                         {result.success ? (
                             <div>

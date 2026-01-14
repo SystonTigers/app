@@ -64,6 +64,10 @@ export async function handleImportFixtures(req: Request, env: any, corsHdrs: Hea
         const claims = await requireJWT(req, env);
         const tenant = claims.tenantId;
 
+        // Get optional seasonId from query params
+        const url = new URL(req.url);
+        const seasonId = url.searchParams.get('seasonId') || null;
+
         const body = await req.text();
         const rows = parseCSV(body);
 
@@ -81,11 +85,12 @@ export async function handleImportFixtures(req: Request, env: any, corsHdrs: Hea
                 const fixtureDate = row.date || row.fixture_date;
 
                 await env.DB.prepare(`
-                    INSERT INTO fixtures (id, tenant_id, fixture_date, opponent, venue, competition, kick_off_time, created_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO fixtures (id, tenant_id, season_id, fixture_date, opponent, venue, competition, kick_off_time, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 `).bind(
                     id,
                     tenant,
+                    seasonId,
                     fixtureDate,
                     row.opponent || row.team,
                     row.venue || 'TBC',
@@ -182,6 +187,10 @@ export async function handleImportPlayers(req: Request, env: any, corsHdrs: Head
         const claims = await requireJWT(req, env);
         const tenant = claims.tenantId;
 
+        // Get optional seasonId from query params
+        const url = new URL(req.url);
+        const seasonId = url.searchParams.get('seasonId') || null;
+
         const body = await req.text();
         const rows = parseCSV(body);
 
@@ -225,6 +234,22 @@ export async function handleImportPlayers(req: Request, env: any, corsHdrs: Head
                     player.previous_club,
                     Date.now()
                 ).run();
+
+                // If seasonId provided, add to player_seasons table
+                if (seasonId) {
+                    await env.DB.prepare(`
+                        INSERT INTO player_seasons (id, tenant_id, season_id, player_id, squad_number, position, status, created_at)
+                        VALUES (?, ?, ?, ?, ?, ?, 'active', ?)
+                    `).bind(
+                        crypto.randomUUID(),
+                        tenant,
+                        seasonId,
+                        id,
+                        player.number,
+                        player.position,
+                        Date.now()
+                    ).run();
+                }
 
                 players.push(player);
                 imported++;

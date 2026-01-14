@@ -17,7 +17,8 @@
       "Bash(cat:*)",
       "Bash(ipconfig:*)",
       "Bash(timeout 5 curl:*)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(wrangler d1 migrations list:*)"
     ],
     "deny": [],
     "ask": []
