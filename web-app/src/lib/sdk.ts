@@ -395,9 +395,10 @@ export type AnySDK = {
   getShopProducts: () => Promise<Array<Record<string, unknown>>>;
   createCart: () => Promise<{ success: boolean; cart: any }>;
   getCart: (cartId: string) => Promise<{ success: boolean; cart: any }>;
-  addToCart: (cartId: string, variantId: string, quantity: number) => Promise<{ success: boolean; cart: any }>;
+  addToCart: (cartId: string, variantId: string, quantity: number, personalization?: any) => Promise<{ success: boolean; cart: any }>;
   removeFromCart: (cartId: string, variantId: string) => Promise<{ success: boolean; cart: any }>;
   createCheckoutSession: (cartId: string, email: string) => Promise<{ success: boolean; sessionId: string; url: string }>;
+  confirmShopOrder: (orderId: string, sessionId: string) => Promise<{ success: boolean; order: any }>;
   saveMatchReport: (fixtureId: string, report: any) => Promise<{ success: boolean }>;
   getMatchReport: (fixtureId: string) => Promise<{ success: boolean; events: any[] }>;
   resignTeam: (teamName: string) => Promise<{ success: boolean }>;
@@ -443,6 +444,7 @@ const compat: AnySDK = {
   addToCart: async () => ({ success: true, cart: { items: [] } }),
   removeFromCart: async () => ({ success: true, cart: { items: [] } }),
   createCheckoutSession: async () => ({ success: true, sessionId: 'mock', url: '#' }),
+  confirmShopOrder: async () => ({ success: true, order: {} }),
   saveMatchReport: async () => ({ success: true }),
   getMatchReport: async () => ({ success: true, events: [] }),
   resignTeam: async () => ({ success: true }),
@@ -515,10 +517,10 @@ class ClientSDK implements AnySDK {
     );
   }
 
-  async addToCart(cartId: string, variantId: string, quantity: number) {
+  async addToCart(cartId: string, variantId: string, quantity: number, personalization?: any) {
     return http<{ success: true; cart: any }>(
       `${API_BASE}/api/v1/shop/cart/${cartId}/items`,
-      { method: 'POST', body: JSON.stringify({ variantId, quantity }) }
+      { method: 'POST', body: JSON.stringify({ variantId, quantity, personalization }) }
     );
   }
 
@@ -533,6 +535,13 @@ class ClientSDK implements AnySDK {
     return http<{ success: true; sessionId: string; url: string }>(
       `${API_BASE}/api/v1/shop/checkout`,
       { method: 'POST', body: JSON.stringify({ cartId, customerEmail: email }) }
+    );
+  }
+
+  async confirmShopOrder(orderId: string, sessionId: string) {
+    return http<{ success: true; order: any }>(
+      `${API_BASE}/api/v1/shop/orders/${orderId}/confirm`,
+      { method: 'POST', body: JSON.stringify({ sessionId }) }
     );
   }
 

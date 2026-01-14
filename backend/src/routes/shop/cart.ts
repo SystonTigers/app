@@ -45,14 +45,14 @@ export async function handleAddToCart(req: Request, env: any, corsHdrs: Headers)
         // path is .../cart/ID/items -> ID is index - 2
         const cartId = pathParts[pathParts.length - 2];
 
-        const body = await req.json() as { variantId: string; quantity: number };
-        const { variantId, quantity } = body;
+        const body = await req.json() as { variantId: string; quantity: number, personalization?: any };
+        const { variantId, quantity, personalization } = body;
 
         if (!variantId || !quantity || quantity < 1) {
             return json({ success: false, error: 'Invalid request' }, 400, corsHdrs);
         }
 
-        const cart = await addToCart(cartId, variantId, quantity, env);
+        const cart = await addToCart(cartId, variantId, quantity, env, personalization);
         return json({ success: true, cart }, 200, corsHdrs);
     } catch (err: any) {
         return json({ success: false, error: err.message }, 400, corsHdrs);

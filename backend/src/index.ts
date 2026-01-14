@@ -100,8 +100,9 @@ import {
     handleDeletePhrase,
     handleAddClubProduct,
     handleListClubProducts,
-    handleCreateShopOrder,
-    handleConfirmShopOrder
+    handleConfirmShopOrder,
+    handleCreateCheckoutSession,
+    handleListShopOrders
 } from "./routes/personalized-shop";
 import {
     handleGetRevenueSummary,
@@ -419,8 +420,9 @@ router.get("/api/:v/shop/phrases", (req, env, corsHdrs) => handleListPhrases(req
 router.delete("/api/:v/shop/phrases/:id", (req, env, corsHdrs) => handleDeletePhrase(req, env, corsHdrs));
 router.post("/api/:v/shop/club-products", (req, env, corsHdrs) => handleAddClubProduct(req, env, corsHdrs));
 router.get("/api/:v/shop/club-products", (req, env, corsHdrs) => handleListClubProducts(req, env, corsHdrs));
-router.post("/api/:v/shop/orders", (req, env, corsHdrs) => handleCreateShopOrder(req, env, corsHdrs));
+router.post("/api/:v/shop/checkout", (req, env, corsHdrs) => handleCreateCheckoutSession(req, env, corsHdrs));
 router.post("/api/:v/shop/orders/:id/confirm", (req, env, corsHdrs) => handleConfirmShopOrder(req, env, corsHdrs));
+router.get("/api/:v/shop/orders", (req, env, corsHdrs) => handleListShopOrders(req, env, corsHdrs));
 
 // Owner Revenue Routes (requires OWNER_API_KEY)
 router.get("/owner-api/revenue/summary", (req, env) => handleGetRevenueSummary(req, env));

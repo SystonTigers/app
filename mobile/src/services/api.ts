@@ -757,4 +757,47 @@ export const liveMatchApi = {
   },
 };
 
+export const shopApi = {
+  // Get personalized shop products
+  getProducts: async () => {
+    const response = await api.get('/api/v1/shop/personalized', {
+      params: { tenant: TENANT_ID },
+    });
+    return response.data;
+  },
+
+  // Create Cart
+  createCart: async () => {
+    const response = await api.post('/api/v1/shop/cart', {
+      tenantId: TENANT_ID,
+    });
+    return response.data;
+  },
+
+  // Get Cart
+  getCart: async (cartId: string) => {
+    const response = await api.get(`/api/v1/shop/cart/${cartId}`);
+    return response.data;
+  },
+
+  // Add to Cart
+  addToCart: async (cartId: string, variantId: string, quantity: number, personalization?: any) => {
+    const response = await api.post(`/api/v1/shop/cart/${cartId}/items`, {
+      variantId,
+      quantity,
+      personalization,
+    });
+    return response.data;
+  },
+
+  // Checkout
+  createCheckoutSession: async (cartId: string, email: string) => {
+    const response = await api.post('/api/v1/shop/checkout', {
+      cartId,
+      customerEmail: email,
+    });
+    return response.data;
+  },
+};
+
 export default api;

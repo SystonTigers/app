@@ -21,7 +21,7 @@ interface PersonalizationData {
  * Generate SVG design with club badge and player info
  * This creates a vector design that can be uploaded to Printify
  */
-function generatePersonalizedSVG(data: PersonalizationData): string {
+export function generatePersonalizedSVG(data: PersonalizationData): string {
     const width = 3000;  // High res for printing
     const height = 3000;
 

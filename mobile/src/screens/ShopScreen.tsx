@@ -1,9 +1,19 @@
-import React, { useState } from 'react';
-import { View, ScrollView, StyleSheet, Image, TouchableOpacity, Linking, Dimensions } from 'react-native';
-import { Card, Title, Paragraph, Button, Chip, IconButton, Searchbar } from 'react-native-paper';
+import React, { useState, useEffect } from 'react';
+import { View, ScrollView, StyleSheet, Image, TouchableOpacity, Linking, Dimensions, Alert } from 'react-native';
+import { Card, Title, Paragraph, Button, Chip, IconButton, Searchbar, Modal, Portal, TextInput, Text, ActivityIndicator, FAB } from 'react-native-paper';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS } from '../config';
+import { shopApi } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 const { width } = Dimensions.get('window');
+
+interface ProductVariant {
+  id: string; // e.g. v_templateId_123 or club_prod_id
+  title: string;
+  price: number;
+}
 
 interface Product {
   id: string;
@@ -11,243 +21,215 @@ interface Product {
   description: string;
   price: number;
   imageUrl: string;
-  category: 'clothing' | 'accessories' | 'homeware' | 'custom';
-  sizes?: string[];
-  colors?: string[];
+  type: 'printify' | 'club';
+  category?: string;
+  variants: ProductVariant[];
   inStock: boolean;
+  personalization?: {
+    supported: boolean;
+    hasName?: boolean;
+    hasNumber?: boolean;
+  };
 }
 
-const mockProducts: Product[] = [
-  {
-    id: '1',
-    name: 'Syston Tigers Home Jersey',
-    description: 'Official 2024/25 home kit with club badge',
-    price: 35,
-    imageUrl: 'https://picsum.photos/400/400?random=51',
-    category: 'clothing',
-    sizes: ['YS', 'YM', 'YL', 'S', 'M', 'L', 'XL', 'XXL'],
-    colors: ['Yellow/Black'],
-    inStock: true
-  },
-  {
-    id: '2',
-    name: 'Training Shirt',
-    description: 'Breathable training top with club logo',
-    price: 25,
-    imageUrl: 'https://picsum.photos/400/400?random=52',
-    category: 'clothing',
-    sizes: ['YS', 'YM', 'YL', 'S', 'M', 'L', 'XL'],
-    colors: ['Black', 'Yellow'],
-    inStock: true
-  },
-  {
-    id: '3',
-    name: 'Club Scarf',
-    description: 'Knitted scarf in club colors',
-    price: 15,
-    imageUrl: 'https://picsum.photos/400/400?random=53',
-    category: 'accessories',
-    inStock: true
-  },
-  {
-    id: '4',
-    name: 'Water Bottle',
-    description: 'Reusable sports bottle with Tigers logo',
-    price: 10,
-    imageUrl: 'https://picsum.photos/400/400?random=54',
-    category: 'accessories',
-    inStock: true
-  },
-  {
-    id: '5',
-    name: 'Hooded Jacket',
-    description: 'Zip-up hoodie with embroidered badge',
-    price: 45,
-    imageUrl: 'https://picsum.photos/400/400?random=55',
-    category: 'clothing',
-    sizes: ['YS', 'YM', 'YL', 'S', 'M', 'L', 'XL', 'XXL'],
-    colors: ['Black', 'Yellow', 'Navy'],
-    inStock: true
-  },
-  {
-    id: '6',
-    name: 'Baseball Cap',
-    description: 'Adjustable cap with club logo',
-    price: 12,
-    imageUrl: 'https://picsum.photos/400/400?random=56',
-    category: 'accessories',
-    inStock: true
-  },
-  {
-    id: '7',
-    name: 'Travel Mug',
-    description: 'Insulated mug with Tigers branding',
-    price: 18,
-    imageUrl: 'https://picsum.photos/400/400?random=57',
-    category: 'homeware',
-    inStock: false
-  },
-  {
-    id: '8',
-    name: 'Custom Photo Print',
-    description: 'Your match photo on canvas or poster',
-    price: 30,
-    imageUrl: 'https://picsum.photos/400/400?random=58',
-    category: 'custom',
-    inStock: true
-  },
-];
-
-const PRINTIFY_STORE_URL = 'https://example.printify.com/syston-tigers';
-
 export default function ShopScreen() {
+  const { user } = useAuth();
+  const insets = useSafeAreaInsets();
+
+  const [loading, setLoading] = useState(true);
+  const [products, setProducts] = useState<Product[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+
+  // Cart
+  const [cartId, setCartId] = useState<string | null>(null);
+  const [cartCount, setCartCount] = useState(0);
+  const [checkingOut, setCheckingOut] = useState(false);
+
+  // Selected Product Modal
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [selectedVariantId, setSelectedVariantId] = useState<string>('');
+  const [personalization, setPersonalization] = useState({ name: '', number: '' });
+  const [addingToCart, setAddingToCart] = useState(false);
 
   const categories = [
     { id: 'all', label: 'All', icon: '🛍️' },
     { id: 'clothing', label: 'Clothing', icon: '👕' },
     { id: 'accessories', label: 'Accessories', icon: '🧢' },
-    { id: 'homeware', label: 'Homeware', icon: '🏠' },
     { id: 'custom', label: 'Custom', icon: '🎨' },
   ];
 
-  const filteredProducts = mockProducts.filter(product => {
+  useEffect(() => {
+    loadShop();
+    loadCart();
+  }, []);
+
+  const loadShop = async () => {
+    try {
+      setLoading(true);
+      const data = await shopApi.getProducts();
+      // Flatten products
+      if (data?.data?.products) {
+        const allProducts: Product[] = [
+          ...data.data.products.personalized.map((p: any) => ({
+            id: p.id,
+            name: p.title,
+            description: p.description,
+            price: (p.variants?.[0]?.price || 0) / 100,
+            imageUrl: p.image_url,
+            type: 'printify',
+            category: 'clothing', // Default for now
+            variants: p.variants?.map((v: any) => ({
+              id: v.id,
+              title: v.title,
+              price: v.price / 100
+            })) || [],
+            inStock: true,
+            personalization: { supported: true, hasName: true, hasNumber: true }
+          })),
+          ...data.data.products.club.map((p: any) => ({
+            id: p.id,
+            name: p.name,
+            description: p.description,
+            price: p.price, // Club products might already be formatted? Backend uses price_gbp (pence)? 
+            // In personalized-shop.ts: price: p.price_gbp / 100. So club products are ALREADY pounds.
+            imageUrl: p.imageUrl,
+            type: 'club',
+            category: p.category,
+            variants: [{ id: p.id, title: 'Standard', price: p.price }],
+            inStock: p.inStock,
+            personalization: { supported: false }
+          }))
+        ];
+        setProducts(allProducts);
+      }
+    } catch (e) {
+      console.error('Failed to load shop', e);
+      Alert.alert('Error', 'Could not load products');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadCart = async () => {
+    try {
+      const storedId = await AsyncStorage.getItem('cart_id');
+      if (storedId) {
+        setCartId(storedId);
+        const res = await shopApi.getCart(storedId);
+        if (res?.cart?.items) {
+          setCartCount(res.cart.items.length);
+        }
+      }
+    } catch (e) {
+      console.log('No active cart');
+    }
+  };
+
+  const handleProductSelect = (product: Product) => {
+    setSelectedProduct(product);
+    setSelectedVariantId(product.variants?.[0]?.id || '');
+    setPersonalization({ name: '', number: '' });
+  };
+
+  const handleAddToCart = async () => {
+    if (!selectedProduct || !selectedVariantId) return;
+
+    setAddingToCart(true);
+    try {
+      let activeCartId = cartId;
+      if (!activeCartId) {
+        const res = await shopApi.createCart();
+        if (res?.cart?.id) {
+          activeCartId = res.cart.id;
+          setCartId(activeCartId);
+          await AsyncStorage.setItem('cart_id', activeCartId!);
+        } else {
+          throw new Error('Failed to create cart');
+        }
+      }
+
+      const persData = selectedProduct.personalization?.supported ? {
+        name: personalization.name.toUpperCase(),
+        number: personalization.number
+      } : undefined;
+
+      await shopApi.addToCart(activeCartId!, selectedVariantId, 1, persData);
+
+      Alert.alert('Success', 'Added to cart');
+      setSelectedProduct(null);
+      loadCart(); // Refresh count
+    } catch (e) {
+      console.error(e);
+      Alert.alert('Error', 'Failed to add to cart');
+    } finally {
+      setAddingToCart(false);
+    }
+  };
+
+  const handleCheckout = async () => {
+    if (!cartId || cartCount === 0) return;
+    setCheckingOut(true);
+    try {
+      const email = user?.email || ''; // Should prompt if empty?
+      const res = await shopApi.createCheckoutSession(cartId, email);
+      if (res.success && res.url) {
+        await Linking.openURL(res.url);
+        // Maybe clear cart locally? 
+        // Logic: Frontend success page clears it. Mobile app check?
+        // For now, let user manually refresh or we clear on return?
+        // We'll clear cart ID to force new one next time?
+        // Or keep it until they confirm?
+        // Let's keep it.
+      } else {
+        Alert.alert('Error', 'Could not create checkout session');
+      }
+    } catch (e) {
+      Alert.alert('Error', 'Checkout failed');
+    } finally {
+      setCheckingOut(false);
+    }
+  };
+
+  const filteredProducts = products.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         product.description.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = selectedCategory === 'all' || product.category === selectedCategory;
+      product.description.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCategory = selectedCategory === 'all' || (product.category === selectedCategory) || (selectedCategory === 'custom' && product.personalization?.supported);
     return matchesSearch && matchesCategory;
   });
 
-  const openPrintifyStore = () => {
-    Linking.openURL(PRINTIFY_STORE_URL);
-  };
-
-  const buyProduct = (product: Product) => {
-    // Open Printify store to specific product
-    Linking.openURL(`${PRINTIFY_STORE_URL}/product/${product.id}`);
-  };
-
-  // Product Detail Modal
-  if (selectedProduct) {
+  if (loading) {
     return (
-      <View style={styles.container}>
-        <View style={styles.detailHeader}>
-          <IconButton
-            icon="arrow-left"
-            iconColor={COLORS.secondary}
-            size={24}
-            onPress={() => setSelectedProduct(null)}
-          />
-          <Title style={styles.detailHeaderTitle}>Product Details</Title>
-          <View style={{ width: 40 }} />
-        </View>
-
-        <ScrollView style={styles.detailContainer}>
-          <Image source={{ uri: selectedProduct.imageUrl }} style={styles.detailImage} />
-
-          <View style={styles.detailContent}>
-            <View style={styles.detailTitleRow}>
-              <Title style={styles.detailTitle}>{selectedProduct.name}</Title>
-              {!selectedProduct.inStock && (
-                <Chip style={styles.outOfStockChip} textStyle={styles.outOfStockText}>
-                  Out of Stock
-                </Chip>
-              )}
-            </View>
-
-            <Paragraph style={styles.detailPrice}>£{selectedProduct.price.toFixed(2)}</Paragraph>
-            <Paragraph style={styles.detailDescription}>{selectedProduct.description}</Paragraph>
-
-            {selectedProduct.sizes && (
-              <View style={styles.optionSection}>
-                <Paragraph style={styles.optionLabel}>Available Sizes:</Paragraph>
-                <View style={styles.optionChips}>
-                  {selectedProduct.sizes.map(size => (
-                    <Chip key={size} style={styles.optionChip}>
-                      {size}
-                    </Chip>
-                  ))}
-                </View>
-              </View>
-            )}
-
-            {selectedProduct.colors && (
-              <View style={styles.optionSection}>
-                <Paragraph style={styles.optionLabel}>Available Colors:</Paragraph>
-                <View style={styles.optionChips}>
-                  {selectedProduct.colors.map(color => (
-                    <Chip key={color} style={styles.optionChip}>
-                      {color}
-                    </Chip>
-                  ))}
-                </View>
-              </View>
-            )}
-
-            <Card style={styles.infoCard}>
-              <Card.Content>
-                <Title style={styles.infoTitle}>📦 Delivery Information</Title>
-                <Paragraph style={styles.infoText}>
-                  • UK shipping: 3-5 business days{'\n'}
-                  • Free shipping on orders over £50{'\n'}
-                  • Returns accepted within 30 days{'\n'}
-                  • All items made to order via Printify
-                </Paragraph>
-              </Card.Content>
-            </Card>
-
-            <Button
-              mode="contained"
-              icon="cart"
-              onPress={() => buyProduct(selectedProduct)}
-              style={styles.buyButton}
-              buttonColor={COLORS.primary}
-              textColor={COLORS.secondary}
-              disabled={!selectedProduct.inStock}
-            >
-              {selectedProduct.inStock ? 'Buy Now' : 'Out of Stock'}
-            </Button>
-          </View>
-        </ScrollView>
+      <View style={[styles.container, styles.center]}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
       </View>
     );
   }
 
-  // Main shop view
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <Title style={styles.headerTitle}>Team Shop</Title>
-        <Paragraph style={styles.headerSubtitle}>Official merchandise via Printify</Paragraph>
+        <Paragraph style={styles.headerSubtitle}>Official Merchandise</Paragraph>
       </View>
 
-      {/* Search Bar */}
       <View style={styles.searchContainer}>
         <Searchbar
-          placeholder="Search products..."
+          placeholder="Search items..."
           onChangeText={setSearchQuery}
           value={searchQuery}
           style={styles.searchBar}
         />
       </View>
 
-      {/* Category Filter */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll}>
         {categories.map(cat => (
           <Chip
             key={cat.id}
             selected={selectedCategory === cat.id}
             onPress={() => setSelectedCategory(cat.id)}
-            style={[
-              styles.categoryChip,
-              selectedCategory === cat.id && styles.categoryChipSelected,
-            ]}
-            textStyle={[
-              styles.categoryChipText,
-              selectedCategory === cat.id && styles.categoryChipTextSelected,
-            ]}
+            style={[styles.categoryChip, selectedCategory === cat.id && styles.categoryChipSelected]}
+            textStyle={[styles.categoryChipText, selectedCategory === cat.id && styles.categoryChipTextSelected]}
             selectedColor={COLORS.primary}
           >
             {cat.icon} {cat.label}
@@ -256,435 +238,169 @@ export default function ShopScreen() {
       </ScrollView>
 
       <ScrollView style={styles.scrollContainer}>
-        {/* Printify Info Banner */}
-        <Card style={styles.bannerCard}>
-          <Card.Content>
-            <View style={styles.bannerContent}>
-              <View style={styles.bannerText}>
-                <Title style={styles.bannerTitle}>🎨 Powered by Printify</Title>
-                <Paragraph style={styles.bannerDescription}>
-                  All products are made to order with high-quality printing
-                </Paragraph>
-              </View>
-              <Button
-                mode="outlined"
-                onPress={openPrintifyStore}
-                compact
-              >
-                Visit Store
-              </Button>
-            </View>
-          </Card.Content>
-        </Card>
-
-        {/* Products Grid */}
         <View style={styles.productsGrid}>
           {filteredProducts.map(product => (
             <TouchableOpacity
               key={product.id}
               style={styles.productCard}
-              onPress={() => setSelectedProduct(product)}
+              onPress={() => handleProductSelect(product)}
             >
-              <Image source={{ uri: product.imageUrl }} style={styles.productImage} />
+              {product.imageUrl ? (
+                <Image source={{ uri: product.imageUrl }} style={styles.productImage} />
+              ) : (
+                <View style={[styles.productImage, styles.placeholderImage]}>
+                  <Text style={{ fontSize: 40 }}>👕</Text>
+                </View>
+              )}
               {!product.inStock && (
                 <View style={styles.outOfStockOverlay}>
                   <Paragraph style={styles.outOfStockOverlayText}>Out of Stock</Paragraph>
                 </View>
               )}
               <View style={styles.productInfo}>
-                <Paragraph style={styles.productName} numberOfLines={2}>
-                  {product.name}
-                </Paragraph>
-                <Paragraph style={styles.productPrice}>£{product.price.toFixed(2)}</Paragraph>
+                <Paragraph style={styles.productName} numberOfLines={2}>{product.name}</Paragraph>
+                <Paragraph style={styles.productPrice}>£{(product.price).toFixed(2)}</Paragraph>
+                {product.personalization?.supported && (
+                  <View style={styles.customBadge}>
+                    <Text style={styles.customBadgeText}>CUSTOMIZABLE</Text>
+                  </View>
+                )}
               </View>
             </TouchableOpacity>
           ))}
         </View>
-
-        {filteredProducts.length === 0 && (
-          <View style={styles.emptyState}>
-            <Paragraph style={styles.emptyText}>No products found</Paragraph>
-            <Paragraph style={styles.emptySubtext}>Try adjusting your search or filters</Paragraph>
-          </View>
-        )}
-
-        {/* Custom Orders Info */}
-        <Card style={styles.customCard}>
-          <Card.Content>
-            <Title style={styles.customTitle}>🎨 Custom Orders</Title>
-            <Paragraph style={styles.customText}>
-              Want something unique? We can create custom designs for:
-            </Paragraph>
-            <View style={styles.customList}>
-              <Paragraph style={styles.customItem}>• Player name & number jerseys</Paragraph>
-              <Paragraph style={styles.customItem}>• Match photo prints & canvases</Paragraph>
-              <Paragraph style={styles.customItem}>• Team group photos</Paragraph>
-              <Paragraph style={styles.customItem}>• Commemorative items</Paragraph>
-            </View>
-            <Button
-              mode="contained"
-              icon="email"
-              onPress={() => Linking.openURL('mailto:shop@systontigers.com?subject=Custom Order Request')}
-              style={styles.customButton}
-              buttonColor={COLORS.primary}
-              textColor={COLORS.secondary}
-            >
-              Request Custom Order
-            </Button>
-          </Card.Content>
-        </Card>
-
-        {/* Image Post Template Info */}
-        <Card style={styles.templateCard}>
-          <Card.Content>
-            <Title style={styles.templateTitle}>📸 Image Post Templates</Title>
-            <Paragraph style={styles.templateText}>
-              All our products feature professional designs that look great on social media. When you purchase, you'll receive:
-            </Paragraph>
-            <View style={styles.templateList}>
-              <Paragraph style={styles.templateItem}>✓ High-quality product photos</Paragraph>
-              <Paragraph style={styles.templateItem}>✓ Social media templates (Instagram, Facebook, X)</Paragraph>
-              <Paragraph style={styles.templateItem}>✓ Hashtags and captions ready to use</Paragraph>
-              <Paragraph style={styles.templateItem}>✓ Printify automated fulfillment</Paragraph>
-            </View>
-          </Card.Content>
-        </Card>
-
-        {/* Support Info */}
-        <Card style={styles.supportCard}>
-          <Card.Content>
-            <Title style={styles.supportTitle}>💬 Need Help?</Title>
-            <Paragraph style={styles.supportText}>
-              Questions about sizing, delivery, or custom orders? Get in touch!
-            </Paragraph>
-            <View style={styles.supportButtons}>
-              <Button
-                mode="outlined"
-                icon="email"
-                onPress={() => Linking.openURL('mailto:shop@systontigers.com')}
-                style={styles.supportButton}
-              >
-                Email
-              </Button>
-              <Button
-                mode="outlined"
-                icon="help-circle"
-                onPress={openPrintifyStore}
-                style={styles.supportButton}
-              >
-                FAQ
-              </Button>
-            </View>
-          </Card.Content>
-        </Card>
+        <View style={{ height: 100 }} />
       </ScrollView>
+
+      {/* Checkout FAB */}
+      {cartCount > 0 && (
+        <FAB
+          icon="cart"
+          label={`Checkout (${cartCount})`}
+          style={[styles.fab, { bottom: insets.bottom + 20 }]}
+          onPress={handleCheckout}
+          loading={checkingOut}
+          disabled={checkingOut}
+        />
+      )}
+
+      {/* Product Detail Modal */}
+      {selectedProduct && (
+        <Portal>
+          <Modal visible={true} onDismiss={() => setSelectedProduct(null)} contentContainerStyle={styles.modalContent}>
+            <ScrollView>
+              <Image source={{ uri: selectedProduct.imageUrl }} style={styles.modalImage} />
+              <View style={styles.modalBody}>
+                <Title style={styles.modalTitle}>{selectedProduct.name}</Title>
+                <Paragraph style={styles.modalPrice}>£{selectedProduct.price.toFixed(2)}</Paragraph>
+                <Paragraph style={styles.modalDesc}>{selectedProduct.description}</Paragraph>
+
+                {/* Variants */}
+                {selectedProduct.variants.length > 1 && (
+                  <View style={styles.section}>
+                    <Text style={styles.label}>Select Size/Option:</Text>
+                    <View style={styles.chipRow}>
+                      {selectedProduct.variants.map(v => (
+                        <Chip
+                          key={v.id}
+                          selected={selectedVariantId === v.id}
+                          onPress={() => setSelectedVariantId(v.id)}
+                          style={styles.chip}
+                        >
+                          {v.title}
+                        </Chip>
+                      ))}
+                    </View>
+                  </View>
+                )}
+
+                {/* Personalization */}
+                {selectedProduct.personalization?.supported && (
+                  <View style={styles.section}>
+                    <Text style={styles.label}>Personalization:</Text>
+                    <TextInput
+                      label="Name on Back"
+                      value={personalization.name}
+                      onChangeText={t => setPersonalization(p => ({ ...p, name: t }))}
+                      style={styles.input}
+                      maxLength={12}
+                    />
+                    <TextInput
+                      label="Number"
+                      value={personalization.number}
+                      onChangeText={t => setPersonalization(p => ({ ...p, number: t }))}
+                      style={styles.input}
+                      maxLength={3}
+                      keyboardType="numeric"
+                    />
+                  </View>
+                )}
+
+                <Button
+                  mode="contained"
+                  onPress={handleAddToCart}
+                  loading={addingToCart}
+                  style={styles.addButton}
+                >
+                  Add to Cart
+                </Button>
+                <Button onPress={() => setSelectedProduct(null)} style={{ marginTop: 10 }}>
+                  Close
+                </Button>
+              </View>
+            </ScrollView>
+          </Modal>
+        </Portal>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
-  header: {
-    padding: 20,
-    backgroundColor: COLORS.primary,
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: COLORS.secondary,
-    marginBottom: 4,
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: COLORS.secondary,
-    opacity: 0.8,
-  },
-  searchContainer: {
-    padding: 16,
-    paddingBottom: 8,
-  },
-  searchBar: {
-    elevation: 2,
-  },
-  categoryScroll: {
-    paddingHorizontal: 16,
-    paddingBottom: 8,
-  },
-  categoryChip: {
-    marginRight: 8,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: COLORS.primary,
-  },
-  categoryChipSelected: {
-    backgroundColor: COLORS.primary,
-  },
-  categoryChipText: {
-    color: COLORS.primary,
-  },
-  categoryChipTextSelected: {
-    color: COLORS.secondary,
-    fontWeight: 'bold',
-  },
-  scrollContainer: {
-    flex: 1,
-  },
-  bannerCard: {
-    margin: 16,
-    marginTop: 8,
-    borderRadius: 12,
-    elevation: 2,
-  },
-  bannerContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  bannerText: {
-    flex: 1,
-    marginRight: 12,
-  },
-  bannerTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 4,
-  },
-  bannerDescription: {
-    fontSize: 12,
-    color: COLORS.textLight,
-  },
-  productsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    padding: 8,
-  },
-  productCard: {
-    width: (width - 48) / 2,
-    margin: 8,
-    borderRadius: 12,
-    backgroundColor: COLORS.surface,
-    elevation: 2,
-    overflow: 'hidden',
-  },
-  productImage: {
-    width: '100%',
-    height: 150,
-    resizeMode: 'cover',
-  },
-  outOfStockOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  outOfStockOverlayText: {
-    color: COLORS.secondary,
-    fontWeight: 'bold',
-    fontSize: 14,
-  },
-  productInfo: {
-    padding: 12,
-  },
-  productName: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: COLORS.text,
-    marginBottom: 4,
-    minHeight: 36,
-  },
-  productPrice: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: COLORS.primary,
-  },
-  emptyState: {
-    padding: 40,
-    alignItems: 'center',
-  },
-  emptyText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: COLORS.text,
-    marginBottom: 4,
-  },
-  emptySubtext: {
-    fontSize: 13,
-    color: COLORS.textLight,
-  },
-  customCard: {
-    margin: 16,
-    marginTop: 8,
-    borderRadius: 12,
-    elevation: 2,
-  },
-  customTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
-  customText: {
-    fontSize: 13,
-    color: COLORS.textLight,
-    marginBottom: 8,
-  },
-  customList: {
-    marginVertical: 8,
-  },
-  customItem: {
-    fontSize: 13,
-    color: COLORS.textLight,
-    marginBottom: 4,
-  },
-  customButton: {
-    marginTop: 8,
-  },
-  templateCard: {
-    margin: 16,
-    marginTop: 0,
-    borderRadius: 12,
-    elevation: 2,
-  },
-  templateTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
-  templateText: {
-    fontSize: 13,
-    color: COLORS.textLight,
-    marginBottom: 8,
-  },
-  templateList: {
-    marginVertical: 8,
-  },
-  templateItem: {
-    fontSize: 13,
-    color: COLORS.textLight,
-    marginBottom: 4,
-  },
-  supportCard: {
-    margin: 16,
-    marginTop: 0,
-    borderRadius: 12,
-    elevation: 2,
-  },
-  supportTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
-  supportText: {
-    fontSize: 13,
-    color: COLORS.textLight,
-    marginBottom: 12,
-  },
-  supportButtons: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  supportButton: {
-    flex: 1,
-  },
-  // Product detail styles
-  detailHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: COLORS.primary,
-    paddingRight: 20,
-    paddingVertical: 8,
-  },
-  detailHeaderTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: COLORS.secondary,
-  },
-  detailContainer: {
-    flex: 1,
-  },
-  detailImage: {
-    width: '100%',
-    height: 300,
-    resizeMode: 'cover',
-  },
-  detailContent: {
-    padding: 16,
-  },
-  detailTitleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 8,
-  },
-  detailTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    flex: 1,
-    marginRight: 12,
-  },
-  outOfStockChip: {
-    backgroundColor: '#F44336',
-  },
-  outOfStockText: {
-    color: COLORS.secondary,
-    fontSize: 11,
-    fontWeight: 'bold',
-  },
-  detailPrice: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: COLORS.primary,
-    marginBottom: 12,
-  },
-  detailDescription: {
-    fontSize: 14,
-    color: COLORS.textLight,
-    marginBottom: 16,
-    lineHeight: 20,
-  },
-  optionSection: {
-    marginBottom: 16,
-  },
-  optionLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.text,
-    marginBottom: 8,
-  },
-  optionChips: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  optionChip: {
-    backgroundColor: COLORS.background,
-  },
-  infoCard: {
-    marginVertical: 16,
-    borderRadius: 12,
-    elevation: 1,
-  },
-  infoTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
-  infoText: {
-    fontSize: 13,
-    color: COLORS.textLight,
-    lineHeight: 20,
-  },
-  buyButton: {
-    paddingVertical: 8,
-    marginTop: 8,
-  },
+  container: { flex: 1, backgroundColor: COLORS.background },
+  center: { justifyContent: 'center', alignItems: 'center' },
+  header: { padding: 20, backgroundColor: COLORS.primary },
+  headerTitle: { fontSize: 24, fontWeight: 'bold', color: COLORS.secondary },
+  headerSubtitle: { fontSize: 14, color: COLORS.secondary, opacity: 0.8 },
+
+  searchContainer: { padding: 16, paddingBottom: 8 },
+  searchBar: { elevation: 2 },
+
+  categoryScroll: { paddingHorizontal: 16, maxHeight: 60 },
+  categoryChip: { marginRight: 8, backgroundColor: '#FFF', borderWidth: 1, borderColor: COLORS.primary },
+  categoryChipSelected: { backgroundColor: COLORS.primary },
+  categoryChipText: { color: COLORS.primary },
+  categoryChipTextSelected: { color: COLORS.secondary, fontWeight: 'bold' },
+
+  scrollContainer: { flex: 1 },
+  productsGrid: { flexDirection: 'row', flexWrap: 'wrap', padding: 8 },
+  productCard: { width: (width - 48) / 2, margin: 8, borderRadius: 12, backgroundColor: COLORS.surface, elevation: 2, overflow: 'hidden' },
+  productImage: { width: '100%', height: 150, resizeMode: 'cover' },
+  placeholderImage: { backgroundColor: '#EEE', justifyContent: 'center', alignItems: 'center' },
+
+  outOfStockOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center' },
+  outOfStockOverlayText: { color: 'white', fontWeight: 'bold' },
+
+  productInfo: { padding: 12 },
+  productName: { fontSize: 13, fontWeight: '500', color: COLORS.text, marginBottom: 4, height: 36 },
+  productPrice: { fontSize: 16, fontWeight: 'bold', color: COLORS.primary },
+  customBadge: { marginTop: 4, backgroundColor: COLORS.secondary, padding: 2, borderRadius: 4, alignSelf: 'flex-start' },
+  customBadgeText: { fontSize: 10, color: COLORS.primary, fontWeight: 'bold' },
+
+  fab: { position: 'absolute', right: 20, backgroundColor: COLORS.primary },
+
+  // Modal
+  modalContent: { backgroundColor: 'white', margin: 20, borderRadius: 12, maxHeight: '80%' },
+  modalImage: { width: '100%', height: 200, resizeMode: 'cover' },
+  modalBody: { padding: 20 },
+  modalTitle: { fontSize: 22, fontWeight: 'bold', marginBottom: 8 },
+  modalPrice: { fontSize: 20, color: COLORS.primary, fontWeight: 'bold', marginBottom: 12 },
+  modalDesc: { color: COLORS.textLight, marginBottom: 20 },
+
+  section: { marginBottom: 16 },
+  label: { fontWeight: 'bold', marginBottom: 8 },
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chip: { marginRight: 4, marginBottom: 4 },
+  input: { marginBottom: 12, backgroundColor: 'white' },
+  addButton: { paddingVertical: 6, backgroundColor: COLORS.primary },
 });

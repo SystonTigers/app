@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react';
-import { createClientSDK } from '@/lib/sdk'; // Adjust import if needed
+import { createClientSDK } from '@/lib/sdk';
+import { ProductPreview } from './ProductPreview';
 
 interface Product {
     id: string;
     title: string;
     description: string;
-    price_gbp?: number; // Backend sends price_gbp if flat, or check variants
+    price_gbp?: number;
     image_url: string;
     variants: any[];
+    personalization?: any;
 }
 
 interface ProductListProps {
@@ -24,28 +26,11 @@ export function ProductList({ tenantId, onProductSelect }: ProductListProps) {
             try {
                 const sdk = createClientSDK(tenantId);
                 const res = await sdk.getShopProducts();
-                // Backend returns result.data which is array. 
-                // Let's verify SDK implementation detail: 
-                // SDK: return http<any[]>(...)
-                // Backend response: { success: true, data: [...] }
-                // Wait, SDK generic http returns `data as T`.
-                // If backend returns { success: true, data: [...] }, T should be that shape.
-                // But SDK says `return http<any[]>(...)`. If backend returns { success: true... }, then T is that object.
-                // Let's assume SDK `http` returns the parsed JSON. 
-                // Sores variable in SDK `getShopProducts` is what `http` returns.
-                // If my SDK type was `any[]`, but actual JSON is `{ success: true, data: [] }`, I need to handle that.
-                // Let's standardise SDK call in component to be safe.
-
-                // Actually looking at SDK again: 
-                // const data = await res.json();
-                // return data as T;
-
-                // And backend sends: `json({ success: true, data: productsWithVariants })`
-
-                // So SDK `getShopProducts` should return `{ success: boolean, data: Product[] }`.
-
                 const response: any = res;
-                if (response.success && Array.isArray(response.data)) {
+                if (response.success && response.data?.products?.personalized) {
+                    setProducts(response.data.products.personalized);
+                } else if (response.success && Array.isArray(response.data)) {
+                    // Fallback for array response if structure differs
                     setProducts(response.data);
                 }
             } catch (e) {
@@ -76,7 +61,6 @@ export function ProductList({ tenantId, onProductSelect }: ProductListProps) {
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-4">
             {products.map((product) => {
-                // Determine price to show (lowest variant or fallback)
                 const price = product.price_gbp
                     ? product.price_gbp
                     : (product.variants && product.variants.length > 0 ? product.variants[0].price_gbp : 0);
@@ -85,15 +69,17 @@ export function ProductList({ tenantId, onProductSelect }: ProductListProps) {
                     <button
                         key={product.id}
                         onClick={() => onProductSelect(product)}
-                        className="bg-white dark:bg-gray-800 rounded-lg overflow-hidden shadow hover:shadow-lg transition-all text-left flex flex-col h-full"
+                        className="bg-white dark:bg-gray-800 rounded-lg overflow-hidden shadow hover:shadow-lg transition-all text-left flex flex-col h-full group"
                     >
-                        <div className="relative aspect-square w-full bg-gray-100">
+                        <div className="relative aspect-square w-full bg-gray-100 overflow-hidden">
                             {product.image_url ? (
-                                <img
-                                    src={product.image_url}
-                                    alt={product.title}
-                                    className="w-full h-full object-cover"
-                                />
+                                <div className="w-full h-full transform group-hover:scale-105 transition-transform duration-500">
+                                    <ProductPreview
+                                        imageUrl={product.image_url}
+                                        productTitle={product.title}
+                                        personalization={product.personalization}
+                                    />
+                                </div>
                             ) : (
                                 <div className="w-full h-full flex items-center justify-center text-gray-300 text-4xl">
                                     🛍️

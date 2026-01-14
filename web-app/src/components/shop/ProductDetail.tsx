@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { createClientSDK } from '@/lib/sdk';
+import { ProductPreview } from './ProductPreview';
 
 interface Product {
     id: string;
@@ -21,6 +22,10 @@ export function ProductDetail({ tenantId, product, onBack, onAddToCart }: Produc
         product.variants && product.variants.length > 0 ? product.variants[0].id : ''
     );
     const [isAdding, setIsAdding] = useState(false);
+    const [personalization, setPersonalization] = useState({
+        playerName: '',
+        playerNumber: ''
+    });
 
     const selectedVariant = product.variants.find(v => v.id === selectedVariantId);
     const price = selectedVariant ? selectedVariant.price_gbp : 0;
@@ -51,7 +56,8 @@ export function ProductDetail({ tenantId, product, onBack, onAddToCart }: Produc
                 throw new Error('Cart ID is missing');
             }
 
-            await sdk.addToCart(cartId, selectedVariantId, 1);
+            // Use state personalization
+            await sdk.addToCart(cartId, selectedVariantId, 1, personalization);
             onAddToCart();
         } catch (e) {
             console.error('Add to cart failed', e);
@@ -76,10 +82,10 @@ export function ProductDetail({ tenantId, product, onBack, onAddToCart }: Produc
             <div className="grid md:grid-cols-2 gap-8">
                 <div className="bg-gray-100 rounded-lg overflow-hidden aspect-square relative">
                     {product.image_url ? (
-                        <img
-                            src={product.image_url}
-                            alt={product.title}
-                            className="w-full h-full object-cover"
+                        <ProductPreview
+                            imageUrl={product.image_url}
+                            productTitle={product.title}
+                            personalization={personalization.playerName || personalization.playerNumber ? personalization : (product as any).personalization}
                         />
                     ) : (
                         <div className="flex items-center justify-center h-full text-4xl">🛍️</div>
@@ -115,6 +121,31 @@ export function ProductDetail({ tenantId, product, onBack, onAddToCart }: Produc
                             </div>
                         </div>
                     )}
+
+                    <div className="mb-6 grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium mb-1">Name</label>
+                            <input
+                                type="text"
+                                value={personalization.playerName}
+                                onChange={(e) => setPersonalization({ ...personalization, playerName: e.target.value.toUpperCase() })}
+                                className="w-full px-3 py-2 rounded border bg-transparent dark:border-gray-600"
+                                placeholder="YOUR NAME"
+                                maxLength={12}
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium mb-1">Number</label>
+                            <input
+                                type="text"
+                                value={personalization.playerNumber}
+                                onChange={(e) => setPersonalization({ ...personalization, playerNumber: e.target.value })}
+                                className="w-full px-3 py-2 rounded border bg-transparent dark:border-gray-600"
+                                placeholder="10"
+                                maxLength={3}
+                            />
+                        </div>
+                    </div>
 
                     <button
                         onClick={handleAddToCart}

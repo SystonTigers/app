@@ -190,8 +190,8 @@ export async function handleCreatePrintifyProduct(req: Request, env: any, corsHd
         if (product.id) {
             await env.DB.prepare(`
                 INSERT INTO printify_templates 
-                (id, tenant_id, printify_product_id, name, base_price_gbp, printify_cost_gbp, status)
-                VALUES (?, ?, ?, ?, ?, ?, 'active')
+                (id, tenant_id, printify_product_id, name, base_price_gbp, printify_cost_gbp, status, blueprint_id, print_provider_id, variants_json)
+                VALUES (?, ?, ?, ?, ?, ?, 'active', ?, ?, ?)
             `).bind(
                 `pt_${Date.now()}`,
                 tenantId,
@@ -199,7 +199,10 @@ export async function handleCreatePrintifyProduct(req: Request, env: any, corsHd
                 body.title,
                 body.variants[0]?.price || 0,
                 0, // Will be updated from Printify
-                'active'
+                'active',
+                body.blueprintId,
+                body.printProviderId,
+                JSON.stringify(body.variants)
             ).run();
         }
 

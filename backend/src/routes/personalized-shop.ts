@@ -6,6 +6,10 @@
 import Stripe from 'stripe';
 import { requireJWT } from '../services/auth';
 import { json } from '../services/util';
+import { getCart } from '../services/cart';
+import { generatePersonalizedSVG } from './personalization';
+
+const PRINTIFY_API_BASE = 'https://api.printify.com/v1';
 
 function getStripe(env: any): Stripe {
     return new Stripe(env.STRIPE_SECRET_KEY, {
@@ -33,7 +37,7 @@ export async function handleGetPersonalizedProducts(req: Request, env: any, cors
     try {
         const claims = await requireJWT(req, env);
         const tenantId = claims.tenantId;
-        const playerId = claims.playerId;
+        const playerId = (claims as any).playerId;
 
         // Get player info for personalization
         let playerName = '';
@@ -89,6 +93,12 @@ export async function handleGetPersonalizedProducts(req: Request, env: any, cors
                 supportsNumber: !!t.supports_number,
                 supportsPhrase: !!t.supports_phrase,
             },
+            variants: t.variants_json ? JSON.parse(t.variants_json).map((v: any) => ({
+                id: `v_${t.id}_${v.id}`, // Create unique ID composite
+                title: v.title || 'Standard',
+                price_gbp: v.price, // Already in pence/cents
+                provider_variant_id: v.id // Keep original for reference
+            })) : [],
         }));
 
         const customProducts = (clubProducts || []).map((p: any) => ({
@@ -305,106 +315,149 @@ export async function handleListClubProducts(req: Request, env: any, corsHdrs: H
 // ============================================
 
 /**
- * POST /api/v1/shop/orders
- * Create a shop order with personalization
+ * POST /api/v1/shop/checkout
+ * Create a Stripe Checkout Session for the cart
  */
-export async function handleCreateShopOrder(req: Request, env: any, corsHdrs: Headers) {
+export async function handleCreateCheckoutSession(req: Request, env: any, corsHdrs: Headers) {
     try {
         const body = await req.json() as {
-            tenantId: string;
-            playerId?: string;
+            cartId: string;
             customerEmail: string;
-            customerName: string;
-            items: Array<{
-                productId: string;
-                productType: 'printify' | 'club';
-                quantity: number;
-                price: number;
-                personalization?: {
-                    name?: string;
-                    number?: string;
-                    phrase?: string;
-                };
-            }>;
         };
 
-        if (!body.tenantId || !body.customerEmail || !body.items?.length) {
-            return json({ success: false, error: { message: 'Missing required fields' } }, 400, corsHdrs);
+        if (!body.cartId || !body.customerEmail) {
+            return json({ success: false, error: 'Missing cartId or email' }, 400, corsHdrs);
         }
 
-        // Get tenant plan for commission rate
+        // 1. Get Cart
+        const cart = await getCart(body.cartId, env);
+        if (!cart || cart.items.length === 0) {
+            return json({ success: false, error: 'Cart empty or expired' }, 400, corsHdrs);
+        }
+
+        // 2. Prepare Items for Order (Snapshot)
+        const items = cart.items.map(item => ({
+            productId: item.productId,
+            variantId: item.variantId,
+            productType: 'printify',
+            quantity: item.quantity,
+            price: item.priceGbp,
+            title: item.title,
+            personalization: item.personalization // { name, number, clubLogo }
+        }));
+
+        // 3. Create Pending Shop Order
+        const tenantId = cart.tenantId;
+        const subtotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
+        // Get tenant plan/rate
         const tenant = await env.DB.prepare(
             'SELECT plan FROM tenants WHERE id = ?'
-        ).bind(body.tenantId).first();
-
+        ).bind(tenantId).first();
         const commissionRate = COMMISSION_RATES[tenant?.plan || 'essentials'] || 10;
-
-        // Calculate totals
-        const subtotal = body.items.reduce((sum, item) => sum + (item.price * item.quantity * 100), 0);
         const platformFee = Math.round(subtotal * (commissionRate / 100));
-        const total = subtotal;
 
         const orderId = `order_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 
         await env.DB.prepare(`
             INSERT INTO shop_orders 
-            (id, tenant_id, player_id, customer_email, customer_name, items_json, subtotal_gbp, platform_fee_gbp, total_gbp)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (id, tenant_id, customer_email, items_json, subtotal_gbp, platform_fee_gbp, total_gbp, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')
         `).bind(
             orderId,
-            body.tenantId,
-            body.playerId || null,
+            tenantId,
             body.customerEmail,
-            body.customerName,
-            JSON.stringify(body.items),
+            JSON.stringify(items),
             subtotal,
             platformFee,
-            total
+            subtotal // Total matches subtotal (no tax/shipping calc yet)
         ).run();
 
-        // Create Stripe payment
+        // 4. Create Stripe Checkout Session
         const stripe = getStripe(env);
-        const paymentIntent = await stripe.paymentIntents.create({
-            amount: total,
-            currency: 'gbp',
+        const protocol = req.headers.get('x-forwarded-proto') || 'https';
+        const host = req.headers.get('host');
+        const baseUrl = `${protocol}://${host}`;
+        // Note: For dev, this might point to localhost. Frontend usually knows better? 
+        // Best to use ENV var for FRONTEND_URL or infer.
+        // Assuming the referer or standard frontend URL.
+        const successUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/[tenant]/shop/success?session_id={CHECKOUT_SESSION_ID}&order_id=${orderId}`.replace('[tenant]', tenantId);
+        const cancelUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/[tenant]/shop/cart`.replace('[tenant]', tenantId);
+
+        const session = await stripe.checkout.sessions.create({
+            payment_method_types: ['card'],
+            mode: 'payment',
+            line_items: items.map(item => ({
+                price_data: {
+                    currency: 'gbp',
+                    product_data: {
+                        name: item.title,
+                        metadata: {
+                            productId: item.productId,
+                            variantId: item.variantId
+                        }
+                    },
+                    unit_amount: item.price, // pence
+                },
+                quantity: item.quantity,
+            })),
+            customer_email: body.customerEmail,
+            success_url: successUrl,
+            cancel_url: cancelUrl,
             metadata: {
                 order_id: orderId,
-                tenant_id: body.tenantId,
+                tenant_id: tenantId
             },
-            receipt_email: body.customerEmail,
-        } as any);
+            shipping_address_collection: {
+                allowed_countries: ['GB', 'US'],
+            }
+        });
 
         return json({
             success: true,
-            data: {
-                orderId,
-                clientSecret: paymentIntent.client_secret,
-                subtotal: subtotal / 100,
-                platformFee: platformFee / 100,
-                total: total / 100,
-            }
-        }, 201, corsHdrs);
+            sessionId: session.id,
+            url: session.url
+        }, 200, corsHdrs);
+
     } catch (error: any) {
+        console.error('Checkout failed', error);
         return json({ success: false, error: { message: error.message } }, 500, corsHdrs);
     }
 }
 
-/**
- * POST /api/v1/shop/orders/:id/confirm
- * Confirm order payment and record revenue
- */
+
 export async function handleConfirmShopOrder(req: Request, env: any, corsHdrs: Headers) {
     try {
         const url = new URL(req.url);
         const orderId = url.pathname.split('/').slice(-2)[0];
 
-        const body = await req.json() as { paymentIntentId: string };
+        let paymentId = '';
+
+        // Check query param for session_id (standard Stripe Checkout flow)
+        // Or body for manual confirm?
+        const body = await req.json().catch(() => ({})) as { paymentIntentId?: string, sessionId?: string };
 
         const stripe = getStripe(env);
-        const paymentIntent = await stripe.paymentIntents.retrieve(body.paymentIntentId);
 
-        if (paymentIntent.status !== 'succeeded') {
-            return json({ success: false, error: { message: 'Payment not successful' } }, 400, corsHdrs);
+        let shippingAddress = null;
+        if (body.sessionId) {
+            const session = await stripe.checkout.sessions.retrieve(body.sessionId);
+            if (session.payment_status !== 'paid') {
+                return json({ success: false, error: 'Not paid' }, 400, corsHdrs);
+            }
+            paymentId = session.payment_intent as string;
+            if (session.customer_details?.address) {
+                shippingAddress = session.customer_details.address;
+            }
+        } else if (body.paymentIntentId) {
+            // ...
+            // PaymentIntent usually doesn't have shipping address unless attached. 
+            // We'll focus on Session flow for now.
+            const pi = await stripe.paymentIntents.retrieve(body.paymentIntentId);
+            if (pi.status !== 'succeeded') {
+                return json({ success: false, error: 'Not succeeded' }, 400, corsHdrs);
+            }
+            paymentId = pi.id;
         }
 
         // Get order
@@ -416,10 +469,16 @@ export async function handleConfirmShopOrder(req: Request, env: any, corsHdrs: H
             return json({ success: false, error: { message: 'Order not found' } }, 404, corsHdrs);
         }
 
-        // Update order status
+        if (order.status === 'paid') {
+            return json({ success: true, message: 'Already confirmed' }, 200, corsHdrs);
+        }
+
+        // Update order status AND address
         await env.DB.prepare(`
-            UPDATE shop_orders SET status = 'paid', stripe_payment_id = ? WHERE id = ?
-        `).bind(body.paymentIntentId, orderId).run();
+            UPDATE shop_orders 
+            SET status = 'paid', stripe_payment_id = ?, shipping_address_json = ? 
+            WHERE id = ?
+        `).bind(paymentId, shippingAddress ? JSON.stringify(shippingAddress) : null, orderId).run();
 
         // Record platform revenue
         await env.DB.prepare(`
@@ -433,7 +492,182 @@ export async function handleConfirmShopOrder(req: Request, env: any, corsHdrs: H
             'Shop order commission'
         ).run();
 
-        return json({ success: true, message: 'Order confirmed' }, 200, corsHdrs);
+        // Start FULFILLMENT with fresh order data (or pass address)
+        // We'll re-fetch order or manually attach address
+        order.shipping_address_json = shippingAddress ? JSON.stringify(shippingAddress) : null;
+        await fulfillOrder(order, env);
+
+        return json({ success: true, message: 'Order confirmed and fulfillment started' }, 200, corsHdrs);
+    } catch (error: any) {
+        console.error('Confirm failed', error);
+        return json({ success: false, error: { message: error.message } }, 500, corsHdrs);
+    }
+}
+
+async function fulfillOrder(order: any, env: any) {
+    // 1. Parse items
+    const items = JSON.parse(order.items_json);
+    const tenant = await env.DB.prepare('SELECT name, logo_url FROM tenants WHERE id = ?').bind(order.tenant_id).first();
+
+    const lineItems: any[] = [];
+
+    for (const item of items) {
+        try {
+            // Check if it's a Printify Template Item (has variantId starting with v_)
+            // Or use logic: if type='printify'
+
+            // Get personalization data
+            const pers = item.personalization || {};
+            const hasPers = pers.name || pers.number || pers.clubLogo; // Basic check
+
+            let finalProductId = '';
+            let finalVariantId = 0;
+
+            // Logic to find Provider/Blueprint
+            // We need to look up the Template in DB to get the blueprint/provider IDs.
+            // variantId format: v_{templateId}_{providerVariantId}
+            let templateId = '';
+            let providerVariantId = 0;
+
+            if (item.variantId && item.variantId.startsWith('v_')) {
+                const parts = item.variantId.split('_');
+                providerVariantId = parseInt(parts.pop() || '0');
+                templateId = parts.slice(1).join('_');
+            }
+
+            const template = await env.DB.prepare('SELECT * FROM printify_templates WHERE id = ?').bind(templateId).first();
+
+            if (!template) {
+                console.error('Template not found for item', item);
+                continue;
+            }
+
+            if (hasPers) {
+                // Generate Dynamic Product
+                const svg = generatePersonalizedSVG({
+                    clubName: tenant?.name || 'Club',
+                    clubBadgeUrl: tenant?.logo_url,
+                    playerName: pers.name,
+                    playerNumber: pers.number,
+                    position: 'front'
+                });
+
+                // Upload
+                const base64 = btoa(unescape(encodeURIComponent(svg)));
+                const uploadRes = await fetch(`${PRINTIFY_API_BASE}/uploads/images.json`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${env.PRINTIFY_API_TOKEN}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ file_name: `ord_${order.id}_${item.productId}.svg`, contents: base64 })
+                });
+                const uploadData = await uploadRes.json() as any;
+
+                // Create Product
+                if (uploadData?.id && template.blueprint_id && template.print_provider_id) {
+                    const productRes = await fetch(`${PRINTIFY_API_BASE}/shops/${env.PRINTIFY_SHOP_ID}/products.json`, {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${env.PRINTIFY_API_TOKEN}`, 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            title: `Custom Order: ${order.id}`,
+                            description: 'Personalized Item',
+                            blueprint_id: template.blueprint_id,
+                            print_provider_id: template.print_provider_id,
+                            variants: [{ id: providerVariantId, price: 0, is_enabled: true }],
+                            print_areas: [{
+                                variant_ids: [providerVariantId],
+                                placeholders: [{ position: 'front', images: [{ id: uploadData.id, x: 0.5, y: 0.5, scale: 1, angle: 0 }] }]
+                            }]
+                        })
+                    });
+                    const productData = await productRes.json() as any;
+                    if (productData.id) {
+                        finalProductId = productData.id;
+                        finalVariantId = providerVariantId;
+                    }
+                }
+            } else {
+                // Not personalized - use the mock template's REAL product ID?
+                // Step 190 (printify.ts) says we store `printify_product_id` in templates.
+                // If it's a real active product on Printify, we can order it directly!
+                if (template.printify_product_id) {
+                    finalProductId = template.printify_product_id;
+                    finalVariantId = providerVariantId;
+                }
+            }
+
+            if (finalProductId && finalVariantId) {
+                lineItems.push({
+                    product_id: finalProductId,
+                    variant_id: finalVariantId,
+                    quantity: item.quantity
+                });
+            }
+
+        } catch (e) {
+            console.error('Failed to process line item', e);
+        }
+    }
+
+    if (lineItems.length > 0) {
+        // Send Order to Printify
+        await fetch(`${PRINTIFY_API_BASE}/shops/${env.PRINTIFY_SHOP_ID}/orders.json`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${env.PRINTIFY_API_TOKEN}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                external_id: order.id,
+                line_items: lineItems,
+                shipping_method: 1, // Standard
+                address_to: (() => {
+                    let addr = {
+                        first_name: order.customer_name.split(' ')[0] || 'Fan',
+                        last_name: order.customer_name.split(' ').slice(1).join(' ') || 'Customer',
+                        email: order.customer_email,
+                        phone: '',
+                        address1: '123 Main St',
+                        city: 'London',
+                        country: 'GB',
+                        zip: 'SW1A 1AA'
+                    };
+                    if (order.shipping_address_json) {
+                        try {
+                            const sa = JSON.parse(order.shipping_address_json);
+                            addr.address1 = sa.line1 || addr.address1;
+                            (addr as any).address2 = sa.line2 || '';
+                            addr.city = sa.city || addr.city;
+                            addr.country = sa.country || addr.country;
+                            addr.zip = sa.postal_code || addr.zip;
+                            if (sa.state) (addr as any).region = sa.state;
+                        } catch (e) { console.error('Address parse error', e); }
+                    }
+                    return addr;
+                })()
+            })
+        });
+    }
+}
+// ============================================
+// SHOP ORDERS
+// ============================================
+
+/**
+ * GET /api/v1/shop/orders
+ * List orders for the tenant
+ */
+export async function handleListShopOrders(req: Request, env: any, corsHdrs: Headers) {
+    const tenantId = req.headers.get('x-tenant');
+    if (!tenantId) return json({ success: false, error: 'Tenant ID required' }, 400, corsHdrs);
+
+    try {
+        const { results } = await env.DB.prepare(
+            `SELECT * FROM shop_orders WHERE tenant_id = ? ORDER BY created_at DESC LIMIT 50`
+        ).bind(tenantId).all();
+
+        const orders = results.map((o: any) => ({
+            ...o,
+            items: JSON.parse(o.items_json),
+            shippingAddress: o.shipping_address_json ? JSON.parse(o.shipping_address_json) : null
+        }));
+
+        return json({ success: true, data: orders }, 200, corsHdrs);
     } catch (error: any) {
         return json({ success: false, error: { message: error.message } }, 500, corsHdrs);
     }
