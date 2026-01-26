@@ -15,6 +15,7 @@ import {
 } from '../services/fixturesApi';
 import { feedApi } from '../services/api';
 import MatchWidget from '../components/MatchWidget';
+import { ReportContentModal } from '../components/ReportContentModal';
 import type { NextFixture, LiveUpdate } from '@team-platform/sdk';
 
 const FEED_PAGE_SIZE = 10;
@@ -82,8 +83,8 @@ const normaliseFeedResponse = (payload: any): NormalisedFeed => {
         typeof item.likes === 'number'
           ? item.likes
           : typeof item.likeCount === 'number'
-          ? item.likeCount
-          : undefined;
+            ? item.likeCount
+            : undefined;
 
       const createdAt =
         item.createdAt ?? item.timestamp ?? item.publishedAt ?? item.updatedAt ?? undefined;
@@ -106,8 +107,8 @@ const normaliseFeedResponse = (payload: any): NormalisedFeed => {
     typeof meta.hasMore === 'boolean'
       ? meta.hasMore
       : totalPages
-      ? currentPage < totalPages
-      : posts.length >= FEED_PAGE_SIZE;
+        ? currentPage < totalPages
+        : posts.length >= FEED_PAGE_SIZE;
 
   return {
     posts,
@@ -173,6 +174,10 @@ export default function HomeScreen() {
   const [nextFixture, setNextFixture] = useState<NextFixture | null>(null);
   const [liveUpdates, setLiveUpdates] = useState<LiveUpdate[]>([]);
 
+  // Report modal state
+  const [reportModalVisible, setReportModalVisible] = useState(false);
+  const [reportingPostId, setReportingPostId] = useState<string | null>(null);
+
   const loadNextEvent = useCallback(async () => {
     setEventLoading(true);
     setEventError(null);
@@ -186,8 +191,8 @@ export default function HomeScreen() {
         error instanceof FixturesApiError
           ? error.message
           : error instanceof Error
-          ? error.message
-          : 'Failed to load upcoming event';
+            ? error.message
+            : 'Failed to load upcoming event';
       setEventError(message);
       setNextEvent(null);
     } finally {
@@ -289,11 +294,11 @@ export default function HomeScreen() {
   const eventTimeLabel = nextEvent ? formatKickOffTime(nextEvent.kickOffTime) : null;
   const eventLocationLabel = nextEvent
     ? nextEvent.location ||
-      (nextEvent.venue
-        ? nextEvent.venue.toLowerCase() === 'home'
-          ? clubShortName
-          : nextEvent.venue
-        : undefined)
+    (nextEvent.venue
+      ? nextEvent.venue.toLowerCase() === 'home'
+        ? clubShortName
+        : nextEvent.venue
+      : undefined)
     : null;
   const eventStatus = nextEvent?.status;
   const eventTypeLabel = nextEvent?.competition || 'Upcoming Fixture';
@@ -440,6 +445,14 @@ export default function HomeScreen() {
                   size={20}
                   onPress={() => console.log('Share', post.id)}
                 />
+                <IconButton
+                  icon="flag-outline"
+                  size={20}
+                  onPress={() => {
+                    setReportingPostId(post.id);
+                    setReportModalVisible(true);
+                  }}
+                />
               </View>
             </Card.Content>
           </Card>
@@ -457,6 +470,21 @@ export default function HomeScreen() {
           {feedLoadingMore ? 'Loading…' : 'Load More'}
         </Button>
       )}
+
+      {/* Report Content Modal */}
+      <ReportContentModal
+        visible={reportModalVisible}
+        onDismiss={() => {
+          setReportModalVisible(false);
+          setReportingPostId(null);
+        }}
+        contentType="post"
+        contentId={reportingPostId || ''}
+        onReportSuccess={() => {
+          setReportModalVisible(false);
+          setReportingPostId(null);
+        }}
+      />
     </ScrollView>
   );
 }

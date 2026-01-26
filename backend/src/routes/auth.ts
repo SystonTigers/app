@@ -1370,4 +1370,122 @@ export async function handleVerifySignup(req: Request, env: any, corsHdrs: Heade
   }
 }
 
+/**
+ * Delete user account (GDPR compliance)
+ * DELETE /api/v1/auth/account
+ */
+export async function handleDeleteAccount(req: Request, env: any, corsHdrs: Headers) {
+  try {
+    // Get user from JWT
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return json({
+        success: false,
+        error: { code: 'UNAUTHORIZED', message: 'Authorization required' }
+      }, 401, corsHdrs);
+    }
+
+    const token = authHeader.substring(7);
+    const claims = await verifyJWT(env, token);
+
+    if (!claims || !claims.sub) {
+      return json({
+        success: false,
+        error: { code: 'INVALID_TOKEN', message: 'Invalid or expired token' }
+      }, 401, corsHdrs);
+    }
+
+    const userId = claims.user_id || claims.sub;
+    const tenantId = claims.tenant_id;
+
+    if (!userId) {
+      return json({
+        success: false,
+        error: { code: 'INVALID_TOKEN', message: 'User ID not found in token' }
+      }, 401, corsHdrs);
+    }
+
+    // Get user email for logging
+    const user = await env.DB.prepare(
+      `SELECT email FROM auth_users WHERE id = ? ${tenantId ? 'AND tenant_id = ?' : ''}`
+    ).bind(tenantId ? userId, tenantId : userId).first();
+
+    if (!user) {
+      return json({
+        success: false,
+        error: { code: 'USER_NOT_FOUND', message: 'User not found' }
+      }, 404, corsHdrs);
+    }
+
+    console.log(`Deleting account for user: ${user.email} (ID: ${userId})`);
+
+    // Delete all user data in a transaction-like batch
+    // Note: D1 doesn't support transactions yet, so we do best-effort deletion
+    const deletions = [
+      // Auth and sessions
+      env.DB.prepare('DELETE FROM auth_users WHERE id = ?').bind(userId),
+      env.DB.prepare('DELETE FROM user_sessions WHERE player_id = ? OR created_by = ?').bind(userId, userId),
+
+      // User-generated content
+      env.DB.prepare('DELETE FROM posts WHERE user_id = ? OR author_id = ?').bind(userId, userId),
+      env.DB.prepare('DELETE FROM comments WHERE user_id = ? OR author_id = ?').bind(userId, userId),
+      env.DB.prepare('DELETE FROM post_reactions WHERE user_id = ?').bind(userId),
+      env.DB.prepare('DELETE FROM match_events WHERE recorded_by_user_id = ?').bind(userId),
+
+      // Player linkages
+      env.DB.prepare('DELETE FROM auth_user_players WHERE user_id = ?').bind(userId),
+
+      // Availability responses
+      env.DB.prepare('DELETE FROM availability_responses WHERE player_id IN (SELECT player_id FROM auth_user_players WHERE user_id = ?)').bind(userId),
+
+      // Media uploads
+      env.DB.prepare('DELETE FROM media WHERE user_id = ? OR uploaded_by = ?').bind(userId, userId),
+
+      // Discussion participants
+      env.DB.prepare('DELETE FROM discussion_participants WHERE user_id = ?').bind(userId),
+
+      // Notifications
+      env.DB.prepare('DELETE FROM notifications WHERE user_id = ?').bind(userId),
+    ];
+
+    // Execute all deletions
+    try {
+      await env.DB.batch(deletions);
+    } catch (error: any) {
+      console.error('Error deleting user data:', error);
+      return json({
+        success: false,
+        error: { code: 'DELETE_FAILED', message: 'Failed to delete all user data. Please contact support.' }
+      }, 500, corsHdrs);
+    }
+
+    // Log the deletion for audit purposes
+    await env.DB.prepare(`
+      INSERT INTO audit_log (id, tenant_id, action, entity_type, entity_id, details, created_at)
+      VALUES (?, ?, 'delete_account', 'user', ?, ?, ?)
+    `).bind(
+      crypto.randomUUID(),
+      tenantId || 'system',
+      userId,
+      JSON.stringify({ email: user.email, deleted_at: new Date().toISOString() }),
+      Date.now()
+    ).run().catch(() => {
+      // Audit log is optional, don't fail if it doesn't exist
+      console.warn('Audit log failed (table may not exist)');
+    });
+
+    return json({
+      success: true,
+      message: 'Account permanently deleted'
+    }, 200, corsHdrs);
+
+  } catch (err: any) {
+    console.error('Delete account error:', err);
+    return json({
+      success: false,
+      error: { code: 'DELETE_FAILED', message: err?.message || 'Failed to delete account' }
+    }, 500, corsHdrs);
+  }
+}
+
 

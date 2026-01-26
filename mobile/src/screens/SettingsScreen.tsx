@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { View, ScrollView, StyleSheet, Alert } from 'react-native';
 import { Card, Title, Paragraph, Switch, List, Chip, TextInput, Button, Divider, SegmentedButtons } from 'react-native-paper';
 import * as Location from 'expo-location';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { COLORS } from '../config';
+import { DeleteAccountModal } from '../components/DeleteAccountModal';
 // import { useAuth } from '../context/AuthContext'; // Temporarily disabled
 
 interface NotificationPreferences {
@@ -119,6 +121,7 @@ export default function SettingsScreen() {
 
   const [locationPermission, setLocationPermission] = useState<string>('undetermined');
   const [expandedSection, setExpandedSection] = useState<string>('');
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   useEffect(() => {
     checkLocationPermission();
@@ -210,6 +213,18 @@ export default function SettingsScreen() {
           },
         },
       ]
+    );
+  };
+
+  const handleDeleteSuccess = async () => {
+    // Clear all app data and navigate to login
+    await AsyncStorage.clear();
+    setShowDeleteModal(false);
+    // TODO: Navigate to login screen
+    Alert.alert(
+      'Account Deleted',
+      'Your account has been successfully deleted.',
+      [{ text: 'OK' }]
     );
   };
 
@@ -634,13 +649,33 @@ export default function SettingsScreen() {
             onPress={handleLogout}
             style={styles.logoutButton}
             buttonColor="transparent"
-            textColor={COLORS.error}
+            textColor={COLORS.text}
             icon="logout"
           >
             Logout
           </Button>
+
+          <Divider style={styles.divider} />
+
+          <Button
+            mode="outlined"
+            onPress={() => setShowDeleteModal(true)}
+            style={styles.deleteButton}
+            buttonColor="transparent"
+            textColor={COLORS.error}
+            icon="delete-forever"
+          >
+            Delete Account
+          </Button>
         </Card.Content>
       </Card>
+
+      {/* Delete Account Modal */}
+      <DeleteAccountModal
+        visible={showDeleteModal}
+        onDismiss={() => setShowDeleteModal(false)}
+        onDeleteSuccess={handleDeleteSuccess}
+      />
 
       <View style={styles.footer}>
         <Paragraph style={styles.footerText}>
@@ -757,6 +792,10 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   logoutButton: {
+    marginTop: 8,
+    borderColor: COLORS.textLight,
+  },
+  deleteButton: {
     marginTop: 8,
     borderColor: COLORS.error,
   },

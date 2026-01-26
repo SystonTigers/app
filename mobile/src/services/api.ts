@@ -255,6 +255,7 @@ export const authApi = {
       return authResult;
     } catch (error) {
       handleAuthError(error, 'Unable to sign in. Please check your credentials.');
+      throw error; // TypeScript doesn't know handleAuthError throws
     }
   },
 
@@ -291,6 +292,7 @@ export const authApi = {
       return authResult;
     } catch (error) {
       handleAuthError(error, 'Unable to complete registration.');
+      throw error; // TypeScript doesn't know handleAuthError throws
     }
   },
 
@@ -304,6 +306,25 @@ export const authApi = {
     }
 
     await clearAuthStorage();
+  },
+
+  deleteAccount: async (): Promise<void> => {
+    try {
+      const response = await api.delete('/api/v1/auth/account', {
+        data: { tenant: TENANT_ID },
+      });
+
+      // Clear all local storage after successful deletion
+      await clearAuthStorage();
+
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        const message = error.response?.data?.error || error.response?.data?.message || 'Failed to delete account';
+        throw new Error(message);
+      }
+      throw new Error('Unable to delete account. Please try again.');
+    }
   },
 
   getStoredAuth: async (): Promise<AuthResult | null> => readAuthFromStorage(),
@@ -367,6 +388,19 @@ export const feedApi = {
     });
     return response.data;
   },
+};
+
+// Content Moderation API
+export const reportContent = async (params: {
+  contentType: 'post' | 'comment' | 'message';
+  contentId: string;
+  reason: string;
+}) => {
+  const response = await api.post('/api/v1/content/report', {
+    tenant: TENANT_ID,
+    ...params,
+  });
+  return response.data;
 };
 
 export const eventsApi = {
@@ -801,3 +835,7 @@ export const shopApi = {
 };
 
 export default api;
+
+// Export convenience function for account deletion
+export const deleteAccount = authApi.deleteAccount;
+

@@ -7,23 +7,99 @@
     "orientation": "portrait",
     "jsEngine": "hermes",
     "newArchEnabled": false,
-
     "splash": {
       "resizeMode": "contain",
       "backgroundColor": "#0B1220"
     },
-
     "android": {
-      "package": "com.yourorg.fielddrop",
+      "package": "com.systontigers.fielddrop",
       "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#0B1220"
-      }
+      },
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ]
     },
     "ios": {
-      "bundleIdentifier": "com.yourorg.fielddrop",
+      "bundleIdentifier": "com.systontigers.fielddrop",
       "buildNumber": "1.0.0",
-      "supportsTablet": false
+      "supportsTablet": false,
+      "infoPlist": {
+        "NSCameraUsageDescription": "Field Drop needs camera access to let you capture match highlights and player photos.",
+        "NSPhotoLibraryUsageDescription": "Field Drop needs photo library access to let you select team photos and match images.",
+        "NSPhotoLibraryAddUsageDescription": "Field Drop saves your match highlights to your photo library.",
+        "NSMicrophoneUsageDescription": "Field Drop needs microphone access for video recording with audio.",
+        "NSLocationWhenInUseUsageDescription": "Field Drop uses your location to show nearby matches and enable match check-in features.",
+        "NSUserTrackingUsageDescription": "This allows us to provide you with personalized content and better app experience."
+      },
+      "config": {
+        "googleMapsApiKey": ""
+      },
+      "privacyManifests": {
+        "NSPrivacyTracking": false,
+        "NSPrivacyTrackingDomains": [],
+        "NSPrivacyCollectedDataTypes": [
+          {
+            "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypeName",
+            "NSPrivacyCollectedDataTypeLinked": true,
+            "NSPrivacyCollectedDataTypeTracking": false,
+            "NSPrivacyCollectedDataTypePurposes": [
+              "NSPrivacyCollectedDataTypePurposeAppFunctionality"
+            ]
+          },
+          {
+            "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypeEmailAddress",
+            "NSPrivacyCollectedDataTypeLinked": true,
+            "NSPrivacyCollectedDataTypeTracking": false,
+            "NSPrivacyCollectedDataTypePurposes": [
+              "NSPrivacyCollectedDataTypePurposeAppFunctionality"
+            ]
+          },
+          {
+            "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypePhoneNumber",
+            "NSPrivacyCollectedDataTypeLinked": true,
+            "NSPrivacyCollectedDataTypeTracking": false,
+            "NSPrivacyCollectedDataTypePurposes": [
+              "NSPrivacyCollectedDataTypePurposeAppFunctionality"
+            ]
+          },
+          {
+            "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypeLocation",
+            "NSPrivacyCollectedDataTypeLinked": false,
+            "NSPrivacyCollectedDataTypeTracking": false,
+            "NSPrivacyCollectedDataTypePurposes": [
+              "NSPrivacyCollectedDataTypePurposeAppFunctionality"
+            ]
+          },
+          {
+            "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypePhotos",
+            "NSPrivacyCollectedDataTypeLinked": false,
+            "NSPrivacyCollectedDataTypeTracking": false,
+            "NSPrivacyCollectedDataTypePurposes": [
+              "NSPrivacyCollectedDataTypePurposeAppFunctionality"
+            ]
+          }
+        ],
+        "NSPrivacyAccessedAPITypes": [
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryFileTimestamp",
+            "NSPrivacyAccessedAPITypeReasons": [
+              "C617.1"
+            ]
+          },
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryUserDefaults",
+            "NSPrivacyAccessedAPITypeReasons": [
+              "CA92.1"
+            ]
+          }
+        ]
+      }
     },
     "web": {
       "bundler": "metro",
@@ -41,7 +117,11 @@
       "fallbackToCacheTimeout": 0
     },
     "extra": {
-      "eas": { "projectId": "dev-placeholder" }
+      "eas": {
+        "projectId": "dev-placeholder"
+      },
+      "privacyPolicyUrl": "https://systontigers-legal.pages.dev/privacy.html",
+      "termsOfServiceUrl": "https://systontigers-legal.pages.dev/terms.html"
     }
   }
 }

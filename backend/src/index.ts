@@ -22,7 +22,8 @@ import {
     handleRequestPasswordReset,
     handleResetPassword,
     handleSignup,
-    handleVerifySignup
+    handleVerifySignup,
+    handleDeleteAccount
 } from "./routes/auth";
 import {
     signupStart,
@@ -285,6 +286,7 @@ router.post("/api/:v/auth/request-password-reset", (req, env, corsHdrs) => handl
 router.post("/api/:v/auth/reset-password", (req, env, corsHdrs) => handleResetPassword(req, env, corsHdrs));
 router.post("/api/:v/auth/signup", (req, env, corsHdrs) => handleSignup(req, env, corsHdrs));
 router.post("/api/:v/auth/verify-signup", (req, env, corsHdrs) => handleVerifySignup(req, env, corsHdrs));
+router.delete("/api/:v/auth/account", (req, env, corsHdrs) => handleDeleteAccount(req, env, corsHdrs));
 
 // Magic Link Routes
 router.post("/api/:v/magic/start", (req, env, corsHdrs) => handleMagicStart(req, env, corsHdrs));
@@ -598,7 +600,14 @@ router.get("/api/:v/training/sessions/:id/drills", (req, env, corsHdrs) => {
     return handleGetSessionDrills(req, env, corsHdrs, params.id);
 });
 
-// Shop Routes (Moved to end of file)
+// Content Moderation Routes
+router.post("/api/:v/content/report", (req, env, corsHdrs) => handleReportContent(req, env, corsHdrs));
+router.get("/api/:v/content/reports", (req, env, corsHdrs) => handleGetReports(req, env, corsHdrs));
+router.put("/api/:v/content/reports/:reportId", (req, env, corsHdrs) => {
+    const url = new URL(req.url);
+    const reportId = url.pathname.split('/').pop() || '';
+    return handleUpdateReport(req, env, corsHdrs, reportId);
+});
 
 // MOTM Voting Routes
 import {
@@ -874,10 +883,9 @@ import {
     handleAutoImportFixtures, handleAutoCalculateTable
 } from "./routes/content";
 
-import { handleUpdateFixtureSettings, handleGetFixtureSettings } from "./routes/settings";
+import { handleReportContent, handleGetReports, handleUpdateReport } from "./routes/content-moderation";
 
-router.put("/api/:v/settings/fixtures", (req, env, corsHdrs) => handleUpdateFixtureSettings(req, env));
-router.get("/api/:v/settings/fixtures", (req, env, corsHdrs) => handleGetFixtureSettings(req, env));
+import { handleUpdateFixtureSettings, handleGetFixtureSettings } from "./routes/settings";
 
 import { handleSaveMatchReport, handleGetMatchReport, handleGetPlayerStats } from "./routes/match-report";
 
