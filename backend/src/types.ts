@@ -1,3 +1,4 @@
+/// <reference types="@cloudflare/workers-types" />
 export type Channel = "yt" | "fb" | "ig" | "tiktok" | "x";
 
 export type PostJob = {

@@ -55,6 +55,9 @@ import WearablesScreen from './src/screens/WearablesScreen';
 import ShopScreen from './src/screens/ShopScreen';
 import PaymentsScreen from './src/screens/PaymentsScreen';
 
+// Games & Predictions
+import LastManStandingScreen from './src/screens/LastManStandingScreen';
+
 // Team Management
 import TeamMembersScreen from './src/screens/TeamMembersScreen';
 import ManageScreen from './src/screens/ManageScreen';
@@ -402,6 +405,19 @@ export default function App() {
                   drawerLabel: 'Payments',
                   drawerIcon: ({ color, size }) => (
                     <MaterialCommunityIcons name="credit-card" size={size} color={color} />
+                  ),
+                }}
+              />
+
+              {/* Games & Predictions */}
+              <Drawer.Screen
+                name="LastManStanding"
+                component={LastManStandingScreen}
+                options={{
+                  title: 'Last Man Standing',
+                  drawerLabel: 'Last Man Standing',
+                  drawerIcon: ({ color, size }) => (
+                    <MaterialCommunityIcons name="trophy" size={size} color={color} />
                   ),
                 }}
               />

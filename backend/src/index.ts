@@ -929,6 +929,29 @@ router.get("/api/:v/gotm", (req, env, corsHdrs) => handleGetGOTMVoting(req, env,
 router.post("/api/:v/gotm/vote", (req, env, corsHdrs) => handleCastGOTMVote(req, env, corsHdrs));
 router.post("/api/:v/gotm/close", (req, env, corsHdrs) => handleCloseGOTMVoting(req, env, corsHdrs));
 
+// Last Man Standing (LMS) Game Routes
+import {
+    handleCreateLMSGame,
+    handleListLMSGames,
+    handleGetLMSGame,
+    handleJoinLMSGame,
+    handleResetLMSGame,
+    handleCreateLMSRound,
+    handleGetLMSRound,
+    handleSubmitLMSPrediction,
+    handleProcessLMSRound
+} from "./routes/lms";
+
+router.post("/api/:v/lms/games", (req, env, corsHdrs) => handleCreateLMSGame(req, env, corsHdrs));
+router.get("/api/:v/lms/games", (req, env, corsHdrs) => handleListLMSGames(req, env, corsHdrs));
+router.get("/api/:v/lms/games/:id", (req, env, corsHdrs) => handleGetLMSGame(req, env, corsHdrs));
+router.post("/api/:v/lms/games/:id/join", (req, env, corsHdrs) => handleJoinLMSGame(req, env, corsHdrs));
+router.post("/api/:v/lms/games/:id/reset", (req, env, corsHdrs) => handleResetLMSGame(req, env, corsHdrs));
+router.post("/api/:v/lms/rounds", (req, env, corsHdrs) => handleCreateLMSRound(req, env, corsHdrs));
+router.get("/api/:v/lms/rounds/:id", (req, env, corsHdrs) => handleGetLMSRound(req, env, corsHdrs));
+router.post("/api/:v/lms/predictions", (req, env, corsHdrs) => handleSubmitLMSPrediction(req, env, corsHdrs));
+router.post("/api/:v/lms/rounds/:id/process", (req, env, corsHdrs) => handleProcessLMSRound(req, env, corsHdrs));
+
 // Calendar Routes
 import { handleExportCalendarICS } from "./routes/calendar";
 router.get("/api/:v/calendar/export", (req, env, corsHdrs) => handleExportCalendarICS(req, env, corsHdrs));

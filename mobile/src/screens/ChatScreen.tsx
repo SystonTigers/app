@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, ScrollView, StyleSheet, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { Text, Card, TextInput, IconButton, Avatar, Chip, List, Portal, Modal } from 'react-native-paper';
 import { COLORS, TENANT_ID } from '../config';
+import { useAuth } from '../context/AuthContext';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 interface Message {
@@ -32,8 +33,9 @@ export default function ChatScreen() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [messageText, setMessageText] = useState('');
   const [loading, setLoading] = useState(false);
-  const [currentUserId] = useState('user-001'); // TODO: Get from auth
-  const [currentUserName] = useState('John Smith'); // TODO: Get from auth
+  const { user } = useAuth();
+  const currentUserId = user?.userId || '';
+  const currentUserName = user ? `${user.firstName} ${user.lastName}`.trim() : 'Guest';
   const scrollViewRef = useRef<ScrollView>(null);
 
   useEffect(() => {
@@ -335,7 +337,7 @@ export default function ChatScreen() {
               {selectedRoom.participants.length === 1 ? 'All members' : `${selectedRoom.participants.length} participants`}
             </Text>
           </View>
-          <IconButton icon="dots-vertical" iconColor="#000" size={24} onPress={() => {}} />
+          <IconButton icon="dots-vertical" iconColor="#000" size={24} onPress={() => { }} />
         </View>
 
         {/* Messages */}

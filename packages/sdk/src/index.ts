@@ -701,6 +701,133 @@ export class TeamPlatformSDK {
     );
     return response.data;
   }
+
+  // ====== LAST MAN STANDING (LMS) GAME ======
+
+  /**
+   * List LMS games for tenant
+   */
+  async getLMSGames(status?: 'active' | 'completed'): Promise<any[]> {
+    const params = status ? { status } : {};
+    const response = await this.client.get('/api/v1/lms/games', { params });
+    return response.data?.games || [];
+  }
+
+  /**
+   * Get LMS game details with standings
+   */
+  async getLMSGame(gameId: string): Promise<any> {
+    const response = await this.client.get(`/api/v1/lms/games/${gameId}`);
+    return response.data;
+  }
+
+  /**
+   * Join an LMS game
+   */
+  async joinLMSGame(gameId: string): Promise<any> {
+    const response = await this.client.post(`/api/v1/lms/games/${gameId}/join`);
+    return response.data;
+  }
+
+  /**
+   * Get LMS round details
+   */
+  async getLMSRound(roundId: string): Promise<any> {
+    const response = await this.client.get(`/api/v1/lms/rounds/${roundId}`);
+    return response.data;
+  }
+
+  /**
+   * Submit LMS prediction for a round
+   */
+  async submitLMSPrediction(roundId: string, teamPicked: string, fixtureId?: string): Promise<any> {
+    const response = await this.client.post('/api/v1/lms/predictions', {
+      round_id: roundId,
+      team_picked: teamPicked,
+      fixture_id: fixtureId
+    });
+    return response.data;
+  }
+
+  /**
+   * Create LMS game (admin only)
+   */
+  async createLMSGame(params: {
+    name: string;
+    sport?: string;
+    competition?: string;
+    competition_id?: string;
+  }): Promise<any> {
+    const response = await this.client.post('/api/v1/lms/games', params);
+    return response.data;
+  }
+
+  /**
+   * Create LMS round (admin only)
+   */
+  async createLMSRound(gameId: string, params: {
+    name?: string;
+    deadline?: number;
+    fixtures: Array<{
+      id?: string;
+      home: string;
+      away: string;
+      kickoff?: number;
+    }>;
+  }): Promise<any> {
+    const response = await this.client.post('/api/v1/lms/rounds', {
+      game_id: gameId,
+      ...params
+    });
+    return response.data;
+  }
+
+  /**
+   * Process LMS round results (admin only)
+   */
+  async processLMSRound(roundId: string, fixtures: Array<{
+    id: string;
+    homeScore: number;
+    awayScore: number;
+  }>): Promise<any> {
+    const response = await this.client.post(`/api/v1/lms/rounds/${roundId}/process`, {
+      fixtures
+    });
+    return response.data;
+  }
+
+  /**
+   * Reset LMS game (admin only)
+   */
+  async resetLMSGame(gameId: string): Promise<any> {
+    const response = await this.client.post(`/api/v1/lms/games/${gameId}/reset`);
+    return response.data;
+  }
+
+  /**
+   * Get GOTM voting data
+   */
+  async getGOTMVoting(votingId?: string): Promise<any> {
+    const params = votingId ? { votingId } : {};
+    const response = await this.client.get('/api/v1/gotm', { params });
+    return response.data;
+  }
+
+  /**
+   * Start GOTM voting (admin only)
+   */
+  async startGOTMVoting(month: string, year: number, goals: any[]): Promise<any> {
+    const response = await this.client.post('/api/v1/gotm/start', { month, year, goals });
+    return response.data;
+  }
+
+  /**
+   * Close GOTM voting (admin only)
+   */
+  async closeGOTMVoting(votingId: string): Promise<any> {
+    const response = await this.client.post('/api/v1/gotm/close', { votingId });
+    return response.data;
+  }
 }
 
 /**

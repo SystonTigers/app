@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, ScrollView, StyleSheet } from 'react-native';
 import { Text, TextInput, Button, Card } from 'react-native-paper';
 import { COLORS } from '../config';
+import { authApi } from '../services/api';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 interface ForgotPasswordScreenProps {
@@ -30,14 +31,9 @@ export default function ForgotPasswordScreen({ onBack, onCodeSent }: ForgotPassw
     setError('');
 
     try {
-      // TODO: API call
-      // const response = await authApi.forgotPassword(email);
-
-      // Mock success
-      setTimeout(() => {
-        setLoading(false);
-        onCodeSent(email);
-      }, 1500);
+      await authApi.forgotPassword(email);
+      setLoading(false);
+      onCodeSent(email);
     } catch (err) {
       setLoading(false);
       setError('Failed to send reset code. Please try again.');

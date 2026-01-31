@@ -1,5 +1,6 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { usersApi, authApi } from '../services/api';
 
 interface User {
   userId: string;
@@ -63,17 +64,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await AsyncStorage.setItem('user_id', userId);
       await AsyncStorage.setItem('user_role', role);
 
-      // TODO: Fetch user profile from API
-      // const response = await api.get(`/api/v1/users/${userId}`, {
-      //   headers: { Authorization: `Bearer ${token}` }
-      // });
-      //
-      // if (response.data.success) {
-      //   const { firstName, lastName, email } = response.data.data;
-      //   await AsyncStorage.setItem('user_firstName', firstName);
-      //   await AsyncStorage.setItem('user_lastName', lastName);
-      //   await AsyncStorage.setItem('user_email', email);
-      // }
+      try {
+        const profile = await usersApi.getProfile();
+        if (profile.success && profile.user) {
+          const { firstName, lastName, email } = profile.user;
+          if (firstName) await AsyncStorage.setItem('user_firstName', firstName);
+          if (lastName) await AsyncStorage.setItem('user_lastName', lastName);
+          if (email) await AsyncStorage.setItem('user_email', email);
+        }
+      } catch (err) {
+        console.warn('Failed to fetch user profile during login', err);
+      }
 
       setUser({
         userId,
@@ -103,10 +104,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         'user_email',
       ]);
 
-      // TODO: Call logout API endpoint
-      // await api.post('/api/v1/auth/logout', {}, {
-      //   headers: { Authorization: `Bearer ${user?.token}` }
-      // });
+      try {
+        await authApi.logout();
+      } catch (err) {
+        console.warn('Logout API failed', err);
+      }
 
       setUser(null);
     } catch (error) {

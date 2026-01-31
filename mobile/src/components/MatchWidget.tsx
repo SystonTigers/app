@@ -3,14 +3,40 @@ import { View, StyleSheet, Linking, Dimensions } from 'react-native';
 import { Card, Title, Paragraph, Button, IconButton } from 'react-native-paper';
 import { WebView } from 'react-native-webview';
 import { COLORS } from '../config';
-import type { NextFixture, LiveUpdate } from '@team-platform/sdk';
+import { liveMatchApi } from '../services/api';
+
+// Types
+interface NextFixture {
+  id: number;
+  homeTeam: string;
+  awayTeam: string;
+  kickoffIso: string;
+  status: 'scheduled' | 'live' | 'halftime' | 'ft' | 'postponed';
+  minute?: number;
+  score?: { home: number; away: number };
+  youtubeLiveId?: string;
+  youtubeStatus?: string;
+  competition?: string;
+}
+
+interface LiveUpdate {
+  id: string;
+  type: 'goal' | 'card' | 'subs' | 'other';
+  text: string;
+  minute: number;
+  card?: 'yellow' | 'red' | 'sinbin';
+  scoreSoFar?: string;
+  scorer?: string;
+  assist?: string;
+  createdAt: string;
+}
 
 interface MatchWidgetProps {
   nextFixture: NextFixture | null;
   liveUpdates: LiveUpdate[];
   onRefresh?: () => void;
-  navigation?: any; // Navigation prop for accessing LiveMatchInput
-  isStaff?: boolean; // Feature flag for staff actions (default true for now)
+  navigation?: any;
+  isStaff?: boolean;
 }
 
 const { width } = Dimensions.get('window');
@@ -22,6 +48,28 @@ const SHOW_AFTER_MS = 3 * 60 * 60 * 1000;   // 3h
 
 export default function MatchWidget({ nextFixture, liveUpdates, onRefresh, navigation, isStaff = true }: MatchWidgetProps) {
   const [currentMinute, setCurrentMinute] = useState(0);
+  const [internalUpdates, setInternalUpdates] = useState<any[]>([]);
+
+  // Poll for live updates if match is live
+  useEffect(() => {
+    if (nextFixture?.status === 'live' || nextFixture?.status === 'halftime') {
+      const poll = async () => {
+        try {
+          const events = await liveMatchApi.getLiveEvents(String(nextFixture.id));
+          // TODO: Type safety
+          if (Array.isArray(events)) {
+            setInternalUpdates(events);
+          }
+        } catch (err) {
+          console.warn('Silent live poll failed', err);
+        }
+      };
+
+      poll();
+      const interval = setInterval(poll, 15000); // 15s poll
+      return () => clearInterval(interval);
+    }
+  }, [nextFixture?.id, nextFixture?.status]);
 
   // Update clock every minute for live matches
   useEffect(() => {
@@ -35,6 +83,9 @@ export default function MatchWidget({ nextFixture, liveUpdates, onRefresh, navig
   }, [nextFixture?.status, nextFixture?.minute]);
 
   if (!nextFixture) return null;
+
+  // Merge prop updates with polled updates
+  const updatesToShow = internalUpdates.length > 0 ? internalUpdates : liveUpdates;
 
   const now = Date.now();
   const kickoff = new Date(nextFixture.kickoffIso).getTime();
@@ -159,10 +210,10 @@ export default function MatchWidget({ nextFixture, liveUpdates, onRefresh, navig
           )}
 
           {/* Mini Event Feed (if active and has updates) */}
-          {isActive && liveUpdates.length > 0 && (
+          {isActive && updatesToShow.length > 0 && (
             <View style={styles.eventFeed}>
               <Paragraph style={styles.eventFeedTitle}>Latest Events</Paragraph>
-              {liveUpdates.slice(-5).reverse().map((update) => (
+              {updatesToShow.slice(-5).reverse().map((update) => (
                 <View key={update.id} style={styles.eventItem}>
                   <Paragraph style={styles.eventIcon}>
                     {getEventIcon(update.type, update.card)}
@@ -247,7 +298,7 @@ export default function MatchWidget({ nextFixture, liveUpdates, onRefresh, navig
   }
 
   // Fallback: Show latest ticker
-  const latestUpdate = liveUpdates.length > 0 ? liveUpdates[liveUpdates.length - 1] : null;
+  const latestUpdate = updatesToShow.length > 0 ? updatesToShow[updatesToShow.length - 1] : null;
 
   if (latestUpdate) {
     return (

@@ -409,6 +409,15 @@ export type AnySDK = {
   getGOTMVoting: (votingId?: string) => Promise<{ success: boolean; voting: any; candidates: any[] }>;
   castGOTMVote: (votingId: string, candidateId: string) => Promise<{ success: boolean }>;
   closeGOTMVoting: (votingId: string) => Promise<{ success: boolean; winner?: any }>;
+  // LMS Game
+  getLMSGames: (status?: 'active' | 'completed') => Promise<any[]>;
+  getLMSGame: (gameId: string) => Promise<any>;
+  joinLMSGame: (gameId: string) => Promise<any>;
+  createLMSGame: (params: { name: string; sport?: string; competition?: string }) => Promise<any>;
+  createLMSRound: (gameId: string, params: { name?: string; deadline?: number; fixtures: any[] }) => Promise<any>;
+  processLMSRound: (roundId: string, fixtures: any[]) => Promise<any>;
+  resetLMSGame: (gameId: string) => Promise<any>;
+  submitLMSPrediction: (roundId: string, teamPicked: string, fixtureId?: string) => Promise<any>;
 };
 
 // One shared instance; hook these up to real calls later as needed
@@ -455,6 +464,15 @@ const compat: AnySDK = {
   getGOTMVoting: async () => ({ success: true, voting: null, candidates: [] }),
   castGOTMVote: async () => ({ success: true }),
   closeGOTMVoting: async () => ({ success: true, winner: null }),
+  // LMS mocks
+  getLMSGames: async () => [],
+  getLMSGame: async () => ({ success: true, game: null, standings: [], currentRound: null }),
+  joinLMSGame: async () => ({ success: true }),
+  createLMSGame: async () => ({ success: true }),
+  createLMSRound: async () => ({ success: true }),
+  processLMSRound: async () => ({ success: true, summary: { eliminated: 0, survived: 0 } }),
+  resetLMSGame: async () => ({ success: true }),
+  submitLMSPrediction: async () => ({ success: true }),
 };
 
 // Client SDK implementation
@@ -617,6 +635,72 @@ class ClientSDK implements AnySDK {
     return http<{ success: boolean; winner?: any }>(
       `${API_BASE}/api/v1/gotm/close`,
       { method: 'POST', body: JSON.stringify({ votingId }), headers: { Authorization: `Bearer ${token}` } }
+    );
+  }
+
+  // LMS Game
+  async getLMSGames(status?: 'active' | 'completed') {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
+    const params = status ? `?status=${status}` : '';
+    return http<any[]>(
+      `${API_BASE}/api/v1/lms/games${params}`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+  }
+
+  async getLMSGame(gameId: string) {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
+    return http<any>(
+      `${API_BASE}/api/v1/lms/games/${gameId}`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+  }
+
+  async joinLMSGame(gameId: string) {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
+    return http<any>(
+      `${API_BASE}/api/v1/lms/games/${gameId}/join`,
+      { method: 'POST', headers: { Authorization: `Bearer ${token}` } }
+    );
+  }
+
+  async createLMSGame(params: { name: string; sport?: string; competition?: string }) {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
+    return http<any>(
+      `${API_BASE}/api/v1/lms/games`,
+      { method: 'POST', body: JSON.stringify(params), headers: { Authorization: `Bearer ${token}` } }
+    );
+  }
+
+  async createLMSRound(gameId: string, params: { name?: string; deadline?: number; fixtures: any[] }) {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
+    return http<any>(
+      `${API_BASE}/api/v1/lms/rounds`,
+      { method: 'POST', body: JSON.stringify({ game_id: gameId, ...params }), headers: { Authorization: `Bearer ${token}` } }
+    );
+  }
+
+  async processLMSRound(roundId: string, fixtures: any[]) {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
+    return http<any>(
+      `${API_BASE}/api/v1/lms/rounds/${roundId}/process`,
+      { method: 'POST', body: JSON.stringify({ fixtures }), headers: { Authorization: `Bearer ${token}` } }
+    );
+  }
+
+  async resetLMSGame(gameId: string) {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
+    return http<any>(
+      `${API_BASE}/api/v1/lms/games/${gameId}/reset`,
+      { method: 'POST', headers: { Authorization: `Bearer ${token}` } }
+    );
+  }
+
+  async submitLMSPrediction(roundId: string, teamPicked: string, fixtureId?: string) {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
+    return http<any>(
+      `${API_BASE}/api/v1/lms/predictions`,
+      { method: 'POST', body: JSON.stringify({ round_id: roundId, team_picked: teamPicked, fixture_id: fixtureId }), headers: { Authorization: `Bearer ${token}` } }
     );
   }
 

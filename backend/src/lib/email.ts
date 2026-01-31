@@ -517,3 +517,213 @@ export async function sendPasswordResetEmail(
   );
 }
 
+
+/**
+ * Send payment reminder email
+ */
+export async function sendPaymentReminderEmail(
+  email: string,
+  name: string,
+  title: string,
+  amount: string,
+  dueDate: string,
+  link: string,
+  clubName: string,
+  env: { RESEND_API_KEY?: string; RESEND_FROM_EMAIL?: string }
+): Promise<EmailResult> {
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .header {
+      background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
+      padding: 40px 20px;
+      text-align: center;
+      border-radius: 8px 8px 0 0;
+    }
+    .header h1 {
+      color: white;
+      margin: 0;
+      font-size: 28px;
+    }
+    .content {
+      background: #ffffff;
+      padding: 40px;
+      border: 1px solid #e0e0e0;
+      border-top: none;
+    }
+    .button {
+      display: inline-block;
+      background: #ef4444;
+      color: white;
+      padding: 14px 32px;
+      text-decoration: none;
+      border-radius: 6px;
+      font-weight: 600;
+      margin: 20px 0;
+    }
+    .button:hover {
+      background: #dc2626;
+    }
+    .footer {
+      text-align: center;
+      padding: 20px;
+      color: #666;
+      font-size: 14px;
+    }
+    .amount {
+      font-size: 24px;
+      font-weight: bold;
+      color: #ef4444;
+      margin: 20px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>🔔 Payment Reminder</h1>
+  </div>
+  <div class="content">
+    <h2>Payment Due for ${clubName}</h2>
+    <p>Hi ${name},</p>
+    <p>This is a friendly reminder that you have a pending payment request.</p>
+    
+    <div style="text-align: center; background: #f9fafb; padding: 20px; border-radius: 8px;">
+      <p style="margin: 0; color: #6b7280; font-size: 14px;">Total Amount Due</p>
+      <div class="amount">${amount}</div>
+      <p style="margin: 0;"><strong>${title}</strong></p>
+      <p style="margin: 5px 0 0 0; font-size: 14px;">Due Date: ${dueDate || 'Imminent'}</p>
+    </div>
+
+    <div style="text-align: center;">
+      <a href="${link}" class="button">Pay Now</a>
+    </div>
+
+    <p style="margin-top: 30px;">
+      Best regards,<br>
+      <strong>${clubName} Admin Team</strong>
+    </p>
+  </div>
+  <div class="footer">
+    <p>This is an automated email. Please do not reply directly.</p>
+  </div>
+</body>
+</html>
+  `.trim();
+
+  return sendEmail(
+    {
+      to: email,
+      subject: `Payment Reminder: ${title}`,
+      html,
+    },
+    env
+  );
+}
+
+/**
+ * Send event reminder email
+ */
+export async function sendEventReminderEmail(
+  email: string,
+  name: string,
+  eventTitle: string,
+  eventDate: string,
+  eventLocation: string,
+  clubName: string,
+  env: { RESEND_API_KEY?: string; RESEND_FROM_EMAIL?: string }
+): Promise<EmailResult> {
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .header {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      padding: 40px 20px;
+      text-align: center;
+      border-radius: 8px 8px 0 0;
+    }
+    .header h1 {
+      color: white;
+      margin: 0;
+      font-size: 28px;
+    }
+    .content {
+      background: #ffffff;
+      padding: 40px;
+      border: 1px solid #e0e0e0;
+      border-top: none;
+    }
+    .footer {
+      text-align: center;
+      padding: 20px;
+      color: #666;
+      font-size: 14px;
+    }
+    .event-card {
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      padding: 20px;
+      border-radius: 8px;
+      margin: 20px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>📅 Event Reminder</h1>
+  </div>
+  <div class="content">
+    <h2>Upcoming Event Tomorrow</h2>
+    <p>Hi ${name},</p>
+    <p>This is a reminder for your upcoming event with ${clubName}:</p>
+    
+    <div class="event-card">
+      <h3 style="margin: 0 0 10px 0; color: #047857;">${eventTitle}</h3>
+      <p style="margin: 5px 0;"><strong>Date:</strong> ${eventDate}</p>
+      <p style="margin: 5px 0;"><strong>Location:</strong> ${eventLocation}</p>
+    </div>
+
+    <p>Don't forget to update your RSVP if your plans have changed!</p>
+
+    <p style="margin-top: 30px;">
+      See you there,<br>
+      <strong>${clubName} Team</strong>
+    </p>
+  </div>
+  <div class="footer">
+    <p>This is an automated email. Please do not reply directly.</p>
+  </div>
+</body>
+</html>
+  `.trim();
+
+  return sendEmail(
+    {
+      to: email,
+      subject: `Reminder: ${eventTitle} Tomorrow`,
+      html,
+    },
+    env
+  );
+}

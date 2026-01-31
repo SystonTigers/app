@@ -13,10 +13,13 @@ import {
   formatKickOffTime,
   FixturesApiError,
 } from '../services/fixturesApi';
-import { feedApi } from '../services/api';
+import { feedApi, eventsApi } from '../services/api';
 import MatchWidget from '../components/MatchWidget';
 import { ReportContentModal } from '../components/ReportContentModal';
-import type { NextFixture, LiveUpdate } from '@team-platform/sdk';
+
+// MatchWidget state (TODO: Replace with real SDK calls)
+// types defined locally or imported from components
+
 
 const FEED_PAGE_SIZE = 10;
 
@@ -171,8 +174,8 @@ export default function HomeScreen() {
   const [hasMoreFeed, setHasMoreFeed] = useState(true);
 
   // MatchWidget state (TODO: Replace with real SDK calls)
-  const [nextFixture, setNextFixture] = useState<NextFixture | null>(null);
-  const [liveUpdates, setLiveUpdates] = useState<LiveUpdate[]>([]);
+  const [nextFixture, setNextFixture] = useState<any | null>(null);
+  const [liveUpdates, setLiveUpdates] = useState<any[]>([]);
 
   // Report modal state
   const [reportModalVisible, setReportModalVisible] = useState(false);
@@ -250,10 +253,17 @@ export default function HomeScreen() {
     setRefreshing(false);
   }, [loadAllData]);
 
-  const handleRSVP = (isAttending: boolean) => {
+  const handleRSVP = async (isAttending: boolean) => {
     setAttending(isAttending);
-    // TODO: Send RSVP to backend
-    console.log('RSVP:', isAttending ? 'Attending' : 'Not Attending');
+    if (nextEvent) {
+      try {
+        await eventsApi.rsvp(String(nextEvent.id), isAttending ? 'going' : 'not_going');
+        console.log('RSVP sent:', isAttending);
+      } catch (err) {
+        console.error('Failed to send RSVP:', err);
+        // revert optimistic update if needed or show error
+      }
+    }
   };
 
   const loadMoreFeed = useCallback(() => {

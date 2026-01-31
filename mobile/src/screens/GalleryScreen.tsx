@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
-import { View, ScrollView, StyleSheet, Image, TouchableOpacity, Dimensions, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, ScrollView, StyleSheet, Image, TouchableOpacity, Dimensions, Alert, ActivityIndicator } from 'react-native';
 import { Card, Title, Paragraph, Button, Chip, FAB, Portal, Modal, TextInput, Checkbox, IconButton } from 'react-native-paper';
 import * as ImagePicker from 'expo-image-picker';
 import { COLORS } from '../config';
+import { galleryApi } from '../services/api';
 
 const { width } = Dimensions.get('window');
 const imageSize = (width - 48) / 3; // 3 images per row with spacing
@@ -26,24 +27,14 @@ interface Album {
   type: 'match' | 'training' | 'social' | 'throwback';
 }
 
-const mockAlbums: Album[] = [
-  { id: '1', title: 'vs Leicester Panthers', date: '2025-10-05', coverPhoto: 'https://picsum.photos/400/400?random=1', photoCount: 24, type: 'match' },
-  { id: '2', title: 'vs Loughborough Lions', date: '2025-09-28', coverPhoto: 'https://picsum.photos/400/400?random=2', photoCount: 18, type: 'match' },
-  { id: '3', title: 'Pre-Season Training', date: '2025-08-15', coverPhoto: 'https://picsum.photos/400/400?random=3', photoCount: 32, type: 'training' },
-  { id: '4', title: 'Team BBQ 2025', date: '2025-08-10', coverPhoto: 'https://picsum.photos/400/400?random=4', photoCount: 45, type: 'social' },
-  { id: '5', title: 'Throwback Thursday', date: '2024-05-20', coverPhoto: 'https://picsum.photos/400/400?random=5', photoCount: 15, type: 'throwback' },
-];
-
-const mockPhotos: Photo[] = [
-  { id: '1', uri: 'https://picsum.photos/400/400?random=11', albumId: '1', uploadedBy: 'John Smith', uploadedAt: '2025-10-05 16:30', caption: 'Great goal!', tags: [] },
-  { id: '2', uri: 'https://picsum.photos/400/400?random=12', albumId: '1', uploadedBy: 'Sarah Jones', uploadedAt: '2025-10-05 16:35', tags: [] },
-  { id: '3', uri: 'https://picsum.photos/400/400?random=13', albumId: '1', uploadedBy: 'Mike Brown', uploadedAt: '2025-10-05 16:40', tags: [] },
-  { id: '4', uri: 'https://picsum.photos/400/400?random=14', albumId: '1', uploadedBy: 'Lisa White', uploadedAt: '2025-10-05 16:45', tags: [] },
-  { id: '5', uri: 'https://picsum.photos/400/400?random=15', albumId: '1', uploadedBy: 'Tom Davies', uploadedAt: '2025-10-05 16:50', tags: [] },
-  { id: '6', uri: 'https://picsum.photos/400/400?random=16', albumId: '1', uploadedBy: 'Emma Wilson', uploadedAt: '2025-10-05 16:55', tags: [] },
-];
+const mockAlbums: Album[] = [];
+const mockPhotos: Photo[] = [];
 
 export default function GalleryScreen() {
+  const [albums, setAlbums] = useState<Album[]>([]);
+  const [photos, setPhotos] = useState<Photo[]>([]);
+  const [loading, setLoading] = useState(false);
+
   const [selectedAlbum, setSelectedAlbum] = useState<Album | null>(null);
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
   const [uploadModalVisible, setUploadModalVisible] = useState(false);
@@ -53,6 +44,47 @@ export default function GalleryScreen() {
     consentGiven: false,
     isThrowback: false,
   });
+
+  useEffect(() => {
+    loadAlbums();
+  }, []);
+
+  useEffect(() => {
+    if (selectedAlbum) {
+      loadPhotos(selectedAlbum.id);
+    }
+  }, [selectedAlbum]);
+
+  const loadAlbums = async () => {
+    setLoading(true);
+    try {
+      const data = await galleryApi.getAlbums();
+      if (data && Array.isArray(data)) {
+        setAlbums(data);
+      }
+    } catch (err) {
+      console.warn('Failed to load albums', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadPhotos = async (albumId: string) => {
+    setLoading(true);
+    try {
+      const data = await galleryApi.getPhotos(albumId);
+      if (data && Array.isArray(data)) {
+        setPhotos(data);
+      } else {
+        setPhotos([]);
+      }
+    } catch (err) {
+      console.warn('Failed to load photos', err);
+      setPhotos([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const getAlbumTypeColor = (type: Album['type']) => {
     switch (type) {
@@ -115,22 +147,32 @@ export default function GalleryScreen() {
     }
   };
 
-  const handleUpload = () => {
+  const handleUpload = async () => {
     if (!uploadData.consentGiven) {
       Alert.alert('Consent Required', 'Please confirm that you have consent to upload this photo.');
       return;
     }
 
-    // TODO: Upload to backend
-    Alert.alert('Photo Uploaded', 'Your photo has been added to the gallery!', [
-      {
-        text: 'OK',
-        onPress: () => {
-          setUploadModalVisible(false);
-          setUploadData({ image: null, caption: '', consentGiven: false, isThrowback: false });
-        }
-      }
-    ]);
+    if (!uploadData.image) return;
+
+    try {
+      await galleryApi.uploadPhoto({
+        imageUri: uploadData.image,
+        caption: uploadData.caption,
+        albumId: selectedAlbum?.id,
+        tags: uploadData.isThrowback ? ['throwback'] : []
+      });
+
+      Alert.alert('Success', 'Photo uploaded!');
+      setUploadModalVisible(false);
+      setUploadData({ image: null, caption: '', consentGiven: false, isThrowback: false });
+
+      // Refresh photos
+      if (selectedAlbum) loadPhotos(selectedAlbum.id);
+    } catch (err) {
+      console.error('Upload failed', err);
+      Alert.alert('Error', 'Failed to upload photo');
+    }
   };
 
   const requestRemoval = (photo: Photo) => {
@@ -142,10 +184,14 @@ export default function GalleryScreen() {
         {
           text: 'Request Removal',
           style: 'destructive',
-          onPress: () => {
-            // TODO: Send removal request to backend
-            Alert.alert('Request Sent', 'Your removal request has been submitted to team admins.');
-            setSelectedPhoto(null);
+          onPress: async () => {
+            try {
+              await galleryApi.requestRemoval(photo.id);
+              Alert.alert('Request Sent', 'Your removal request has been submitted to team admins.');
+              setSelectedPhoto(null);
+            } catch (err) {
+              Alert.alert('Error', 'Failed to submit request');
+            }
           }
         }
       ]
@@ -166,7 +212,7 @@ export default function GalleryScreen() {
 
   // Album View
   if (selectedAlbum) {
-    const albumPhotos = mockPhotos.filter(p => p.albumId === selectedAlbum.id);
+    const albumPhotos = photos; // use loaded photos
 
     return (
       <View style={styles.container}>
@@ -258,7 +304,7 @@ export default function GalleryScreen() {
 
       <ScrollView style={styles.scrollContainer}>
         <View style={styles.albumsGrid}>
-          {mockAlbums.map((album) => (
+          {albums.map((album) => (
             <TouchableOpacity
               key={album.id}
               style={styles.albumCard}
@@ -300,6 +346,12 @@ export default function GalleryScreen() {
           </Card.Content>
         </Card>
       </ScrollView>
+
+      {loading && (
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.2)' }}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+        </View>
+      )}
 
       <FAB
         icon="camera"

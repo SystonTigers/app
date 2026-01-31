@@ -1,6 +1,7 @@
 import type { Env } from '../env';
 import { nowUTC } from '../utils/time';
 import { logJSON } from '../lib/log';
+import { sendEventReminders } from '../services/reminders';
 
 /**
  * Daily cron job - Runs at 06:00 UTC
@@ -28,9 +29,10 @@ export const runDaily = async (
         // 08:00 run - just countdowns
         await processCountdowns(env, tenant);
       } else {
-        // 06:00 run - birthdays and quotes
+        // 06:00 run - birthdays, quotes, and reminders
         await processBirthdays(env, tenant, today);
         await processQuotes(env, tenant);
+        await sendEventReminders(env, tenant);
       }
     }
 

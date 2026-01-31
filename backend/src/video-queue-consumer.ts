@@ -369,8 +369,34 @@ async function processVideoHighlights(
 /**
  * Generate a signed R2 URL for the video processor to access
  */
+/**
+ * Generate a signed R2 URL for the video processor to access
+ */
 async function getSignedR2Url(env: any, r2Key: string): Promise<string> {
-  // TODO: Implement R2 signed URL generation
-  // For now, return a placeholder that assumes your Python service can access R2
-  return `https://your-worker.workers.dev/videos/${r2Key}`;
+  const { AwsClient } = require('aws4fetch');
+
+  if (!env.R2_ACCESS_KEY_ID || !env.R2_SECRET_ACCESS_KEY || !env.R2_ACCOUNT_ID) {
+    console.warn('R2 credentials missing, returning placeholder URL');
+    return `https://placeholder-r2-url.com/${r2Key}`;
+  }
+
+  const r2 = new AwsClient({
+    accessKeyId: env.R2_ACCESS_KEY_ID,
+    secretAccessKey: env.R2_SECRET_ACCESS_KEY,
+    service: 's3',
+    region: 'auto',
+  });
+
+  const url = new URL(
+    `https://${env.VIDEOS_BUCKET.bucketName}.${env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com/${r2Key}`
+  );
+
+  // Sign the URL (expires in 1 hour)
+  url.searchParams.set('X-Amz-Expires', '3600');
+
+  const signed = await r2.sign(new Request(url, { method: 'GET' }), {
+    aws: { signQuery: true },
+  });
+
+  return signed.url;
 }

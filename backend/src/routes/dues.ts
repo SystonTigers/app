@@ -4,6 +4,7 @@
  */
 
 import Stripe from 'stripe';
+import { sendPaymentReminderEmail } from '../lib/email';
 import { requireJWT } from '../services/auth';
 import { json } from '../services/util';
 
@@ -62,7 +63,7 @@ export async function handleCreatePaymentRequest(req: Request, env: any, corsHdr
             amountPence,
             dueDate,
             body.appliesTo || 'all',
-            claims.email || claims.sub
+            (claims as any).email || claims.sub
         ).run();
 
         return json({
@@ -397,8 +398,23 @@ export async function handleSendReminder(req: Request, env: any, corsHdrs: Heade
             .map((p: any) => p.parent_email)
             .filter((email: string) => email && !paidSet.has(email));
 
-        // TODO: Send actual email reminders via Resend
-        console.log(`[Dues] Sending reminders to ${unpaidEmails.length} parents for ${request.title}`);
+        // Send reminders
+        for (const email of unpaidEmails) {
+            const player = players.find((p: any) => p.parent_email === email);
+
+            await sendPaymentReminderEmail(
+                email,
+                player?.name ? `Parent of ${player.name}` : 'Member',
+                request.title,
+                `£${(request.amount_gbp / 100).toFixed(2)}`,
+                request.due_date ? new Date(request.due_date * 1000).toLocaleDateString((claims as any).locale || 'en-GB') : '',
+                `https://${(claims as any).tenant}.syston.app/payments/${request.id}`, // TODO: dynamic domain
+                (claims as any).tenant, // TODO: get real club name from config
+                env
+            );
+        }
+
+        console.log(`[Dues] Reminders sent to ${unpaidEmails.length} parents for ${request.title}`);
 
         // Update reminder count
         await env.DB.prepare(

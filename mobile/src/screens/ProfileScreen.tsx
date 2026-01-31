@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, ScrollView, StyleSheet, Alert, Image } from 'react-native';
 import { Text, Card, TextInput, Button, Avatar, IconButton, Divider } from 'react-native-paper';
 import { COLORS } from '../config';
 import { useAuth } from '../context/AuthContext';
+import { usersApi } from '../services/api';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 
@@ -24,6 +25,37 @@ export default function ProfileScreen() {
   });
   const [showPasswordSection, setShowPasswordSection] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    loadProfile();
+  }, []);
+
+  const loadProfile = async () => {
+    try {
+      if (!user) return;
+      setProfileData(prev => ({
+        ...prev,
+        firstName: user.firstName || prev.firstName,
+        lastName: user.lastName || prev.lastName,
+        email: user.email || prev.email,
+      }));
+
+      // Fetch fresh details if needed
+      const fresh = await usersApi.getProfile();
+      if (fresh.success && fresh.user) {
+        setProfileData(prev => ({
+          ...prev,
+          firstName: fresh.user.firstName || prev.firstName,
+          lastName: fresh.user.lastName || prev.lastName,
+          email: fresh.user.email || prev.email,
+          phone: fresh.user.phone || prev.phone,
+          profileImage: fresh.user.avatarUrl || prev.profileImage
+        }));
+      }
+    } catch (err) {
+      console.warn('Failed to load profile details', err);
+    }
+  };
 
   const updateProfileField = (field: keyof typeof profileData, value: string) => {
     setProfileData({ ...profileData, [field]: value });
@@ -52,10 +84,13 @@ export default function ProfileScreen() {
 
     if (!result.canceled && result.assets[0].uri) {
       setProfileData({ ...profileData, profileImage: result.assets[0].uri });
-      // TODO: Upload to server
-      // await api.post('/api/v1/users/profile/avatar', {
-      //   image: result.assets[0].uri
-      // });
+      try {
+        await usersApi.uploadAvatar(result.assets[0].uri);
+        Alert.alert('Success', 'Profile picture updated');
+      } catch (err) {
+        console.error('Failed to upload avatar:', err);
+        Alert.alert('Error', 'Failed to upload profile picture');
+      }
     }
   };
 
@@ -63,21 +98,17 @@ export default function ProfileScreen() {
     setLoading(true);
 
     try {
-      // TODO: API call to update profile
-      // const response = await api.put('/api/v1/users/profile', {
-      //   tenant: TENANT_ID,
-      //   userId: user?.userId,
-      //   firstName: profileData.firstName,
-      //   lastName: profileData.lastName,
-      //   phone: profileData.phone,
-      // });
+      const response = await usersApi.updateProfile({
+        firstName: profileData.firstName,
+        lastName: profileData.lastName,
+        phone: profileData.phone,
+      });
 
-      // Mock success
-      setTimeout(() => {
+      if (response.success) {
         setLoading(false);
         setIsEditing(false);
         Alert.alert('Success', 'Profile updated successfully!');
-      }, 1000);
+      }
     } catch (error) {
       setLoading(false);
       Alert.alert('Error', 'Failed to update profile. Please try again.');
@@ -103,21 +134,17 @@ export default function ProfileScreen() {
     setLoading(true);
 
     try {
-      // TODO: API call to change password
-      // const response = await api.post('/api/v1/users/change-password', {
-      //   tenant: TENANT_ID,
-      //   userId: user?.userId,
-      //   currentPassword: passwordData.currentPassword,
-      //   newPassword: passwordData.newPassword,
-      // });
+      const response = await usersApi.changePassword({
+        currentPassword: passwordData.currentPassword,
+        newPassword: passwordData.newPassword,
+      });
 
-      // Mock success
-      setTimeout(() => {
+      if (response.success) {
         setLoading(false);
         setShowPasswordSection(false);
         setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
         Alert.alert('Success', 'Password changed successfully!');
-      }, 1000);
+      }
     } catch (error) {
       setLoading(false);
       Alert.alert('Error', 'Failed to change password. Please check your current password and try again.');

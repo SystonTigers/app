@@ -296,6 +296,19 @@ export const authApi = {
     }
   },
 
+  forgotPassword: async (email: string): Promise<{ success: boolean; message: string }> => {
+    try {
+      const response = await api.post('/api/v1/auth/forgot-password', {
+        tenant: TENANT_ID,
+        email: email.trim().toLowerCase(),
+      });
+      return response.data;
+    } catch (error) {
+      handleAuthError(error, 'Failed to send reset code.');
+      throw error;
+    }
+  },
+
   logout: async ({ revokeRemote = false } = {}): Promise<void> => {
     if (revokeRemote) {
       try {
@@ -829,6 +842,119 @@ export const shopApi = {
     const response = await api.post('/api/v1/shop/checkout', {
       cartId,
       customerEmail: email,
+    });
+    return response.data;
+  },
+};
+
+export const galleryApi = {
+  // Get all albums
+  getAlbums: async () => {
+    const response = await api.get('/api/v1/gallery/albums', {
+      params: { tenant: TENANT_ID },
+    });
+    return response.data;
+  },
+
+  // Get photos for an album
+  getPhotos: async (albumId: string) => {
+    const response = await api.get(`/api/v1/gallery/albums/${albumId}/photos`, {
+      params: { tenant: TENANT_ID },
+    });
+    return response.data;
+  },
+
+  // Upload photo
+  uploadPhoto: async (data: {
+    imageUri: string;
+    caption?: string;
+    albumId?: string;
+    tags?: string[];
+  }) => {
+    const formData = new FormData();
+    const filename = data.imageUri.split('/').pop() || 'photo.jpg';
+    const match = /\.(\w+)$/.exec(filename);
+    const type = match ? `image/${match[1]}` : 'image/jpeg';
+
+    formData.append('file', {
+      uri: data.imageUri,
+      name: filename,
+      type,
+    } as any);
+
+    if (data.caption) formData.append('caption', data.caption);
+    if (data.albumId) formData.append('albumId', data.albumId);
+    if (data.tags) formData.append('tags', JSON.stringify(data.tags));
+
+    const response = await api.post(`/api/v1/gallery/photos?tenant=${TENANT_ID}`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
+
+  // Request removal
+  requestRemoval: async (photoId: string, reason?: string) => {
+    const response = await api.post(`/api/v1/gallery/photos/${photoId}/report`, {
+      tenant: TENANT_ID,
+      reason: reason || 'User requested removal',
+    });
+    return response.data;
+  },
+};
+
+export const usersApi = {
+  // Update profile
+  updateProfile: async (data: {
+    firstName?: string;
+    lastName?: string;
+    phone?: string;
+  }) => {
+    const response = await api.put('/api/v1/users/profile', {
+      tenant: TENANT_ID,
+      ...data,
+    });
+    return response.data;
+  },
+
+  // Change password
+  changePassword: async (data: {
+    currentPassword: string;
+    newPassword: string;
+  }) => {
+    const response = await api.post('/api/v1/users/change-password', {
+      tenant: TENANT_ID,
+      ...data,
+    });
+    return response.data;
+  },
+
+  // Upload avatar
+  uploadAvatar: async (uri: string) => {
+    const formData = new FormData();
+    const filename = uri.split('/').pop() || 'avatar.jpg';
+    const match = /\.(\w+)$/.exec(filename);
+    const type = match ? `image/${match[1]}` : 'image/jpeg';
+
+    formData.append('file', {
+      uri,
+      name: filename,
+      type,
+    } as any);
+
+    const response = await api.post(`/api/v1/users/profile/avatar?tenant=${TENANT_ID}`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
+
+  // Get current user profile
+  getProfile: async () => {
+    const response = await api.get('/api/v1/users/me', {
+      params: { tenant: TENANT_ID },
     });
     return response.data;
   },
