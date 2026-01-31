@@ -7,8 +7,8 @@ import { ThemeProvider } from '@/components/ui/ThemeProvider';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'Team Platform',
-  description: 'Multi-tenant team management platform',
+  title: 'Boost Huddle',
+  description: 'The ultimate team management platform',
   manifest: '/manifest.json',
   icons: {
     icon: '/icon-192.png',

@@ -180,7 +180,7 @@ export default function App() {
                 name="Main"
                 component={TabNavigator}
                 options={{
-                  title: 'Syston Tigers',
+                  title: 'Boost Huddle',
                   drawerLabel: 'Home',
                   drawerIcon: ({ color, size }) => (
                     <MaterialCommunityIcons name="home" size={size} color={color} />

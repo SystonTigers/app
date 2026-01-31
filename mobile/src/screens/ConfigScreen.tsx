@@ -56,24 +56,24 @@ export default function ConfigScreen() {
   const [saving, setSaving] = useState(false);
   const [config, setConfig] = useState<ClubConfig>({
     clubDetails: {
-      name: 'Syston Tigers FC',
-      shortName: 'Tigers',
-      founded: '1952',
-      venue: 'Syston Playing Fields',
-      email: 'info@systontigers.com',
-      phone: '+44 116 123 4567',
+      name: 'Boost Huddle FC',
+      shortName: 'Boost',
+      founded: '2026',
+      venue: 'Huddle Arena',
+      email: 'support@boosthuddle.com',
+      phone: '+44 000 000 0000',
     },
     branding: {
-      primaryColor: '#FFD700',
-      secondaryColor: '#000000',
-      clubBadge: 'https://picsum.photos/200/200?random=badge',
-      sponsorLogos: ['https://picsum.photos/150/80?random=sponsor1', 'https://picsum.photos/150/80?random=sponsor2'],
+      primaryColor: '#00D1FF', // Boost Huddle Cyan from logo
+      secondaryColor: '#0B1220', // Dark background
+      clubBadge: 'https://boosthuddle.com/assets/logo.png', // Placeholder URL
+      sponsorLogos: [],
     },
     externalIds: {
-      faFullTime: 'FA12345',
-      youtubeChannelId: 'UCxxxxxxxxxx',
-      printifyStoreId: 'store_abc123',
-      paymentPlatformId: 'pay_xyz789',
+      faFullTime: '',
+      youtubeChannelId: '',
+      printifyStoreId: '',
+      paymentPlatformId: '',
     },
     featureFlags: {
       enableGallery: true,
@@ -81,21 +81,21 @@ export default function ConfigScreen() {
       enablePayments: true,
       enableHighlights: true,
       enableMOTMVoting: true,
-      enableTrainingPlans: false,
-      enableAwards: false,
+      enableTrainingPlans: true,
+      enableAwards: true,
     },
     policies: {
       quietHoursStart: '22:00',
       quietHoursEnd: '07:00',
       allowUrgentBypass: true,
-      maxUploadSizeMB: 10,
+      maxUploadSizeMB: 50,
       photoConsentRequired: true,
     },
     navLinks: {
-      websiteUrl: 'https://systontigers.com',
-      facebookUrl: 'https://facebook.com/systontigers',
-      instagramUrl: 'https://instagram.com/systontigers',
-      twitterUrl: 'https://x.com/systontigers',
+      websiteUrl: 'https://boosthuddle.com',
+      facebookUrl: '',
+      instagramUrl: '',
+      twitterUrl: '',
     },
   });
 

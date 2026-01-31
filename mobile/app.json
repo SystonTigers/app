@@ -1,21 +1,23 @@
 ﻿{
   "expo": {
-    "name": "Field Drop",
-    "slug": "field-drop",
-    "scheme": "fielddrop",
+    "name": "Boost Huddle",
+    "slug": "boost-huddle",
+    "scheme": "boosthuddle",
     "version": "1.0.0",
     "orientation": "portrait",
     "jsEngine": "hermes",
     "newArchEnabled": false,
     "splash": {
       "resizeMode": "contain",
-      "backgroundColor": "#0B1220"
+      "backgroundColor": "#0B1220",
+      "image": "./assets/splash.png"
     },
     "android": {
-      "package": "com.systontigers.fielddrop",
+      "package": "com.boosthuddle.app",
       "versionCode": 1,
       "adaptiveIcon": {
-        "backgroundColor": "#0B1220"
+        "backgroundColor": "#0B1220",
+        "foregroundImage": "./assets/icon.png"
       },
       "permissions": [
         "CAMERA",
@@ -26,15 +28,15 @@
       ]
     },
     "ios": {
-      "bundleIdentifier": "com.systontigers.fielddrop",
+      "bundleIdentifier": "com.boosthuddle.app",
       "buildNumber": "1.0.0",
       "supportsTablet": false,
       "infoPlist": {
-        "NSCameraUsageDescription": "Field Drop needs camera access to let you capture match highlights and player photos.",
-        "NSPhotoLibraryUsageDescription": "Field Drop needs photo library access to let you select team photos and match images.",
-        "NSPhotoLibraryAddUsageDescription": "Field Drop saves your match highlights to your photo library.",
-        "NSMicrophoneUsageDescription": "Field Drop needs microphone access for video recording with audio.",
-        "NSLocationWhenInUseUsageDescription": "Field Drop uses your location to show nearby matches and enable match check-in features.",
+        "NSCameraUsageDescription": "Boost Huddle needs camera access to let you capture match highlights and player photos.",
+        "NSPhotoLibraryUsageDescription": "Boost Huddle needs photo library access to let you select team photos and match images.",
+        "NSPhotoLibraryAddUsageDescription": "Boost Huddle saves your match highlights to your photo library.",
+        "NSMicrophoneUsageDescription": "Boost Huddle needs microphone access for video recording with audio.",
+        "NSLocationWhenInUseUsageDescription": "Boost Huddle uses your location to show nearby matches and enable match check-in features.",
         "NSUserTrackingUsageDescription": "This allows us to provide you with personalized content and better app experience."
       },
       "config": {
@@ -103,7 +105,8 @@
     },
     "web": {
       "bundler": "metro",
-      "output": "single"
+      "output": "single",
+      "favicon": "./assets/icon.png"
     },
     "plugins": [
       "expo-localization",
@@ -120,8 +123,8 @@
       "eas": {
         "projectId": "dev-placeholder"
       },
-      "privacyPolicyUrl": "https://systontigers-legal.pages.dev/privacy.html",
-      "termsOfServiceUrl": "https://systontigers-legal.pages.dev/terms.html"
+      "privacyPolicyUrl": "https://boosthuddle-legal.pages.dev/privacy.html",
+      "termsOfServiceUrl": "https://boosthuddle-legal.pages.dev/terms.html"
     }
   }
 }

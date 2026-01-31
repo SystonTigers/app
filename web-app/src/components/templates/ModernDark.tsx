@@ -376,7 +376,7 @@ export const ModernDarkTheme: React.FC<{ data: MatchData }> = ({ data }) => {
                     <div style={{ width: 20, height: 20, borderRadius: '50%', background: primaryColor }}></div>
                     <div style={{ width: 20, height: 20, borderRadius: '50%', background: 'white' }}></div>
                 </div>
-                <div style={{ fontSize: 24, fontWeight: 600, letterSpacing: 1 }}>systontigers.com</div>
+                <div style={{ fontSize: 24, fontWeight: 600, letterSpacing: 1 }}>boosthuddle.com</div>
             </div>
 
             {/* --- VARIATION: INTRO --- */}
