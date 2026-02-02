@@ -17,6 +17,7 @@ export interface FAFixture {
     homeScore?: number;
     awayScore?: number;
     source: 'fa_website' | 'fa_email' | 'fa_snippet';
+    opponentBadge?: string;
 }
 
 export interface FAScraperConfig {
@@ -233,7 +234,8 @@ function parseTableFixtures(html: string, teamName: string): FAFixture[] {
             status: scoreMatch ? 'completed' : 'scheduled',
             homeScore: scoreMatch ? parseInt(scoreMatch[1]) : undefined,
             awayScore: scoreMatch ? parseInt(scoreMatch[2]) : undefined,
-            source: 'fa_website'
+            source: 'fa_website',
+            opponentBadge: extractBadgeFromRow(row, isOurMatch(homeTeam, '', teamName) ? awayTeam : homeTeam)
         });
     }
 
@@ -445,6 +447,20 @@ function extractStatus(text: string): 'scheduled' | 'postponed' | 'cancelled' | 
     return 'scheduled';
 }
 
+function extractBadgeFromRow(row: string, opponentName: string): string | undefined {
+    // Look for img tag inside the cell containing the opponent name
+    const safeName = opponentName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const cellRegex = new RegExp(`<td[^>]*>[\\s\\S]*?${safeName}[\\s\\S]*?</td>`, 'i');
+    const cellMatch = row.match(cellRegex);
+
+    if (cellMatch) {
+        const imgMatch = cellMatch[0].match(/<img[^>]+src=["']([^"']+)["']/i);
+        return imgMatch ? imgMatch[1] : undefined;
+    }
+
+    return undefined;
+}
+
 // ====== UTILITY HELPERS ======
 
 function isOurMatch(homeTeam: string, awayTeam: string, ourTeam: string): boolean {
@@ -606,6 +622,32 @@ export async function syncFixturesToDB(
 
                 result.added++;
             }
+
+            // Sync Opponent to Opponent Teams table (for badge verification)
+            if (fixture.opponentBadge) {
+                // Normalize opponent name for linking
+                const normalizedName = fixture.opponent.toLowerCase()
+                    .trim()
+                    .replace(/\b(fc|f\.c\.|afc|a\.f\.c\.|football club|united|town|city)\b/gi, '')
+                    .replace(/[^a-z0-9]+/g, '-')
+                    .replace(/^-+|-+$/g, '')
+                    .trim();
+
+                await env.DB.prepare(`
+                    INSERT INTO opponent_teams (id, tenant_id, team_name, normalized_name, reference_badge_url, status, first_seen_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?, 'pending', unixepoch(), unixepoch())
+                    ON CONFLICT(tenant_id, normalized_name) DO UPDATE SET
+                        reference_badge_url = excluded.reference_badge_url,
+                        updated_at = unixepoch()
+                `).bind(
+                    crypto.randomUUID(),
+                    tenantId,
+                    fixture.opponent,
+                    normalizedName,
+                    fixture.opponentBadge
+                ).run();
+            }
+
         } catch (error: any) {
             result.errors.push(`Failed to sync fixture ${fixture.opponent}: ${error.message}`);
         }

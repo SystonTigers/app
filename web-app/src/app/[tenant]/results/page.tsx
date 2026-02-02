@@ -109,7 +109,7 @@ export default function ResultsPage({ params }: { params: Promise<{ tenant: stri
         {loading ? (
           <div className="grid gap-6">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-48 bg-gray-200 dark:bg-gray-700 rounded-2xl animate-pulse"></div>
+              <div key={i} className="h-48 bg-gray-200 dark:bg-gray-700 chamfer-lg animate-pulse"></div>
             ))}
           </div>
         ) : (
@@ -120,7 +120,7 @@ export default function ResultsPage({ params }: { params: Promise<{ tenant: stri
               const isDraw = result.homeScore === result.awayScore;
 
               return (
-                <div key={result.id} className="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-shadow border border-gray-100 dark:border-gray-700">
+                <div key={result.id} className="bg-white dark:bg-gray-800 chamfer-lg overflow-hidden shadow-sm hover:shadow-lg transition-shadow border border-gray-100 dark:border-gray-700">
                   <div className="flex flex-col md:flex-row">
                     {/* Date & Competition Sidebar */}
                     <div className="bg-gray-50 dark:bg-gray-900/50 p-6 flex flex-row md:flex-col items-center justify-between md:justify-center w-full md:w-48 text-center border-b md:border-b-0 md:border-r border-gray-100 dark:border-gray-700">
@@ -144,7 +144,7 @@ export default function ResultsPage({ params }: { params: Promise<{ tenant: stri
 
                         {/* Score */}
                         <div className="px-8 flex flex-col items-center">
-                          <div className="text-4xl md:text-5xl font-black text-gray-900 dark:text-white bg-gray-100 dark:bg-gray-700 px-6 py-2 rounded-xl tracking-widest">
+                          <div className="text-4xl md:text-5xl font-black text-gray-900 dark:text-white bg-gray-100 dark:bg-gray-700 px-6 py-2 chamfer-sm tracking-widest">
                             {result.homeScore}-{result.awayScore}
                           </div>
                           <div className="mt-2 text-xs font-bold text-gray-400 uppercase">
@@ -176,12 +176,12 @@ export default function ResultsPage({ params }: { params: Promise<{ tenant: stri
 
                     {/* Action Button */}
                     <div className="flex items-center justify-center p-4 md:p-8 bg-gray-50 dark:bg-gray-900/30 gap-2">
-                      <button className="w-full md:w-auto px-6 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                      <button className="w-full md:w-auto px-6 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 chamfer-sm text-sm font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
                         Report
                       </button>
                       <button
                         onClick={() => startDiscussion(result)}
-                        className="w-full md:w-auto px-6 py-2 bg-brand text-white border border-transparent rounded-lg text-sm font-bold hover:bg-brand-dark transition-colors flex items-center gap-1"
+                        className="w-full md:w-auto px-6 py-2 bg-brand text-white border border-transparent chamfer-sm text-sm font-bold hover:bg-brand-dark transition-colors flex items-center gap-1"
                       >
                         Chat
                       </button>

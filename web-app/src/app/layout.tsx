@@ -1,10 +1,20 @@
 import type { Metadata, Viewport } from 'next';
-import { Inter } from 'next/font/google';
+import { Orbitron, Roboto_Mono } from 'next/font/google';
 import '@/styles/globals.css';
 import { AuthProvider } from '@/context/AuthContext';
 import { ThemeProvider } from '@/components/ui/ThemeProvider';
 
-const inter = Inter({ subsets: ['latin'] });
+const orbitron = Orbitron({
+  subsets: ['latin'],
+  variable: '--font-orbitron',
+  display: 'swap',
+});
+
+const robotoMono = Roboto_Mono({
+  subsets: ['latin'],
+  variable: '--font-roboto-mono',
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
   title: 'Boost Huddle',
@@ -17,7 +27,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: '#0f172a',
+  themeColor: '#0B0D0F', // Obsidian
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
@@ -31,7 +41,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={inter.className}>
+      <body className={`${orbitron.variable} ${robotoMono.variable} font-mono bg-background text-foreground`}>
         <ThemeProvider>
           <AuthProvider>
             {children}

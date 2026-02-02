@@ -83,7 +83,7 @@ export function PremiumNav({ tenant, teamName }: PremiumNavProps) {
                     <div className="flex items-center justify-between h-16">
                         {/* Logo */}
                         <Link href={`/${tenant}`} className="flex items-center gap-3 group">
-                            <div className="w-10 h-10 bg-brand rounded-xl flex items-center justify-center text-white font-black text-lg group-hover:scale-110 transition-transform">
+                            <div className="w-10 h-10 bg-brand chamfer-sm flex items-center justify-center text-white font-black text-lg group-hover:scale-110 transition-transform">
                                 {(teamName || tenant)?.[0]?.toUpperCase()}
                             </div>
                             <span className="text-xl font-black uppercase tracking-tight hidden sm:block">
@@ -97,7 +97,7 @@ export function PremiumNav({ tenant, teamName }: PremiumNavProps) {
                                 <Link
                                     key={item.href}
                                     href={item.href}
-                                    className={`px-4 py-2 rounded-xl font-medium text-sm transition-all ${isActive(item.href)
+                                    className={`px-4 py-2 chamfer-sm font-medium text-sm transition-all ${isActive(item.href)
                                         ? 'bg-brand text-white shadow-md'
                                         : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
                                         }`}
@@ -108,18 +108,18 @@ export function PremiumNav({ tenant, teamName }: PremiumNavProps) {
 
                             {/* More Dropdown */}
                             <div className="relative group">
-                                <button className="px-4 py-2 rounded-xl font-medium text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all flex items-center gap-1">
+                                <button className="px-4 py-2 chamfer-sm font-medium text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all flex items-center gap-1">
                                     More
                                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                                     </svg>
                                 </button>
-                                <div className="absolute top-full right-0 mt-1 w-56 bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all p-2">
+                                <div className="absolute top-full right-0 mt-1 w-56 bg-white dark:bg-gray-900 chamfer-lg shadow-xl border border-gray-200 dark:border-gray-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all p-2">
                                     {secondaryNav.map((item) => (
                                         <Link
                                             key={item.href}
                                             href={item.href}
-                                            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${isActive(item.href)
+                                            className={`flex items-center gap-3 px-4 py-3 chamfer-sm transition-colors ${isActive(item.href)
                                                 ? 'bg-brand/10 text-brand'
                                                 : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
                                                 }`}
@@ -148,7 +148,7 @@ export function PremiumNav({ tenant, teamName }: PremiumNavProps) {
                             {showAdmin && (
                                 <Link
                                     href={`/${tenant}/admin`}
-                                    className="hidden sm:flex items-center gap-2 px-3 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-xl text-sm font-bold transition-colors"
+                                    className="hidden sm:flex items-center gap-2 px-3 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 chamfer-sm text-sm font-bold transition-colors"
                                 >
                                     <span>⚙️</span>
                                     <span className="hidden lg:inline">Admin</span>
@@ -158,7 +158,7 @@ export function PremiumNav({ tenant, teamName }: PremiumNavProps) {
                             {/* Mobile Menu Button */}
                             <button
                                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                                className="lg:hidden p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                                className="lg:hidden p-2 chamfer-sm hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                             >
                                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     {isMobileMenuOpen ? (
@@ -186,7 +186,7 @@ export function PremiumNav({ tenant, teamName }: PremiumNavProps) {
                                 <span className="text-lg font-black uppercase">Menu</span>
                                 <button
                                     onClick={() => setIsMobileMenuOpen(false)}
-                                    className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800"
+                                    className="p-2 chamfer-sm hover:bg-gray-100 dark:hover:bg-gray-800"
                                 >
                                     ✕
                                 </button>
@@ -198,7 +198,7 @@ export function PremiumNav({ tenant, teamName }: PremiumNavProps) {
                                         key={item.href}
                                         href={item.href}
                                         onClick={() => setIsMobileMenuOpen(false)}
-                                        className={`flex items-center gap-4 px-4 py-3 rounded-xl transition-colors ${isActive(item.href)
+                                        className={`flex items-center gap-4 px-4 py-3 chamfer-sm transition-colors ${isActive(item.href)
                                             ? 'bg-brand text-white'
                                             : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
                                             }`}
@@ -214,7 +214,7 @@ export function PremiumNav({ tenant, teamName }: PremiumNavProps) {
                                     <Link
                                         href={`/${tenant}/admin`}
                                         onClick={() => setIsMobileMenuOpen(false)}
-                                        className="flex items-center gap-4 px-4 py-3 bg-gray-100 dark:bg-gray-800 rounded-xl font-medium"
+                                        className="flex items-center gap-4 px-4 py-3 bg-gray-100 dark:bg-gray-800 chamfer-sm font-medium"
                                     >
                                         <span>⚙️</span>
                                         Admin Dashboard

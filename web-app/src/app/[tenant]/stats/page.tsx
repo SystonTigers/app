@@ -76,29 +76,30 @@ export default async function StatsPage({ params }: { params: Promise<{ tenant: 
         <FunStatsCard tenant={tenant} />
 
         {/* Team Overview Card - Full Width */}
-        <section className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 p-8">
+        {/* Team Overview Card - Full Width */}
+        <section className="bg-white dark:bg-gray-800 chamfer-lg shadow-sm border border-gray-100 dark:border-gray-700 p-8">
           <h2 className="text-2xl font-black uppercase tracking-tight mb-8 text-brand">Season Overview</h2>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-            <div className="p-4 bg-gray-50 dark:bg-gray-900 rounded-2xl text-center">
+            <div className="p-4 bg-gray-50 dark:bg-gray-900 chamfer-sm text-center">
               <div className="text-3xl font-black text-gray-900 dark:text-white">
                 <AnimatedCounter value={(stats as any).played} />
               </div>
               <div className="text-xs font-bold text-gray-400 uppercase tracking-wider">Matches</div>
             </div>
-            <div className="p-4 bg-gray-50 dark:bg-gray-900 rounded-2xl text-center">
+            <div className="p-4 bg-gray-50 dark:bg-gray-900 chamfer-sm text-center">
               <div className="text-3xl font-black text-green-500">
                 <AnimatedCounter value={(stats as any).won} />
               </div>
               <div className="text-xs font-bold text-gray-400 uppercase tracking-wider">Wins</div>
             </div>
-            <div className="p-4 bg-gray-50 dark:bg-gray-900 rounded-2xl text-center">
+            <div className="p-4 bg-gray-50 dark:bg-gray-900 chamfer-sm text-center">
               <div className="text-3xl font-black text-gray-900 dark:text-white">
                 <AnimatedCounter value={(stats as any).goalsFor} />
               </div>
               <div className="text-xs font-bold text-gray-400 uppercase tracking-wider">Goals Scored</div>
             </div>
-            <div className="p-4 bg-gray-50 dark:bg-gray-900 rounded-2xl text-center">
+            <div className="p-4 bg-gray-50 dark:bg-gray-900 chamfer-sm text-center">
               <div className="text-3xl font-black text-blue-500">
                 <AnimatedCounter value={(stats as any).cleanSheets} />
               </div>
@@ -183,7 +184,7 @@ export default async function StatsPage({ params }: { params: Promise<{ tenant: 
 
           {/* Discipline Records - Spans Full Width on Large Screens */}
           <div className="lg:col-span-2">
-            <section className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 p-8">
+            <section className="bg-white dark:bg-gray-800 chamfer-lg shadow-sm border border-gray-100 dark:border-gray-700 p-8">
               <h2 className="text-2xl font-black uppercase tracking-tight mb-6 flex items-center gap-3">
                 <span className="text-brand">Discipline Records</span>
                 <span className="text-2xl">🟨🟥</span>
@@ -193,10 +194,10 @@ export default async function StatsPage({ params }: { params: Promise<{ tenant: 
                 {disciplineRecords.map((player, index) => (
                   <div
                     key={player.id}
-                    className="flex items-center gap-4 p-4 rounded-xl bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                    className="flex items-center gap-4 p-4 chamfer-sm bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                   >
-                    <div className="w-10 h-10 rounded-full flex items-center justify-center font-black text-lg bg-gray-200 dark:bg-gray-700 text-gray-500">
-                      {index + 1}
+                    <div className="w-10 h-10 rotate-45 flex items-center justify-center font-black text-lg bg-gray-200 dark:bg-gray-700 text-gray-500">
+                      <span className="-rotate-45">{index + 1}</span>
                     </div>
 
                     <div className="flex-1 font-bold text-lg">
@@ -227,7 +228,7 @@ export default async function StatsPage({ params }: { params: Promise<{ tenant: 
 // Reusable StatCard Component
 function StatCard({ title, icon, children }: { title: string; icon: string; children: React.ReactNode }) {
   return (
-    <section className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 p-8">
+    <section className="bg-white dark:bg-gray-800 chamfer-lg shadow-sm border border-gray-100 dark:border-gray-700 p-8">
       <h2 className="text-2xl font-black uppercase tracking-tight mb-6 flex items-center gap-3">
         <span className="text-brand">{title.replace(/[⚽🅰️👕⏱️🟨🟥🎯]/g, '').trim()}</span>
         <span className="text-2xl">{icon}</span>
@@ -256,7 +257,7 @@ function PlayerStatRow({
   return (
     <div
       className={`
-        flex items-center gap-4 p-4 rounded-xl transition-all
+        flex items-center gap-4 p-4 chamfer-sm transition-all
         ${isTop
           ? 'bg-brand text-brand-foreground shadow-lg transform scale-105'
           : 'bg-gray-50 dark:bg-gray-900 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800'
@@ -264,10 +265,10 @@ function PlayerStatRow({
       `}
     >
       <div className={`
-        w-10 h-10 rounded-full flex items-center justify-center font-black text-lg
+        w-10 h-10 rotate-45 flex items-center justify-center font-black text-lg
         ${isTop ? 'bg-white text-brand' : 'bg-gray-200 dark:bg-gray-700 text-gray-500'}
       `}>
-        {rank}
+        <span className="-rotate-45">{rank}</span>
       </div>
 
       <div className="flex-1 font-bold text-lg">

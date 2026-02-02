@@ -10,6 +10,7 @@ interface Opponent {
     status: 'pending' | 'approved' | 'custom';
     effective_badge_url: string | null;
     pending_badge_url: string | null;
+    reference_badge_url: string | null;
     needs_approval: boolean;
 }
 
@@ -290,15 +291,33 @@ export default function AdminOpponentsPage() {
                             We found this badge for <strong>{selectedOpponent.team_name}</strong>
                         </p>
 
-                        <div className="aspect-square bg-gray-100 dark:bg-gray-700 rounded-xl mb-6 flex items-center justify-center overflow-hidden max-w-xs mx-auto">
-                            {selectedOpponent.pending_badge_url ? (
-                                <img
-                                    src={selectedOpponent.pending_badge_url}
-                                    alt={selectedOpponent.team_name}
-                                    className="w-full h-full object-contain p-4"
-                                />
-                            ) : (
-                                <span className="text-6xl font-bold text-gray-400">?</span>
+                        <div className="flex gap-4 mb-6">
+                            <div className="flex-1">
+                                <p className="text-xs text-center font-bold text-gray-500 mb-2 uppercase">Google Suggestion</p>
+                                <div className="aspect-square bg-gray-100 dark:bg-gray-700 rounded-xl flex items-center justify-center overflow-hidden">
+                                    {selectedOpponent.pending_badge_url ? (
+                                        <img
+                                            src={selectedOpponent.pending_badge_url}
+                                            alt={selectedOpponent.team_name}
+                                            className="w-full h-full object-contain p-4"
+                                        />
+                                    ) : (
+                                        <span className="text-6xl font-bold text-gray-400">?</span>
+                                    )}
+                                </div>
+                            </div>
+
+                            {selectedOpponent.reference_badge_url && (
+                                <div className="flex-1">
+                                    <p className="text-xs text-center font-bold text-gray-500 mb-2 uppercase">FA Website</p>
+                                    <div className="aspect-square bg-blue-50 dark:bg-blue-900/20 rounded-xl flex items-center justify-center overflow-hidden border border-blue-100 dark:border-blue-800">
+                                        <img
+                                            src={selectedOpponent.reference_badge_url}
+                                            alt="FA Source"
+                                            className="w-full h-full object-contain p-4 opacity-80"
+                                        />
+                                    </div>
+                                </div>
                             )}
                         </div>
 

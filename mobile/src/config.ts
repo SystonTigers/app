@@ -33,16 +33,16 @@ export const IS_PROD = getEnvVar('NODE_ENV', 'development') === 'production';
 // Colors (Neutral defaults - overridden by brand API at runtime)
 // These provide a professional base until club branding is loaded
 export const COLORS = {
-  primary: '#6CC5FF',      // Neutral blue
-  secondary: '#9AA1AC',    // Muted gray
-  accent: '#A0FF9C',       // Neutral accent
-  background: '#F5F5F5',   // Light gray
-  surface: '#FFFFFF',
-  text: '#000000',
-  textLight: '#666666',
-  error: '#B00020',
-  success: '#4CAF50',
-  warning: '#FF9800',
+  primary: '#00FFFF',      // Electric Cyan
+  secondary: '#C0C0C0',    // Brushed Chrome
+  accent: '#00FFFF',       // Cyan
+  background: '#0B0D0F',   // Obsidian
+  surface: 'rgba(11, 13, 15, 0.7)', // Glass/Obsidian
+  text: '#FFFFFF',
+  textLight: '#C0C0C0',    // Chrome
+  error: '#FF0055',
+  success: '#00FFFF',
+  warning: '#F59E0B',
 };
 
 // API Endpoints

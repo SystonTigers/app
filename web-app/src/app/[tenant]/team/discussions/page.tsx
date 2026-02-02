@@ -25,7 +25,7 @@ function CategoryBadge({ category }: { category: string }) {
     };
 
     return (
-        <span className={`px-2 py-1 rounded-full text-xs font-bold uppercase ${colors[category] || colors.general}`}>
+        <span className={`px-2 py-1 chamfer-sm text-xs font-bold uppercase ${colors[category] || colors.general}`}>
             {category.replace('-', ' ')}
         </span>
     );
@@ -37,7 +37,7 @@ function DiscussionCard({ discussion }: { discussion: Discussion }) {
     return (
         <div
             onClick={() => router.push(`discussions/${discussion.id}`)}
-            className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6 hover:shadow-lg transition-all cursor-pointer group"
+            className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 chamfer-lg p-6 hover:shadow-lg transition-all cursor-pointer group"
         >
             <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-2">
@@ -124,7 +124,7 @@ export default function DiscussionsPage({ params }: { params: Promise<{ tenant: 
                         </div>
                         <button
                             onClick={() => setShowCreateDialog(true)}
-                            className="px-6 py-3 bg-brand text-white rounded-xl font-bold hover:bg-brand/90 transition-colors"
+                            className="px-6 py-3 bg-brand text-white chamfer-sm font-bold hover:bg-brand/90 transition-colors"
                         >
                             + New Discussion
                         </button>
@@ -139,9 +139,9 @@ export default function DiscussionsPage({ params }: { params: Promise<{ tenant: 
                         <button
                             key={cat.value || 'all'}
                             onClick={() => setCategory(cat.value)}
-                            className={`px-4 py-2 rounded-lg font-medium transition-all ${category === cat.value
-                                    ? 'bg-brand text-white shadow-lg'
-                                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700'
+                            className={`px-4 py-2 chamfer-sm font-medium transition-all ${category === cat.value
+                                ? 'bg-brand text-white shadow-lg'
+                                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700'
                                 }`}
                         >
                             {cat.label}
@@ -153,7 +153,7 @@ export default function DiscussionsPage({ params }: { params: Promise<{ tenant: 
                 {loading ? (
                     <div className="grid gap-4">
                         {[1, 2, 3].map((i) => (
-                            <div key={i} className="h-40 bg-gray-200 dark:bg-gray-700 rounded-xl animate-pulse"></div>
+                            <div key={i} className="h-40 bg-gray-200 dark:bg-gray-700 chamfer-sm animate-pulse"></div>
                         ))}
                     </div>
                 ) : discussions.length > 0 ? (
@@ -163,13 +163,13 @@ export default function DiscussionsPage({ params }: { params: Promise<{ tenant: 
                         ))}
                     </div>
                 ) : (
-                    <div className="text-center py-20 bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700">
+                    <div className="text-center py-20 bg-white dark:bg-gray-800 chamfer-lg shadow-sm border border-gray-100 dark:border-gray-700">
                         <div className="text-6xl mb-4">💬</div>
                         <h3 className="text-2xl font-bold mb-2">No Discussions Yet</h3>
                         <p className="text-gray-500 mb-6">Start a conversation about tactics, training, or match analysis.</p>
                         <button
                             onClick={() => setShowCreateDialog(true)}
-                            className="px-6 py-3 bg-brand text-white rounded-xl font-bold hover:bg-brand/90 transition-colors"
+                            className="px-6 py-3 bg-brand text-white chamfer-sm font-bold hover:bg-brand/90 transition-colors"
                         >
                             Create First Discussion
                         </button>
@@ -233,7 +233,7 @@ function CreateDiscussionDialog({ tenant, onClose, onCreated }: { tenant: string
                         <select
                             value={category}
                             onChange={(e) => setCategory(e.target.value)}
-                            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700"
+                            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 chamfer-sm bg-white dark:bg-gray-700"
                         >
                             <option value="general">General</option>
                             <option value="tactics">Tactics</option>
@@ -249,7 +249,7 @@ function CreateDiscussionDialog({ tenant, onClose, onCreated }: { tenant: string
                             value={title}
                             onChange={(e) => setTitle(e.target.value)}
                             placeholder="What do you want to discuss?"
-                            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700"
+                            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 chamfer-sm bg-white dark:bg-gray-700"
                             required
                         />
                     </div>
@@ -258,14 +258,14 @@ function CreateDiscussionDialog({ tenant, onClose, onCreated }: { tenant: string
                         <button
                             type="button"
                             onClick={onClose}
-                            className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg font-bold hover:bg-gray-100 dark:hover:bg-gray-700"
+                            className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 chamfer-sm font-bold hover:bg-gray-100 dark:hover:bg-gray-700"
                         >
                             Cancel
                         </button>
                         <button
                             type="submit"
                             disabled={submitting || !title.trim()}
-                            className="flex-1 px-4 py-2 bg-brand text-white rounded-lg font-bold hover:bg-brand/90 disabled:opacity-50"
+                            className="flex-1 px-4 py-2 bg-brand text-white chamfer-sm font-bold hover:bg-brand/90 disabled:opacity-50"
                         >
                             {submitting ? 'Creating...' : 'Create'}
                         </button>

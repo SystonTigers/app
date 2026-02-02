@@ -32,7 +32,7 @@ function PlayerCard({ player, tenant }: { player: any; tenant: string }) {
     .substring(0, 2);
 
   return (
-    <Link href={`/${tenant}/squad/${player.id}`} className="block group relative overflow-hidden rounded-2xl bg-white dark:bg-gray-800 shadow-md hover:shadow-xl transition-all duration-300 border border-gray-100 dark:border-gray-700 hover:-translate-y-1">
+    <Link href={`/${tenant}/squad/${player.id}`} className="block group relative overflow-hidden chamfer-lg bg-white dark:bg-gray-800 shadow-md hover:shadow-xl transition-all duration-300 border border-gray-100 dark:border-gray-700 hover:-translate-y-1">
       {/* Top Pattern / Gradient */}
       <div className={`h-24 w-full bg-gradient-to-r from-brand to-brand/80 absolute top-0 left-0 z-0`}>
         <div className="absolute inset-0 opacity-20 bg-[url('/assets/pattern.png')] bg-repeat" />
@@ -41,7 +41,7 @@ function PlayerCard({ player, tenant }: { player: any; tenant: string }) {
       <div className="relative z-10 p-6 pt-12 flex flex-col items-center">
         {/* Avatar / Photo */}
         <div className="relative mb-4">
-          <div className="h-28 w-28 rounded-full border-4 border-white dark:border-gray-800 bg-gray-200 dark:bg-gray-700 flex items-center justify-center shadow-lg overflow-hidden">
+          <div className="h-28 w-28 chamfer-lg border-4 border-white dark:border-gray-800 bg-gray-200 dark:bg-gray-700 flex items-center justify-center shadow-lg overflow-hidden">
             {player.image ? (
               <img src={player.image} alt={player.name} className="h-full w-full object-cover" />
             ) : (
@@ -49,8 +49,8 @@ function PlayerCard({ player, tenant }: { player: any; tenant: string }) {
             )}
           </div>
           {player.number && (
-            <div className="absolute bottom-0 right-0 bg-white dark:bg-gray-900 border-2 border-brand text-brand font-black rounded-full w-10 h-10 flex items-center justify-center shadow-md text-sm">
-              {player.number}
+            <div className="absolute bottom-0 right-0 bg-white dark:bg-gray-900 border-2 border-brand text-brand font-black rotate-45 w-10 h-10 flex items-center justify-center shadow-md text-sm">
+              <div className="-rotate-45">{player.number}</div>
             </div>
           )}
         </div>
@@ -59,7 +59,7 @@ function PlayerCard({ player, tenant }: { player: any; tenant: string }) {
         <h3 className="text-xl font-bold text-gray-900 dark:text-white text-center mb-1 group-hover:text-brand transition-colors">
           {player.name}
         </h3>
-        <span className="inline-block px-3 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-xs font-bold uppercase tracking-wider rounded-full mb-2">
+        <span className="inline-block px-3 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-xs font-bold uppercase tracking-wider chamfer-sm mb-2">
           {player.position || 'Player'}
         </span>
 

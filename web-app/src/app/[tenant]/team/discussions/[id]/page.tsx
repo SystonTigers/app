@@ -81,7 +81,7 @@ function TimestampContent({ content }: { content: string }) {
                     <button
                         key={i}
                         onClick={() => handleClick(part.seconds!)}
-                        className="text-brand font-mono font-bold hover:underline mx-1 cursor-pointer bg-brand/10 px-1 rounded text-xs align-middle"
+                        className="text-brand font-mono font-bold hover:underline mx-1 cursor-pointer bg-brand/10 px-1 chamfer-sm text-xs align-middle"
                     >
                         {part.display}
                     </button>
@@ -104,12 +104,12 @@ function CommentThread({
 }) {
     return (
         <div className="flex gap-3">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-brand to-brand/60 flex items-center justify-center text-white font-bold text-lg shrink-0">
+            <div className="w-10 h-10 chamfer-sm bg-gradient-to-br from-brand to-brand/60 flex items-center justify-center text-white font-bold text-lg shrink-0">
                 {comment.author_name[0]}
             </div>
 
             <div className="flex-1">
-                <div className="bg-gray-50 dark:bg-gray-900 rounded-xl p-4">
+                <div className="bg-gray-50 dark:bg-gray-900 chamfer-sm p-4">
                     <div className="flex items-center justify-between mb-2">
                         <span className="font-bold text-gray-900 dark:text-white">{comment.author_name}</span>
                         <span className="text-xs text-gray-500">
@@ -156,7 +156,7 @@ function CategoryBadge({ category }: { category: string }) {
     };
 
     return (
-        <span className={`px-3 py-1 rounded-full text-sm font-bold uppercase ${colors[category] || colors.general}`}>
+        <span className={`px-3 py-1 chamfer-sm text-sm font-bold uppercase ${colors[category] || colors.general}`}>
             {category.replace('-', ' ')}
         </span>
     );
@@ -348,8 +348,8 @@ export default function DiscussionDetailPage({
         return (
             <div className="min-h-screen bg-gray-50 dark:bg-black pb-20">
                 <div className="container px-6 py-12">
-                    <div className="h-32 bg-gray-200 dark:bg-gray-700 rounded-xl animate-pulse mb-8"></div>
-                    <div className="h-64 bg-gray-200 dark:bg-gray-700 rounded-xl animate-pulse"></div>
+                    <div className="h-32 bg-gray-200 dark:bg-gray-700 chamfer-sm animate-pulse mb-8"></div>
+                    <div className="h-64 bg-gray-200 dark:bg-gray-700 chamfer-sm animate-pulse"></div>
                 </div>
             </div>
         );
@@ -404,7 +404,7 @@ export default function DiscussionDetailPage({
                 )}
 
                 {/* Discussion Header */}
-                <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 p-8 mb-8">
+                <div className="bg-white dark:bg-gray-800 chamfer-lg shadow-sm border border-gray-100 dark:border-gray-700 p-8 mb-8">
                     <div className="flex items-start justify-between mb-4">
                         <div className="flex items-center gap-3">
                             <CategoryBadge category={discussion.category} />
@@ -416,13 +416,13 @@ export default function DiscussionDetailPage({
                             <div className="flex gap-2">
                                 <button
                                     onClick={togglePin}
-                                    className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-bold hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                    className="px-4 py-2 border border-gray-300 dark:border-gray-600 chamfer-sm text-sm font-bold hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                                 >
                                     {discussion.pinned ? 'Unpin' : 'Pin'}
                                 </button>
                                 <button
                                     onClick={toggleLock}
-                                    className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-bold hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                    className="px-4 py-2 border border-gray-300 dark:border-gray-600 chamfer-sm text-sm font-bold hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                                 >
                                     {discussion.locked ? 'Unlock' : 'Lock'}
                                 </button>
@@ -435,7 +435,7 @@ export default function DiscussionDetailPage({
                     </h1>
 
                     {relatedEntity && (
-                        <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-700/30 rounded-xl border border-gray-100 dark:border-gray-600/50">
+                        <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-700/30 chamfer-sm border border-gray-100 dark:border-gray-600/50">
                             <div className="text-xs font-bold uppercase text-gray-400 mb-1">
                                 Related {discussion.related_entity_type}
                             </div>
@@ -451,7 +451,7 @@ export default function DiscussionDetailPage({
                                 </div>
                             ) : discussion.related_entity_type === 'player' ? (
                                 <div className="flex items-center gap-4">
-                                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-brand to-brand/60 flex items-center justify-center text-white font-black text-2xl shrink-0">
+                                    <div className="w-16 h-16 chamfer-sm bg-gradient-to-br from-brand to-brand/60 flex items-center justify-center text-white font-black text-2xl shrink-0">
                                         {relatedEntity.number || relatedEntity.name?.[0] || '?'}
                                     </div>
                                     <div className="flex-1">
@@ -525,7 +525,7 @@ export default function DiscussionDetailPage({
                 </div>
 
                 {/* Comments */}
-                <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 p-8 mb-8">
+                <div className="bg-white dark:bg-gray-800 chamfer-lg shadow-sm border border-gray-100 dark:border-gray-700 p-8 mb-8">
                     <h2 className="text-2xl font-black uppercase tracking-tight mb-6">Comments</h2>
 
                     <div className="space-y-6">
@@ -549,13 +549,13 @@ export default function DiscussionDetailPage({
 
                 {/* Add Comment */}
                 {(!discussion.locked || isCoach) && (
-                    <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 p-8">
+                    <div className="bg-white dark:bg-gray-800 chamfer-lg shadow-sm border border-gray-100 dark:border-gray-700 p-8">
                         <h3 className="text-xl font-black uppercase tracking-tight mb-4">
                             {replyingTo ? 'Add Reply' : 'Add Comment'}
                         </h3>
 
                         {replyingTo && (
-                            <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg flex items-center justify-between">
+                            <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 chamfer-sm flex items-center justify-between">
                                 <span className="text-sm text-blue-800 dark:text-blue-300">Replying to a comment</span>
                                 <button
                                     onClick={() => setReplyingTo(null)}
@@ -573,7 +573,7 @@ export default function DiscussionDetailPage({
                                 onMentionsChange={setMentions}
                                 tenant={tenant}
                                 placeholder="Share your thoughts... (Use [MM:SS] for timestamps, @ to mention)"
-                                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 min-h-[120px] resize-y mb-2"
+                                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 chamfer-sm bg-white dark:bg-gray-700 min-h-[120px] resize-y mb-2"
                                 disabled={submitting}
                             />
 
@@ -591,7 +591,7 @@ export default function DiscussionDetailPage({
                                 <button
                                     type="submit"
                                     disabled={submitting || !newComment.trim()}
-                                    className="px-6 py-3 bg-brand text-white rounded-xl font-bold hover:bg-brand/90 disabled:opacity-50 transition-all"
+                                    className="px-6 py-3 bg-brand text-white chamfer-sm font-bold hover:bg-brand/90 disabled:opacity-50 transition-all"
                                 >
                                     {submitting ? 'Posting...' : 'Post Comment'}
                                 </button>
@@ -601,7 +601,7 @@ export default function DiscussionDetailPage({
                 )}
 
                 {discussion.locked && !isCoach && (
-                    <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-xl p-6 text-center">
+                    <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 chamfer-sm p-6 text-center">
                         <span className="text-3xl mb-2 block">🔒</span>
                         <p className="text-yellow-800 dark:text-yellow-300 font-bold">
                             This discussion is locked

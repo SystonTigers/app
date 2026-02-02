@@ -48,6 +48,7 @@ export async function handleListOpponents(req: Request, env: any, corsHdrs: Head
         const results = (opponents.results || []).map((opp: any) => ({
             ...opp,
             effective_badge_url: opp.custom_badge_url || opp.library_badge_url || null,
+            reference_badge_url: opp.reference_badge_url,
             needs_approval: opp.status === 'pending' && opp.pending_badge_url
         }));
 

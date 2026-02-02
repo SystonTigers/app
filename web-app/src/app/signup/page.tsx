@@ -39,90 +39,97 @@ export default function SignupPage() {
 
   if (success) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-600 to-purple-700 px-4">
-        <div className="max-w-md w-full bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8 text-center">
-          <div className="w-16 h-16 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center mx-auto mb-6">
-            <svg className="w-8 h-8 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+      <div className="min-h-screen flex items-center justify-center bg-[#0B0D0F] bg-[url('/assets/hero-bg.jpg')] bg-cover bg-center bg-no-repeat relative">
+        <div className="absolute inset-0 bg-[#0B0D0F]/90 backdrop-blur-sm" />
+
+        <div className="relative z-10 max-w-md w-full bg-gray-900/80 chamfer-lg border border-brand/30 p-8 text-center backdrop-blur-md shadow-[0_0_50px_rgba(0,255,255,0.1)]">
+          <div className="w-16 h-16 bg-brand/20 border border-brand chamfer-sm flex items-center justify-center mx-auto mb-6 rotate-45">
+            <svg className="w-8 h-8 text-brand -rotate-45" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
             </svg>
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Check your email!</h2>
-          <p className="text-gray-600 dark:text-gray-300 mb-6">
-            We've sent a verification link to <span className="font-semibold">{email}</span>
+          <h2 className="text-2xl font-black italic uppercase text-white mb-2 tracking-wide">Check your comms!</h2>
+          <p className="text-gray-300 mb-6 font-mono text-sm leading-relaxed">
+            We've sent a verification signal to <span className="text-brand font-bold">{email}</span>. Use the link to activate your command center.
           </p>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Click the link in your email to complete your registration.
-          </p>
+          <div className="inline-block px-4 py-2 bg-gray-800 chamfer-sm text-xs text-gray-400 uppercase tracking-widest border border-gray-700">
+            Awaiting Confirmation
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-600 to-purple-700 px-4">
-      <div className="max-w-md w-full">
+    <div className="min-h-screen flex items-center justify-center bg-[#0B0D0F] bg-[url('/assets/hero-bg.jpg')] bg-cover bg-center bg-no-repeat relative">
+      <div className="absolute inset-0 bg-[#0B0D0F]/90 backdrop-blur-sm" />
+
+      <div className="relative z-10 max-w-md w-full px-4">
         {/* Logo/Brand */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-white mb-2">Create Account</h1>
-          <p className="text-blue-100">Join your team in seconds</p>
+        <div className="text-center mb-10">
+          <h1 className="text-5xl font-black italic uppercase text-transparent bg-clip-text bg-gradient-to-r from-white via-gray-200 to-gray-500 mb-2 drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]">
+            Boost Huddle
+          </h1>
+          <p className="text-brand font-bold uppercase tracking-widest text-sm bg-brand/10 inline-block px-3 py-1 chamfer-sm border border-brand/20">
+            Initialize Your Squad
+          </p>
         </div>
 
         {/* Form Card */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8">
-          <form onSubmit={handleSubmit} className="space-y-5">
+        <div className="bg-gray-900/60 chamfer-lg border border-gray-800 p-8 backdrop-blur-xl shadow-2xl relative overflow-hidden group">
+          <div className="absolute top-0 left-0 w-2 h-2 bg-brand" />
+          <div className="absolute top-0 right-0 w-2 h-2 bg-brand" />
+          <div className="absolute bottom-0 left-0 w-2 h-2 bg-brand" />
+          <div className="absolute bottom-0 right-0 w-2 h-2 bg-brand" />
+
+          <form onSubmit={handleSubmit} className="space-y-6">
             {error && (
-              <div className="p-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg">
-                <p className="text-red-600 dark:text-red-400 text-sm">{error}</p>
+              <div className="p-4 bg-red-900/20 border border-red-500/50 text-red-400 text-sm font-bold text-center chamfer-sm">
+                {error}
               </div>
             )}
 
             <div>
-              <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Your Name
+              <label htmlFor="name" className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1">
+                Commander Name
               </label>
               <input
                 id="name"
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="John Smith"
-                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg 
-                                         bg-white dark:bg-gray-700 text-gray-900 dark:text-white
-                                         focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                placeholder="JOHN SMITH"
+                className="w-full px-4 py-3 bg-black/50 border border-gray-700 text-white placeholder-gray-600 focus:border-brand focus:ring-1 focus:ring-brand focus:bg-black/80 transition-all chamfer-sm outline-none font-bold uppercase"
                 required
               />
             </div>
 
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Email Address
+              <label htmlFor="email" className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1">
+                Email Frequency
               </label>
               <input
                 id="email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
-                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg 
-                                         bg-white dark:bg-gray-700 text-gray-900 dark:text-white
-                                         focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                placeholder="YOU@EXAMPLE.COM"
+                className="w-full px-4 py-3 bg-black/50 border border-gray-700 text-white placeholder-gray-600 focus:border-brand focus:ring-1 focus:ring-brand focus:bg-black/80 transition-all chamfer-sm outline-none font-bold uppercase"
                 required
               />
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Password
+              <label htmlFor="password" className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1">
+                Secure Passcode
               </label>
               <input
                 id="password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Min. 8 characters"
-                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg 
-                                         bg-white dark:bg-gray-700 text-gray-900 dark:text-white
-                                         focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                placeholder="********"
+                className="w-full px-4 py-3 bg-black/50 border border-gray-700 text-white placeholder-gray-600 focus:border-brand focus:ring-1 focus:ring-brand focus:bg-black/80 transition-all chamfer-sm outline-none font-bold tracking-widest"
                 minLength={8}
                 required
               />
@@ -131,41 +138,35 @@ export default function SignupPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 px-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold 
-                                     rounded-lg hover:from-blue-700 hover:to-purple-700 focus:ring-2 focus:ring-blue-500 
-                                     focus:ring-offset-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-4 px-6 bg-brand text-black font-black uppercase italic tracking-wider chamfer-sm hover:bg-white hover:shadow-[0_0_20px_rgba(0,255,255,0.4)] transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-2 transform active:scale-[0.98]"
             >
               {loading ? (
-                <span className="flex items-center justify-center gap-2">
-                  <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
-                  Creating account...
+                <span className="flex items-center justify-center gap-3">
+                  <span className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
+                  INITIALIZING...
                 </span>
               ) : (
-                'Create Account'
+                'LAUNCH ACCOUNT'
               )}
             </button>
           </form>
 
-          <div className="mt-6 text-center">
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Already have an account?{' '}
-              <Link href="/login" className="text-blue-600 hover:text-blue-700 font-medium">
-                Sign in
+          <div className="mt-8 text-center border-t border-gray-800 pt-6">
+            <p className="text-sm text-gray-500 font-mono">
+              Already operational?{' '}
+              <Link href="/login" className="text-brand hover:text-white font-bold transition-colors uppercase tracking-wider">
+                Access Terminal
               </Link>
             </p>
           </div>
         </div>
 
         {/* Terms */}
-        <p className="text-center text-xs text-blue-100 mt-6">
-          By creating an account, you agree to our{' '}
-          <a href="#" className="underline">Terms of Service</a>
-          {' '}and{' '}
-          <a href="#" className="underline">Privacy Policy</a>
-        </p>
+        <div className="text-center mt-8 space-x-6 text-xs font-mono text-gray-600 uppercase tracking-widest">
+          <a href="#" className="hover:text-brand transition-colors">Terms of Service</a>
+          <span>|</span>
+          <a href="#" className="hover:text-brand transition-colors">Privacy Protocol</a>
+        </div>
       </div>
     </div>
   );

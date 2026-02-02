@@ -10,7 +10,7 @@ interface HomePageProps {
 function HeroSection({ nextFixture, tenant }: { nextFixture: any, tenant: string }) {
   if (!nextFixture) {
     return (
-      <div className="relative overflow-hidden rounded-3xl bg-gray-900 text-white shadow-2xl mb-8 p-12 text-center">
+      <div className="relative overflow-hidden chamfer-lg bg-gray-900 text-white shadow-2xl mb-8 p-12 text-center">
         <h1 className="text-4xl font-black uppercase italic mb-2">Welcome to {tenant}</h1>
         <p className="text-gray-400">The official home of your favorite team.</p>
       </div>
@@ -21,7 +21,7 @@ function HeroSection({ nextFixture, tenant }: { nextFixture: any, tenant: string
   const isLive = nextFixture.status === 'live' || nextFixture.status === 'halftime';
 
   return (
-    <div className="relative overflow-hidden rounded-3xl bg-black text-white shadow-2xl mb-8 group">
+    <div className="relative overflow-hidden chamfer-lg bg-black text-white shadow-2xl mb-8 group">
       {/* Background Image with Overlay */}
       <div className="absolute inset-0 bg-[url('/assets/hero-bg.jpg')] bg-cover bg-center opacity-40 group-hover:scale-105 transition-transform duration-700" />
       <div className="absolute inset-0 bg-gradient-to-r from-black via-black/80 to-transparent" />
@@ -29,11 +29,11 @@ function HeroSection({ nextFixture, tenant }: { nextFixture: any, tenant: string
       <div className="relative z-10 p-8 md:p-12 flex flex-col md:flex-row items-center justify-between gap-8">
         <div className="text-center md:text-left">
           {isLive ? (
-            <div className="inline-flex items-center gap-2 px-3 py-1 bg-red-600 rounded-full text-xs font-bold uppercase tracking-wider mb-4 animate-pulse">
-              <span className="w-2 h-2 bg-white rounded-full" /> Live Match
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-red-600 chamfer-sm text-xs font-bold uppercase tracking-wider mb-4 animate-pulse">
+              <span className="w-2 h-2 bg-white rotate-45" /> Live Match
             </div>
           ) : (
-            <div className="inline-flex items-center gap-2 px-3 py-1 bg-brand text-brand-foreground rounded-full text-xs font-bold uppercase tracking-wider mb-4">
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-brand text-brand-foreground chamfer-sm text-xs font-bold uppercase tracking-wider mb-4">
               Next Match
             </div>
           )}
@@ -48,23 +48,23 @@ function HeroSection({ nextFixture, tenant }: { nextFixture: any, tenant: string
 
           <div className="flex flex-wrap gap-4 justify-center md:justify-start">
             {isLive ? (
-              <Link href={`/${tenant}/live`} className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition-colors flex items-center gap-2">
+              <Link href={`/${tenant}/live`} className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-bold chamfer-sm transition-colors flex items-center gap-2">
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                 Watch Live
               </Link>
             ) : (
-              <Link href={`/${tenant}/fixtures`} className="px-6 py-3 bg-white text-black hover:bg-gray-200 font-bold rounded-xl transition-colors">
+              <Link href={`/${tenant}/fixtures`} className="px-6 py-3 bg-white text-black hover:bg-gray-200 font-bold chamfer-sm transition-colors">
                 Match Details
               </Link>
             )}
-            <button className="px-6 py-3 bg-white/10 hover:bg-white/20 text-white font-bold rounded-xl backdrop-blur-sm transition-colors border border-white/10">
+            <button className="px-6 py-3 bg-white/10 hover:bg-white/20 text-white font-bold chamfer-sm backdrop-blur-sm transition-colors border border-white/10">
               Buy Tickets
             </button>
           </div>
         </div>
 
         {/* Countdown / Score / Time */}
-        <div className="bg-white/5 backdrop-blur-md p-6 rounded-2xl border border-white/10 min-w-[200px] text-center">
+        <div className="bg-white/5 backdrop-blur-md p-6 chamfer-lg border border-white/10 min-w-[200px] text-center">
           {isLive ? (
             <div>
               <div className="text-4xl font-black text-white mb-1">
@@ -93,19 +93,19 @@ function QuickStats({ table }: { table: any[] }) {
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-      <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col items-center justify-center">
+      <div className="bg-white dark:bg-gray-800 p-4 chamfer-sm shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col items-center justify-center">
         <span className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">League Pos</span>
         <span className="text-3xl font-black text-brand">{myTeam.position}</span>
       </div>
-      <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col items-center justify-center">
+      <div className="bg-white dark:bg-gray-800 p-4 chamfer-sm shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col items-center justify-center">
         <span className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Points</span>
         <span className="text-3xl font-black text-gray-900 dark:text-white">{myTeam.points}</span>
       </div>
-      <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col items-center justify-center">
+      <div className="bg-white dark:bg-gray-800 p-4 chamfer-sm shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col items-center justify-center">
         <span className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Won</span>
         <span className="text-3xl font-black text-green-500">{myTeam.won}</span>
       </div>
-      <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col items-center justify-center">
+      <div className="bg-white dark:bg-gray-800 p-4 chamfer-sm shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col items-center justify-center">
         <span className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Goal Diff</span>
         <span className="text-3xl font-black text-gray-900 dark:text-white">{myTeam.goalDifference > 0 ? '+' : ''}{myTeam.goalDifference}</span>
       </div>
@@ -123,7 +123,7 @@ function NewsFeed({ posts }: { posts: any[] }) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {posts.map((post: any) => (
-        <div key={post.id} className="group bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all border border-gray-100 dark:border-gray-700 flex flex-col h-full">
+        <div key={post.id} className="group bg-white dark:bg-gray-800 chamfer-lg overflow-hidden shadow-sm hover:shadow-xl transition-all border border-gray-100 dark:border-gray-700 flex flex-col h-full">
           {post.image && (
             <div className="h-48 overflow-hidden">
               <img src={post.image} alt="News" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
@@ -186,10 +186,10 @@ export default async function TenantHomePage({ params }: HomePageProps) {
             </h1>
           </div>
           <div className="hidden md:flex gap-3">
-            <Link href={`/${tenant}/shop`} className="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg font-bold text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+            <Link href={`/${tenant}/shop`} className="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 chamfer-sm font-bold text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
               Store
             </Link>
-            <Link href={`/${tenant}/sponsors`} className="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg font-bold text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+            <Link href={`/${tenant}/sponsors`} className="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 chamfer-sm font-bold text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
               Partners
             </Link>
           </div>
@@ -215,7 +215,7 @@ export default async function TenantHomePage({ params }: HomePageProps) {
           {/* Right Col: Sidebar */}
           <div className="space-y-8">
             {/* Mini League Table */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-6">
+            <div className="bg-white dark:bg-gray-800 chamfer-lg shadow-sm border border-gray-100 dark:border-gray-700 p-6">
               <h3 className="text-lg font-black uppercase tracking-tight mb-4">League Standings</h3>
               <table className="w-full text-sm">
                 <thead>
@@ -248,7 +248,7 @@ export default async function TenantHomePage({ params }: HomePageProps) {
             </div>
 
             {/* Upcoming */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-6">
+            <div className="bg-white dark:bg-gray-800 chamfer-lg shadow-sm border border-gray-100 dark:border-gray-700 p-6">
               <h3 className="text-lg font-black uppercase tracking-tight mb-4">Upcoming Matches</h3>
               <div className="space-y-4">
                 {fixtures.slice(0, 3).map((f: any) => (

@@ -1,6 +1,9 @@
-# Team Platform Web App
+# BOOST HUDDLE (B.H.)
+> **The Master Manifestor of Sports Analytics.**
+> Build: 22/4 | Frequency: 8 | Vision: 33
 
-Next.js web application for the multi-tenant team platform with white-label support.
+## The Mission
+Automating the "Top Play" for elite teams.
 
 ## Features
 

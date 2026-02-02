@@ -43,7 +43,7 @@ export default function TablePage({ params }: { params: Promise<{ tenant: string
             <h1 className="text-4xl font-black uppercase tracking-tighter mb-2">League Table</h1>
             <p className="text-gray-500">Current standings for the season.</p>
           </div>
-          <a href="#" className="px-5 py-2.5 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-900 dark:text-white font-bold rounded-lg text-sm transition-colors">
+          <a href="#" className="px-5 py-2.5 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-900 dark:text-white font-bold chamfer-sm text-sm transition-colors">
             View Official Site &rarr;
           </a>
         </div>
@@ -59,7 +59,7 @@ export default function TablePage({ params }: { params: Promise<{ tenant: string
         )}
 
         {loading ? (
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-8">
+          <div className="bg-white dark:bg-gray-800 chamfer-lg shadow-sm border border-gray-200 dark:border-gray-700 p-8">
             <div className="space-y-4">
               {[1, 2, 3, 4, 5].map((i) => (
                 <div key={i} className="h-16 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
@@ -67,7 +67,7 @@ export default function TablePage({ params }: { params: Promise<{ tenant: string
             </div>
           </div>
         ) : (
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <div className="bg-white dark:bg-gray-800 chamfer-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
@@ -101,18 +101,18 @@ export default function TablePage({ params }: { params: Promise<{ tenant: string
                         <td className="py-4 px-4">
                           <div className="flex items-center gap-2">
                             <span className={`
-                              w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold
+                              w-6 h-6 flex items-center justify-center chamfer-sm text-xs font-bold
                               ${isPromo ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
                                 isRel ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : 'text-gray-500'}
                             `}>
                               {row.position}
                             </span>
-                            {isPromo && <span className="w-1.5 h-1.5 rounded-full bg-green-500 ml-1" title="Promotion"></span>}
+                            {isPromo && <span className="w-1.5 h-1.5 rotate-45 bg-green-500 ml-1" title="Promotion"></span>}
                           </div>
                         </td>
                         <td className="py-4 px-4 font-bold text-gray-900 dark:text-white">
                           <div className="flex items-center gap-3">
-                            {isMyTeam && <span className="w-2 h-2 rounded-full bg-brand animate-pulse"></span>}
+                            {isMyTeam && <span className="w-2 h-2 rotate-45 bg-brand animate-pulse"></span>}
                             {row.team}
                           </div>
                         </td>
@@ -140,10 +140,10 @@ export default function TablePage({ params }: { params: Promise<{ tenant: string
         {/* Key */}
         <div className="mt-6 flex gap-6 text-xs text-gray-500 uppercase font-bold tracking-wider">
           <div className="flex items-center gap-2">
-            <span className="w-3 h-3 rounded-full bg-green-500"></span> Promotion
+            <span className="w-3 h-3 rotate-45 bg-green-500"></span> Promotion
           </div>
           <div className="flex items-center gap-2">
-            <span className="w-3 h-3 rounded-full bg-red-500"></span> Relegation
+            <span className="w-3 h-3 rotate-45 bg-red-500"></span> Relegation
           </div>
         </div>
       </div>

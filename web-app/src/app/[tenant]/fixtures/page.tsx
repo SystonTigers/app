@@ -17,14 +17,14 @@ function FixtureCard({ fixture, isNext }: { fixture: any, isNext?: boolean }) {
 
   if (isNext) {
     return (
-      <div className="relative overflow-hidden rounded-3xl bg-gray-900 text-white shadow-2xl mb-16 border border-gray-800">
+      <div className="relative overflow-hidden chamfer-lg bg-gray-900 text-white shadow-2xl mb-16 border border-gray-800">
         <div className="absolute inset-0 bg-[url('/assets/pitch-bg.jpg')] bg-cover bg-center opacity-30 mix-blend-overlay" />
         <div className="absolute inset-0 bg-gradient-to-br from-brand/20 to-black/80" />
 
         <div className="relative z-10 p-8 md:p-12">
           {/* Top row: Competition badge & Weather */}
           <div className="flex items-center justify-between mb-6">
-            <div className="inline-block px-4 py-1 bg-brand text-brand-foreground font-bold uppercase tracking-wider text-sm rounded-full">
+            <div className="inline-block px-4 py-1 bg-brand text-brand-foreground font-bold uppercase tracking-wider text-sm chamfer-sm">
               Next Match • {fixture.competition || 'League'}
             </div>
             <WeatherWidget className="text-white" />
@@ -49,14 +49,14 @@ function FixtureCard({ fixture, isNext }: { fixture: any, isNext?: boolean }) {
             {/* Center: VS */}
             <div className="flex-1 flex items-center justify-center gap-8 w-full">
               <div className="flex flex-col items-center">
-                <div className="w-24 h-24 md:w-32 md:h-32 bg-gray-800 rounded-full flex items-center justify-center border-4 border-gray-700 shadow-xl mb-4 text-4xl font-bold">
+                <div className="w-24 h-24 md:w-32 md:h-32 bg-gray-800 chamfer-lg flex items-center justify-center border-4 border-gray-700 shadow-xl mb-4 text-4xl font-bold">
                   {fixture.homeTeam?.[0] || 'H'}
                 </div>
                 <span className="font-bold text-lg md:text-2xl uppercase tracking-tighter">{fixture.homeTeam}</span>
               </div>
               <div className="text-4xl md:text-6xl font-black text-gray-700 italic">VS</div>
               <div className="flex flex-col items-center">
-                <div className="w-24 h-24 md:w-32 md:h-32 bg-white text-black rounded-full flex items-center justify-center border-4 border-gray-300 shadow-xl mb-4 text-4xl font-bold">
+                <div className="w-24 h-24 md:w-32 md:h-32 bg-white text-black chamfer-lg flex items-center justify-center border-4 border-gray-300 shadow-xl mb-4 text-4xl font-bold">
                   {fixture.awayTeam?.[0] || 'A'}
                 </div>
                 <span className="font-bold text-lg md:text-2xl uppercase tracking-tighter">{fixture.awayTeam}</span>
@@ -65,7 +65,7 @@ function FixtureCard({ fixture, isNext }: { fixture: any, isNext?: boolean }) {
 
             {/* Right: CTA */}
             <div className="md:w-1/4 flex justify-center md:justify-end">
-              <button className="px-8 py-4 bg-white text-black font-black uppercase tracking-widest hover:bg-brand hover:text-white transition-all transform hover:scale-105 rounded-xl shadow-lg">
+              <button className="px-8 py-4 bg-white text-black font-black uppercase tracking-widest hover:bg-brand hover:text-white transition-all transform hover:scale-105 chamfer-sm shadow-lg">
                 Get Tickets
               </button>
             </div>
@@ -83,9 +83,9 @@ function FixtureCard({ fixture, isNext }: { fixture: any, isNext?: boolean }) {
 
   // Standard list item
   return (
-    <div className="group flex flex-col md:flex-row items-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6 hover:shadow-lg transition-all duration-200">
+    <div className="group flex flex-col md:flex-row items-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 chamfer-sm p-6 hover:shadow-lg transition-all duration-200">
       {/* Date Box */}
-      <div className="flex flex-col items-center justify-center bg-gray-100 dark:bg-gray-700 rounded-lg p-3 w-full md:w-24 text-center mb-4 md:mb-0 md:mr-6">
+      <div className="flex flex-col items-center justify-center bg-gray-100 dark:bg-gray-700 chamfer-sm p-3 w-full md:w-24 text-center mb-4 md:mb-0 md:mr-6">
         <span className="text-xs uppercase font-bold text-gray-500">{dateObj.toLocaleDateString('en-GB', { month: 'short' })}</span>
         <span className="text-2xl font-black text-gray-900 dark:text-white">{dateObj.getDate()}</span>
         <span className="text-xs font-bold text-gray-400">{dateObj.toLocaleDateString('en-GB', { weekday: 'short' })}</span>
@@ -108,7 +108,7 @@ function FixtureCard({ fixture, isNext }: { fixture: any, isNext?: boolean }) {
 
       {/* Action */}
       <div className="mt-4 md:mt-0 opacity-0 group-hover:opacity-100 transition-opacity">
-        <button className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-bold hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+        <button className="px-4 py-2 border border-gray-300 dark:border-gray-600 chamfer-sm text-sm font-bold hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
           Details
         </button>
       </div>
@@ -160,7 +160,7 @@ export default function FixturesPage({ params }: { params: Promise<{ tenant: str
             <h1 className="text-4xl font-black uppercase tracking-tighter mb-2">Fixtures</h1>
             <p className="text-gray-500">Don't miss a moment of the action.</p>
           </div>
-          <button className="hidden md:block px-4 py-2 bg-gray-200 dark:bg-gray-800 rounded-lg font-bold text-sm hover:bg-gray-300 transition-colors">
+          <button className="hidden md:block px-4 py-2 bg-gray-200 dark:bg-gray-800 chamfer-sm font-bold text-sm hover:bg-gray-300 transition-colors">
             Sync to Calendar
           </button>
         </div>
@@ -176,7 +176,7 @@ export default function FixturesPage({ params }: { params: Promise<{ tenant: str
         {loading ? (
           <div className="space-y-4 max-w-4xl mx-auto">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-32 bg-gray-200 dark:bg-gray-700 rounded-xl animate-pulse"></div>
+              <div key={i} className="h-32 bg-gray-200 dark:bg-gray-700 chamfer-sm animate-pulse"></div>
             ))}
           </div>
         ) : nextMatch ? (
@@ -193,7 +193,7 @@ export default function FixturesPage({ params }: { params: Promise<{ tenant: str
             )}
           </>
         ) : (
-          <div className="text-center py-20 bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700">
+          <div className="text-center py-20 bg-white dark:bg-gray-800 chamfer-lg shadow-sm border border-gray-100 dark:border-gray-700">
             <div className="text-6xl mb-4">📅</div>
             <h3 className="text-2xl font-bold mb-2">No Fixtures Scheduled</h3>
             <p className="text-gray-500 mb-6">Check back soon for the new season schedule.</p>

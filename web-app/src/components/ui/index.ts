@@ -1,4 +1,5 @@
 // Premium UI Components - Barrel Export
+export { EmptyState } from './EmptyState';
 export { AnimatedCounter } from './AnimatedCounter';
 export { Skeleton, SkeletonCard, SkeletonTable, SkeletonStats } from './Skeleton';
 export { CommandPalette, CommandPaletteTrigger } from './CommandPalette';
