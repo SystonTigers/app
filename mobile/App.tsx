@@ -5,7 +5,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createDrawerNavigator } from '@react-navigation/drawer';
-import { PaperProvider, MD3LightTheme } from 'react-native-paper';
+import { PaperProvider, MD3DarkTheme } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS } from './src/config';
 import { AuthProvider } from './src/context/AuthContext';
@@ -76,16 +76,18 @@ import OnboardingScreen from './src/screens/OnboardingScreen';
 const Tab = createBottomTabNavigator();
 const Drawer = createDrawerNavigator();
 
-// Customize theme with Syston Tigers colors
+// Customize theme with Syston Tigers colors - USING DARK THEME BASE
 const theme = {
-  ...MD3LightTheme,
+  ...MD3DarkTheme,
   colors: {
-    ...MD3LightTheme.colors,
+    ...MD3DarkTheme.colors,
     primary: COLORS.primary,
     secondary: COLORS.secondary,
     background: COLORS.background,
     surface: COLORS.surface,
     error: COLORS.error,
+    onBackground: COLORS.text, // Ensure text is white on obsidian
+    onSurface: COLORS.text,    // Ensure text is white on glass/obsidian
   },
 };
 

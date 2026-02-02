@@ -10,13 +10,13 @@ const spacing = {
   xxl: 48,
 };
 
-// Default border radius values
+// Boost Huddle "Chamfered" look - much sharper
 const borderRadius = {
   none: 0,
-  sm: 4,
-  md: 8,
-  lg: 12,
-  xl: 16,
+  sm: 2,   // Was 4
+  md: 4,   // Was 8
+  lg: 8,   // Was 12
+  xl: 12,  // Was 16
   full: 9999,
 };
 
@@ -54,152 +54,91 @@ const typography = {
   },
 };
 
-// Default shadows
+// Default shadows - slightly sharper
 const shadows = {
   none: 'none',
-  sm: '0 1px 2px rgba(0, 0, 0, 0.05)',
-  md: '0 4px 6px rgba(0, 0, 0, 0.1)',
-  lg: '0 10px 15px rgba(0, 0, 0, 0.1)',
-  xl: '0 20px 25px rgba(0, 0, 0, 0.15)',
+  sm: '0 1px 2px rgba(0, 0, 0, 0.3)',
+  md: '0 4px 6px rgba(0, 0, 0, 0.4)',
+  lg: '0 10px 15px rgba(0, 0, 0, 0.5)',
+  xl: '0 20px 25px rgba(0, 0, 0, 0.6)',
 };
 
-// Light theme (default - neutral base)
+// Light theme (Force Obsidian/Dark mode look even in light mode for brand consistency)
+// The user wants "Boost Huddle" look, which is dark.
 export const lightTheme: Theme = {
   colors: {
-    // Primary brand colors (Neutral blue)
-    primary: '#6CC5FF',
-    primaryLight: '#8FD4FF',
-    primaryDark: '#49B7FF',
+    // Primary brand colors (Electric Cyan)
+    primary: '#00FFFF',
+    primaryLight: '#80FFFF',
+    primaryDark: '#00CCCC',
 
-    // Secondary brand colors (Muted gray)
-    secondary: '#9AA1AC',
-    secondaryLight: '#B4BCC7',
-    secondaryDark: '#808891',
+    // Secondary brand colors (Brushed Chrome)
+    secondary: '#C0C0C0',
+    secondaryLight: '#E0E0E0',
+    secondaryDark: '#A0A0A0',
 
-    // Accent colors (Neutral green)
-    accent: '#A0FF9C',
-    accentLight: '#B8FFB4',
-    accentDark: '#88FF84',
+    // Accent colors (Cyan)
+    accent: '#00FFFF',
+    accentLight: '#80FFFF',
+    accentDark: '#00CCCC',
 
-    // Background colors
-    background: '#FFFFFF',
-    backgroundSecondary: '#F5F5F5',
-    backgroundTertiary: '#EEEEEE',
+    // Background colors (Obsidian)
+    background: '#0B0D0F',
+    backgroundSecondary: '#15181C',
+    backgroundTertiary: '#1F2329',
 
-    // Surface colors
-    surface: '#FFFFFF',
-    surfaceSecondary: '#F9F9F9',
-    surfaceTertiary: '#F0F0F0',
-
-    // Text colors
-    text: '#000000',
-    textSecondary: '#666666',
-    textTertiary: '#999999',
-    textDisabled: '#CCCCCC',
-    textInverse: '#FFFFFF',
-
-    // Border colors
-    border: '#E0E0E0',
-    borderLight: '#F0F0F0',
-    borderDark: '#CCCCCC',
-
-    // Status colors
-    success: '#4CAF50',
-    successLight: '#81C784',
-    successDark: '#388E3C',
-
-    warning: '#FF9800',
-    warningLight: '#FFB74D',
-    warningDark: '#F57C00',
-
-    error: '#F44336',
-    errorLight: '#E57373',
-    errorDark: '#D32F2F',
-
-    info: '#2196F3',
-    infoLight: '#64B5F6',
-    infoDark: '#1976D2',
-
-    // Overlay colors
-    overlay: 'rgba(0, 0, 0, 0.5)',
-    overlayLight: 'rgba(0, 0, 0, 0.3)',
-    overlayDark: 'rgba(0, 0, 0, 0.7)',
-
-    // Shadow color
-    shadow: 'rgba(0, 0, 0, 0.1)',
-  },
-  spacing,
-  borderRadius,
-  typography,
-  shadows,
-  isDark: false,
-};
-
-// Dark theme (neutral base)
-export const darkTheme: Theme = {
-  colors: {
-    // Primary brand colors (Neutral blue)
-    primary: '#6CC5FF',
-    primaryLight: '#8FD4FF',
-    primaryDark: '#49B7FF',
-
-    // Secondary brand colors (Light gray in dark mode)
-    secondary: '#E6E8EB',
-    secondaryLight: '#F5F7FA',
-    secondaryDark: '#D1D5DA',
-
-    // Accent colors
-    accent: '#A0FF9C',
-    accentLight: '#B8FFB4',
-    accentDark: '#88FF84',
-
-    // Background colors (Dark grays/blacks)
-    background: '#0D0F12',
-    backgroundSecondary: '#1A1D23',
-    backgroundTertiary: '#252930',
-
-    // Surface colors
+    // Surface colors (Glass/Obsidian)
     surface: '#1A1D23',
     surfaceSecondary: '#252930',
     surfaceTertiary: '#2F3439',
 
     // Text colors
-    text: '#F5F7FA',
-    textSecondary: '#A8B0BD',
-    textTertiary: '#6B7280',
+    text: '#FFFFFF',
+    textSecondary: '#C0C0C0', // Chrome
+    textTertiary: '#808891',
     textDisabled: '#4B5563',
     textInverse: '#000000',
 
     // Border colors
     border: '#2F3439',
-    borderLight: '#252930',
-    borderDark: '#3F4449',
+    borderLight: '#3F4449',
+    borderDark: '#1A1D23',
 
-    // Status colors (slightly adjusted for dark backgrounds)
-    success: '#4CAF50',
-    successLight: '#66BB6A',
-    successDark: '#388E3C',
+    // Status colors
+    success: '#00FFFF', // Cyan for success too in this theme
+    successLight: '#80FFFF',
+    successDark: '#00CCCC',
 
-    warning: '#FF9800',
-    warningLight: '#FFA726',
-    warningDark: '#F57C00',
+    warning: '#F59E0B',
+    warningLight: '#FBBF24',
+    warningDark: '#D97706',
 
-    error: '#F44336',
-    errorLight: '#EF5350',
-    errorDark: '#D32F2F',
+    error: '#FF0055', // Sharp Pink/Red
+    errorLight: '#FF4D88',
+    errorDark: '#CC0044',
 
-    info: '#2196F3',
-    infoLight: '#42A5F5',
-    infoDark: '#1976D2',
+    info: '#00FFFF',
+    infoLight: '#80FFFF',
+    infoDark: '#00CCCC',
 
     // Overlay colors
-    overlay: 'rgba(0, 0, 0, 0.7)',
-    overlayLight: 'rgba(0, 0, 0, 0.5)',
-    overlayDark: 'rgba(0, 0, 0, 0.85)',
+    overlay: 'rgba(11, 13, 15, 0.8)',
+    overlayLight: 'rgba(11, 13, 15, 0.6)',
+    overlayDark: 'rgba(11, 13, 15, 0.9)',
 
     // Shadow color
-    shadow: 'rgba(0, 0, 0, 0.3)',
+    shadow: 'rgba(0, 255, 255, 0.1)', // Subtle cyan glow
   },
+  spacing,
+  borderRadius,
+  typography,
+  shadows,
+  isDark: true, // Force dark mode behavior
+};
+
+// Dark theme (Same as light - enforced consistency)
+export const darkTheme: Theme = {
+  colors: lightTheme.colors,
   spacing,
   borderRadius,
   typography,
@@ -208,6 +147,7 @@ export const darkTheme: Theme = {
 };
 
 // Helper function to create custom theme from tenant config
+// Overrides with tenant colors but keeps the dark base
 export const createCustomTheme = (
   baseTheme: Theme,
   primaryColor: string,
@@ -218,21 +158,24 @@ export const createCustomTheme = (
     ...baseTheme,
     colors: {
       ...baseTheme.colors,
-      primary: primaryColor,
-      primaryLight: lightenColor(primaryColor, 20),
-      primaryDark: darkenColor(primaryColor, 20),
-      secondary: secondaryColor,
-      secondaryLight: lightenColor(secondaryColor, 20),
-      secondaryDark: darkenColor(secondaryColor, 20),
-      accent: accentColor || primaryColor,
-      accentLight: lightenColor(accentColor || primaryColor, 20),
-      accentDark: darkenColor(accentColor || primaryColor, 20),
+      // We keep the background obsidian (#0B0D0F) regardless of tenant config
+      // We only override primary/accent if they are provided, but strongly prefer Cyan
+      primary: primaryColor || '#00FFFF',
+      primaryLight: lightenColor(primaryColor || '#00FFFF', 20),
+      primaryDark: darkenColor(primaryColor || '#00FFFF', 20),
+      secondary: secondaryColor || '#C0C0C0',
+      secondaryLight: lightenColor(secondaryColor || '#C0C0C0', 20),
+      secondaryDark: darkenColor(secondaryColor || '#C0C0C0', 20),
+      accent: accentColor || primaryColor || '#00FFFF',
+      accentLight: lightenColor(accentColor || primaryColor || '#00FFFF', 20),
+      accentDark: darkenColor(accentColor || primaryColor || '#00FFFF', 20),
     },
   };
 };
 
 // Helper to lighten a color
 function lightenColor(color: string, percent: number): string {
+  if (!color) return '#000000';
   const num = parseInt(color.replace('#', ''), 16);
   const amt = Math.round(2.55 * percent);
   const R = (num >> 16) + amt;
@@ -253,6 +196,7 @@ function lightenColor(color: string, percent: number): string {
 
 // Helper to darken a color
 function darkenColor(color: string, percent: number): string {
+  if (!color) return '#000000';
   const num = parseInt(color.replace('#', ''), 16);
   const amt = Math.round(2.55 * percent);
   const R = (num >> 16) - amt;
