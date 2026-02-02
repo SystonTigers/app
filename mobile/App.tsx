@@ -584,5 +584,6 @@ export default function App() {
           </PaperProvider>
         </SafeAreaProvider>
       </AuthProvider>
-      );
+    </ThemeProvider>
+  );
 }
