@@ -1,500 +1,247 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { View, ScrollView, StyleSheet, RefreshControl, ActivityIndicator } from 'react-native';
-import { Card, Title, Paragraph, Button, Chip, IconButton } from 'react-native-paper';
-import {
-  DEFAULT_CLUB_NAME,
-  DEFAULT_CLUB_SHORT_NAME,
-  COLORS,
-} from '../config';
-import {
-  Fixture,
-  getUpcomingFixtures,
-  formatFixtureDate,
-  formatKickOffTime,
-  FixturesApiError,
-} from '../services/fixturesApi';
-import { feedApi, eventsApi } from '../services/api';
-import MatchWidget from '../components/MatchWidget';
-import { ReportContentModal } from '../components/ReportContentModal';
+import React, { useCallback, useEffect, useState } from 'react';
+import { View, ScrollView, StyleSheet, RefreshControl, ActivityIndicator, TouchableOpacity, ImageBackground } from 'react-native';
+import { Text, IconButton } from 'react-native-paper';
+import { useTheme } from '../theme/useTheme';
+import { Fixture, getUpcomingFixtures, formatFixtureDate, formatKickOffTime, FixturesApiError } from '../services/fixturesApi';
+import { feedApi } from '../services/api';
 
-// MatchWidget state (TODO: Replace with real SDK calls)
-// types defined locally or imported from components
-
-
-const FEED_PAGE_SIZE = 10;
+const FEED_PAGE_SIZE = 3; // Show only top 3 news items on home
 
 interface FeedPost {
   id: string;
   content: string;
   channels: string[];
   createdAt?: string;
-  likeCount?: number;
 }
 
-interface NormalisedFeed {
-  posts: FeedPost[];
-  hasMore: boolean;
-  currentPage: number;
-}
-
-const extractFeedCollection = (payload: any): any[] => {
-  if (!payload) return [];
-  if (Array.isArray(payload)) return payload;
-  if (Array.isArray(payload.data)) return payload.data;
-  if (Array.isArray(payload.items)) return payload.items;
-  if (Array.isArray(payload.data?.items)) return payload.data.items;
-  if (Array.isArray(payload.data?.posts)) return payload.data.posts;
-  return [];
+// Mock quick stats (replace with real API data)
+const MOCK_STATS = {
+  position: 2,
+  points: 45,
+  won: 14,
+  goalDifference: 22,
 };
 
-const extractFeedMeta = (payload: any) => {
-  return (
-    payload?.meta ||
-    payload?.data?.meta ||
-    payload?.pagination ||
-    payload?.data?.pagination || {
-      currentPage: 1,
-    }
-  );
-};
+// Mock league table (top 5 - replace with real API)
+const MOCK_LEAGUE_TABLE = [
+  { position: 1, team: 'Syston Tigers', points: 45 },
+  { position: 2, team: 'Wakerios', points: 42 },
+  { position: 3, team: 'Rival FC', points: 36 },
+  { position: 4, team: 'Natolente', points: 33 },
+  { position: 5, team: 'Thurmaston', points: 28 },
+];
 
-const normaliseFeedResponse = (payload: any): NormalisedFeed => {
-  const collection = extractFeedCollection(payload);
-
-  const posts: FeedPost[] = collection
-    .map((item: any, index: number) => {
-      if (!item) return null;
-
-      const rawId =
-        item.id ??
-        item.postId ??
-        item.uuid ??
-        item._id ??
-        (item.slug ? `${item.slug}` : null);
-      const id = rawId ? String(rawId) : `feed-${Date.now()}-${index}`;
-      const content =
-        item.content ?? item.text ?? item.message ?? item.body ?? item.description ?? '';
-      if (!content) {
-        return null;
-      }
-
-      const channels = Array.isArray(item.channels)
-        ? item.channels.filter((channel: unknown): channel is string => typeof channel === 'string')
-        : [];
-
-      const likeCount =
-        typeof item.likes === 'number'
-          ? item.likes
-          : typeof item.likeCount === 'number'
-            ? item.likeCount
-            : undefined;
-
-      const createdAt =
-        item.createdAt ?? item.timestamp ?? item.publishedAt ?? item.updatedAt ?? undefined;
-
-      return {
-        id,
-        content,
-        channels,
-        likeCount,
-        createdAt,
-      } as FeedPost;
-    })
-    .filter((item): item is FeedPost => Boolean(item));
-
-  const meta = extractFeedMeta(payload) ?? {};
-  const currentPage =
-    Number(meta.currentPage ?? meta.page ?? meta.pageNumber ?? meta.page_index ?? 1) || 1;
-  const totalPages = Number(meta.totalPages ?? meta.total_pages ?? meta.totalPage ?? meta.pages);
-  const hasMore =
-    typeof meta.hasMore === 'boolean'
-      ? meta.hasMore
-      : totalPages
-        ? currentPage < totalPages
-        : posts.length >= FEED_PAGE_SIZE;
-
-  return {
-    posts,
-    hasMore,
-    currentPage,
-  };
-};
-
-const formatTimestamp = (timestamp?: string): string => {
-  if (!timestamp) {
-    return 'Just now';
-  }
-
-  const parsed = new Date(timestamp);
-  if (Number.isNaN(parsed.getTime())) {
-    return timestamp;
-  }
-
-  const now = Date.now();
-  const diffInSeconds = Math.floor((now - parsed.getTime()) / 1000);
-
-  if (diffInSeconds < 60) {
-    return 'Just now';
-  }
-
-  const diffInMinutes = Math.floor(diffInSeconds / 60);
-  if (diffInMinutes < 60) {
-    return `${diffInMinutes} min${diffInMinutes === 1 ? '' : 's'} ago`;
-  }
-
-  const diffInHours = Math.floor(diffInMinutes / 60);
-  if (diffInHours < 24) {
-    return `${diffInHours} hr${diffInHours === 1 ? '' : 's'} ago`;
-  }
-
-  const diffInDays = Math.floor(diffInHours / 24);
-  if (diffInDays < 7) {
-    return `${diffInDays} day${diffInDays === 1 ? '' : 's'} ago`;
-  }
-
-  return parsed.toLocaleDateString('en-GB', {
-    day: 'numeric',
-    month: 'short',
-  });
-};
+const OUR_TEAM = 'Syston Tigers';
 
 export default function HomeScreen() {
-  const [attending, setAttending] = useState<boolean | null>(null);
+  const { theme } = useTheme();
+  const { colors } = theme;
   const [refreshing, setRefreshing] = useState(false);
-
-  const [nextEvent, setNextEvent] = useState<Fixture | null>(null);
-  const [eventLoading, setEventLoading] = useState(true);
-  const [eventError, setEventError] = useState<string | null>(null);
-
+  const [nextFixture, setNextFixture] = useState<Fixture | null>(null);
+  const [upcomingFixtures, setUpcomingFixtures] = useState<Fixture[]>([]);
+  const [fixturesLoading, setFixturesLoading] = useState(true);
   const [feedPosts, setFeedPosts] = useState<FeedPost[]>([]);
   const [feedLoading, setFeedLoading] = useState(true);
-  const [feedLoadingMore, setFeedLoadingMore] = useState(false);
-  const [feedError, setFeedError] = useState<string | null>(null);
-  const [feedPage, setFeedPage] = useState(1);
-  const [hasMoreFeed, setHasMoreFeed] = useState(true);
 
-  // MatchWidget state (TODO: Replace with real SDK calls)
-  const [nextFixture, setNextFixture] = useState<any | null>(null);
-  const [liveUpdates, setLiveUpdates] = useState<any[]>([]);
-
-  // Report modal state
-  const [reportModalVisible, setReportModalVisible] = useState(false);
-  const [reportingPostId, setReportingPostId] = useState<string | null>(null);
-
-  const loadNextEvent = useCallback(async () => {
-    setEventLoading(true);
-    setEventError(null);
-
+  const loadFixtures = useCallback(async () => {
+    setFixturesLoading(true);
     try {
-      const fixtures = await getUpcomingFixtures({ limit: 1 });
-      setNextEvent(fixtures[0] ?? null);
+      const fixtures = await getUpcomingFixtures({ limit: 4 });
+      setNextFixture(fixtures[0] || null);
+      setUpcomingFixtures(fixtures.slice(1, 4)); // Next 3 upcoming
     } catch (error) {
-      console.error('Failed to load upcoming fixture:', error);
-      const message =
-        error instanceof FixturesApiError
-          ? error.message
-          : error instanceof Error
-            ? error.message
-            : 'Failed to load upcoming event';
-      setEventError(message);
-      setNextEvent(null);
+      console.error('Failed to load fixtures:', error);
     } finally {
-      setEventLoading(false);
+      setFixturesLoading(false);
     }
   }, []);
 
-  const loadFeed = useCallback(
-    async (page = 1, { append = false }: { append?: boolean } = {}) => {
-      if (append) {
-        setFeedLoadingMore(true);
-      } else {
-        setFeedLoading(true);
-      }
-      setFeedError(null);
+  const loadFeed = useCallback(async () => {
+    setFeedLoading(true);
+    try {
+      const payload = await feedApi.getPosts(1, FEED_PAGE_SIZE);
+      const posts = Array.isArray(payload.data) ? payload.data : [];
+      setFeedPosts(posts.slice(0, 3));
+    } catch (error) {
+      console.error('Failed to load feed:', error);
+      setFeedPosts([]);
+    } finally {
+      setFeedLoading(false);
+    }
+  }, []);
 
-      try {
-        const payload = await feedApi.getPosts(page, FEED_PAGE_SIZE);
-        const { posts, hasMore, currentPage } = normaliseFeedResponse(payload);
-
-        setFeedPosts((prev) => (append ? [...prev, ...posts] : posts));
-        setFeedPage(currentPage);
-        setHasMoreFeed(hasMore);
-      } catch (error) {
-        console.error('Failed to load feed posts:', error);
-        const message =
-          error instanceof Error ? error.message : 'Failed to load the latest news feed';
-        setFeedError(message);
-        if (!append) {
-          setFeedPosts([]);
-          setHasMoreFeed(false);
-        }
-      } finally {
-        if (append) {
-          setFeedLoadingMore(false);
-        } else {
-          setFeedLoading(false);
-        }
-      }
-    },
-    []
-  );
-
-  const loadAllData = useCallback(async () => {
-    await Promise.allSettled([loadNextEvent(), loadFeed(1)]);
-  }, [loadNextEvent, loadFeed]);
+  const loadAll = useCallback(async () => {
+    await Promise.allSettled([loadFixtures(), loadFeed()]);
+  }, [loadFixtures, loadFeed]);
 
   useEffect(() => {
-    loadAllData();
-  }, [loadAllData]);
+    loadAll();
+  }, [loadAll]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await loadAllData();
+    await loadAll();
     setRefreshing(false);
-  }, [loadAllData]);
-
-  const handleRSVP = async (isAttending: boolean) => {
-    setAttending(isAttending);
-    if (nextEvent) {
-      try {
-        await eventsApi.rsvp(String(nextEvent.id), isAttending ? 'going' : 'not_going');
-        console.log('RSVP sent:', isAttending);
-      } catch (err) {
-        console.error('Failed to send RSVP:', err);
-        // revert optimistic update if needed or show error
-      }
-    }
-  };
-
-  const loadMoreFeed = useCallback(() => {
-    if (feedLoadingMore || !hasMoreFeed) {
-      return;
-    }
-    loadFeed(feedPage + 1, { append: true });
-  }, [feedLoadingMore, hasMoreFeed, feedPage, loadFeed]);
-
-  const clubName = useMemo(() => {
-    return (
-      nextEvent?.teamName ||
-      nextEvent?.homeTeamName ||
-      nextEvent?.teamShortName ||
-      DEFAULT_CLUB_NAME
-    );
-  }, [nextEvent]);
-
-  const clubShortName = useMemo(() => {
-    return (
-      nextEvent?.teamShortName ||
-      nextEvent?.teamName ||
-      nextEvent?.homeTeamName ||
-      DEFAULT_CLUB_SHORT_NAME ||
-      DEFAULT_CLUB_NAME
-    );
-  }, [nextEvent]);
-
-  const opponentName = useMemo(() => {
-    if (!nextEvent) {
-      return 'Opponent';
-    }
-
-    return nextEvent.awayTeamName || nextEvent.opponent || 'Opponent';
-  }, [nextEvent]);
-
-  const eventDateLabel = nextEvent ? formatFixtureDate(nextEvent.date) : null;
-  const eventTimeLabel = nextEvent ? formatKickOffTime(nextEvent.kickOffTime) : null;
-  const eventLocationLabel = nextEvent
-    ? nextEvent.location ||
-    (nextEvent.venue
-      ? nextEvent.venue.toLowerCase() === 'home'
-        ? clubShortName
-        : nextEvent.venue
-      : undefined)
-    : null;
-  const eventStatus = nextEvent?.status;
-  const eventTypeLabel = nextEvent?.competition || 'Upcoming Fixture';
+  }, [loadAll]);
 
   return (
     <ScrollView
-      style={styles.container}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-      }
+      style={[styles.container, { backgroundColor: colors.background }]}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
     >
-      {/* Live Match Widget */}
-      <MatchWidget
-        nextFixture={nextFixture}
-        liveUpdates={liveUpdates}
-        onRefresh={onRefresh}
-      />
-
-      {/* Next Event Widget */}
-      <Card style={styles.eventCard}>
-        <Card.Content>
-          <Title style={styles.eventTitle}>NEXT EVENT</Title>
-
-          {eventLoading ? (
-            <View style={styles.loadingRow}>
-              <ActivityIndicator color={COLORS.surface} />
-              <Paragraph style={styles.loadingText}>Loading next event...</Paragraph>
+      {/* Next Match Hero Card */}
+      {fixturesLoading ? (
+        <View style={[styles.heroCard, { backgroundColor: colors.surface }]}>
+          <ActivityIndicator color={colors.primary} />
+        </View>
+      ) : nextFixture ? (
+        <ImageBackground
+          source={{ uri: 'https://images.unsplash.com/photo-1459865264687-595d652de67e?w=800' }}
+          style={styles.heroCard}
+          imageStyle={styles.heroImage}
+        >
+          <View style={[styles.heroOverlay, { backgroundColor: 'rgba(11, 13, 15, 0.85)' }]}>
+            <Text style={[styles.heroLabel, { color: colors.primary }]}>NEXT MATCH</Text>
+            <View style={styles.heroTeams}>
+              <Text style={[styles.heroTeamName, { color: colors.primary }]}>
+                {nextFixture.homeTeamName || 'SYSTON TIGERS'}
+              </Text>
+              <Text style={[styles.heroVs, { color: colors.text }]}>VS</Text>
+              <Text style={[styles.heroTeamName, { color: colors.primary }]}>
+                {nextFixture.awayTeamName || 'OPPONENT'}
+              </Text>
             </View>
-          ) : eventError ? (
-            <View>
-              <Paragraph style={styles.errorText}>{eventError}</Paragraph>
-              <Button mode="outlined" onPress={loadNextEvent} style={styles.retryButton}>
-                Try again
-              </Button>
-            </View>
-          ) : nextEvent ? (
-            <>
-              <Paragraph style={styles.eventType}>⚽ {eventTypeLabel.toUpperCase()}</Paragraph>
-              <Title>{`${clubName} vs ${opponentName}`}</Title>
-              {eventDateLabel && (
-                <Paragraph style={styles.eventDetails}>
-                  📅 {eventDateLabel}
-                  {eventTimeLabel ? ` • ${eventTimeLabel}` : ''}
-                </Paragraph>
-              )}
-              {eventLocationLabel && (
-                <Paragraph style={styles.eventDetails}>📍 {eventLocationLabel}</Paragraph>
-              )}
-              {eventStatus && eventStatus.toLowerCase() !== 'scheduled' && (
-                <Chip style={styles.statusChip}>{eventStatus.toUpperCase()}</Chip>
-              )}
+            <Text style={[styles.heroDetails, { color: colors.text }]}>
+              {formatFixtureDate(nextFixture.date).toUpperCase()} | {formatKickOffTime(nextFixture.kickOffTime)} | {nextFixture.location || 'HOME STADIUM'}
+            </Text>
+          </View>
+        </ImageBackground>
+      ) : null}
 
-              <View style={styles.rsvpButtons}>
-                <Button
-                  mode={attending === true ? 'contained' : 'outlined'}
-                  onPress={() => handleRSVP(true)}
-                  style={styles.rsvpButton}
-                  buttonColor={attending === true ? COLORS.success : undefined}
-                >
-                  ✓ Attending
-                </Button>
-                <Button
-                  mode={attending === false ? 'contained' : 'outlined'}
-                  onPress={() => handleRSVP(false)}
-                  style={styles.rsvpButton}
-                  buttonColor={attending === false ? COLORS.error : undefined}
-                >
-                  ✗ Can't Make It
-                </Button>
-              </View>
-            </>
-          ) : (
-            <Paragraph style={styles.eventDetails}>No upcoming fixtures at the moment.</Paragraph>
-          )}
-        </Card.Content>
-      </Card>
+      {/* Quick Stats Row */}
+      <View style={styles.statsRow}>
+        <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.primary + '40' }]}>
+          <View style={[styles.statIcon, { backgroundColor: colors.primary + '20' }]}>
+            <IconButton icon="trophy-variant" iconColor={colors.primary} size={20} />
+          </View>
+          <Text style={[styles.statLabel, { color: colors.textSecondary }]}>POS</Text>
+          <Text style={[styles.statValue, { color: colors.primary }]}>{MOCK_STATS.position}</Text>
+        </View>
 
-      {/* News Feed */}
-      <View style={styles.feedHeader}>
-        <Title>📰 TEAM NEWS</Title>
+        <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.primary + '40' }]}>
+          <View style={[styles.statIcon, { backgroundColor: colors.primary + '20' }]}>
+            <IconButton icon="star" iconColor={colors.primary} size={20} />
+          </View>
+          <Text style={[styles.statLabel, { color: colors.textSecondary }]}>PTS</Text>
+          <Text style={[styles.statValue, { color: colors.primary }]}>{MOCK_STATS.points}</Text>
+        </View>
+
+        <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.primary + '40' }]}>
+          <View style={[styles.statIcon, { backgroundColor: colors.primary + '20' }]}>
+            <IconButton icon="trophy" iconColor={colors.primary} size={20} />
+          </View>
+          <Text style={[styles.statLabel, { color: colors.textSecondary }]}>WON</Text>
+          <Text style={[styles.statValue, { color: colors.primary }]}>{MOCK_STATS.won}</Text>
+        </View>
+
+        <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.primary + '40' }]}>
+          <View style={[styles.statIcon, { backgroundColor: colors.primary + '20' }]}>
+            <IconButton icon="target" iconColor={colors.primary} size={20} />
+          </View>
+          <Text style={[styles.statLabel, { color: colors.textSecondary }]}>GD</Text>
+          <Text style={[styles.statValue, { color: colors.primary }]}>+{MOCK_STATS.goalDifference}</Text>
+        </View>
       </View>
 
-      {feedLoading ? (
-        <Card style={styles.postCard}>
-          <Card.Content>
-            <View style={styles.loadingRow}>
-              <ActivityIndicator color={COLORS.primary} />
-              <Paragraph style={styles.loadingText}>Loading latest posts...</Paragraph>
+      {/* Content Grid */}
+      <View style={styles.contentGrid}>
+        {/* Left Column: News Cards */}
+        <View style={styles.leftColumn}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>LATEST NEWS</Text>
+          {feedLoading ? (
+            <View style={[styles.newsCard, { backgroundColor: colors.surface }]}>
+              <ActivityIndicator color={colors.primary} />
             </View>
-          </Card.Content>
-        </Card>
-      ) : feedError ? (
-        <Card style={styles.postCard}>
-          <Card.Content>
-            <Paragraph style={styles.errorText}>{feedError}</Paragraph>
-            <Button mode="outlined" onPress={() => loadFeed(1)} style={styles.retryButton}>
-              Try again
-            </Button>
-          </Card.Content>
-        </Card>
-      ) : feedPosts.length === 0 ? (
-        <Card style={styles.postCard}>
-          <Card.Content>
-            <Paragraph>No news updates just yet. Check back soon!</Paragraph>
-          </Card.Content>
-        </Card>
-      ) : (
-        feedPosts.map((post) => (
-          <Card key={post.id} style={styles.postCard}>
-            <Card.Content>
-              <Paragraph style={styles.postContent}>{post.content}</Paragraph>
-
-              <View style={styles.postMeta}>
-                <View style={styles.channelChips}>
-                  {post.channels.map((channel) => (
-                    <Chip
-                      key={`${post.id}-${channel}`}
-                      style={styles.channelChip}
-                      textStyle={styles.chipText}
-                    >
-                      {channel}
-                    </Chip>
-                  ))}
+          ) : feedPosts.length > 0 ? (
+            feedPosts.map((post) => (
+              <View key={post.id} style={[styles.newsCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                <ImageBackground
+                  source={{ uri: 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=400' }}
+                  style={styles.newsImage}
+                  imageStyle={{ borderRadius: 4 }}
+                >
+                  <View style={styles.newsOverlay} />
+                </ImageBackground>
+                <View style={styles.newsContent}>
+                  <Text style={[styles.newsTitle, { color: colors.text }]} numberOfLines={2}>
+                    {post.content.substring(0, 60)}...
+                  </Text>
+                  <Text style={[styles.newsExcerpt, { color: colors.textSecondary }]} numberOfLines={2}>
+                    {post.content.substring(60, 120)}...
+                  </Text>
+                  <TouchableOpacity style={[styles.newsButton, { borderColor: colors.primary }]}>
+                    <Text style={[styles.newsButtonText, { color: colors.primary }]}>VIEW ALL NEWS</Text>
+                  </TouchableOpacity>
                 </View>
-                <Paragraph style={styles.timestamp}>{formatTimestamp(post.createdAt)}</Paragraph>
               </View>
+            ))
+          ) : null}
+        </View>
 
-              <View style={styles.postActions}>
-                <IconButton
-                  icon="heart-outline"
-                  size={20}
-                  onPress={() => console.log('Like', post.id)}
-                />
-                <Paragraph style={styles.likeCount}>
-                  {post.likeCount ? `${post.likeCount} likes` : 'Be the first to like this'}
-                </Paragraph>
-                <IconButton
-                  icon="comment-outline"
-                  size={20}
-                  onPress={() => console.log('Comment', post.id)}
-                />
-                <IconButton
-                  icon="share-variant-outline"
-                  size={20}
-                  onPress={() => console.log('Share', post.id)}
-                />
-                <IconButton
-                  icon="flag-outline"
-                  size={20}
-                  onPress={() => {
-                    setReportingPostId(post.id);
-                    setReportModalVisible(true);
-                  }}
-                />
+        {/* Right Column: League Standings + Upcoming Matches */}
+        <View style={styles.rightColumn}>
+          {/* League Standings Mini */}
+          <View style={[styles.miniTable, { backgroundColor: colors.surface, borderColor: colors.primary + '40' }]}>
+            <Text style={[styles.miniTableTitle, { color: colors.text }]}>LEAGUE STANDINGS</Text>
+            {MOCK_LEAGUE_TABLE.map((row) => {
+              const isOurs = row.team === OUR_TEAM;
+              return (
+                <View
+                  key={row.position}
+                  style={[
+                    styles.miniTableRow,
+                    { borderBottomColor: colors.border },
+                    isOurs && { backgroundColor: colors.primary + '15' },
+                  ]}
+                >
+                  <Text style={[styles.miniPos, { color: colors.textSecondary }]}>{row.position}</Text>
+                  <Text style={[styles.miniTeam, { color: isOurs ? colors.primary : colors.text }]} numberOfLines={1}>
+                    {row.team.toUpperCase()}
+                  </Text>
+                  <Text style={[styles.miniPts, { color: colors.primary }]}>{row.points}</Text>
+                </View>
+              );
+            })}
+            <TouchableOpacity style={[styles.miniTableButton, { borderTopColor: colors.primary }]}>
+              <Text style={[styles.miniTableButtonText, { color: colors.primary }]}>FULL STANDINGS</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Upcoming Matches */}
+          <View style={[styles.upcomingCard, { backgroundColor: colors.surface, borderColor: colors.primary + '40' }]}>
+            <Text style={[styles.upcomingTitle, { color: colors.text }]}>UPCOMING MATCHES</Text>
+            {upcomingFixtures.map((fixture, index) => (
+              <View
+                key={index}
+                style={[styles.upcomingMatch, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border }]}
+              >
+                <View style={styles.upcomingTeams}>
+                  <Text style={[styles.upcomingTeam, { color: colors.primary }]} numberOfLines={1}>
+                    {fixture.homeTeamName || 'SYSTON TIGERS'}
+                  </Text>
+                  <Text style={[styles.upcomingScore, { color: colors.text }]}>1-0</Text>
+                  <Text style={[styles.upcomingTeam, { color: colors.text }]} numberOfLines={1}>
+                    {fixture.awayTeamName || 'RIVAL FC'}
+                  </Text>
+                </View>
+                <Text style={[styles.upcomingDate, { color: colors.textSecondary }]}>
+                  {formatFixtureDate(fixture.date)} • {formatKickOffTime(fixture.kickOffTime)}
+                </Text>
               </View>
-            </Card.Content>
-          </Card>
-        ))
-      )}
-
-      {hasMoreFeed && feedPosts.length > 0 && (
-        <Button
-          mode="outlined"
-          style={styles.loadMoreButton}
-          onPress={loadMoreFeed}
-          loading={feedLoadingMore}
-          disabled={feedLoadingMore}
-        >
-          {feedLoadingMore ? 'Loading…' : 'Load More'}
-        </Button>
-      )}
-
-      {/* Report Content Modal */}
-      <ReportContentModal
-        visible={reportModalVisible}
-        onDismiss={() => {
-          setReportModalVisible(false);
-          setReportingPostId(null);
-        }}
-        contentType="post"
-        contentId={reportingPostId || ''}
-        onReportSuccess={() => {
-          setReportModalVisible(false);
-          setReportingPostId(null);
-        }}
-      />
+            ))}
+          </View>
+        </View>
+      </View>
     </ScrollView>
   );
 }
@@ -502,104 +249,219 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
   },
-  eventCard: {
-    margin: 16,
-    backgroundColor: COLORS.primary,
+  heroCard: {
+    height: 180,
+    marginHorizontal: 16,
+    marginTop: 16,
+    marginBottom: 16,
+    borderRadius: 8,
+    overflow: 'hidden',
   },
-  eventTitle: {
-    fontSize: 14,
+  heroImage: {
+    borderRadius: 8,
+  },
+  heroOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+  },
+  heroLabel: {
+    fontSize: 12,
     fontWeight: 'bold',
-    color: COLORS.secondary,
+    letterSpacing: 2,
     marginBottom: 8,
   },
-  eventType: {
-    fontSize: 12,
-    color: COLORS.secondary,
-    marginBottom: 4,
-  },
-  eventDetails: {
-    fontSize: 14,
-    color: COLORS.secondary,
-    marginTop: 4,
-  },
-  statusChip: {
-    alignSelf: 'flex-start',
-    marginTop: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
-  },
-  loadingRow: {
+  heroTeams: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
   },
-  loadingText: {
-    color: COLORS.secondary,
+  heroTeamName: {
+    fontSize: 18,
+    fontWeight: '900',
+    fontStyle: 'italic',
+    letterSpacing: 1,
   },
-  errorText: {
-    color: COLORS.error,
+  heroVs: {
+    fontSize: 14,
+    fontWeight: 'bold',
   },
-  retryButton: {
+  heroDetails: {
+    fontSize: 11,
     marginTop: 8,
-    alignSelf: 'flex-start',
+    letterSpacing: 1,
   },
-  rsvpButtons: {
+  statsRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 16,
+    paddingHorizontal: 16,
     gap: 8,
+    marginBottom: 16,
   },
-  rsvpButton: {
+  statCard: {
+    flex: 1,
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignItems: 'center',
+  },
+  statIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  statLabel: {
+    fontSize: 9,
+    fontWeight: 'bold',
+    letterSpacing: 1,
+  },
+  statValue: {
+    fontSize: 18,
+    fontWeight: '900',
+    marginTop: 2,
+  },
+  contentGrid: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    gap: 12,
+  },
+  leftColumn: {
     flex: 1,
   },
-  feedHeader: {
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 4,
+  rightColumn: {
+    width: 180,
   },
-  postCard: {
-    marginHorizontal: 16,
-    marginVertical: 8,
-    backgroundColor: COLORS.surface,
-  },
-  postContent: {
-    fontSize: 15,
-    lineHeight: 22,
+  sectionTitle: {
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 1.5,
     marginBottom: 12,
   },
-  postMeta: {
-    marginBottom: 8,
+  newsCard: {
+    borderRadius: 8,
+    borderWidth: 1,
+    marginBottom: 12,
+    overflow: 'hidden',
   },
-  channelChips: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-    marginBottom: 8,
+  newsImage: {
+    height: 100,
+    justifyContent: 'flex-end',
   },
-  channelChip: {
-    backgroundColor: COLORS.background,
-    height: 24,
+  newsOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
   },
-  chipText: {
+  newsContent: {
+    padding: 12,
+  },
+  newsTitle: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  newsExcerpt: {
     fontSize: 11,
-    marginVertical: 0,
+    lineHeight: 16,
+    marginBottom: 8,
   },
-  timestamp: {
-    fontSize: 12,
-    color: COLORS.textLight,
+  newsButton: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderRadius: 4,
+    alignSelf: 'flex-start',
   },
-  postActions: {
+  newsButtonText: {
+    fontSize: 9,
+    fontWeight: 'bold',
+    letterSpacing: 1,
+  },
+  miniTable: {
+    borderRadius: 8,
+    borderWidth: 1,
+    marginBottom: 12,
+    overflow: 'hidden',
+  },
+  miniTableTitle: {
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 1.5,
+    padding: 12,
+    textAlign: 'center',
+  },
+  miniTableRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 4,
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+    borderBottomWidth: 1,
   },
-  likeCount: {
-    fontSize: 13,
-    color: COLORS.textLight,
-    marginRight: 12,
+  miniPos: {
+    width: 20,
+    fontSize: 11,
+    fontWeight: 'bold',
   },
-  loadMoreButton: {
-    margin: 16,
+  miniTeam: {
+    flex: 1,
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
+  miniPts: {
+    width: 24,
+    fontSize: 12,
+    fontWeight: '900',
+    textAlign: 'right',
+  },
+  miniTableButton: {
+    paddingVertical: 10,
+    alignItems: 'center',
+    borderTopWidth: 1,
+  },
+  miniTableButtonText: {
+    fontSize: 9,
+    fontWeight: 'bold',
+    letterSpacing: 1,
+  },
+  upcomingCard: {
+    borderRadius: 8,
+    borderWidth: 1,
+    padding: 12,
+  },
+  upcomingTitle: {
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 1.5,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  upcomingMatch: {
+    padding: 8,
+    borderRadius: 6,
+    borderWidth: 1,
+    marginBottom: 8,
+  },
+  upcomingTeams: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  upcomingTeam: {
+    flex: 1,
+    fontSize: 9,
+    fontWeight: 'bold',
+  },
+  upcomingScore: {
+    fontSize: 12,
+    fontWeight: '900',
+    marginHorizontal: 4,
+  },
+  upcomingDate: {
+    fontSize: 8,
+    textAlign: 'center',
   },
 });

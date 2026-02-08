@@ -1,83 +1,204 @@
-import React from 'react';
-import { View, ScrollView, StyleSheet } from 'react-native';
-import { DataTable, Text } from 'react-native-paper';
+import React, { useState } from 'react';
+import { View, ScrollView, StyleSheet, TouchableOpacity, Modal, Dimensions } from 'react-native';
+import { Text, IconButton } from 'react-native-paper';
 import { useTheme } from '../theme/useTheme';
 
-// Mock league table data
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
+// Mock league table data with full stats
 const mockLeagueTable = [
-  { position: 1, team: 'Syston Tigers', played: 10, won: 8, drawn: 1, lost: 1, gf: 25, ga: 8, gd: 17, points: 25 },
-  { position: 2, team: 'Leicester Panthers', played: 10, won: 7, drawn: 2, lost: 1, gf: 22, ga: 10, gd: 12, points: 23 },
-  { position: 3, team: 'Melton Town', played: 10, won: 6, drawn: 2, lost: 2, gf: 18, ga: 12, gd: 6, points: 20 },
-  { position: 4, team: 'Oadby Rangers', played: 10, won: 5, drawn: 3, lost: 2, gf: 17, ga: 13, gd: 4, points: 18 },
-  { position: 5, team: 'Barrow United', played: 10, won: 4, drawn: 2, lost: 4, gf: 15, ga: 15, gd: 0, points: 14 },
+  { position: 1, team: 'Syston Tigers', played: 26, won: 26, drawn: 0, lost: 1, gf: 45, ga: 8, gd: 37, points: 45 },
+  { position: 2, team: 'Wakerios', played: 26, won: 15, drawn: 2, lost: 8, gf: 62, ga: 32, gd: 30, points: 42 },
+  { position: 3, team: 'Rival FC', played: 28, won: 12, drawn: 2, lost: 3, gf: 36, ga: 15, gd: 21, points: 36 },
+  { position: 4, team: 'Natolente', played: 26, won: 10, drawn: 0, lost: 10, gf: 33, ga: 28, gd: 5, points: 33 },
+  { position: 5, team: 'Thurmaston', played: 28, won: 12, drawn: 2, lost: 12, gf: 28, ga: 35, gd: -7, points: 28 },
+  { position: 6, team: 'Aegonwye', played: 28, won: 3, drawn: 3, lost: 23, gf: 23, ga: 54, gd: -31, points: 23 },
+  { position: 7, team: 'Rival FC B', played: 26, won: 4, drawn: 4, lost: 10, gf: 18, ga: 41, gd: -23, points: 18 },
 ];
+
+const OUR_TEAM = 'Syston Tigers';
 
 export default function LeagueTableScreen() {
   const { theme } = useTheme();
   const { colors } = theme;
+  const [modalVisible, setModalVisible] = useState(false);
+
+  const renderCompactRow = (row: typeof mockLeagueTable[0]) => {
+    const isOurTeam = row.team === OUR_TEAM;
+    const isTopTwo = row.position <= 2;
+
+    return (
+      <View
+        key={row.position}
+        style={[
+          styles.tableRow,
+          { borderBottomColor: colors.border },
+          isOurTeam && { backgroundColor: colors.primary + '15' },
+        ]}
+      >
+        {/* Position Badge */}
+        <View style={styles.posCol}>
+          <View
+            style={[
+              styles.posBadge,
+              { backgroundColor: colors.backgroundSecondary },
+              isTopTwo && { borderColor: colors.primary, borderWidth: 1 },
+            ]}
+          >
+            <Text style={[styles.posText, { color: isTopTwo ? colors.primary : colors.textSecondary }]}>
+              {row.position}
+            </Text>
+          </View>
+        </View>
+
+        {/* Team Name */}
+        <View style={styles.teamCol}>
+          <Text
+            style={[styles.teamText, { color: colors.text }, isOurTeam && { fontWeight: 'bold', color: colors.primary }]}
+            numberOfLines={1}
+          >
+            {row.team.toUpperCase()}
+          </Text>
+        </View>
+
+        {/* Stats */}
+        <Text style={[styles.statCell, styles.statCol, { color: colors.textSecondary }]}>{row.played}</Text>
+        <Text style={[styles.statCell, styles.statCol, { color: colors.textSecondary }]}>{row.won}</Text>
+        <Text style={[styles.statCell, styles.statCol, { color: colors.textSecondary }]}>{row.drawn}</Text>
+        <Text style={[styles.statCell, styles.statCol, { color: colors.textSecondary }]}>{row.lost}</Text>
+        <Text style={[styles.ptsCell, styles.ptsCol, { color: colors.primary }]}>{row.points}</Text>
+      </View>
+    );
+  };
+
+  const renderFullRow = (row: typeof mockLeagueTable[0]) => {
+    const isOurTeam = row.team === OUR_TEAM;
+    const isTopTwo = row.position <= 2;
+
+    return (
+      <View
+        key={row.position}
+        style={[
+          styles.fullTableRow,
+          { borderBottomColor: colors.border },
+          isOurTeam && { backgroundColor: colors.primary + '15' },
+        ]}
+      >
+        {/* Position */}
+        <View style={styles.fullPosCol}>
+          <View
+            style={[
+              styles.posBadge,
+              { backgroundColor: colors.backgroundSecondary },
+              isTopTwo && { borderColor: colors.primary, borderWidth: 1 },
+            ]}
+          >
+            <Text style={[styles.posText, { color: isTopTwo ? colors.primary : colors.textSecondary }]}>
+              {row.position}
+            </Text>
+          </View>
+        </View>
+
+        {/* Team */}
+        <View style={styles.fullTeamCol}>
+          <Text
+            style={[styles.teamText, { color: colors.text }, isOurTeam && { fontWeight: 'bold', color: colors.primary }]}
+            numberOfLines={1}
+          >
+            {row.team.toUpperCase()}
+          </Text>
+        </View>
+
+        {/* Full Stats */}
+        <Text style={[styles.fullStatCell, { color: colors.textSecondary }]}>{row.played}</Text>
+        <Text style={[styles.fullStatCell, { color: colors.textSecondary }]}>{row.won}</Text>
+        <Text style={[styles.fullStatCell, { color: colors.textSecondary }]}>{row.drawn}</Text>
+        <Text style={[styles.fullStatCell, { color: colors.textSecondary }]}>{row.lost}</Text>
+        <Text style={[styles.fullStatCell, { color: colors.success || colors.primary }]}>{row.gf}</Text>
+        <Text style={[styles.fullStatCell, { color: colors.error }]}>{row.ga}</Text>
+        <Text style={[styles.fullStatCell, { color: row.gd >= 0 ? colors.primary : colors.error }]}>
+          {row.gd > 0 ? `+${row.gd}` : row.gd}
+        </Text>
+        <Text style={[styles.fullPtsCell, { color: colors.primary }]}>{row.points}</Text>
+      </View>
+    );
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* Header */}
       <View style={styles.header}>
         <Text style={[styles.headerTitle, { color: colors.text }]}>LEAGUE STANDINGS</Text>
-        <Text style={[styles.headerSubtitle, { color: colors.primary }]}>PREMIER DIVISION</Text>
       </View>
 
-      <ScrollView horizontal contentContainerStyle={{ flexGrow: 1 }}>
-        <View style={{ flex: 1, minWidth: '100%' }}>
-          <DataTable style={styles.table}>
-            <DataTable.Header style={[styles.tableHeader, { borderBottomColor: colors.border }]}>
-              <DataTable.Title style={styles.posColumn}><Text style={[styles.colHeader, { color: colors.secondary }]}>POS</Text></DataTable.Title>
-              <DataTable.Title style={styles.teamColumn}><Text style={[styles.colHeader, { color: colors.secondary }]}>TEAM</Text></DataTable.Title>
-              <DataTable.Title numeric style={styles.statColumn}><Text style={[styles.colHeader, { color: colors.secondary }]}>P</Text></DataTable.Title>
-              <DataTable.Title numeric style={styles.statColumn}><Text style={[styles.colHeader, { color: colors.secondary }]}>W</Text></DataTable.Title>
-              <DataTable.Title numeric style={styles.statColumn}><Text style={[styles.colHeader, { color: colors.secondary }]}>D</Text></DataTable.Title>
-              <DataTable.Title numeric style={styles.statColumn}><Text style={[styles.colHeader, { color: colors.secondary }]}>L</Text></DataTable.Title>
-              <DataTable.Title numeric style={styles.statColumn}><Text style={[styles.colHeader, { color: colors.secondary }]}>GF</Text></DataTable.Title>
-              <DataTable.Title numeric style={styles.statColumn}><Text style={[styles.colHeader, { color: colors.secondary }]}>GA</Text></DataTable.Title>
-              <DataTable.Title numeric style={styles.statColumn}><Text style={[styles.colHeader, { color: colors.secondary }]}>GD</Text></DataTable.Title>
-              <DataTable.Title numeric style={styles.ptsColumn}><Text style={[styles.colHeader, { color: colors.primary }]}>PTS</Text></DataTable.Title>
-            </DataTable.Header>
-
-            {mockLeagueTable.map((row, index) => {
-              const isTop = index === 0;
-              return (
-                <DataTable.Row
-                  key={row.position}
-                  style={[
-                    styles.row,
-                    { borderBottomColor: colors.border },
-                    row.team === 'Syston Tigers' && { backgroundColor: 'rgba(0, 255, 255, 0.05)' }
-                  ]}
-                >
-                  <DataTable.Cell style={styles.posColumn}>
-                    <View style={[styles.rankBadge, isTop && { borderColor: colors.primary, borderWidth: 1 }]}>
-                      <Text style={[styles.rankText, { color: isTop ? colors.primary : colors.textSecondary }]}>
-                        {row.position}
-                      </Text>
-                    </View>
-                  </DataTable.Cell>
-                  <DataTable.Cell style={styles.teamColumn}>
-                    <Text style={[styles.teamText, { color: colors.text, fontWeight: row.team === 'Syston Tigers' ? 'bold' : 'normal' }]}>
-                      {row.team.toUpperCase()}
-                    </Text>
-                  </DataTable.Cell>
-                  <DataTable.Cell numeric style={styles.statColumn}><Text style={{ color: colors.textSecondary }}>{row.played}</Text></DataTable.Cell>
-                  <DataTable.Cell numeric style={styles.statColumn}><Text style={{ color: colors.textSecondary }}>{row.won}</Text></DataTable.Cell>
-                  <DataTable.Cell numeric style={styles.statColumn}><Text style={{ color: colors.textSecondary }}>{row.drawn}</Text></DataTable.Cell>
-                  <DataTable.Cell numeric style={styles.statColumn}><Text style={{ color: colors.textSecondary }}>{row.lost}</Text></DataTable.Cell>
-                  <DataTable.Cell numeric style={styles.statColumn}><Text style={{ color: colors.textSecondary }}>{row.gf}</Text></DataTable.Cell>
-                  <DataTable.Cell numeric style={styles.statColumn}><Text style={{ color: colors.textSecondary }}>{row.ga}</Text></DataTable.Cell>
-                  <DataTable.Cell numeric style={styles.statColumn}><Text style={{ color: colors.text }}>{row.gd}</Text></DataTable.Cell>
-                  <DataTable.Cell numeric style={styles.ptsColumn}>
-                    <Text style={[styles.pointsText, { color: colors.primary }]}>{row.points}</Text>
-                  </DataTable.Cell>
-                </DataTable.Row>
-              );
-            })}
-          </DataTable>
+      {/* Compact Table Card */}
+      <View style={[styles.tableCard, { backgroundColor: colors.surface, borderColor: colors.primary + '40' }]}>
+        {/* Table Header */}
+        <View style={[styles.tableHeader, { borderBottomColor: colors.border }]}>
+          <Text style={[styles.headerCell, styles.posCol, { color: colors.textSecondary }]}>POS</Text>
+          <Text style={[styles.headerCell, styles.teamCol, { color: colors.textSecondary }]}>TEAM</Text>
+          <Text style={[styles.headerCell, styles.statCol, { color: colors.textSecondary }]}>P</Text>
+          <Text style={[styles.headerCell, styles.statCol, { color: colors.textSecondary }]}>W</Text>
+          <Text style={[styles.headerCell, styles.statCol, { color: colors.textSecondary }]}>D</Text>
+          <Text style={[styles.headerCell, styles.statCol, { color: colors.textSecondary }]}>L</Text>
+          <Text style={[styles.headerCell, styles.ptsCol, { color: colors.primary }]}>PTS</Text>
         </View>
-      </ScrollView>
+
+        {/* Table Rows */}
+        <ScrollView style={styles.tableBody}>
+          {mockLeagueTable.map(renderCompactRow)}
+        </ScrollView>
+
+        {/* Full Standings Button */}
+        <TouchableOpacity
+          style={[styles.fullStandingsBtn, { borderColor: colors.primary }]}
+          onPress={() => setModalVisible(true)}
+        >
+          <Text style={[styles.fullStandingsText, { color: colors.primary }]}>FULL STANDINGS</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Full Standings Modal */}
+      <Modal
+        visible={modalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View style={[styles.modalOverlay, { backgroundColor: colors.overlay }]}>
+          <View style={[styles.modalContent, { backgroundColor: colors.surface, borderColor: colors.primary + '60' }]}>
+            {/* Modal Header */}
+            <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>FULL STANDINGS</Text>
+              <IconButton
+                icon="close"
+                iconColor={colors.textSecondary}
+                size={24}
+                onPress={() => setModalVisible(false)}
+              />
+            </View>
+
+            {/* Full Table Header */}
+            <View style={[styles.fullTableHeader, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.fullHeaderCell, styles.fullPosCol, { color: colors.textSecondary }]}>#</Text>
+              <Text style={[styles.fullHeaderCell, styles.fullTeamCol, { color: colors.textSecondary }]}>TEAM</Text>
+              <Text style={[styles.fullHeaderCell, { color: colors.textSecondary }]}>P</Text>
+              <Text style={[styles.fullHeaderCell, { color: colors.textSecondary }]}>W</Text>
+              <Text style={[styles.fullHeaderCell, { color: colors.textSecondary }]}>D</Text>
+              <Text style={[styles.fullHeaderCell, { color: colors.textSecondary }]}>L</Text>
+              <Text style={[styles.fullHeaderCell, { color: colors.success || colors.primary }]}>GF</Text>
+              <Text style={[styles.fullHeaderCell, { color: colors.error }]}>GA</Text>
+              <Text style={[styles.fullHeaderCell, { color: colors.textSecondary }]}>GD</Text>
+              <Text style={[styles.fullHeaderCell, { color: colors.primary }]}>PTS</Text>
+            </View>
+
+            {/* Full Table Body */}
+            <ScrollView style={styles.modalTableBody}>
+              {mockLeagueTable.map(renderFullRow)}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -85,79 +206,172 @@ export default function LeagueTableScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: 16,
+    padding: 16,
   },
   header: {
-    paddingHorizontal: 16,
     marginBottom: 16,
   },
   headerTitle: {
-    fontSize: 24,
+    fontSize: 18,
     fontWeight: '900',
-    letterSpacing: 1,
-    fontStyle: 'italic',
-  },
-  headerSubtitle: {
-    fontSize: 12,
-    fontWeight: 'bold',
     letterSpacing: 2,
-    marginTop: 4,
+    textTransform: 'uppercase',
   },
-  table: {
-    paddingHorizontal: 8,
+  tableCard: {
+    borderRadius: 8,
+    borderWidth: 1,
+    overflow: 'hidden',
   },
   tableHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 8,
     borderBottomWidth: 1,
-    height: 40,
   },
-  colHeader: {
+  headerCell: {
     fontSize: 10,
     fontWeight: 'bold',
+    letterSpacing: 1,
+    textAlign: 'center',
   },
-  row: {
+  tableBody: {
+    maxHeight: 350,
+  },
+  tableRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 8,
     borderBottomWidth: 1,
-    height: 48,
   },
-  posColumn: {
+  posCol: {
     width: 40,
+    alignItems: 'center',
     justifyContent: 'center',
-    flex: 0,
   },
-  teamColumn: {
+  posBadge: {
+    width: 26,
+    height: 26,
+    borderRadius: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  posText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  teamCol: {
     flex: 1,
     paddingLeft: 8,
     justifyContent: 'center',
   },
-  statColumn: {
-    width: 32,
-    paddingHorizontal: 0,
-    justifyContent: 'center',
-    flex: 0,
-  },
-  ptsColumn: {
-    width: 40,
-    paddingHorizontal: 0,
-    justifyContent: 'center',
-    flex: 0,
-  },
-  rankBadge: {
-    width: 24,
-    height: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#1A1D23',
-    borderRadius: 4,
-  },
-  rankText: {
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
   teamText: {
-    fontSize: 13,
+    fontSize: 12,
     letterSpacing: 0.5,
   },
-  pointsText: {
+  statCol: {
+    width: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statCell: {
+    fontSize: 12,
+    textAlign: 'center',
+    width: 28,
+  },
+  ptsCol: {
+    width: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ptsCell: {
     fontSize: 14,
     fontWeight: '900',
+    textAlign: 'center',
+    width: 36,
+  },
+  fullStandingsBtn: {
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderTopWidth: 1,
+  },
+  fullStandingsText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    letterSpacing: 1,
+  },
+
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+  },
+  modalContent: {
+    width: SCREEN_WIDTH - 32,
+    maxHeight: '85%',
+    borderRadius: 12,
+    borderWidth: 2,
+    overflow: 'hidden',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingLeft: 16,
+    paddingRight: 4,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+  },
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: '900',
+    letterSpacing: 2,
+  },
+  fullTableHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    borderBottomWidth: 1,
+  },
+  fullHeaderCell: {
+    fontSize: 9,
+    fontWeight: 'bold',
+    letterSpacing: 0.5,
+    textAlign: 'center',
+    width: 28,
+  },
+  fullPosCol: {
+    width: 32,
+    alignItems: 'center',
+  },
+  fullTeamCol: {
+    flex: 1,
+    paddingLeft: 4,
+  },
+  modalTableBody: {
+    maxHeight: 400,
+  },
+  fullTableRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+    borderBottomWidth: 1,
+  },
+  fullStatCell: {
+    fontSize: 11,
+    textAlign: 'center',
+    width: 28,
+  },
+  fullPtsCell: {
+    fontSize: 13,
+    fontWeight: '900',
+    textAlign: 'center',
+    width: 28,
   },
 });
