@@ -146,8 +146,8 @@ describe("Admin Promo Routes", () => {
                 const mockChain: any = {
                     bind: vi.fn(() => mockChain),
                     first: vi.fn(async () => {
-                        if (query.includes("SELECT id, code, active FROM promo_codes")) return { id: "promo-1", code: "SAVE20", active: 1 };
-                        if (query.includes("FROM promo_redemptions")) return null; // Not already applied
+                        if (query.includes("SELECT id, code, active FROM promo_codes")) {return { id: "promo-1", code: "SAVE20", active: 1 };}
+                        if (query.includes("FROM promo_redemptions")) {return null;} // Not already applied
                         return null;
                     }),
                     run: vi.fn(async () => ({ success: true })),
@@ -170,8 +170,8 @@ describe("Admin Promo Routes", () => {
                 const mockChain: any = {
                     bind: vi.fn(() => mockChain),
                     first: vi.fn(async () => {
-                        if (query.includes("SELECT id, code, active FROM promo_codes")) return { id: "promo-1", code: "SAVE20", active: 1 };
-                        if (query.includes("FROM promo_redemptions")) return { id: "existing-redemption" }; // Already applied
+                        if (query.includes("SELECT id, code, active FROM promo_codes")) {return { id: "promo-1", code: "SAVE20", active: 1 };}
+                        if (query.includes("FROM promo_redemptions")) {return { id: "existing-redemption" };} // Already applied
                         return null;
                     }),
                     run: vi.fn(async () => ({ success: true })),

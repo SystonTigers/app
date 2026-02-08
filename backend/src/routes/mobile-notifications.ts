@@ -45,7 +45,7 @@ export async function handleScheduleMatchReminder(req: Request, env: any, corsHd
             scheduledFor: reminderTime.toISOString()
         }, 200, corsHdrs);
     } catch (err) {
-        if (err instanceof Response) throw err;
+        if (err instanceof Response) {throw err;}
         console.error('Schedule match reminder error:', err);
         return json({ success: false, error: "Failed to schedule reminder" }, 500, corsHdrs);
     }
@@ -85,7 +85,7 @@ export async function handleScheduleMOTMVoting(req: Request, env: any, corsHdrs:
             notificationId
         }, 200, corsHdrs);
     } catch (err) {
-        if (err instanceof Response) throw err;
+        if (err instanceof Response) {throw err;}
         console.error('Schedule MOTM voting error:', err);
         return json({ success: false, error: "Failed to schedule notification" }, 500, corsHdrs);
     }

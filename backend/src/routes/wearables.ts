@@ -555,7 +555,7 @@ function parseCSV(csv: string): {
   altitude?: number;
 }[] {
   const lines = csv.trim().split('\n');
-  if (lines.length < 2) return [];
+  if (lines.length < 2) {return [];}
 
   const headers = lines[0].toLowerCase().split(',').map(h => h.trim());
   const samples: ReturnType<typeof parseCSV> = [];
@@ -583,7 +583,7 @@ function parseCSV(csv: string): {
   const headerIndices: Record<string, number> = {};
   headers.forEach((h, i) => {
     const mapped = fieldMap[h];
-    if (mapped) headerIndices[mapped] = i;
+    if (mapped) {headerIndices[mapped] = i;}
   });
 
   if (headerIndices.timestamp === undefined) {

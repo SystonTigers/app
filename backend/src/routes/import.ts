@@ -9,7 +9,7 @@ import { requireJWT } from "../services/auth";
 // Parse CSV string into array of objects
 function parseCSV(csvText: string): any[] {
     const lines = csvText.trim().split('\n');
-    if (lines.length < 2) return [];
+    if (lines.length < 2) {return [];}
 
     const headers = lines[0].split(',').map(h =>
         h.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_').replace(/^_+|_+$/g, '')
@@ -18,7 +18,7 @@ function parseCSV(csvText: string): any[] {
     const data = [];
     for (let i = 1; i < lines.length; i++) {
         const values = parseCSVLine(lines[i]);
-        if (values.length === 0) continue;
+        if (values.length === 0) {continue;}
 
         const row: any = {};
         for (let j = 0; j < headers.length; j++) {

@@ -9,9 +9,9 @@ vi.mock("../../lib/log", () => ({
 // Mock time utils
 vi.mock("../../utils/time", () => {
     const mockToFormat = (fmt: string) => {
-        if (fmt === 'yyyy-MM-dd') return "2024-01-15";
-        if (fmt === 'yyyy-WW') return "2024-W03";
-        if (fmt === 'yyyy-MM') return "2024-01";
+        if (fmt === 'yyyy-MM-dd') {return "2024-01-15";}
+        if (fmt === 'yyyy-WW') {return "2024-W03";}
+        if (fmt === 'yyyy-MM') {return "2024-01";}
         return "01-15";
     };
     return {
@@ -42,7 +42,7 @@ describe("Player of Period Cron", () => {
         }),
         get: vi.fn().mockImplementation((key: string, type?: string) => {
             const value = data[key];
-            if (value === undefined) return Promise.resolve(null);
+            if (value === undefined) {return Promise.resolve(null);}
             if (type === "json" && typeof value === "object") {
                 return Promise.resolve(value);
             }

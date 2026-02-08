@@ -87,10 +87,10 @@ export function canAccess(
     }
 
     const permissions = ROLE_PERMISSIONS[role];
-    if (!permissions) return false;
+    if (!permissions) {return false;}
 
     const resourcePerm = permissions[resource];
-    if (!resourcePerm) return false;
+    if (!resourcePerm) {return false;}
 
     return resourcePerm[action] === true;
 }
@@ -112,7 +112,7 @@ export async function getSessionFromRequest(
         const token = authHeader.substring(7);
         const payload = await verifyJWT(env, token);
 
-        if (!payload) return null;
+        if (!payload) {return null;}
 
         return {
             role: payload.role || 'fan',
@@ -189,7 +189,7 @@ export function withRole<T extends any[]>(
 ) {
     return async (req: Request, env: any, corsHdrs: Headers, ...args: T): Promise<Response> => {
         const check = await requireRole(minRole)(req, env, corsHdrs);
-        if (check) return check;
+        if (check) {return check;}
         return handler(req, env, corsHdrs, ...args);
     };
 }
@@ -204,7 +204,7 @@ export function withPermission<T extends any[]>(
 ) {
     return async (req: Request, env: any, corsHdrs: Headers, ...args: T): Promise<Response> => {
         const check = await requirePermission(resource, action)(req, env, corsHdrs);
-        if (check) return check;
+        if (check) {return check;}
         return handler(req, env, corsHdrs, ...args);
     };
 }

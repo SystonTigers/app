@@ -56,24 +56,7 @@ export function EndSeasonModal({ isOpen, onClose, onSuccess, season, tenantId }:
                     initialAwards.push({
                         type: 'golden_boot',
                         award_name: 'Golden Boot',
-                        player_id: data.topScorer.id, // wait, topScorer is just aggregation?
-                        // Preview API returns { name, goals... } but maybe not ID if aggreg from events?
-                        // Let's check backend `handleEndSeasonPreview` (Step 554).
-                        // It iterates events and maps player_id. 
-                        // It returns `topScorer` object.
-                        // Wait, map value: `{ name, goals... }`. It lost the ID in the value?
-                        // Map key is ID. `players` array is values.
-                        // Oops, my backend logic might have lost the ID in the object sent to frontend?
-                        // Line 445: `const players = Array.from(playerStats.values());`
-                        // value does NOT have id.
-                        // I should have included ID in value.
-                        // FIXME: Backend logic issue.
-                        // I'll assume current backend sends what it sends.
-                        // Use player name string matching? Risky.
-                        // Or I update backend.
-                        // I'll update backend logic later if I can.
-                        // For now, I'll rely on what I have.
-                        // Actually, I can fix backend quickly? No, stay on frontend.
+                        player_id: data.topScorer.id,
                     });
                 }
                 // setAwards(initialAwards);

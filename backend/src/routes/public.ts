@@ -565,7 +565,7 @@ export async function handlePublicTenantRequest(
 
         if (resource === "squad") {
             const raw = (await env.KV_IDEMP.get(`squad:${tenant.id}:list`, "json")) as any[] | null;
-            if (!raw) return json({ success: true, data: [] }, 200, corsHdrs);
+            if (!raw) {return json({ success: true, data: [] }, 200, corsHdrs);}
 
             // Fetch stats from D1
             const statsRows = await env.DB.prepare(`

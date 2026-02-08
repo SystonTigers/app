@@ -68,7 +68,7 @@ export async function getDevice(
     SELECT * FROM wearable_devices WHERE id = ? AND tenant_id = ?
   `).bind(deviceId, tenantId).first();
 
-  if (!row) return null;
+  if (!row) {return null;}
 
   return mapRowToDevice(row);
 }
@@ -212,7 +212,7 @@ export async function getSession(
     WHERE ws.id = ? AND ws.tenant_id = ?
   `).bind(sessionId, tenantId).first();
 
-  if (!row) return null;
+  if (!row) {return null;}
 
   const session = mapRowToSession(row);
   const metrics = await getMetricsForSession(env, tenantId, sessionId);
@@ -308,7 +308,7 @@ export async function saveGPSSamples(
   playerId: string,
   samples: GPSSample[]
 ): Promise<number> {
-  if (samples.length === 0) return 0;
+  if (samples.length === 0) {return 0;}
 
   // Batch insert for efficiency
   const stmt = env.DB.prepare(`
@@ -364,7 +364,7 @@ export async function getGPSTrack(
     SELECT gps_track_json FROM wearable_sessions WHERE id = ? AND tenant_id = ?
   `).bind(sessionId, tenantId).first();
 
-  if (!row?.gps_track_json) return [];
+  if (!row?.gps_track_json) {return [];}
 
   try {
     return JSON.parse(row.gps_track_json as string);
@@ -584,7 +584,7 @@ export async function getMetricsForSession(
     SELECT * FROM player_fitness_metrics WHERE session_id = ? AND tenant_id = ?
   `).bind(sessionId, tenantId).first();
 
-  if (!row) return null;
+  if (!row) {return null;}
 
   return mapRowToMetrics(row);
 }
@@ -634,7 +634,7 @@ export async function getPlayerMetricsSummary(
     SELECT id, name FROM squad WHERE id = ? AND tenant_id = ?
   `).bind(playerId, tenantId).first();
 
-  if (!player) return null;
+  if (!player) {return null;}
 
   // Get season totals
   const seasonStats = await env.DB.prepare(`
@@ -690,7 +690,7 @@ export async function calculateFatigueAssessment(
     SELECT id, name FROM squad WHERE id = ? AND tenant_id = ?
   `).bind(playerId, tenantId).first();
 
-  if (!player) return null;
+  if (!player) {return null;}
 
   const now = Date.now();
   const sevenDaysAgo = now - (7 * 24 * 60 * 60 * 1000);
@@ -717,13 +717,13 @@ export async function calculateFatigueAssessment(
 
   // Determine risk levels
   let workloadRisk: 'low' | 'medium' | 'high' = 'low';
-  if (acwr > 1.5) workloadRisk = 'high';
-  else if (acwr > 1.3) workloadRisk = 'medium';
+  if (acwr > 1.5) {workloadRisk = 'high';}
+  else if (acwr > 1.3) {workloadRisk = 'medium';}
 
   let overallRisk: 'low' | 'medium' | 'high' | 'critical' = 'low';
-  if (acwr > 1.7) overallRisk = 'critical';
-  else if (acwr > 1.5) overallRisk = 'high';
-  else if (acwr > 1.3) overallRisk = 'medium';
+  if (acwr > 1.7) {overallRisk = 'critical';}
+  else if (acwr > 1.5) {overallRisk = 'high';}
+  else if (acwr > 1.3) {overallRisk = 'medium';}
 
   const recommendations: string[] = [];
   if (overallRisk === 'critical') {
@@ -770,10 +770,10 @@ export function generateHeatmap(
   let minLon = Infinity, maxLon = -Infinity;
 
   for (const s of gpsSamples) {
-    if (s.latitude! < minLat) minLat = s.latitude!;
-    if (s.latitude! > maxLat) maxLat = s.latitude!;
-    if (s.longitude! < minLon) minLon = s.longitude!;
-    if (s.longitude! > maxLon) maxLon = s.longitude!;
+    if (s.latitude! < minLat) {minLat = s.latitude!;}
+    if (s.latitude! > maxLat) {maxLat = s.latitude!;}
+    if (s.longitude! < minLon) {minLon = s.longitude!;}
+    if (s.longitude! > maxLon) {maxLon = s.longitude!;}
   }
 
   // Create grid
@@ -788,14 +788,14 @@ export function generateHeatmap(
 
     const existing = cellCounts.get(key) || { count: 0, speedSum: 0 };
     existing.count++;
-    if (s.speed) existing.speedSum += s.speed;
+    if (s.speed) {existing.speedSum += s.speed;}
     cellCounts.set(key, existing);
   }
 
   // Find max count for normalization
   let maxCount = 0;
   for (const data of cellCounts.values()) {
-    if (data.count > maxCount) maxCount = data.count;
+    if (data.count > maxCount) {maxCount = data.count;}
   }
 
   // Convert to cells
@@ -924,11 +924,11 @@ function calculateMetricsFromSamples(samples: WearableSampleInput[]): Partial<Pl
       const speed = curr.speed || 0;
       const speedKmh = speed * 3.6;
 
-      if (speedKmh < 7) walkingDistance += dist;
-      else if (speedKmh < 14) joggingDistance += dist;
-      else if (speedKmh < 20) runningDistance += dist;
-      else if (speedKmh < 25) highSpeedDistance += dist;
-      else sprintDistance += dist;
+      if (speedKmh < 7) {walkingDistance += dist;}
+      else if (speedKmh < 14) {joggingDistance += dist;}
+      else if (speedKmh < 20) {runningDistance += dist;}
+      else if (speedKmh < 25) {highSpeedDistance += dist;}
+      else {sprintDistance += dist;}
     }
 
     metrics.totalDistanceM = totalDistance;
@@ -1006,10 +1006,10 @@ function calculateMetricsFromSamples(samples: WearableSampleInput[]): Partial<Pl
     for (const acc of accs) {
       if (acc > 3) {
         accCount++;
-        if (acc > maxAcc) maxAcc = acc;
+        if (acc > maxAcc) {maxAcc = acc;}
       } else if (acc < -3) {
         decCount++;
-        if (acc < maxDec) maxDec = acc;
+        if (acc < maxDec) {maxDec = acc;}
       }
     }
 

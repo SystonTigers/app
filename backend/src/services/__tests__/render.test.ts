@@ -33,7 +33,7 @@ describe("Render Service", () => {
       R2: {
         get: vi.fn(async (key: string) => {
           const value = mockR2.get(key);
-          if (!value) return null;
+          if (!value) {return null;}
           return {
             text: async () => value.text,
             arrayBuffer: async () => value.buffer || new ArrayBuffer(0),
@@ -46,7 +46,7 @@ describe("Render Service", () => {
       KV: {
         get: vi.fn(async (key: string, type?: string) => {
           const value = mockKV.get(key);
-          if (!value) return null;
+          if (!value) {return null;}
           return type === "json" ? JSON.parse(value) : value;
         }),
       },

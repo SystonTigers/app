@@ -188,7 +188,7 @@ export const runQuotes = async (env: Env, ctx: ExecutionContext) => {
     let postsCreated = 0;
     for (const config of tenants) {
       const created = await postQuote(env, config, today);
-      if (created) postsCreated++;
+      if (created) {postsCreated++;}
     }
 
     logJSON({

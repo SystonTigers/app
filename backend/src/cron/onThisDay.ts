@@ -22,7 +22,7 @@ export const runOnThisDay = async (env: Env, ctx: ExecutionContext) => {
     let postsCreated = 0;
     for (const tenant of tenants) {
       const created = await checkOnThisDay(env, tenant, now);
-      if (created) postsCreated++;
+      if (created) {postsCreated++;}
     }
 
     logJSON({
@@ -100,9 +100,9 @@ async function checkOnThisDay(env: Env, config: any, now: any): Promise<boolean>
       const yearsAgo = Math.floor((Date.now() / 1000 - match.date_utc) / (365 * 24 * 60 * 60));
 
       // Milestone years are more significant (1, 5, 10, 15, 20, etc.)
-      if (yearsAgo === 1) score += 20;
-      if (yearsAgo % 5 === 0) score += 50;
-      if (yearsAgo % 10 === 0) score += 100;
+      if (yearsAgo === 1) {score += 20;}
+      if (yearsAgo % 5 === 0) {score += 50;}
+      if (yearsAgo % 10 === 0) {score += 100;}
 
       // Big wins
       if (data.home_score !== undefined && data.away_score !== undefined) {
@@ -110,15 +110,15 @@ async function checkOnThisDay(env: Env, config: any, now: any): Promise<boolean>
         const theirScore = data.is_home ? data.away_score : data.home_score;
         const margin = ourScore - theirScore;
 
-        if (margin > 0) score += margin * 10; // Wins
-        if (margin >= 4) score += 30; // Thrashing bonus
+        if (margin > 0) {score += margin * 10;} // Wins
+        if (margin >= 4) {score += 30;} // Thrashing bonus
       }
 
       // Important competitions
-      if (data.competition?.toLowerCase().includes('cup')) score += 30;
-      if (data.competition?.toLowerCase().includes('final')) score += 80;
-      if (data.competition?.toLowerCase().includes('semi')) score += 40;
-      if (data.competition?.toLowerCase().includes('quarter')) score += 20;
+      if (data.competition?.toLowerCase().includes('cup')) {score += 30;}
+      if (data.competition?.toLowerCase().includes('final')) {score += 80;}
+      if (data.competition?.toLowerCase().includes('semi')) {score += 40;}
+      if (data.competition?.toLowerCase().includes('quarter')) {score += 20;}
 
       return { match: data, score, yearsAgo };
     })

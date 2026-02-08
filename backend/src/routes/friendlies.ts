@@ -49,7 +49,7 @@ export async function handleListFriendlyRequests(req: Request, env: any, corsHdr
             data: result.results || []
         }, 200, corsHdrs);
     } catch (error: any) {
-        if (error instanceof Response) throw error;
+        if (error instanceof Response) {throw error;}
         console.error('[Friendlies] List error:', error);
         return json({ success: false, error: { message: error.message } }, 500, corsHdrs);
     }
@@ -109,7 +109,7 @@ export async function handleCreateFriendlyRequest(req: Request, env: any, corsHd
             data: { id, message: 'Friendly request posted!' }
         }, 201, corsHdrs);
     } catch (error: any) {
-        if (error instanceof Response) throw error;
+        if (error instanceof Response) {throw error;}
         console.error('[Friendlies] Create error:', error);
         return json({ success: false, error: { message: error.message } }, 500, corsHdrs);
     }
@@ -133,7 +133,7 @@ export async function handleGetMyFriendlyRequests(req: Request, env: any, corsHd
 
         return json({ success: true, data: result.results || [] }, 200, corsHdrs);
     } catch (error: any) {
-        if (error instanceof Response) throw error;
+        if (error instanceof Response) {throw error;}
         return json({ success: false, error: { message: error.message } }, 500, corsHdrs);
     }
 }
@@ -159,7 +159,7 @@ export async function handleDeleteFriendlyRequest(req: Request, env: any, corsHd
 
         return json({ success: true }, 200, corsHdrs);
     } catch (error: any) {
-        if (error instanceof Response) throw error;
+        if (error instanceof Response) {throw error;}
         return json({ success: false, error: { message: error.message } }, 500, corsHdrs);
     }
 }
@@ -236,7 +236,7 @@ export async function handleRequestMatch(req: Request, env: any, corsHdrs: Heade
             data: { id: matchId, message: 'Match request sent!' }
         }, 201, corsHdrs);
     } catch (error: any) {
-        if (error instanceof Response) throw error;
+        if (error instanceof Response) {throw error;}
         console.error('[Friendlies] Request match error:', error);
         return json({ success: false, error: { message: error.message } }, 500, corsHdrs);
     }
@@ -265,7 +265,7 @@ export async function handleGetFriendlyInbox(req: Request, env: any, corsHdrs: H
 
         return json({ success: true, data: result.results || [] }, 200, corsHdrs);
     } catch (error: any) {
-        if (error instanceof Response) throw error;
+        if (error instanceof Response) {throw error;}
         return json({ success: false, error: { message: error.message } }, 500, corsHdrs);
     }
 }
@@ -376,7 +376,7 @@ export async function handleRespondToMatch(req: Request, env: any, corsHdrs: Hea
             return json({ success: true, message: 'Match declined' }, 200, corsHdrs);
         }
     } catch (error: any) {
-        if (error instanceof Response) throw error;
+        if (error instanceof Response) {throw error;}
         console.error('[Friendlies] Respond error:', error);
         return json({ success: false, error: { message: error.message } }, 500, corsHdrs);
     }
@@ -403,7 +403,7 @@ export async function handleGetSentRequests(req: Request, env: any, corsHdrs: He
 
         return json({ success: true, data: result.results || [] }, 200, corsHdrs);
     } catch (error: any) {
-        if (error instanceof Response) throw error;
+        if (error instanceof Response) {throw error;}
         return json({ success: false, error: { message: error.message } }, 500, corsHdrs);
     }
 }

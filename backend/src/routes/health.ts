@@ -36,7 +36,7 @@ export async function readyz(env: any): Promise<Response> {
   try {
     const result = await env.DB.prepare("SELECT 1 as health").first();
     checks.database = result?.health === 1 ? "healthy" : "unhealthy";
-    if (checks.database === "unhealthy") overallStatus = "degraded";
+    if (checks.database === "unhealthy") {overallStatus = "degraded";}
   } catch (error) {
     checks.database = "unhealthy";
     overallStatus = "unhealthy";
@@ -52,10 +52,10 @@ export async function readyz(env: any): Promise<Response> {
     await env.KV_IDEMP.put("health_check", Date.now().toString(), { expirationTtl: 60 });
     const value = await env.KV_IDEMP.get("health_check");
     checks.kv = value ? "healthy" : "unhealthy";
-    if (checks.kv === "unhealthy" && overallStatus === "healthy") overallStatus = "degraded";
+    if (checks.kv === "unhealthy" && overallStatus === "healthy") {overallStatus = "degraded";}
   } catch (error) {
     checks.kv = "unhealthy";
-    if (overallStatus === "healthy") overallStatus = "degraded";
+    if (overallStatus === "healthy") {overallStatus = "degraded";}
     logJSON({
       level: "error",
       msg: "health_check_kv_failed",

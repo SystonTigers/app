@@ -35,9 +35,9 @@ export async function handleAuthRegister(req: Request, env: any, corsHdrs: Heade
 
     if (!rateLimitResult.ok) {
       const headers = new Headers(corsHdrs);
-      if (rateLimitResult.limit) headers.set("X-RateLimit-Limit", String(rateLimitResult.limit));
-      if (rateLimitResult.remaining !== undefined) headers.set("X-RateLimit-Remaining", String(rateLimitResult.remaining));
-      if (rateLimitResult.retryAfter) headers.set("Retry-After", String(rateLimitResult.retryAfter));
+      if (rateLimitResult.limit) {headers.set("X-RateLimit-Limit", String(rateLimitResult.limit));}
+      if (rateLimitResult.remaining !== undefined) {headers.set("X-RateLimit-Remaining", String(rateLimitResult.remaining));}
+      if (rateLimitResult.retryAfter) {headers.set("Retry-After", String(rateLimitResult.retryAfter));}
 
       return json(
         {
@@ -262,9 +262,9 @@ export async function handleAuthLogin(req: Request, env: any, corsHdrs: Headers)
 
     if (!rateLimitResult.ok) {
       const headers = new Headers(corsHdrs);
-      if (rateLimitResult.limit) headers.set("X-RateLimit-Limit", String(rateLimitResult.limit));
-      if (rateLimitResult.remaining !== undefined) headers.set("X-RateLimit-Remaining", String(rateLimitResult.remaining));
-      if (rateLimitResult.retryAfter) headers.set("Retry-After", String(rateLimitResult.retryAfter));
+      if (rateLimitResult.limit) {headers.set("X-RateLimit-Limit", String(rateLimitResult.limit));}
+      if (rateLimitResult.remaining !== undefined) {headers.set("X-RateLimit-Remaining", String(rateLimitResult.remaining));}
+      if (rateLimitResult.retryAfter) {headers.set("Retry-After", String(rateLimitResult.retryAfter));}
 
       return json(
         {
@@ -486,7 +486,7 @@ export async function handleSwitchTenant(req: Request, env: any, corsHdrs: Heade
 export async function handleGetMyTenants(req: Request, env: any, corsHdrs: Headers) {
   try {
     const claims = await verifyJWT(env, (req.headers.get('Authorization') || '').substring(7));
-    if (!claims) return json({ success: false, error: "Unauthorized" }, 401, corsHdrs);
+    if (!claims) {return json({ success: false, error: "Unauthorized" }, 401, corsHdrs);}
 
     const email = claims.email || claims.sub;
 
@@ -510,12 +510,12 @@ export async function handleGetMyTenants(req: Request, env: any, corsHdrs: Heade
 export async function handleLinkPlayer(req: Request, env: any, corsHdrs: Headers) {
   try {
     const claims = await verifyJWT(env, (req.headers.get('Authorization') || '').substring(7));
-    if (!claims) return json({ success: false, error: "Unauthorized" }, 401, corsHdrs);
+    if (!claims) {return json({ success: false, error: "Unauthorized" }, 401, corsHdrs);}
 
     const email = claims.email || claims.sub;
     const body = await req.json().catch(() => ({})) as any;
 
-    if (!body.code) return json({ success: false, error: "Code required" }, 400, corsHdrs);
+    if (!body.code) {return json({ success: false, error: "Code required" }, 400, corsHdrs);}
 
     // 1. Find the code
     const codeRecord = await env.DB.prepare(`
@@ -572,7 +572,7 @@ export async function handleLinkPlayer(req: Request, env: any, corsHdrs: Headers
         `SELECT password_hash FROM auth_users WHERE tenant_id = ? AND email = ?`
       ).bind(claims.tenant_id, email).first();
 
-      if (!currentUser) return json({ success: false, error: "Current user not found" }, 500, corsHdrs);
+      if (!currentUser) {return json({ success: false, error: "Current user not found" }, 500, corsHdrs);}
 
       await env.DB.prepare(`
                 INSERT INTO auth_users (id, tenant_id, email, password_hash, roles, created_at, updated_at)
@@ -591,7 +591,7 @@ export async function handleLinkPlayer(req: Request, env: any, corsHdrs: Headers
             `).bind(targetUser.id, playerId, targetTenantId).run();
     } catch (e: any) {
       // Ignore unique constraint (already linked)
-      if (!e.message.includes('UNIQUE')) throw e;
+      if (!e.message.includes('UNIQUE')) {throw e;}
     }
 
     return json({
@@ -636,7 +636,7 @@ export async function handleCodeLogin(req: Request, env: any, corsHdrs: Headers)
 
     if (!rateLimitResult.ok) {
       const headers = new Headers(corsHdrs);
-      if (rateLimitResult.retryAfter) headers.set("Retry-After", String(rateLimitResult.retryAfter));
+      if (rateLimitResult.retryAfter) {headers.set("Retry-After", String(rateLimitResult.retryAfter));}
       return json({
         success: false,
         error: { code: "RATE_LIMITED", message: "Too many login attempts. Please try again later." }
@@ -752,7 +752,7 @@ export async function handleCodeLogin(req: Request, env: any, corsHdrs: Headers)
         error: { code: "INVALID_REQUEST", message: "Validation failed", issues: err.issues }
       }, err.status, corsHdrs);
     }
-    if (err instanceof Response) return err;
+    if (err instanceof Response) {return err;}
     console.error('Code login error:', err);
     return json({ success: false, error: { code: "LOGIN_FAILED", message: err?.message || "unexpected error" } }, 500, corsHdrs);
   }
@@ -773,7 +773,7 @@ export async function handleFanLogin(req: Request, env: any, corsHdrs: Headers) 
 
     if (!rateLimitResult.ok) {
       const headers = new Headers(corsHdrs);
-      if (rateLimitResult.retryAfter) headers.set("Retry-After", String(rateLimitResult.retryAfter));
+      if (rateLimitResult.retryAfter) {headers.set("Retry-After", String(rateLimitResult.retryAfter));}
       return json({
         success: false,
         error: { code: "RATE_LIMITED", message: "Too many login attempts. Please try again later." }
@@ -850,7 +850,7 @@ export async function handleFanLogin(req: Request, env: any, corsHdrs: Headers) 
         error: { code: "INVALID_REQUEST", message: "Validation failed", issues: err.issues }
       }, err.status, corsHdrs);
     }
-    if (err instanceof Response) return err;
+    if (err instanceof Response) {return err;}
     console.error('Fan login error:', err);
     return json({ success: false, error: { code: "LOGIN_FAILED", message: err?.message || "unexpected error" } }, 500, corsHdrs);
   }
@@ -981,7 +981,7 @@ export async function handleVerifyEmail(req: Request, env: any, corsHdrs: Header
     }, 200, corsHdrs);
 
   } catch (err: any) {
-    if (err instanceof Response) return err;
+    if (err instanceof Response) {return err;}
     console.log('Verify email error:', err);
     return json({ success: false, error: { code: "VERIFY_FAILED", message: err.message || "Unknown error" } }, 500, corsHdrs);
   }
@@ -1047,7 +1047,7 @@ async function autoAssignGroups(env: any, params: {
   };
 
   const groupTypes = groupAssignments[params.role] || [];
-  if (groupTypes.length === 0) return;
+  if (groupTypes.length === 0) {return;}
 
   try {
     // Get or create discussion groups
@@ -1230,7 +1230,7 @@ export async function handleSignup(req: Request, env: any, corsHdrs: Headers) {
 
     if (!rateLimitResult.ok) {
       const headers = new Headers(corsHdrs);
-      if (rateLimitResult.retryAfter) headers.set("Retry-After", String(rateLimitResult.retryAfter));
+      if (rateLimitResult.retryAfter) {headers.set("Retry-After", String(rateLimitResult.retryAfter));}
       return json({
         success: false,
         error: { code: "RATE_LIMITED", message: "Too many signup attempts" }
@@ -1408,7 +1408,7 @@ export async function handleDeleteAccount(req: Request, env: any, corsHdrs: Head
     // Get user email for logging
     const user = await env.DB.prepare(
       `SELECT email FROM auth_users WHERE id = ? ${tenantId ? 'AND tenant_id = ?' : ''}`
-    ).bind(tenantId ? userId, tenantId : userId).first();
+    ).bind(...(tenantId ? [userId, tenantId] : [userId])).first();
 
     if (!user) {
       return json({

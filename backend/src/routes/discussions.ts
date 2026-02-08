@@ -40,7 +40,7 @@ export async function handleListDiscussions(req: Request, env: any, corsHdrs: He
     try {
         const claims = await requireJWT(req, env);
         const url = new URL(req.url);
-        let category = url.searchParams.get('category');
+        const category = url.searchParams.get('category');
         const pinnedOnly = url.searchParams.get('pinned') === 'true';
         const limit = Math.min(parseInt(url.searchParams.get('limit') || '50'), 100);
         const offset = parseInt(url.searchParams.get('offset') || '0');
@@ -110,7 +110,7 @@ export async function handleListDiscussions(req: Request, env: any, corsHdrs: He
         return json({ success: true, data: discussions }, 200, corsHdrs);
     } catch (err) {
         console.error('List discussions error:', err);
-        if (err instanceof Response) throw err;
+        if (err instanceof Response) {throw err;}
         return json({ success: false, error: 'Failed to list discussions' }, 500, corsHdrs);
     }
 }
@@ -170,7 +170,7 @@ export async function handleCreateDiscussion(req: Request, env: any, corsHdrs: H
         return json({ success: true, data: discussion }, 201, corsHdrs);
     } catch (err) {
         console.error('Create discussion error:', err);
-        if (err instanceof Response) throw err;
+        if (err instanceof Response) {throw err;}
         return json({ success: false, error: 'Failed to create discussion' }, 500, corsHdrs);
     }
 }
@@ -233,7 +233,7 @@ export async function handleGetDiscussion(req: Request, env: any, corsHdrs: Head
         }, 200, corsHdrs);
     } catch (err) {
         console.error('Get discussion error:', err);
-        if (err instanceof Response) throw err;
+        if (err instanceof Response) {throw err;}
         return json({ success: false, error: 'Failed to get discussion' }, 500, corsHdrs);
     }
 }
@@ -297,7 +297,7 @@ export async function handleUpdateDiscussion(req: Request, env: any, corsHdrs: H
         return json({ success: true }, 200, corsHdrs);
     } catch (err) {
         console.error('Update discussion error:', err);
-        if (err instanceof Response) throw err;
+        if (err instanceof Response) {throw err;}
         return json({ success: false, error: 'Failed to update discussion' }, 500, corsHdrs);
     }
 }
@@ -327,7 +327,7 @@ export async function handleDeleteDiscussion(req: Request, env: any, corsHdrs: H
         return json({ success: true }, 200, corsHdrs);
     } catch (err) {
         console.error('Delete discussion error:', err);
-        if (err instanceof Response) throw err;
+        if (err instanceof Response) {throw err;}
         return json({ success: false, error: 'Failed to delete discussion' }, 500, corsHdrs);
     }
 }
@@ -433,7 +433,7 @@ export async function handleCreateComment(req: Request, env: any, corsHdrs: Head
         // Notify mentioned users
         if (Array.isArray(mentions) && mentions.length > 0) {
             for (const mentionedUserId of mentions) {
-                if (mentionedUserId === claims.userId) continue; // Don't notify self
+                if (mentionedUserId === claims.userId) {continue;} // Don't notify self
 
                 const notifId = crypto.randomUUID();
                 env.DB.prepare(`
@@ -469,7 +469,7 @@ export async function handleCreateComment(req: Request, env: any, corsHdrs: Head
         return json({ success: true, data: comment }, 201, corsHdrs);
     } catch (err) {
         console.error('Create comment error:', err);
-        if (err instanceof Response) throw err;
+        if (err instanceof Response) {throw err;}
         return json({ success: false, error: 'Failed to create comment' }, 500, corsHdrs);
     }
 }
@@ -514,7 +514,7 @@ export async function handleUpdateComment(req: Request, env: any, corsHdrs: Head
         return json({ success: true }, 200, corsHdrs);
     } catch (err) {
         console.error('Update comment error:', err);
-        if (err instanceof Response) throw err;
+        if (err instanceof Response) {throw err;}
         return json({ success: false, error: 'Failed to update comment' }, 500, corsHdrs);
     }
 }
@@ -553,7 +553,7 @@ export async function handleDeleteComment(req: Request, env: any, corsHdrs: Head
         return json({ success: true }, 200, corsHdrs);
     } catch (err) {
         console.error('Delete comment error:', err);
-        if (err instanceof Response) throw err;
+        if (err instanceof Response) {throw err;}
         return json({ success: false, error: 'Failed to delete comment' }, 500, corsHdrs);
     }
 }

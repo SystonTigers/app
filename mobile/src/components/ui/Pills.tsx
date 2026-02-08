@@ -34,7 +34,7 @@ export function Pills({ items, value, onChange }: PillsProps) {
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    gap: spacing(1),
+    gap: spacing.sm,
     flexWrap: 'wrap',
   },
   pill: {
@@ -46,15 +46,15 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   pillActive: {
-    backgroundColor: colors.brand.yellow,
-    borderColor: colors.brand.yellow,
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   pillPressed: {
     opacity: 0.85,
   },
   text: {
     color: colors.text,
-    fontSize: fonts.sizes.sm,
+    fontSize: fonts.fontSize.sm,
     fontWeight: '600',
   },
   textActive: {

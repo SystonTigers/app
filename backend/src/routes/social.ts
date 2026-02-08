@@ -19,7 +19,7 @@ export async function handleCreatePost(req: Request, env: any, corsHdrs: Headers
 
         return json({ success: true, id: postId }, 200, corsHdrs);
     } catch (err) {
-        if (err instanceof Response) throw err;
+        if (err instanceof Response) {throw err;}
         return json({ success: false, error: "Failed to create post" }, 500, corsHdrs);
     }
 }
@@ -40,7 +40,7 @@ export async function handleListPosts(req: Request, env: any, corsHdrs: Headers)
 
         return json({ success: true, data: posts }, 200, corsHdrs);
     } catch (err) {
-        if (err instanceof Response) throw err;
+        if (err instanceof Response) {throw err;}
         return json({ success: false, error: "Failed to list posts" }, 500, corsHdrs);
     }
 }
@@ -55,7 +55,7 @@ export async function handleDeletePost(req: Request, env: any, corsHdrs: Headers
 
         return json({ success: true }, 200, corsHdrs);
     } catch (err) {
-        if (err instanceof Response) throw err;
+        if (err instanceof Response) {throw err;}
         return json({ success: false, error: "Failed to delete post" }, 500, corsHdrs);
     }
 }
@@ -76,7 +76,7 @@ export async function handleUpdateSocialConfig(req: Request, env: any, corsHdrs:
 
         return json({ success: true }, 200, corsHdrs);
     } catch (err) {
-        if (err instanceof Response) throw err;
+        if (err instanceof Response) {throw err;}
         return json({ success: false, error: "Failed to update config" }, 500, corsHdrs);
     }
 }
@@ -97,7 +97,7 @@ export async function handleGetSocialConfig(req: Request, env: any, corsHdrs: He
             }
         }, 200, corsHdrs);
     } catch (err) {
-        if (err instanceof Response) throw err;
+        if (err instanceof Response) {throw err;}
         return json({ success: false, error: "Failed to get config" }, 500, corsHdrs);
     }
 }

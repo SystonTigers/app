@@ -122,7 +122,9 @@ async function handlePaymentSuccess(
     const orderId = `order_${crypto.randomUUID()}`;
     const timestamp = Date.now();
 
-    const shippingDetails = (session.shipping_details || {}) as any;
+    // Note: shipping is available on Session after successful checkout but not typed in Stripe's TS defs
+    // We access it with type assertion for runtime availability
+    const shippingDetails = (session as any).shipping ?? (session as any).shipping_details ?? null;
 
     // Create order in D1
     await env.DB.prepare(`
@@ -200,14 +202,16 @@ async function fulfillOrder(orderId: string, env: any): Promise<void> {
     }));
 
     try {
-        const printifyOrder = await printify.createOrder(
-            orderId,
-            printifyItems,
-            {
-                firstName: orderFirstRow.customer_name.split(' ')[0] || 'Customer',
-                lastName: orderFirstRow.customer_name.split(' ').slice(1).join(' ') || '.',
+        const printifyOrder = await printify.createOrder({
+            external_id: orderId,
+            line_items: printifyItems,
+            shipping_method: 1, // Standard shipping - should be configured per shop
+            send_shipping_notification: true,
+            address_to: {
+                first_name: orderFirstRow.customer_name.split(' ')[0] || 'Customer',
+                last_name: orderFirstRow.customer_name.split(' ').slice(1).join(' ') || '.',
                 email: orderFirstRow.customer_email,
-                phone: shippingAddress.phone || '', // Check stripe object structure
+                phone: shippingAddress.phone || '',
                 country: shippingAddress.address?.country || 'GB',
                 region: shippingAddress.address?.state || '',
                 address1: shippingAddress.address?.line1 || '',
@@ -215,7 +219,7 @@ async function fulfillOrder(orderId: string, env: any): Promise<void> {
                 city: shippingAddress.address?.city || '',
                 zip: shippingAddress.address?.postal_code || ''
             }
-        );
+        });
 
         // Update order items with Printify order ID
         for (const row of results as any[]) {

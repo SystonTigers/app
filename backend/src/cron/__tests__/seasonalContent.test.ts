@@ -77,8 +77,8 @@ describe("Seasonal Content Cron", () => {
         // Default mock for nowUTC
         mockNowUTC.mockReturnValue({
             toFormat: (fmt: string) => {
-                if (fmt === 'yyyy-MM-dd') return "2024-01-15";
-                if (fmt === 'MM-dd') return "01-15";
+                if (fmt === 'yyyy-MM-dd') {return "2024-01-15";}
+                if (fmt === 'MM-dd') {return "01-15";}
                 return "2024-01-15";
             },
         });
@@ -236,8 +236,8 @@ describe("Seasonal Content Cron", () => {
             it("creates season start post on configured date", async () => {
                 mockNowUTC.mockReturnValue({
                     toFormat: (fmt: string) => {
-                        if (fmt === 'yyyy-MM-dd') return "2024-09-01";
-                        if (fmt === 'MM-dd') return "09-01";
+                        if (fmt === 'yyyy-MM-dd') {return "2024-09-01";}
+                        if (fmt === 'MM-dd') {return "09-01";}
                         return "2024-09-01";
                     },
                 });
@@ -279,8 +279,8 @@ describe("Seasonal Content Cron", () => {
             it("creates mid-season review on configured date", async () => {
                 mockNowUTC.mockReturnValue({
                     toFormat: (fmt: string) => {
-                        if (fmt === 'yyyy-MM-dd') return "2025-01-01";
-                        if (fmt === 'MM-dd') return "01-01";
+                        if (fmt === 'yyyy-MM-dd') {return "2025-01-01";}
+                        if (fmt === 'MM-dd') {return "01-01";}
                         return "2025-01-01";
                     },
                 });
@@ -327,8 +327,8 @@ describe("Seasonal Content Cron", () => {
             it("creates end of season summary on configured date", async () => {
                 mockNowUTC.mockReturnValue({
                     toFormat: (fmt: string) => {
-                        if (fmt === 'yyyy-MM-dd') return "2025-05-31";
-                        if (fmt === 'MM-dd') return "05-31";
+                        if (fmt === 'yyyy-MM-dd') {return "2025-05-31";}
+                        if (fmt === 'MM-dd') {return "05-31";}
                         return "2025-05-31";
                     },
                 });
@@ -383,8 +383,8 @@ describe("Seasonal Content Cron", () => {
         it("uses default season dates when not configured", async () => {
             mockNowUTC.mockReturnValue({
                 toFormat: (fmt: string) => {
-                    if (fmt === 'yyyy-MM-dd') return "2024-09-01";
-                    if (fmt === 'MM-dd') return "09-01";
+                    if (fmt === 'yyyy-MM-dd') {return "2024-09-01";}
+                    if (fmt === 'MM-dd') {return "09-01";}
                     return "2024-09-01";
                 },
             });
@@ -411,8 +411,8 @@ describe("Seasonal Content Cron", () => {
         it("does not create duplicate season posts", async () => {
             mockNowUTC.mockReturnValue({
                 toFormat: (fmt: string) => {
-                    if (fmt === 'yyyy-MM-dd') return "2024-09-01";
-                    if (fmt === 'MM-dd') return "09-01";
+                    if (fmt === 'yyyy-MM-dd') {return "2024-09-01";}
+                    if (fmt === 'MM-dd') {return "09-01";}
                     return "2024-09-01";
                 },
             });
@@ -507,8 +507,8 @@ describe("Seasonal Content Cron", () => {
         it("triggers webhook for season posts", async () => {
             mockNowUTC.mockReturnValue({
                 toFormat: (fmt: string) => {
-                    if (fmt === 'yyyy-MM-dd') return "2024-09-01";
-                    if (fmt === 'MM-dd') return "09-01";
+                    if (fmt === 'yyyy-MM-dd') {return "2024-09-01";}
+                    if (fmt === 'MM-dd') {return "09-01";}
                     return "2024-09-01";
                 },
             });

@@ -103,7 +103,7 @@ export async function updateTenantMe(req: Request, env: any, corsHdrs: Headers):
         }, 200, corsHdrs);
 
     } catch (err: any) {
-        if (err instanceof Response) return err;
+        if (err instanceof Response) {return err;}
         if (isValidationError(err)) {
             return json({ success: false, error: { code: "INVALID_REQUEST", issues: err.issues } }, 400, corsHdrs);
         }
@@ -136,7 +136,7 @@ export async function getTenantMe(req: Request, env: any, corsHdrs: Headers): Pr
         return json({ success: true, tenant }, 200, corsHdrs);
 
     } catch (err: any) {
-        if (err instanceof Response) return err;
+        if (err instanceof Response) {return err;}
         logJSON({ level: 'error', msg: 'GET_TENANT_ME_ERROR', error: err.message });
         return json({ success: false, error: { code: "SERVER_ERROR", message: err.message } }, 500, corsHdrs);
     }

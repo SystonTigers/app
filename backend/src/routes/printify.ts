@@ -255,7 +255,7 @@ export async function handleUploadToPrintify(req: Request, env: any, corsHdrs: H
             base64?: string;
         };
 
-        let uploadData: any = { file_name: body.fileName };
+        const uploadData: any = { file_name: body.fileName };
 
         if (body.url) {
             uploadData.url = body.url;

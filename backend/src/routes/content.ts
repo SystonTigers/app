@@ -352,7 +352,7 @@ export async function handleResignTeam(req: Request, env: any, corsHdrs: Headers
         const body = await req.json() as { teamName: string };
         const teamName = body.teamName;
 
-        if (!teamName) return json({ success: false, error: "Team name required" }, 400, corsHdrs);
+        if (!teamName) {return json({ success: false, error: "Team name required" }, 400, corsHdrs);}
 
         // Step 1: Get all results involving the resigned team to calculate deductions
         const results = await env.DB.prepare(
@@ -402,9 +402,9 @@ export async function handleResignTeam(req: Request, env: any, corsHdrs: Headers
             played++;
             goalsFor += ourScore;
             goalsAgainst += theirScore;
-            if (ourScore > theirScore) won++;
-            else if (ourScore === theirScore) drawn++;
-            else lost++;
+            if (ourScore > theirScore) {won++;}
+            else if (ourScore === theirScore) {drawn++;}
+            else {lost++;}
         }
         const points = (won * 3) + drawn;
 
@@ -622,7 +622,7 @@ export async function handleAutoCalculateTable(req: Request, env: any, corsHdrs:
         // Sort by points, then goal difference
         const sortedTeams = Object.entries(standings).sort((a, b) => {
             const ptsDiff = b[1].pts - a[1].pts;
-            if (ptsDiff !== 0) return ptsDiff;
+            if (ptsDiff !== 0) {return ptsDiff;}
             return (b[1].gf - b[1].ga) - (a[1].gf - a[1].ga);
         });
 

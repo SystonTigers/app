@@ -54,9 +54,9 @@ export async function handleVideoUpload(
 
   if (!rateLimitResult.ok) {
     const headers = new Headers(corsHdrs);
-    if (rateLimitResult.limit) headers.set("X-RateLimit-Limit", String(rateLimitResult.limit));
-    if (rateLimitResult.remaining !== undefined) headers.set("X-RateLimit-Remaining", String(rateLimitResult.remaining));
-    if (rateLimitResult.retryAfter) headers.set("Retry-After", String(rateLimitResult.retryAfter));
+    if (rateLimitResult.limit) {headers.set("X-RateLimit-Limit", String(rateLimitResult.limit));}
+    if (rateLimitResult.remaining !== undefined) {headers.set("X-RateLimit-Remaining", String(rateLimitResult.remaining));}
+    if (rateLimitResult.retryAfter) {headers.set("Retry-After", String(rateLimitResult.retryAfter));}
 
     return json(
       {

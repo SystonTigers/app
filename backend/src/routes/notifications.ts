@@ -46,7 +46,7 @@ export async function handleListNotifications(req: Request, env: any, corsHdrs: 
         return json({ success: true, data: notifications }, 200, corsHdrs);
     } catch (err) {
         console.error('List notifications error:', err);
-        if (err instanceof Response) throw err;
+        if (err instanceof Response) {throw err;}
         return json({ success: false, error: 'Failed to list notifications' }, 500, corsHdrs);
     }
 }
@@ -64,7 +64,7 @@ export async function handleUnreadCount(req: Request, env: any, corsHdrs: Header
         return json({ success: true, data: { count: result?.count || 0 } }, 200, corsHdrs);
     } catch (err) {
         console.error('Unread count error:', err);
-        if (err instanceof Response) throw err;
+        if (err instanceof Response) {throw err;}
         return json({ success: false, error: 'Failed to get unread count' }, 500, corsHdrs);
     }
 }
@@ -82,7 +82,7 @@ export async function handleMarkRead(req: Request, env: any, corsHdrs: Headers, 
         return json({ success: true }, 200, corsHdrs);
     } catch (err) {
         console.error('Mark read error:', err);
-        if (err instanceof Response) throw err;
+        if (err instanceof Response) {throw err;}
         return json({ success: false, error: 'Failed to mark notification read' }, 500, corsHdrs);
     }
 }
@@ -100,7 +100,7 @@ export async function handleMarkAllRead(req: Request, env: any, corsHdrs: Header
         return json({ success: true }, 200, corsHdrs);
     } catch (err) {
         console.error('Mark all read error:', err);
-        if (err instanceof Response) throw err;
+        if (err instanceof Response) {throw err;}
         return json({ success: false, error: 'Failed to mark all read' }, 500, corsHdrs);
     }
 }

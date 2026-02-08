@@ -161,7 +161,7 @@ describe('Friendly Matchmaking Routes', () => {
                 bind: vi.fn(() => ({
                     first: vi.fn(() => {
                         callCount++;
-                        if (callCount === 1) return mockFriendlyRequest;
+                        if (callCount === 1) {return mockFriendlyRequest;}
                         return { name: 'Requester Team' };
                     }),
                     run: vi.fn(() => ({ meta: { changes: 1 } })),

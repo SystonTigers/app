@@ -341,7 +341,7 @@ function calculateStreaks(matches: any[], condition: (match: any) => boolean): {
     for (const match of matches) {
         if (condition(match)) {
             temp++;
-            if (temp > best) best = temp;
+            if (temp > best) {best = temp;}
         } else {
             temp = 0;
         }

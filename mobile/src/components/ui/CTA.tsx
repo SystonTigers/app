@@ -34,11 +34,10 @@ const styles = StyleSheet.create({
     borderRadius: radii.xl,
     paddingVertical: 14,
     alignItems: 'center',
-    marginTop: spacing(1.5),
+    marginTop: spacing.md,
   },
   primary: {
-    backgroundColor: colors.brand.yellow,
-    ...shadow.lg,
+    backgroundColor: colors.primary,
   },
   secondary: {
     backgroundColor: 'transparent',
@@ -53,7 +52,7 @@ const styles = StyleSheet.create({
   },
   text: {
     fontWeight: '700',
-    fontSize: fonts.sizes.md,
+    fontSize: fonts.fontSize.base,
     color: '#111',
   },
   textSecondary: {

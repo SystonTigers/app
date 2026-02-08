@@ -239,10 +239,10 @@ export async function handleEndSeasonPreview(req: Request, env: any, corsHdrs: H
             const ga = Number(m.their_score || m.goals_against || 0);
             goalsFor += gf;
             goalsAgainst += ga;
-            if (ga === 0) cleanSheets++;
-            if (gf > ga) won++;
-            else if (gf === ga) drawn++;
-            else lost++;
+            if (ga === 0) { cleanSheets++; }
+            if (gf > ga) { won++; }
+            else if (gf === ga) { drawn++; }
+            else { lost++; }
         }
 
         const played = won + drawn + lost;
@@ -261,6 +261,7 @@ export async function handleEndSeasonPreview(req: Request, env: any, corsHdrs: H
         ).bind(claims.tenantId, seasonId).first();
 
         const topScorer = topScorerResult ? {
+            id: topScorerResult.player_id,
             playerId: topScorerResult.player_id,
             name: topScorerResult.name || 'Unknown',
             goals: topScorerResult.goals
@@ -279,6 +280,7 @@ export async function handleEndSeasonPreview(req: Request, env: any, corsHdrs: H
         ).bind(claims.tenantId, seasonId).first();
 
         const topAssister = topAssisterResult ? {
+            id: topAssisterResult.player_id,
             playerId: topAssisterResult.player_id,
             name: topAssisterResult.name || 'Unknown',
             assists: topAssisterResult.assists
@@ -297,6 +299,7 @@ export async function handleEndSeasonPreview(req: Request, env: any, corsHdrs: H
         ).bind(claims.tenantId, seasonId).first();
 
         const mostAppearances = mostAppsResult ? {
+            id: mostAppsResult.player_id,
             playerId: mostAppsResult.player_id,
             name: mostAppsResult.name || 'Unknown',
             appearances: mostAppsResult.appearances
@@ -315,14 +318,15 @@ export async function handleEndSeasonPreview(req: Request, env: any, corsHdrs: H
         ).bind(claims.tenantId, seasonId).first();
 
         const motmLeader = motmResult ? {
+            id: motmResult.player_id,
             playerId: motmResult.player_id,
             name: motmResult.name || 'Unknown',
             count: motmResult.count
         } : null;
 
         // Add warnings for missing data
-        if (!topScorer) warnings.push("No goals recorded this season");
-        if (!topAssister) warnings.push("No assists recorded this season");
+        if (!topScorer) { warnings.push("No goals recorded this season"); }
+        if (!topAssister) { warnings.push("No assists recorded this season"); }
 
         const preview: EndSeasonPreview = {
             season,
@@ -393,10 +397,10 @@ export async function handleEndSeason(req: Request, env: any, corsHdrs: Headers,
             const ga = Number(m.their_score || m.goals_against || 0);
             goalsFor += gf;
             goalsAgainst += ga;
-            if (ga === 0) cleanSheets++;
-            if (gf > ga) won++;
-            else if (gf === ga) drawn++;
-            else lost++;
+            if (ga === 0) { cleanSheets++; }
+            if (gf > ga) { won++; }
+            else if (gf === ga) { drawn++; }
+            else { lost++; }
         }
 
         // Create team record snapshot
@@ -909,7 +913,7 @@ async function calculateSeasonStats(env: any, seasonId: string, tenantId: string
     const matches = await env.DB.prepare(matchQuery).bind(...params).all();
     const matchResults = matches.results || [];
 
-    let stats = { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, goalDifference: 0, points: 0, cleanSheets: 0 };
+    const stats = { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, goalDifference: 0, points: 0, cleanSheets: 0 };
 
     for (const match of matchResults as any[]) {
         const matchData: any = await env.KV.get(`match:${tenantId}:${match.id}`, 'json');
@@ -928,7 +932,7 @@ async function calculateSeasonStats(env: any, seasonId: string, tenantId: string
                 stats.lost++;
             }
 
-            if (matchData.away_score === 0) stats.cleanSheets++;
+            if (matchData.away_score === 0) { stats.cleanSheets++; }
         }
     }
     stats.goalDifference = stats.goalsFor - stats.goalsAgainst;
@@ -944,13 +948,13 @@ async function calculateSeasonStats(env: any, seasonId: string, tenantId: string
     const playerStats = new Map<string, { name: string, goals: number, assists: number }>();
     const eventList = events.results || [];
     for (const ev of eventList as any[]) {
-        if (!ev.player_id) continue;
+        if (!ev.player_id) { continue; }
         if (!playerStats.has(ev.player_id)) {
             playerStats.set(ev.player_id, { name: ev.name || 'Unknown', goals: 0, assists: 0 });
         }
         const ps = playerStats.get(ev.player_id)!;
-        if (ev.type === 'goal') ps.goals++;
-        if (ev.type === 'assist') ps.assists++;
+        if (ev.type === 'goal') { ps.goals++; }
+        if (ev.type === 'assist') { ps.assists++; }
     }
 
     const players = Array.from(playerStats.values());
@@ -979,7 +983,7 @@ export async function handleGetSeasonStats(req: Request, env: any, corsHdrs: Hea
         }
 
         const season = await env.DB.prepare("SELECT * FROM seasons WHERE id = ? AND tenant_id = ?").bind(seasonId, tenantId).first();
-        if (!season) return json({ success: false, error: "Season not found" }, 404, corsHdrs);
+        if (!season) { return json({ success: false, error: "Season not found" }, 404, corsHdrs); }
 
         if (season.status === 'archived') {
             const snapshot = await env.DB.prepare("SELECT data FROM season_snapshots WHERE season_id = ? AND snapshot_type = 'stats'").bind(seasonId).first();

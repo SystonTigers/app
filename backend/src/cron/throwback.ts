@@ -201,7 +201,7 @@ async function findMemorableMatch(env: Env, tenant: string) {
           'json'
         );
 
-        if (!matchData) return null;
+        if (!matchData) {return null;}
 
         let score = 0;
 

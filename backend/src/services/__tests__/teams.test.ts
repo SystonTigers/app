@@ -18,7 +18,7 @@ describe("Teams Service", () => {
       KV_IDEMP: {
         get: async (key: string, type?: string) => {
           const value = mockKV.get(key);
-          if (!value) return null;
+          if (!value) {return null;}
           if (type === "json") {
             try {
               return JSON.parse(value);

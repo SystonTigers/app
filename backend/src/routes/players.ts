@@ -27,7 +27,7 @@ export async function handlePlayerPhotoUpload(req: Request, env: any, corsHdrs: 
 
         return json({ success: true, photoUrl: key }, 200, corsHdrs);
     } catch (err) {
-        if (err instanceof Response) throw err;
+        if (err instanceof Response) {throw err;}
         return json({ success: false, error: "Failed to upload photo" }, 500, corsHdrs);
     }
 }
@@ -53,7 +53,7 @@ export async function handlePlayerPhotoDelete(req: Request, env: any, corsHdrs: 
 
         return json({ success: true }, 200, corsHdrs);
     } catch (err) {
-        if (err instanceof Response) throw err;
+        if (err instanceof Response) {throw err;}
         return json({ success: false, error: "Failed to delete photo" }, 500, corsHdrs);
     }
 }
@@ -128,7 +128,7 @@ export async function handleGetPlayer(req: Request, env: any, corsHdrs: Headers,
 
         return json({ success: true, data: player }, 200, corsHdrs);
     } catch (err) {
-        if (err instanceof Response) throw err;
+        if (err instanceof Response) {throw err;}
         console.error('Get player error:', err);
         return json({ success: false, error: "Failed to get player" }, 500, corsHdrs);
     }
@@ -191,7 +191,7 @@ export async function handleUpdatePlayer(req: Request, env: any, corsHdrs: Heade
 
         return json({ success: true, message: "Player updated" }, 200, corsHdrs);
     } catch (err) {
-        if (err instanceof Response) throw err;
+        if (err instanceof Response) {throw err;}
         console.error('Update player error:', err);
         return json({ success: false, error: "Failed to update player" }, 500, corsHdrs);
     }
@@ -252,7 +252,7 @@ export async function handleRegenerateCode(req: Request, env: any, corsHdrs: Hea
 
         return json({ success: true, code: newCode }, 200, corsHdrs);
     } catch (err) {
-        if (err instanceof Response) throw err;
+        if (err instanceof Response) {throw err;}
         console.error('Regenerate code error:', err);
         return json({ success: false, error: "Failed to regenerate code" }, 500, corsHdrs);
     }
@@ -288,7 +288,7 @@ export async function handleGenerateCoachCode(req: Request, env: any, corsHdrs: 
 
         return json({ success: true, code: newCode, id: codeId }, 200, corsHdrs);
     } catch (err) {
-        if (err instanceof Response) throw err;
+        if (err instanceof Response) {throw err;}
         console.error('Generate coach code error:', err);
         return json({ success: false, error: "Failed to generate coach code" }, 500, corsHdrs);
     }
@@ -321,7 +321,7 @@ export async function handleGetFanCode(req: Request, env: any, corsHdrs: Headers
 
         return json({ success: true, code: fanCode }, 200, corsHdrs);
     } catch (err) {
-        if (err instanceof Response) throw err;
+        if (err instanceof Response) {throw err;}
         console.error('Get fan code error:', err);
         return json({ success: false, error: "Failed to get fan code" }, 500, corsHdrs);
     }

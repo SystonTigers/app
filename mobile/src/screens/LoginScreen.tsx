@@ -8,7 +8,9 @@ import {
   View,
   Image,
 } from 'react-native';
-import { TextInput, Button, Card, IconButton } from 'react-native-paper';
+import { TextInput, IconButton } from 'react-native-paper';
+import { Button } from '../components/Button';
+import Card from '../components/ui/Card';
 import { COLORS, TENANT_ID, APP_VERSION } from '../config';
 import { submitLogin } from './authController';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -109,7 +111,7 @@ export default function LoginScreen({
           </Text>
         </View>
 
-        <Card variant="elevated" padding="lg" style={styles.card}>
+        <Card inset style={styles.card}>
           <View style={styles.cardHeader}>
             <Text style={styles.cardTitle}>Sign In</Text>
             <Text style={styles.cardSubtitle}>Join the control room for {TENANT_ID}.</Text>
@@ -193,7 +195,7 @@ export default function LoginScreen({
           </Button>
         </Card>
 
-        <Card variant="outlined" padding="md" style={styles.demoCard}>
+        <Card inset style={styles.demoCard}>
           <Text style={styles.demoTitle}>Demo Accounts (Development Only)</Text>
           {DEMO_ACCOUNTS.map((account) => (
             <Text key={account.label} style={styles.demoText}>
@@ -222,131 +224,138 @@ export default function LoginScreen({
 }
 
 const styles = StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: COLORS.background,
-    },
-    scrollContent: {
-      flexGrow: 1,
-      justifyContent: 'center',
-      paddingHorizontal: 20,
-      paddingVertical: 40,
-    },
-    header: {
-      alignItems: 'center',
-      marginBottom: 24,
-    },
-    iconBadge: {
-      width: 64,
-      height: 64,
-      borderRadius: 32,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: `${COLORS.primary}15`,
-      marginBottom: 12,
-    },
-    title: {
-      fontSize: 28,
-      lineHeight: 36,
-      fontWeight: 'bold',
-      color: COLORS.text,
-      textAlign: 'center',
-    },
-    subtitle: {
-      marginTop: 8,
-      fontSize: 16,
-      lineHeight: 24,
-      color: COLORS.textLight,
-      textAlign: 'center',
-    },
-    card: {
-      marginBottom: 16,
-    },
-    cardHeader: {
-      marginBottom: 12,
-    },
-    cardTitle: {
-      fontSize: 20,
-      lineHeight: 28,
-      fontWeight: '600',
-      color: COLORS.text,
-    },
-    cardSubtitle: {
-      marginTop: 8,
-      fontSize: 14,
-      lineHeight: 20,
-      color: COLORS.textLight,
-    },
-    fieldStack: {
-      marginBottom: 12,
-    },
-    input: {
-      marginBottom: 12,
-      backgroundColor: COLORS.surface,
-    },
-    forgotButton: {
-      alignSelf: 'flex-end',
-      marginBottom: 12,
-    },
-    loginButton: {
-      marginTop: 8,
-    },
-    errorContainer: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: `${COLORS.error}15`,
-      borderWidth: 1,
-      borderColor: `${COLORS.error}50`,
-      borderRadius: 8,
-      paddingHorizontal: 12,
-      paddingVertical: 8,
-      marginBottom: 12,
-    },
-    errorText: {
-      flex: 1,
-      color: COLORS.error,
-      fontSize: 14,
-      lineHeight: 20,
-      marginLeft: 8,
-    },
-    demoCard: {
-      backgroundColor: `${COLORS.primary}15`,
-      borderColor: `${COLORS.primary}50`,
-      marginBottom: 16,
-    },
-    demoTitle: {
-      fontSize: 16,
-      lineHeight: 24,
-      fontWeight: '600',
-      color: COLORS.text,
-      marginBottom: 8,
-    },
-    demoText: {
-      fontSize: 14,
-      lineHeight: 20,
-      color: COLORS.textLight,
-      fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-      marginBottom: 8,
-    },
-    registerContainer: {
-      flexDirection: 'row',
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    registerText: {
-      fontSize: 14,
-      lineHeight: 20,
-      color: COLORS.textLight,
-      marginRight: 8,
-    },
-    registerButton: {
-      paddingHorizontal: 8,
-    },
-    footer: {
-      marginTop: 24,
-      textAlign: 'center',
-      color: COLORS.textLight,
-      fontSize: 12,
-      lineHeight: 16,
-    },
-  });
+  container: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 40,
+  },
+  header: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  iconBadge: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: `${COLORS.primary}15`,
+    marginBottom: 12,
+  },
+  title: {
+    fontSize: 28,
+    lineHeight: 36,
+    fontWeight: 'bold',
+    color: COLORS.text,
+    textAlign: 'center',
+  },
+  subtitle: {
+    marginTop: 8,
+    fontSize: 16,
+    lineHeight: 24,
+    color: COLORS.textLight,
+    textAlign: 'center',
+  },
+  card: {
+    marginBottom: 16,
+  },
+  cardContent: {
+    padding: 16,
+  },
+  cardHeader: {
+    marginBottom: 12,
+  },
+  cardTitle: {
+    fontSize: 20,
+    lineHeight: 28,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
+  cardSubtitle: {
+    marginTop: 8,
+    fontSize: 14,
+    lineHeight: 20,
+    color: COLORS.textLight,
+  },
+  fieldStack: {
+    marginBottom: 12,
+  },
+  input: {
+    marginBottom: 12,
+    backgroundColor: COLORS.surface,
+  },
+  forgotButton: {
+    alignSelf: 'flex-end',
+    marginBottom: 12,
+  },
+  loginButton: {
+    marginTop: 8,
+    width: '100%',
+  },
+  errorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: `${COLORS.error}15`,
+    borderWidth: 1,
+    borderColor: `${COLORS.error}50`,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginBottom: 12,
+  },
+  errorText: {
+    flex: 1,
+    color: COLORS.error,
+    fontSize: 14,
+    lineHeight: 20,
+    marginLeft: 8,
+  },
+  demoCard: {
+    backgroundColor: `${COLORS.primary}15`,
+    borderColor: `${COLORS.primary}50`,
+    marginBottom: 16,
+  },
+  demoCardContent: {
+    padding: 12,
+  },
+  demoTitle: {
+    fontSize: 16,
+    lineHeight: 24,
+    fontWeight: '600',
+    color: COLORS.text,
+    marginBottom: 8,
+  },
+  demoText: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: COLORS.textLight,
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    marginBottom: 8,
+  },
+  registerContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  registerText: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: COLORS.textLight,
+    marginRight: 8,
+  },
+  registerButton: {
+    paddingHorizontal: 8,
+  },
+  footer: {
+    marginTop: 24,
+    textAlign: 'center',
+    color: COLORS.textLight,
+    fontSize: 12,
+    lineHeight: 16,
+  },
+});

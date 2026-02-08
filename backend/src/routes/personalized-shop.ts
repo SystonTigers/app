@@ -617,7 +617,7 @@ async function fulfillOrder(order: any, env: any) {
                 line_items: lineItems,
                 shipping_method: 1, // Standard
                 address_to: (() => {
-                    let addr = {
+                    const addr = {
                         first_name: order.customer_name.split(' ')[0] || 'Fan',
                         last_name: order.customer_name.split(' ').slice(1).join(' ') || 'Customer',
                         email: order.customer_email,
@@ -635,7 +635,7 @@ async function fulfillOrder(order: any, env: any) {
                             addr.city = sa.city || addr.city;
                             addr.country = sa.country || addr.country;
                             addr.zip = sa.postal_code || addr.zip;
-                            if (sa.state) (addr as any).region = sa.state;
+                            if (sa.state) {(addr as any).region = sa.state;}
                         } catch (e) { console.error('Address parse error', e); }
                     }
                     return addr;
@@ -654,7 +654,7 @@ async function fulfillOrder(order: any, env: any) {
  */
 export async function handleListShopOrders(req: Request, env: any, corsHdrs: Headers) {
     const tenantId = req.headers.get('x-tenant');
-    if (!tenantId) return json({ success: false, error: 'Tenant ID required' }, 400, corsHdrs);
+    if (!tenantId) {return json({ success: false, error: 'Tenant ID required' }, 400, corsHdrs);}
 
     try {
         const { results } = await env.DB.prepare(

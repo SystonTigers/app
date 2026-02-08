@@ -311,7 +311,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session, env: an
     const tenantId = session.metadata?.tenant_id;
     const plan = session.metadata?.plan;
 
-    if (!tenantId) return;
+    if (!tenantId) {return;}
 
     await env.DB.prepare(`
         UPDATE tenants 
@@ -327,7 +327,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session, env: an
 
 async function handleSubscriptionUpdate(subscription: Stripe.Subscription, env: any) {
     const tenantId = subscription.metadata?.tenant_id;
-    if (!tenantId) return;
+    if (!tenantId) {return;}
 
     const statusMap: Record<string, string> = {
         'active': 'active',
@@ -351,7 +351,7 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription, env: 
 
 async function handleSubscriptionDeleted(subscription: Stripe.Subscription, env: any) {
     const tenantId = subscription.metadata?.tenant_id;
-    if (!tenantId) return;
+    if (!tenantId) {return;}
 
     await env.DB.prepare(`
         UPDATE tenants 
@@ -370,7 +370,7 @@ async function handlePaymentFailed(invoice: Stripe.Invoice, env: any) {
         'SELECT id FROM tenants WHERE stripe_customer_id = ?'
     ).bind(customerId).first();
 
-    if (!tenant) return;
+    if (!tenant) {return;}
 
     await env.DB.prepare(`
         UPDATE tenants SET subscription_status = 'past_due' WHERE id = ?

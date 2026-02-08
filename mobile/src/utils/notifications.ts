@@ -58,7 +58,7 @@ export const notifications = {
             trigger:
                 typeof trigger === 'number'
                     ? { seconds: trigger }
-                    : trigger,
+                    : { date: trigger },
         });
     },
 

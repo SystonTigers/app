@@ -73,7 +73,7 @@ async function calculateTeamFunStats(env: any, tenantId: string, seasonId: strin
         const ga = match.goals_against || 0;
         goalsFor += gf;
         goalsAgainst += ga;
-        if (ga === 0) cleanSheets++;
+        if (ga === 0) {cleanSheets++;}
 
         if (gf > ga) {
             wins++;
@@ -158,9 +158,9 @@ async function calculatePlayerFunStats(env: any, tenantId: string, playerId: str
         stats.push({ key: 'goals', title: 'Goals', value: goals, icon: '⚽' });
         stats.push({ key: 'goals_per_game', title: 'Goals/Game', value: (goals / appearances).toFixed(2), icon: '📊' });
     }
-    if (assists > 0) stats.push({ key: 'assists', title: 'Assists', value: assists, icon: '👟' });
-    if (goals > 0 && assists > 0) stats.push({ key: 'contributions', title: 'Goal Contributions', value: goals + assists, icon: '🎯' });
-    if (motm > 0) stats.push({ key: 'motm', title: 'Man of the Match', value: motm, icon: '⭐' });
+    if (assists > 0) {stats.push({ key: 'assists', title: 'Assists', value: assists, icon: '👟' });}
+    if (goals > 0 && assists > 0) {stats.push({ key: 'contributions', title: 'Goal Contributions', value: goals + assists, icon: '🎯' });}
+    if (motm > 0) {stats.push({ key: 'motm', title: 'Man of the Match', value: motm, icon: '⭐' });}
     if (yellowCards > 0 || redCards > 0) {
         stats.push({ key: 'discipline', title: 'Cards', value: `${yellowCards}🟨 ${redCards}🟥`, icon: '⚠️' });
     }
@@ -193,9 +193,9 @@ export async function handleGetSeasonSummary(req: Request, env: any, corsHdrs: H
             const ga = m.goals_against || 0;
             goalsFor += gf;
             goalsAgainst += ga;
-            if (gf > ga) wins++;
-            else if (gf === ga) draws++;
-            else losses++;
+            if (gf > ga) {wins++;}
+            else if (gf === ga) {draws++;}
+            else {losses++;}
         }
 
         const scorers = await env.DB.prepare(

@@ -4,8 +4,8 @@ import { rateLimitWithTenant } from "../middleware/rateLimit";
 
 // Helper to parse duration string "15 min" to integer 15
 function parseDuration(d: string | number): number {
-    if (typeof d === 'number') return d;
-    if (!d) return 0;
+    if (typeof d === 'number') {return d;}
+    if (!d) {return 0;}
     const match = d.toString().match(/(\d+)/);
     return match ? parseInt(match[1]) : 0;
 }
@@ -51,7 +51,7 @@ export async function handleCreateSession(req: Request, env: any, corsHdrs: Head
 
         return json({ success: true, id: planId }, 200, corsHdrs);
     } catch (err) {
-        if (err instanceof Response) throw err;
+        if (err instanceof Response) {throw err;}
         console.error("Create session error:", err);
         return json({ success: false, error: "Failed to create session" }, 500, corsHdrs);
     }
@@ -88,7 +88,7 @@ export async function handleListSessions(req: Request, env: any, corsHdrs: Heade
 
         return json({ success: true, data: sessions }, 200, corsHdrs);
     } catch (err) {
-        if (err instanceof Response) throw err;
+        if (err instanceof Response) {throw err;}
         console.error("List sessions error:", err);
         return json({ success: false, error: "Failed to list sessions" }, 500, corsHdrs);
     }
@@ -102,7 +102,7 @@ export async function handleDeleteSession(req: Request, env: any, corsHdrs: Head
         ).bind(sessionId, claims.tenantId).run();
         return json({ success: true }, 200, corsHdrs);
     } catch (err) {
-        if (err instanceof Response) throw err;
+        if (err instanceof Response) {throw err;}
         return json({ success: false, error: "Failed to delete session" }, 500, corsHdrs);
     }
 }
@@ -126,8 +126,8 @@ export async function handleCreateDrill(req: Request, env: any, corsHdrs: Header
         // We append difficulty/players to description for now so we don't lose it entirely, 
         // until we add columns or update frontend to not use them.
         let desc = body.description || '';
-        if (body.difficulty) desc += `\n\nDifficulty: ${body.difficulty}`;
-        if (body.players) desc += `\nPlayers: ${body.players}`;
+        if (body.difficulty) {desc += `\n\nDifficulty: ${body.difficulty}`;}
+        if (body.players) {desc += `\nPlayers: ${body.players}`;}
 
         await env.DB.prepare(
             `INSERT INTO training_drills (id, tenant_id, title, category, duration_minutes, equipment, description, created_by, created_at, updated_at)
@@ -147,7 +147,7 @@ export async function handleCreateDrill(req: Request, env: any, corsHdrs: Header
 
         return json({ success: true, id: drillId }, 200, corsHdrs);
     } catch (err) {
-        if (err instanceof Response) throw err;
+        if (err instanceof Response) {throw err;}
         console.error("Create drill error:", err);
         return json({ success: false, error: "Failed to create drill" }, 500, corsHdrs);
     }
@@ -178,7 +178,7 @@ export async function handleListDrills(req: Request, env: any, corsHdrs: Headers
             let difficulty = 'intermediate';
             if (d.description && d.description.includes('Difficulty: ')) {
                 const match = d.description.match(/Difficulty: (\w+)/);
-                if (match) difficulty = match[1];
+                if (match) {difficulty = match[1];}
             }
 
             // Parse equipment
@@ -186,7 +186,7 @@ export async function handleListDrills(req: Request, env: any, corsHdrs: Headers
             try {
                 eq = JSON.parse(d.equipment);
             } catch (e) {
-                if (d.equipment) eq = [d.equipment];
+                if (d.equipment) {eq = [d.equipment];}
             }
 
             return {
@@ -202,7 +202,7 @@ export async function handleListDrills(req: Request, env: any, corsHdrs: Headers
 
         return json({ success: true, data: drills }, 200, corsHdrs);
     } catch (err) {
-        if (err instanceof Response) throw err;
+        if (err instanceof Response) {throw err;}
         return json({ success: false, error: "Failed to list drills" }, 500, corsHdrs);
     }
 }
@@ -215,7 +215,7 @@ export async function handleDeleteDrill(req: Request, env: any, corsHdrs: Header
         ).bind(drillId, claims.tenantId).run();
         return json({ success: true }, 200, corsHdrs);
     } catch (err) {
-        if (err instanceof Response) throw err;
+        if (err instanceof Response) {throw err;}
         return json({ success: false, error: "Failed to delete drill" }, 500, corsHdrs);
     }
 }
@@ -261,7 +261,7 @@ export async function handleAddDrillToSession(req: Request, env: any, corsHdrs: 
 
         return json({ success: true }, 200, corsHdrs);
     } catch (err) {
-        if (err instanceof Response) throw err;
+        if (err instanceof Response) {throw err;}
         console.error("Add drill to session error:", err);
         return json({ success: false, error: "Failed to add drill to session" }, 500, corsHdrs);
     }
@@ -301,7 +301,7 @@ export async function handleGetSessionDrills(req: Request, env: any, corsHdrs: H
 
         return json({ success: true, data: drills }, 200, corsHdrs);
     } catch (err) {
-        if (err instanceof Response) throw err;
+        if (err instanceof Response) {throw err;}
         return json({ success: false, error: "Failed to get session drills" }, 500, corsHdrs);
     }
 }

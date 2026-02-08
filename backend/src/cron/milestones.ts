@@ -87,7 +87,7 @@ async function checkTenantMilestones(env: Env, config: any): Promise<number> {
 
   for (const player of (players.results || []) as any[]) {
     const created = await checkPlayerMilestones(env, tenantId, player.id);
-    if (created) milestonesCreated++;
+    if (created) {milestonesCreated++;}
   }
 
   return milestonesCreated;
@@ -99,7 +99,7 @@ async function checkPlayerMilestones(env: Env, tenantId: string, playerId: strin
         SELECT id, name, photo_url FROM squad WHERE id = ? AND tenant_id = ?
     `).bind(playerId, tenantId).first();
 
-  if (!player) return false;
+  if (!player) {return false;}
 
   const stats = await env.DB.prepare(`
         SELECT 
@@ -131,21 +131,21 @@ async function checkPlayerMilestones(env: Env, tenantId: string, playerId: strin
   for (const milestone of GOAL_MILESTONES) {
     if (goals >= milestone) {
       const result = await maybeCreateMilestonePost(env, tenantId, player as any, 'goals', milestone, goals);
-      if (result) created = true;
+      if (result) {created = true;}
     }
   }
 
   for (const milestone of ASSIST_MILESTONES) {
     if (assists >= milestone) {
       const result = await maybeCreateMilestonePost(env, tenantId, player as any, 'assists', milestone, assists);
-      if (result) created = true;
+      if (result) {created = true;}
     }
   }
 
   for (const milestone of APPEARANCE_MILESTONES) {
     if (apps >= milestone) {
       const result = await maybeCreateMilestonePost(env, tenantId, player as any, 'appearances', milestone, apps);
-      if (result) created = true;
+      if (result) {created = true;}
     }
   }
 

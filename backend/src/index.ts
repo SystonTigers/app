@@ -1144,11 +1144,6 @@ router.post("/api/:v/scraper/run/:seasonId", (req, env, corsHdrs) => {
     return handleRunScraperForSeason(req, env, corsHdrs, params.seasonId);
 });
 
-// Seasons Management Routes
-import { handleListSeasons, handleCreateSeason } from "./routes/seasons";
-router.get("/api/:v/seasons", (req, env, corsHdrs) => handleListSeasons(req, env, corsHdrs));
-router.post("/api/:v/seasons", (req, env, corsHdrs) => handleCreateSeason(req, env, corsHdrs));
-
 // ===== WEARABLES / GPS TRACKING ROUTES =====
 
 // Device Management

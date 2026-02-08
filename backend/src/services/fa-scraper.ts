@@ -144,11 +144,11 @@ export function parseEmailContent(emailHtml: string, teamName: string): FAFixtur
 function extractFixtureFromEmail(html: string, text: string, teamName: string): FAFixture | null {
     // Extract opposition
     const opposition = extractOpposition(text, teamName);
-    if (!opposition) return null;
+    if (!opposition) {return null;}
 
     // Extract date
     const date = extractDate(text);
-    if (!date) return null;
+    if (!date) {return null;}
 
     // Extract time
     const time = extractTime(text) || '15:00';
@@ -190,7 +190,7 @@ function parseTableFixtures(html: string, teamName: string): FAFixture[] {
         // Extract date
         const dateMatch = row.match(/(\d{1,2}\/\d{1,2}\/\d{4})/);
         const date = dateMatch ? dateMatch[1] : null;
-        if (!date) continue;
+        if (!date) {continue;}
 
         // Extract teams from cells
         const cellPattern = /<td[^>]*>([\s\S]*?)<\/td>/gi;
@@ -200,7 +200,7 @@ function parseTableFixtures(html: string, teamName: string): FAFixture[] {
             cells.push(cleanText(stripHtml(cellMatch[1])));
         }
 
-        if (cells.length < 3) continue;
+        if (cells.length < 3) {continue;}
 
         // Find team names in cells
         const teams = cells.filter(cell =>
@@ -209,12 +209,12 @@ function parseTableFixtures(html: string, teamName: string): FAFixture[] {
             !cell.includes(':')
         ).slice(0, 2);
 
-        if (teams.length < 2) continue;
+        if (teams.length < 2) {continue;}
 
         const homeTeam = teams[0];
         const awayTeam = teams[1];
 
-        if (!isOurMatch(homeTeam, awayTeam, teamName)) continue;
+        if (!isOurMatch(homeTeam, awayTeam, teamName)) {continue;}
 
         // Extract time
         const timeMatch = row.match(/(\d{1,2}:\d{2})/);
@@ -259,12 +259,12 @@ function parseDivFixtures(html: string, teamName: string): FAFixture[] {
         const timeMatch = div.match(/data-time="([^"]+)"/);
         const compMatch = div.match(/data-competition="([^"]+)"/);
 
-        if (!dateMatch || !homeMatch || !awayMatch) continue;
+        if (!dateMatch || !homeMatch || !awayMatch) {continue;}
 
         const homeTeam = cleanText(homeMatch[1]);
         const awayTeam = cleanText(awayMatch[1]);
 
-        if (!isOurMatch(homeTeam, awayTeam, teamName)) continue;
+        if (!isOurMatch(homeTeam, awayTeam, teamName)) {continue;}
 
         fixtures.push({
             date: dateMatch[1],
@@ -319,8 +319,8 @@ function parseJSONData(data: any, teamName: string): FAFixture[] {
             const awayTeam = item.awayTeam || item.away || item.awayClub || '';
             const date = item.date || item.matchDate || item.fixtureDate || '';
 
-            if (!date || !homeTeam || !awayTeam) continue;
-            if (!isOurMatch(homeTeam, awayTeam, teamName)) continue;
+            if (!date || !homeTeam || !awayTeam) {continue;}
+            if (!isOurMatch(homeTeam, awayTeam, teamName)) {continue;}
 
             fixtures.push({
                 date: formatDate(date),
@@ -425,9 +425,9 @@ function extractVenue(text: string, teamName: string): 'Home' | 'Away' {
 function extractCompetition(text: string): string {
     const lowerText = text.toLowerCase();
 
-    if (lowerText.includes('cup') || lowerText.includes('trophy')) return 'Cup';
-    if (lowerText.includes('friendly')) return 'Friendly';
-    if (lowerText.includes('playoff') || lowerText.includes('play-off')) return 'Playoff';
+    if (lowerText.includes('cup') || lowerText.includes('trophy')) {return 'Cup';}
+    if (lowerText.includes('friendly')) {return 'Friendly';}
+    if (lowerText.includes('playoff') || lowerText.includes('play-off')) {return 'Playoff';}
 
     return 'League';
 }
@@ -440,9 +440,9 @@ function extractCompetitionFromRow(row: string): string {
 function extractStatus(text: string): 'scheduled' | 'postponed' | 'cancelled' | 'completed' {
     const lowerText = text.toLowerCase();
 
-    if (lowerText.includes('postpone') || lowerText.includes('rearrange')) return 'postponed';
-    if (lowerText.includes('cancel') || lowerText.includes('called off')) return 'cancelled';
-    if (lowerText.includes('final') || lowerText.includes('full time')) return 'completed';
+    if (lowerText.includes('postpone') || lowerText.includes('rearrange')) {return 'postponed';}
+    if (lowerText.includes('cancel') || lowerText.includes('called off')) {return 'cancelled';}
+    if (lowerText.includes('final') || lowerText.includes('full time')) {return 'completed';}
 
     return 'scheduled';
 }
@@ -500,17 +500,17 @@ function cleanTeamName(name: string): string {
 }
 
 function normalizeStatus(status: string | undefined): 'scheduled' | 'postponed' | 'cancelled' | 'completed' {
-    if (!status) return 'scheduled';
+    if (!status) {return 'scheduled';}
 
     const lower = status.toLowerCase();
-    if (lower.includes('cancel') || lower.includes('postpone')) return 'postponed';
-    if (lower.includes('complete') || lower.includes('finish')) return 'completed';
+    if (lower.includes('cancel') || lower.includes('postpone')) {return 'postponed';}
+    if (lower.includes('complete') || lower.includes('finish')) {return 'completed';}
 
     return 'scheduled';
 }
 
 function formatDate(dateStr: string): string {
-    if (!dateStr) return '';
+    if (!dateStr) {return '';}
 
     // If already in DD/MM/YYYY format, return as is
     if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(dateStr)) {

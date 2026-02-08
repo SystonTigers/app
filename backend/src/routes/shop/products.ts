@@ -16,7 +16,7 @@ export async function handleProductSync(req: Request, env: any, corsHdrs: Header
             timestamp: new Date().toISOString()
         }, 200, corsHdrs);
     } catch (err: any) {
-        if (err instanceof Response) throw err;
+        if (err instanceof Response) {throw err;}
         return json({ success: false, error: err.message }, 500, corsHdrs);
     }
 }

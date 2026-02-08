@@ -190,7 +190,7 @@ export async function handleCompareCareerStats(req: Request, env: any, corsHdrs:
                 "SELECT id, name, photo_url, position FROM squad WHERE id = ? AND tenant_id = ?"
             ).bind(playerId, claims.tenantId).first();
 
-            if (!player) continue;
+            if (!player) {continue;}
 
             // Get career totals
             const stats = await env.DB.prepare(

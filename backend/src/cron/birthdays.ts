@@ -81,7 +81,7 @@ async function checkBirthdays(
   const allPlayers = [...(birthdayPlayers.results || []), ...kvPlayers];
   const seenIds = new Set<string>();
   const uniquePlayers = allPlayers.filter((p: any) => {
-    if (seenIds.has(p.id)) return false;
+    if (seenIds.has(p.id)) {return false;}
     seenIds.add(p.id);
     return true;
   });
@@ -125,7 +125,7 @@ async function getKVBirthdayPlayers(
   }
 
   return squad.filter((player: any) => {
-    if (!player.birthday) return false;
+    if (!player.birthday) {return false;}
 
     // Handle various date formats
     const birthday = player.birthday;
@@ -160,11 +160,11 @@ async function getKVBirthdayPlayers(
 
 // Calculate age from birthday
 function calculateAge(birthday: string): number | null {
-  if (!birthday) return null;
+  if (!birthday) {return null;}
 
   try {
     const birthDate = new Date(birthday);
-    if (isNaN(birthDate.getTime())) return null;
+    if (isNaN(birthDate.getTime())) {return null;}
 
     const today = new Date();
     let age = today.getFullYear() - birthDate.getFullYear();

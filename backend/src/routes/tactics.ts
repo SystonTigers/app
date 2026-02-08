@@ -51,7 +51,7 @@ export async function handleSaveTactics(req: Request, env: any, corsHdrs: Header
 
         return json({ success: true }, 200, corsHdrs);
     } catch (err) {
-        if (err instanceof Response) throw err;
+        if (err instanceof Response) {throw err;}
         return json({ success: false, error: "Failed to save tactics" }, 500, corsHdrs);
     }
 }
@@ -70,7 +70,7 @@ export async function handleGetTactics(req: Request, env: any, corsHdrs: Headers
 
         return json({ success: true, data: JSON.parse(result.config as string) }, 200, corsHdrs);
     } catch (err) {
-        if (err instanceof Response) throw err;
+        if (err instanceof Response) {throw err;}
         return json({ success: false, error: "Failed to get tactics" }, 500, corsHdrs);
     }
 }

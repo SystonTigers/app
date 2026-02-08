@@ -20,7 +20,7 @@ describe("Player Images Service", () => {
       KV_IDEMP: {
         get: vi.fn(async (key: string, type?: string) => {
           const value = mockKV.get(key);
-          if (!value) return null;
+          if (!value) {return null;}
           return type === "json" ? JSON.parse(value) : value;
         }),
         put: vi.fn(async (key: string, value: string) => {

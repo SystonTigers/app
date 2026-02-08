@@ -135,7 +135,7 @@ export async function handleGenerateTransferCode(req: any, env: Env, corsHdrs: H
             SELECT id FROM player_transfers WHERE transfer_code = ?
         `).bind(transferCode).first();
 
-        if (!existing) break;
+        if (!existing) {break;}
         transferCode = generateTransferCode();
         attempts++;
     }

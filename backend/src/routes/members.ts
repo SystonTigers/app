@@ -48,7 +48,7 @@ export async function handleSearchMembers(req: Request, env: any, corsHdrs: Head
         return json({ success: true, data: members }, 200, corsHdrs);
     } catch (err) {
         console.error('Search members error:', err);
-        if (err instanceof Response) throw err;
+        if (err instanceof Response) {throw err;}
         return json({ success: false, error: 'Failed to search members' }, 500, corsHdrs);
     }
 }

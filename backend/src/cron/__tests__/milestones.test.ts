@@ -32,7 +32,7 @@ describe("Milestones Cron", () => {
         }),
         get: vi.fn().mockImplementation((key: string, type?: string) => {
             const value = data[key];
-            if (value === undefined) return Promise.resolve(null);
+            if (value === undefined) {return Promise.resolve(null);}
             if (type === "json" && typeof value === "object") {
                 return Promise.resolve(value);
             }
@@ -62,8 +62,8 @@ describe("Milestones Cron", () => {
                 // Get event counts
                 if (query.includes("GROUP BY event_type")) {
                     const results: any[] = [];
-                    if (goalCount > 0) results.push({ event_type: 'goal', count: goalCount });
-                    if (assistCount > 0) results.push({ event_type: 'assist', count: assistCount });
+                    if (goalCount > 0) {results.push({ event_type: 'goal', count: goalCount });}
+                    if (assistCount > 0) {results.push({ event_type: 'assist', count: assistCount });}
                     return Promise.resolve({ results });
                 }
                 // Get distinct players in match

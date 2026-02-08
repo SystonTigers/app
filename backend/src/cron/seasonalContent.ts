@@ -24,7 +24,7 @@ export const runWeeklyRoundup = async (env: Env, ctx: ExecutionContext) => {
     let postsCreated = 0;
     for (const config of tenants) {
       const created = await createWeeklyRoundup(env, config);
-      if (created) postsCreated++;
+      if (created) {postsCreated++;}
     }
 
     logJSON({
@@ -107,7 +107,7 @@ async function createWeeklyRoundup(env: Env, config: any): Promise<boolean> {
   // Check if already posted this week
   const weekKey = `weekly:${tenant}:${new Date().toISOString().substring(0, 10)}`;
   const alreadyPosted = await env.KV.get(weekKey);
-  if (alreadyPosted) return false;
+  if (alreadyPosted) {return false;}
 
   // Get last week's results
   const results = await env.DB.prepare(`
@@ -118,7 +118,7 @@ async function createWeeklyRoundup(env: Env, config: any): Promise<boolean> {
   `).bind(tenant, weekAgoTimestamp).all();
 
   const matches = results.results || [];
-  if (matches.length === 0) return false;
+  if (matches.length === 0) {return false;}
 
   // Calculate stats
   let wins = 0, draws = 0, losses = 0, goalsFor = 0, goalsAgainst = 0;
@@ -127,9 +127,9 @@ async function createWeeklyRoundup(env: Env, config: any): Promise<boolean> {
     const their = match.their_score || 0;
     goalsFor += our;
     goalsAgainst += their;
-    if (our > their) wins++;
-    else if (our === their) draws++;
-    else losses++;
+    if (our > their) {wins++;}
+    else if (our === their) {draws++;}
+    else {losses++;}
   }
 
   // Get top scorers this week
@@ -207,7 +207,7 @@ async function createSeasonStartPost(env: Env, config: any) {
   const season = new Date().getFullYear();
 
   const seasonKey = `season_start:${tenant}:${season}`;
-  if (await env.KV.get(seasonKey)) return;
+  if (await env.KV.get(seasonKey)) {return;}
 
   // Get squad size
   const squad = await env.DB.prepare(
@@ -266,7 +266,7 @@ async function createMidSeasonReview(env: Env, config: any) {
   const season = new Date().getFullYear();
 
   const midSeasonKey = `mid_season:${tenant}:${season}`;
-  if (await env.KV.get(midSeasonKey)) return;
+  if (await env.KV.get(midSeasonKey)) {return;}
 
   // Get season stats
   const stats = await env.DB.prepare(`
@@ -281,7 +281,7 @@ async function createMidSeasonReview(env: Env, config: any) {
     WHERE tenant_id = ?
   `).bind(tenant).first() as any;
 
-  if (!stats || stats.matches === 0) return;
+  if (!stats || stats.matches === 0) {return;}
 
   // Get top scorer
   const topScorer = await env.DB.prepare(`
@@ -350,7 +350,7 @@ async function createSeasonEndSummary(env: Env, config: any) {
   const season = new Date().getFullYear();
 
   const seasonEndKey = `season_end:${tenant}:${season}`;
-  if (await env.KV.get(seasonEndKey)) return;
+  if (await env.KV.get(seasonEndKey)) {return;}
 
   // Get full season stats
   const stats = await env.DB.prepare(`
@@ -365,7 +365,7 @@ async function createSeasonEndSummary(env: Env, config: any) {
     WHERE tenant_id = ?
   `).bind(tenant).first() as any;
 
-  if (!stats || stats.matches === 0) return;
+  if (!stats || stats.matches === 0) {return;}
 
   // Get top scorers
   const topScorers = await env.DB.prepare(`

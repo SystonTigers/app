@@ -10,8 +10,8 @@ vi.mock("../../lib/log", () => ({
 vi.mock("../../utils/time", () => ({
     nowUTC: vi.fn().mockReturnValue({
         toFormat: (fmt: string) => {
-            if (fmt === "MM-dd") return "05-15";
-            if (fmt === "yyyy-MM-dd") return "2024-05-15";
+            if (fmt === "MM-dd") {return "05-15";}
+            if (fmt === "yyyy-MM-dd") {return "2024-05-15";}
             return "2024-05-15";
         },
     }),
