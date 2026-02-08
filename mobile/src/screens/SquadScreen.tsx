@@ -4,6 +4,13 @@ import { Card, Title, Paragraph, Avatar, Chip, Button } from 'react-native-paper
 import { COLORS } from '../config';
 import { squadApi } from '../services/api';
 
+interface PhysicalStats {
+  sprint40m?: number;  // seconds
+  topSpeed?: number;   // km/h
+  acceleration?: number; // 0-10m time
+  endurance?: number;  // beep test level
+}
+
 interface PlayerStats {
   goals: number;
   assists: number;
@@ -12,6 +19,7 @@ interface PlayerStats {
     yellow: number;
     red: number;
   };
+  physical?: PhysicalStats;
 }
 
 interface Player {
@@ -185,6 +193,43 @@ export default function SquadScreen() {
                     <Paragraph style={styles.statLabel}>Cards</Paragraph>
                   </View>
                 </View>
+
+                {/* Physical Performance Stats */}
+                {player.stats.physical && (
+                  <View style={styles.physicalStats}>
+                    <Paragraph style={styles.physicalTitle}>PHYSICAL STATS</Paragraph>
+                    <View style={styles.physicalRow}>
+                      {player.stats.physical.topSpeed && (
+                        <View style={styles.physicalItem}>
+                          <Title style={styles.physicalValue}>{player.stats.physical.topSpeed}</Title>
+                          <Paragraph style={styles.physicalLabel}>km/h</Paragraph>
+                          <Paragraph style={styles.physicalSublabel}>Top Speed</Paragraph>
+                        </View>
+                      )}
+                      {player.stats.physical.acceleration && (
+                        <View style={styles.physicalItem}>
+                          <Title style={styles.physicalValue}>{player.stats.physical.acceleration}s</Title>
+                          <Paragraph style={styles.physicalLabel}>0-10m</Paragraph>
+                          <Paragraph style={styles.physicalSublabel}>Acceleration</Paragraph>
+                        </View>
+                      )}
+                      {player.stats.physical.sprint40m && (
+                        <View style={styles.physicalItem}>
+                          <Title style={styles.physicalValue}>{player.stats.physical.sprint40m}s</Title>
+                          <Paragraph style={styles.physicalLabel}>40m</Paragraph>
+                          <Paragraph style={styles.physicalSublabel}>Sprint</Paragraph>
+                        </View>
+                      )}
+                      {player.stats.physical.endurance && (
+                        <View style={styles.physicalItem}>
+                          <Title style={styles.physicalValue}>{player.stats.physical.endurance}</Title>
+                          <Paragraph style={styles.physicalLabel}>Level</Paragraph>
+                          <Paragraph style={styles.physicalSublabel}>Beep Test</Paragraph>
+                        </View>
+                      )}
+                    </View>
+                  </View>
+                )}
               </Card.Content>
             </Card>
           </TouchableOpacity>
@@ -295,5 +340,41 @@ const styles = StyleSheet.create({
   },
   cardRed: {
     fontSize: 14,
+  },
+  physicalStats: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.background,
+  },
+  physicalTitle: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: COLORS.textLight,
+    letterSpacing: 1,
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  physicalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+  },
+  physicalItem: {
+    alignItems: 'center',
+  },
+  physicalValue: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: COLORS.secondary,
+  },
+  physicalLabel: {
+    fontSize: 10,
+    color: COLORS.textLight,
+    marginTop: 2,
+  },
+  physicalSublabel: {
+    fontSize: 9,
+    color: COLORS.textLight,
+    opacity: 0.7,
   },
 });

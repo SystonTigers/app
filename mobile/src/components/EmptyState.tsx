@@ -1,90 +1,67 @@
-import React, { ReactNode } from 'react';
-import { View, Text, StyleSheet, ViewStyle } from 'react-native';
-import { useTheme } from '../theme/';
-import { Button } from './Button';
+import React from 'react';
+import { View, StyleSheet } from 'react-native';
+import { Text, Button } from 'react-native-paper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useTheme } from '../theme/useTheme';
 
 interface EmptyStateProps {
-  icon?: ReactNode;
+  icon: string;
   title: string;
-  message?: string;
-  action?: {
-    label: string;
-    onPress: () => void;
-  };
-  style?: ViewStyle;
+  description: string;
+  actionLabel?: string;
+  onAction?: () => void;
 }
 
-export const EmptyState: React.FC<EmptyStateProps> = ({
-  icon,
-  title,
-  message,
-  action,
-  style,
-}) => {
+export default function EmptyState({ icon, title, description, actionLabel, onAction }: EmptyStateProps) {
   const { theme } = useTheme();
+  const { colors } = theme;
 
   return (
-    <View style={[styles.container, style]}>
-      {icon && <View style={styles.icon}>{icon}</View>}
+    <View style={styles.container}>
+      <View style={[styles.iconCircle, { backgroundColor: colors.primary + '20' }]}>
+        <MaterialCommunityIcons name={icon as any} size={48} color={colors.primary} />
+      </View>
 
-      <Text
-        style={[
-          styles.title,
-          {
-            color: theme.colors.text,
-            fontSize: theme.typography.fontSize.xl,
-            fontWeight: theme.typography.fontWeight.bold,
-          },
-        ]}
-      >
-        {title}
-      </Text>
+      <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
+      <Text style={[styles.description, { color: colors.textSecondary }]}>{description}</Text>
 
-      {message && (
-        <Text
-          style={[
-            styles.message,
-            {
-              color: theme.colors.textSecondary,
-              fontSize: theme.typography.fontSize.base,
-            },
-          ]}
-        >
-          {message}
-        </Text>
-      )}
-
-      {action && (
-        <View style={styles.actionContainer}>
-          <Button onPress={action.onPress} variant="primary">
-            {action.label}
-          </Button>
-        </View>
+      {actionLabel && onAction && (
+        <Button mode="contained" onPress={onAction} style={styles.actionButton}>
+          {actionLabel}
+        </Button>
       )}
     </View>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 32,
-    paddingVertical: 48,
+    justifyContent: 'center',
+    padding: 40,
   },
-  icon: {
+  iconCircle: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: 24,
   },
   title: {
-    textAlign: 'center',
+    fontSize: 20,
+    fontWeight: 'bold',
     marginBottom: 8,
-  },
-  message: {
     textAlign: 'center',
+  },
+  description: {
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 20,
     marginBottom: 24,
   },
-  actionContainer: {
-    marginTop: 16,
+  actionButton: {
+    marginTop: 8,
   },
 });

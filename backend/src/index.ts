@@ -236,6 +236,7 @@ import { runPlayerOfPeriod } from "./cron/playerOfPeriod";
 import { runCleanup } from "./cron/cleanup";
 import { runLeague } from "./cron/league";
 import { runFASync } from "./cron/fa-sync";
+import { processScheduledNotifications } from "./routes/mobile-notifications";
 
 // Export Durable Objects
 export { TenantRateLimiter } from "./do/rateLimiter";
@@ -739,6 +740,15 @@ router.post("/api/:v/notifications/:id/read", (req, env, corsHdrs) => {
     return handleMarkRead(req, env, corsHdrs, params.id);
 });
 router.post("/api/:v/notifications/read-all", (req, env, corsHdrs) => handleMarkAllRead(req, env, corsHdrs));
+
+// Mobile Notification Scheduling Routes
+import {
+    handleScheduleMatchReminder,
+    handleScheduleMOTMVoting
+} from "./routes/mobile-notifications";
+
+router.post("/api/:v/mobile/notifications/match-reminder", (req, env, corsHdrs) => handleScheduleMatchReminder(req, env, corsHdrs));
+router.post("/api/:v/mobile/notifications/motm-voting", (req, env, corsHdrs) => handleScheduleMOTMVoting(req, env, corsHdrs));
 
 // Member Routes (for mentions/search)
 import { handleSearchMembers } from "./routes/members";
