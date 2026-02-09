@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { View, ScrollView, StyleSheet, RefreshControl, ActivityIndicator } from 'react-native';
 import { Card, Title, Paragraph, Chip, Divider, Button } from 'react-native-paper';
+import { useNavigation } from '@react-navigation/native';
 import { COLORS, DEFAULT_CLUB_NAME, DEFAULT_CLUB_SHORT_NAME } from '../config';
 import {
   getUpcomingFixtures,
@@ -28,11 +29,13 @@ const pickDisplayName = (
 };
 
 export default function FixturesScreen() {
+  const navigation = useNavigation<any>();
   const [fixtures, setFixtures] = useState<Fixture[]>([]);
   const [results, setResults] = useState<Result[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
 
   const loadData = useCallback(
     async ({ showSpinner = false }: { showSpinner?: boolean } = {}) => {
@@ -55,8 +58,8 @@ export default function FixturesScreen() {
           err instanceof FixturesApiError
             ? err.message
             : err instanceof Error
-            ? err.message
-            : 'Unable to load fixtures right now.';
+              ? err.message
+              : 'Unable to load fixtures right now.';
         setError(message);
       } finally {
         if (showSpinner) {
@@ -156,62 +159,90 @@ export default function FixturesScreen() {
           </Card>
         ) : (
           fixtures.map((fixture) => (
-              <Card key={fixture.id} style={styles.card}>
-                <Card.Content>
-                  <Chip style={styles.competitionChip}>{fixture.competition}</Chip>
-                  <View style={styles.matchInfo}>
-                    <Title style={styles.teamName}>
-                      {fixture.venue === 'Home'
-                        ? pickDisplayName(
-                            fixture.homeScoreLabel,
-                            fixture.homeTeamName,
-                            fixture.teamName,
-                            fixture.teamShortName,
-                            clubName
-                          ) ?? clubName
-                        : pickDisplayName(
-                            fixture.awayTeamName,
-                            fixture.awayScoreLabel,
-                            fixture.opponent
-                          ) || fixture.opponent}
-                    </Title>
-                    <Paragraph style={styles.vs}>vs</Paragraph>
-                    <Title style={styles.teamName}>
-                      {fixture.venue === 'Home'
-                        ? pickDisplayName(
-                            fixture.awayTeamName,
-                            fixture.awayScoreLabel,
-                            fixture.opponent
-                          ) || fixture.opponent
-                        : pickDisplayName(
-                            fixture.homeScoreLabel,
-                            fixture.homeTeamName,
-                            fixture.teamName,
-                            fixture.teamShortName,
-                            clubName
-                          ) ?? clubName}
-                    </Title>
-                  </View>
-                  <Paragraph style={styles.detail}>
-                    📅 {formatFixtureDate(fixture.date)} • {formatKickOffTime(fixture.kickOffTime)}
-                  </Paragraph>
-                  <Paragraph style={styles.detail}>
-                    📍
+            <Card key={fixture.id} style={styles.card}>
+              <Card.Content>
+                <Chip style={styles.competitionChip}>{fixture.competition}</Chip>
+                <View style={styles.matchInfo}>
+                  <Title style={styles.teamName}>
                     {fixture.venue === 'Home'
-                      ? pickDisplayName(fixture.location, clubShortName, clubName) ?? 'Home'
-                      : pickDisplayName(fixture.location, fixture.venue, 'Away') ?? 'Away'}
-                  </Paragraph>
-                  {fixture.status !== 'scheduled' && (
-                    <Chip
-                      style={[styles.statusChip, { backgroundColor: getStatusColor(fixture.status) }]}
-                    >
-                      {fixture.status.toUpperCase()}
-                    </Chip>
-                  )}
+                      ? pickDisplayName(
+                        fixture.homeScoreLabel,
+                        fixture.homeTeamName,
+                        fixture.teamName,
+                        fixture.teamShortName,
+                        clubName
+                      ) ?? clubName
+                      : pickDisplayName(
+                        fixture.awayTeamName,
+                        fixture.awayScoreLabel,
+                        fixture.opponent
+                      ) || fixture.opponent}
+                  </Title>
+                  <Paragraph style={styles.vs}>vs</Paragraph>
+                  <Title style={styles.teamName}>
+                    {fixture.venue === 'Home'
+                      ? pickDisplayName(
+                        fixture.awayTeamName,
+                        fixture.awayScoreLabel,
+                        fixture.opponent
+                      ) || fixture.opponent
+                      : pickDisplayName(
+                        fixture.homeScoreLabel,
+                        fixture.homeTeamName,
+                        fixture.teamName,
+                        fixture.teamShortName,
+                        clubName
+                      ) ?? clubName}
+                  </Title>
+                </View>
+                <Paragraph style={styles.detail}>
+                  📅 {formatFixtureDate(fixture.date)} • {formatKickOffTime(fixture.kickOffTime)}
+                </Paragraph>
+                <Paragraph style={styles.detail}>
+                  📍
+                  {fixture.venue === 'Home'
+                    ? pickDisplayName(fixture.location, clubShortName, clubName) ?? 'Home'
+                    : pickDisplayName(fixture.location, fixture.venue, 'Away') ?? 'Away'}
+                </Paragraph>
+                {fixture.status !== 'scheduled' && (
+                  <Chip
+                    style={[styles.statusChip, { backgroundColor: getStatusColor(fixture.status) }]}
+                  >
+                    {fixture.status.toUpperCase()}
+                  </Chip>
+                )}
               </Card.Content>
+              <Card.Actions style={styles.cardActions}>
+                <Button
+                  mode="outlined"
+                  compact
+                  icon="clipboard-text"
+                  onPress={() => navigation.navigate('ScoutNotes', {
+                    fixtureId: fixture.id,
+                    opponent: fixture.opponent,
+                  })}
+                >
+                  Scout
+                </Button>
+                {fixture.venue === 'Away' && (
+                  <Button
+                    mode="outlined"
+                    compact
+                    icon="car"
+                    onPress={() => navigation.navigate('Carpool', {
+                      fixtureId: fixture.id,
+                      opponent: fixture.opponent,
+                      fixtureDate: formatFixtureDate(fixture.date),
+                    })}
+                  >
+                    Carpool
+                  </Button>
+                )}
+              </Card.Actions>
             </Card>
           ))
         )}
+
       </View>
 
       <Divider style={styles.divider} />
@@ -363,5 +394,9 @@ const styles = StyleSheet.create({
   },
   divider: {
     marginVertical: 8,
+  },
+  cardActions: {
+    justifyContent: 'flex-end',
+    paddingTop: 0,
   },
 });

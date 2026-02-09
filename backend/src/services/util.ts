@@ -54,7 +54,6 @@ export function json(body: unknown, status = 200, headers: HeadersInit = {}) {
 
   const bodyText = typeof payload === "string" ? payload : JSON.stringify(payload);
   return new Response(bodyText, withSecurity({ status, headers: finalHeaders }));
-  return new Response(JSON.stringify(body), withSecurity({ status, headers: finalHeaders }));
 }
 
 export function cors(originList: string[] | null, reqOrigin: string | null) {
@@ -89,7 +88,7 @@ export function readIdempotencyKey(req: Request) {
 
 // Additional utility helpers
 export function assert(cond: any, msg = "bad request") {
-  if (!cond) {throw badReq(msg);}
+  if (!cond) { throw badReq(msg); }
 }
 
 export function badReq(message: string) {

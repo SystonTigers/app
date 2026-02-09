@@ -50,6 +50,8 @@ import FixtureSettingsScreen from './src/screens/FixtureSettingsScreen';
 import PushNotificationsSetupScreen from './src/screens/PushNotificationsSetupScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import ConfigScreen from './src/screens/ConfigScreen';
+import ScoutNotesScreen from './src/screens/ScoutNotesScreen';
+import CarpoolScreen from './src/screens/CarpoolScreen';
 
 // Auth Screens
 import LoginScreen from './src/screens/LoginScreen';
@@ -200,6 +202,8 @@ export default function App() {
                 <Drawer.Screen name="ManageUsers" component={ManageUsersScreen} />
                 <Drawer.Screen name="ImportData" component={ImportDataScreen} />
                 <Drawer.Screen name="FixtureSettings" component={FixtureSettingsScreen} />
+                <Drawer.Screen name="ScoutNotes" component={ScoutNotesScreen} options={{ title: 'Scout Report' }} />
+                <Drawer.Screen name="Carpool" component={CarpoolScreen} options={{ title: 'Carpool' }} />
 
                 {/* Auth Screens (Hidden from Drawer via CustomContent logic) */}
                 <Drawer.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />

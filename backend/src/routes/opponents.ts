@@ -5,7 +5,7 @@
  * SECURITY: All routes use requireJWT for authentication and enforce tenant isolation
  */
 
-import { json } from '../utils/response';
+import { json } from '../services/util';
 import { requireJWT } from '../services/auth';
 
 // Helper to normalize team names for matching
@@ -54,7 +54,7 @@ export async function handleListOpponents(req: Request, env: any, corsHdrs: Head
 
         return json({ success: true, data: results }, 200, corsHdrs);
     } catch (error: any) {
-        if (error instanceof Response) {throw error;}
+        if (error instanceof Response) { throw error; }
         console.error('[Opponents] List error:', error);
         return json({ success: false, error: { message: error.message } }, 500, corsHdrs);
     }
@@ -138,7 +138,7 @@ export async function handleCreateOpponent(req: Request, env: any, corsHdrs: Hea
             }
         }, 200, corsHdrs);
     } catch (error: any) {
-        if (error instanceof Response) {throw error;}
+        if (error instanceof Response) { throw error; }
         console.error('[Opponents] Create error:', error);
         return json({ success: false, error: { message: error.message } }, 500, corsHdrs);
     }
@@ -216,7 +216,7 @@ export async function handleConfirmBadge(req: Request, env: any, corsHdrs: Heade
 
         return json({ success: false, error: { message: 'Invalid action' } }, 400, corsHdrs);
     } catch (error: any) {
-        if (error instanceof Response) {throw error;}
+        if (error instanceof Response) { throw error; }
         console.error('[Opponents] Confirm error:', error);
         return json({ success: false, error: { message: error.message } }, 500, corsHdrs);
     }
@@ -245,7 +245,7 @@ export async function handleSearchBadge(req: Request, env: any, corsHdrs: Header
             data: { image_url: imageUrl }
         }, 200, corsHdrs);
     } catch (error: any) {
-        if (error instanceof Response) {throw error;}
+        if (error instanceof Response) { throw error; }
         console.error('[Opponents] Search error:', error);
         return json({ success: false, error: { message: error.message } }, 500, corsHdrs);
     }
@@ -273,7 +273,7 @@ export async function handleSearchLibrary(req: Request, env: any, corsHdrs: Head
 
         return json({ success: true, data: results.results || [] }, 200, corsHdrs);
     } catch (error: any) {
-        if (error instanceof Response) {throw error;}
+        if (error instanceof Response) { throw error; }
         console.error('[BadgeLibrary] Search error:', error);
         return json({ success: false, error: { message: error.message } }, 500, corsHdrs);
     }
@@ -307,7 +307,7 @@ export async function handleDeleteOpponent(req: Request, env: any, corsHdrs: Hea
 
         return json({ success: true }, 200, corsHdrs);
     } catch (error: any) {
-        if (error instanceof Response) {throw error;}
+        if (error instanceof Response) { throw error; }
         console.error('[Opponents] Delete error:', error);
         return json({ success: false, error: { message: error.message } }, 500, corsHdrs);
     }
@@ -369,7 +369,7 @@ export async function handleUploadBadge(req: Request, env: any, corsHdrs: Header
             data: { badge_url: badgeUrl }
         }, 200, corsHdrs);
     } catch (error: any) {
-        if (error instanceof Response) {throw error;}
+        if (error instanceof Response) { throw error; }
         console.error('[Opponents] Upload error:', error);
         return json({ success: false, error: { message: error.message } }, 500, corsHdrs);
     }

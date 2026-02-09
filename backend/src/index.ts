@@ -754,6 +754,60 @@ router.post("/api/:v/mobile/notifications/motm-voting", (req, env, corsHdrs) => 
 import { handleSearchMembers } from "./routes/members";
 router.get("/api/:v/members/search", (req, env, corsHdrs) => handleSearchMembers(req, env, corsHdrs));
 
+// Scout Notes Routes (Opposition Intel)
+import {
+    handleGetScoutNotes,
+    handleSaveScoutNotes,
+    handleDeleteScoutNotes
+} from "./routes/scout";
+
+router.get("/api/:v/fixtures/:fixtureId/scout", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleGetScoutNotes(req, env, corsHdrs, params.fixtureId);
+});
+router.post("/api/:v/fixtures/:fixtureId/scout", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleSaveScoutNotes(req, env, corsHdrs, params.fixtureId);
+});
+router.delete("/api/:v/fixtures/:fixtureId/scout", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleDeleteScoutNotes(req, env, corsHdrs, params.fixtureId);
+});
+
+// Carpool Routes (Ride Sharing for Away Fixtures)
+import {
+    handleGetCarpoolOffers,
+    handleCreateCarpoolOffer,
+    handleCancelCarpoolOffer,
+    handleRequestSeat,
+    handleRespondToRequest,
+    handleGetMyOffers,
+    handleGetMyRequests
+} from "./routes/carpool";
+
+router.get("/api/:v/fixtures/:fixtureId/carpool", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleGetCarpoolOffers(req, env, corsHdrs, params.fixtureId);
+});
+router.post("/api/:v/fixtures/:fixtureId/carpool", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleCreateCarpoolOffer(req, env, corsHdrs, params.fixtureId);
+});
+router.delete("/api/:v/carpool/offers/:offerId", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleCancelCarpoolOffer(req, env, corsHdrs, params.offerId);
+});
+router.post("/api/:v/carpool/:offerId/request", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleRequestSeat(req, env, corsHdrs, params.offerId);
+});
+router.patch("/api/:v/carpool/requests/:requestId", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleRespondToRequest(req, env, corsHdrs, params.requestId);
+});
+router.get("/api/:v/carpool/my-offers", (req, env, corsHdrs) => handleGetMyOffers(req, env, corsHdrs));
+router.get("/api/:v/carpool/my-requests", (req, env, corsHdrs) => handleGetMyRequests(req, env, corsHdrs));
+
 // Video Routes
 router.post("/api/:v/videos/upload", (req, env, corsHdrs, requestId) => handleVideoUpload(req, env, corsHdrs));
 router.get("/api/:v/videos", (req, env, corsHdrs, requestId) => handleVideoList(req, env, corsHdrs));

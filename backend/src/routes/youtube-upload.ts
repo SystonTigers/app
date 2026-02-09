@@ -3,7 +3,7 @@
  * Allows managers to upload match videos to their team's YouTube channel
  */
 
-import { json } from '../utils/response';
+import { json } from '../services/util';
 import { uploadVideoToYouTube, getYouTubeUploadUrl, YouTubeVideoUpload } from '../adapters/youtube';
 
 // ===========================================
