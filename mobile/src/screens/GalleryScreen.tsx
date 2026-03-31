@@ -27,8 +27,7 @@ interface Album {
   type: 'match' | 'training' | 'social' | 'throwback';
 }
 
-const mockAlbums: Album[] = [];
-const mockPhotos: Photo[] = [];
+// Mocks removed
 
 export default function GalleryScreen() {
   const [albums, setAlbums] = useState<Album[]>([]);

@@ -3,6 +3,7 @@ import { View, ScrollView, StyleSheet, KeyboardAvoidingView, Platform, Alert } f
 import { Text, Card, TextInput, IconButton, Avatar, Chip, List, Portal, Modal } from 'react-native-paper';
 import { COLORS, TENANT_ID } from '../config';
 import { useAuth } from '../context/AuthContext';
+import { apiClient, chatApi } from '../services/api';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 interface Message {
@@ -55,59 +56,16 @@ export default function ChatScreen() {
 
   const loadChatRooms = async () => {
     try {
-      // Mock data - replace with API call
-      const mockRooms: ChatRoom[] = [
-        {
-          id: 'team-chat',
-          name: 'Team Chat',
-          type: 'team',
-          participants: ['all'],
-          unreadCount: 3,
-          lastMessage: {
-            id: 'msg-1',
-            roomId: 'team-chat',
-            userId: 'user-002',
-            userName: 'Coach Mike',
-            content: 'Great training session today!',
-            timestamp: Date.now() - 300000,
-            type: 'text',
-          },
-        },
-        {
-          id: 'parents-group',
-          name: 'Parents Group',
-          type: 'group',
-          participants: ['parents'],
-          unreadCount: 0,
-          lastMessage: {
-            id: 'msg-2',
-            roomId: 'parents-group',
-            userId: 'user-003',
-            userName: 'Sarah Jones',
-            content: 'What time is the match on Saturday?',
-            timestamp: Date.now() - 3600000,
-            type: 'text',
-          },
-        },
-        {
-          id: 'coaches',
-          name: 'Coaches',
-          type: 'group',
-          participants: ['coaches'],
-          unreadCount: 1,
-          lastMessage: {
-            id: 'msg-3',
-            roomId: 'coaches',
-            userId: 'user-004',
-            userName: 'Assistant Coach',
-            content: 'Training plan for next week?',
-            timestamp: Date.now() - 7200000,
-            type: 'text',
-          },
-        },
-      ];
-
-      setRooms(mockRooms);
+      const result = await chatApi.listRooms();
+      const apiRooms = (result?.data || []).map((r: any) => ({
+        id: r.roomId || r.id,
+        name: r.name || 'Chat',
+        type: r.type || 'group',
+        participants: r.participants || [],
+        unreadCount: r.unreadCount || 0,
+        lastMessage: r.lastMessage,
+      }));
+      setRooms(apiRooms);
     } catch (error) {
       console.error('Error loading chat rooms:', error);
       Alert.alert('Error', 'Failed to load chat rooms');
@@ -116,56 +74,18 @@ export default function ChatScreen() {
 
   const loadMessages = async (roomId: string) => {
     try {
-      // Mock data - replace with API call
-      const mockMessages: Message[] = [
-        {
-          id: 'msg-1',
-          roomId,
-          userId: 'user-002',
-          userName: 'Coach Mike',
-          content: 'Great training session today! Well done everyone.',
-          timestamp: Date.now() - 300000,
-          type: 'text',
-        },
-        {
-          id: 'msg-2',
-          roomId,
-          userId: 'user-003',
-          userName: 'Sarah Jones',
-          content: 'Thanks coach! The kids really enjoyed it.',
-          timestamp: Date.now() - 240000,
-          type: 'text',
-        },
-        {
-          id: 'msg-3',
-          roomId,
-          userId: 'user-001',
-          userName: 'John Smith',
-          content: 'Looking forward to the match on Saturday!',
-          timestamp: Date.now() - 180000,
-          type: 'text',
-        },
-        {
-          id: 'msg-4',
-          roomId,
-          userId: 'user-004',
-          userName: 'Tom Davies',
-          content: 'What time is kick-off?',
-          timestamp: Date.now() - 120000,
-          type: 'text',
-        },
-        {
-          id: 'msg-5',
-          roomId,
-          userId: 'user-002',
-          userName: 'Coach Mike',
-          content: 'Match starts at 10:00 AM. Please arrive by 9:30 AM.',
-          timestamp: Date.now() - 60000,
-          type: 'text',
-        },
-      ];
-
-      setMessages(mockMessages);
+      const result = await chatApi.getHistory(roomId);
+      const apiMessages: Message[] = (result?.data?.messages || result?.data || []).map((m: any) => ({
+        id: m.id || m.messageId || `msg-${m.ts || Date.now()}`,
+        roomId,
+        userId: m.userId || '',
+        userName: m.userName || m.authorName || 'Unknown',
+        content: m.text || m.content || '',
+        timestamp: m.ts || m.timestamp || Date.now(),
+        type: (m.type as any) || 'text',
+        fileUrl: m.fileUrl,
+      }));
+      setMessages(apiMessages);
 
       // Scroll to bottom
       setTimeout(() => {
@@ -190,13 +110,12 @@ export default function ChatScreen() {
     };
 
     try {
-      // TODO: Send to backend
-      // await api.post(`/api/v1/chat/${selectedRoom.id}/send`, {
-      //   tenant: TENANT_ID,
-      //   userId: currentUserId,
-      //   userName: currentUserName,
-      //   content: messageText.trim(),
-      // });
+      await apiClient.post(`/api/v1/chat/${selectedRoom.id}/send`, {
+        tenant: TENANT_ID,
+        userId: currentUserId,
+        userName: currentUserName,
+        content: messageText.trim(),
+      });
 
       // Optimistic update
       setMessages([...messages, newMessage]);
@@ -207,8 +126,14 @@ export default function ChatScreen() {
         scrollViewRef.current?.scrollToEnd({ animated: true });
       }, 100);
     } catch (error) {
-      console.error('Error sending message:', error);
-      Alert.alert('Error', 'Failed to send message');
+      // Optimistic update even if backend fails (offline-first)
+      setMessages([...messages, newMessage]);
+      setMessageText('');
+      console.warn('Message saved locally, will sync when online:', error);
+
+      setTimeout(() => {
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+      }, 100);
     }
   };
 

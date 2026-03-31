@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
-import { View, ScrollView, StyleSheet, TouchableOpacity, Dimensions, Linking } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, ScrollView, StyleSheet, TouchableOpacity, Dimensions, Linking, Alert, ActivityIndicator } from 'react-native';
 import { Card, Title, Paragraph, Button, Chip, List, IconButton, ProgressBar } from 'react-native-paper';
 import { Video, ResizeMode } from 'expo-av';
 import { COLORS } from '../config';
+import { fixturesApi, videosApi, gotmApi, squadApi } from '../services/api';
 
 const { width } = Dimensions.get('window');
 
@@ -38,6 +39,7 @@ interface GOTMNominee {
   thumbnailUrl: string;
   votes: number;
   hasVoted: boolean;
+  videoUrl?: string;
 }
 
 interface GOTMWinner {
@@ -51,35 +53,102 @@ interface GOTMWinner {
   videoUrl: string;
 }
 
-const mockMatches: Match[] = [
-  { id: '1', opponent: 'Leicester Panthers', date: '2025-10-05', score: '3-1', clipCount: 8 },
-  { id: '2', opponent: 'Loughborough Lions', date: '2025-09-28', score: '2-2', clipCount: 6 },
-  { id: '3', opponent: 'Melton Mowbray', date: '2025-09-21', score: '4-0', clipCount: 12 },
-];
-
-const mockClips: Clip[] = [
-  { id: '1', matchId: '1', title: 'James Mitchell - Goal 1', description: 'Beautiful strike from outside the box', thumbnailUrl: 'https://picsum.photos/400/300?random=21', videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4', youtubeUrl: 'https://youtube.com/watch?v=dQw4w9WgXcQ', duration: 45, uploadedAt: '2025-10-05 17:30', views: 234, type: 'goal' },
-  { id: '2', matchId: '1', title: 'Tom Davies - Assist', description: 'Perfect through ball', thumbnailUrl: 'https://picsum.photos/400/300?random=22', videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4', youtubeUrl: 'https://youtube.com/watch?v=dQw4w9WgXcQ', duration: 30, uploadedAt: '2025-10-05 17:35', views: 156, type: 'skill' },
-  { id: '3', matchId: '1', title: 'Ben Parker - Save', description: 'Outstanding reaction save', thumbnailUrl: 'https://picsum.photos/400/300?random=23', videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4', duration: 25, uploadedAt: '2025-10-05 17:40', views: 189, type: 'save' },
-  { id: '4', matchId: '1', title: 'Match Highlights', description: 'Full 90 minutes condensed', thumbnailUrl: 'https://picsum.photos/400/300?random=24', videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4', youtubeUrl: 'https://youtube.com/watch?v=dQw4w9WgXcQ', duration: 420, uploadedAt: '2025-10-05 18:00', views: 512, type: 'highlights' },
-];
-
-const mockGOTMNominees: GOTMNominee[] = [
-  { id: '1', clipId: '1', title: 'Thunderbolt from 30 yards', scorer: 'James Mitchell', opponent: 'Leicester Panthers', date: '2025-10-05', thumbnailUrl: 'https://picsum.photos/400/300?random=31', votes: 145, hasVoted: false },
-  { id: '2', clipId: '5', title: 'Solo run from halfway', scorer: 'Luke Harrison', opponent: 'Loughborough Lions', date: '2025-09-28', thumbnailUrl: 'https://picsum.photos/400/300?random=32', votes: 98, hasVoted: false },
-  { id: '3', clipId: '8', title: 'Overhead kick winner', scorer: 'Tom Davies', opponent: 'Melton Mowbray', date: '2025-09-21', thumbnailUrl: 'https://picsum.photos/400/300?random=33', votes: 167, hasVoted: false },
-];
-
-const mockGOTMWinners: GOTMWinner[] = [
-  { id: '1', month: 'September', year: '2025', title: 'Bicycle kick vs Coalville', scorer: 'James Mitchell', votes: 234, thumbnailUrl: 'https://picsum.photos/400/300?random=41', videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4' },
-  { id: '2', month: 'August', year: '2025', title: 'Long-range screamer', scorer: 'Luke Harrison', votes: 189, thumbnailUrl: 'https://picsum.photos/400/300?random=42', videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4' },
-];
-
 export default function HighlightsScreen() {
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [playingClip, setPlayingClip] = useState<Clip | null>(null);
   const [selectedTab, setSelectedTab] = useState<'recent' | 'gotm' | 'archive'>('recent');
-  const [gotmNominees, setGotmNominees] = useState<GOTMNominee[]>(mockGOTMNominees);
+  const [gotmNominees, setGotmNominees] = useState<GOTMNominee[]>([]);
+  const [gotmWinners, setGotmWinners] = useState<GOTMWinner[]>([]);
+  const [videos, setVideos] = useState<Clip[]>([]);
+  const [matches, setMatches] = useState<Match[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [votingId, setVotingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+
+      const [fixturesRes, videosRes, gotmRes, squadRes] = await Promise.all([
+        fixturesApi.getFixtures(),
+        videosApi.list(),
+        gotmApi.getVoting(),
+        squadApi.getSquad()
+      ]);
+
+      // Process Matches
+      const allFixtures = fixturesRes.data || [];
+      const pastMatches = allFixtures
+        .filter((f: any) => f.status === 'finished' || f.match_status === 'ft')
+        .map((f: any) => ({
+          id: f.id,
+          opponent: f.opponent,
+          date: f.fixture_date,
+          score: `${f.home_score}-${f.away_score}`,
+          clipCount: 0,
+        }));
+
+      // Process Videos
+      const allVideos = videosRes.data || [];
+      const mappedClips: Clip[] = allVideos.map((v: any) => ({
+        id: v.id,
+        matchId: v.match_id,
+        title: v.title,
+        description: v.description,
+        thumbnailUrl: v.thumbnail_url || 'https://via.placeholder.com/400x300',
+        videoUrl: v.video_url,
+        youtubeUrl: v.youtube_url,
+        duration: v.duration,
+        uploadedAt: v.uploaded_at,
+        views: v.views,
+        type: v.type,
+      }));
+
+      // Update match clip counts
+      const matchesWithCounts = pastMatches.map((m: any) => ({
+        ...m,
+        clipCount: mappedClips.filter(c => c.matchId === m.id).length
+      })).filter((m: any) => m.clipCount > 0);
+
+      setMatches(matchesWithCounts);
+      setVideos(mappedClips);
+
+      // Process GOTM
+      const players = squadRes.data || [];
+      const getPlayerName = (id: string) => {
+        const p = players.find((p: any) => p.id === id);
+        return p ? `${p.first_name} ${p.last_name}` : 'Unknown Player';
+      };
+
+      if (gotmRes.success && gotmRes.data && gotmRes.data.voting) {
+        setVotingId(gotmRes.data.voting.id);
+        const candidates = gotmRes.data.candidates.map((c: any) => ({
+          id: c.id,
+          clipId: c.match_id, // fallback if no specific clip link
+          title: c.description,
+          scorer: getPlayerName(c.player_id),
+          opponent: 'Unknown', // Need to link to match to get opponent
+          date: new Date().toISOString(), // Placeholder
+          thumbnailUrl: 'https://via.placeholder.com/400x300', // Need thumbnail
+          votes: c.votes,
+          hasVoted: false, // Need to check if user voted (API should probably tell us or we check locally)
+          videoUrl: c.video_url,
+        }));
+        setGotmNominees(candidates);
+      } else {
+        setGotmNominees([]);
+      }
+
+    } catch (error) {
+      console.error('Error loading highlights:', error);
+      Alert.alert('Error', 'Failed to load highlights data');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const getClipTypeColor = (type: Clip['type']) => {
     switch (type) {
@@ -109,14 +178,27 @@ export default function HighlightsScreen() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const handleVote = (nomineeId: string) => {
-    setGotmNominees(nominees =>
-      nominees.map(n =>
-        n.id === nomineeId
-          ? { ...n, votes: n.votes + 1, hasVoted: true }
-          : { ...n, hasVoted: true }
-      )
-    );
+  const handleVote = async (nomineeId: string) => {
+    if (!votingId) return;
+
+    try {
+      const response = await gotmApi.castVote(votingId, nomineeId);
+      if (response.success) {
+        setGotmNominees(nominees =>
+          nominees.map(n =>
+            n.id === nomineeId
+              ? { ...n, votes: n.votes + 1, hasVoted: true }
+              : n
+          )
+        );
+        Alert.alert('Vote Cast', 'Thank you for voting!');
+      } else {
+        Alert.alert('Error', response.error || 'Failed to cast vote');
+      }
+    } catch (error) {
+      console.error('Vote error:', error);
+      Alert.alert('Error', 'Failed to cast vote');
+    }
   };
 
   const openYouTube = (url: string) => {
@@ -125,7 +207,7 @@ export default function HighlightsScreen() {
 
   // Match clips view
   if (selectedMatch) {
-    const matchClips = mockClips.filter(c => c.matchId === selectedMatch.id);
+    const matchClips = videos.filter(c => c.matchId === selectedMatch.id);
 
     return (
       <View style={styles.container}>
@@ -214,132 +296,123 @@ export default function HighlightsScreen() {
   // Main highlights view
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Title style={styles.headerTitle}>Highlights</Title>
-        <Paragraph style={styles.headerSubtitle}>Match clips & Goal of the Month</Paragraph>
-      </View>
-
-      {/* Tab selector */}
-      <View style={styles.tabContainer}>
-        <Button
-          mode={selectedTab === 'recent' ? 'contained' : 'outlined'}
-          onPress={() => setSelectedTab('recent')}
-          style={styles.tabButton}
-          buttonColor={selectedTab === 'recent' ? COLORS.primary : 'transparent'}
-          textColor={selectedTab === 'recent' ? COLORS.secondary : COLORS.primary}
-        >
-          Recent Clips
-        </Button>
-        <Button
-          mode={selectedTab === 'gotm' ? 'contained' : 'outlined'}
-          onPress={() => setSelectedTab('gotm')}
-          style={styles.tabButton}
-          buttonColor={selectedTab === 'gotm' ? COLORS.primary : 'transparent'}
-          textColor={selectedTab === 'gotm' ? COLORS.secondary : COLORS.primary}
-        >
-          Goal of Month
-        </Button>
-        <Button
-          mode={selectedTab === 'archive' ? 'contained' : 'outlined'}
-          onPress={() => setSelectedTab('archive')}
-          style={styles.tabButton}
-          buttonColor={selectedTab === 'archive' ? COLORS.primary : 'transparent'}
-          textColor={selectedTab === 'archive' ? COLORS.secondary : COLORS.primary}
-        >
-          Archive
-        </Button>
-      </View>
-
-      <ScrollView style={styles.scrollContainer}>
-        {/* Recent Clips Tab */}
-        {selectedTab === 'recent' && (
-          <View style={styles.matchesList}>
-            {mockMatches.map((match) => (
-              <Card key={match.id} style={styles.matchCard}>
-                <List.Item
-                  title={`vs ${match.opponent}`}
-                  description={`${new Date(match.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })} • ${match.score} • ${match.clipCount} clips`}
-                  left={props => <List.Icon {...props} icon="video-box" color={COLORS.primary} />}
-                  right={props => <List.Icon {...props} icon="chevron-right" />}
-                  onPress={() => setSelectedMatch(match)}
-                  style={styles.matchListItem}
-                />
-              </Card>
-            ))}
+      {loading ? (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+        </View>
+      ) : (
+        <>
+          <View style={styles.header}>
+            <Title style={styles.headerTitle}>Highlights</Title>
+            <Paragraph style={styles.headerSubtitle}>Match clips & Goal of the Month</Paragraph>
           </View>
-        )}
 
-        {/* Goal of the Month Tab */}
-        {selectedTab === 'gotm' && (
-          <View style={styles.gotmContainer}>
-            <Card style={styles.votingCard}>
-              <Card.Content>
-                <Title style={styles.votingTitle}>🏆 Vote for October Goal of the Month</Title>
-                <Paragraph style={styles.votingSubtitle}>Voting ends: October 31, 2025</Paragraph>
-                <ProgressBar
-                  progress={0.65}
-                  color={COLORS.primary}
-                  style={styles.votingProgress}
-                />
-                <Paragraph style={styles.votingStats}>350 votes cast • 15 days remaining</Paragraph>
-              </Card.Content>
-            </Card>
-
-            {gotmNominees.map((nominee) => (
-              <Card key={nominee.id} style={styles.nomineeCard}>
-                <Card.Cover source={{ uri: nominee.thumbnailUrl }} style={styles.nomineeThumbnail} />
-                <Card.Content style={styles.nomineeContent}>
-                  <Title style={styles.nomineeTitle}>{nominee.title}</Title>
-                  <Paragraph style={styles.nomineeInfo}>
-                    {nominee.scorer} • vs {nominee.opponent}
-                  </Paragraph>
-                  <Paragraph style={styles.nomineeDate}>
-                    {new Date(nominee.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
-                  </Paragraph>
-                  <View style={styles.voteSection}>
-                    <Paragraph style={styles.voteCount}>
-                      {nominee.votes} votes
-                    </Paragraph>
-                    <Button
-                      mode="contained"
-                      onPress={() => handleVote(nominee.id)}
-                      disabled={nominee.hasVoted}
-                      buttonColor={nominee.hasVoted ? '#CCCCCC' : COLORS.primary}
-                      textColor={COLORS.secondary}
-                      style={styles.voteButton}
-                    >
-                      {nominee.hasVoted ? 'Voted ✓' : 'Vote'}
-                    </Button>
-                  </View>
-                </Card.Content>
-              </Card>
-            ))}
+          {/* Tab selector */}
+          <View style={styles.tabContainer}>
+            <Button
+              mode={selectedTab === 'recent' ? 'contained' : 'outlined'}
+              onPress={() => setSelectedTab('recent')}
+              style={styles.tabButton}
+              buttonColor={selectedTab === 'recent' ? COLORS.primary : 'transparent'}
+              textColor={selectedTab === 'recent' ? COLORS.secondary : COLORS.primary}
+            >
+              Recent Clips
+            </Button>
+            <Button
+              mode={selectedTab === 'gotm' ? 'contained' : 'outlined'}
+              onPress={() => setSelectedTab('gotm')}
+              style={styles.tabButton}
+              buttonColor={selectedTab === 'gotm' ? COLORS.primary : 'transparent'}
+              textColor={selectedTab === 'gotm' ? COLORS.secondary : COLORS.primary}
+            >
+              Goal of Month
+            </Button>
+            <Button
+              mode={selectedTab === 'archive' ? 'contained' : 'outlined'}
+              onPress={() => setSelectedTab('archive')}
+              style={styles.tabButton}
+              buttonColor={selectedTab === 'archive' ? COLORS.primary : 'transparent'}
+              textColor={selectedTab === 'archive' ? COLORS.secondary : COLORS.primary}
+            >
+              Archive
+            </Button>
           </View>
-        )}
 
-        {/* Archive Tab */}
-        {selectedTab === 'archive' && (
-          <View style={styles.archiveContainer}>
-            <Title style={styles.archiveTitle}>Past Winners</Title>
-            {mockGOTMWinners.map((winner) => (
-              <Card key={winner.id} style={styles.winnerCard}>
-                <Card.Cover source={{ uri: winner.thumbnailUrl }} style={styles.winnerThumbnail} />
-                <View style={styles.winnerBadge}>
-                  <Paragraph style={styles.winnerBadgeText}>🏆 WINNER</Paragraph>
-                </View>
-                <Card.Content>
-                  <Chip style={styles.winnerMonth} textStyle={styles.winnerMonthText}>
-                    {winner.month} {winner.year}
-                  </Chip>
-                  <Title style={styles.winnerTitle}>{winner.title}</Title>
-                  <Paragraph style={styles.winnerScorer}>{winner.scorer}</Paragraph>
-                  <Paragraph style={styles.winnerVotes}>{winner.votes} votes</Paragraph>
-                </Card.Content>
-              </Card>
-            ))}
-          </View>
-        )}
-      </ScrollView>
+          <ScrollView style={styles.scrollContainer}>
+            {/* Recent Clips Tab */}
+            {selectedTab === 'recent' && (
+              <View style={styles.matchesList}>
+                {matches.map((match) => (
+                  <Card key={match.id} style={styles.matchCard}>
+                    <List.Item
+                      title={`vs ${match.opponent}`}
+                      description={`${new Date(match.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })} • ${match.score} • ${match.clipCount} clips`}
+                      left={props => <List.Icon {...props} icon="video-box" color={COLORS.primary} />}
+                      right={props => <List.Icon {...props} icon="chevron-right" />}
+                      onPress={() => setSelectedMatch(match)}
+                      style={styles.matchListItem}
+                    />
+                  </Card>
+                ))}
+              </View>
+            )}
+
+            {/* Goal of the Month Tab */}
+            {selectedTab === 'gotm' && (
+              <View style={styles.gotmContainer}>
+                {gotmNominees.length > 0 ? (
+                  <>
+                    <Card style={styles.votingCard}>
+                      <Card.Content>
+                        <Title style={styles.votingTitle}>🏆 Vote for Goal of the Month</Title>
+                        <Paragraph style={styles.votingSubtitle}>Cast your vote below!</Paragraph>
+                        <Paragraph style={styles.votingStats}>{gotmNominees.reduce((acc, curr) => acc + curr.votes, 0)} votes cast</Paragraph>
+                      </Card.Content>
+                    </Card>
+
+                    {gotmNominees.map((nominee) => (
+                      <Card key={nominee.id} style={styles.nomineeCard}>
+                        <Card.Cover source={{ uri: nominee.thumbnailUrl }} style={styles.nomineeThumbnail} />
+                        <Card.Content style={styles.nomineeContent}>
+                          <Title style={styles.nomineeTitle}>{nominee.title}</Title>
+                          <Paragraph style={styles.nomineeInfo}>
+                            {nominee.scorer}
+                          </Paragraph>
+                          <View style={styles.voteSection}>
+                            <Paragraph style={styles.voteCount}>
+                              {nominee.votes} votes
+                            </Paragraph>
+                            <Button
+                              mode="contained"
+                              onPress={() => handleVote(nominee.id)}
+                              disabled={nominee.hasVoted}
+                              buttonColor={nominee.hasVoted ? '#CCCCCC' : COLORS.primary}
+                              textColor={COLORS.secondary}
+                              style={styles.voteButton}
+                            >
+                              {nominee.hasVoted ? 'Voted ✓' : 'Vote'}
+                            </Button>
+                          </View>
+                        </Card.Content>
+                      </Card>
+                    ))}
+                  </>
+                ) : (
+                  <Paragraph style={{ padding: 20, textAlign: 'center' }}>No active voting currently.</Paragraph>
+                )}
+              </View>
+            )}
+
+            {/* Archive Tab */}
+            {selectedTab === 'archive' && (
+              <View style={styles.archiveContainer}>
+                <Title style={styles.archiveTitle}>Past Winners</Title>
+                <Paragraph>No existing past winners data available.</Paragraph>
+              </View>
+            )}
+          </ScrollView>
+        </>
+      )}
     </View>
   );
 }
@@ -388,7 +461,6 @@ const styles = StyleSheet.create({
   matchListItem: {
     paddingVertical: 8,
   },
-  // Match view styles
   matchHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -497,7 +569,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: COLORS.textLight,
   },
-  // GOTM styles
   gotmContainer: {
     padding: 16,
   },
@@ -564,7 +635,6 @@ const styles = StyleSheet.create({
   voteButton: {
     minWidth: 100,
   },
-  // Archive styles
   archiveContainer: {
     padding: 16,
   },

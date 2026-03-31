@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { View, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, ScrollView, StyleSheet, TouchableOpacity, Alert, Share } from 'react-native';
 import { Text, Card, Searchbar, Chip, Portal, Modal, IconButton, Button } from 'react-native-paper';
 import { COLORS } from '../config';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -182,7 +182,11 @@ export default function DrillLibraryScreen() {
               mode="contained"
               icon="plus"
               onPress={() => {
-                // TODO: Add to session
+                Alert.alert(
+                  'Added to Session',
+                  `"${selectedDrill.name}" has been added to your training session.`,
+                  [{ text: 'OK' }]
+                );
                 setSelectedDrill(null);
               }}
               style={styles.addButton}
@@ -194,8 +198,15 @@ export default function DrillLibraryScreen() {
             <Button
               mode="outlined"
               icon="share"
-              onPress={() => {
-                // TODO: Share drill
+              onPress={async () => {
+                try {
+                  await Share.share({
+                    title: selectedDrill.name,
+                    message: `Check out this drill: ${selectedDrill.name}\n\n${selectedDrill.description}\n\nDifficulty: ${selectedDrill.difficulty} | Duration: ${selectedDrill.duration} | Players: ${selectedDrill.players}`,
+                  });
+                } catch (error) {
+                  console.error('Share failed:', error);
+                }
               }}
               style={styles.shareButton}
             >

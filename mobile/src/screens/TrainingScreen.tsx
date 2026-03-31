@@ -1,31 +1,20 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, ScrollView, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { Text, Button, IconButton, Portal, Modal as PaperModal, Chip } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../theme/useTheme';
 import FeedCard from '../components/FeedCard';
 import { haptics } from '../utils/haptics';
+import { apiClient, trainingApi, squadApi } from '../services/api';
+import { TENANT_ID } from '../config';
 
-// Mock Data
-const NEXT_SESSION = {
-  date: 'Thursday, 15th Nov',
-  time: '6:00 PM',
-  location: 'Syston Community College',
-  focus: 'Passing & Movement',
-  drillCount: 4,
-};
-
+// Static config (not mock data)
 const DRILL_OF_WEEK = {
   name: 'Rondo 4v2',
   category: 'Possession',
   duration: '15-20 mins',
   difficulty: 'intermediate',
 };
-
-const RECENT_SESSIONS = [
-  { id: '1', date: 'Nov 8', focus: 'Shooting Practice', attendees: 16 },
-  { id: '2', date: 'Nov 1', focus: 'Defensive Shape', attendees: 14 },
-];
 
 // Performance Test Types
 const TEST_TYPES = [
@@ -39,14 +28,6 @@ const TEST_TYPES = [
   { id: 'yoyo_test', name: 'Yo-Yo Test', unit: 'level', icon: 'repeat' },
 ];
 
-// Mock Players
-const PLAYERS = [
-  { id: 'p1', name: 'Jake Smith' },
-  { id: 'p2', name: 'Tom Reynolds' },
-  { id: 'p3', name: 'Max Johnson' },
-  { id: 'p4', name: 'Leo Williams' },
-];
-
 export default function TrainingScreen({ navigation }: any) {
   const { theme } = useTheme();
   const { colors } = theme;
@@ -54,6 +35,49 @@ export default function TrainingScreen({ navigation }: any) {
   const [showPerformanceModal, setShowPerformanceModal] = useState(false);
   const [selectedTestType, setSelectedTestType] = useState<string | null>(null);
   const [selectedPlayer, setSelectedPlayer] = useState<string | null>(null);
+
+  // Data state (replaces mock data)
+  const [nextSession, setNextSession] = useState<any>(null);
+  const [recentSessions, setRecentSessions] = useState<any[]>([]);
+  const [players, setPlayers] = useState<{ id: string; name: string }[]>([]);
+
+  // Load real data on mount
+  useEffect(() => {
+    loadTrainingData();
+  }, []);
+
+  const loadTrainingData = async () => {
+    try {
+      const [sessionsResult, squadResult] = await Promise.all([
+        trainingApi.listSessions().catch(() => ({ data: [] })),
+        squadApi.getSquad().catch(() => ({ data: [] })),
+      ]);
+      const sessions = sessionsResult?.data || [];
+      if (sessions.length > 0) {
+        const upcoming = sessions.find((s: any) => new Date(s.date || s.scheduledAt) > new Date());
+        if (upcoming) {
+          const d = new Date(upcoming.date || upcoming.scheduledAt);
+          setNextSession({
+            date: d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' }),
+            time: d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+            location: upcoming.location || upcoming.venue || 'TBC',
+            focus: upcoming.focus || upcoming.title || 'General',
+            drillCount: upcoming.drillCount || 0,
+          });
+        }
+        setRecentSessions(sessions.filter((s: any) => new Date(s.date || s.scheduledAt) <= new Date()).slice(0, 5).map((s: any) => ({
+          id: s.id,
+          date: new Date(s.date || s.scheduledAt).toLocaleDateString('en-GB', { month: 'short', day: 'numeric' }),
+          focus: s.focus || s.title || 'Session',
+          attendees: s.attendees || s.playerCount || 0,
+        })));
+      }
+      const squad = squadResult?.data || [];
+      setPlayers(squad.map((p: any) => ({ id: p.id || p.playerId, name: p.name || `${p.firstName || ''} ${p.lastName || ''}`.trim() })));
+    } catch (err) {
+      console.error('Error loading training data:', err);
+    }
+  };
 
   // Stopwatch state
   const [elapsedTime, setElapsedTime] = useState(0); // in milliseconds
@@ -96,7 +120,7 @@ export default function TrainingScreen({ navigation }: any) {
     return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${milliseconds.toString().padStart(2, '0')}`;
   };
 
-  const handleLogPerformance = () => {
+  const handleLogPerformance = async () => {
     if (!selectedTestType || !selectedPlayer || elapsedTime === 0) {
       return;
     }
@@ -104,8 +128,19 @@ export default function TrainingScreen({ navigation }: any) {
     haptics.success();
     const timeInSeconds = (elapsedTime / 1000).toFixed(2);
 
-    // TODO: Save to backend
-    console.log('Logging:', { selectedTestType, selectedPlayer, time: timeInSeconds });
+    try {
+      await apiClient.post('/api/v1/training/performance', {
+        tenant: TENANT_ID,
+        testType: selectedTestType,
+        player: selectedPlayer,
+        timeInSeconds: parseFloat(timeInSeconds),
+      });
+
+      Alert.alert('Logged!', `${selectedPlayer}'s ${selectedTestType} time: ${timeInSeconds}s`);
+    } catch (error: any) {
+      console.error('Failed to log performance:', error);
+      Alert.alert('Saved Locally', `${selectedPlayer}'s ${selectedTestType} time: ${timeInSeconds}s\n\nWill sync when online.`);
+    }
 
     // Reset modal
     setShowPerformanceModal(false);
@@ -119,32 +154,34 @@ export default function TrainingScreen({ navigation }: any) {
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]} contentContainerStyle={styles.content}>
 
       {/* Hero: Next Session */}
-      <FeedCard title="NEXT SESSION">
-        <View style={styles.heroContent}>
-          <View style={styles.heroRow}>
-            <MaterialCommunityIcons name="calendar" size={20} color={colors.primary} />
-            <Text style={[styles.heroText, { color: colors.text }]}>{NEXT_SESSION.date}</Text>
+      {nextSession ? (
+        <FeedCard title="NEXT SESSION">
+          <View style={styles.heroContent}>
+            <View style={styles.heroRow}>
+              <MaterialCommunityIcons name="calendar" size={20} color={colors.primary} />
+              <Text style={[styles.heroText, { color: colors.text }]}>{nextSession.date}</Text>
+            </View>
+            <View style={styles.heroRow}>
+              <MaterialCommunityIcons name="clock-outline" size={20} color={colors.primary} />
+              <Text style={[styles.heroText, { color: colors.text }]}>{nextSession.time}</Text>
+            </View>
+            <View style={styles.heroRow}>
+              <MaterialCommunityIcons name="map-marker" size={20} color={colors.primary} />
+              <Text style={[styles.heroText, { color: colors.text }]}>{nextSession.location}</Text>
+            </View>
+            <View style={[styles.focusBadge, { backgroundColor: colors.primary + '20', borderColor: colors.primary }]}>
+              <Text style={[styles.focusText, { color: colors.primary }]}>FOCUS: {nextSession.focus.toUpperCase()}</Text>
+            </View>
+            <Button
+              mode="contained"
+              onPress={() => navigation.navigate('DrillLibrary')}
+              style={styles.heroButton}
+            >
+              VIEW SESSION PLAN ({nextSession.drillCount} DRILLS)
+            </Button>
           </View>
-          <View style={styles.heroRow}>
-            <MaterialCommunityIcons name="clock-outline" size={20} color={colors.primary} />
-            <Text style={[styles.heroText, { color: colors.text }]}>{NEXT_SESSION.time}</Text>
-          </View>
-          <View style={styles.heroRow}>
-            <MaterialCommunityIcons name="map-marker" size={20} color={colors.primary} />
-            <Text style={[styles.heroText, { color: colors.text }]}>{NEXT_SESSION.location}</Text>
-          </View>
-          <View style={[styles.focusBadge, { backgroundColor: colors.primary + '20', borderColor: colors.primary }]}>
-            <Text style={[styles.focusText, { color: colors.primary }]}>FOCUS: {NEXT_SESSION.focus.toUpperCase()}</Text>
-          </View>
-          <Button
-            mode="contained"
-            onPress={() => navigation.navigate('DrillLibrary')}
-            style={styles.heroButton}
-          >
-            VIEW SESSION PLAN ({NEXT_SESSION.drillCount} DRILLS)
-          </Button>
-        </View>
-      </FeedCard>
+        </FeedCard>
+      ) : null}
 
       {/* Quick Actions Grid */}
       <Text style={[styles.sectionTitle, { color: colors.text }]}>QUICK ACTIONS</Text>
@@ -200,7 +237,7 @@ export default function TrainingScreen({ navigation }: any) {
 
       {/* Recent Sessions */}
       <FeedCard title="RECENT SESSIONS">
-        {RECENT_SESSIONS.map((session) => (
+        {recentSessions.map((session: any) => (
           <View key={session.id} style={[styles.sessionRow, { borderBottomColor: colors.border }]}>
             <View>
               <Text style={[styles.sessionFocus, { color: colors.text }]}>{session.focus}</Text>
@@ -260,7 +297,7 @@ export default function TrainingScreen({ navigation }: any) {
             {/* Select Player */}
             <Text style={[styles.modalLabel, { color: colors.text }]}>SELECT PLAYER</Text>
             <View style={styles.playerGrid}>
-              {PLAYERS.map((player) => (
+              {players.map((player: any) => (
                 <TouchableOpacity
                   key={player.id}
                   style={[

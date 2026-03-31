@@ -5,7 +5,8 @@ import * as Location from 'expo-location';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { COLORS } from '../config';
 import { DeleteAccountModal } from '../components/DeleteAccountModal';
-// import { useAuth } from '../context/AuthContext'; // Temporarily disabled
+import { useAuth } from '../context/AuthContext';
+import { usersApi } from '../services/api';
 
 interface NotificationPreferences {
   masterToggle: boolean;
@@ -69,14 +70,12 @@ const RADIUS_OPTIONS = [
 ];
 
 export default function SettingsScreen() {
-  // const { user, logout } = useAuth(); // Temporarily disabled - using mock data
-  const user = { role: 'player' }; // Mock user
-  const logout = async () => { Alert.alert('Logout', 'Logout functionality coming soon!'); };
+  const { user, logout } = useAuth();
 
   const [profile, setProfile] = useState<UserProfile>({
-    name: 'John Smith',
-    email: 'john.smith@example.com',
-    phone: '+44 7700 900123',
+    name: user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : '',
+    email: user?.email || '',
+    phone: '',
     language: 'en-GB',
     timezone: 'Europe/London',
   });
@@ -191,9 +190,18 @@ export default function SettingsScreen() {
     updatePreferences('teamsFollowed', newTeams);
   };
 
-  const handleSave = () => {
-    // TODO: Save to backend
-    Alert.alert('Settings Saved', 'Your preferences have been updated successfully.', [{ text: 'OK' }]);
+  const handleSave = async () => {
+    try {
+      await usersApi.updateProfile({
+        firstName: profile.name.split(' ')[0],
+        lastName: profile.name.split(' ').slice(1).join(' '),
+        phone: profile.phone,
+      });
+      Alert.alert('Settings Saved', 'Your preferences have been updated successfully.', [{ text: 'OK' }]);
+    } catch (error: any) {
+      console.error('Failed to save settings:', error);
+      Alert.alert('Error', 'Failed to save settings. Please try again.');
+    }
   };
 
   const handleLogout = () => {
@@ -220,12 +228,9 @@ export default function SettingsScreen() {
     // Clear all app data and navigate to login
     await AsyncStorage.clear();
     setShowDeleteModal(false);
-    // TODO: Navigate to login screen
-    Alert.alert(
-      'Account Deleted',
-      'Your account has been successfully deleted.',
-      [{ text: 'OK' }]
-    );
+    // Calling logout resets the auth state, which triggers the root navigator
+    // to show the login/auth screen automatically
+    await logout();
   };
 
   const toggleSection = (section: string) => {

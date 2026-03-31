@@ -107,9 +107,11 @@ export default function CustomDrawerContent(props: any) {
             {/* Drawer Header with User Info */}
             <View style={[styles.header, { borderBottomColor: colors.border }]}>
                 <View style={styles.userInfo}>
-                    <Image
-                        source={{ uri: 'https://via.placeholder.com/100' }} // TODO: Real user avatar
-                        style={[styles.avatar, { borderColor: colors.primary }]}
+                    <Avatar.Text
+                        size={50}
+                        label={user?.firstName ? user.firstName.charAt(0).toUpperCase() : '?'}
+                        style={[styles.avatar, { borderColor: colors.primary, backgroundColor: colors.primary }]}
+                        labelStyle={{ color: '#fff', fontWeight: 'bold' }}
                     />
                     <View style={styles.userDetails}>
                         <Text style={[styles.userName, { color: colors.text }]}>

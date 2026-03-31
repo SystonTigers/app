@@ -91,21 +91,31 @@ export default function LiveMatchWatchScreen() {
   const loadLiveMatches = async () => {
     setLoading(true);
     try {
-      // Mock live matches - will connect to real API
-      const mockMatches: LiveMatch[] = [
-        {
-          id: 'f1',
-          title: 'Syston Tigers vs Leicester Panthers',
-          home: 'Syston Tigers',
-          away: 'Leicester Panthers',
-          status: 'live',
-        },
-      ];
-      setLiveMatches(mockMatches);
+      const response = await fixturesApi.getFixtures();
+      const allFixtures = response.data || [];
+      const live = allFixtures.filter((f: any) =>
+        f.status === 'live' || f.status === 'half-time' || f.match_status === 'live' || f.match_status === 'ht'
+      );
+
+      const mappedMatches: LiveMatch[] = live.map((f: any) => {
+        const isHome = f.homeAway === 'home';
+        const homeTeam = isHome ? 'Syston Tigers' : f.opponent;
+        const awayTeam = isHome ? f.opponent : 'Syston Tigers';
+
+        return {
+          id: f.id,
+          title: `${homeTeam} vs ${awayTeam}`,
+          home: homeTeam,
+          away: awayTeam,
+          status: f.status === 'half-time' || f.match_status === 'ht' ? 'half-time' : 'live',
+        };
+      });
+
+      setLiveMatches(mappedMatches);
 
       // Auto-select first match if available
-      if (mockMatches.length > 0 && !selectedMatch) {
-        await watchMatch(mockMatches[0].id);
+      if (mappedMatches.length > 0 && !selectedMatch) {
+        await watchMatch(mappedMatches[0].id);
       }
     } catch (error) {
       console.error('Error loading live matches:', error);

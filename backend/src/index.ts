@@ -171,16 +171,7 @@ import {
     handleEventTypes,
     handleSecurityExport
 } from "./routes/securityDashboard";
-import {
-    handleVideoUpload,
-    handleVideoList,
-    handleVideoGet,
-    handleVideoStatus,
-    handleVideoProcess,
-    handleVideoDelete,
-    handleVideoStream,
-    handleVideoClips
-} from "./routes/videos";
+
 import {
     handleAnalyzeMistakes,
     handleGetMistakes,
@@ -496,12 +487,16 @@ router.post("/api/:v/push/send", (req, env) => handlePushSend(req, env));
 router.post("/api/:v/push/broadcast", (req, env) => handlePushBroadcast(req, env));
 
 // Events Routes
-import { createEvent, getEvent, rsvpEvent, getEventRsvps, cancelRsvp, listEvents, deleteEvent } from "./routes/events";
+import { createEvent, getEvent, rsvpEvent, getEventRsvps, cancelRsvp, listEvents, deleteEvent, updateEvent } from "./routes/events";
 router.post("/api/:v/events", (req, env, corsHdrs, requestId) => createEvent(req, env, requestId, corsHdrs));
 router.get("/api/:v/events", (req, env, corsHdrs, requestId) => listEvents(req, env, requestId, corsHdrs));
 router.get("/api/:v/events/:id", (req, env, corsHdrs, requestId) => {
     const params = (req as any).params || {};
     return getEvent(req, env, requestId, corsHdrs, params.id);
+});
+router.put("/api/:v/events/:id", (req, env, corsHdrs, requestId) => {
+    const params = (req as any).params || {};
+    return updateEvent(req, env, requestId, corsHdrs, params.id);
 });
 router.delete("/api/:v/events/:id", (req, env, corsHdrs, requestId) => {
     const params = (req as any).params || {};
@@ -512,6 +507,10 @@ router.post("/api/:v/events/:id/rsvp", (req, env, corsHdrs, requestId) => {
     return rsvpEvent(req, env, requestId, corsHdrs, params.id);
 });
 router.get("/api/:v/events/:id/rsvps", (req, env, corsHdrs, requestId) => {
+    const params = (req as any).params || {};
+    return getEventRsvps(req, env, requestId, corsHdrs, params.id);
+});
+router.get("/api/:v/events/:id/attendees", (req, env, corsHdrs, requestId) => {
     const params = (req as any).params || {};
     return getEventRsvps(req, env, requestId, corsHdrs, params.id);
 });
@@ -601,6 +600,21 @@ router.get("/api/:v/training/sessions/:id/drills", (req, env, corsHdrs) => {
     return handleGetSessionDrills(req, env, corsHdrs, params.id);
 });
 
+
+// Videos Routes
+
+// Videos Routes - Using logic from line 852+
+import {
+    handleVideoList, handleVideoGet, handleVideoUpload, handleVideoDelete,
+    handleVideoStatus, handleVideoProcess, handleVideoClips, handleVideoStream
+} from "./routes/videos";
+
+// Note: Additional video routes are defined at line 852
+
+
+
+
+
 // Content Moderation Routes
 router.post("/api/:v/content/report", (req, env, corsHdrs) => handleReportContent(req, env, corsHdrs));
 router.get("/api/:v/content/reports", (req, env, corsHdrs) => handleGetReports(req, env, corsHdrs));
@@ -614,19 +628,41 @@ router.put("/api/:v/content/reports/:reportId", (req, env, corsHdrs) => {
 import {
     handleInitVote,
     handleCastVote,
-    handleGetResults
+    handleGetResults,
+    handleOpenVoting,
+    handleCloseVoting,
+    handleGetTally,
+    handleListMotmSessions
 } from "./routes/motm";
+
 router.get("/api/:v/motm/:matchId", (req, env, corsHdrs) => {
     const params = (req as any).params || {};
     return handleInitVote(req, env, corsHdrs, params.matchId);
 });
-router.post("/api/:v/motm/:matchId/vote", (req, env, corsHdrs) => {
+router.post("/api/:v/matches/:matchId/motm/vote", (req, env, corsHdrs) => {
     const params = (req as any).params || {};
     return handleCastVote(req, env, corsHdrs, params.matchId);
 });
 router.get("/api/:v/motm/:matchId/results", (req, env, corsHdrs) => {
     const params = (req as any).params || {};
     return handleGetResults(req, env, corsHdrs, params.matchId);
+});
+
+// Admin MOTM
+router.post("/api/:v/admin/matches/:matchId/motm/open", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleOpenVoting(req, env, corsHdrs, params.matchId);
+});
+router.post("/api/:v/admin/matches/:matchId/motm/close", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleCloseVoting(req, env, corsHdrs, params.matchId);
+});
+router.get("/api/:v/admin/matches/:matchId/motm/tally", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleGetTally(req, env, corsHdrs, params.matchId);
+});
+router.get("/api/:v/admin/motm/sessions", (req, env, corsHdrs) => {
+    return handleListMotmSessions(req, env, corsHdrs);
 });
 
 // Social Media Routes
@@ -669,6 +705,20 @@ router.get("/api/:v/players/:id/goals", (req, env, corsHdrs) => {
     const params = (req as any).params || {};
     return handleGetPlayerGoals(req, env, corsHdrs, params.id);
 });
+// Player Images (Gallery)
+import {
+    handleListImages,
+    handleUploadImage,
+    handleDeleteImage
+} from "./routes/player-images";
+
+router.get("/api/:v/admin/player-images", (req, env, corsHdrs) => handleListImages(req, env, corsHdrs));
+router.post("/api/:v/admin/player-images", (req, env, corsHdrs) => handleUploadImage(req, env, corsHdrs));
+router.delete("/api/:v/admin/player-images/:id", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleDeleteImage(req, env, corsHdrs, params.id);
+});
+
 // Player details with contacts and login code
 router.get("/api/:v/players/:id", (req, env, corsHdrs) => {
     const params = (req as any).params || {};
@@ -1198,26 +1248,15 @@ router.post("/api/:v/scraper/run/:seasonId", (req, env, corsHdrs) => {
     return handleRunScraperForSeason(req, env, corsHdrs, params.seasonId);
 });
 
-// ===== WEARABLES / GPS TRACKING ROUTES =====
 
-// Device Management
-router.get("/api/:v/wearables/devices", (req, env, corsHdrs) => handleListDevices(req, env, corsHdrs));
-router.post("/api/:v/wearables/devices", (req, env, corsHdrs) => handleCreateDevice(req, env, corsHdrs));
-router.get("/api/:v/wearables/devices/:id", (req, env, corsHdrs) => {
-    const params = (req as any).params || {};
-    return handleGetDevice(req, env, corsHdrs, params.id);
-});
-router.put("/api/:v/wearables/devices/:id", (req, env, corsHdrs) => {
-    const params = (req as any).params || {};
-    return handleUpdateDevice(req, env, corsHdrs, params.id);
-});
-router.delete("/api/:v/wearables/devices/:id", (req, env, corsHdrs) => {
-    const params = (req as any).params || {};
-    return handleDeleteDevice(req, env, corsHdrs, params.id);
-});
 
-// Sessions
-router.get("/api/:v/wearables/sessions", (req, env, corsHdrs) => handleListWearableSessions(req, env, corsHdrs));
+
+
+
+
+
+
+
 router.post("/api/:v/wearables/sessions", (req, env, corsHdrs) => handleCreateWearableSession(req, env, corsHdrs));
 router.get("/api/:v/wearables/sessions/:id", (req, env, corsHdrs) => {
     const params = (req as any).params || {};
@@ -1267,6 +1306,22 @@ function respondWithCors(res: Response, base: Headers) {
     const headers = mergeHeaders(base, res.headers);
     return new Response(res.body, withSecurity({ status: res.status, headers }));
 }
+
+// Device Management Routes
+router.get("/api/:v/wearables/devices", (req, env, corsHdrs) => handleListDevices(req, env, corsHdrs));
+router.post("/api/:v/wearables/devices", (req, env, corsHdrs) => handleCreateDevice(req, env, corsHdrs));
+router.get("/api/:v/wearables/devices/:id", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleGetDevice(req, env, corsHdrs, params.id);
+});
+router.put("/api/:v/wearables/devices/:id", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleUpdateDevice(req, env, corsHdrs, params.id);
+});
+router.delete("/api/:v/wearables/devices/:id", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleDeleteDevice(req, env, corsHdrs, params.id);
+});
 
 export default {
     async fetch(req: Request, env: any, ctx: ExecutionContext): Promise<Response> {

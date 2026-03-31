@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   Platform,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Picker } from '@react-native-picker/picker';
 import {
   Card,
@@ -109,8 +110,7 @@ export default function FixtureSettingsScreen() {
     setSaving(true);
 
     try {
-      // TODO: Replace with actual JWT token from auth context
-      const token = 'YOUR_ADMIN_TOKEN';
+      const token = await AsyncStorage.getItem('auth_token') || '';
 
       const response = await fetch(`${API_URL}/api/${API_VERSION}/fixtures/settings`, {
         method: 'PUT',
@@ -127,7 +127,7 @@ export default function FixtureSettingsScreen() {
         const error = await response.json();
         Alert.alert('Error', error.error?.message || 'Failed to save settings');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to save settings:', error);
       Alert.alert('Error', 'Failed to save settings');
     } finally {
@@ -148,8 +148,8 @@ export default function FixtureSettingsScreen() {
       } else {
         Alert.alert('Connection Test', '❌ Failed to connect to backend');
       }
-    } catch (error) {
-      Alert.alert('Connection Test', '❌ Failed to connect: ' + error.message);
+    } catch (error: any) {
+      Alert.alert('Connection Test', '❌ Failed to connect: ' + (error?.message || 'Unknown error'));
     }
   };
 

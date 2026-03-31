@@ -23,31 +23,10 @@ interface Event {
   time: string;
   location: string;
   description: string;
-  rsvpCount: number;
+  rsvp_yes_count: number;
 }
 
-const mockEvents: Event[] = [
-  {
-    id: '1',
-    title: 'Training Session',
-    type: 'training',
-    date: '2025-10-12',
-    time: '18:00',
-    location: 'Syston Recreation Ground',
-    description: 'Regular Thursday training. Bring your boots!',
-    rsvpCount: 15,
-  },
-  {
-    id: '2',
-    title: 'End of Season BBQ',
-    type: 'social',
-    date: '2025-11-20',
-    time: '14:00',
-    location: 'Clubhouse',
-    description: 'Celebrate the season with food, drinks, and awards!',
-    rsvpCount: 32,
-  },
-];
+
 
 const eventTypes = [
   { value: 'match', label: '⚽ Match', color: '#F44336' },
@@ -80,8 +59,8 @@ export default function ManageEventsScreen() {
       setEvents(response.data || []);
     } catch (error) {
       console.error('Failed to load events:', error);
-      Alert.alert('Error', 'Failed to load events. Using local data.');
-      setEvents(mockEvents);
+      Alert.alert('Error', 'Failed to load events.');
+      setEvents([]);
     } finally {
       setLoading(false);
     }
@@ -199,67 +178,67 @@ export default function ManageEventsScreen() {
             </Card>
           ) : (
             events.map((event) => {
-            const typeInfo = getEventTypeInfo(event.type);
-            return (
-              <Card key={event.id} style={styles.eventCard}>
-                <Card.Content>
-                  <View style={styles.eventHeader}>
-                    <Chip
-                      style={[
-                        styles.typeChip,
-                        { backgroundColor: typeInfo.color },
-                      ]}
-                      textStyle={styles.chipText}
-                    >
-                      {typeInfo.label}
-                    </Chip>
-                    <Chip style={styles.rsvpChip}>
-                      ✓ {event.rsvpCount} going
-                    </Chip>
-                  </View>
+              const typeInfo = getEventTypeInfo(event.type);
+              return (
+                <Card key={event.id} style={styles.eventCard}>
+                  <Card.Content>
+                    <View style={styles.eventHeader}>
+                      <Chip
+                        style={[
+                          styles.typeChip,
+                          { backgroundColor: typeInfo.color },
+                        ]}
+                        textStyle={styles.chipText}
+                      >
+                        {typeInfo.label}
+                      </Chip>
+                      <Chip style={styles.rsvpChip}>
+                        ✓ {event.rsvp_yes_count} going
+                      </Chip>
+                    </View>
 
-                  <Title style={styles.eventTitle}>{event.title}</Title>
+                    <Title style={styles.eventTitle}>{event.title}</Title>
 
-                  <Divider style={styles.divider} />
+                    <Divider style={styles.divider} />
 
-                  <View style={styles.details}>
-                    <Paragraph style={styles.detailText}>
-                      📅 {event.date}
-                    </Paragraph>
-                    <Paragraph style={styles.detailText}>
-                      🕐 {event.time}
-                    </Paragraph>
-                    <Paragraph style={styles.detailText}>
-                      📍 {event.location}
-                    </Paragraph>
-                  </View>
+                    <View style={styles.details}>
+                      <Paragraph style={styles.detailText}>
+                        📅 {event.date}
+                      </Paragraph>
+                      <Paragraph style={styles.detailText}>
+                        🕐 {event.time}
+                      </Paragraph>
+                      <Paragraph style={styles.detailText}>
+                        📍 {event.location}
+                      </Paragraph>
+                    </View>
 
-                  {event.description && (
-                    <Paragraph style={styles.description}>
-                      {event.description}
-                    </Paragraph>
-                  )}
+                    {event.description && (
+                      <Paragraph style={styles.description}>
+                        {event.description}
+                      </Paragraph>
+                    )}
 
-                  <View style={styles.actions}>
-                    <Button
-                      mode="outlined"
-                      onPress={() => openEditModal(event)}
-                      style={styles.actionButton}
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      mode="outlined"
-                      onPress={() => handleDelete(event.id)}
-                      style={styles.actionButton}
-                      textColor={COLORS.error}
-                    >
-                      Delete
-                    </Button>
-                  </View>
-                </Card.Content>
-              </Card>
-            );
+                    <View style={styles.actions}>
+                      <Button
+                        mode="outlined"
+                        onPress={() => openEditModal(event)}
+                        style={styles.actionButton}
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        mode="outlined"
+                        onPress={() => handleDelete(event.id)}
+                        style={styles.actionButton}
+                        textColor={COLORS.error}
+                      >
+                        Delete
+                      </Button>
+                    </View>
+                  </Card.Content>
+                </Card>
+              );
             })
           )}
         </View>

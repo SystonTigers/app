@@ -29,7 +29,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Svg, { Path, Rect, Circle, Line, Text as SvgText, G, Defs, LinearGradient, Stop } from 'react-native-svg';
 import { COLORS, API_BASE_URL, TENANT_ID } from '../config';
 import { useAuth } from '../context/AuthContext';
-import api from '../services/api';
+import api, { wearablesApi, squadApi } from '../services/api';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const MAP_WIDTH = SCREEN_WIDTH - 64;
@@ -104,72 +104,7 @@ interface PlayerSummary {
   injuryRiskLevel: 'low' | 'medium' | 'high';
 }
 
-// Mock data for demo
-const mockPlayers: Player[] = [
-  { id: '1', name: 'John Smith', position: 'Forward', number: 10 },
-  { id: '2', name: 'Mike Jones', position: 'Midfielder', number: 7 },
-  { id: '3', name: 'Tom Brown', position: 'Defender', number: 5 },
-  { id: '4', name: 'Sam Wilson', position: 'Goalkeeper', number: 1 },
-];
-
-const mockSessions: Session[] = [
-  {
-    id: '1',
-    sessionType: 'match',
-    sessionName: 'vs Panthers - Home',
-    sessionDate: '2024-12-08',
-    durationMinutes: 70,
-    entryMethod: 'automatic',
-    metrics: {
-      totalDistanceM: 8500,
-      topSpeedKmh: 28.5,
-      avgSpeedKmh: 7.2,
-      sprintCount: 15,
-      maxHeartRate: 189,
-      avgHeartRate: 152,
-      accelerationCount: 45,
-      decelerationCount: 42,
-      playerLoad: 450,
-      heatmap: {
-        gridWidth: 12,
-        gridHeight: 8,
-        cells: generateMockHeatmap(),
-      },
-    },
-    gpsTrack: generateMockGPSTrack(),
-  },
-  {
-    id: '2',
-    sessionType: 'training',
-    sessionName: 'Tuesday Training',
-    sessionDate: '2024-12-05',
-    durationMinutes: 90,
-    entryMethod: 'automatic',
-    metrics: {
-      totalDistanceM: 6200,
-      topSpeedKmh: 25.1,
-      avgSpeedKmh: 5.8,
-      sprintCount: 8,
-      avgHeartRate: 138,
-      playerLoad: 320,
-    },
-  },
-  {
-    id: '3',
-    sessionType: 'match',
-    sessionName: 'vs Lions - Away',
-    sessionDate: '2024-12-01',
-    durationMinutes: 70,
-    entryMethod: 'manual',
-    metrics: {
-      totalDistanceM: 7800,
-      topSpeedKmh: 27.2,
-      sprintCount: 12,
-      perceivedExertion: 8,
-      fatigueLevel: 7,
-    },
-  },
-];
+// (mock data arrays removed — data loaded from API at runtime)
 
 function generateMockHeatmap(): HeatmapCell[] {
   const cells: HeatmapCell[] = [];
@@ -608,44 +543,84 @@ function ManualEntryModal({
 
 // Main Screen
 export default function WearablesScreen() {
-  const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(mockPlayers[0]);
-  const [sessions, setSessions] = useState<Session[]>(mockSessions);
-  const [selectedSession, setSelectedSession] = useState<Session | null>(mockSessions[0]);
+  const [players, setPlayers] = useState<Player[]>([]);
+  const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
+  const [sessions, setSessions] = useState<Session[]>([]);
+  const [selectedSession, setSelectedSession] = useState<Session | null>(null);
   const [viewMode, setViewMode] = useState<string>('track');
   const [manualModalVisible, setManualModalVisible] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [playerSummary, setPlayerSummary] = useState<PlayerSummary | null>(null);
 
-  // Mock summary data
+  // Load data on mount
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  // Load player summary when player changes
   useEffect(() => {
     if (selectedPlayer) {
-      setPlayerSummary({
-        playerId: selectedPlayer.id,
-        playerName: selectedPlayer.name,
-        lastSessionDate: '2024-12-08',
-        totalSessions: 24,
-        seasonTotalDistanceKm: 156.8,
-        seasonTotalSprints: 312,
-        recentAvgDistanceKm: 7.2,
-        recentAvgTopSpeedKmh: 26.8,
-        injuryRiskLevel: 'low',
-      });
+      loadPlayerSummary(selectedPlayer.id);
     }
   }, [selectedPlayer]);
 
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const [sessionsRes, squadRes] = await Promise.all([
+        wearablesApi.listSessions().catch(() => ({ data: [] })),
+        squadApi.getSquad().catch(() => ({ data: [] })),
+      ]);
+      const squadData = (squadRes?.data || []).map((p: any) => ({
+        id: p.id || p.playerId,
+        name: p.name || `${p.firstName || ''} ${p.lastName || ''}`.trim(),
+        position: p.position,
+        number: p.number || p.squadNumber,
+      }));
+      setPlayers(squadData);
+      if (squadData.length > 0 && !selectedPlayer) setSelectedPlayer(squadData[0]);
+      const sessData = (sessionsRes?.data || []).map((s: any) => ({
+        id: s.id || s.sessionId,
+        sessionType: s.sessionType || s.type || 'training',
+        sessionName: s.sessionName || s.name || '',
+        sessionDate: s.sessionDate || s.date || '',
+        durationMinutes: s.durationMinutes || s.duration,
+        entryMethod: s.entryMethod || 'automatic',
+        metrics: s.metrics || {},
+        gpsTrack: s.gpsTrack,
+        player: s.player,
+      }));
+      setSessions(sessData);
+      if (sessData.length > 0) setSelectedSession(sessData[0]);
+    } catch (err) {
+      console.error('Error loading wearables:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadPlayerSummary = async (playerId: string) => {
+    try {
+      const result = await wearablesApi.getPlayerSummary(playerId);
+      if (result?.data) {
+        setPlayerSummary(result.data);
+      }
+    } catch (err) {
+      console.error('Error loading player summary:', err);
+    }
+  };
+
   const handleRefresh = async () => {
     setRefreshing(true);
-    // In real app, fetch from API
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await loadData();
     setRefreshing(false);
   };
 
   const handleManualSubmit = async (data: any) => {
     setLoading(true);
     try {
-      // In real app, POST to /api/v1/wearables/manual
-      console.log('Submitting manual entry:', data);
+      await wearablesApi.manualEntry(data);
       Alert.alert('Success', 'Data saved successfully!');
       handleRefresh();
     } catch (error) {
@@ -685,7 +660,7 @@ export default function WearablesScreen() {
 
         {/* Player Selector */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.playerScroll}>
-          {mockPlayers.map(player => (
+          {players.map(player => (
             <TouchableOpacity
               key={player.id}
               onPress={() => setSelectedPlayer(player)}

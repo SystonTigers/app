@@ -28,26 +28,7 @@ interface Fixture {
   awayScore?: number;
 }
 
-const mockFixtures: Fixture[] = [
-  {
-    id: '1',
-    opponent: 'Leicester Panthers',
-    date: '2025-10-15',
-    time: '14:00',
-    venue: 'Syston Recreation Ground',
-    competition: 'League',
-    homeAway: 'home',
-  },
-  {
-    id: '2',
-    opponent: 'Loughborough Lions',
-    date: '2025-10-22',
-    time: '15:00',
-    venue: 'Loughborough Stadium',
-    competition: 'Cup',
-    homeAway: 'away',
-  },
-];
+
 
 export default function ManageFixturesScreen() {
   const [fixtures, setFixtures] = useState<Fixture[]>([]);
@@ -77,8 +58,9 @@ export default function ManageFixturesScreen() {
       setFixtures(response.data || []);
     } catch (error) {
       console.error('Failed to load fixtures:', error);
-      Alert.alert('Error', 'Failed to load fixtures. Using local data.');
-      setFixtures(mockFixtures); // Fallback to mock data
+      console.error('Failed to load fixtures:', error);
+      Alert.alert('Error', 'Failed to load fixtures.');
+      setFixtures([]);
     } finally {
       setLoading(false);
     }
@@ -200,74 +182,74 @@ export default function ManageFixturesScreen() {
             </Card>
           ) : (
             fixtures.map((fixture) => (
-            <Card key={fixture.id} style={styles.fixtureCard}>
-              <Card.Content>
-                <View style={styles.fixtureHeader}>
-                  <Chip
-                    style={[
-                      styles.competitionChip,
-                      { backgroundColor: fixture.competition === 'Cup' ? '#FF9800' : '#4CAF50' },
-                    ]}
-                    textStyle={styles.chipText}
-                  >
-                    {fixture.competition}
-                  </Chip>
-                  <Chip
-                    style={[
-                      styles.locationChip,
-                      { backgroundColor: fixture.homeAway === 'home' ? '#2196F3' : '#9E9E9E' },
-                    ]}
-                    textStyle={styles.chipText}
-                  >
-                    {fixture.homeAway === 'home' ? '🏠 Home' : '✈️ Away'}
-                  </Chip>
-                </View>
+              <Card key={fixture.id} style={styles.fixtureCard}>
+                <Card.Content>
+                  <View style={styles.fixtureHeader}>
+                    <Chip
+                      style={[
+                        styles.competitionChip,
+                        { backgroundColor: fixture.competition === 'Cup' ? '#FF9800' : '#4CAF50' },
+                      ]}
+                      textStyle={styles.chipText}
+                    >
+                      {fixture.competition}
+                    </Chip>
+                    <Chip
+                      style={[
+                        styles.locationChip,
+                        { backgroundColor: fixture.homeAway === 'home' ? '#2196F3' : '#9E9E9E' },
+                      ]}
+                      textStyle={styles.chipText}
+                    >
+                      {fixture.homeAway === 'home' ? '🏠 Home' : '✈️ Away'}
+                    </Chip>
+                  </View>
 
-                <View style={styles.matchup}>
-                  <Title style={styles.teamName}>
-                    {fixture.homeAway === 'home' ? 'Syston Tigers' : fixture.opponent}
-                  </Title>
-                  <Title style={styles.vs}>vs</Title>
-                  <Title style={styles.teamName}>
-                    {fixture.homeAway === 'home' ? fixture.opponent : 'Syston Tigers'}
-                  </Title>
-                </View>
-
-                {fixture.homeScore !== undefined && fixture.awayScore !== undefined && (
-                  <View style={styles.scoreContainer}>
-                    <Title style={styles.score}>
-                      {fixture.homeScore} - {fixture.awayScore}
+                  <View style={styles.matchup}>
+                    <Title style={styles.teamName}>
+                      {fixture.homeAway === 'home' ? 'Syston Tigers' : fixture.opponent}
+                    </Title>
+                    <Title style={styles.vs}>vs</Title>
+                    <Title style={styles.teamName}>
+                      {fixture.homeAway === 'home' ? fixture.opponent : 'Syston Tigers'}
                     </Title>
                   </View>
-                )}
 
-                <Divider style={styles.divider} />
+                  {fixture.homeScore !== undefined && fixture.awayScore !== undefined && (
+                    <View style={styles.scoreContainer}>
+                      <Title style={styles.score}>
+                        {fixture.homeScore} - {fixture.awayScore}
+                      </Title>
+                    </View>
+                  )}
 
-                <View style={styles.details}>
-                  <Paragraph style={styles.detailText}>📅 {fixture.date}</Paragraph>
-                  <Paragraph style={styles.detailText}>🕐 {fixture.time}</Paragraph>
-                  <Paragraph style={styles.detailText}>📍 {fixture.venue}</Paragraph>
-                </View>
+                  <Divider style={styles.divider} />
 
-                <View style={styles.actions}>
-                  <Button
-                    mode="outlined"
-                    onPress={() => openEditModal(fixture)}
-                    style={styles.actionButton}
-                  >
-                    Edit
-                  </Button>
-                  <Button
-                    mode="outlined"
-                    onPress={() => handleDelete(fixture.id)}
-                    style={styles.actionButton}
-                    textColor={COLORS.error}
-                  >
-                    Delete
-                  </Button>
-                </View>
-              </Card.Content>
-            </Card>
+                  <View style={styles.details}>
+                    <Paragraph style={styles.detailText}>📅 {fixture.date}</Paragraph>
+                    <Paragraph style={styles.detailText}>🕐 {fixture.time}</Paragraph>
+                    <Paragraph style={styles.detailText}>📍 {fixture.venue}</Paragraph>
+                  </View>
+
+                  <View style={styles.actions}>
+                    <Button
+                      mode="outlined"
+                      onPress={() => openEditModal(fixture)}
+                      style={styles.actionButton}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      mode="outlined"
+                      onPress={() => handleDelete(fixture.id)}
+                      style={styles.actionButton}
+                      textColor={COLORS.error}
+                    >
+                      Delete
+                    </Button>
+                  </View>
+                </Card.Content>
+              </Card>
             ))
           )}
         </View>

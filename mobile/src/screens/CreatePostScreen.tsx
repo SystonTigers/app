@@ -12,6 +12,7 @@ import {
 } from 'react-native-paper';
 import { COLORS } from '../config';
 import { feedApi } from '../services/api';
+import * as ImagePicker from 'expo-image-picker';
 
 const socialChannels = [
   { id: 'feed', name: 'App Feed', icon: '📱', color: '#FFD700' },
@@ -39,9 +40,28 @@ export default function CreatePostScreen({ navigation }: any) {
     setCharCount(text.length);
   };
 
-  const handleAddMedia = () => {
-    // TODO: Implement image picker
-    alert('Image picker coming soon!');
+  const handleAddMedia = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission needed', 'Please grant camera roll permissions to add photos.');
+      return;
+    }
+
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsMultipleSelection: true,
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets.length > 0) {
+        const newUrls = result.assets.map(asset => asset.uri);
+        setMediaUrls([...mediaUrls, ...newUrls]);
+      }
+    } catch (error) {
+      console.error('Image picker error:', error);
+      Alert.alert('Error', 'Failed to pick images. Please try again.');
+    }
   };
 
   const handlePost = async () => {

@@ -90,6 +90,54 @@ export async function createEvent(req: Request, env: any, requestId: string, cor
     }
 }
 
+// PUT /api/v1/events/:id
+export async function updateEvent(req: Request, env: any, requestId: string, corsHdrs: Headers, id: string) {
+    try {
+        const claims = await requireJWT(req, env);
+        const body = await req.json();
+
+        // Use Partial of CreateEventSchema for updates
+        const UpdateEventSchema = CreateEventSchema.partial();
+        const data = UpdateEventSchema.parse(body);
+
+        const updates: string[] = [];
+        const params: any[] = [];
+
+        if (data.title !== undefined) {
+            updates.push("title = ?");
+            params.push(data.title);
+        }
+        if (data.date !== undefined) {
+            updates.push("start_time = ?");
+            params.push(data.date);
+        }
+        if (data.location !== undefined) {
+            updates.push("location = ?");
+            params.push(data.location);
+        }
+        if (data.description !== undefined) {
+            updates.push("description = ?");
+            params.push(data.description);
+        }
+
+        if (updates.length === 0) {
+            return json({ success: false, error: "No fields to update" }, 400, corsHdrs);
+        }
+
+        params.push(id, claims.tenantId);
+
+        await env.DB.prepare(
+            `UPDATE calendar_events SET ${updates.join(", ")} WHERE id = ? AND tenant_id = ?`
+        ).bind(...params).run();
+
+        return json({ success: true }, 200, corsHdrs);
+    } catch (err: any) {
+        if (err instanceof Response) { throw err; }
+        logJSON({ level: "error", requestId, msg: "UPDATE_EVENT_ERROR", error: err.message });
+        return json({ success: false, error: { code: "SERVER_ERROR", message: err.message } }, 500, corsHdrs);
+    }
+}
+
 // GET /api/v1/events/:id
 // SECURITY: Validates tenant ownership before returning event data
 export async function getEvent(req: Request, env: any, requestId: string, corsHdrs: Headers, id: string) {

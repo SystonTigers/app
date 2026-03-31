@@ -5,6 +5,8 @@ import { Picker } from '@react-native-picker/picker';
 import { useTheme } from '../theme/';
 import { Card, SectionHeader, Button, Badge, Divider, EmptyState, LoadingSpinner } from '../components';
 import { API_BASE_URL, TENANT_ID, API_ENDPOINTS } from '../config';
+import { useAuth } from '../context/AuthContext';
+import { squadApi } from '../services/api';
 import axios from 'axios';
 
 /**
@@ -48,6 +50,7 @@ const ROLE_OPTIONS = [
 
 export default function TeamMembersScreen() {
   const { theme } = useTheme();
+  const { user } = useAuth();
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [roleHistory, setRoleHistory] = useState<RoleChangeHistory[]>([]);
   const [loading, setLoading] = useState(true);
@@ -57,8 +60,7 @@ export default function TeamMembersScreen() {
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
 
-  // Current user (mock - will come from auth context)
-  const currentUser = { id: 'user1', role: 'admin' };
+  const currentUser = { id: user?.id || '', role: user?.role || 'viewer' };
   const isAdmin = currentUser.role === 'admin';
 
   useEffect(() => {
@@ -71,57 +73,17 @@ export default function TeamMembersScreen() {
   const loadMembers = async () => {
     setLoading(true);
     try {
-      // Mock data for now - will connect to real API
-      const mockMembers: TeamMember[] = [
-        {
-          id: '1',
-          name: 'John Smith',
-          email: 'john@example.com',
-          role: 'admin',
-          joinedAt: '2024-01-15',
-          lastActive: '2025-10-12',
-        },
-        {
-          id: '2',
-          name: 'Sarah Jones',
-          email: 'sarah@example.com',
-          role: 'coach',
-          joinedAt: '2024-02-01',
-          lastActive: '2025-10-11',
-        },
-        {
-          id: '3',
-          name: 'Mike Wilson',
-          email: 'mike@example.com',
-          role: 'player',
-          joinedAt: '2024-03-10',
-          lastActive: '2025-10-10',
-        },
-        {
-          id: '4',
-          name: 'Emma Davis',
-          email: 'emma@example.com',
-          role: 'parent',
-          joinedAt: '2024-03-15',
-          lastActive: '2025-10-09',
-        },
-        {
-          id: '5',
-          name: 'Tom Brown',
-          email: 'tom@example.com',
-          role: 'viewer',
-          joinedAt: '2024-04-01',
-          lastActive: '2025-10-08',
-        },
-      ];
-
-      // In production, fetch from API:
-      // const response = await axios.get(`${API_BASE_URL}/api/v1/team/members`, {
-      //   params: { tenant: TENANT_ID }
-      // });
-      // setMembers(response.data);
-
-      setMembers(mockMembers);
+      const result = await squadApi.getSquad();
+      const squad = result?.data || [];
+      const mapped: TeamMember[] = squad.map((p: any) => ({
+        id: p.id || p.playerId,
+        name: p.name || `${p.firstName || ''} ${p.lastName || ''}`.trim(),
+        email: p.email || '',
+        role: p.role || 'player',
+        joinedAt: p.joinedAt || p.createdAt || '',
+        lastActive: p.lastActive || '',
+      }));
+      setMembers(mapped);
     } catch (error) {
       console.error('Error loading members:', error);
       Alert.alert('Error', 'Failed to load team members');
@@ -132,37 +94,8 @@ export default function TeamMembersScreen() {
 
   const loadRoleHistory = async () => {
     try {
-      // Mock audit history
-      const mockHistory: RoleChangeHistory[] = [
-        {
-          id: '1',
-          userId: '2',
-          userName: 'Sarah Jones',
-          oldRole: 'player',
-          newRole: 'coach',
-          changedBy: 'John Smith',
-          changedAt: '2024-06-15T10:30:00Z',
-          reason: 'Promoted to assistant coach',
-        },
-        {
-          id: '2',
-          userId: '3',
-          userName: 'Mike Wilson',
-          oldRole: 'viewer',
-          newRole: 'player',
-          changedBy: 'John Smith',
-          changedAt: '2024-03-20T14:15:00Z',
-          reason: 'Added to squad',
-        },
-      ];
-
-      // In production, fetch from audit endpoint:
-      // const response = await axios.get(`${API_BASE_URL}/api/v1/audit/role-changes`, {
-      //   params: { tenant: TENANT_ID }
-      // });
-      // setRoleHistory(response.data);
-
-      setRoleHistory(mockHistory);
+      // Role history is not yet backed by a dedicated endpoint; leave empty for now
+      setRoleHistory([]);
     } catch (error) {
       console.error('Error loading role history:', error);
     }
@@ -181,15 +114,7 @@ export default function TeamMembersScreen() {
 
     setSaving(true);
     try {
-      // In production, call API:
-      // await axios.put(`${API_BASE_URL}/api/v1/team/members/${member.id}/role`, {
-      //   tenant: TENANT_ID,
-      //   role: newRole,
-      //   changedBy: currentUser.id,
-      //   reason: 'Manual role change',
-      // });
-
-      // Update local state
+      await squadApi.updatePlayer(member.id, { role: newRole });
       setMembers(members.map(m =>
         m.id === member.id ? { ...m, role: newRole as any } : m
       ));

@@ -12,40 +12,7 @@ import FeedCard from '../components/FeedCard';
 import GlobalSearch from '../components/GlobalSearch';
 import { SkeletonCard } from '../components/LoadingSkeleton';
 
-// Mock Quick Stats
-const MOCK_STATS = {
-  position: 2,
-  points: 45,
-  won: 14,
-  goalDifference: 22,
-};
 
-// Mock Dynamic Feed Data (Until backend supports aggregated feed)
-const MOCK_FEED = [
-  {
-    type: 'vote',
-    id: 'vote-1',
-    matchTitle: 'SYSTON TIGERS vs RIVAL FC',
-    dueDate: 'TONIGHT 8PM',
-  },
-  {
-    type: 'result',
-    id: 'res-1',
-    homeTeam: 'Syston Tigers',
-    awayTeam: 'Rival FC',
-    homeScore: 3,
-    awayScore: 0,
-    date: '2023-10-28',
-    competition: 'Premier Division',
-  },
-  {
-    type: 'highlight',
-    id: 'highlight-1',
-    title: 'GOAL OF THE SEASON! Smith nets from 30 yards',
-    duration: '0:45',
-    thumbnailUrl: 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=800',
-  },
-];
 
 export default function HomeScreen({ navigation }: any) {
   const { theme } = useTheme();
@@ -56,6 +23,8 @@ export default function HomeScreen({ navigation }: any) {
   const [nextFixture, setNextFixture] = useState<Fixture | null>(null);
   const [fixturesLoading, setFixturesLoading] = useState(true);
   const [newsPosts, setNewsPosts] = useState<any[]>([]);
+  const [feedItems, setFeedItems] = useState<any[]>([]);
+  const [quickStats, setQuickStats] = useState({ position: '-', points: '-', won: '-', goalDifference: '-' });
   const [showSearch, setShowSearch] = useState(false);
 
   const loadData = useCallback(async () => {
@@ -63,10 +32,13 @@ export default function HomeScreen({ navigation }: any) {
     try {
       const [fixtures, news] = await Promise.all([
         getUpcomingFixtures({ limit: 1 }),
-        feedApi.getPosts(1, 3)
+        feedApi.getPosts(1, 10)
       ]);
       setNextFixture(fixtures[0] || null);
-      setNewsPosts(Array.isArray(news.data) ? news.data : []);
+      const allPosts = Array.isArray(news.data) ? news.data : [];
+      setNewsPosts(allPosts.filter((p: any) => p.type === 'news' || !p.type));
+      // Extract vote, result, highlight items from feed
+      setFeedItems(allPosts.filter((p: any) => p.type === 'vote' || p.type === 'result' || p.type === 'highlight'));
     } catch (error) {
       console.error('Failed to load home data', error);
     } finally {
@@ -130,33 +102,38 @@ export default function HomeScreen({ navigation }: any) {
 
       {/* 2. QUICK STATS ROW */}
       <View style={styles.statsRow}>
-        <StatItem label="POS" value={MOCK_STATS.position} icon="trophy-variant" colors={colors} />
-        <StatItem label="PTS" value={MOCK_STATS.points} icon="star" colors={colors} />
-        <StatItem label="WON" value={MOCK_STATS.won} icon="trophy" colors={colors} />
-        <StatItem label="GD" value={`+${MOCK_STATS.goalDifference}`} icon="target" colors={colors} />
+        <StatItem label="POS" value={quickStats.position} icon="trophy-variant" colors={colors} />
+        <StatItem label="PTS" value={quickStats.points} icon="star" colors={colors} />
+        <StatItem label="WON" value={quickStats.won} icon="trophy" colors={colors} />
+        <StatItem label="GD" value={quickStats.goalDifference} icon="target" colors={colors} />
       </View>
 
       {/* 3. TEAM FEED TIMELINE */}
       <View style={styles.feedContainer}>
         <Text style={[styles.feedHeader, { color: colors.text }]}>LATEST UPDATES</Text>
 
-        {/* FEED ITEM 1: Vote Card (Interactive) */}
-        <VoteCard
-          matchTitle={MOCK_FEED[0].matchTitle}
-          dueDate={MOCK_FEED[0].dueDate}
-          onVote={() => navigation.navigate('MOTMVoting')}
-        />
-
-        {/* FEED ITEM 2: Result Card */}
-        <ResultCard
-          {...(MOCK_FEED[1] as any)}
-        />
-
-        {/* FEED ITEM 3: Highlight Card */}
-        <HighlightCard
-          {...(MOCK_FEED[2] as any)}
-          onPress={() => navigation.navigate('Videos')} // Or specific video
-        />
+        {/* Dynamic feed items */}
+        {feedItems.map((item) => {
+          if (item.type === 'vote') return (
+            <VoteCard
+              key={item.id}
+              matchTitle={item.matchTitle || item.title || ''}
+              dueDate={item.dueDate || item.closesAt || ''}
+              onVote={() => navigation.navigate('MOTMVoting')}
+            />
+          );
+          if (item.type === 'result') return (
+            <ResultCard key={item.id} {...item} />
+          );
+          if (item.type === 'highlight') return (
+            <HighlightCard
+              key={item.id}
+              {...item}
+              onPress={() => navigation.navigate('Videos')}
+            />
+          );
+          return null;
+        })}
 
         {/* FEED ITEMS: News Posts */}
         {newsPosts.map((post) => (

@@ -3,7 +3,7 @@ import { View, ScrollView, StyleSheet, Image, TouchableOpacity, Alert, ActivityI
 import { Card, Title, Paragraph, Button, FAB, Portal, Modal, TextInput, Chip, IconButton } from 'react-native-paper';
 import * as ImagePicker from 'expo-image-picker';
 import { COLORS } from '../config';
-import { playerImagesApi } from '../services/api';
+import { playerImagesApi, squadApi } from '../services/api';
 
 interface PlayerImage {
   id: string;
@@ -15,26 +15,11 @@ interface PlayerImage {
   uploadedBy: string;
 }
 
-const mockPlayerImages: PlayerImage[] = [
-  { id: '1', playerId: 'p1', playerName: 'James Mitchell', type: 'headshot', imageUrl: 'https://picsum.photos/400/400?random=101', uploadedAt: '2025-10-01', uploadedBy: 'Admin' },
-  { id: '2', playerId: 'p1', playerName: 'James Mitchell', type: 'action', imageUrl: 'https://picsum.photos/400/400?random=102', uploadedAt: '2025-09-15', uploadedBy: 'Admin' },
-  { id: '3', playerId: 'p2', playerName: 'Tom Davies', type: 'headshot', imageUrl: 'https://picsum.photos/400/400?random=103', uploadedAt: '2025-10-01', uploadedBy: 'Admin' },
-  { id: '4', playerId: 'p2', playerName: 'Tom Davies', type: 'action', imageUrl: 'https://picsum.photos/400/400?random=104', uploadedAt: '2025-09-20', uploadedBy: 'Admin' },
-  { id: '5', playerId: 'p3', playerName: 'Luke Harrison', type: 'headshot', imageUrl: 'https://picsum.photos/400/400?random=105', uploadedAt: '2025-09-28', uploadedBy: 'Admin' },
-];
-
-const mockPlayers = [
-  { id: 'p1', name: 'James Mitchell', number: 9 },
-  { id: 'p2', name: 'Tom Davies', number: 10 },
-  { id: 'p3', name: 'Luke Harrison', number: 7 },
-  { id: 'p4', name: 'Sam Roberts', number: 4 },
-  { id: 'p5', name: 'Ben Parker', number: 1 },
-];
-
 export default function ManagePlayerImagesScreen() {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
-  const [images, setImages] = useState<PlayerImage[]>(mockPlayerImages);
+  const [images, setImages] = useState<PlayerImage[]>([]);
+  const [players, setPlayers] = useState<any[]>([]);
   const [uploadModalVisible, setUploadModalVisible] = useState(false);
   const [selectedImage, setSelectedImage] = useState<PlayerImage | null>(null);
   const [uploadData, setUploadData] = useState({
@@ -46,24 +31,35 @@ export default function ManagePlayerImagesScreen() {
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'headshots' | 'action'>('all');
 
   useEffect(() => {
-    loadImages();
+    loadData();
   }, [selectedFilter]);
 
-  const loadImages = async () => {
+  const loadData = async () => {
     try {
       setLoading(true);
       const type = selectedFilter === 'all' ? undefined : selectedFilter === 'headshots' ? 'headshot' : 'action';
-      const response = await playerImagesApi.listImages(undefined, type);
-      if (response.success && response.data) {
-        setImages(response.data);
+
+      const [imagesRes, squadRes] = await Promise.all([
+        playerImagesApi.listImages(undefined, type),
+        squadApi.getSquad()
+      ]);
+
+      if (imagesRes.success && imagesRes.data) {
+        setImages(imagesRes.data);
+      }
+
+      if (squadRes.success && squadRes.data) {
+        setPlayers(squadRes.data);
       }
     } catch (error) {
-      console.error('Failed to load images:', error);
-      Alert.alert('Error', 'Failed to load player images. Using defaults.');
+      console.error('Failed to load data:', error);
+      Alert.alert('Error', 'Failed to load data. Please check connection.');
     } finally {
       setLoading(false);
     }
   };
+
+
 
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -116,12 +112,11 @@ export default function ManagePlayerImagesScreen() {
         playerId: uploadData.playerId,
         playerName: uploadData.playerName,
         type: uploadData.type,
-        imageUrl: uploadData.imageUri,
-        r2Key: `players/${uploadData.playerId}/${Date.now()}.jpg`,
+        imageUri: uploadData.imageUri,
       });
 
       if (response.success) {
-        await loadImages();
+        await loadData();
         setUploadModalVisible(false);
         setUploadData({ playerId: '', playerName: '', type: 'headshot', imageUri: null });
         Alert.alert('Success', 'Player image uploaded successfully!');
@@ -150,7 +145,7 @@ export default function ManagePlayerImagesScreen() {
               const response = await playerImagesApi.deleteImage(imageId);
               if (response.success) {
                 setSelectedImage(null);
-                await loadImages();
+                await loadData();
                 Alert.alert('Deleted', 'Image has been removed.');
               } else {
                 Alert.alert('Error', 'Failed to delete image.');
@@ -334,7 +329,7 @@ export default function ManagePlayerImagesScreen() {
           {/* Player Selection */}
           <Paragraph style={styles.modalLabel}>Select Player</Paragraph>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.playerSelector}>
-            {mockPlayers.map(player => (
+            {players.map((player: any) => (
               <Chip
                 key={player.id}
                 selected={uploadData.playerId === player.id}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Linking, Dimensions } from 'react-native';
+import { View, StyleSheet, Linking, Dimensions, Alert } from 'react-native';
 import { Card, Title, Paragraph, Button, IconButton } from 'react-native-paper';
 import { WebView } from 'react-native-webview';
 import { COLORS } from '../config';
@@ -249,9 +249,17 @@ export default function MatchWidget({ nextFixture, liveUpdates, onRefresh, navig
               <View style={styles.quickActions}>
                 <Button
                   mode="outlined"
-                  onPress={() => {
-                    // TODO: Call sdk.setMatchState with kickoff
-                    console.log('Kickoff');
+                  onPress={async () => {
+                    try {
+                      await liveMatchApi.updateLiveMatch(String(nextFixture.id), {
+                        type: 'status',
+                        status: 'live',
+                      });
+                      Alert.alert('Match Started', 'Kickoff! Match is now live.');
+                      onRefresh?.();
+                    } catch (err) {
+                      Alert.alert('Error', 'Failed to set match state.');
+                    }
                   }}
                   style={styles.quickActionButton}
                   compact
@@ -260,9 +268,17 @@ export default function MatchWidget({ nextFixture, liveUpdates, onRefresh, navig
                 </Button>
                 <Button
                   mode="outlined"
-                  onPress={() => {
-                    // TODO: Call sdk.setMatchState with halftime
-                    console.log('Half-time');
+                  onPress={async () => {
+                    try {
+                      await liveMatchApi.updateLiveMatch(String(nextFixture.id), {
+                        type: 'status',
+                        status: 'halftime',
+                      });
+                      Alert.alert('Half-time', 'Match is at half-time.');
+                      onRefresh?.();
+                    } catch (err) {
+                      Alert.alert('Error', 'Failed to set match state.');
+                    }
                   }}
                   style={styles.quickActionButton}
                   compact
@@ -271,9 +287,17 @@ export default function MatchWidget({ nextFixture, liveUpdates, onRefresh, navig
                 </Button>
                 <Button
                   mode="outlined"
-                  onPress={() => {
-                    // TODO: Call sdk.setMatchState with fulltime
-                    console.log('Full-time');
+                  onPress={async () => {
+                    try {
+                      await liveMatchApi.updateLiveMatch(String(nextFixture.id), {
+                        type: 'status',
+                        status: 'ft',
+                      });
+                      Alert.alert('Full-time', 'Match is over. Full-time!');
+                      onRefresh?.();
+                    } catch (err) {
+                      Alert.alert('Error', 'Failed to set match state.');
+                    }
                   }}
                   style={styles.quickActionButton}
                   compact

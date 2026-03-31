@@ -8,15 +8,30 @@ export async function handleCreateFixture(req: Request, env: any, corsHdrs: Head
         const body = await req.json() as any;
         const id = crypto.randomUUID();
 
+        // Get tenant name for home_team/away_team logic
+        const tenant = await env.DB.prepare("SELECT name FROM tenants WHERE id = ?").bind(claims.tenantId).first();
+        const ourTeam = tenant?.name || 'Syston Tigers';
+
+        let homeTeam, awayTeam;
+        if (body.homeAway === 'away') {
+            homeTeam = body.opponent;
+            awayTeam = ourTeam;
+        } else {
+            homeTeam = ourTeam;
+            awayTeam = body.opponent;
+        }
+
         await env.DB.prepare(
-            `INSERT INTO fixtures (id, tenant_id, fixture_date, kick_off_time, opponent, venue, competition, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 'scheduled')`
+            `INSERT INTO fixtures (id, tenant_id, fixture_date, kick_off_time, opponent, venue, competition, status, home_team, away_team, home_score, away_score)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'scheduled', ?, ?, ?, ?)`
         ).bind(
-            id, claims.tenantId, body.date, body.time, body.opponent, body.venue, body.competition
+            id, claims.tenantId, body.date, body.time, body.opponent, body.venue, body.competition,
+            homeTeam, awayTeam, body.homeScore, body.awayScore
         ).run();
 
         return json({ success: true, id }, 200, corsHdrs);
     } catch (err) {
+        console.error('Create fixture error:', err);
         return json({ success: false, error: "Failed to create fixture" }, 500, corsHdrs);
     }
 }
@@ -75,9 +90,42 @@ export async function handleUpdateFixture(req: Request, env: any, corsHdrs: Head
             params.push(body.awayScore);
         }
 
+        // Handle home_team / away_team updates
+        if (body.opponent !== undefined || body.homeAway !== undefined) {
+            const tenant = await env.DB.prepare("SELECT name FROM tenants WHERE id = ?").bind(claims.tenantId).first();
+            const ourTeam = tenant?.name || 'Syston Tigers';
+
+            // We need current opponent if not supplied, but usually opponent is supplied if we are changing home/away
+            // Simplification: Assume if homeAway is sent, opponent is also sent or we use binding
+            // Better: just set them if logic allows
+
+            let homeTeam, awayTeam;
+            // If body.opponent is present, use it, else we might be risking inconsistency if only homeAway changed
+            // But frontend typically sends full object on edit or at least necessary parts.
+            // Let's assume body.opponent is available if we are recalculating teams
+
+            if (body.opponent && body.homeAway) {
+                if (body.homeAway === 'away') {
+                    homeTeam = body.opponent;
+                    awayTeam = ourTeam;
+                } else {
+                    homeTeam = ourTeam;
+                    awayTeam = body.opponent;
+                }
+                updates.push("home_team = ?");
+                params.push(homeTeam);
+                updates.push("away_team = ?");
+                params.push(awayTeam);
+            }
+        }
+
         if (updates.length === 0) {
             return json({ success: false, error: "No fields to update" }, 400, corsHdrs);
         }
+
+        // Add updated_at timestamp
+        updates.push("updated_at = ?");
+        params.push(new Date().toISOString());
 
         params.push(id, claims.tenantId);
 
@@ -352,7 +400,7 @@ export async function handleResignTeam(req: Request, env: any, corsHdrs: Headers
         const body = await req.json() as { teamName: string };
         const teamName = body.teamName;
 
-        if (!teamName) {return json({ success: false, error: "Team name required" }, 400, corsHdrs);}
+        if (!teamName) { return json({ success: false, error: "Team name required" }, 400, corsHdrs); }
 
         // Step 1: Get all results involving the resigned team to calculate deductions
         const results = await env.DB.prepare(
@@ -402,9 +450,9 @@ export async function handleResignTeam(req: Request, env: any, corsHdrs: Headers
             played++;
             goalsFor += ourScore;
             goalsAgainst += theirScore;
-            if (ourScore > theirScore) {won++;}
-            else if (ourScore === theirScore) {drawn++;}
-            else {lost++;}
+            if (ourScore > theirScore) { won++; }
+            else if (ourScore === theirScore) { drawn++; }
+            else { lost++; }
         }
         const points = (won * 3) + drawn;
 
@@ -622,7 +670,7 @@ export async function handleAutoCalculateTable(req: Request, env: any, corsHdrs:
         // Sort by points, then goal difference
         const sortedTeams = Object.entries(standings).sort((a, b) => {
             const ptsDiff = b[1].pts - a[1].pts;
-            if (ptsDiff !== 0) {return ptsDiff;}
+            if (ptsDiff !== 0) { return ptsDiff; }
             return (b[1].gf - b[1].ga) - (a[1].gf - a[1].ga);
         });
 
@@ -649,4 +697,30 @@ export async function handleAutoCalculateTable(req: Request, env: any, corsHdrs:
         console.error('Auto-calculate error:', err);
         return json({ success: false, error: "Failed to calculate league table" }, 500, corsHdrs);
     }
-}
+
+
+    // Get League Table
+    export async function handleGetLeagueTable(req: Request, env: any, corsHdrs: Headers) {
+        try {
+            const claims = await requireJWT(req, env);
+            const url = new URL(req.url);
+            const competition = url.searchParams.get("competition");
+
+            let query = "SELECT * FROM league_standings WHERE tenant_id = ?";
+            const params: any[] = [claims.tenantId];
+
+            if (competition) {
+                query += " AND competition = ?";
+                params.push(competition);
+            }
+
+            query += " ORDER BY position ASC";
+
+            const { results } = await env.DB.prepare(query).bind(...params).all();
+
+            return json({ success: true, data: results }, 200, corsHdrs);
+        } catch (err) {
+            console.error('Get league table error:', err);
+            return json({ success: false, error: "Failed to fetch league table" }, 500, corsHdrs);
+        }
+    }

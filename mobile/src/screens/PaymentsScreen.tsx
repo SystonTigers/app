@@ -1,30 +1,55 @@
 // src/screens/PaymentsScreen.tsx - Premium redesign
-import React from 'react';
-import { View, Text, StyleSheet, FlatList, ScrollView, Linking, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, FlatList, ScrollView, Linking, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Card } from 'react-native-paper';
 
 import { COLORS } from '../config';
-
-// Mock data - replace with real API calls
-const MOCK = {
-  collected: 600,
-  expected: 750,
-  playersPaid: 4,
-  totalPlayers: 5,
-  people: [
-    { name: 'James Mitchell', amount: 150, status: 'paid' as const },
-    { name: 'Luke Harrison', amount: 150, status: 'paid' as const },
-    { name: 'Tom Davies', amount: 150, status: 'paid' as const },
-    { name: 'Alex Turner', amount: 150, status: 'paid' as const },
-    { name: 'Charlie Smith', amount: 150, status: 'due' as const },
-  ],
-};
+import { duesApi } from '../services/api';
 
 const PAYMENT_PORTAL_URL = 'https://example.com/payments/syston-tigers';
 
 export default function PaymentsScreen() {
-  const pct = Math.min(1, MOCK.collected / MOCK.expected);
+  const [paymentData, setPaymentData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadPayments();
+  }, []);
+
+  const loadPayments = async () => {
+    try {
+      setLoading(true);
+      const result = await duesApi.listRequests();
+      const requests = result?.data || [];
+      // Aggregate from the first active request (or all)
+      if (requests.length > 0) {
+        const req = requests[0]; // Most recent payment request
+        const people = (req.members || req.people || []).map((m: any) => ({
+          name: m.name || m.playerName || 'Unknown',
+          amount: m.amount || req.amount || 0,
+          status: m.paid ? 'paid' as const : 'due' as const,
+        }));
+        const paid = people.filter((p: any) => p.status === 'paid');
+        setPaymentData({
+          collected: paid.reduce((s: number, p: any) => s + p.amount, 0),
+          expected: people.reduce((s: number, p: any) => s + p.amount, 0),
+          playersPaid: paid.length,
+          totalPlayers: people.length,
+          people,
+        });
+      } else {
+        setPaymentData({ collected: 0, expected: 0, playersPaid: 0, totalPlayers: 0, people: [] });
+      }
+    } catch (err) {
+      console.error('Error loading payments:', err);
+      setPaymentData({ collected: 0, expected: 0, playersPaid: 0, totalPlayers: 0, people: [] });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const pct = paymentData ? Math.min(1, paymentData.expected > 0 ? paymentData.collected / paymentData.expected : 0) : 0;
 
   const openPaymentPortal = () => {
     Linking.openURL(PAYMENT_PORTAL_URL);
@@ -41,9 +66,9 @@ export default function PaymentsScreen() {
           <Card.Content>
             <Text style={styles.cardTitle}>Season Fees 2024/25</Text>
             <View style={styles.metricsRow}>
-              <Metric label="Collected" value={`£${MOCK.collected}`} tone="good" />
-              <Metric label="Expected" value={`£${MOCK.expected}`} />
-              <Metric label="Players Paid" value={`${MOCK.playersPaid}/${MOCK.totalPlayers}`} />
+              <Metric label="Collected" value={`£${paymentData?.collected || 0}`} tone="good" />
+              <Metric label="Expected" value={`£${paymentData?.expected || 0}`} />
+              <Metric label="Players Paid" value={`${paymentData?.playersPaid || 0}/${paymentData?.totalPlayers || 0}`} />
             </View>
 
             {/* Progress Bar */}
@@ -65,7 +90,7 @@ export default function PaymentsScreen() {
         <Card style={styles.card}>
           <Card.Content>
             <FlatList
-              data={MOCK.people}
+              data={paymentData?.people || []}
               keyExtractor={(x) => x.name}
               ItemSeparatorComponent={() => <View style={styles.separator} />}
               renderItem={({ item }) => <PersonRow {...item} />}
@@ -122,8 +147,8 @@ function Metric({
     tone === 'good'
       ? COLORS.success
       : tone === 'warn'
-      ? COLORS.warning
-      : COLORS.text;
+        ? COLORS.warning
+        : COLORS.text;
 
   return (
     <View style={styles.metric}>

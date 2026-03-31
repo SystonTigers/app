@@ -5,16 +5,6 @@ import { useTheme } from '../theme/useTheme';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-// Mock league table data with full stats
-const mockLeagueTable = [
-  { position: 1, team: 'Syston Tigers', played: 26, won: 26, drawn: 0, lost: 1, gf: 45, ga: 8, gd: 37, points: 45 },
-  { position: 2, team: 'Wakerios', played: 26, won: 15, drawn: 2, lost: 8, gf: 62, ga: 32, gd: 30, points: 42 },
-  { position: 3, team: 'Rival FC', played: 28, won: 12, drawn: 2, lost: 3, gf: 36, ga: 15, gd: 21, points: 36 },
-  { position: 4, team: 'Natolente', played: 26, won: 10, drawn: 0, lost: 10, gf: 33, ga: 28, gd: 5, points: 33 },
-  { position: 5, team: 'Thurmaston', played: 28, won: 12, drawn: 2, lost: 12, gf: 28, ga: 35, gd: -7, points: 28 },
-  { position: 6, team: 'Aegonwye', played: 28, won: 3, drawn: 3, lost: 23, gf: 23, ga: 54, gd: -31, points: 23 },
-  { position: 7, team: 'Rival FC B', played: 26, won: 4, drawn: 4, lost: 10, gf: 18, ga: 41, gd: -23, points: 18 },
-];
 
 const OUR_TEAM = 'Syston Tigers';
 
@@ -22,8 +12,41 @@ export default function LeagueTableScreen() {
   const { theme } = useTheme();
   const { colors } = theme;
   const [modalVisible, setModalVisible] = useState(false);
+  const [leagueTable, setLeagueTable] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const renderCompactRow = (row: typeof mockLeagueTable[0]) => {
+  React.useEffect(() => {
+    loadTable();
+  }, []);
+
+  const loadTable = async () => {
+    try {
+      setLoading(true);
+      const response = await import('../services/api').then(m => m.fixturesApi.getLeagueTable());
+      if (response && response.data) {
+        // Map backend data to UI format
+        const mapped = response.data.map((row: any) => ({
+          position: row.position,
+          team: row.team_name,
+          played: row.played,
+          won: row.won,
+          drawn: row.drawn,
+          lost: row.lost,
+          gf: row.goals_for,
+          ga: row.goals_against,
+          gd: row.goals_for - row.goals_against,
+          points: row.points,
+        }));
+        setLeagueTable(mapped);
+      }
+    } catch (error) {
+      console.error('Failed to load league table:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const renderCompactRow = (row: any) => {
     const isOurTeam = row.team === OUR_TEAM;
     const isTopTwo = row.position <= 2;
 
@@ -71,7 +94,7 @@ export default function LeagueTableScreen() {
     );
   };
 
-  const renderFullRow = (row: typeof mockLeagueTable[0]) => {
+  const renderFullRow = (row: any) => {
     const isOurTeam = row.team === OUR_TEAM;
     const isTopTwo = row.position <= 2;
 
@@ -146,7 +169,7 @@ export default function LeagueTableScreen() {
 
         {/* Table Rows */}
         <ScrollView style={styles.tableBody}>
-          {mockLeagueTable.map(renderCompactRow)}
+          {leagueTable.map(renderCompactRow)}
         </ScrollView>
 
         {/* Full Standings Button */}
@@ -194,7 +217,7 @@ export default function LeagueTableScreen() {
 
             {/* Full Table Body */}
             <ScrollView style={styles.modalTableBody}>
-              {mockLeagueTable.map(renderFullRow)}
+              {leagueTable.map(renderFullRow)}
             </ScrollView>
           </View>
         </View>

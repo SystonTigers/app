@@ -1,34 +1,53 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { View, ScrollView, StyleSheet, Alert } from 'react-native';
 import { Card, Title, Paragraph, Button, List, IconButton } from 'react-native-paper';
 import * as ImagePicker from 'expo-image-picker';
 import * as MediaLibrary from 'expo-media-library';
 import { Video, ResizeMode } from 'expo-av';
 import { COLORS } from '../config';
+import { apiClient, videosApi } from '../services/api';
 
-// Mock recent videos
-const mockRecentVideos = [
-  {
-    id: '1',
-    title: 'Match vs Leicester Panthers',
-    date: '2025-11-03',
-    duration: '5:30',
-    thumbnail: 'https://via.placeholder.com/150',
-    status: 'uploaded',
-  },
-  {
-    id: '2',
-    title: 'John Smith - Goal Compilation',
-    date: '2025-10-28',
-    duration: '2:15',
-    thumbnail: 'https://via.placeholder.com/150',
-    status: 'processing',
-  },
-];
+type UploadState = boolean;
+
+interface VideoItem {
+  id: string;
+  title: string;
+  date: string;
+  duration: string;
+  thumbnail: string;
+  status: string;
+}
 
 export default function VideoScreen() {
   const [selectedVideo, setSelectedVideo] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [recentVideos, setRecentVideos] = useState<VideoItem[]>([]);
+  const [loadingVideos, setLoadingVideos] = useState(true);
+
+  useEffect(() => {
+    loadVideos();
+  }, []);
+
+  const loadVideos = async () => {
+    try {
+      setLoadingVideos(true);
+      const result = await videosApi.list();
+      const vids = (result?.data || []).map((v: any) => ({
+        id: v.id || v.videoId,
+        title: v.title || v.filename || 'Untitled',
+        date: v.uploadedAt?.split('T')[0] || v.date || '',
+        duration: v.duration || '--:--',
+        thumbnail: v.thumbnailUrl || 'https://via.placeholder.com/150',
+        status: v.status || 'uploaded',
+      }));
+      setRecentVideos(vids);
+    } catch (error) {
+      console.error('Error loading videos:', error);
+    } finally {
+      setLoadingVideos(false);
+    }
+  };
   const [hasPermissions, setHasPermissions] = useState(false);
 
   const requestPermissions = async () => {
@@ -49,7 +68,7 @@ export default function VideoScreen() {
 
     try {
       const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ['video'],
+        mediaTypes: ['videos'],
         allowsEditing: true,
         aspect: [16, 9],
         quality: 1,
@@ -72,7 +91,7 @@ export default function VideoScreen() {
 
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['video'],
+        mediaTypes: ['videos'],
         allowsEditing: true,
         aspect: [16, 9],
         quality: 1,
@@ -94,16 +113,31 @@ export default function VideoScreen() {
       return;
     }
 
-    // TODO: Upload to server
-    // const formData = new FormData();
-    // formData.append('video', { uri: selectedVideo, name: 'video.mp4', type: 'video/mp4' });
-    // await api.post('/api/v1/videos/upload', formData);
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('video', {
+        uri: selectedVideo,
+        name: 'video.mp4',
+        type: 'video/mp4',
+      } as any);
 
-    Alert.alert(
-      'Upload Started',
-      'Video will be processed by AI and added to highlights. You\'ll be notified when ready!'
-    );
-    setSelectedVideo(null);
+      await apiClient.post('/api/v1/videos/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 120000, // 2 min timeout for large uploads
+      });
+
+      Alert.alert(
+        'Upload Complete',
+        'Video will be processed by AI and added to highlights. You\'ll be notified when ready!'
+      );
+      setSelectedVideo(null);
+    } catch (error: any) {
+      console.error('Video upload failed:', error);
+      Alert.alert('Upload Failed', 'Could not upload video. Please try again.');
+    } finally {
+      setUploading(false);
+    }
   };
 
   const trimVideo = () => {
@@ -241,7 +275,7 @@ export default function VideoScreen() {
       {/* Recent Videos */}
       <View style={styles.recentSection}>
         <Title style={styles.sectionTitle}>Recent Highlights</Title>
-        {mockRecentVideos.map((video) => (
+        {recentVideos.map((video) => (
           <Card key={video.id} style={styles.videoCard}>
             <Card.Content>
               <View style={styles.videoItem}>

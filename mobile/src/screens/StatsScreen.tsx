@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
-import { View, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, ScrollView, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Card, Title, Paragraph, Avatar, DataTable, Chip, Button, List } from 'react-native-paper';
 import { COLORS } from '../config';
+import { statsApi } from '../services/api';
 
 interface PlayerStats {
   id: string;
@@ -29,32 +30,60 @@ interface MOTMWinner {
   votes: number;
 }
 
-const mockPlayerStats: PlayerStats[] = [
-  { id: '1', name: 'James Mitchell', number: 9, position: 'Forward', appearances: 18, minutes: 1520, goals: 22, assists: 8, yellowCards: 2, redCards: 0, recentForm: ['W', 'W', 'D', 'W', 'W'], motmCount: 5 },
-  { id: '2', name: 'Tom Davies', number: 10, position: 'Midfielder', appearances: 18, minutes: 1580, goals: 12, assists: 15, yellowCards: 4, redCards: 0, recentForm: ['W', 'W', 'D', 'W', 'L'], motmCount: 4 },
-  { id: '3', name: 'Luke Harrison', number: 7, position: 'Forward', appearances: 16, minutes: 1320, goals: 14, assists: 6, yellowCards: 1, redCards: 0, recentForm: ['W', 'D', 'W', 'W', 'W'], motmCount: 3 },
-  { id: '4', name: 'Sam Roberts', number: 4, position: 'Defender', appearances: 18, minutes: 1600, goals: 3, assists: 2, yellowCards: 5, redCards: 1, recentForm: ['W', 'W', 'D', 'W', 'W'], motmCount: 2 },
-  { id: '5', name: 'Ben Parker', number: 1, position: 'Goalkeeper', appearances: 18, minutes: 1620, goals: 0, assists: 0, yellowCards: 0, redCards: 0, cleanSheets: 12, recentForm: ['W', 'W', 'D', 'W', 'W'], motmCount: 3 },
-  { id: '6', name: 'Charlie Smith', number: 8, position: 'Midfielder', appearances: 17, minutes: 1450, goals: 8, assists: 10, yellowCards: 3, redCards: 0, recentForm: ['W', 'D', 'W', 'L', 'W'], motmCount: 2 },
-  { id: '7', name: 'Alex Turner', number: 11, position: 'Forward', appearances: 15, minutes: 1200, goals: 9, assists: 4, yellowCards: 2, redCards: 0, recentForm: ['W', 'W', 'W', '-', '-'], motmCount: 1 },
-  { id: '8', name: 'Jack Williams', number: 5, position: 'Defender', appearances: 18, minutes: 1590, goals: 2, assists: 1, yellowCards: 6, redCards: 0, recentForm: ['W', 'W', 'D', 'W', 'W'], motmCount: 1 },
-  { id: '9', name: 'Daniel Brown', number: 6, position: 'Midfielder', appearances: 16, minutes: 1380, goals: 5, assists: 7, yellowCards: 4, redCards: 0, recentForm: ['D', 'W', 'W', 'W', 'L'], motmCount: 1 },
-  { id: '10', name: 'Ryan Evans', number: 3, position: 'Defender', appearances: 17, minutes: 1510, goals: 1, assists: 3, yellowCards: 3, redCards: 0, recentForm: ['W', 'W', 'D', 'W', 'W'], motmCount: 0 },
-];
-
-const mockMOTMHistory: MOTMWinner[] = [
-  { matchId: '1', opponent: 'Leicester Panthers', date: '2025-10-05', playerId: '1', playerName: 'James Mitchell', votes: 45 },
-  { matchId: '2', opponent: 'Loughborough Lions', date: '2025-09-28', playerId: '2', playerName: 'Tom Davies', votes: 38 },
-  { matchId: '3', opponent: 'Melton Mowbray', date: '2025-09-21', playerId: '1', playerName: 'James Mitchell', votes: 42 },
-  { matchId: '4', opponent: 'Coalville FC', date: '2025-09-14', playerId: '5', playerName: 'Ben Parker', votes: 35 },
-  { matchId: '5', opponent: 'Hinckley United', date: '2025-09-07', playerId: '3', playerName: 'Luke Harrison', votes: 40 },
-];
-
 type LeaderboardType = 'scorers' | 'assisters' | 'combined' | 'cleansheets' | 'cards' | 'motm';
 
 export default function StatsScreen() {
   const [selectedLeaderboard, setSelectedLeaderboard] = useState<LeaderboardType>('scorers');
   const [selectedPlayer, setSelectedPlayer] = useState<PlayerStats | null>(null);
+  const [playerStats, setPlayerStats] = useState<PlayerStats[]>([]);
+  const [motmHistory, setMotmHistory] = useState<MOTMWinner[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadStats();
+  }, []);
+
+  const loadStats = async () => {
+    try {
+      setLoading(true);
+      const result = await statsApi.getPlayerStats();
+      const raw = result?.data || [];
+      const mapped: PlayerStats[] = raw.map((p: any) => ({
+        id: p.id || p.playerId || String(Math.random()),
+        name: p.name || `${p.firstName || ''} ${p.lastName || ''}`.trim(),
+        number: p.number || p.squadNumber || 0,
+        position: p.position || 'Unknown',
+        appearances: p.appearances || 0,
+        minutes: p.minutes || 0,
+        goals: p.goals || 0,
+        assists: p.assists || 0,
+        yellowCards: p.yellowCards || 0,
+        redCards: p.redCards || 0,
+        cleanSheets: p.cleanSheets || 0,
+        recentForm: p.recentForm || [],
+        motmCount: p.motmCount || 0,
+        photo: p.photo || p.headshotUrl,
+      }));
+      setPlayerStats(mapped);
+      // Build MOTM history from players with motmCount > 0
+      const motmList: MOTMWinner[] = mapped
+        .filter(p => p.motmCount > 0)
+        .sort((a, b) => b.motmCount - a.motmCount)
+        .map((p, i) => ({
+          matchId: String(i),
+          opponent: '',
+          date: '',
+          playerId: p.id,
+          playerName: p.name,
+          votes: p.motmCount,
+        }));
+      setMotmHistory(motmList);
+    } catch (err) {
+      console.error('Error loading stats:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
@@ -80,7 +109,7 @@ export default function StatsScreen() {
   };
 
   const getLeaderboardData = () => {
-    const sorted = [...mockPlayerStats];
+    const sorted = [...playerStats];
     switch (selectedLeaderboard) {
       case 'scorers':
         return sorted.sort((a, b) => b.goals - a.goals).slice(0, 10);
@@ -347,7 +376,7 @@ export default function StatsScreen() {
         <Card.Content>
           <Title style={styles.motmTitle}>⭐ Man of the Match History</Title>
           <List.Section>
-            {mockMOTMHistory.map((winner) => (
+            {motmHistory.map((winner) => (
               <List.Item
                 key={winner.matchId}
                 title={winner.playerName}

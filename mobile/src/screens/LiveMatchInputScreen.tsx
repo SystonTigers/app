@@ -81,26 +81,12 @@ export default function LiveMatchInputScreen() {
   const loadFixtures = async () => {
     setLoading(true);
     try {
-      // Mock fixtures for now - will connect to real API
-      const mockFixtures: Fixture[] = [
-        {
-          id: 'f1',
-          opponent: 'Leicester Panthers',
-          homeAway: 'home',
-          venue: 'Syston Sports Ground',
-          date: '2025-10-10',
-          time: '10:00',
-        },
-        {
-          id: 'f2',
-          opponent: 'Loughborough Lions',
-          homeAway: 'away',
-          venue: 'Loughborough Stadium',
-          date: '2025-10-17',
-          time: '14:00',
-        },
-      ];
-      setFixtures(mockFixtures);
+      const response = await fixturesApi.getFixtures();
+      // Filter for today's or upcoming fixtures that are 'scheduled'
+      // For now, just show all scheduled fixtures
+      const allFixtures = response.data || [];
+      const upcoming = allFixtures.filter((f: any) => f.status === 'scheduled');
+      setFixtures(upcoming);
     } catch (error) {
       console.error('Error loading fixtures:', error);
       Alert.alert('Error', 'Failed to load fixtures');

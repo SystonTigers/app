@@ -29,30 +29,7 @@ interface Player {
   redCards: number;
 }
 
-const mockPlayers: Player[] = [
-  {
-    id: '1',
-    name: 'John Smith',
-    number: 9,
-    position: 'Forward',
-    goals: 12,
-    assists: 5,
-    appearances: 18,
-    yellowCards: 2,
-    redCards: 0,
-  },
-  {
-    id: '2',
-    name: 'Mike Johnson',
-    number: 10,
-    position: 'Midfielder',
-    goals: 7,
-    assists: 9,
-    appearances: 20,
-    yellowCards: 3,
-    redCards: 0,
-  },
-];
+// (mock data removed)
 
 const positions = ['Goalkeeper', 'Defender', 'Midfielder', 'Forward'];
 const positionColors: { [key: string]: string } = {
@@ -86,11 +63,23 @@ export default function ManageSquadScreen() {
     try {
       setLoading(true);
       const response = await squadApi.getSquad();
-      setPlayers(response.data || []);
+      const raw = response?.data || [];
+      const mapped: Player[] = raw.map((p: any) => ({
+        id: p.id || p.playerId,
+        name: p.name || `${p.firstName || ''} ${p.lastName || ''}`.trim(),
+        number: p.number || p.squadNumber || 0,
+        position: p.position || 'Forward',
+        goals: p.goals || 0,
+        assists: p.assists || 0,
+        appearances: p.appearances || 0,
+        yellowCards: p.yellowCards || 0,
+        redCards: p.redCards || 0,
+        photo: p.photo || p.headshotUrl,
+      }));
+      setPlayers(mapped);
     } catch (error) {
       console.error('Failed to load squad:', error);
-      Alert.alert('Error', 'Failed to load squad. Using local data.');
-      setPlayers(mockPlayers);
+      Alert.alert('Error', 'Failed to load squad.');
     } finally {
       setLoading(false);
     }
@@ -218,76 +207,76 @@ export default function ManageSquadScreen() {
             </Card>
           ) : (
             players.map((player) => (
-            <Card key={player.id} style={styles.playerCard}>
-              <Card.Content>
-                <View style={styles.playerHeader}>
-                  <View style={styles.playerLeft}>
-                    <Avatar.Text
-                      size={60}
-                      label={getInitials(player.name)}
-                      style={[
-                        styles.avatar,
-                        { backgroundColor: positionColors[player.position] || '#999' },
-                      ]}
-                    />
-                    <View style={styles.playerInfo}>
-                      <View style={styles.nameRow}>
-                        <Title style={styles.playerName}>{player.name}</Title>
-                        <View style={styles.numberBadge}>
-                          <Title style={styles.numberText}>#{player.number}</Title>
-                        </View>
-                      </View>
-                      <Chip
+              <Card key={player.id} style={styles.playerCard}>
+                <Card.Content>
+                  <View style={styles.playerHeader}>
+                    <View style={styles.playerLeft}>
+                      <Avatar.Text
+                        size={60}
+                        label={getInitials(player.name)}
                         style={[
-                          styles.positionChip,
-                          { backgroundColor: positionColors[player.position] },
+                          styles.avatar,
+                          { backgroundColor: positionColors[player.position] || '#999' },
                         ]}
-                        textStyle={styles.chipText}
-                      >
-                        {player.position}
-                      </Chip>
+                      />
+                      <View style={styles.playerInfo}>
+                        <View style={styles.nameRow}>
+                          <Title style={styles.playerName}>{player.name}</Title>
+                          <View style={styles.numberBadge}>
+                            <Title style={styles.numberText}>#{player.number}</Title>
+                          </View>
+                        </View>
+                        <Chip
+                          style={[
+                            styles.positionChip,
+                            { backgroundColor: positionColors[player.position] },
+                          ]}
+                          textStyle={styles.chipText}
+                        >
+                          {player.position}
+                        </Chip>
+                      </View>
+                    </View>
+                    <IconButton
+                      icon="pencil"
+                      size={20}
+                      onPress={() => openEditModal(player)}
+                    />
+                  </View>
+
+                  <View style={styles.statsGrid}>
+                    <View style={styles.statBox}>
+                      <Title style={styles.statValue}>{player.goals}</Title>
+                      <Paragraph style={styles.statLabel}>⚽ Goals</Paragraph>
+                    </View>
+                    <View style={styles.statBox}>
+                      <Title style={styles.statValue}>{player.assists}</Title>
+                      <Paragraph style={styles.statLabel}>🎯 Assists</Paragraph>
+                    </View>
+                    <View style={styles.statBox}>
+                      <Title style={styles.statValue}>{player.appearances}</Title>
+                      <Paragraph style={styles.statLabel}>👕 Apps</Paragraph>
+                    </View>
+                    <View style={styles.statBox}>
+                      <Title style={styles.statValue}>
+                        {player.yellowCards > 0 && `🟨${player.yellowCards} `}
+                        {player.redCards > 0 && `🟥${player.redCards}`}
+                        {player.yellowCards === 0 && player.redCards === 0 && '✓'}
+                      </Title>
+                      <Paragraph style={styles.statLabel}>Cards</Paragraph>
                     </View>
                   </View>
-                  <IconButton
-                    icon="pencil"
-                    size={20}
-                    onPress={() => openEditModal(player)}
-                  />
-                </View>
 
-                <View style={styles.statsGrid}>
-                  <View style={styles.statBox}>
-                    <Title style={styles.statValue}>{player.goals}</Title>
-                    <Paragraph style={styles.statLabel}>⚽ Goals</Paragraph>
-                  </View>
-                  <View style={styles.statBox}>
-                    <Title style={styles.statValue}>{player.assists}</Title>
-                    <Paragraph style={styles.statLabel}>🎯 Assists</Paragraph>
-                  </View>
-                  <View style={styles.statBox}>
-                    <Title style={styles.statValue}>{player.appearances}</Title>
-                    <Paragraph style={styles.statLabel}>👕 Apps</Paragraph>
-                  </View>
-                  <View style={styles.statBox}>
-                    <Title style={styles.statValue}>
-                      {player.yellowCards > 0 && `🟨${player.yellowCards} `}
-                      {player.redCards > 0 && `🟥${player.redCards}`}
-                      {player.yellowCards === 0 && player.redCards === 0 && '✓'}
-                    </Title>
-                    <Paragraph style={styles.statLabel}>Cards</Paragraph>
-                  </View>
-                </View>
-
-                <Button
-                  mode="outlined"
-                  onPress={() => handleDelete(player.id)}
-                  style={styles.deleteButton}
-                  textColor={COLORS.error}
-                >
-                  Remove from Squad
-                </Button>
-              </Card.Content>
-            </Card>
+                  <Button
+                    mode="outlined"
+                    onPress={() => handleDelete(player.id)}
+                    style={styles.deleteButton}
+                    textColor={COLORS.error}
+                  >
+                    Remove from Squad
+                  </Button>
+                </Card.Content>
+              </Card>
             ))
           )}
         </View>

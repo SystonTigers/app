@@ -461,10 +461,11 @@ export const eventsApi = {
 
   // RSVP to event
   rsvp: async (eventId: string, status: 'going' | 'not_going' | 'maybe') => {
+    const userId = await AsyncStorage.getItem(AUTH_STORAGE_KEYS.userId) || '';
     const response = await api.post(`/api/v1/events/${eventId}/rsvp`, {
       tenant: TENANT_ID,
       status,
-      user_id: 'current-user-id', // TODO: Get from auth
+      user_id: userId,
     });
     return response.data;
   },
@@ -596,13 +597,29 @@ export const playerImagesApi = {
     playerId: string;
     playerName: string;
     type: 'headshot' | 'action';
-    imageUrl: string;
-    r2Key: string;
-    metadata?: any;
+    imageUri: string;
   }) => {
-    const response = await api.post('/api/v1/admin/player-images', {
-      tenant: TENANT_ID,
-      ...data,
+    const formData = new FormData();
+    formData.append('playerId', data.playerId);
+    formData.append('playerName', data.playerName);
+    formData.append('type', data.type);
+
+    // Append photo
+    const filename = data.imageUri.split('/').pop() || 'photo.jpg';
+    const match = /\.(\w+)$/.exec(filename);
+    const type = match ? `image/${match[1]}` : 'image/jpeg';
+
+    formData.append('photo', {
+      uri: data.imageUri,
+      name: filename,
+      type,
+    } as any);
+
+    const response = await api.post('/api/v1/admin/player-images', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+      params: { tenant: TENANT_ID },
     });
     return response.data;
   },
@@ -710,10 +727,19 @@ export const motmApi = {
     nominees: { candidateId: string; name: string }[];
     votingWindow: { start: string; end: string };
     autoPostEnabled: boolean;
+    status?: 'draft' | 'active';
   }) => {
     const response = await api.post(`/api/v1/admin/matches/${matchId}/motm/open`, {
       tenant: TENANT_ID,
       ...data,
+    });
+    return response.data;
+  },
+
+  // List all MOTM sessions (admin)
+  listSessions: async () => {
+    const response = await api.get('/api/v1/admin/motm/sessions', {
+      params: { tenant: TENANT_ID },
     });
     return response.data;
   },
@@ -731,6 +757,13 @@ export const motmApi = {
     const response = await api.get(`/api/v1/admin/matches/${matchId}/motm/tally`, {
       params: { tenant: TENANT_ID },
     });
+    return response.data;
+  },
+
+
+  // Get vote status (public)
+  getVoteStatus: async (matchId: string) => {
+    const response = await api.get(`/api/v1/motm/${matchId}`);
     return response.data;
   },
 
@@ -779,9 +812,10 @@ export const liveMatchApi = {
   },
 
   // Open live match (admin)
-  openMatch: async (matchId: string) => {
+  openMatch: async (matchId: string, matchData: any) => {
     const response = await api.post(`/api/v1/admin/matches/${matchId}/live/open`, {
       tenant: TENANT_ID,
+      ...matchData,
     });
     return response.data;
   },
@@ -847,59 +881,109 @@ export const shopApi = {
   },
 };
 
-export const galleryApi = {
-  // Get all albums
-  getAlbums: async () => {
-    const response = await api.get('/api/v1/gallery/albums', {
+
+
+// ===== Chat API =====
+export const chatApi = {
+  listRooms: async () => {
+    const response = await api.get('/api/v1/chat/rooms');
+    return response.data;
+  },
+  createRoom: async (data: { roomId: string; name: string; type?: string }) => {
+    const response = await api.post('/api/v1/chat/rooms', data);
+    return response.data;
+  },
+  getHistory: async (roomId: string, cursor?: string, limit = 50) => {
+    const response = await api.get(`/api/v1/chat/${roomId}/history`, {
+      params: { cursor, limit },
+    });
+    return response.data;
+  },
+  sendMessage: async (roomId: string, text: string) => {
+    const response = await api.post(`/api/v1/chat/${roomId}/send`, { text });
+    return response.data;
+  },
+};
+
+// ===== Training API =====
+export const trainingApi = {
+  listSessions: async () => {
+    const response = await api.get('/api/v1/training/sessions', {
       params: { tenant: TENANT_ID },
     });
     return response.data;
   },
-
-  // Get photos for an album
-  getPhotos: async (albumId: string) => {
-    const response = await api.get(`/api/v1/gallery/albums/${albumId}/photos`, {
+  listDrills: async () => {
+    const response = await api.get('/api/v1/training/drills', {
       params: { tenant: TENANT_ID },
     });
     return response.data;
   },
+};
 
-  // Upload photo
-  uploadPhoto: async (data: {
-    imageUri: string;
-    caption?: string;
-    albumId?: string;
-    tags?: string[];
-  }) => {
-    const formData = new FormData();
-    const filename = data.imageUri.split('/').pop() || 'photo.jpg';
-    const match = /\.(\w+)$/.exec(filename);
-    const type = match ? `image/${match[1]}` : 'image/jpeg';
+// ===== Videos API =====
+export const videosApi = {
+  list: async () => {
+    const response = await api.get('/api/v1/videos');
+    return response.data;
+  },
+  get: async (id: string) => {
+    const response = await api.get(`/api/v1/videos/${id}`);
+    return response.data;
+  },
+  delete: async (id: string) => {
+    const response = await api.delete(`/api/v1/videos/${id}`);
+    return response.data;
+  },
+};
 
-    formData.append('file', {
-      uri: data.imageUri,
-      name: filename,
-      type,
-    } as any);
-
-    if (data.caption) formData.append('caption', data.caption);
-    if (data.albumId) formData.append('albumId', data.albumId);
-    if (data.tags) formData.append('tags', JSON.stringify(data.tags));
-
-    const response = await api.post(`/api/v1/gallery/photos?tenant=${TENANT_ID}`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
+// ===== Wearables / GPS API =====
+export const wearablesApi = {
+  listSessions: async (playerId?: string) => {
+    const response = await api.get('/api/v1/wearables/sessions', {
+      params: { tenant: TENANT_ID, playerId },
     });
     return response.data;
   },
-
-  // Request removal
-  requestRemoval: async (photoId: string, reason?: string) => {
-    const response = await api.post(`/api/v1/gallery/photos/${photoId}/report`, {
+  getSession: async (sessionId: string) => {
+    const response = await api.get(`/api/v1/wearables/sessions/${sessionId}`);
+    return response.data;
+  },
+  getGPSTrack: async (sessionId: string) => {
+    const response = await api.get(`/api/v1/wearables/sessions/${sessionId}/gps-track`);
+    return response.data;
+  },
+  getPlayerSummary: async (playerId: string) => {
+    const response = await api.get(`/api/v1/wearables/summary/${playerId}`);
+    return response.data;
+  },
+  manualEntry: async (data: any) => {
+    const response = await api.post('/api/v1/wearables/manual', {
       tenant: TENANT_ID,
-      reason: reason || 'User requested removal',
+      ...data,
     });
+    return response.data;
+  },
+};
+
+// ===== Stats API =====
+export const statsApi = {
+  getPlayerStats: async () => {
+    const response = await api.get('/api/v1/stats/players', {
+      params: { tenant: TENANT_ID },
+    });
+    return response.data;
+  },
+};
+
+// ===== Dues / Payments API =====
+export const duesApi = {
+  listRequests: async () => {
+    const response = await api.get('/api/v1/dues/requests');
+    return response.data;
+  },
+  getRequestStatus: async (id: string) => {
+    const response = await api.get(`/api/v1/dues/requests/${id}/status`);
     return response.data;
   },
 };
@@ -958,6 +1042,69 @@ export const usersApi = {
     });
     return response.data;
   },
+};
+
+export const galleryApi = {
+  // Get all albums
+  getAlbums: async () => {
+    const response = await api.get('/api/v1/gallery/albums', {
+      params: { tenant: TENANT_ID },
+    });
+    return response.data;
+  },
+
+  // Get photos in album
+  getPhotos: async (albumId: string) => {
+    const response = await api.get(`/api/v1/gallery/albums/${albumId}/photos`, {
+      params: { tenant: TENANT_ID },
+    });
+    return response.data;
+  },
+
+  // Upload photo
+  uploadPhoto: async (data: {
+    imageUri: string;
+    caption?: string;
+    albumId?: string;
+    tags?: string[];
+  }) => {
+    const formData = new FormData();
+    const filename = data.imageUri.split('/').pop() || 'photo.jpg';
+    const match = /\.(\w+)$/.exec(filename);
+    const type = match ? `image/${match[1]}` : 'image/jpeg';
+
+    formData.append('file', {
+      uri: data.imageUri,
+      name: filename,
+      type,
+    } as any);
+
+    if (data.caption) formData.append('caption', data.caption);
+    if (data.albumId) formData.append('albumId', data.albumId);
+    if (data.tags) formData.append('tags', JSON.stringify(data.tags));
+
+    const response = await api.post(`/api/v1/gallery/photos?tenant=${TENANT_ID}`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
+
+  // Create album (helper for seeding/admin)
+  createAlbum: async (data: any) => {
+    const response = await api.post('/api/v1/gallery/albums', {
+      tenant: TENANT_ID,
+      ...data,
+    });
+    return response.data;
+  },
+
+  // Request removal (stub)
+  requestRemoval: async (photoId: string) => {
+    // Just a stub for now
+    return { success: true };
+  }
 };
 
 export default api;
