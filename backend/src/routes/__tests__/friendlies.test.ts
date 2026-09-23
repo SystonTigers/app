@@ -6,7 +6,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 // Mock environment
-const mockEnv = {
+const mockEnv: any = {
     DB: {
         prepare: vi.fn(() => ({
             bind: vi.fn(() => ({
@@ -65,7 +65,7 @@ describe('Friendly Matchmaking Routes', () => {
 
             const req = new Request('https://api.test/api/v1/friendlies');
             const response = await handleListFriendlyRequests(req, mockEnv, corsHdrs);
-            const data = await response.json();
+            const data: any = await response.json();
 
             expect(response.status).toBe(200);
             expect(data.success).toBe(true);
@@ -104,7 +104,7 @@ describe('Friendly Matchmaking Routes', () => {
             });
 
             const response = await handleCreateFriendlyRequest(req, mockEnv, corsHdrs);
-            const data = await response.json();
+            const data: any = await response.json();
 
             expect(response.status).toBe(201);
             expect(data.success).toBe(true);
@@ -125,7 +125,7 @@ describe('Friendly Matchmaking Routes', () => {
             });
 
             const response = await handleDeleteFriendlyRequest(req, mockEnv, corsHdrs);
-            const data = await response.json();
+            const data: any = await response.json();
 
             expect(response.status).toBe(200);
             expect(data.success).toBe(true);
@@ -180,7 +180,7 @@ describe('Friendly Matchmaking Routes', () => {
             });
 
             const response = await handleRequestMatch(req, mockEnv, corsHdrs);
-            const data = await response.json();
+            const data: any = await response.json();
 
             expect(response.status).toBe(201);
             expect(data.success).toBe(true);
@@ -241,7 +241,7 @@ describe('Friendly Matchmaking Routes', () => {
             });
 
             const response = await handleRespondToMatch(req, mockEnv, corsHdrs);
-            const data = await response.json();
+            const data: any = await response.json();
 
             expect(response.status).toBe(200);
             expect(data.success).toBe(true);

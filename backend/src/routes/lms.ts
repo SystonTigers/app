@@ -2,7 +2,10 @@
 // Prediction game where users pick match winners - wrong picks eliminate them
 
 import { json } from "../services/util";
-import { requireJWT } from "../services/auth";
+import { requireJWT, hasAnyRole } from "../services/auth";
+
+// Roles allowed to manage LMS games (JWTs carry a roles array, not a single role)
+const LMS_ADMIN_ROLES = ["admin", "tenant_admin", "platform_admin", "owner", "manager", "coach"] as const;
 
 // Types
 interface LMSGame {
@@ -91,7 +94,7 @@ export async function handleCreateLMSGame(req: Request, env: any, corsHdrs: Head
         const claims = await requireJWT(req, env);
 
         // Check admin role
-        if (!['admin', 'manager', 'coach'].includes(claims.role || '')) {
+        if (!hasAnyRole(claims, LMS_ADMIN_ROLES)) {
             return json({ success: false, error: "Admin access required" }, 403, corsHdrs);
         }
 
@@ -307,7 +310,7 @@ export async function handleResetLMSGame(req: Request, env: any, corsHdrs: Heade
     try {
         const claims = await requireJWT(req, env);
 
-        if (!['admin', 'manager', 'coach'].includes(claims.role || '')) {
+        if (!hasAnyRole(claims, LMS_ADMIN_ROLES)) {
             return json({ success: false, error: "Admin access required" }, 403, corsHdrs);
         }
 
@@ -364,7 +367,7 @@ export async function handleCreateLMSRound(req: Request, env: any, corsHdrs: Hea
     try {
         const claims = await requireJWT(req, env);
 
-        if (!['admin', 'manager', 'coach'].includes(claims.role || '')) {
+        if (!hasAnyRole(claims, LMS_ADMIN_ROLES)) {
             return json({ success: false, error: "Admin access required" }, 403, corsHdrs);
         }
 
@@ -608,7 +611,7 @@ export async function handleProcessLMSRound(req: Request, env: any, corsHdrs: He
     try {
         const claims = await requireJWT(req, env);
 
-        if (!['admin', 'manager', 'coach'].includes(claims.role || '')) {
+        if (!hasAnyRole(claims, LMS_ADMIN_ROLES)) {
             return json({ success: false, error: "Admin access required" }, 403, corsHdrs);
         }
 

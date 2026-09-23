@@ -8,7 +8,15 @@ import { json } from '../services/util';
 
 const PRINTIFY_API_BASE = 'https://api.printify.com/v1';
 
-async function printifyFetch(env: any, endpoint: string, options: RequestInit = {}) {
+/**
+ * Call the Printify API. Throws with the status and message on non-2xx so callers
+ * don't try to .map()/.filter() an error body.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Printify payloads are untyped upstream
+async function printifyFetch<T = any>(env: any, endpoint: string, options: RequestInit = {}): Promise<T> {
+    if (!env.PRINTIFY_API_TOKEN) {
+        throw new Error('PRINTIFY_API_TOKEN is not configured');
+    }
     const response = await fetch(`${PRINTIFY_API_BASE}${endpoint}`, {
         ...options,
         headers: {
@@ -17,7 +25,11 @@ async function printifyFetch(env: any, endpoint: string, options: RequestInit = 
             ...options.headers,
         },
     });
-    return response.json();
+    const body = await response.json().catch(() => null) as { message?: string; error?: string } | null;
+    if (!response.ok) {
+        throw new Error(`Printify ${response.status}: ${body?.message || body?.error || response.statusText}`);
+    }
+    return body as T;
 }
 
 // ============================================

@@ -102,7 +102,7 @@ export function canAccess(
 export async function getSessionFromRequest(
     req: Request,
     env: any
-): Promise<{ role: string; tenantId: string; playerId?: string } | null> {
+): Promise<{ role: string; tenantId: string; playerId?: string; userId?: string; email?: string } | null> {
     try {
         const authHeader = req.headers.get('Authorization');
         if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -118,6 +118,8 @@ export async function getSessionFromRequest(
             role: payload.role || 'fan',
             tenantId: payload.tenant_id || payload.tenantId,
             playerId: payload.player_id,
+            userId: payload.sub || payload.user_id,
+            email: payload.email,
         };
     } catch {
         return null;

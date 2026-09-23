@@ -431,7 +431,7 @@ export async function handleRespondToRequest(
             );
         }
 
-        logJSON({ level: 'info', msg: 'Request responded', requestId, status: validated.status, tenant });
+        logJSON({ level: 'info', msg: 'Request responded', requestId, requestStatus: validated.status, tenant });
 
         return json(
             { success: true, data: { status: validated.status } },

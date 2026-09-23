@@ -1,14 +1,41 @@
 import { json } from "../services/util";
-import { requireJWT } from "../services/auth";
+import { requireTenantJWT as requireJWT } from "../services/auth";
 
 /**
  * CSV Import API endpoints
  * Supports importing: fixtures, results, players, match_events
  */
 
+/**
+ * Read the CSV payload. Accepts a raw text/csv body (what the mobile app sends)
+ * or multipart/form-data with a `file` field (browser uploads).
+ * Returns null when a multipart request has no file.
+ */
+async function readCsvBody(req: Request): Promise<string | null> {
+    const contentType = req.headers.get('Content-Type') || '';
+    if (contentType.includes('multipart/form-data')) {
+        const form = await req.formData();
+        const file = form.get('file');
+        if (!file || typeof file === 'string') {return null;}
+        return await file.text();
+    }
+    return await req.text();
+}
+
+/** Returns an error message listing missing required columns for a row, or null. */
+function missingFields(row: Record<string, string>, required: Array<[label: string, ...keys: string[]]>): string | null {
+    const missing = required
+        .filter(([, ...keys]) => !keys.some((k) => row[k]))
+        .map(([label]) => label);
+    return missing.length ? `missing ${missing.join(', ')}` : null;
+}
+
+const NO_FILE = { success: false, error: "No file provided" };
+const NO_DATA = { success: false, error: "No data found in CSV" };
+
 // Parse CSV string into array of objects
 function parseCSV(csvText: string): any[] {
-    const lines = csvText.trim().split('\n');
+    const lines = csvText.replace(/\r\n?/g, '\n').trim().split('\n').filter((l) => l.trim() !== '');
     if (lines.length < 2) {return [];}
 
     const headers = lines[0].split(',').map(h =>
@@ -68,11 +95,14 @@ export async function handleImportFixtures(req: Request, env: any, corsHdrs: Hea
         const url = new URL(req.url);
         const seasonId = url.searchParams.get('seasonId') || null;
 
-        const body = await req.text();
+        const body = await readCsvBody(req);
+        if (body === null) {
+            return json(NO_FILE, 400, corsHdrs);
+        }
         const rows = parseCSV(body);
 
         if (rows.length === 0) {
-            return json({ success: false, error: "No data found in CSV" }, 400, corsHdrs);
+            return json(NO_DATA, 400, corsHdrs);
         }
 
         let imported = 0;
@@ -80,6 +110,11 @@ export async function handleImportFixtures(req: Request, env: any, corsHdrs: Hea
 
         for (let i = 0; i < rows.length; i++) {
             const row = rows[i];
+            const missing = missingFields(row, [['date', 'date', 'fixture_date'], ['opponent', 'opponent', 'team']]);
+            if (missing) {
+                errors.push(`Row ${i + 2}: ${missing}`);
+                continue;
+            }
             try {
                 const id = crypto.randomUUID();
                 const fixtureDate = row.date || row.fixture_date;
@@ -106,7 +141,7 @@ export async function handleImportFixtures(req: Request, env: any, corsHdrs: Hea
         }
 
         return json({
-            success: true,
+            success: imported > 0 || errors.length === 0,
             imported,
             total: rows.length,
             errors: errors.length > 0 ? errors.slice(0, 10) : undefined
@@ -123,11 +158,14 @@ export async function handleImportResults(req: Request, env: any, corsHdrs: Head
         const claims = await requireJWT(req, env);
         const tenant = claims.tenantId;
 
-        const body = await req.text();
+        const body = await readCsvBody(req);
+        if (body === null) {
+            return json(NO_FILE, 400, corsHdrs);
+        }
         const rows = parseCSV(body);
 
         if (rows.length === 0) {
-            return json({ success: false, error: "No data found in CSV" }, 400, corsHdrs);
+            return json(NO_DATA, 400, corsHdrs);
         }
 
         let imported = 0;
@@ -135,12 +173,17 @@ export async function handleImportResults(req: Request, env: any, corsHdrs: Head
 
         for (let i = 0; i < rows.length; i++) {
             const row = rows[i];
+            const missing = missingFields(row, [['date', 'date', 'match_date'], ['opponent', 'opponent', 'team']]);
+            if (missing) {
+                errors.push(`Row ${i + 2}: ${missing}`);
+                continue;
+            }
             try {
                 const id = crypto.randomUUID();
                 const matchDate = row.date || row.match_date;
 
-                let homeScore = parseInt(row.home_score || row.score_home || row.our_goals || '0');
-                let awayScore = parseInt(row.away_score || row.score_away || row.their_goals || '0');
+                let homeScore = parseInt(row.home_score || row.score_home || row.our_score || row.score_for || row.our_goals || '0');
+                let awayScore = parseInt(row.away_score || row.score_away || row.their_score || row.score_against || row.their_goals || '0');
 
                 if (row.score && row.score.includes('-')) {
                     const [h, a] = row.score.split('-').map((s: string) => parseInt(s.trim()));
@@ -170,7 +213,7 @@ export async function handleImportResults(req: Request, env: any, corsHdrs: Head
         }
 
         return json({
-            success: true,
+            success: imported > 0 || errors.length === 0,
             imported,
             total: rows.length,
             errors: errors.length > 0 ? errors.slice(0, 10) : undefined
@@ -191,11 +234,14 @@ export async function handleImportPlayers(req: Request, env: any, corsHdrs: Head
         const url = new URL(req.url);
         const seasonId = url.searchParams.get('seasonId') || null;
 
-        const body = await req.text();
+        const body = await readCsvBody(req);
+        if (body === null) {
+            return json(NO_FILE, 400, corsHdrs);
+        }
         const rows = parseCSV(body);
 
         if (rows.length === 0) {
-            return json({ success: false, error: "No data found in CSV" }, 400, corsHdrs);
+            return json(NO_DATA, 400, corsHdrs);
         }
 
         let imported = 0;
@@ -204,6 +250,11 @@ export async function handleImportPlayers(req: Request, env: any, corsHdrs: Head
 
         for (let i = 0; i < rows.length; i++) {
             const row = rows[i];
+            const missing = missingFields(row, [['name', 'name', 'player_name']]);
+            if (missing) {
+                errors.push(`Row ${i + 2}: ${missing}`);
+                continue;
+            }
             try {
                 const id = crypto.randomUUID();
                 const player = {
@@ -266,7 +317,7 @@ export async function handleImportPlayers(req: Request, env: any, corsHdrs: Head
         }
 
         return json({
-            success: true,
+            success: imported > 0 || errors.length === 0,
             imported,
             total: rows.length,
             errors: errors.length > 0 ? errors.slice(0, 10) : undefined
@@ -283,11 +334,14 @@ export async function handleImportMatchEvents(req: Request, env: any, corsHdrs: 
         const claims = await requireJWT(req, env);
         const tenant = claims.tenantId;
 
-        const body = await req.text();
+        const body = await readCsvBody(req);
+        if (body === null) {
+            return json(NO_FILE, 400, corsHdrs);
+        }
         const rows = parseCSV(body);
 
         if (rows.length === 0) {
-            return json({ success: false, error: "No data found in CSV" }, 400, corsHdrs);
+            return json(NO_DATA, 400, corsHdrs);
         }
 
         // Get player name-to-id mapping
@@ -309,6 +363,11 @@ export async function handleImportMatchEvents(req: Request, env: any, corsHdrs: 
 
         for (let i = 0; i < rows.length; i++) {
             const row = rows[i];
+            const missing = missingFields(row, [['event_type', 'event_type', 'type'], ['player', 'player', 'player_name', 'player_id']]);
+            if (missing) {
+                errors.push(`Row ${i + 2}: ${missing}`);
+                continue;
+            }
             try {
                 const playerName = (row.player || row.player_name || '').toLowerCase();
                 const playerId = row.player_id || playerMap[playerName];
@@ -326,7 +385,7 @@ export async function handleImportMatchEvents(req: Request, env: any, corsHdrs: 
                     continue;
                 }
 
-                const eventType = (row.event_type || row.type || 'goal').toLowerCase();
+                const eventType = (row.event_type || row.type).toLowerCase();
                 const minute = parseInt(row.minute || '0') || null;
 
                 const id = crypto.randomUUID();
@@ -350,7 +409,7 @@ export async function handleImportMatchEvents(req: Request, env: any, corsHdrs: 
         }
 
         return json({
-            success: true,
+            success: imported > 0 || errors.length === 0,
             imported,
             total: rows.length,
             errors: errors.length > 0 ? errors.slice(0, 10) : undefined

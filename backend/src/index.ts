@@ -1,6 +1,8 @@
 import { Router } from "itty-router";
 import { handlePublicTenantRequest } from "./routes/public";
 import { errorHandler } from "./middleware/errorHandler";
+import { getAuthFailure } from "./services/auth";
+import { json } from "./services/util";
 import { corsHeaders, isPreflight } from "./middleware/cors";
 import { newRequestId, logJSON } from "./lib/log";
 import { withSecurity } from "./middleware/securityHeaders";
@@ -1339,6 +1341,17 @@ export default {
         try {
             const response = await router.handle(req, env, corsHdrs, requestId);
             if (response instanceof Response) {
+                // A handler swallowed a failed auth check and returned a generic 5xx
+                const authStatus = response.status >= 500 ? getAuthFailure(req) : undefined;
+                if (authStatus) {
+                    return respondWithCors(json({
+                        success: false,
+                        error: {
+                            code: authStatus === 401 ? "UNAUTHORIZED" : "FORBIDDEN",
+                            message: authStatus === 401 ? "Authentication required" : "Not allowed for this account",
+                        },
+                    }, authStatus), corsHdrs);
+                }
                 return respondWithCors(response, corsHdrs);
             }
             return respondWithCors(new Response("Internal Error", { status: 500 }), corsHdrs);

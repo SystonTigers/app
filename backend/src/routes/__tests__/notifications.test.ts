@@ -4,7 +4,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-const mockEnv = {
+const mockEnv: any = {
     DB: {
         prepare: vi.fn(() => ({
             bind: vi.fn(() => ({

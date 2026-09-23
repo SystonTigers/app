@@ -53,7 +53,7 @@ describe("Weather Service", () => {
             const req = { url: "https://api.test.com/weather?lat=52.52&lon=13.41" };
             const response = await getWeather(req);
 
-            expect(response.status).toBeUndefined(); // Default status
+            expect(response.status).toBe(200);
             expect(response.headers.get("content-type")).toBe("application/json");
 
             // Verify the API was called with correct URL

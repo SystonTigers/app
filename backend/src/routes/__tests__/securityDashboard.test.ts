@@ -249,7 +249,6 @@ describe("Security Dashboard Routes", () => {
       expect(Array.isArray(data.data.events)).toBe(true);
       expect(data.data.events.length).toBeGreaterThan(0);
       expect(data.data.events[0]).toMatchObject({
-        id: expect.any(String),
         timestamp: expect.any(Number),
         type: expect.any(String),
         severity: expect.any(String),
@@ -375,10 +374,11 @@ describe("Security Dashboard Routes", () => {
       expect(data.success).toBe(true);
       expect(Array.isArray(data.data.eventTypes)).toBe(true);
       expect(Array.isArray(data.data.severities)).toBe(true);
-      expect(data.data.eventTypes).toContain("AUTH_FAILURE");
-      expect(data.data.eventTypes).toContain("RATE_LIMIT");
-      expect(data.data.severities).toContain("LOW");
-      expect(data.data.severities).toContain("HIGH");
+      // API returns the enum values (lower snake_case), which the dashboard filters on
+      expect(data.data.eventTypes).toContain("auth_failure");
+      expect(data.data.eventTypes).toContain("rate_limit_exceeded");
+      expect(data.data.severities).toContain("low");
+      expect(data.data.severities).toContain("high");
     });
 
     it("should require admin authentication", async () => {

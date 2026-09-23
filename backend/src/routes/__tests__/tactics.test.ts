@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { handleSaveTactics, handleGetTactics } from '../tactics';
 
 // Mock dependencies
-const mockEnv = {
+const mockEnv: any = {
     DB: {
         prepare: vi.fn(),
     },
@@ -44,7 +44,7 @@ describe('Tactics Routes', () => {
             const res = await handleSaveTactics(req, mockEnv, new Headers());
             expect(res.status).toBe(200);
 
-            const data = await res.json();
+            const data: any = await res.json();
             expect(data.success).toBe(true);
 
             expect(mockEnv.DB.prepare).toHaveBeenCalledWith(expect.stringContaining('INSERT INTO team_tactics'));
@@ -85,7 +85,7 @@ describe('Tactics Routes', () => {
             const res = await handleGetTactics(req, mockEnv, new Headers());
             expect(res.status).toBe(200);
 
-            const data = await res.json();
+            const data: any = await res.json();
             expect(data.success).toBe(true);
             expect(data.data).toEqual(mockConfig);
         });
@@ -103,7 +103,7 @@ describe('Tactics Routes', () => {
             const res = await handleGetTactics(req, mockEnv, new Headers());
             expect(res.status).toBe(200);
 
-            const data = await res.json();
+            const data: any = await res.json();
             expect(data.data).toBeNull();
         });
     });

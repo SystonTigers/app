@@ -98,7 +98,7 @@ export function extractAPIVersion(req: Request): string {
  */
 export function isVersionSupported(version: string): boolean {
   const versionInfo = API_VERSIONS[version];
-  return versionInfo && versionInfo.status !== 'sunset';
+  return !!versionInfo && versionInfo.status !== 'sunset';
 }
 
 /**

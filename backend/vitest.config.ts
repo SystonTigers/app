@@ -1,4 +1,5 @@
 import { defineWorkersConfig } from "@cloudflare/vitest-pool-workers/config";
+import { E2E_TEST_FILES, WORKERS_TEST_FILES } from "./vitest.workers-files";
 
 export default defineWorkersConfig({
   test: {
@@ -9,10 +10,12 @@ export default defineWorkersConfig({
         },
       },
     },
-    include: ["src/**/*.test.ts", "tests/**/*.test.ts"],
+    // Only tests that need the Workers runtime; the rest run in Node (vitest.config.node.ts)
+    include: WORKERS_TEST_FILES,
     exclude: [
       "**/node_modules/**",
       "**/dist/**",
+      ...E2E_TEST_FILES,
     ],
     coverage: {
       provider: "istanbul",
@@ -32,9 +35,6 @@ export default defineWorkersConfig({
     alias: {
       // Mock isomorphic-dompurify for tests since it requires DOM
       'isomorphic-dompurify': new URL('./src/__mocks__/dompurify.ts', import.meta.url).pathname,
-      // Mock p-limit and yocto-queue for Cloudflare Workers compatibility
-      'p-limit': new URL('./src/__mocks__/p-limit.ts', import.meta.url).pathname,
-      'yocto-queue': new URL('./src/__mocks__/yocto-queue.ts', import.meta.url).pathname,
     },
   },
 });

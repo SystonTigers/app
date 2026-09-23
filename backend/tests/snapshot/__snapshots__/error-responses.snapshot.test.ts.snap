@@ -13,7 +13,7 @@ exports[`Snapshot: Error Responses > snapshots 400 Bad Request response structur
 
 exports[`Snapshot: Error Responses > snapshots 401 Unauthorized response 1`] = `
 {
-  "contentType": "text/plain;charset=UTF-8",
+  "contentType": "application/json",
   "hasBody": true,
   "status": 401,
 }

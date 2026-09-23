@@ -16,7 +16,7 @@ import type {
   FatigueAssessment,
   SessionWithMetrics,
   PitchDefinition,
-} from '@syston-tigers/sdk';
+} from '../../../packages/sdk/src/types-wearables';
 
 // ============================================================================
 // DEVICE MANAGEMENT
@@ -677,7 +677,8 @@ export async function getPlayerMetricsSummary(
     recentAvgHeartRate: (recentStats?.avg_hr as number) || 0,
     currentFatigueScore: fatigue?.fatigueRisk === 'high' ? 80 : fatigue?.fatigueRisk === 'medium' ? 50 : 20,
     currentReadinessScore: fatigue?.overallRisk === 'low' ? 85 : fatigue?.overallRisk === 'medium' ? 60 : 35,
-    injuryRiskLevel: fatigue?.overallRisk || 'low',
+    // Summary uses a 3-level scale; fold 'critical' into 'high'
+    injuryRiskLevel: fatigue?.overallRisk === 'critical' ? 'high' : (fatigue?.overallRisk || 'low'),
   };
 }
 

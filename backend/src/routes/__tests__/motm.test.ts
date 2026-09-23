@@ -17,7 +17,7 @@ describe("MOTM (Man of the Match) Routes", () => {
   });
 
   it("should require authentication for casting vote", async () => {
-    const request = new Request("https://example.com/api/v1/motm/test-match/vote", {
+    const request = new Request("https://example.com/api/v1/matches/test-match/motm/vote", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({

@@ -48,13 +48,24 @@ function forbidden(message?: string): Response {
   });
 }
 
+// Records requests whose auth check failed. Many route handlers catch every
+// error (including the thrown 401 Response) and return a generic 500; the
+// top-level fetch handler uses this to turn those back into a proper 401/403
+// so clients can tell "log in again" apart from "server broke".
+const authFailures = new WeakMap<Request, 401 | 403>();
+
+/** Status of a failed auth check on this request, if any. */
+export function getAuthFailure(req: Request): 401 | 403 | undefined {
+  return authFailures.get(req);
+}
+
 /**
  * Verify JWT and return normalized claims
  * Includes revocation check
  */
 export async function requireJWT(req: Request, env: any): Promise<Claims> {
-  const token = getToken(req);
   try {
+    const token = getToken(req);
     const claims = await verifyAndNormalize(token, env);
 
     // Check if token has been revoked
@@ -70,8 +81,30 @@ export async function requireJWT(req: Request, env: any): Promise<Claims> {
 
     return claims;
   } catch (e: any) {
+    authFailures.set(req, 401);
     throw new Response("Unauthorized", { status: 401 });
   }
+}
+
+/** Claims guaranteed to be scoped to a tenant. */
+export type TenantClaims = Claims & { tenantId: string };
+
+/**
+ * Like requireJWT, but also rejects tokens that aren't scoped to a tenant.
+ * Use for any route that reads or writes tenant data.
+ */
+export async function requireTenantJWT(req: Request, env: any): Promise<TenantClaims> {
+  const claims = await requireJWT(req, env);
+  if (!claims.tenantId) {
+    authFailures.set(req, 403);
+    throw new Response("Forbidden - token has no tenant", { status: 403 });
+  }
+  return claims as TenantClaims;
+}
+
+/** True if the claims include any of the given roles. */
+export function hasAnyRole(claims: Pick<Claims, "roles">, roles: readonly string[]): boolean {
+  return (claims.roles || []).some((r) => roles.includes(r));
 }
 
 /**

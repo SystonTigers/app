@@ -109,21 +109,27 @@ describe("Fixtures Routes", () => {
                 { id: "2", date: "2025-01-27", opponent: "Team B" },
             ];
             const env = createMockEnv();
-            (env.DB.prepare as any).mockReturnValue({
+            const bind = vi.fn().mockReturnValue({
                 all: vi.fn().mockResolvedValue({ results: mockResults }),
             });
+            (env.DB.prepare as any).mockReturnValue({ bind });
 
             const req = new Request("https://api.test.com/fixtures/upcoming");
             const response = await handleGetUpcomingFixtures(req, env);
             const body = await response.json() as any;
 
             expect(Array.isArray(body)).toBe(true);
+            expect(body).toHaveLength(2);
+            // SECURITY: query is scoped to the caller's tenant
+            expect(bind).toHaveBeenCalledWith(expect.any(String));
         });
 
         it("returns empty array when no fixtures", async () => {
             const env = createMockEnv();
             (env.DB.prepare as any).mockReturnValue({
-                all: vi.fn().mockResolvedValue({ results: [] }),
+                bind: vi.fn().mockReturnValue({
+                    all: vi.fn().mockResolvedValue({ results: [] }),
+                }),
             });
 
             const req = new Request("https://api.test.com/fixtures/upcoming");

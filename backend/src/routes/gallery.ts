@@ -158,7 +158,7 @@ export async function handlePhotoUpload(req: Request, env: any, corsHdrs: Header
             `INSERT INTO photos (id, tenant_id, album_id, url, uploaded_by, caption, tags)
              VALUES (?, ?, ?, ?, ?, ?, ?)`
         ).bind(
-            id, claims.tenantId, albumId, placeholderUrl, claims.email || 'User', caption, JSON.stringify(tags)
+            id, claims.tenantId, albumId, placeholderUrl, claims.email || claims.userId || 'User', caption, JSON.stringify(tags)
         ).run();
 
         return json({ success: true, data: { id, url: placeholderUrl } }, 201, corsHdrs);

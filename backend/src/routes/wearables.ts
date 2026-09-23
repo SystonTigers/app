@@ -2,7 +2,7 @@
 // API routes for GPS/Wearables tracking
 
 import { json } from '../services/util';
-import { requireJWT } from '../services/auth';
+import { requireTenantJWT } from '../services/auth';
 import type { Env } from '../env';
 import * as wearablesService from '../services/wearables';
 import type {
@@ -11,7 +11,7 @@ import type {
   SyncWearableDataRequest,
   ManualMetricsEntryRequest,
   CreateSessionRequest,
-} from '@syston-tigers/sdk';
+} from '../../../packages/sdk/src/types-wearables';
 
 // ============================================================================
 // DEVICE ROUTES
@@ -20,7 +20,7 @@ import type {
 // GET /api/v1/wearables/devices - List all devices for tenant
 export async function handleListDevices(req: Request, env: Env, corsHdrs: Headers) {
   try {
-    const claims = await requireJWT(req, env);
+    const claims = await requireTenantJWT(req, env);
     const url = new URL(req.url);
     const playerId = url.searchParams.get('playerId');
     const activeOnly = url.searchParams.get('activeOnly') === 'true';
@@ -42,7 +42,7 @@ export async function handleListDevices(req: Request, env: Env, corsHdrs: Header
 // POST /api/v1/wearables/devices - Create/pair a new device
 export async function handleCreateDevice(req: Request, env: Env, corsHdrs: Headers) {
   try {
-    const claims = await requireJWT(req, env);
+    const claims = await requireTenantJWT(req, env);
     const body = await req.json() as CreateWearableDeviceRequest;
 
     if (!body.playerId || !body.deviceType || !body.provider) {
@@ -69,7 +69,7 @@ export async function handleCreateDevice(req: Request, env: Env, corsHdrs: Heade
 // GET /api/v1/wearables/devices/:deviceId - Get device details
 export async function handleGetDevice(req: Request, env: Env, corsHdrs: Headers, deviceId: string) {
   try {
-    const claims = await requireJWT(req, env);
+    const claims = await requireTenantJWT(req, env);
     const device = await wearablesService.getDevice(env, claims.tenantId, deviceId);
 
     if (!device) {
@@ -86,7 +86,7 @@ export async function handleGetDevice(req: Request, env: Env, corsHdrs: Headers,
 // PUT /api/v1/wearables/devices/:deviceId - Update device
 export async function handleUpdateDevice(req: Request, env: Env, corsHdrs: Headers, deviceId: string) {
   try {
-    const claims = await requireJWT(req, env);
+    const claims = await requireTenantJWT(req, env);
     const body = await req.json() as UpdateWearableDeviceRequest;
 
     const updated = await wearablesService.updateDevice(env, claims.tenantId, deviceId, body);
@@ -105,7 +105,7 @@ export async function handleUpdateDevice(req: Request, env: Env, corsHdrs: Heade
 // DELETE /api/v1/wearables/devices/:deviceId - Delete/unpair device
 export async function handleDeleteDevice(req: Request, env: Env, corsHdrs: Headers, deviceId: string) {
   try {
-    const claims = await requireJWT(req, env);
+    const claims = await requireTenantJWT(req, env);
     const deleted = await wearablesService.deleteDevice(env, claims.tenantId, deviceId);
 
     if (!deleted) {
@@ -126,7 +126,7 @@ export async function handleDeleteDevice(req: Request, env: Env, corsHdrs: Heade
 // GET /api/v1/wearables/sessions - List sessions
 export async function handleListSessions(req: Request, env: Env, corsHdrs: Headers) {
   try {
-    const claims = await requireJWT(req, env);
+    const claims = await requireTenantJWT(req, env);
     const url = new URL(req.url);
     const playerId = url.searchParams.get('playerId');
     const fixtureId = url.searchParams.get('fixtureId');
@@ -157,7 +157,7 @@ export async function handleListSessions(req: Request, env: Env, corsHdrs: Heade
 // POST /api/v1/wearables/sessions - Create a session (for manual entry or import)
 export async function handleCreateSession(req: Request, env: Env, corsHdrs: Headers) {
   try {
-    const claims = await requireJWT(req, env);
+    const claims = await requireTenantJWT(req, env);
     const body = await req.json() as CreateSessionRequest;
 
     if (!body.playerId || !body.sessionType || !body.sessionDate) {
@@ -185,7 +185,7 @@ export async function handleCreateSession(req: Request, env: Env, corsHdrs: Head
 // GET /api/v1/wearables/sessions/:sessionId - Get session with metrics
 export async function handleGetSession(req: Request, env: Env, corsHdrs: Headers, sessionId: string) {
   try {
-    const claims = await requireJWT(req, env);
+    const claims = await requireTenantJWT(req, env);
     const session = await wearablesService.getSession(env, claims.tenantId, sessionId);
 
     if (!session) {
@@ -202,7 +202,7 @@ export async function handleGetSession(req: Request, env: Env, corsHdrs: Headers
 // GET /api/v1/wearables/sessions/:sessionId/gps-track - Get GPS track for map
 export async function handleGetGPSTrack(req: Request, env: Env, corsHdrs: Headers, sessionId: string) {
   try {
-    const claims = await requireJWT(req, env);
+    const claims = await requireTenantJWT(req, env);
     const track = await wearablesService.getGPSTrack(env, claims.tenantId, sessionId);
 
     return json({ success: true, data: track }, 200, corsHdrs);
@@ -219,7 +219,7 @@ export async function handleGetGPSTrack(req: Request, env: Env, corsHdrs: Header
 // POST /api/v1/wearables/sync - Sync data from device/app (automatic entry)
 export async function handleSyncData(req: Request, env: Env, corsHdrs: Headers) {
   try {
-    const claims = await requireJWT(req, env);
+    const claims = await requireTenantJWT(req, env);
     const body = await req.json() as SyncWearableDataRequest;
 
     if (!body.playerId || !body.samples || body.samples.length === 0) {
@@ -297,7 +297,7 @@ export async function handleSyncData(req: Request, env: Env, corsHdrs: Headers) 
 // POST /api/v1/wearables/manual - Manual metrics entry
 export async function handleManualEntry(req: Request, env: Env, corsHdrs: Headers) {
   try {
-    const claims = await requireJWT(req, env);
+    const claims = await requireTenantJWT(req, env);
     const body = await req.json() as ManualMetricsEntryRequest;
 
     if (!body.playerId || !body.sessionType || !body.sessionDate) {
@@ -320,7 +320,7 @@ export async function handleManualEntry(req: Request, env: Env, corsHdrs: Header
 // GET /api/v1/wearables/metrics/:playerId - Get player metrics
 export async function handleGetPlayerMetrics(req: Request, env: Env, corsHdrs: Headers, playerId: string) {
   try {
-    const claims = await requireJWT(req, env);
+    const claims = await requireTenantJWT(req, env);
     const url = new URL(req.url);
     const limit = parseInt(url.searchParams.get('limit') || '10');
     const seasonId = url.searchParams.get('seasonId') || undefined;
@@ -340,7 +340,7 @@ export async function handleGetPlayerMetrics(req: Request, env: Env, corsHdrs: H
 // GET /api/v1/wearables/summary/:playerId - Get player metrics summary
 export async function handleGetPlayerSummary(req: Request, env: Env, corsHdrs: Headers, playerId: string) {
   try {
-    const claims = await requireJWT(req, env);
+    const claims = await requireTenantJWT(req, env);
     const summary = await wearablesService.getPlayerMetricsSummary(env, claims.tenantId, playerId);
 
     if (!summary) {
@@ -357,7 +357,7 @@ export async function handleGetPlayerSummary(req: Request, env: Env, corsHdrs: H
 // GET /api/v1/wearables/fatigue/:playerId - Get fatigue/injury risk assessment
 export async function handleGetFatigueAssessment(req: Request, env: Env, corsHdrs: Headers, playerId: string) {
   try {
-    const claims = await requireJWT(req, env);
+    const claims = await requireTenantJWT(req, env);
     const assessment = await wearablesService.calculateFatigueAssessment(env, claims.tenantId, playerId);
 
     if (!assessment) {
@@ -378,7 +378,7 @@ export async function handleGetFatigueAssessment(req: Request, env: Env, corsHdr
 // GET /api/v1/wearables/pitches - List pitch definitions
 export async function handleListPitches(req: Request, env: Env, corsHdrs: Headers) {
   try {
-    const claims = await requireJWT(req, env);
+    const claims = await requireTenantJWT(req, env);
     const pitches = await wearablesService.getPitchDefinitions(env, claims.tenantId);
 
     return json({ success: true, data: pitches }, 200, corsHdrs);
@@ -391,7 +391,7 @@ export async function handleListPitches(req: Request, env: Env, corsHdrs: Header
 // POST /api/v1/wearables/pitches - Create pitch definition
 export async function handleCreatePitch(req: Request, env: Env, corsHdrs: Headers) {
   try {
-    const claims = await requireJWT(req, env);
+    const claims = await requireTenantJWT(req, env);
     const body = await req.json() as {
       name: string;
       venueName?: string;
@@ -444,7 +444,7 @@ export async function handleCreatePitch(req: Request, env: Env, corsHdrs: Header
 // POST /api/v1/wearables/import - Import data from file
 export async function handleImportData(req: Request, env: Env, corsHdrs: Headers) {
   try {
-    const claims = await requireJWT(req, env);
+    const claims = await requireTenantJWT(req, env);
     const body = await req.json() as {
       playerId: string;
       fixtureId?: string;

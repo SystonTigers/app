@@ -1,5 +1,5 @@
 import { json } from "../services/util";
-import { requireJWT } from "../services/auth";
+import { requireTenantJWT as requireJWT } from "../services/auth";
 import { scrapeWebsite, parseSnippet, syncFixturesToDB, FAFixture } from "../services/fa-scraper";
 
 /**

@@ -13,9 +13,13 @@ import {
 // Mock auth service
 const mockRequireJWT = vi.fn();
 
-vi.mock("../../services/auth", () => ({
-    requireJWT: (...args: any[]) => mockRequireJWT(...args),
-}));
+vi.mock("../../services/auth", async () => {
+    const actual = await vi.importActual<typeof import("../../services/auth")>("../../services/auth");
+    return {
+        requireJWT: (...args: any[]) => mockRequireJWT(...args),
+        hasAnyRole: actual.hasAnyRole,
+    };
+});
 
 // Mock util service
 vi.mock("../../services/util", () => ({
@@ -58,7 +62,7 @@ describe("LMS Routes", () => {
             mockRequireJWT.mockResolvedValue({
                 tenantId: "test-tenant",
                 sub: "user-123",
-                role: "fan", // Not admin
+                roles: ["fan"], // Not admin
             });
 
             const req = new Request("https://api.test.com/lms/games", {
@@ -77,7 +81,7 @@ describe("LMS Routes", () => {
             mockRequireJWT.mockResolvedValue({
                 tenantId: "test-tenant",
                 sub: "admin-123",
-                role: "admin",
+                roles: ["admin"],
             });
 
             const req = new Request("https://api.test.com/lms/games", {
@@ -101,7 +105,7 @@ describe("LMS Routes", () => {
             mockRequireJWT.mockResolvedValue({
                 tenantId: "test-tenant",
                 sub: "admin-123",
-                role: "admin",
+                roles: ["admin"],
             });
 
             const req = new Request("https://api.test.com/lms/games", {
@@ -123,7 +127,7 @@ describe("LMS Routes", () => {
                 tenantId: "test-tenant",
                 sub: "player-123",
                 name: "Test Player",
-                role: "player",
+                roles: ["player"],
             });
 
             const env = createMockEnv();
@@ -148,7 +152,7 @@ describe("LMS Routes", () => {
             mockRequireJWT.mockResolvedValue({
                 tenantId: "test-tenant",
                 sub: "player-123",
-                role: "player",
+                roles: ["player"],
             });
 
             const env = createMockEnv();
@@ -173,7 +177,7 @@ describe("LMS Routes", () => {
             mockRequireJWT.mockResolvedValue({
                 tenantId: "test-tenant",
                 sub: "player-123",
-                role: "player",
+                roles: ["player"],
             });
 
             const env = createMockEnv();
@@ -209,7 +213,7 @@ describe("LMS Routes", () => {
             mockRequireJWT.mockResolvedValue({
                 tenantId: "test-tenant",
                 sub: "player-123",
-                role: "player",
+                roles: ["player"],
             });
 
             const env = createMockEnv();
@@ -245,7 +249,7 @@ describe("LMS Routes", () => {
             mockRequireJWT.mockResolvedValue({
                 tenantId: "test-tenant",
                 sub: "player-123",
-                role: "player",
+                roles: ["player"],
             });
 
             const env = createMockEnv();
@@ -278,7 +282,7 @@ describe("LMS Routes", () => {
             mockRequireJWT.mockResolvedValue({
                 tenantId: "test-tenant",
                 sub: "player-123",
-                role: "player",
+                roles: ["player"],
             });
 
             const req = new Request("https://api.test.com/lms/rounds/round-1/process", {
@@ -298,7 +302,7 @@ describe("LMS Routes", () => {
             mockRequireJWT.mockResolvedValue({
                 tenantId: "tenant-a",
                 sub: "user-123",
-                role: "player",
+                roles: ["player"],
             });
 
             const env = createMockEnv();

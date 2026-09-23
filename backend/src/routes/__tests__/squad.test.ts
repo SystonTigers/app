@@ -17,6 +17,10 @@ vi.mock("../../services/util", () => ({
 
 describe("Squad Routes", () => {
     const createMockEnv = () => ({
+        DB: {
+            prepare: vi.fn(() => ({ bind: vi.fn((...args: unknown[]) => ({ args })) })),
+            batch: vi.fn().mockResolvedValue([]),
+        },
         KV_IDEMP: {
             put: vi.fn().mockResolvedValue(undefined),
             get: vi.fn().mockResolvedValue(null),
@@ -46,6 +50,9 @@ describe("Squad Routes", () => {
 
             expect(body.success).toBe(true);
             expect(body.count).toBe(2);
+            // Synced to D1 in a single batch
+            expect(env.DB.batch).toHaveBeenCalledTimes(1);
+            expect(env.DB.batch.mock.calls[0][0]).toHaveLength(2);
         });
 
         it("stores squad data in KV with correct key", async () => {

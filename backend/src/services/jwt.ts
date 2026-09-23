@@ -5,6 +5,7 @@ export type RawClaims = {
   iss?: string; aud?: string; sub?: string;
   roles?: string[]; role?: string;
   tenantId?: string; tenant_id?: string; tenant?: string;
+  email?: string;
   iat?: number; exp?: number;
 };
 
@@ -16,6 +17,7 @@ export type Claims = {
   tenantId?: string;
   userId?: string;
   name?: string;
+  email?: string;
   iat?: number;
   exp?: number;
 };
@@ -36,6 +38,7 @@ export function normalizeClaims(c: RawClaims): Claims {
     tenantId,
     userId: c.sub,
     name: (c as any).name,
+    email: typeof c.email === "string" ? c.email : undefined,
     iat: c.iat,
     exp: c.exp,
   };

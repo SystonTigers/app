@@ -10,7 +10,7 @@ import {
 
 // Mock auth service
 vi.mock("../../services/auth", () => ({
-    requireJWT: vi.fn().mockResolvedValue({
+    requireTenantJWT: vi.fn().mockResolvedValue({
         tenantId: "test-tenant",
         userId: "user123",
         roles: ["admin", "coach"],
@@ -33,7 +33,7 @@ vi.stubGlobal("crypto", {
 
 describe("Import Routes", () => {
     const createMockKV = () => ({
-        get: vi.fn().mockResolvedValue([]),
+        get: vi.fn().mockResolvedValue(null), // KV returns null for missing keys
         put: vi.fn().mockResolvedValue(undefined),
     });
 
@@ -85,6 +85,21 @@ describe("Import Routes", () => {
             expect(body.total).toBe(2);
         });
 
+        it("accepts a raw text/csv body (mobile app)", async () => {
+            const env = createMockEnv();
+            const req = new Request("https://api.test.com/import/fixtures", {
+                method: "POST",
+                headers: { "Content-Type": "text/csv" },
+                body: "date,opponent\r\n2024-01-15,Rival FC\r\n",
+            });
+
+            const response = await handleImportFixtures(req, env, createCorsHeaders());
+            const body = await response.json() as any;
+
+            expect(body.success).toBe(true);
+            expect(body.imported).toBe(1);
+        });
+
         it("returns error when no file provided", async () => {
             const env = createMockEnv();
             const corsHdrs = createCorsHeaders();
@@ -117,7 +132,7 @@ describe("Import Routes", () => {
             const body = await response.json() as any;
 
             expect(body.success).toBe(false);
-            expect(body.error).toContain("No valid data");
+            expect(body.error).toContain("No data found");
         });
 
         it("reports errors for rows missing required fields", async () => {
@@ -315,10 +330,10 @@ fix123,Unknown Player,goal,23`;
             const response = await handleImportMatchEvents(req, env, corsHdrs);
             const body = await response.json() as any;
 
-            expect(body.success).toBe(true);
+            expect(body.success).toBe(false);
             expect(body.imported).toBe(0);
             expect(body.errors).toBeDefined();
-            expect(body.errors[0]).toContain("Player not found");
+            expect(body.errors[0]).toContain("Unknown player");
         });
 
         it("requires event_type field", async () => {
@@ -337,7 +352,7 @@ fix123,player456,,45`;
             const response = await handleImportMatchEvents(req, env, corsHdrs);
             const body = await response.json() as any;
 
-            expect(body.success).toBe(true);
+            expect(body.success).toBe(false);
             expect(body.imported).toBe(0);
             expect(body.errors[0]).toContain("event_type");
         });
@@ -357,7 +372,7 @@ fix123,player456,,45`;
             expect(response.headers.get("Content-Disposition")).toContain("fixtures_template.csv");
 
             const text = await response.text();
-            expect(text).toContain("date,time,opponent");
+            expect(text).toContain("date,opponent,venue");
         });
 
         it("returns results template", async () => {
@@ -369,7 +384,7 @@ fix123,player456,,45`;
             const response = await handleGetImportTemplate(req, env, corsHdrs, "results");
 
             const text = await response.text();
-            expect(text).toContain("our_score,their_score");
+            expect(text).toContain("home_score,away_score");
         });
 
         it("returns players template", async () => {
@@ -384,16 +399,16 @@ fix123,player456,,45`;
             expect(text).toContain("name,number,position");
         });
 
-        it("returns match_events template", async () => {
+        it("returns match-events template", async () => {
             const env = createMockEnv();
             const corsHdrs = createCorsHeaders();
 
-            const req = new Request("https://api.test.com/import/template/match_events");
+            const req = new Request("https://api.test.com/import/template/match-events");
 
-            const response = await handleGetImportTemplate(req, env, corsHdrs, "match_events");
+            const response = await handleGetImportTemplate(req, env, corsHdrs, "match-events");
 
             const text = await response.text();
-            expect(text).toContain("fixture_id,player_name,event_type");
+            expect(text).toContain("date,player,event_type");
         });
 
         it("returns error for unknown template type", async () => {
@@ -431,10 +446,10 @@ fix123,player456,,45`;
             const body = await response.json() as any;
 
             expect(body.success).toBe(true);
-            expect(body.data.fixtures).toBe(10);
-            expect(body.data.results).toBe(8);
-            expect(body.data.players).toBe(15);
-            expect(body.data.match_events).toBe(25);
+            expect(body.counts.fixtures).toBe(10);
+            expect(body.counts.matches).toBe(8);
+            expect(body.counts.players).toBe(15);
+            expect(body.counts.match_events).toBe(25);
         });
 
         it("returns zero counts when no data exists", async () => {
@@ -453,7 +468,7 @@ fix123,player456,,45`;
             const body = await response.json() as any;
 
             expect(body.success).toBe(true);
-            expect(body.data.fixtures).toBe(0);
+            expect(body.counts.fixtures).toBe(0);
         });
     });
 });

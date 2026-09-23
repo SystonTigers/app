@@ -6,7 +6,7 @@
  */
 
 import Stripe from 'stripe';
-import { requireJWT } from '../services/auth';
+import { requireTenantJWT as requireJWT } from '../services/auth';
 import { json } from '../services/util';
 
 // Pricing in pence (GBP) - 20% discount for annual
@@ -209,7 +209,8 @@ export async function handleBillingStatus(req: Request, env: any, corsHdrs: Head
                 const subscription = await stripe.subscriptions.retrieve(tenant.stripe_subscription_id);
                 subscriptionDetails = {
                     status: subscription.status,
-                    currentPeriodEnd: subscription.current_period_end,
+                    // Stripe API 2025+: the billing period lives on the subscription item
+                    currentPeriodEnd: subscription.items?.data?.[0]?.current_period_end ?? null,
                     cancelAtPeriodEnd: subscription.cancel_at_period_end,
                 };
             } catch {
