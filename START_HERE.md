@@ -4,12 +4,20 @@
 
 - ✅ Database migrated (13 migrations applied)
 - ✅ Syston tenant seeded (Pro · Lifetime · SYSTON100)
-- ✅ Admin user created with password auth
+- ✅ Admin user created with password auth (password set via `scripts/set-admin-password.mjs`, never committed)
 - ✅ Cookie auth fixed for localhost
 
 ---
 
 ## 🎯 **3 Commands to Start**
+
+### One-time: set the admin password
+```powershell
+cd C:\dev\app-FRESH\backend
+$env:SYSTON_ADMIN_PASSWORD='choose-a-strong-password'
+node scripts/set-admin-password.mjs            # local D1
+node scripts/set-admin-password.mjs --remote   # production D1
+```
 
 ### Terminal 1: Start Backend
 ```bash
@@ -46,7 +54,7 @@ curl -s http://localhost:8787/__meta/ping
 curl -s -o NUL -w "%{http_code}\n" http://localhost:3000/api/admin/__meta/ping
 
 # 3. Admin login route
-curl -s -o NUL -w "%{http_code}\n" -X POST http://localhost:3000/api/auth/admin-login -H "content-type: application/json" -d "{\"email\":\"systontowntigersfc@gmail.com\",\"password\":\"SystonAdmin2024!\"}"
+curl -s -o NUL -w "%{http_code}\n" -X POST http://localhost:3000/api/auth/admin-login -H "content-type: application/json" -d "{\"email\":\"systontowntigersfc@gmail.com\",\"password\":\"YOUR_PASSWORD\"}"
 ```
 
 Expected: `{"ok":true}`, `200`, `200`
@@ -60,7 +68,7 @@ Expected: `{"ok":true}`, `200`, `200`
 
 **Credentials**:
 - Email: `systontowntigersfc@gmail.com`
-- Password: `SystonAdmin2024!`
+- Password: the one you set with `set-admin-password.mjs`
 
 **Expected**: Redirects to `/admin` without errors
 

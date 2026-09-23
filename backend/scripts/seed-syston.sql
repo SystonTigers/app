@@ -37,22 +37,24 @@ INSERT OR REPLACE INTO tenant_brand (
   unixepoch()
 );
 
--- 3. Upsert admin user
--- Password: SystonAdmin2024!
--- Hash generated with: node -e "console.log(require('bcryptjs').hashSync('SystonAdmin2024!', 10))"
--- IMPORTANT: Change this password after first login!
-INSERT OR REPLACE INTO auth_users (
+-- 3. Ensure admin user exists (password is NOT set here)
+-- A fresh user gets an unusable hash ('!'), so it can't log in until you run:
+--   SYSTON_ADMIN_PASSWORD='...' node scripts/set-admin-password.mjs [--remote]
+-- Existing users keep their current password.
+INSERT OR IGNORE INTO auth_users (
   id, tenant_id, email, password_hash, roles, profile, created_at, updated_at
 ) VALUES (
   'user_syston_admin_1',
   'tenant_syston_2024',
   'systontowntigersfc@gmail.com',
-  '$2a$10$rZ9YhcKQqJ3wUqVmJp5p9OQx4Kf2vXwGzQvHmYuZqL5tXwPqLmY3W',
+  '!',
   '["admin","tenant_admin","platform_admin"]',
   NULL,
   unixepoch(),
   unixepoch()
 );
+UPDATE auth_users SET roles = '["admin","tenant_admin","platform_admin"]', updated_at = unixepoch()
+WHERE email = 'systontowntigersfc@gmail.com';
 
 -- 4. Ensure promo code SYSTON100 exists
 INSERT OR REPLACE INTO promo_codes (
@@ -100,6 +102,6 @@ COMMIT;
 
 -- Done! Syston tenant seeded.
 -- Admin email: systontowntigersfc@gmail.com
--- Admin password: SystonAdmin2024! (CHANGE THIS!)
+-- Admin password: set with scripts/set-admin-password.mjs
 -- Plan: Pro · Lifetime
 -- Promo: SYSTON100

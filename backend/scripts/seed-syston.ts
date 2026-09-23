@@ -11,9 +11,9 @@ const SYSTON_EMAIL = 'systontowntigersfc@gmail.com';
 const SYSTON_SLUG = 'syston-tigers';
 const SYSTON_NAME = 'Syston Tigers U16';
 
-// Bcrypt hash for password: "SystonAdmin2024!"
-// Generate your own with: node -e "console.log(require('bcryptjs').hashSync('YOUR_PASSWORD', 10))"
-const SYSTON_PASSWORD_HASH = '$2a$10$rZ9YhcKQqJ3wUqVmJp5p9OQx4Kf2vXwGzQvHmYuZqL5tXwPqLmY3W';
+// The admin password is never stored in the repo. New users get an unusable
+// hash ('!'); set the real password with scripts/set-admin-password.mjs.
+const UNUSABLE_PASSWORD_HASH = '!';
 
 export async function seedSyston(env: Env) {
   const now = Math.floor(Date.now() / 1000);
@@ -89,14 +89,13 @@ export async function seedSyston(env: Env) {
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET
       email = excluded.email,
-      password_hash = excluded.password_hash,
       roles = excluded.roles,
       updated_at = excluded.updated_at
   `).bind(
     userId,
     tenantId,
     SYSTON_EMAIL,
-    SYSTON_PASSWORD_HASH,
+    UNUSABLE_PASSWORD_HASH,
     JSON.stringify(['tenant_admin', 'platform_admin']),
     null,
     now,
@@ -174,7 +173,7 @@ export async function seedSyston(env: Env) {
   console.log('');
   console.log('🎉 Syston tenant seeded successfully!');
   console.log(`📧 Admin email: ${SYSTON_EMAIL}`);
-  console.log(`🔑 Admin password: SystonAdmin2024! (change this!)`);
+  console.log('🔑 Admin password: set with scripts/set-admin-password.mjs');
   console.log(`🏆 Plan: Pro · Lifetime`);
   console.log(`🎟️ Promo: SYSTON100`);
 }

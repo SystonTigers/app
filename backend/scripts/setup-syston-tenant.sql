@@ -34,21 +34,24 @@ INSERT OR REPLACE INTO tenant_brand (
   unixepoch()
 );
 
--- Upsert admin user with password
--- Password: SystonAdmin2024! (you should change this)
--- Bcrypt hash for 'SystonAdmin2024!'
-INSERT OR REPLACE INTO auth_users (
+-- Ensure admin user exists (password is NOT set here)
+-- A fresh user gets an unusable hash ('!'), so it can't log in until you run:
+--   SYSTON_ADMIN_PASSWORD='...' node scripts/set-admin-password.mjs [--remote]
+-- Existing users keep their current password.
+INSERT OR IGNORE INTO auth_users (
   id, tenant_id, email, password_hash, roles, profile, created_at, updated_at
 ) VALUES (
   'user_syston_admin_1',
   'tenant_syston_2024',
   'systontowntigersfc@gmail.com',
-  '$2a$10$rZ9YhcKQqJ3wUqVmJp5p9OQx4Kf2vXwGzQvHmYuZqL5tXwPqLmY3W',  -- SystonAdmin2024!
+  '!',
   '["tenant_admin"]',
   NULL,
   unixepoch(),
   unixepoch()
 );
+UPDATE auth_users SET roles = '["tenant_admin"]', updated_at = unixepoch()
+WHERE email = 'systontowntigersfc@gmail.com';
 
 -- Ensure promo code redemption is recorded
 INSERT OR IGNORE INTO promo_redemptions (
