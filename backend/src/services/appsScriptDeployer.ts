@@ -423,7 +423,7 @@ export async function deployAppsScriptForTenant(
   automationJWT: string
 ): Promise<AppsScriptDeployment> {
   const deployer = new AppsScriptDeployer(env);
-  const backendUrl = env.BACKEND_URL || "https://syston-postbus.team-platform-2025.workers.dev";
+  const backendUrl = env.BACKEND_URL || "https://app-production.team-platform-2025.workers.dev";
 
   return await deployer.deployForTenant(
     tenantId,

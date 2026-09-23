@@ -1,73 +1,114 @@
 #!/usr/bin/env node
-// Set (or reset) the Syston admin password without ever committing it.
+// Create the club admin login, or reset its password, without the password
+// ever being committed, printed or written to disk.
 //
 // Usage (from backend/):
-//   SYSTON_ADMIN_PASSWORD='...' node scripts/set-admin-password.mjs            # local D1
-//   SYSTON_ADMIN_PASSWORD='...' node scripts/set-admin-password.mjs --remote   # production D1
+//   node scripts/set-admin-password.mjs            # local D1  (asks for the password)
+//   node scripts/set-admin-password.mjs --remote   # production D1
 //
-// Windows PowerShell:
-//   $env:SYSTON_ADMIN_PASSWORD='...'; node scripts/set-admin-password.mjs --remote
+// Non-interactive (CI): set SYSTON_ADMIN_PASSWORD instead of typing it.
+// Optional env:
+//   SYSTON_ADMIN_EMAIL  (default systontowntigersfc@gmail.com)
+//   SYSTON_TENANT_SLUG  (default syston-tigers) - club the admin belongs to
 //
-// Optional env: SYSTON_ADMIN_EMAIL (default systontowntigersfc@gmail.com)
-//
-// The password is hashed with bcrypt (same as the /auth login route) and only the
-// hash is sent to D1. Nothing is written to disk or printed.
+// The account gets the tenant_admin + owner roles. The password is hashed with
+// bcrypt (what the login route checks) and only the hash is sent to D1.
 
 import { spawnSync } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
+import readline from 'node:readline';
 import bcrypt from 'bcryptjs';
 
 const remote = process.argv.includes('--remote');
 const email = (process.env.SYSTON_ADMIN_EMAIL || 'systontowntigersfc@gmail.com').trim().toLowerCase();
-const password = process.env.SYSTON_ADMIN_PASSWORD || '';
+const slug = (process.env.SYSTON_TENANT_SLUG || 'syston-tigers').trim();
 
-if (password.length < 12) {
-  console.error('✗ Set SYSTON_ADMIN_PASSWORD (min 12 characters) before running this script.');
-  process.exit(1);
-}
 if (!/^[^@\s']+@[^@\s']+\.[^@\s']+$/.test(email)) {
   console.error('✗ SYSTON_ADMIN_EMAIL is not a valid email address.');
   process.exit(1);
 }
+if (!/^[a-z0-9-]+$/.test(slug)) {
+  console.error('✗ SYSTON_TENANT_SLUG may only contain a-z, 0-9 and dashes.');
+  process.exit(1);
+}
 
+/** Ask questions without echoing what's typed (works with a terminal or piped input). */
+async function askHidden(questions) {
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout, terminal: !!process.stdin.isTTY });
+  const write = rl._writeToOutput?.bind(rl);
+  if (write) {
+    rl._writeToOutput = () => {}; // never echo keystrokes
+  }
+  const lines = rl[Symbol.asyncIterator]();
+  const answers = [];
+  for (const q of questions) {
+    process.stdout.write(q);
+    const { value, done } = await lines.next();
+    process.stdout.write('\n');
+    answers.push(done ? '' : value);
+  }
+  rl.close();
+  return answers;
+}
+
+function d1(sql) {
+  const args = ['wrangler', 'd1', 'execute', 'DB', '--json', '--command', sql];
+  args.push(...(remote ? ['--remote', '--env', 'production'] : ['--local']));
+  const result = spawnSync('npx', args, { stdio: ['inherit', 'pipe', 'pipe'], shell: process.platform === 'win32' });
+  const out = result.stdout?.toString() || '';
+  if (result.status !== 0) {
+    console.error('✗ wrangler d1 execute failed:');
+    console.error(result.stderr?.toString() || out);
+    process.exit(result.status || 1);
+  }
+  try {
+    // wrangler may print notices before the JSON payload
+    return JSON.parse(out.slice(out.indexOf('[')))?.[0]?.results ?? [];
+  } catch {
+    console.error('✗ Could not read the result from wrangler:');
+    console.error(out);
+    process.exit(1);
+  }
+}
+
+let password = process.env.SYSTON_ADMIN_PASSWORD || '';
+if (!password) {
+  console.log(`Setting the admin password for ${email} (${remote ? 'LIVE' : 'local'} database).`);
+  const [first, again] = await askHidden(['New password (min 12 characters): ', 'Type it again: ']);
+  password = first;
+  if (password !== again) {
+    console.error("✗ The passwords didn't match. Nothing was changed.");
+    process.exit(1);
+  }
+}
+if (password.length < 12) {
+  console.error('✗ The password must be at least 12 characters. Nothing was changed.');
+  process.exit(1);
+}
+
+const tenants = d1(`SELECT id FROM tenants WHERE slug = '${slug}' LIMIT 1;`);
+if (!tenants.length) {
+  console.error(`✗ No club with slug "${slug}" in the ${remote ? 'live' : 'local'} database.`);
+  process.exit(1);
+}
+const tenantId = tenants[0].id;
+
+// bcrypt hashes only contain [./A-Za-z0-9$]; ids/emails were validated above
 const hash = bcrypt.hashSync(password, 10);
-// bcrypt hashes only contain [./A-Za-z0-9$], so they're safe inside a SQL string literal.
-const sql = `UPDATE auth_users SET password_hash = '${hash}', updated_at = unixepoch() WHERE lower(email) = '${email}' RETURNING id;`;
+const now = Date.now();
+const roles = JSON.stringify(['tenant_admin', 'owner']);
 
-const args = ['wrangler', 'd1', 'execute', 'DB', '--json', '--command', sql];
-if (remote) {
-  args.push('--remote', '--env', 'production');
-} else {
-  args.push('--local');
-}
+const rows = d1(`
+  INSERT INTO auth_users (id, tenant_id, email, password_hash, roles, profile, created_at, updated_at)
+  VALUES ('user_${randomUUID()}', '${tenantId}', '${email}', '${hash}', '${roles}', '{"name":"Club Admin"}', ${now}, ${now})
+  ON CONFLICT(tenant_id, email) DO UPDATE SET
+    password_hash = excluded.password_hash,
+    roles = excluded.roles,
+    updated_at = excluded.updated_at
+  RETURNING id;`);
 
-console.log(`→ Updating password for ${email} (${remote ? 'production' : 'local'} D1)...`);
-const result = spawnSync('npx', args, {
-  stdio: ['inherit', 'pipe', 'pipe'],
-  shell: process.platform === 'win32',
-});
-const out = result.stdout?.toString() || '';
-
-if (result.status !== 0) {
-  console.error('✗ wrangler d1 execute failed:');
-  console.error(result.stderr?.toString() || out);
-  process.exit(result.status || 1);
-}
-let changes = null;
-try {
-  // wrangler may print notices before the JSON payload; RETURNING gives one row per updated user
-  const payload = JSON.parse(out.slice(out.indexOf('[')));
-  const rows = payload?.[0]?.results;
-  changes = Array.isArray(rows) ? rows.length : null;
-} catch {
-  // fall through: treated as unknown below
-}
-if (changes === null) {
-  console.error('✗ Could not read the result from wrangler; check the output above.');
-  console.error(out);
+if (!rows.length) {
+  console.error('✗ The account was not saved. Nothing was changed.');
   process.exit(1);
 }
-if (changes === 0) {
-  console.error(`✗ No user found with email ${email}. Run the seed first (npm run seed:syston).`);
-  process.exit(1);
-}
-console.log('✓ Password updated. You can now log in with the new password.');
+console.log(`✓ Done. Log in as ${email} with the password you just typed.`);

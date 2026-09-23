@@ -1,5 +1,10 @@
 # 🏆 Syston Tigers Platform - Complete System Guide for Claude
 
+> **Read `START_HERE.md` first.** It reflects the code as of September 2026.
+> Large parts of this guide (worker names, "mock data", "no authentication yet",
+> deployment steps) describe the October 2025 plan and are out of date.
+
+
 ## 📋 Table of Contents
 1. [System Overview](#system-overview)
 2. [Architecture](#architecture)
@@ -976,110 +981,13 @@ export const eventsApi = {
 
 ## Current Status
 
-### ✅ Completed
-- [x] Multi-tenant backend architecture designed
-- [x] 4 Cloudflare Workers created
-- [x] Mobile app scaffolding (React Native + Expo)
-- [x] 5 main screens built (Home, Calendar, Fixtures, Squad, Videos)
-- [x] Bottom tab navigation
-- [x] API integration layer ready
-- [x] Mock data working in all screens
-- [x] Video recording/upload UI (mobile app)
-- [x] Video processing tools integrated (highlights_bot, processor, installer)
-- [x] Apps Script video integration ready
-- [x] QA test infrastructure created
-- [x] Documentation (this file!)
+See `START_HERE.md` for the live setup, how to run and test locally, and how to deploy.
 
-### 🚧 In Progress
-- [ ] Deploy backend workers to get live URLs
-- [ ] Connect mobile app to real backend
-- [ ] Replace mock data with API calls
-- [ ] Set up video processing backend (Python + Docker)
-- [ ] Test video upload from mobile app
-
-### ⏳ Blocked/Waiting
-- Backend deployment (needs Cloudflare account setup)
-- YouTube API credentials (for video import)
-- Make.com webhook URLs (for social posting)
-- Printify API key (for store feature)
-
-### 🐛 Known Issues
-1. **QA Evidence Files are Mock Data** - Tests exist but need real execution
-2. **No Authentication Yet** - JWT system designed but not implemented
-3. **QR Code Not Showing in Terminal** - Use http://localhost:8081 instead
-
----
-
-## Next Steps
-
-### Immediate (This Week)
-1. **Deploy Backend Workers**
-   ```bash
-   cd ~/app/backend
-   wrangler login
-   wrangler secret put JWT_SECRET
-   wrangler deploy --name syston-postbus
-   ```
-
-2. **Get Worker URL and Update Mobile App**
-   ```typescript
-   // src/config.ts
-   export const API_BASE_URL = 'https://syston-postbus.YOUR-URL.workers.dev';
-   ```
-
-3. **Test with Real Data**
-   - Create first tenant via admin API
-   - Add test events, fixtures, squad data
-   - Verify mobile app loads real data
-
-### Short Term (Next 2 Weeks)
-4. **Add Authentication**
-   - Build login screen
-   - Implement JWT token storage
-   - Add token to API headers
-
-5. **Set Up Make.com Webhooks**
-   - Create Make.com scenario for social posting
-   - Get webhook URL
-   - Add to tenant config
-
-6. **Set Up YouTube API**
-   - Create YouTube OAuth credentials
-   - Add refresh token to secrets
-   - Test video import
-
-### Medium Term (Next Month)
-7. **Build Remaining Screens**
-   - Gallery screen
-   - Chat/messaging screen
-   - Training tools (coaches only)
-   - Store (Printify integration)
-
-8. **Implement Geo-fencing**
-   - Create Durable Object for geo-fence management
-   - Connect Expo Location API
-   - Test smart notifications
-
-9. **QA Testing with Real Credentials**
-   - Run all tests in staging environment
-   - Replace mock evidence files
-   - Get to 10/10 functional status
-
-### Long Term (Next 3 Months)
-10. **Launch Syston Tigers to Parents/Players**
-    - Distribute app to team
-    - Gather feedback
-    - Iterate on features
-
-11. **Add Second Tenant**
-    - Onboard another club
-    - Validate multi-tenant isolation
-    - Refine onboarding process
-
-12. **Scale to 10 Clubs**
-    - Build marketing/sales process
-    - Add billing (Stripe integration?)
-    - Automate tenant provisioning
+As of 23 September 2026:
+- One backend Worker in use: `app-production` (D1 `syston-db`). The mobile app, web app and owner admin point at it.
+- Database schema is built from `backend/migrations/0001-0003`; the old numbered migrations are in `migrations/archive/` for reference only.
+- Auth: email/password login with 30-day JWTs; staff roles (`tenant_admin`, `owner`, `coach`, `manager`) can change club content, members can read.
+- `npm test` in `backend/` runs unit, Workers-runtime and end-to-end tests against a real migrated database.
 
 ---
 

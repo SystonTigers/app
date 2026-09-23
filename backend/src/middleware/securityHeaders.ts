@@ -5,6 +5,7 @@
 
 const CONNECT_SRC = [
   "'self'",
+  "https://app-production.team-platform-2025.workers.dev",
   "https://syston-postbus.team-platform-2025.workers.dev",
   "https://api.systontigers.co.uk",
 ].join(" ");

@@ -6,7 +6,7 @@ const envOr = (value: string | undefined, fallback: string = ''): string =>
   typeof value === 'string' && value !== '' ? value : fallback;
 
 // API Configuration
-export const API_BASE_URL = envOr(process.env.EXPO_PUBLIC_API_BASE, 'https://syston-postbus.team-platform-2025.workers.dev');
+export const API_BASE_URL = envOr(process.env.EXPO_PUBLIC_API_BASE, 'https://app-production.team-platform-2025.workers.dev');
 export const TENANT_ID = envOr(process.env.EXPO_PUBLIC_TENANT_ID, 'syston-tigers');
 
 // Club Branding Defaults

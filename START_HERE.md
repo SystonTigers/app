@@ -1,166 +1,81 @@
-# 🚀 START HERE - Run Syston Tomorrow
+# Start here
 
-## ✅ Setup Complete!
+Everything below was checked against the code in September 2026. If another
+doc disagrees with this one, trust this one (and the code).
 
-- ✅ Database migrated (13 migrations applied)
-- ✅ Syston tenant seeded (Pro · Lifetime · SYSTON100)
-- ✅ Admin user created with password auth (password set via `scripts/set-admin-password.mjs`, never committed)
-- ✅ Cookie auth fixed for localhost
+## What's live
 
----
+| Piece | Where |
+|---|---|
+| Backend API (Cloudflare Worker) | `app-production` → https://app-production.team-platform-2025.workers.dev |
+| Database | D1 `syston-db` (binding `DB`), schema from `backend/migrations/` |
+| Club | slug `syston-tigers` |
+| Mobile app | `mobile/` (Expo SDK 54), points at `app-production` by default |
 
-## 🎯 **3 Commands to Start**
+`syston-postbus` and `app` are older Workers and are not used by the apps any more.
 
-### One-time: set the admin password
+## Run the backend locally
+
 ```powershell
 cd C:\dev\app-FRESH\backend
-$env:SYSTON_ADMIN_PASSWORD='choose-a-strong-password'
-node scripts/set-admin-password.mjs            # local D1
-node scripts/set-admin-password.mjs --remote   # production D1
-```
-
-### Terminal 1: Start Backend
-```bash
-cd C:\dev\app-FRESH\backend
+npm install
+npm run db:migrate          # builds the local database from migrations/
+npm run seed:syston         # local test club (slug syston-tigers)
+npm run admin:password      # create/reset your admin login (asks for a password)
 npx wrangler dev --local --port 8787
 ```
 
-Keep this running. Wait for:
-```
-⛅️ wrangler 4.x.x
-Your worker has access to the following bindings:
-- D1 Databases:
-  - DB: syston-db-local
-```
+Check it: open http://localhost:8787/healthz
 
-### Terminal 2: Start Web App (NEW Terminal)
-```bash
-cd C:\dev\app-FRESH\web-app
-npm run dev -- --turbopack
-```
+## Run the mobile app against your PC
 
-Wait for:
-```
-▲ Next.js 16.x.x (turbopack)
-- Local:        http://localhost:3000
-```
+1. Copy `mobile/.env.example` to `mobile/.env`
+2. Set `EXPO_PUBLIC_API_BASE=http://<your PC's IP>:8787` (phone and PC on the same Wi-Fi)
+3. `cd mobile && npm install && npx expo start`, then scan the QR code with Expo Go
 
-### Terminal 3: Run Quick Checks (NEW Terminal)
-```bash
-# 1. Backend up
-curl -s http://localhost:8787/__meta/ping
+Leave `EXPO_PUBLIC_API_BASE` unset to use the live backend.
 
-# 2. Proxy working
-curl -s -o NUL -w "%{http_code}\n" http://localhost:3000/api/admin/__meta/ping
+## Tests
 
-# 3. Admin login route
-curl -s -o NUL -w "%{http_code}\n" -X POST http://localhost:3000/api/auth/admin-login -H "content-type: application/json" -d "{\"email\":\"systontowntigersfc@gmail.com\",\"password\":\"YOUR_PASSWORD\"}"
+```powershell
+cd backend
+npm test          # unit + Workers-runtime + end-to-end journeys (about 1,550 tests)
+npx tsc --noEmit  # type check
+
+cd ..\mobile
+npx tsc --noEmit
 ```
 
-Expected: `{"ok":true}`, `200`, `200`
+The end-to-end journeys (`backend/tests/e2e`) build a real database from
+`migrations/` and cover: sign up / log in, fixtures, results and league
+table, Man of the Match voting, the news feed, video upload and playback,
+and the security checks (forged tokens, self-made admins).
 
----
+## Deploy to production
 
-## 🔐 **Login & Test**
-
-### 1. Login
-**URL**: http://localhost:3000/admin/login
-
-**Credentials**:
-- Email: `systontowntigersfc@gmail.com`
-- Password: the one you set with `set-admin-password.mjs`
-
-**Expected**: Redirects to `/admin` without errors
-
-### 2. Admin Dashboard
-**URL**: http://localhost:3000/admin
-
-**Check**:
-- Stats load (no 403)
-- No CORS errors in console (F12 → Console)
-- All network requests to `localhost:3000/api/admin/*` (F12 → Network)
-
-### 3. Admin Tenants
-**URL**: http://localhost:3000/admin/tenants
-
-**Expected**: Shows "Syston Tigers U16"
-- Plan: Pro
-- Billing: lifetime
-- Promo: SYSTON100
-
-### 4. Promo Codes
-**URL**: http://localhost:3000/admin/promo-codes
-
-**Expected**: Shows SYSTON100 with:
-- Discount: 100%
-- Lifetime: true
-- Plan: pro
-
-### 5. Onboarding/Signup
-**URL**: http://localhost:3000/signup
-
-**Test**:
-1. Enter promo: `SYSTON100`
-2. Enter slug: `syston-tigers`
-3. Click "Apply"
-
-**Expected**:
-- ✅ Success message shows
-- ✅ Pro plan locked with yellow border + ✓
-- ✅ "⭐ LIFETIME" badge visible
-- ✅ Shows "FREE" instead of £29.99
-- ✅ Starter plan grayed out
-
----
-
-## 🐛 Troubleshooting
-
-### "Failed to fetch" on /admin
-**Fix**: Make sure you logged in first at `/admin/login`
-
-### CORS errors
-**Fix**: Check that `NEXT_PUBLIC_API_BASE=/api/admin` in `.env.local`
-
-### 403 Unauthorized
-**Fix**: Clear cookies and login again
-
-### Backend not running
-**Fix**:
-```bash
-cd C:\dev\app-FRESH\backend
-npx wrangler dev --local --port 8787
+```powershell
+cd backend
+npm run db:migrate:prod     # apply any new migrations to the live database
+npm run deploy:prod         # deploy the Worker
 ```
 
-### Web app not running
-**Fix**:
-```bash
-cd C:\dev\app-FRESH\web-app
-rmdir /s /q .next 2>nul
-npm run dev -- --turbopack
-```
+Back up first if a migration changes existing tables:
+`npx wrangler d1 export syston-db --remote --env production --output backup.sql`
 
----
+## Admin login
 
-## ✅ **Success Checklist**
+There is no password in this repo. Create or reset it with
+`npm run admin:password:prod` (live) or `npm run admin:password` (local).
+It asks for the password without showing it and stores only a bcrypt hash.
 
-- [ ] Backend running on `:8787`
-- [ ] Web app running on `:3000`
-- [ ] Login works → `/admin` loads
-- [ ] `/admin/tenants` shows Syston
-- [ ] `/admin/promo-codes` shows SYSTON100
-- [ ] `/signup` promo works
-- [ ] No CORS errors
-- [ ] No 403 errors
-- [ ] All API calls through `/api/admin/*`
+## Secrets (set with `npx wrangler secret put NAME --env production`)
 
----
+| Name | Used for |
+|---|---|
+| `JWT_SECRET` | Signing login tokens. Changing it logs everyone out. |
+| `BACKEND_API_KEY` | Passed to a club's Apps Script when it's provisioned |
+| `GAS_HMAC_SECRET` | Signing calls from the Worker to Apps Script |
+| `STRIPE_SECRET_KEY` | Shop checkout (optional until the shop is used) |
+| `PRINTIFY_API_TOKEN` | Merch (optional) |
 
-## 🎉 Match Day Ready!
-
-Everything is configured for Syston tomorrow:
-- **Tenant**: syston-tigers (Pro · Lifetime)
-- **Admin**: systontowntigersfc@gmail.com
-- **Promo**: SYSTON100 (100% off · Lifetime Pro)
-- **Colors**: Gold (#FFD700) + Black (#000000)
-
-**Good luck! 🦁⚽**
+Never commit secret values. The old ones in git history were rotated on 23 Sep 2026.

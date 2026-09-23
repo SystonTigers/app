@@ -2,7 +2,7 @@ import React, { createContext, useContext } from 'react';
 import { TeamPlatformSDK } from '@team-platform/sdk';
 
 // Initialize SDK with backend URL
-const BASE_URL = 'https://syston-postbus.team-platform-2025.workers.dev';
+const BASE_URL = 'https://app-production.team-platform-2025.workers.dev';
 const TENANT = 'syston-tigers';
 
 const sdk = new TeamPlatformSDK({

@@ -10,7 +10,7 @@
  *   - Set BACKEND_URL environment variable (e.g., https://your-worker.workers.dev)
  *
  * Example:
- *   SERVICE_JWT_SECRET=your-secret BACKEND_URL=https://syston-postbus.team-platform-2025.workers.dev \
+ *   SERVICE_JWT_SECRET=your-secret BACKEND_URL=https://app-production.team-platform-2025.workers.dev \
  *     node scripts/provision-tenant.js
  */
 
@@ -64,7 +64,7 @@ async function main() {
 
   if (!backendUrl) {
     console.error('❌ Error: BACKEND_URL environment variable is required');
-    console.error('   Example: export BACKEND_URL=https://syston-postbus.team-platform-2025.workers.dev');
+    console.error('   Example: export BACKEND_URL=https://app-production.team-platform-2025.workers.dev');
     process.exit(1);
   }
 
