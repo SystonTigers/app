@@ -1,4 +1,4 @@
-import { getTenantConfig } from "./tenantConfig";
+import { ensureTenant, getTenantConfig } from "./tenantConfig";
 
 export interface UserProfile {
   id: string;
@@ -39,7 +39,15 @@ export type RegisterUserResult = {
 };
 
 export async function registerUser(env: any, input: RegisterUserInput): Promise<RegisterUserResult> {
-  const tenant = await getTenantConfig(env, input.tenantId);
+  // Tenant config normally lives in KV; clubs created through D1 (self-serve
+  // signup, seeds) may not have it yet, so fall back to the tenants table.
+  let tenant = await getTenantConfig(env, input.tenantId);
+  if (!tenant && env.DB) {
+    const row = await env.DB.prepare("SELECT id FROM tenants WHERE id = ?").bind(input.tenantId).first();
+    if (row) {
+      tenant = await ensureTenant(env, input.tenantId);
+    }
+  }
   if (!tenant) {
     return {
       success: false,
@@ -58,7 +66,9 @@ export async function registerUser(env: any, input: RegisterUserInput): Promise<
     };
   }
 
-  const password_hash = await hashPassword(input.password);
+  // New accounts use bcrypt (same as signup and password reset)
+  const bcrypt = await import("bcryptjs");
+  const password_hash = await bcrypt.hash(input.password, 10);
   const now = Date.now();
   const id = crypto.randomUUID();
   const roles = JSON.stringify(normalizeRoles(input.roles));
@@ -247,8 +257,25 @@ export async function hashPassword(password: string, salt?: string): Promise<str
   return `${normalizedSalt}:${digestB64}`;
 }
 
+/**
+ * Check a password against a stored hash. Accepts both formats in use:
+ *  - bcrypt ($2a$/$2b$/$2y$...) - signup, password change/reset, admin script, new registrations
+ *  - legacy "salt:sha256" - older registrations
+ * Previously only the legacy format was checked here, so accounts with bcrypt
+ * hashes (including every club owner created via signup) could not log in.
+ */
 export async function verifyPassword(password: string, stored: string): Promise<boolean> {
   if (!stored) {return false;}
+  if (/^\$2[aby]\$\d{2}\$/.test(stored)) {
+    const bcrypt = await import("bcryptjs");
+    return bcrypt.compare(password, stored);
+  }
+  // Accounts created by the admin-password script, owner signup and password
+  // resets store bcrypt hashes; self-registration stores salt:sha256.
+  if (stored.startsWith("$2")) {
+    const bcrypt = await import("bcryptjs");
+    return bcrypt.compare(password, stored);
+  }
   const parts = stored.split(":");
   if (parts.length !== 2) {return false;}
   const [salt, hash] = parts;

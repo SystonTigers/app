@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { SignJWT } from "jose";
+import { SignJWT, jwtVerify } from "jose";
 import { json, readIdempotencyKey } from "../services/util";
 import { ensureIdempotent } from "../services/idempotency";
 import { parse, isValidationError } from "../lib/validate";
@@ -7,6 +7,10 @@ import { registerUser, authenticateUser } from "../services/users";
 import { issueTenantAdminJWT, issueTenantMemberJWT } from "../services/jwt";
 import { sendVerificationEmail, sendPasswordResetEmail } from "../lib/email";
 import { rateLimit } from "../middleware/rateLimit";
+
+// App sessions last 30 days (there is no refresh-token flow). Logout and
+// account deletion revoke tokens server-side, so a long TTL is safe.
+const SESSION_TTL_MINUTES = 60 * 24 * 30;
 
 const RegisterSchema = z.object({
   tenant_id: z.string().min(1, "tenant_id required"),
@@ -61,11 +65,14 @@ export async function handleAuthRegister(req: Request, env: any, corsHdrs: Heade
       return json(idem.response, 200, corsHdrs);
     }
 
+    // SECURITY: self-registration always creates a plain member. Roles sent by
+    // the client are ignored - otherwise anyone could register as tenant_admin
+    // of any club. Admins are created by signup/provisioning or promoted by an admin.
     const registration = await registerUser(env, {
       tenantId: data.tenant_id,
       email: data.email,
       password: data.password,
-      roles: data.roles,
+      roles: ["tenant_member"],
       profile: data.profile ?? null
     });
 
@@ -74,10 +81,10 @@ export async function handleAuthRegister(req: Request, env: any, corsHdrs: Heade
     }
 
     const { user } = registration;
-    const isAdmin = user.roles.includes("tenant_admin") || data.roles?.includes("tenant_admin");
+    const isAdmin = user.roles.includes("tenant_admin");
     const token = isAdmin
-      ? await issueTenantAdminJWT(env, { tenant_id: user.tenant_id, ttlMinutes: 60 })
-      : await issueTenantMemberJWT(env, { tenant_id: user.tenant_id, user_id: user.id, roles: user.roles });
+      ? await issueTenantAdminJWT(env, { tenant_id: user.tenant_id, user_id: user.id, ttlMinutes: SESSION_TTL_MINUTES })
+      : await issueTenantMemberJWT(env, { tenant_id: user.tenant_id, user_id: user.id, roles: user.roles, ttlMinutes: SESSION_TTL_MINUTES });
 
     const responseBody = {
       success: true,
@@ -182,27 +189,37 @@ export async function handleSetPassword(req: Request, env: any, corsHdrs: Header
   }
 }
 
+/**
+ * Verify an HS256 token signed with JWT_SECRET and return its payload, or null.
+ *
+ * SECURITY: this used to base64-decode the payload without checking the
+ * signature, so any hand-made token was accepted (gallery, videos, content
+ * moderation, push, email verification, switch-tenant...). It now verifies the
+ * signature and expiry. Tokens in this codebase are signed with the secret
+ * either as plain text or base64-decoded (see services/jwt), so both are tried.
+ * Issuer/audience are not enforced here because these tokens vary by purpose;
+ * callers check `purpose`/`sub` as before.
+ */
 export async function verifyJWT(env: any, token: string): Promise<any> {
-  try {
-    const enc = new TextEncoder();
-    const secret = enc.encode(env.JWT_SECRET || '');
-    const [headerB64, payloadB64, signatureB64] = token.split('.');
-
-    if (!headerB64 || !payloadB64 || !signatureB64) {
-      return null;
-    }
-
-    const payload = JSON.parse(atob(payloadB64));
-
-    // Check expiry
-    if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) {
-      return null;
-    }
-
-    return payload;
-  } catch {
+  const raw = env?.JWT_SECRET;
+  if (!token || typeof raw !== "string" || raw === "") {
     return null;
   }
+  const keys: Uint8Array[] = [new TextEncoder().encode(raw)];
+  try {
+    keys.push(Uint8Array.from(atob(raw), (c) => c.charCodeAt(0)));
+  } catch {
+    // not base64 - plain-text key only
+  }
+  for (const key of keys) {
+    try {
+      const { payload } = await jwtVerify(token, key, { algorithms: ["HS256"] });
+      return payload;
+    } catch {
+      // try the next key encoding
+    }
+  }
+  return null;
 }
 
 export async function handleCheckPasswordStatus(req: Request, env: any, corsHdrs: Headers) {
@@ -404,8 +421,8 @@ export async function handleAuthLogin(req: Request, env: any, corsHdrs: Headers)
 
     const isAdmin = user.roles.includes("tenant_admin");
     const token = isAdmin
-      ? await issueTenantAdminJWT(env, { tenant_id: user.tenant_id, ttlMinutes: 60 })
-      : await issueTenantMemberJWT(env, { tenant_id: user.tenant_id, user_id: user.id, roles: user.roles });
+      ? await issueTenantAdminJWT(env, { tenant_id: user.tenant_id, user_id: user.id, ttlMinutes: SESSION_TTL_MINUTES })
+      : await issueTenantMemberJWT(env, { tenant_id: user.tenant_id, user_id: user.id, roles: user.roles, ttlMinutes: SESSION_TTL_MINUTES });
 
     return json({ success: true, data: { user, token } }, 200, corsHdrs);
   } catch (err: any) {
@@ -454,8 +471,8 @@ export async function handleSwitchTenant(req: Request, env: any, corsHdrs: Heade
 
     // Generate new token
     const token = isAdmin
-      ? await issueTenantAdminJWT(env, { tenant_id: user.tenant_id, ttlMinutes: 60 })
-      : await issueTenantMemberJWT(env, { tenant_id: user.tenant_id, user_id: user.id, roles });
+      ? await issueTenantAdminJWT(env, { tenant_id: user.tenant_id, user_id: user.id, ttlMinutes: SESSION_TTL_MINUTES })
+      : await issueTenantMemberJWT(env, { tenant_id: user.tenant_id, user_id: user.id, roles, ttlMinutes: SESSION_TTL_MINUTES });
 
     // Parse profile safely
     let profile = {};
@@ -541,7 +558,7 @@ export async function handleLinkPlayer(req: Request, env: any, corsHdrs: Headers
       // Let's assume user provides tenant slug? No, they just give code.
       // We can search players table index if it exists.
       const player = await env.DB.prepare(
-        `SELECT id, tenant_id FROM players WHERE login_code = ? LIMIT 1`
+        `SELECT id, tenant_id FROM squad WHERE login_code = ? LIMIT 1`
       ).bind(body.code.toUpperCase(),).first();
 
       if (player) {
@@ -668,7 +685,7 @@ export async function handleCodeLogin(req: Request, env: any, corsHdrs: Headers)
     const codeRecord = await env.DB.prepare(`
       SELECT lc.*, p.name as player_name, p.id as player_id
       FROM login_codes lc
-      LEFT JOIN players p ON lc.player_id = p.id
+      LEFT JOIN squad p ON lc.player_id = p.id
       WHERE lc.code = ? AND lc.tenant_id = ? AND lc.is_active = 1
     `).bind(data.code.toUpperCase(), tenantId).first();
 
@@ -684,7 +701,7 @@ export async function handleCodeLogin(req: Request, env: any, corsHdrs: Headers)
     } else {
       // Check players table for login_code field
       const player = await env.DB.prepare(`
-        SELECT id, name, login_code FROM players
+        SELECT id, name, login_code FROM squad
         WHERE login_code = ? AND tenant_id = ?
       `).bind(data.code.toUpperCase(), tenantId).first();
 
@@ -895,8 +912,8 @@ export async function handleRegisterOwner(req: Request, env: any, corsHdrs: Head
 
     // 4. Create Tenant (Onboarding status)
     await env.DB.prepare(`
-      INSERT INTO tenants (id, slug, name, email, status, created_at, updated_at)
-      VALUES (?, ?, ?, ?, 'onboarding', unixepoch(), unixepoch())
+      INSERT INTO tenants (id, slug, name, email, plan, status, created_at, updated_at)
+      VALUES (?, ?, ?, ?, 'starter', 'onboarding', unixepoch(), unixepoch())
     `).bind(tenantId, tenantSlug, 'New Club', data.email).run();
 
     // 5. Create User (Owner)
@@ -1421,31 +1438,30 @@ export async function handleDeleteAccount(req: Request, env: any, corsHdrs: Head
 
     // Delete all user data in a transaction-like batch
     // Note: D1 doesn't support transactions yet, so we do best-effort deletion
+    // Remove the account and personal data linked to it. Only tables that
+    // exist are listed; D1 rejects the whole batch if any statement fails.
     const deletions = [
-      // Auth and sessions
-      env.DB.prepare('DELETE FROM auth_users WHERE id = ?').bind(userId),
-      env.DB.prepare('DELETE FROM user_sessions WHERE player_id = ? OR created_by = ?').bind(userId, userId),
+      // Personal links and preferences
+      env.DB.prepare('DELETE FROM auth_user_players WHERE user_id = ?').bind(userId),
+      env.DB.prepare('DELETE FROM push_tokens WHERE user_id = ?').bind(userId),
+      env.DB.prepare('DELETE FROM devices WHERE user_id = ?').bind(userId),
+      env.DB.prepare('DELETE FROM notifications WHERE user_id = ?').bind(userId),
+      env.DB.prepare('DELETE FROM scheduled_notifications WHERE user_id = ?').bind(userId),
+      env.DB.prepare('DELETE FROM group_memberships WHERE user_id = ?').bind(userId),
+
+      // Votes, RSVPs and games
+      env.DB.prepare('DELETE FROM event_rsvps WHERE user_id = ?').bind(userId),
+      env.DB.prepare('DELETE FROM motm_votes WHERE user_id = ?').bind(userId),
+      env.DB.prepare('DELETE FROM gotm_votes WHERE user_id = ?').bind(userId),
+      env.DB.prepare('DELETE FROM lms_predictions WHERE entry_id IN (SELECT id FROM lms_entries WHERE user_id = ?)').bind(userId),
+      env.DB.prepare('DELETE FROM lms_entries WHERE user_id = ?').bind(userId),
 
       // User-generated content
-      env.DB.prepare('DELETE FROM posts WHERE user_id = ? OR author_id = ?').bind(userId, userId),
-      env.DB.prepare('DELETE FROM comments WHERE user_id = ? OR author_id = ?').bind(userId, userId),
-      env.DB.prepare('DELETE FROM post_reactions WHERE user_id = ?').bind(userId),
-      env.DB.prepare('DELETE FROM match_events WHERE recorded_by_user_id = ?').bind(userId),
+      env.DB.prepare('DELETE FROM discussion_comments WHERE author_id = ?').bind(userId),
+      env.DB.prepare('DELETE FROM discussions WHERE author_id = ?').bind(userId),
 
-      // Player linkages
-      env.DB.prepare('DELETE FROM auth_user_players WHERE user_id = ?').bind(userId),
-
-      // Availability responses
-      env.DB.prepare('DELETE FROM availability_responses WHERE player_id IN (SELECT player_id FROM auth_user_players WHERE user_id = ?)').bind(userId),
-
-      // Media uploads
-      env.DB.prepare('DELETE FROM media WHERE user_id = ? OR uploaded_by = ?').bind(userId, userId),
-
-      // Discussion participants
-      env.DB.prepare('DELETE FROM discussion_participants WHERE user_id = ?').bind(userId),
-
-      // Notifications
-      env.DB.prepare('DELETE FROM notifications WHERE user_id = ?').bind(userId),
+      // Finally the account itself
+      env.DB.prepare('DELETE FROM auth_users WHERE id = ?').bind(userId),
     ];
 
     // Execute all deletions

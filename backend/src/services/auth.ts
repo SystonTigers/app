@@ -102,6 +102,22 @@ export async function requireTenantJWT(req: Request, env: any): Promise<TenantCl
   return claims as TenantClaims;
 }
 
+/** Roles allowed to change club content (fixtures, results, squad, news). */
+export const STAFF_ROLES = ["admin", "tenant_admin", "owner", "platform_admin", "manager", "coach"] as const;
+
+/**
+ * Tenant-scoped JWT that also has a staff role. Parents/players (tenant_member)
+ * get 403 - they can read club content but not change it.
+ */
+export async function requireStaff(req: Request, env: any): Promise<TenantClaims> {
+  const claims = await requireTenantJWT(req, env);
+  if (!hasAnyRole(claims, STAFF_ROLES)) {
+    authFailures.set(req, 403);
+    throw new Response("Forbidden - staff only", { status: 403 });
+  }
+  return claims;
+}
+
 /** True if the claims include any of the given roles. */
 export function hasAnyRole(claims: Pick<Claims, "roles">, roles: readonly string[]): boolean {
   return (claims.roles || []).some((r) => roles.includes(r));

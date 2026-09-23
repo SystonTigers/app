@@ -1,5 +1,7 @@
 import { json } from "../services/util";
-import { requireJWT } from "../services/auth";
+import { requireJWT, hasAnyRole } from "../services/auth";
+
+const MOTM_ADMIN_ROLES = ["admin", "owner", "tenant_admin", "platform_admin", "manager", "coach"] as const;
 
 // Public: Get voting status and options for a match
 export async function handleInitVote(req: Request, env: any, corsHdrs: Headers, matchId: string) {
@@ -62,15 +64,25 @@ export async function handleInitVote(req: Request, env: any, corsHdrs: Headers, 
 export async function handleCastVote(req: Request, env: any, corsHdrs: Headers, matchId: string) {
     try {
         const claims = await requireJWT(req, env);
-        const body = await req.json() as any;
+        const body = await req.json().catch(() => ({})) as { candidateId?: unknown };
 
-        // Check session status
+        if (!claims.userId) {
+            return json({ success: false, error: "Sign in to vote" }, 401, corsHdrs);
+        }
+        if (typeof body.candidateId !== 'string' || !body.candidateId) {
+            return json({ success: false, error: "candidateId is required" }, 400, corsHdrs);
+        }
+
+        // Check session status and voting window
         const session = await env.DB.prepare(
-            `SELECT status FROM motm_sessions WHERE match_id = ? AND tenant_id = ?`
+            `SELECT status, voting_end_at FROM motm_sessions WHERE match_id = ? AND tenant_id = ?`
         ).bind(matchId, claims.tenantId).first();
 
         if (!session || session.status !== 'active') {
             return json({ success: false, error: "Voting is not active for this match" }, 400, corsHdrs);
+        }
+        if (session.voting_end_at && Date.parse(String(session.voting_end_at)) < Date.now()) {
+            return json({ success: false, error: "Voting has closed for this match" }, 400, corsHdrs);
         }
 
         // Check if user has already voted
@@ -111,7 +123,7 @@ export async function handleGetResults(req: Request, env: any, corsHdrs: Headers
                 p.name as player_name,
                 COUNT(*) as vote_count
              FROM motm_votes v
-             LEFT JOIN squad_players p ON v.player_id = p.id AND p.tenant_id = ?
+             LEFT JOIN squad p ON v.player_id = p.id AND p.tenant_id = ?
              WHERE v.match_id = ?
              GROUP BY v.player_id
              ORDER BY vote_count DESC`
@@ -135,16 +147,16 @@ export async function handleGetResults(req: Request, env: any, corsHdrs: Headers
 export async function handleOpenVoting(req: Request, env: any, corsHdrs: Headers, matchId: string) {
     try {
         const claims = await requireJWT(req, env);
-        if (!claims.roles?.includes('owner') && !claims.roles?.includes('admin')) {
+        if (!hasAnyRole(claims, MOTM_ADMIN_ROLES)) {
             return json({ success: false, error: "Unauthorized" }, 403, corsHdrs);
         }
 
-        const body = await req.json() as any;
+        const body = await req.json().catch(() => ({})) as any;
         // body: { votingWindow: { start, end }, autoPostEnabled, status }
 
         const now = new Date().toISOString();
         const start = body.votingWindow?.start || now;
-        const end = body.votingWindow?.end; // optional
+        const end = body.votingWindow?.end ?? null; // optional
         const status = body.status || 'active';
 
         // Upsert session
@@ -157,6 +169,7 @@ export async function handleOpenVoting(req: Request, env: any, corsHdrs: Headers
                 voting_end_at = excluded.voting_end_at,
                 auto_post = excluded.auto_post,
                 updated_at = excluded.updated_at
+            WHERE motm_sessions.tenant_id = excluded.tenant_id
         `).bind(
             matchId,
             claims.tenantId,
@@ -178,7 +191,7 @@ export async function handleOpenVoting(req: Request, env: any, corsHdrs: Headers
 export async function handleCloseVoting(req: Request, env: any, corsHdrs: Headers, matchId: string) {
     try {
         const claims = await requireJWT(req, env);
-        if (!claims.roles?.includes('owner') && !claims.roles?.includes('admin')) {
+        if (!hasAnyRole(claims, MOTM_ADMIN_ROLES)) {
             return json({ success: false, error: "Unauthorized" }, 403, corsHdrs);
         }
 
@@ -203,7 +216,7 @@ export async function handleGetTally(req: Request, env: any, corsHdrs: Headers, 
 export async function handleListMotmSessions(req: Request, env: any, corsHdrs: Headers) {
     try {
         const claims = await requireJWT(req, env);
-        if (!claims.roles?.includes('owner') && !claims.roles?.includes('admin')) {
+        if (!hasAnyRole(claims, MOTM_ADMIN_ROLES)) {
             return json({ success: false, error: "Unauthorized" }, 403, corsHdrs);
         }
 

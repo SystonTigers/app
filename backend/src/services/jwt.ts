@@ -83,12 +83,14 @@ export function isSystemTenant(claims: Claims) {
   return !claims.tenantId || claims.tenantId === "system";
 }
 
-export async function issueTenantAdminJWT(env: any, args: { tenant_id: string; ttlMinutes: number }) {
+export async function issueTenantAdminJWT(env: any, args: { tenant_id: string; ttlMinutes: number; user_id?: string }) {
   const secret = getJwtSecret(env);
   const now = Math.floor(Date.now() / 1000);
   const exp = now + args.ttlMinutes * 60;
 
   const token = await new SignJWT({
+    // sub identifies the admin so votes, posts and audit rows have a user id
+    ...(args.user_id ? { sub: args.user_id } : {}),
     roles: ["tenant_admin", "owner"],  // Tenant admin only, NOT platform admin
     tenant_id: args.tenant_id,
   })

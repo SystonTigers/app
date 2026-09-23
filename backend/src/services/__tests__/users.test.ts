@@ -266,7 +266,15 @@ describe("Users Service", () => {
 
       expect(user.password_hash).toBeTruthy();
       expect(user.password_hash).not.toBe("MySecretPassword123!");
-      expect(user.password_hash).toContain(":"); // salt:hash format
+      expect(user.password_hash).toMatch(/^\$2[aby]\$10\$/); // bcrypt
+      expect(await verifyPassword("MySecretPassword123!", user.password_hash)).toBe(true);
+      expect(await verifyPassword("wrong-password", user.password_hash)).toBe(false);
+    });
+
+    it("still verifies legacy salt:sha256 hashes", async () => {
+      const legacy = await hashPassword("OldPassword1!");
+      expect(await verifyPassword("OldPassword1!", legacy)).toBe(true);
+      expect(await verifyPassword("nope", legacy)).toBe(false);
     });
 
     it("isolates users by tenant", async () => {

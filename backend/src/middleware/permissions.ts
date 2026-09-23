@@ -114,9 +114,19 @@ export async function getSessionFromRequest(
 
         if (!payload) {return null;}
 
+        const tenantId = payload.tenant_id || payload.tenantId;
+        if (!tenantId) {return null;}
+
+        // Tokens carry either a single `role` (legacy) or a `roles` array; use the highest
+        const roles: string[] = Array.isArray(payload.roles) ? payload.roles : [];
+        const topRole = roles.reduce<string | undefined>(
+            (best, r) => (ROLE_HIERARCHY[r] || 0) > (ROLE_HIERARCHY[best || ''] || 0) ? r : best,
+            undefined,
+        );
+
         return {
-            role: payload.role || 'fan',
-            tenantId: payload.tenant_id || payload.tenantId,
+            role: payload.role || topRole || 'fan',
+            tenantId,
             playerId: payload.player_id,
             userId: payload.sub || payload.user_id,
             email: payload.email,
