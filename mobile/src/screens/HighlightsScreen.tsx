@@ -3,7 +3,7 @@ import { View, ScrollView, StyleSheet, TouchableOpacity, Dimensions, Linking, Al
 import { Card, Title, Paragraph, Button, Chip, List, IconButton, ProgressBar } from 'react-native-paper';
 import { Video, ResizeMode } from 'expo-av';
 import { COLORS } from '../config';
-import { fixturesApi, videosApi, motmApi, squadApi } from '../services/api';
+import { fixturesApi, videosApi, gotmApi, squadApi } from '../services/api';
 
 const { width } = Dimensions.get('window');
 
@@ -75,7 +75,8 @@ export default function HighlightsScreen() {
       const [fixturesRes, videosRes, gotmRes, squadRes] = await Promise.all([
         fixturesApi.getFixtures(),
         videosApi.list(),
-        gotmApi.getVoting(),
+        // GOTM is optional: a failure here shouldn't blank the whole screen
+        gotmApi.getVoting().catch(() => ({ success: false, data: undefined })),
         squadApi.getSquad()
       ]);
 
@@ -195,9 +196,10 @@ export default function HighlightsScreen() {
       } else {
         Alert.alert('Error', response.error || 'Failed to cast vote');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Vote error:', error);
-      Alert.alert('Error', 'Failed to cast vote');
+      // Backend returns 400 with a reason (e.g. "Already voted", "Voting is closed")
+      Alert.alert('Error', error?.response?.data?.error || 'Failed to cast vote');
     }
   };
 

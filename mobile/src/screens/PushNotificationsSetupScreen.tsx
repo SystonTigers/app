@@ -71,8 +71,9 @@ export default function PushNotificationsSetupScreen({ onComplete, onSkip }: Pus
       setExpoPushToken(token);
 
       // Register token with backend
-      if (user?.userId && token) {
-        await notificationsApi.registerToken(user.userId, token);
+      // Backend derives the user from the JWT, so only the token is sent
+      if (user && token) {
+        await pushApi.registerToken(token);
       }
     } catch (error) {
       Alert.alert('Error', 'Failed to get push notification token.');

@@ -190,7 +190,7 @@ export default function LastManStandingScreen() {
             marginTop: 4,
         },
         section: {
-            backgroundColor: colors.card,
+            backgroundColor: colors.surface,
             marginHorizontal: 16,
             marginBottom: 16,
             borderRadius: 12,

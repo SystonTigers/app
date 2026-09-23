@@ -51,18 +51,22 @@ const WEAKNESS_OPTIONS = [
     'Keeper struggles with crosses',
 ];
 
+interface ScoutNotesParams {
+    fixtureId: string;
+    opponent: string;
+}
+
 interface Props {
-    route: {
-        params: {
-            fixtureId: string;
-            opponent: string;
-        };
-    };
+    // Optional: the screen is also registered in the drawer, where it opens without params
+    route?: { params?: Partial<ScoutNotesParams> };
     navigation: any;
 }
 
-export default function ScoutNotesScreen({ route, navigation }: Props) {
-    const { fixtureId, opponent } = route.params;
+interface ContentProps extends ScoutNotesParams {
+    navigation: any;
+}
+
+function ScoutNotesContent({ fixtureId, opponent, navigation }: ContentProps) {
 
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -530,3 +534,25 @@ const styles = StyleSheet.create({
         paddingVertical: 8,
     },
 });
+
+/** Guards against being opened without a fixture (e.g. from the drawer). */
+export default function ScoutNotesScreen({ route, navigation }: Props) {
+    const params = route?.params;
+    if (!params?.fixtureId) {
+        return (
+            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, backgroundColor: COLORS.background }}>
+                <Text style={{ color: COLORS.text, textAlign: 'center', marginBottom: 16 }}>
+                    Open Scout Report from a fixture on the Fixtures screen.
+                </Text>
+                <Button mode="contained" onPress={() => navigation.navigate('Fixtures')}>Go to Fixtures</Button>
+            </View>
+        );
+    }
+    return (
+        <ScoutNotesContent
+            fixtureId={params.fixtureId ?? ''}
+            opponent={params.opponent ?? ''}
+            navigation={navigation}
+        />
+    );
+}

@@ -225,12 +225,11 @@ export default function TeamMembersScreen() {
         {/* Members List */}
         {members.length === 0 ? (
           <EmptyState
+            icon="account-group-outline"
             title="No Members"
-            message="Invite team members to get started"
-            action={isAdmin ? {
-              label: 'Invite Member',
-              onPress: () => setShowInviteModal(true)
-            } : undefined}
+            description="Invite team members to get started"
+            actionLabel={isAdmin ? 'Invite Member' : undefined}
+            onAction={isAdmin ? () => setShowInviteModal(true) : undefined}
           />
         ) : (
           <View style={styles.membersList}>

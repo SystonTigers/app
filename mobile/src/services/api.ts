@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios, { AxiosError } from 'axios';
+import { Platform } from 'react-native';
 import { API_BASE_URL, TENANT_ID } from '../config';
 
 export const AUTH_STORAGE_KEYS = {
@@ -717,6 +718,47 @@ export const clubConfigApi = {
         'Content-Type': 'multipart/form-data',
       },
     });
+    return response.data;
+  },
+};
+
+export interface GotmVotingResponse {
+  success: boolean;
+  data?: {
+    voting: { id: string; month: string; year: number; status: string } | null;
+    candidates: Array<Record<string, any>>;
+  };
+  error?: string;
+}
+
+/** Push notification token registration (backend: /api/v1/push/register). */
+export const pushApi = {
+  registerToken: async (token: string): Promise<{ success: boolean; error?: string }> => {
+    const platform = Platform.OS === 'ios' ? 'ios' : Platform.OS === 'android' ? 'android' : 'web';
+    const response = await api.post('/api/v1/push/register', { tenant: TENANT_ID, token, platform });
+    return response.data;
+  },
+};
+
+/** Goal of the Month voting (backend: /api/v1/gotm). */
+export const gotmApi = {
+  // Current open voting (or a specific one) with its candidates
+  getVoting: async (votingId?: string): Promise<GotmVotingResponse> => {
+    const response = await api.get('/api/v1/gotm', {
+      params: votingId ? { votingId } : undefined,
+    });
+    const body = response.data || {};
+    // Backend returns { success, voting, candidates } at the top level
+    return {
+      success: !!body.success,
+      data: { voting: body.voting ?? null, candidates: body.candidates ?? [] },
+      error: body.error,
+    };
+  },
+
+  // Cast a vote for a candidate
+  castVote: async (votingId: string, candidateId: string): Promise<{ success: boolean; error?: string }> => {
+    const response = await api.post('/api/v1/gotm/vote', { votingId, candidateId });
     return response.data;
   },
 };

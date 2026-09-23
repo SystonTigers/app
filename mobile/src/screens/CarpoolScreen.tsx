@@ -30,21 +30,25 @@ interface CarpoolRequest {
     status: string;
 }
 
+interface CarpoolParams {
+    fixtureId: string;
+    opponent: string;
+    fixtureDate: string;
+}
+
 interface Props {
-    route: {
-        params: {
-            fixtureId: string;
-            opponent: string;
-            fixtureDate: string;
-        };
-    };
+    // Optional: the screen is also registered in the drawer, where it opens without params
+    route?: { params?: Partial<CarpoolParams> };
+    navigation: any;
+}
+
+interface ContentProps extends CarpoolParams {
     navigation: any;
 }
 
 type TabType = 'offers' | 'my-offers' | 'my-requests';
 
-export default function CarpoolScreen({ route, navigation }: Props) {
-    const { fixtureId, opponent, fixtureDate } = route.params;
+function CarpoolContent({ fixtureId, opponent, fixtureDate, navigation }: ContentProps) {
 
     const [activeTab, setActiveTab] = useState<TabType>('offers');
     const [loading, setLoading] = useState(true);
@@ -699,3 +703,26 @@ const styles = StyleSheet.create({
         marginTop: 16,
     },
 });
+
+/** Guards against being opened without a fixture (e.g. from the drawer). */
+export default function CarpoolScreen({ route, navigation }: Props) {
+    const params = route?.params;
+    if (!params?.fixtureId) {
+        return (
+            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, backgroundColor: COLORS.background }}>
+                <Text style={{ color: COLORS.text, textAlign: 'center', marginBottom: 16 }}>
+                    Open Carpool from a fixture on the Fixtures screen.
+                </Text>
+                <Button mode="contained" onPress={() => navigation.navigate('Fixtures')}>Go to Fixtures</Button>
+            </View>
+        );
+    }
+    return (
+        <CarpoolContent
+            fixtureId={params.fixtureId ?? ''}
+            opponent={params.opponent ?? ''}
+            fixtureDate={params.fixtureDate ?? ''}
+            navigation={navigation}
+        />
+    );
+}
