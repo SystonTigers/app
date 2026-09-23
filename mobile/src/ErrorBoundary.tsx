@@ -1,5 +1,7 @@
 import React, { Component, ReactNode } from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { COLORS } from './config';
+import { reportError } from './services/crashReporting';
 
 interface Props {
   children: ReactNode;
@@ -11,86 +13,111 @@ interface State {
   errorInfo: React.ErrorInfo | null;
 }
 
+/**
+ * Top-level error boundary. Reports the crash (when crash reporting is on)
+ * and shows a friendly retry screen. Technical details are dev-only.
+ */
 export class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
     this.state = { hasError: false, error: null, errorInfo: null };
   }
 
-  static getDerivedStateFromError(error: Error): Partial<State> {
+  static getDerivedStateFromError(): Partial<State> {
     return { hasError: true };
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error('ErrorBoundary caught an error:', error, errorInfo);
-    this.setState({
-      error,
-      errorInfo,
-    });
+    reportError(error, { componentStack: errorInfo.componentStack });
+    this.setState({ error, errorInfo });
   }
 
+  private handleRetry = () => {
+    this.setState({ hasError: false, error: null, errorInfo: null });
+  };
+
   render() {
-    if (this.state.hasError) {
-      return (
-        <View style={styles.container}>
-          <ScrollView style={styles.scrollView}>
-            <Text style={styles.title}>Something went wrong</Text>
-            <Text style={styles.subtitle}>Error Details:</Text>
-            <View style={styles.errorBox}>
-              <Text style={styles.errorText}>
-                {this.state.error?.toString()}
-              </Text>
-              {this.state.errorInfo && (
-                <Text style={styles.stackTrace}>
-                  {this.state.errorInfo.componentStack}
-                </Text>
-              )}
-            </View>
-          </ScrollView>
-        </View>
-      );
+    if (!this.state.hasError) {
+      return this.props.children;
     }
 
-    return this.props.children;
+    return (
+      <View style={styles.container}>
+        <ScrollView contentContainerStyle={styles.content}>
+          <Text style={styles.title}>Something went wrong</Text>
+          <Text style={styles.message}>
+            Sorry about that. Tap below to try again. If it keeps happening, close and reopen the app.
+          </Text>
+          <TouchableOpacity style={styles.button} onPress={this.handleRetry} accessibilityRole="button">
+            <Text style={styles.buttonText}>Try again</Text>
+          </TouchableOpacity>
+
+          {__DEV__ && (
+            <View style={styles.errorBox}>
+              <Text style={styles.errorText}>{this.state.error?.toString()}</Text>
+              {this.state.errorInfo && (
+                <Text style={styles.stackTrace}>{this.state.errorInfo.componentStack}</Text>
+              )}
+            </View>
+          )}
+        </ScrollView>
+      </View>
+    );
   }
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
-    padding: 20,
+    backgroundColor: COLORS.background,
   },
-  scrollView: {
-    flex: 1,
+  content: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    padding: 24,
   },
   title: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: 'bold',
-    color: '#e74c3c',
-    marginBottom: 10,
+    color: COLORS.text,
+    marginBottom: 12,
+    textAlign: 'center',
   },
-  subtitle: {
+  message: {
     fontSize: 16,
-    fontWeight: '600',
-    marginTop: 10,
-    marginBottom: 5,
+    color: COLORS.textLight,
+    marginBottom: 24,
+    textAlign: 'center',
+  },
+  button: {
+    alignSelf: 'center',
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 28,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  buttonText: {
+    color: COLORS.background,
+    fontWeight: 'bold',
+    fontSize: 16,
   },
   errorBox: {
-    backgroundColor: '#f8f9fa',
-    padding: 15,
-    borderRadius: 5,
+    marginTop: 32,
+    padding: 12,
+    borderRadius: 6,
     borderLeftWidth: 4,
-    borderLeftColor: '#e74c3c',
+    borderLeftColor: COLORS.error,
+    backgroundColor: 'rgba(255,255,255,0.05)',
   },
   errorText: {
-    fontSize: 14,
-    color: '#2c3e50',
-    marginBottom: 10,
+    fontSize: 13,
+    color: COLORS.text,
+    marginBottom: 8,
   },
   stackTrace: {
-    fontSize: 12,
-    color: '#7f8c8d',
+    fontSize: 11,
+    color: COLORS.textLight,
     fontFamily: 'monospace',
   },
 });

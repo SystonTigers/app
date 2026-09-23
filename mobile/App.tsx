@@ -11,6 +11,11 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { ThemeProvider } from './src/theme/ThemeContext';
 import { AuthProvider } from './src/context/AuthContext';
 import { COLORS } from './src/config';
+import { ErrorBoundary } from './src/ErrorBoundary';
+import { initCrashReporting } from './src/services/crashReporting';
+
+// Start crash reporting before anything renders (no-op without EXPO_PUBLIC_SENTRY_DSN)
+initCrashReporting();
 
 // Build a react-native-paper theme from our design tokens
 const paperTheme = {
@@ -133,6 +138,7 @@ function TabNavigator() {
 
 export default function App() {
   return (
+    <ErrorBoundary>
     <ThemeProvider>
       <AuthProvider>
         <SafeAreaProvider>
@@ -277,5 +283,6 @@ export default function App() {
         </SafeAreaProvider>
       </AuthProvider>
     </ThemeProvider>
+    </ErrorBoundary>
   );
 }
