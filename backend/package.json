@@ -14,6 +14,7 @@
     "admin:password": "node scripts/set-admin-password.mjs",
     "admin:password:prod": "node scripts/set-admin-password.mjs --remote",
     "deploy:prod": "wrangler deploy --env production",
+    "secrets:rotate:prod": "node scripts/rotate-secrets.mjs --env production",
     "test": "npm run test:node && npm run test:workers && npm run test:e2e",
     "test:node": "vitest --run --config vitest.config.node.ts",
     "test:workers": "vitest --run --config vitest.config.ts",
