@@ -3,6 +3,7 @@ import { handlePublicTenantRequest } from "./routes/public";
 import { errorHandler } from "./middleware/errorHandler";
 import { getAuthFailure } from "./services/auth";
 import { json } from "./services/util";
+import { handleGetMedia } from "./services/media";
 import { corsHeaders, isPreflight } from "./middleware/cors";
 import { newRequestId, logJSON } from "./lib/log";
 import { withSecurity } from "./middleware/securityHeaders";
@@ -557,6 +558,8 @@ import {
     handleDeleteAlbum
 } from "./routes/gallery";
 router.post("/api/:v/gallery/upload", (req, env, corsHdrs) => handlePhotoUpload(req, env, corsHdrs));
+// Public media (gallery photos, headshots) streamed from R2_MEDIA
+router.get("/api/:v/media/*", (req, env) => handleGetMedia(req, env));
 router.get("/api/:v/gallery/photos", (req, env, corsHdrs) => handleListPhotos(req, env, corsHdrs));
 router.get("/api/:v/gallery/photos/:id", (req, env, corsHdrs) => {
     const params = (req as any).params || {};
@@ -1189,7 +1192,7 @@ router.get("/api/:v/seasons/:id/summary", (req, env, corsHdrs) => {
 // Shop Routes
 import { handleGetProducts, handleProductSync } from "./routes/shop/products";
 import { handleCreateCart, handleGetCart, handleAddToCart, handleRemoveFromCart } from "./routes/shop/cart";
-import { handleCreateCheckout as handleShopCheckout, handleStripeWebhook as handleShopWebhook } from "./routes/shop/checkout";
+import { handleStripeWebhook as handleShopWebhook } from "./routes/shop/checkout";
 
 router.get("/api/:v/shop/products", (req, env, corsHdrs) => handleGetProducts(req, env, corsHdrs));
 router.post("/api/:v/shop/sync", (req, env, corsHdrs) => handleProductSync(req, env, corsHdrs));
@@ -1199,7 +1202,8 @@ router.get("/api/:v/shop/cart/:id", (req, env, corsHdrs) => handleGetCart(req, e
 router.post("/api/:v/shop/cart/:id/items", (req, env, corsHdrs) => handleAddToCart(req, env, corsHdrs));
 router.delete("/api/:v/shop/cart/:id/items", (req, env, corsHdrs) => handleRemoveFromCart(req, env, corsHdrs));
 
-router.post("/api/:v/shop/checkout", (req, env, corsHdrs) => handleShopCheckout(req, env, corsHdrs));
+// POST /shop/checkout is registered earlier (personalized-shop), which creates the
+// shop_orders row the confirm/fulfilment flow depends on.
 
 // Dev Auth Routes (only in development)
 router.post("/dev/admin-jwt", (req, env) => handleDevAdminJWT(req, env));

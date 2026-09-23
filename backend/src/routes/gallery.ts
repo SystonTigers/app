@@ -1,6 +1,7 @@
 import { json } from "../services/util";
 import { logJSON } from "../lib/log";
 import { getSessionFromRequest } from "../middleware/permissions";
+import { MediaError, deleteMedia, keyFromMediaUrl, mediaUrl, putMedia, validateImage } from "../services/media";
 
 async function requireJWT(req: Request, env: any) {
     const session = await getSessionFromRequest(req, env);
@@ -137,32 +138,58 @@ export async function handleGetPhoto(req: Request, env: any, corsHdrs: Headers, 
     }
 }
 
-// Upload Photo (renamed to match index.ts)
+// Upload Photo: stores the image in R2 and records it against the album
 export async function handlePhotoUpload(req: Request, env: any, corsHdrs: Headers) {
     try {
         const claims = await requireJWT(req, env);
 
-        // Handle FormData
         const formData = await req.formData();
-        const file = formData.get('file');
-        const caption = formData.get('caption') as string;
-        const albumId = formData.get('albumId') as string;
-        const tagsStr = formData.get('tags') as string;
-        const tags = tagsStr ? JSON.parse(tagsStr) : [];
+        const { file, ext } = validateImage(formData.get('file'));
+        const caption = (formData.get('caption') as string | null)?.slice(0, 500) || null;
+        const albumId = (formData.get('albumId') as string | null) || null;
+        const tagsStr = formData.get('tags') as string | null;
+        let tags: string[] = [];
+        if (tagsStr) {
+            try {
+                const parsed = JSON.parse(tagsStr);
+                tags = Array.isArray(parsed) ? parsed.filter((t): t is string => typeof t === 'string').slice(0, 20) : [];
+            } catch {
+                return json({ success: false, error: "tags must be a JSON array of strings" }, 400, corsHdrs);
+            }
+        }
 
-        // Mock upload - in real app, copy 'file' to R2/S3
+        if (albumId) {
+            const album = await env.DB.prepare("SELECT id FROM albums WHERE id = ? AND tenant_id = ?")
+                .bind(albumId, claims.tenantId).first();
+            if (!album) {
+                return json({ success: false, error: "Album not found" }, 404, corsHdrs);
+            }
+        }
+
         const id = crypto.randomUUID();
-        const placeholderUrl = `https://picsum.photos/seed/${id}/800/600`;
+        const key = `gallery/${claims.tenantId}/${id}.${ext}`;
+        await putMedia(env, key, await file.arrayBuffer(), file.type);
+        const url = mediaUrl(env, req.url, key);
 
-        await env.DB.prepare(
-            `INSERT INTO photos (id, tenant_id, album_id, url, uploaded_by, caption, tags)
-             VALUES (?, ?, ?, ?, ?, ?, ?)`
-        ).bind(
-            id, claims.tenantId, albumId, placeholderUrl, claims.email || claims.userId || 'User', caption, JSON.stringify(tags)
-        ).run();
+        try {
+            await env.DB.prepare(
+                `INSERT INTO photos (id, tenant_id, album_id, url, uploaded_by, caption, tags)
+                 VALUES (?, ?, ?, ?, ?, ?, ?)`
+            ).bind(
+                id, claims.tenantId, albumId, url, claims.email || claims.userId || 'User', caption, JSON.stringify(tags)
+            ).run();
+        } catch (dbErr) {
+            // Don't leave an orphaned file behind if the record couldn't be saved
+            await deleteMedia(env, key).catch(() => undefined);
+            throw dbErr;
+        }
 
-        return json({ success: true, data: { id, url: placeholderUrl } }, 201, corsHdrs);
+        logJSON({ level: 'info', msg: 'gallery_photo_uploaded', tenant: claims.tenantId, id, bytes: file.size });
+        return json({ success: true, data: { id, url } }, 201, corsHdrs);
     } catch (err: any) {
+        if (err instanceof MediaError) {
+            return json({ success: false, error: err.message }, err.status, corsHdrs);
+        }
         console.error('Upload photo error:', err);
         const status = err.message === "Unauthorized" ? 401 : 500;
         return json({ success: false, error: "Failed to upload photo" }, status, corsHdrs);
@@ -173,7 +200,18 @@ export async function handlePhotoUpload(req: Request, env: any, corsHdrs: Header
 export async function handleDeletePhoto(req: Request, env: any, corsHdrs: Headers, id: string) {
     try {
         const claims = await requireJWT(req, env);
+        const photo = await env.DB.prepare("SELECT url FROM photos WHERE id = ? AND tenant_id = ?")
+            .bind(id, claims.tenantId).first() as { url?: string } | null;
+        if (!photo) {
+            return json({ success: false, error: "Photo not found" }, 404, corsHdrs);
+        }
         await env.DB.prepare("DELETE FROM photos WHERE id = ? AND tenant_id = ?").bind(id, claims.tenantId).run();
+
+        // Remove the stored file too (only ones we own, scoped to this tenant)
+        const key = photo.url ? keyFromMediaUrl(env, photo.url) : null;
+        if (key && key.startsWith(`gallery/${claims.tenantId}/`)) {
+            await deleteMedia(env, key).catch((e) => console.warn('R2 delete failed', key, e));
+        }
         return json({ success: true }, 200, corsHdrs);
     } catch (err: any) {
         console.error('Delete photo error:', err);

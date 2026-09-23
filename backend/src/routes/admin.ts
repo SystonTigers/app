@@ -4,7 +4,7 @@
 import { z } from "zod";
 import { json } from "../services/util";
 import { parse, isValidationError } from "../lib/validate";
-import { requireAdmin } from "../services/auth";
+import { requireAdmin, requireTenantJWT, hasAnyRole } from "../services/auth";
 import { logJSON } from "../lib/log";
 import { withCsrfProtection } from "../middleware/csrf";
 
@@ -428,14 +428,25 @@ export async function getAdminStats(req: Request, env: any, requestId: string, c
 // GET /api/v1/admin/users - List all users for a tenant
 export async function listUsers(req: Request, env: any, requestId: string, corsHdrs: Headers): Promise<Response> {
   try {
-    // Require admin authentication
-    await requireAdmin(req, env);
-
     const url = new URL(req.url);
-    const tenantId = url.searchParams.get("tenantId");  // filter by tenant
     const role = url.searchParams.get("role");  // filter by role
-    const limit = parseInt(url.searchParams.get("limit") || "100");
-    const offset = parseInt(url.searchParams.get("offset") || "0");
+    const limit = Math.min(Math.max(parseInt(url.searchParams.get("limit") || "100") || 100, 1), 500);
+    const offset = Math.max(parseInt(url.searchParams.get("offset") || "0") || 0, 0);
+
+    // Platform admins can list any tenant (?tenantId=...). Club admins (mobile app)
+    // can list their own club only - their tenant always comes from the token.
+    let tenantId: string | null;
+    try {
+      await requireAdmin(req, env);
+      tenantId = url.searchParams.get("tenantId");
+    } catch (adminErr) {
+      if (!(adminErr instanceof Response)) { throw adminErr; }
+      const claims = await requireTenantJWT(req, env);
+      if (!hasAnyRole(claims, ["admin", "tenant_admin", "owner", "manager"])) {
+        return json({ success: false, error: { code: "FORBIDDEN", message: "Club admin access required" } }, 403, corsHdrs);
+      }
+      tenantId = claims.tenantId;
+    }
 
     if (!tenantId) {
       return json({

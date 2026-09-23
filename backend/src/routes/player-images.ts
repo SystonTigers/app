@@ -1,5 +1,6 @@
 import { json, id as generateId } from "../services/util";
 import { requireJWT } from "../services/auth";
+import { mediaUrl, putMedia } from "../services/media";
 
 export async function handleListImages(req: Request, env: any, corsHdrs: Headers) {
     try {
@@ -48,21 +49,15 @@ export async function handleUploadImage(req: Request, env: any, corsHdrs: Header
         }
 
         const imageId = generateId();
-        const key = `players/${claims.tenantId}/${playerId}/${imageId}-${file.name}`;
+        const key = `players/${claims.tenantId}/${playerId}/${imageId}-${(file.name || 'photo').replace(/[^a-zA-Z0-9._-]/g, '_')}`;
 
-        // Upload to R2 (or mock if no bucket)
-        if (env.BUCKET) {
-            await env.BUCKET.put(key, file.stream());
-        } else {
-            console.warn("No BUCKET binding found, skipping R2 upload");
+        // Upload to R2
+        const contentType = file.type || 'image/jpeg';
+        if (!contentType.startsWith('image/')) {
+            return json({ success: false, error: "photo must be an image" }, 400, corsHdrs);
         }
-
-        // Generate public URL (assuming public bucket or worker proxy)
-        // For now, we'll assume a standard R2 public URL structure or similar
-        // If testing locally without R2, this URL might not be reachable
-        const imageUrl = `https://${env.R2_PUBLIC_URL}/${key}`;
-        // fallback if env.R2_PUBLIC_URL is not set, just use the key or a placeholder
-        const finalUrl = env.R2_PUBLIC_URL ? `${env.R2_PUBLIC_URL}/${key}` : `https://placeholder.com/${key}`;
+        await putMedia(env, key, await file.arrayBuffer(), contentType);
+        const finalUrl = mediaUrl(env, req.url, key);
 
         // Insert into DB
         await env.DB.prepare(`

@@ -5,6 +5,7 @@
 
 import { requireJWT } from '../services/auth';
 import { json } from '../services/util';
+import { keyFromMediaUrl, mediaUrl } from '../services/media';
 
 /**
  * POST /api/v1/upload/headshot
@@ -50,14 +51,14 @@ export async function handleUploadHeadshot(req: Request, env: any, corsHdrs: Hea
 
         // Upload to R2
         const arrayBuffer = await file.arrayBuffer();
-        await env.R2_BUCKET.put(filename, arrayBuffer, {
+        await (env.R2_MEDIA ?? env.R2_BUCKET).put(filename, arrayBuffer, {
             httpMetadata: {
                 contentType: file.type,
             },
         });
 
         // Get the public URL
-        const headshotUrl = `${env.R2_PUBLIC_URL || 'https://media.syston.co'}/${filename}`;
+        const headshotUrl = mediaUrl(env, req.url, filename);
 
         // Update player record
         await env.DB.prepare(`
@@ -102,9 +103,9 @@ export async function handleDeleteHeadshot(req: Request, env: any, corsHdrs: Hea
 
         // Delete from R2 if exists
         if (player.headshot_url) {
-            const filename = player.headshot_url.split('/').slice(-3).join('/');
+            const filename = keyFromMediaUrl(env, player.headshot_url) ?? player.headshot_url.split('/').slice(-3).join('/');
             try {
-                await env.R2_BUCKET.delete(filename);
+                await (env.R2_MEDIA ?? env.R2_BUCKET).delete(filename);
             } catch (e) {
                 console.warn('[Upload] Failed to delete from R2:', e);
             }
@@ -155,7 +156,7 @@ export async function handleUploadDocument(req: Request, env: any, corsHdrs: Hea
 
         // Upload to R2
         const arrayBuffer = await file.arrayBuffer();
-        await env.R2_BUCKET.put(filename, arrayBuffer, {
+        await (env.R2_MEDIA ?? env.R2_BUCKET).put(filename, arrayBuffer, {
             httpMetadata: {
                 contentType: file.type,
             },
@@ -217,13 +218,13 @@ export async function handleUploadProductImage(req: Request, env: any, corsHdrs:
 
         // Upload to R2
         const arrayBuffer = await file.arrayBuffer();
-        await env.R2_BUCKET.put(filename, arrayBuffer, {
+        await (env.R2_MEDIA ?? env.R2_BUCKET).put(filename, arrayBuffer, {
             httpMetadata: {
                 contentType: file.type,
             },
         });
 
-        const imageUrl = `${env.R2_PUBLIC_URL || 'https://media.syston.co'}/${filename}`;
+        const imageUrl = mediaUrl(env, req.url, filename);
 
         // Update product record if productId provided
         if (productId) {

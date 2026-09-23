@@ -11,7 +11,7 @@ import {
   deactivatePromoCode,
   listUsers,
 } from "../admin";
-import { issuePlatformAdminJWT } from "../../services/jwt";
+import { issuePlatformAdminJWT, issueTenantAdminJWT, issueTenantMemberJWT } from "../../services/jwt";
 
 describe("Admin Routes", () => {
   let mockEnv: any;
@@ -697,6 +697,37 @@ describe("Admin Routes", () => {
       expect(data.users[0].email).toBe("user1@example.com");
       expect(data.users[0].roles).toEqual(["tenant_member"]);
       expect(data.users[1].roles).toEqual(["tenant_admin"]);
+    });
+
+    it("lets a club admin list only their own club, ignoring ?tenantId", async () => {
+      const binds: any[][] = [];
+      mockDB.prepare.mockImplementation(() => {
+        const chain: any = {
+          bind: vi.fn((...args: any[]) => { binds.push(args); return chain; }),
+          all: vi.fn(async () => ({ results: [] })),
+          first: vi.fn(async () => ({ total: 0 })),
+        };
+        return chain;
+      });
+      const token = await issueTenantAdminJWT(mockEnv, { tenant_id: "club-a", ttlMinutes: 60 });
+      const req = new Request("https://example.com/api/v1/admin/users?tenantId=club-b", {
+        headers: { authorization: `Bearer ${token}` },
+      });
+
+      const res = await listUsers(req, mockEnv, requestId, corsHdrs);
+
+      expect(res.status).toBe(200);
+      expect(binds[0][0]).toBe("club-a");
+    });
+
+    it("refuses ordinary club members", async () => {
+      const token = await issueTenantMemberJWT(mockEnv, { tenant_id: "club-a", user_id: "u1", roles: ["player"] });
+      const req = new Request("https://example.com/api/v1/admin/users", {
+        headers: { authorization: `Bearer ${token}` },
+      });
+
+      const res = await listUsers(req, mockEnv, requestId, corsHdrs);
+      expect(res.status).toBe(403);
     });
 
     it("requires tenantId parameter", async () => {
