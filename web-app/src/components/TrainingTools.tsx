@@ -82,14 +82,8 @@ export function TrainingTools({ tenant }: TrainingToolsProps) {
         focus: ''
     });
 
-    // Mock performance records
-    const [records, setRecords] = useState<PerformanceRecord[]>([
-        { id: '1', playerId: '1', playerName: 'James Smith', drillType: 'Sprint (40m)', value: '4.5s', date: '2023-10-15', trend: 'up' },
-        { id: '2', playerId: '3', playerName: 'Alex Johnson', drillType: 'Bleep Test', value: 'Level 12.4', date: '2023-11-02', trend: 'up' },
-        { id: '3', playerId: '2', playerName: 'David Jones', drillType: 'Parachute Run', value: '12.8s', date: '2023-10-20', trend: 'neutral' },
-        { id: '4', playerId: '1', playerName: 'James Smith', drillType: 'Agility Test', value: '8.2s', date: '2023-11-05', trend: 'up' },
-        { id: '5', playerId: '4', playerName: 'Ben Wilson', drillType: 'Bleep Test', value: 'Level 10.1', date: '2023-10-10', trend: 'down' },
-    ]);
+    // Performance records (none are stored yet, so this starts empty)
+    const [records, setRecords] = useState<PerformanceRecord[]>([]);
 
     // Tactics configuration state
     // Tactics configuration state
@@ -109,10 +103,7 @@ export function TrainingTools({ tenant }: TrainingToolsProps) {
     });
 
     // Tactical AI reviews
-    const [tacticalReviews, setTacticalReviews] = useState<TacticalReview[]>([
-        { id: '1', videoId: 'v1', videoName: 'vs Rovers FC - Oct 15', formation: '4-4-2', status: 'complete', score: 78, insights: ['Good defensive shape', 'Transition could be faster', 'Wide play effective'], date: '2023-10-16' },
-        { id: '2', videoId: 'v2', videoName: 'vs City United - Oct 22', formation: '4-3-3', status: 'complete', score: 65, insights: ['Midfield overrun at times', 'Wing-backs exposed', 'Set pieces well executed'], date: '2023-10-23' },
-    ]);
+    const [tacticalReviews, setTacticalReviews] = useState<TacticalReview[]>([]);
 
     const [analyzingTactics, setAnalyzingTactics] = useState(false);
 
@@ -474,21 +465,6 @@ export function TrainingTools({ tenant }: TrainingToolsProps) {
                     <div className="space-y-8">
                         {/* Stats Summary Row */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            <div className="bg-gradient-to-br from-yellow-400 to-orange-500 rounded-2xl p-6 text-white shadow-lg">
-                                <h3 className="font-bold text-lg opacity-90 mb-1">Fastest Sprint</h3>
-                                <div className="text-4xl font-black mb-2">4.5s</div>
-                                <div className="text-sm font-medium flex items-center gap-2">
-                                    <span className="bg-white/20 px-2 py-1 rounded">James Smith</span>
-                                </div>
-                            </div>
-                            <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl p-6 text-white shadow-lg">
-                                <h3 className="font-bold text-lg opacity-90 mb-1">Fitness King</h3>
-                                <div className="text-4xl font-black mb-2">Lvl 12.4</div>
-                                <div className="text-sm font-medium flex items-center gap-2">
-                                    <span className="bg-white/20 px-2 py-1 rounded">Alex Johnson</span>
-                                    <span className="text-xs opacity-75">Bleep Test</span>
-                                </div>
-                            </div>
                             <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl p-6 shadow-sm flex flex-col justify-center items-center text-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors">
                                 <div className="w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-2 text-2xl font-black">+</div>
                                 <h3 className="font-bold text-gray-900 dark:text-white">Log New Record</h3>
@@ -513,6 +489,13 @@ export function TrainingTools({ tenant }: TrainingToolsProps) {
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                                        {records.length === 0 && (
+                                            <tr>
+                                                <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
+                                                    No benchmarks recorded yet.
+                                                </td>
+                                            </tr>
+                                        )}
                                         {records.map((record) => (
                                             <tr key={record.id} className="hover:bg-gray-50 dark:hover:bg-black/20 transition-colors group">
                                                 <td className="px-6 py-4 font-bold text-gray-900 dark:text-white">

@@ -1,20 +1,26 @@
 'use client';
 
-import { MOCK_SPONSORS, Sponsor } from '@/components/SponsorOverlay';
+import type { Sponsor } from '@/components/SponsorOverlay';
 
-export default function SponsorsPage({ params }: { params: { tenant: string } }) {
+export default function SponsorsPage() {
+    // There is no sponsors API yet, so no club has sponsors to list.
+    // When one exists, load the club's sponsors here; the tier sections below render them.
+    const sponsors: Sponsor[] = [];
+
     // Group by tier
-    const titleSponsors = MOCK_SPONSORS.filter(s => s.tier === 'title');
-    const goldSponsors = MOCK_SPONSORS.filter(s => s.tier === 'gold');
-    const silverSponsors = MOCK_SPONSORS.filter(s => s.tier === 'silver');
-    const bronzeSponsors = MOCK_SPONSORS.filter(s => s.tier === 'bronze');
+    const titleSponsors = sponsors.filter(s => s.tier === 'title');
+    const goldSponsors = sponsors.filter(s => s.tier === 'gold');
+    const silverSponsors = sponsors.filter(s => s.tier === 'silver');
+    const bronzeSponsors = sponsors.filter(s => s.tier === 'bronze');
 
     return (
         <div className="container py-12">
             <div className="text-center mb-16">
                 <h1 className="text-5xl font-black mb-4 uppercase tracking-tighter">Our Partners</h1>
                 <p className="text-xl text-muted max-w-2xl mx-auto">
-                    We are proud to be supported by these amazing local businesses. Their contribution keeps our club running and our community growing.
+                    {sponsors.length > 0
+                        ? 'We are proud to be supported by these amazing local businesses. Their contribution keeps our club running and our community growing.'
+                        : "This club hasn't added any sponsors yet."}
                 </p>
             </div>
 
@@ -74,12 +80,9 @@ export default function SponsorsPage({ params }: { params: { tenant: string } })
             {/* CTA */}
             <div className="mt-20 text-center bg-surface p-12 rounded-2xl border border-border">
                 <h3 className="text-3xl font-bold mb-4">Become a Partner</h3>
-                <p className="text-muted mb-8 max-w-lg mx-auto">
-                    Join our winning team! Sponsorship offers incredible exposure for your business while supporting grassroots sport.
+                <p className="text-muted max-w-lg mx-auto">
+                    Join our winning team! Sponsorship offers incredible exposure for your business while supporting grassroots sport. Speak to a club official to find out more.
                 </p>
-                <a href="mailto:sponsors@systontigers.com" className="btn btn-primary px-8 py-3 text-lg">
-                    Request Media Pack
-                </a>
             </div>
         </div>
     );

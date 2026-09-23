@@ -5,6 +5,16 @@ import { parse, isValidationError } from "../lib/validate";
 import { requireJWT, hasRole } from "../services/auth";
 import { logJSON } from "../lib/log";
 
+/**
+ * Club URLs share the web app's top-level paths, so these can't be used as slugs.
+ * Keep in sync with the folders in web-app/src/app.
+ */
+export const RESERVED_SLUGS = new Set([
+    "admin", "api", "app", "auth", "create-team", "dashboard", "demo", "forgot-password",
+    "help", "join", "login", "logout", "pricing", "privacy", "public", "reset-password",
+    "settings", "setup", "signup", "support", "terms", "verify", "verify-email", "welcome", "www"
+]);
+
 // PATCH /api/v1/tenants/me
 export async function updateTenantMe(req: Request, env: any, corsHdrs: Headers): Promise<Response> {
     try {
@@ -23,11 +33,14 @@ export async function updateTenantMe(req: Request, env: any, corsHdrs: Headers):
 
         const ParamSchema = z.object({
             name: z.string().min(2).optional(),
-            slug: z.string().min(3).regex(/^[a-z0-9-]+$/, "Slug must be lowercase alphanumeric").optional(),
-            primaryColor: z.string().startsWith("#").optional(),
-            secondaryColor: z.string().startsWith("#").optional(),
-            badgeUrl: z.string().optional(),
-            status: z.enum(["active", "trial"]).optional() // Only allow setting to active/trial from here
+            slug: z.string().min(3, "Club URL must be at least 3 characters").max(40)
+                .regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, "Club URL can only use lowercase letters, numbers and single dashes")
+                .refine((s) => !RESERVED_SLUGS.has(s), "That club URL is reserved. Please choose another.")
+                .optional(),
+            primaryColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Colour must be a hex value like #FFD700").optional(),
+            secondaryColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Colour must be a hex value like #000000").optional(),
+            badgeUrl: z.string().url().optional()
+            // Status is deliberately not editable here: it's set by sign-up (trial) and billing (active).
         });
 
         const data = parse(ParamSchema, body);
@@ -48,10 +61,6 @@ export async function updateTenantMe(req: Request, env: any, corsHdrs: Headers):
             }
             updates.push("slug = ?");
             params.push(data.slug);
-        }
-        if (data.status) {
-            updates.push("status = ?");
-            params.push(data.status);
         }
 
         if (updates.length > 0) {
@@ -105,7 +114,11 @@ export async function updateTenantMe(req: Request, env: any, corsHdrs: Headers):
     } catch (err: any) {
         if (err instanceof Response) {return err;}
         if (isValidationError(err)) {
-            return json({ success: false, error: { code: "INVALID_REQUEST", issues: err.issues } }, 400, corsHdrs);
+            const message = err.issues?.[0]?.message || "Please check the form and try again.";
+            return json({ success: false, error: { code: "INVALID_REQUEST", message, issues: err.issues } }, 400, corsHdrs);
+        }
+        if (/UNIQUE constraint failed: tenants\.slug/.test(err?.message || "")) {
+            return json({ success: false, error: { code: "SLUG_TAKEN", message: "Club URL is already taken" } }, 409, corsHdrs);
         }
         logJSON({ level: 'error', msg: 'UPDATE_TENANT_ME_ERROR', error: err.message });
         return json({ success: false, error: { code: "UPDATE_FAILED", message: err.message } }, 500, corsHdrs);

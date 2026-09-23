@@ -1,5 +1,5 @@
 // src/lib/sdk.ts
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8787';
+import { API_BASE, getSessionToken } from './session';
 
 export type ProvisionCheckpoint =
   | 'seedDefaultContent'
@@ -19,8 +19,14 @@ export type ProvisionState = {
   error?: string | null;
 };
 
+/** Bearer header for the signed-in user (browser only). */
+function authHeader(): Record<string, string> {
+  if (typeof window === 'undefined') return {};
+  const token = getSessionToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 async function http<T>(url: string, init?: RequestInit): Promise<T> {
-  console.log('[SDK] Fetching:', url, 'with options:', init);
   try {
     const res = await fetch(url, {
       ...init,
@@ -28,13 +34,12 @@ async function http<T>(url: string, init?: RequestInit): Promise<T> {
       cache: 'no-store',
       headers: {
         'Content-Type': 'application/json',
+        ...authHeader(),
         ...(init?.headers || {})
       }
     });
-    console.log('[SDK] Response status:', res.status, res.statusText);
     if (!res.ok) {
       const text = await res.text().catch(() => '');
-      console.error('[SDK] Error response:', text);
       const error = new Error(`HTTP ${res.status} ${res.statusText}: ${text}`);
       throw error;
     }
@@ -475,6 +480,12 @@ const compat: AnySDK = {
 };
 
 // Client SDK implementation
+/** The backend wraps responses as { success, data }; public pages want the data. */
+async function publicGet<T>(url: string): Promise<T> {
+  const body = await http<any>(url);
+  return (body && typeof body === 'object' && !Array.isArray(body) && 'data' in body ? body.data : body) as T;
+}
+
 class ClientSDK implements AnySDK {
   private tenantId: string;
 
@@ -484,23 +495,23 @@ class ClientSDK implements AnySDK {
 
   // Real implementations
   async listFixtures() {
-    return http<any[]>(`${API_BASE}/public/${this.tenantId}/fixtures`);
+    return publicGet<any[]>(`${API_BASE}/public/${this.tenantId}/fixtures`);
   }
 
   async listResults() {
-    return http<any[]>(`${API_BASE}/public/${this.tenantId}/fixtures?status=results`);
+    return publicGet<any[]>(`${API_BASE}/public/${this.tenantId}/fixtures?status=results`);
   }
 
   async listFeed(page = 1, limit = 10) {
-    return http<any[]>(`${API_BASE}/public/${this.tenantId}/feed?page=${page}&limit=${limit}`);
+    return publicGet<any[]>(`${API_BASE}/public/${this.tenantId}/feed?page=${page}&limit=${limit}`);
   }
 
   async getLeagueTable() {
-    return http<any[]>(`${API_BASE}/public/${this.tenantId}/table`);
+    return publicGet<any[]>(`${API_BASE}/public/${this.tenantId}/table`);
   }
 
   async getTeamStats() {
-    return http<any>(`${API_BASE}/public/${this.tenantId}/stats`);
+    return publicGet<any>(`${API_BASE}/public/${this.tenantId}/stats`);
   }
 
   async getTopScorers(limit = 10) {
@@ -508,7 +519,7 @@ class ClientSDK implements AnySDK {
   }
 
   async getSquad() {
-    return http<any[]>(`${API_BASE}/public/${this.tenantId}/squad`);
+    return publicGet<any[]>(`${API_BASE}/public/${this.tenantId}/squad`);
   }
 
   async getPlayer(id: string) {
@@ -712,7 +723,8 @@ class ClientSDK implements AnySDK {
   getBrandKit = compat.getBrandKit;
   getFeed = this.listFeed; // Alias
   getFixtures = this.listFixtures; // Alias
-  getNextFixture = compat.getNextFixture;
+  getNextFixture = async () =>
+    publicGet<Record<string, unknown> | null>(`${API_BASE}/public/${this.tenantId}/fixtures/next`);
   getResults = this.listResults; // Alias
   getTable = this.getLeagueTable; // Alias
   getStats = this.getTeamStats; // Alias

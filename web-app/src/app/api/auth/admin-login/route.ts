@@ -28,7 +28,11 @@ export async function POST(req: NextRequest) {
     return new NextResponse(msg || 'Unauthorized', { status: 401 });
   }
 
-  const { jwt } = await r.json(); // backend returns { jwt }
+  const body = await r.json().catch(() => ({}));
+  const jwt: string | undefined = body?.data?.token;
+  if (!jwt) {
+    return new NextResponse('Unauthorized', { status: 401 });
+  }
   const res = NextResponse.json({ ok: true, mode: 'password' });
   res.cookies.set('admin_jwt', jwt, {
     httpOnly: true,

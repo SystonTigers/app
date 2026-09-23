@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { isClubTeam } from '@/lib/slug';
 import { PublicSeasonTabs } from '@/components/PublicSeasonTabs';
 
 export default function TablePage({ params }: { params: Promise<{ tenant: string }> }) {
@@ -88,7 +89,7 @@ export default function TablePage({ params }: { params: Promise<{ tenant: string
                   {table.map((row: any, index: number) => {
                     const isPromo = index === 0;
                     const isRel = index >= table.length - 2;
-                    const isMyTeam = row.team.includes('Syston');
+                    const isMyTeam = isClubTeam(row.team, tenant);
 
                     return (
                       <tr

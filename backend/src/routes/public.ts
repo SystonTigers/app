@@ -331,6 +331,23 @@ export async function handlePublicTenantRequest(
     const resource = segments[2] || "fixtures";
 
     try {
+        // Club name and colours for the club's public pages
+        if (resource === "info") {
+            const brand = await env.DB.prepare(
+                `SELECT primary_color, secondary_color, badge_url FROM tenant_brand WHERE tenant_id = ?`
+            ).bind(tenant.id).first() as { primary_color?: string; secondary_color?: string; badge_url?: string } | null;
+            return json({
+                success: true,
+                data: {
+                    slug: tenant.slug,
+                    name: tenant.name ?? tenant.slug,
+                    primaryColor: brand?.primary_color ?? null,
+                    secondaryColor: brand?.secondary_color ?? null,
+                    badgeUrl: brand?.badge_url ?? null,
+                },
+            }, 200, corsHdrs);
+        }
+
         if (resource === "fixtures" && segments[3] && segments[3] !== "next") {
             const fixtureId = segments[3];
 
@@ -510,7 +527,7 @@ export async function handlePublicTenantRequest(
             return json({ success: true, data: table }, 200, corsHdrs);
         }
 
-        if (resource === "stats") {
+        if (resource === "stats" && segments[3] !== "fun") {
             const rows = await env.DB.prepare(
                 `SELECT tenant_id, match_date, our_score, their_score
            FROM team_results

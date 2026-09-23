@@ -53,21 +53,7 @@ export function PremiumLayoutWrapper({ children, tenant, tenantName }: PremiumLa
                         <footer className="hidden md:block bg-surface border-t border-border py-8 mt-12">
                             <div className="container flex flex-col md:flex-row justify-between items-center gap-4">
                                 <div className="text-muted-foreground">
-                                    <p>&copy; {new Date().getFullYear()} {tenantName}. Powered by Team Platform</p>
-                                </div>
-                                <div className="flex items-center gap-6">
-                                    <a href="#" className="text-muted-foreground hover:text-brand transition-colors flex items-center gap-2">
-                                        <span className="text-lg">𝕏</span>
-                                        <span className="hidden lg:inline">Twitter</span>
-                                    </a>
-                                    <a href="#" className="text-muted-foreground hover:text-brand transition-colors flex items-center gap-2">
-                                        <span className="text-lg">📷</span>
-                                        <span className="hidden lg:inline">Instagram</span>
-                                    </a>
-                                    <a href="#" className="text-muted-foreground hover:text-brand transition-colors flex items-center gap-2">
-                                        <span className="text-lg">📘</span>
-                                        <span className="hidden lg:inline">Facebook</span>
-                                    </a>
+                                    <p>&copy; {new Date().getFullYear()} {tenantName}. Powered by Boost Huddle</p>
                                 </div>
                             </div>
                         </footer>

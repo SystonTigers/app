@@ -2,50 +2,50 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { API_BASE, homeFor, saveSession } from '@/lib/session';
 
 export default function LoginPage() {
-    const router = useRouter();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const [clubs, setClubs] = useState<{ id: string; name: string; slug: string }[]>([]);
+
+    const logIn = async (tenantId?: string) => {
         setError('');
         setLoading(true);
 
         try {
-            const response = await fetch('/api/v1/auth/login', {
+            const response = await fetch(`${API_BASE}/api/v1/auth/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password })
+                body: JSON.stringify({ email, password, ...(tenantId ? { tenant_id: tenantId } : {}) })
             });
 
-            const data = await response.json();
+            const data = await response.json().catch(() => ({}));
 
+            if (data.multipleTenants) {
+                // Same email in more than one club: ask which one
+                setClubs(data.tenants || []);
+                return;
+            }
             if (!response.ok || !data.success) {
-                throw new Error(data.error?.message || 'Login failed');
+                throw new Error(data.error?.message || 'Wrong email or password.');
             }
 
-            // Store token
-            localStorage.setItem('user_token', data.data.token);
-            localStorage.setItem('user_data', JSON.stringify(data.data.user));
-
-            // Redirect based on whether user has a team
-            if (data.data.user?.tenant_id) {
-                // User has a team - go to dashboard
-                window.location.href = `/${data.data.user.tenant_slug || 'dashboard'}`;
-            } else {
-                // No team yet - go to join page
-                router.push('/join');
-            }
+            saveSession(data.data.token, data.data.user);
+            window.location.href = homeFor(data.data.user);
         } catch (err: any) {
-            setError(err.message);
+            setError(err.message === 'Failed to fetch' ? "We couldn't reach the server. Check your connection and try again." : err.message);
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        void logIn();
     };
 
     return (
@@ -59,7 +59,7 @@ export default function LoginPage() {
                         Boost Huddle
                     </h1>
                     <p className="text-brand font-bold uppercase tracking-widest text-sm bg-brand/10 inline-block px-3 py-1 chamfer-sm border border-brand/20">
-                        Identify Yourself
+                        Log in to your club
                     </p>
                 </div>
 
@@ -79,22 +79,22 @@ export default function LoginPage() {
 
                         <div>
                             <label htmlFor="email" className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1">
-                                Comm ID (Email)
+                                Email
                             </label>
                             <input
                                 id="email"
                                 type="email"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
-                                placeholder="YOU@EXAMPLE.COM"
-                                className="w-full px-4 py-3 bg-black/50 border border-gray-700 text-white placeholder-gray-600 focus:border-brand focus:ring-1 focus:ring-brand focus:bg-black/80 transition-all chamfer-sm outline-none font-bold uppercase"
+                                placeholder="you@example.com"
+                                className="w-full px-4 py-3 bg-black/50 border border-gray-700 text-white placeholder-gray-600 focus:border-brand focus:ring-1 focus:ring-brand focus:bg-black/80 transition-all chamfer-sm outline-none font-bold"
                                 required
                             />
                         </div>
 
                         <div>
                             <label htmlFor="password" className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1">
-                                Passcode
+                                Password
                             </label>
                             <input
                                 id="password"
@@ -107,7 +107,7 @@ export default function LoginPage() {
                             />
                             <div className="mt-2 text-right">
                                 <Link href="/forgot-password" className="text-xs font-mono text-gray-500 hover:text-brand uppercase transition-colors">
-                                    Lost Passcode?
+                                    Forgotten password?
                                 </Link>
                             </div>
                         </div>
@@ -120,19 +120,37 @@ export default function LoginPage() {
                             {loading ? (
                                 <span className="flex items-center justify-center gap-3">
                                     <span className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
-                                    AUTHENTICATING...
+                                    LOGGING IN...
                                 </span>
                             ) : (
-                                'ACCESS TERMINAL'
+                                'LOG IN'
                             )}
                         </button>
                     </form>
 
-                    <div className="mt-8 text-center border-t border-gray-800 pt-6">
-                        <p className="text-sm text-gray-500 font-mono">
-                            New Commander?{' '}
-                            <Link href="/signup" className="text-brand hover:text-white font-bold transition-colors uppercase tracking-wider">
-                                Initialize Account
+                    {clubs.length > 0 && (
+                        <div className="mt-6 space-y-2">
+                            <p className="text-sm text-gray-400 text-center">You're in more than one club. Which one?</p>
+                            {clubs.map((c) => (
+                                <button key={c.id} type="button" disabled={loading} onClick={() => logIn(c.id)}
+                                    className="w-full py-3 px-4 bg-black/50 border border-gray-700 text-white font-bold chamfer-sm hover:border-brand">
+                                    {c.name}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+
+                    <div className="mt-8 text-center border-t border-gray-800 pt-6 space-y-2">
+                        <p className="text-sm text-gray-400">
+                            Running a club?{' '}
+                            <Link href="/create-team" className="text-brand hover:text-white font-bold transition-colors">
+                                Start a free trial
+                            </Link>
+                        </p>
+                        <p className="text-sm text-gray-500">
+                            Joining a club?{' '}
+                            <Link href="/signup" className="text-gray-300 hover:text-white font-bold transition-colors">
+                                Create an account
                             </Link>
                         </p>
                     </div>

@@ -10,33 +10,28 @@ export interface Sponsor {
     tier: 'title' | 'gold' | 'silver' | 'bronze';
 }
 
-// Mock Sponsors Data
-export const MOCK_SPONSORS: Sponsor[] = [
-    { id: '1', name: 'Local Scaffolding', logo: '/assets/sponsors/scaffolding.png', tier: 'title' },
-    { id: '2', name: 'Joe\'s Burgers', logo: '/assets/sponsors/burgers.png', tier: 'gold' },
-    { id: '3', name: 'Tigers Gym', logo: '/assets/sponsors/gym.png', tier: 'gold' },
-    { id: '4', name: 'Tech Solutions', logo: '/assets/sponsors/tech.png', tier: 'silver' },
-    { id: '5', name: 'Community Bank', logo: '/assets/sponsors/bank.png', tier: 'bronze' }
-];
-
 interface SponsorOverlayProps {
     layout?: 'ticker' | 'corner' | 'sidebar';
     sponsors?: Sponsor[];
     className?: string;
 }
 
-export function SponsorOverlay({ layout = 'ticker', sponsors = MOCK_SPONSORS, className = '' }: SponsorOverlayProps) {
+export function SponsorOverlay({ layout = 'ticker', sponsors = [], className = '' }: SponsorOverlayProps) {
     const [currentIndex, setCurrentIndex] = useState(0);
 
     // Rotate sponsors for corner view
     useEffect(() => {
-        if (layout === 'corner') {
+        if (layout === 'corner' && sponsors.length > 0) {
             const interval = setInterval(() => {
                 setCurrentIndex((prev) => (prev + 1) % sponsors.length);
             }, 5000);
             return () => clearInterval(interval);
         }
     }, [layout, sponsors.length]);
+
+    if (sponsors.length === 0) {
+        return null;
+    }
 
     if (layout === 'ticker') {
         return (

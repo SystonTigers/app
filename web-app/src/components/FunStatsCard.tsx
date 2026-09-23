@@ -29,7 +29,7 @@ export function FunStatsCard({ tenant, seasonId }: FunStatsCardProps) {
             const query = seasonId ? `?seasonId=${seasonId}` : '';
             const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE || ''}/public/${tenant}/stats/fun${query}`);
             const data = await res.json();
-            if (data.success && data.data) {
+            if (data.success && Array.isArray(data.data)) {
                 setStats(data.data);
             }
         } catch (err) {

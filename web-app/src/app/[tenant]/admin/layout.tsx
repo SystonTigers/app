@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { AdminGuard } from '@/components/AdminGuard';
+import { getClubInfo } from '@/lib/club';
 
 interface TenantAdminLayoutProps {
     children: React.ReactNode;
@@ -9,7 +10,7 @@ interface TenantAdminLayoutProps {
 
 export default async function TenantAdminLayout({ children, params }: TenantAdminLayoutProps) {
     const { tenant } = await params;
-    const tenantName = tenant.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+    const tenantName = (await getClubInfo(tenant)).name;
 
     return (
         <ThemeProvider tenant={tenant}>

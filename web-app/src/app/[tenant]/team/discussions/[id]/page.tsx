@@ -178,9 +178,6 @@ export default function DiscussionDetailPage({
 
     const [relatedEntity, setRelatedEntity] = useState<any>(null);
 
-    // Hardcoded video URL for demo/phase 2 if no video_id is present.
-    // In production, video_id would potentially be resolved to a URL.
-
     const router = useRouter();
 
     useEffect(() => {
@@ -370,13 +367,10 @@ export default function DiscussionDetailPage({
 
     const isCoach = false; // TODO: Get from user context
 
-    // Use a dummy video URL for testing/demo if none provided
-    // If discussion.video_id looks like a URL, use it. Otherwise use fallback.
-    const hasVideo = discussion.category === 'match-analysis' || !!discussion.video_id;
-    let videoUrl = "https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"; // Fallback/Demo
-    if (discussion.video_id && (discussion.video_id.startsWith('http') || discussion.video_id.startsWith('/'))) {
-        videoUrl = discussion.video_id;
-    }
+    // Only show the player when the discussion links to a playable video URL or path.
+    const videoUrl = discussion.video_id && (discussion.video_id.startsWith('http') || discussion.video_id.startsWith('/'))
+        ? discussion.video_id
+        : null;
 
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-black pb-20">
@@ -394,11 +388,11 @@ export default function DiscussionDetailPage({
 
             <div className="container px-6 py-8">
                 {/* Video Player Section */}
-                {hasVideo && (
+                {videoUrl && discussion.video_id && (
                     <div className="mb-8 sticky top-20 z-40">
                         <DiscussionVideoPlayer
                             videoUrl={videoUrl}
-                            videoId={discussion.video_id || 'demo'}
+                            videoId={discussion.video_id}
                         />
                     </div>
                 )}
@@ -577,7 +571,7 @@ export default function DiscussionDetailPage({
                                 disabled={submitting}
                             />
 
-                            {hasVideo && (
+                            {videoUrl && (
                                 <button
                                     type="button"
                                     onClick={insertTimestamp}

@@ -11,55 +11,25 @@ export default async function StatsPage({ params }: { params: Promise<{ tenant: 
     sdk.getTopScorers(10).catch(() => []),
   ]);
 
-  let stats = teamStatsRes.status === 'fulfilled' ? teamStatsRes.value : null;
-  let scorers = topScorersRes.status === 'fulfilled' ? topScorersRes.value : [];
+  const rawStats = teamStatsRes.status === 'fulfilled' ? teamStatsRes.value : null;
+  const rawScorers = topScorersRes.status === 'fulfilled' ? topScorersRes.value : [];
 
-  // Mock data if empty
-  if (!stats) {
-    stats = { played: 12, won: 9, drawn: 2, lost: 1, goalsFor: 28, goalsAgainst: 12, cleanSheets: 5 };
-  }
-  if (scorers.length === 0) {
-    scorers = [
-      { id: '1', name: 'James Smith', stats: { goals: 14 } },
-      { id: '2', name: 'Alex Johnson', stats: { goals: 8 } },
-      { id: '3', name: 'Ben Wilson', stats: { goals: 5 } },
-      { id: '4', name: 'David Jones', stats: { goals: 3 } },
-      { id: '5', name: 'Chris Brown', stats: { goals: 2 } },
-    ];
-  }
+  const num = (v: unknown): number => (typeof v === 'number' && !Number.isNaN(v) ? v : Number(v) || 0);
+  const stats = rawStats && typeof rawStats === 'object'
+    ? {
+      played: num((rawStats as any).played),
+      won: num((rawStats as any).won),
+      drawn: num((rawStats as any).drawn),
+      lost: num((rawStats as any).lost),
+      goalsFor: num((rawStats as any).goalsFor),
+      goalsAgainst: num((rawStats as any).goalsAgainst),
+      cleanSheets: num((rawStats as any).cleanSheets),
+    }
+    : null;
+  const hasTeamStats = !!stats && stats.played > 0;
 
-  // Mock data for new stats
-  const topAssisters = [
-    { id: '1', name: 'Alex Johnson', assists: 11 },
-    { id: '2', name: 'Michael Taylor', assists: 7 },
-    { id: '3', name: 'James Smith', assists: 5 },
-    { id: '4', name: 'Tom Williams', assists: 4 },
-    { id: '5', name: 'Ben Wilson', assists: 3 },
-  ];
-
-  const mostAppearances = [
-    { id: '1', name: 'David Jones', appearances: 12 },
-    { id: '2', name: 'James Smith', appearances: 12 },
-    { id: '3', name: 'Alex Johnson', appearances: 11 },
-    { id: '4', name: 'Ben Wilson', appearances: 10 },
-    { id: '5', name: 'Chris Brown', appearances: 9 },
-  ];
-
-  const mostMinutes = [
-    { id: '1', name: 'David Jones', minutes: 1080 },
-    { id: '2', name: 'James Smith', minutes: 1035 },
-    { id: '3', name: 'Alex Johnson', minutes: 945 },
-    { id: '4', name: 'Ben Wilson', minutes: 870 },
-    { id: '5', name: 'Tom Williams', minutes: 810 },
-  ];
-
-  const disciplineRecords = [
-    { id: '1', name: 'Chris Brown', yellowCards: 5, redCards: 0 },
-    { id: '2', name: 'David Jones', yellowCards: 3, redCards: 1 },
-    { id: '3', name: 'Tom Williams', yellowCards: 3, redCards: 0 },
-    { id: '4', name: 'Ben Wilson', yellowCards: 2, redCards: 0 },
-    { id: '5', name: 'Michael Taylor', yellowCards: 2, redCards: 0 },
-  ];
+  const scorers = (Array.isArray(rawScorers) ? rawScorers : [])
+    .filter((player: any) => player && player.name && num(player.stats?.goals) > 0);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-black pb-20">
@@ -76,150 +46,84 @@ export default async function StatsPage({ params }: { params: Promise<{ tenant: 
         <FunStatsCard tenant={tenant} />
 
         {/* Team Overview Card - Full Width */}
-        {/* Team Overview Card - Full Width */}
         <section className="bg-white dark:bg-gray-800 chamfer-lg shadow-sm border border-gray-100 dark:border-gray-700 p-8">
           <h2 className="text-2xl font-black uppercase tracking-tight mb-8 text-brand">Season Overview</h2>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-            <div className="p-4 bg-gray-50 dark:bg-gray-900 chamfer-sm text-center">
-              <div className="text-3xl font-black text-gray-900 dark:text-white">
-                <AnimatedCounter value={(stats as any).played} />
+          {hasTeamStats ? (
+            <>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+              <div className="p-4 bg-gray-50 dark:bg-gray-900 chamfer-sm text-center">
+                <div className="text-3xl font-black text-gray-900 dark:text-white">
+                  <AnimatedCounter value={stats!.played} />
+                </div>
+                <div className="text-xs font-bold text-gray-400 uppercase tracking-wider">Matches</div>
               </div>
-              <div className="text-xs font-bold text-gray-400 uppercase tracking-wider">Matches</div>
-            </div>
-            <div className="p-4 bg-gray-50 dark:bg-gray-900 chamfer-sm text-center">
-              <div className="text-3xl font-black text-green-500">
-                <AnimatedCounter value={(stats as any).won} />
+              <div className="p-4 bg-gray-50 dark:bg-gray-900 chamfer-sm text-center">
+                <div className="text-3xl font-black text-green-500">
+                  <AnimatedCounter value={stats!.won} />
+                </div>
+                <div className="text-xs font-bold text-gray-400 uppercase tracking-wider">Wins</div>
               </div>
-              <div className="text-xs font-bold text-gray-400 uppercase tracking-wider">Wins</div>
-            </div>
-            <div className="p-4 bg-gray-50 dark:bg-gray-900 chamfer-sm text-center">
-              <div className="text-3xl font-black text-gray-900 dark:text-white">
-                <AnimatedCounter value={(stats as any).goalsFor} />
+              <div className="p-4 bg-gray-50 dark:bg-gray-900 chamfer-sm text-center">
+                <div className="text-3xl font-black text-gray-900 dark:text-white">
+                  <AnimatedCounter value={stats!.goalsFor} />
+                </div>
+                <div className="text-xs font-bold text-gray-400 uppercase tracking-wider">Goals Scored</div>
               </div>
-              <div className="text-xs font-bold text-gray-400 uppercase tracking-wider">Goals Scored</div>
-            </div>
-            <div className="p-4 bg-gray-50 dark:bg-gray-900 chamfer-sm text-center">
-              <div className="text-3xl font-black text-blue-500">
-                <AnimatedCounter value={(stats as any).cleanSheets} />
+              <div className="p-4 bg-gray-50 dark:bg-gray-900 chamfer-sm text-center">
+                <div className="text-3xl font-black text-blue-500">
+                  <AnimatedCounter value={stats!.cleanSheets} />
+                </div>
+                <div className="text-xs font-bold text-gray-400 uppercase tracking-wider">Clean Sheets</div>
               </div>
-              <div className="text-xs font-bold text-gray-400 uppercase tracking-wider">Clean Sheets</div>
             </div>
-          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="flex items-center justify-between p-3 border-b border-gray-100 dark:border-gray-700">
-              <span className="font-medium text-gray-600 dark:text-gray-300">Draws</span>
-              <span className="font-bold">{(stats as any).drawn}</span>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex items-center justify-between p-3 border-b border-gray-100 dark:border-gray-700">
+                <span className="font-medium text-gray-600 dark:text-gray-300">Draws</span>
+                <span className="font-bold">{stats!.drawn}</span>
+              </div>
+              <div className="flex items-center justify-between p-3 border-b border-gray-100 dark:border-gray-700">
+                <span className="font-medium text-gray-600 dark:text-gray-300">Losses</span>
+                <span className="font-bold">{stats!.lost}</span>
+              </div>
+              <div className="flex items-center justify-between p-3 border-b border-gray-100 dark:border-gray-700">
+                <span className="font-medium text-gray-600 dark:text-gray-300">Goals Conceded</span>
+                <span className="font-bold">{stats!.goalsAgainst}</span>
+              </div>
+              <div className="flex items-center justify-between p-3 border-b border-gray-100 dark:border-gray-700">
+                <span className="font-medium text-gray-600 dark:text-gray-300">Win Rate</span>
+                <span className="font-bold">{Math.round((stats!.won / stats!.played) * 100)}%</span>
+              </div>
             </div>
-            <div className="flex items-center justify-between p-3 border-b border-gray-100 dark:border-gray-700">
-              <span className="font-medium text-gray-600 dark:text-gray-300">Losses</span>
-              <span className="font-bold">{(stats as any).lost}</span>
-            </div>
-            <div className="flex items-center justify-between p-3 border-b border-gray-100 dark:border-gray-700">
-              <span className="font-medium text-gray-600 dark:text-gray-300">Goals Conceded</span>
-              <span className="font-bold">{(stats as any).goalsAgainst}</span>
-            </div>
-            <div className="flex items-center justify-between p-3 border-b border-gray-100 dark:border-gray-700">
-              <span className="font-medium text-gray-600 dark:text-gray-300">Win Rate</span>
-              <span className="font-bold">{Math.round(((stats as any).won / (stats as any).played) * 100)}%</span>
-            </div>
-          </div>
+            </>
+          ) : (
+            <p className="text-gray-500 dark:text-gray-400 font-medium">Stats will appear once results are added.</p>
+          )}
         </section>
 
-        {/* Player Statistics Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-8">
-          {/* Top Scorers */}
-          <StatCard title="Top Scorers ⚽" icon="⚽">
-            {scorers.map((player: any, index: number) => (
-              <PlayerStatRow
-                key={player.id}
-                rank={index + 1}
-                name={player.name}
-                stat={player.stats?.goals || 0}
-                isTop={index === 0}
-              />
-            ))}
-          </StatCard>
-
-          {/* Top Assisters */}
-          <StatCard title="Top Assisters 🅰️" icon="🎯">
-            {topAssisters.map((player, index) => (
-              <PlayerStatRow
-                key={player.id}
-                rank={index + 1}
-                name={player.name}
-                stat={player.assists}
-                isTop={index === 0}
-              />
-            ))}
-          </StatCard>
-
-          {/* Most Appearances */}
-          <StatCard title="Most Appearances 👕" icon="👕">
-            {mostAppearances.map((player, index) => (
-              <PlayerStatRow
-                key={player.id}
-                rank={index + 1}
-                name={player.name}
-                stat={player.appearances}
-                isTop={index === 0}
-              />
-            ))}
-          </StatCard>
-
-          {/* Most Minutes */}
-          <StatCard title="Most Minutes ⏱️" icon="⏱️">
-            {mostMinutes.map((player, index) => (
-              <PlayerStatRow
-                key={player.id}
-                rank={index + 1}
-                name={player.name}
-                stat={player.minutes}
-                suffix="'"
-                isTop={index === 0}
-              />
-            ))}
-          </StatCard>
-
-          {/* Discipline Records - Spans Full Width on Large Screens */}
-          <div className="lg:col-span-2">
-            <section className="bg-white dark:bg-gray-800 chamfer-lg shadow-sm border border-gray-100 dark:border-gray-700 p-8">
-              <h2 className="text-2xl font-black uppercase tracking-tight mb-6 flex items-center gap-3">
-                <span className="text-brand">Discipline Records</span>
-                <span className="text-2xl">🟨🟥</span>
-              </h2>
-
-              <div className="space-y-3">
-                {disciplineRecords.map((player, index) => (
-                  <div
-                    key={player.id}
-                    className="flex items-center gap-4 p-4 chamfer-sm bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                  >
-                    <div className="w-10 h-10 rotate-45 flex items-center justify-center font-black text-lg bg-gray-200 dark:bg-gray-700 text-gray-500">
-                      <span className="-rotate-45">{index + 1}</span>
-                    </div>
-
-                    <div className="flex-1 font-bold text-lg">
-                      {player.name}
-                    </div>
-
-                    <div className="flex items-center gap-4">
-                      <div className="flex items-center gap-2">
-                        <span className="text-2xl">🟨</span>
-                        <span className="font-black text-xl">{player.yellowCards}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-2xl">🟥</span>
-                        <span className="font-black text-xl text-red-500">{player.redCards}</span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
+        {/* Player Statistics */}
+        {scorers.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-8">
+            {/* Top Scorers */}
+            <StatCard title="Top Scorers ⚽" icon="⚽">
+              {scorers.map((player: any, index: number) => (
+                <PlayerStatRow
+                  key={player.id ?? player.name}
+                  rank={index + 1}
+                  name={player.name}
+                  stat={num(player.stats?.goals)}
+                  isTop={index === 0}
+                />
+              ))}
+            </StatCard>
           </div>
-        </div>
+        ) : (
+          <section className="bg-white dark:bg-gray-800 chamfer-lg shadow-sm border border-gray-100 dark:border-gray-700 p-8">
+            <h2 className="text-2xl font-black uppercase tracking-tight mb-4 text-brand">Player Rankings</h2>
+            <p className="text-gray-500 dark:text-gray-400 font-medium">Player rankings aren't available yet.</p>
+          </section>
+        )}
       </div>
     </div>
   );

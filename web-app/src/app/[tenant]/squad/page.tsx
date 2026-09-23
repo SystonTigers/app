@@ -104,16 +104,6 @@ export default async function SquadPage({ params }: { params: Promise<{ tenant: 
     console.error("Failed to fetch squad");
   }
 
-  // Mock data if empty (for demo purposes if API returns nothing in dev)
-  if (squad.length === 0) {
-    squad = [
-      { id: '1', name: 'James Smith', number: 9, position: 'Forward', stats: { appearances: 12, goals: 8, assists: 3 } },
-      { id: '2', name: 'David Jones', number: 4, position: 'Defender', stats: { appearances: 11, goals: 1, assists: 0 } },
-      { id: '3', name: 'Alex Johnson', number: 10, position: 'Midfielder', stats: { appearances: 12, goals: 4, assists: 7 } },
-      { id: '4', name: 'Ben Wilson', number: 1, position: 'Goalkeeper', stats: { appearances: 12, goals: 0, assists: 1 } },
-    ];
-  }
-
   const goalkeepers = squad.filter((p: any) => p.position?.toLowerCase().includes('keeper'));
   const defenders = squad.filter((p: any) => p.position?.toLowerCase().includes('defender') || p.position?.toLowerCase().includes('back'));
   const midfielders = squad.filter((p: any) => p.position?.toLowerCase().includes('midfield'));
@@ -153,7 +143,12 @@ export default async function SquadPage({ params }: { params: Promise<{ tenant: 
 
       <div className="container px-6 -mt-10 relative z-20">
         {/* If we have categorized players, show sections. Otherwise just a grid. */}
-        {(goalkeepers.length > 0 || defenders.length > 0) ? (
+        {squad.length === 0 ? (
+          <div className="chamfer-lg bg-white dark:bg-gray-800 shadow-md border border-gray-100 dark:border-gray-700 p-12 text-center">
+            <p className="text-lg font-semibold text-gray-900 dark:text-white">No players added yet.</p>
+            <p className="text-gray-500 dark:text-gray-400 mt-2">The squad will appear here once the club adds its players.</p>
+          </div>
+        ) : (goalkeepers.length > 0 || defenders.length > 0) ? (
           <>
             {renderSection('Goalkeepers', goalkeepers)}
             {renderSection('Defenders', defenders)}

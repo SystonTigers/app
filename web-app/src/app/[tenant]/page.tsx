@@ -1,5 +1,7 @@
 
 import { getServerSDK } from '@/lib/sdk';
+import { getClubInfo } from '@/lib/club';
+import { isClubTeam } from '@/lib/slug';
 import Link from 'next/link';
 import { Suspense } from 'react';
 
@@ -7,12 +9,12 @@ interface HomePageProps {
   params: Promise<{ tenant: string }>;
 }
 
-function HeroSection({ nextFixture, tenant }: { nextFixture: any, tenant: string }) {
+function HeroSection({ nextFixture, tenant, clubName }: { nextFixture: any, tenant: string, clubName: string }) {
   if (!nextFixture) {
     return (
       <div className="relative overflow-hidden chamfer-lg bg-gray-900 text-white shadow-2xl mb-8 p-12 text-center">
-        <h1 className="text-4xl font-black uppercase italic mb-2">Welcome to {tenant}</h1>
-        <p className="text-gray-400">The official home of your favorite team.</p>
+        <h1 className="text-4xl font-black uppercase italic mb-2">Welcome to {clubName}</h1>
+        <p className="text-gray-400">The official home of your favourite team.</p>
       </div>
     );
   }
@@ -75,7 +77,7 @@ function HeroSection({ nextFixture, tenant }: { nextFixture: any, tenant: string
           ) : (
             <div>
               <div className="text-sm uppercase tracking-widest text-gray-400 mb-2">{new Date(nextFixture.date).toLocaleDateString()}</div>
-              <div className="text-3xl font-black text-white">{nextFixture.time || '15:00'}</div>
+              <div className="text-3xl font-black text-white">{nextFixture.time || 'Time TBC'}</div>
               <div className="text-xs text-gray-500 mt-2">{nextFixture.venue}</div>
             </div>
           )}
@@ -85,11 +87,10 @@ function HeroSection({ nextFixture, tenant }: { nextFixture: any, tenant: string
   );
 }
 
-function QuickStats({ table }: { table: any[] }) {
+function QuickStats({ table, tenant }: { table: any[]; tenant: string }) {
   if (table.length === 0) return null;
 
-  // Find our team (example logic)
-  const myTeam = table.find((r: any) => r.team.includes('Syston')) || table[0];
+  const myTeam = table.find((r: any) => isClubTeam(r.team, tenant)) || table[0];
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
@@ -133,10 +134,12 @@ function NewsFeed({ posts }: { posts: any[] }) {
             <div className="text-xs font-bold text-brand uppercase tracking-wider mb-2">
               {new Date(post.timestamp).toLocaleDateString()}
             </div>
-            <h3 className="text-xl font-bold mb-3 text-gray-900 dark:text-white leading-tight group-hover:text-brand transition-colors line-clamp-2">
-              {/* Mock title if missing in feed */}
-              {post.title || "Club Statement: Latest Updates from the Board"}
-            </h3>
+            {/* Use the post's own title, or its first line when the feed has no title */}
+            {(post.title || String(post.content ?? '').split('\n').find((line: string) => line.trim())?.trim()) && (
+              <h3 className="text-xl font-bold mb-3 text-gray-900 dark:text-white leading-tight group-hover:text-brand transition-colors line-clamp-2">
+                {post.title || String(post.content ?? '').split('\n').find((line: string) => line.trim())?.trim()}
+              </h3>
+            )}
             <p className="text-gray-500 dark:text-gray-400 text-sm line-clamp-3 mb-4 flex-1">
               {post.content}
             </p>
@@ -153,6 +156,7 @@ function NewsFeed({ posts }: { posts: any[] }) {
 export default async function TenantHomePage({ params }: HomePageProps) {
   const { tenant } = await params;
   const sdk = getServerSDK(tenant);
+  const club = await getClubInfo(tenant);
 
   // Parallel data fetching
   const [nextFixtureRes, fixturesRes, postsRes, tableRes] = await Promise.allSettled([
@@ -167,12 +171,7 @@ export default async function TenantHomePage({ params }: HomePageProps) {
   const posts = postsRes.status === 'fulfilled' ? postsRes.value : [];
   const table = tableRes.status === 'fulfilled' ? tableRes.value : [];
 
-  // Mock posts if empty for demo visual
-  const displayPosts = posts.length > 0 ? posts : [
-    { id: '1', timestamp: Date.now(), content: "We are delighted to announce our new partnership with local businesses to support grassroots football.", title: "New Sponsorship Deal Announced" },
-    { id: '2', timestamp: Date.now() - 86400000, content: "A hard fought victory this weekend sees the first team climb to 2nd in the table.", title: "Match Report: Tigers 3 - 1 Nomads" },
-    { id: '3', timestamp: Date.now() - 172800000, content: "Training schedules have been updated for the winter period. Please check the training page.", title: "Winter Training Schedule" },
-  ];
+  const displayPosts = posts;
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-black pb-20">
@@ -182,7 +181,7 @@ export default async function TenantHomePage({ params }: HomePageProps) {
           <div>
             <p className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-1">Official Dashboard</p>
             <h1 className="text-3xl font-black text-gray-900 dark:text-white uppercase italic">
-              {tenant}
+              {club.name}
             </h1>
           </div>
           <div className="hidden md:flex gap-3">
@@ -196,10 +195,10 @@ export default async function TenantHomePage({ params }: HomePageProps) {
         </div>
 
         {/* Hero */}
-        <HeroSection nextFixture={nextFixture || fixtures[0]} tenant={tenant} />
+        <HeroSection nextFixture={nextFixture || fixtures[0]} tenant={tenant} clubName={club.name} />
 
         {/* Quick Stats Row */}
-        <QuickStats table={table} />
+        <QuickStats table={table} tenant={tenant} />
 
         {/* content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

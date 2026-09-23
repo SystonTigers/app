@@ -1,4 +1,5 @@
 import { ThemeProvider } from '@/components/ThemeProvider';
+import { getClubInfo } from '@/lib/club';
 import { PremiumLayoutWrapper } from './PremiumLayoutWrapper';
 
 interface TenantLayoutProps {
@@ -8,23 +9,19 @@ interface TenantLayoutProps {
 
 export async function generateMetadata({ params }: TenantLayoutProps) {
   const { tenant } = await params;
-  const name = tenant.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+  const club = await getClubInfo(tenant);
   return {
-    title: `${name} | Team Platform`,
+    title: `${club.name} | Boost Huddle`,
   };
 }
 
 export default async function TenantLayout({ children, params }: TenantLayoutProps) {
   const { tenant } = await params;
-
-  // Provide default tenant name if undefined
-  const tenantName = tenant
-    ? tenant.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
-    : 'Team Platform';
+  const club = await getClubInfo(tenant);
 
   return (
-    <ThemeProvider tenant={tenant || 'default'}>
-      <PremiumLayoutWrapper tenant={tenant || 'default'} tenantName={tenantName}>
+    <ThemeProvider tenant={tenant}>
+      <PremiumLayoutWrapper tenant={tenant} tenantName={club.name}>
         {children}
       </PremiumLayoutWrapper>
     </ThemeProvider>

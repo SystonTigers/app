@@ -4,7 +4,7 @@
 import Link from 'next/link';
 
 export const metadata = {
-  title: 'Pricing - Team Platform',
+  title: 'Pricing - Boost Huddle',
   description: 'Choose the perfect plan for your team',
 };
 
@@ -15,9 +15,9 @@ export default function PricingPage() {
       <header className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex justify-between items-center">
-            <h1 className="text-2xl font-bold text-gray-900">Team Platform</h1>
+            <h1 className="text-2xl font-bold text-gray-900">Boost Huddle</h1>
             <Link
-              href="/signup"
+              href="/create-team"
               className="text-sm font-medium text-blue-600 hover:text-blue-700"
             >
               Sign up →
@@ -105,7 +105,7 @@ export default function PricingPage() {
             </ul>
 
             <Link
-              href="/signup?plan=starter"
+              href="/create-team"
               className="block w-full bg-blue-600 text-white text-center py-3 px-6 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
             >
               Start Free Trial
@@ -181,7 +181,7 @@ export default function PricingPage() {
             </ul>
 
             <Link
-              href="/signup?plan=pro"
+              href="/create-team"
               className="block w-full bg-white text-blue-600 text-center py-3 px-6 rounded-lg font-semibold hover:bg-gray-50 transition-colors"
             >
               Start Free Trial
@@ -251,10 +251,10 @@ export default function PricingPage() {
             Ready to get started?
           </h3>
           <p className="text-gray-600 mb-8">
-            Join teams already using Team Platform to engage their fans.
+            Join the clubs already running match day with Boost Huddle.
           </p>
           <Link
-            href="/signup"
+            href="/create-team"
             className="inline-block bg-blue-600 text-white px-8 py-4 rounded-lg font-semibold hover:bg-blue-700 transition-colors text-lg"
           >
             Start Your Free Trial
@@ -266,7 +266,7 @@ export default function PricingPage() {
       <footer className="bg-gray-900 text-white mt-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <p className="text-center text-gray-400 text-sm">
-            © 2025 Team Platform. All rights reserved.
+            © 2026 Boost Huddle. All rights reserved.
           </p>
         </div>
       </footer>

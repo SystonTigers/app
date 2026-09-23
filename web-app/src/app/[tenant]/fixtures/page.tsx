@@ -3,17 +3,19 @@
 import { useState, useEffect } from 'react';
 import { PublicSeasonTabs } from '@/components/PublicSeasonTabs';
 import { CountdownTimer } from '@/components/ui/CountdownTimer';
-import { WeatherWidget } from '@/components/ui/WeatherWidget';
 
 function FixtureCard({ fixture, isNext }: { fixture: any, isNext?: boolean }) {
   const dateObj = new Date(fixture.date);
   const dateStr = dateObj.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
-  const timeStr = fixture.time || '15:00';
+  const hasTime = typeof fixture.time === 'string' && /^\d{1,2}:\d{2}/.test(fixture.time);
+  const timeStr = hasTime ? fixture.time : 'Time TBC';
 
-  // Combine date and time for countdown
-  const [hours, minutes] = timeStr.split(':');
+  // Combine date and time for the countdown (only when the kick-off time is known)
   const kickoffDate = new Date(dateObj);
-  kickoffDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+  if (hasTime) {
+    const [hours, minutes] = fixture.time.split(':');
+    kickoffDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+  }
 
   if (isNext) {
     return (
@@ -22,12 +24,11 @@ function FixtureCard({ fixture, isNext }: { fixture: any, isNext?: boolean }) {
         <div className="absolute inset-0 bg-gradient-to-br from-brand/20 to-black/80" />
 
         <div className="relative z-10 p-8 md:p-12">
-          {/* Top row: Competition badge & Weather */}
+          {/* Top row: Competition badge */}
           <div className="flex items-center justify-between mb-6">
             <div className="inline-block px-4 py-1 bg-brand text-brand-foreground font-bold uppercase tracking-wider text-sm chamfer-sm">
               Next Match • {fixture.competition || 'League'}
             </div>
-            <WeatherWidget className="text-white" />
           </div>
 
           {/* Main content */}
@@ -42,7 +43,7 @@ function FixtureCard({ fixture, isNext }: { fixture: any, isNext?: boolean }) {
               </p>
               <p className="mt-4 text-gray-400 flex items-center justify-center md:justify-start gap-2">
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                {fixture.venue || 'Home Ground'}
+                {fixture.venue || 'Venue TBC'}
               </p>
             </div>
 
@@ -74,7 +75,7 @@ function FixtureCard({ fixture, isNext }: { fixture: any, isNext?: boolean }) {
           {/* Countdown Timer */}
           <div className="mt-8 pt-6 border-t border-gray-700 flex flex-col items-center">
             <div className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">Kick-Off In</div>
-            <CountdownTimer targetDate={kickoffDate} />
+            {hasTime && <CountdownTimer targetDate={kickoffDate} />}
           </div>
         </div>
       </div>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { API_BASE as SESSION_API_BASE, homeFor, saveSession } from '@/lib/session';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 
@@ -32,8 +33,7 @@ export default function LoginPage() {
     const [error, setError] = useState('');
     const [coachCodeValid, setCoachCodeValid] = useState(false);
 
-    // Use relative URL to go through Next.js proxy (which handles CORS)
-    const API_BASE = '';
+    const API_BASE = SESSION_API_BASE;
 
     const validateCode = async (inputCode: string) => {
         // Check if code is a coach code (format: TEAM-CXXXX)
@@ -60,23 +60,18 @@ export default function LoginPage() {
             const response = await fetch(`${API_BASE}/api/v1/auth/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password, tenantId }),
+                body: JSON.stringify({ email, password, tenant_id: tenantId }),
                 credentials: 'include',
             });
 
             const data = await response.json();
             if (!response.ok) throw new Error(data.error?.message || 'Login failed');
 
-            login(data.token, data.user);
-
-            // Should redirect to that tenant's dashboard, ensuring URL handles slug
-            // data.user might not give slug, but 'availableTenants' has it.
             const selected = availableTenants.find(t => t.id === tenantId);
-            if (selected) {
-                window.location.href = `/${selected.slug}`;
-            } else {
-                router.push(`/${tenant}`); // Fallback
-            }
+            const user = { ...data.data.user, tenant_slug: data.data.user.tenant_slug || selected?.slug || tenant };
+            saveSession(data.data.token, user);
+            login(data.data.token, user);
+            window.location.href = homeFor(user);
 
         } catch (err: any) {
             setError(err.message || "Selection failed");
@@ -151,21 +146,10 @@ export default function LoginPage() {
 
                 if (!response.ok) throw new Error(data.error?.message || 'Login failed');
 
-                // Single tenant success
-                login(data.token, data.user);
-                localStorage.setItem('user_role', 'parent'); // Assume parent/admin for email login
-
-                // If the user logged in to a DIFFERENT tenant than the URL, we should redirect!
-                // data.user.tenant_id vs current tenant?
-                // We don't have tenant slug in data.user usually, but let's assume standard flow.
-                // If we are on specific tenant page, and we logged into IT, good.
-                // If we logged into another one (because only 1 match found elsewhere), we should redirect there?
-                // The backend `handleAuthLogin` returns a token for the *found* tenant.
-                // If it's different, we might be in trouble if we stay on this URL.
-                // Ideally, backend returns `tenant_slug` in user or separate field.
-                // `handleAuthLogin` usually returns `token` and `user`. 
-                // Let's assume standard behavior for now.
-                router.push(`/${tenant}`);
+                // Single club: data.data holds { token, user }
+                saveSession(data.data.token, data.data.user);
+                login(data.data.token, data.data.user);
+                window.location.href = homeFor({ ...data.data.user, tenant_slug: data.data.user.tenant_slug || tenant });
 
             } else {
                 // Fan login

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { isClubTeam } from '@/lib/slug';
 import { useRouter } from 'next/navigation';
 import { PublicSeasonTabs } from '@/components/PublicSeasonTabs';
 
@@ -115,8 +116,8 @@ export default function ResultsPage({ params }: { params: Promise<{ tenant: stri
         ) : (
           <div className="grid gap-6">
             {sortedResults.map((result: any) => {
-              const isWin = (result.homeTeam === 'Syston Tigers' && result.homeScore > result.awayScore) ||
-                (result.awayTeam === 'Syston Tigers' && result.awayScore > result.homeScore);
+              const isWin = (isClubTeam(result.homeTeam, tenant) && result.homeScore > result.awayScore) ||
+                (isClubTeam(result.awayTeam, tenant) && result.awayScore > result.homeScore);
               const isDraw = result.homeScore === result.awayScore;
 
               return (
