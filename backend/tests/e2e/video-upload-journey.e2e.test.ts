@@ -1,225 +1,62 @@
 import { describe, it, expect } from "vitest";
-import { env } from "cloudflare:test";
-import worker from "../../src/index";
-
-// Mock ExecutionContext for worker tests
-const mockCtx = {
-  waitUntil: () => { },
-  passThroughOnException: () => { },
-  props: {},
-} as unknown as ExecutionContext;
+import { call, registerMember } from "./helpers";
 
 /**
- * E2E Test: Video Upload & Processing Journey
- *
- * Tests the complete video workflow:
- * 1. Request upload URL
- * 2. Upload video metadata
- * 3. Trigger highlight processing
- * 4. Check processing status
- * 5. Retrieve processed highlights
- *
- * Note: Uses the existing 'syston' tenant from test fixtures
+ * E2E: Video - upload a clip from the phone (multipart, as VideoScreen does),
+ * list it, play it back through the media URL, delete it.
  */
 describe("E2E: Video Upload Journey", () => {
-  const testEmail = `video-test-${Date.now()}@example.com`;
-  const testPassword = "SecurePass123!";
-  let authToken: string;
+  it("uploads, lists, plays back (with Range) and deletes a clip", async () => {
+    const member = await registerMember("video");
 
-  it("completes video upload workflow: request URL -> upload -> process -> retrieve", async () => {
-    // First, register and login to get auth token
-    const registerRequest = new Request("https://example.com/api/v1/auth/register", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "Idempotency-Key": `video-reg-${Date.now()}`,
-      },
-      body: JSON.stringify({
-        tenant_id: "syston",
-        email: testEmail,
-        password: testPassword,
-        profile: { name: "Video Test User" },
-      }),
-    });
+    const bytes = new Uint8Array(4096).map((_, i) => i % 256);
+    const form = new FormData();
+    form.append("video", new File([bytes], "video.mp4", { type: "video/mp4" }));
+    form.append("title", "Great goal");
 
-    const registerResponse = await worker.fetch(registerRequest, env, mockCtx);
-    const registerData = await registerResponse.json() as any;
-    authToken = registerData.data?.token || "";
-    expect(authToken).toBeTruthy();
+    const upload = await call("/api/v1/videos/upload", { token: member.token, body: form });
+    expect(upload.status).toBe(201);
+    const { id, videoUrl } = upload.data.data;
+    expect(videoUrl).toContain("/api/v1/media/videos/");
 
-    // Continue with video upload workflow
-    // Step 1: Request upload URL
-    const requestUploadRequest = new Request("https://example.com/api/v1/videos/upload", {
-      method: "POST",
-      headers: {
-        "authorization": `Bearer ${authToken}`,
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        filename: "match-video.mp4",
-        size: 50000000, // 50MB
-        contentType: "video/mp4",
-      }),
-    });
+    const list = await call("/api/v1/videos", { token: member.token });
+    expect(list.status).toBe(200);
+    expect(list.data.data.find((v: any) => v.id === id)).toMatchObject({ title: "Great goal" });
 
-    const uploadUrlResponse = await worker.fetch(requestUploadRequest, env, mockCtx);
-    expect(uploadUrlResponse.status).toBeGreaterThanOrEqual(200);
-    expect(uploadUrlResponse.status).toBeLessThan(300);
+    // Players request byte ranges
+    const path = new URL(videoUrl).pathname;
+    const ranged = await call(path, { headers: { range: "bytes=0-99" } });
+    expect(ranged.status).toBe(206);
+    expect(ranged.res.headers.get("content-range")).toBe("bytes 0-99/4096");
+    expect((await ranged.res.arrayBuffer()).byteLength).toBe(100);
 
-    const uploadData = await uploadUrlResponse.json() as any;
-    expect(uploadData.success).toBe(true);
-    expect(uploadData.data?.videoId).toBeDefined();
-
-    const videoId = uploadData.data.videoId;
-
-    // Step 2: Verify video metadata was created
-    const listVideosRequest = new Request("https://example.com/api/v1/videos", {
-      method: "GET",
-      headers: {
-        "authorization": `Bearer ${authToken}`,
-      },
-    });
-
-    const listResponse = await worker.fetch(listVideosRequest, env, mockCtx);
-    expect(listResponse.status).toBe(200);
-
-    const listData = await listResponse.json() as any;
-    expect(listData.success).toBe(true);
-    expect(Array.isArray(listData.data)).toBe(true);
-
-    // Step 3: Trigger highlight processing (if video exists)
-    if (videoId) {
-      const processRequest = new Request(`https://example.com/api/v1/videos/${videoId}/highlights`, {
-        method: "POST",
-        headers: {
-          "authorization": `Bearer ${authToken}`,
-          "content-type": "application/json",
-        },
-        body: JSON.stringify({
-          team_name: "Test Team",
-          opponent_name: "Opponent Team",
-        }),
-      });
-
-      const processResponse = await worker.fetch(processRequest, env, mockCtx);
-      // May return 200 (queued) or 4xx/5xx (video not fully uploaded)
-      expect(processResponse.status).toBeGreaterThanOrEqual(200);
-      expect(processResponse.status).toBeLessThan(600);
-
-      // Step 4: Check processing status
-      const statusRequest = new Request(`https://example.com/api/v1/videos/${videoId}/highlights`, {
-        method: "GET",
-        headers: {
-          "authorization": `Bearer ${authToken}`,
-        },
-      });
-
-      const statusResponse = await worker.fetch(statusRequest, env, mockCtx);
-      expect(statusResponse.status).toBeGreaterThanOrEqual(200);
-      expect(statusResponse.status).toBeLessThan(500);
-    }
+    const del = await call(`/api/v1/videos/${id}`, { token: member.token, method: "DELETE" });
+    expect(del.status).toBe(200);
+    expect((await call(path)).status).toBe(404);
   });
 
-  it("requires authentication for video operations", async () => {
-    const uploadRequest = new Request("https://example.com/api/v1/videos/upload", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        filename: "test.mp4",
-        size: 1000,
-      }),
+  it("accepts a YouTube link instead of a file", async () => {
+    const member = await registerMember("video-link");
+    const res = await call("/api/v1/videos/upload", {
+      token: member.token,
+      body: { title: "Full match", youtubeUrl: "https://youtu.be/abc123" },
     });
-
-    const response = await worker.fetch(uploadRequest, env, mockCtx);
-    expect(response.status).toBe(401);
+    expect(res.status).toBe(201);
   });
 
-  it("validates video upload parameters", async () => {
-    // Register user for this test
-    const email = `validate-${Date.now()}@example.com`;
-    const registerRequest = new Request("https://example.com/api/v1/auth/register", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "Idempotency-Key": `validate-reg-${Date.now()}`,
-      },
-      body: JSON.stringify({
-        tenant_id: "syston",
-        email,
-        password: testPassword,
-        profile: { name: "Validate Test User" },
-      }),
-    });
+  it("rejects bad uploads with a clear 4xx", async () => {
+    const member = await registerMember("video-bad");
 
-    const registerResponse = await worker.fetch(registerRequest, env, mockCtx);
-    const registerData = await registerResponse.json() as any;
-    const token = registerData.data?.token || "";
+    const noTitle = await call("/api/v1/videos/upload", { token: member.token, body: { videoUrl: "https://x" } });
+    expect(noTitle.status).toBe(400);
 
-    const invalidRequest = new Request("https://example.com/api/v1/videos/upload", {
-      method: "POST",
-      headers: {
-        "authorization": `Bearer ${token}`,
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        // Missing required fields
-      }),
-    });
-
-    const response = await worker.fetch(invalidRequest, env, mockCtx);
-    expect(response.status).toBeGreaterThanOrEqual(400);
-    expect(response.status).toBeLessThan(500);
+    const form = new FormData();
+    form.append("video", new File([new Uint8Array(10)], "notes.txt", { type: "text/plain" }));
+    const wrongType = await call("/api/v1/videos/upload", { token: member.token, body: form });
+    expect(wrongType.status).toBe(400);
   });
 
-  it("allows video deletion", async () => {
-    // Register user for this test
-    const email = `delete-${Date.now()}@example.com`;
-    const registerRequest = new Request("https://example.com/api/v1/auth/register", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "Idempotency-Key": `delete-reg-${Date.now()}`,
-      },
-      body: JSON.stringify({
-        tenant_id: "syston",
-        email,
-        password: testPassword,
-        profile: { name: "Delete Test User" },
-      }),
-    });
-
-    const registerResponse = await worker.fetch(registerRequest, env, mockCtx);
-    const registerData = await registerResponse.json() as any;
-    const token = registerData.data?.token || "";
-
-    // First create a video
-    const uploadRequest = new Request("https://example.com/api/v1/videos/upload", {
-      method: "POST",
-      headers: {
-        "authorization": `Bearer ${token}`,
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        filename: "delete-test.mp4",
-        size: 1000,
-        contentType: "video/mp4",
-      }),
-    });
-
-    const uploadResponse = await worker.fetch(uploadRequest, env, mockCtx);
-    const uploadData = await uploadResponse.json() as any;
-
-    if (uploadData.data?.videoId) {
-      const deleteRequest = new Request(`https://example.com/api/v1/videos/${uploadData.data.videoId}`, {
-        method: "DELETE",
-        headers: {
-          "authorization": `Bearer ${token}`,
-        },
-      });
-
-      const deleteResponse = await worker.fetch(deleteRequest, env, mockCtx);
-      expect(deleteResponse.status).toBeGreaterThanOrEqual(200);
-      expect(deleteResponse.status).toBeLessThan(500);
-    }
+  it("requires sign-in", async () => {
+    expect((await call("/api/v1/videos")).status).toBe(401);
   });
 });

@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { env } from "cloudflare:test";
 import worker from "../../src/index";
+import { call } from "./helpers";
 
 // Mock ExecutionContext for worker tests
 const mockCtx = {
@@ -121,5 +122,28 @@ describe("E2E: Authentication Journey", () => {
 
     const response = await worker.fetch(request, env, mockCtx);
     expect(response.status).toBe(401);
+  });
+
+  it("ignores roles sent at registration (no self-made admins)", async () => {
+    const email = `sneaky-${Date.now()}@example.com`;
+    const reg = await call("/api/v1/auth/register", {
+      body: { tenant_id: "syston", email, password: "SecurePass123!", roles: ["tenant_admin"] },
+      headers: { "Idempotency-Key": `sneaky-${email}` },
+    });
+    expect(reg.status).toBe(201);
+    expect(reg.data.data.user.roles).toEqual(["tenant_member"]);
+
+    const attempt = await call("/api/v1/admin/fixtures", {
+      token: reg.data.data.token,
+      body: { opponent: "Anyone", date: "2099-01-01" },
+    });
+    expect(attempt.status).toBe(403);
+  });
+
+  it("rejects a forged token", async () => {
+    const b64 = (o: unknown) => btoa(JSON.stringify(o)).replace(/=+$/, "").replace(/\+/g, "-").replace(/\//g, "_");
+    const forged = `${b64({ alg: "HS256", typ: "JWT" })}.${b64({ sub: "x", tenant_id: "syston", roles: ["tenant_admin"] })}.not-a-signature`;
+    expect((await call("/api/v1/videos", { token: forged })).status).toBe(401);
+    expect((await call("/api/v1/feed", { token: forged })).status).toBe(401);
   });
 });

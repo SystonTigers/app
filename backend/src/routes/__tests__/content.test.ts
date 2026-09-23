@@ -18,6 +18,7 @@ import {
 // Mock auth service
 vi.mock("../../services/auth", () => ({
     requireJWT: vi.fn().mockResolvedValue({ tenantId: "test-tenant", roles: ["admin"] }),
+    requireStaff: vi.fn().mockResolvedValue({ tenantId: "test-tenant", roles: ["admin"] }),
 }));
 
 // Mock util service
@@ -227,7 +228,21 @@ describe("Content Routes", () => {
                 const body = await response.json() as any;
 
                 expect(body.success).toBe(true);
-                expect(body.id).toBe("test-uuid-123");
+                // Stored with the derived outcome (3-1 = win, 3 points)
+                const bindArgs = (env.DB.prepare as any).mock.results.at(-1).value.bind.mock.calls.at(-1);
+                expect(bindArgs).toContain("win");
+                expect(bindArgs).toContain(3);
+            });
+
+            it("rejects a result without date or opponent", async () => {
+                const env = createMockEnv();
+                const req = new Request("https://api.test.com/content/results", {
+                    method: "POST",
+                    body: JSON.stringify({ ourScore: 1, theirScore: 0 }),
+                });
+
+                const response = await handleCreateResult(req, env, createCorsHeaders());
+                expect(response.status).toBe(400);
             });
         });
 

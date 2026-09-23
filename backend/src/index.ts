@@ -999,8 +999,11 @@ import {
     handleCreateResult, handleDeleteResult,
     handleCreatePost, handleDeletePost,
     handleUpdateTable, handleResignTeam,
-    handleAutoImportFixtures, handleAutoCalculateTable
+    handleAutoImportFixtures, handleAutoCalculateTable,
+    handleUpdateFixture, handleGetLeagueTable,
+    handleListPosts, handleListFixtures, handleListResults
 } from "./routes/content";
+import { handleGetUpcomingFixtures, handleGetAllFixtures } from "./routes/fixtures";
 
 import { handleReportContent, handleGetReports, handleUpdateReport } from "./routes/content-moderation";
 
@@ -1017,6 +1020,24 @@ router.get("/api/:v/matches/:id/report", (req, env, corsHdrs) => {
     return handleGetMatchReport(req, env, params.id);
 });
 router.get("/api/:v/stats/players", (req, env, corsHdrs) => handleGetPlayerStats(req, env));
+
+// Mobile app read endpoints (registered before /fixtures/:id patterns)
+router.get("/api/:v/feed", (req, env, corsHdrs) => handleListPosts(req, env, corsHdrs));
+router.post("/api/:v/feed/create", (req, env, corsHdrs) => handleCreatePost(req, env, corsHdrs));
+router.get("/api/:v/fixtures", (req, env, corsHdrs) => handleListFixtures(req, env, corsHdrs));
+router.get("/api/:v/fixtures/upcoming", (req, env) => handleGetUpcomingFixtures(req, env));
+router.get("/api/:v/fixtures/all", (req, env) => handleGetAllFixtures(req, env));
+router.get("/api/:v/fixtures/results", (req, env, corsHdrs) => handleListResults(req, env, corsHdrs));
+router.get("/api/:v/results", (req, env, corsHdrs) => handleListResults(req, env, corsHdrs));
+router.get("/api/:v/table", (req, env, corsHdrs) => handleGetLeagueTable(req, env, corsHdrs));
+
+// Mobile "Manage" screens (staff only - enforced in the handlers)
+router.post("/api/:v/admin/fixtures", (req, env, corsHdrs) => handleCreateFixture(req, env, corsHdrs));
+router.put("/api/:v/admin/fixtures/:id", (req, env, corsHdrs) => handleUpdateFixture(req, env, corsHdrs, (req as any).params?.id));
+router.delete("/api/:v/admin/fixtures/:id", (req, env, corsHdrs) => handleDeleteFixture(req, env, corsHdrs, (req as any).params?.id));
+router.post("/api/:v/admin/squad", (req, env, corsHdrs) => handleAddPlayer(req, env, corsHdrs));
+router.put("/api/:v/admin/squad/:id", (req, env, corsHdrs) => handleUpdatePlayer(req, env, corsHdrs, (req as any).params?.id));
+router.delete("/api/:v/admin/squad/:id", (req, env, corsHdrs) => handleDeletePlayer(req, env, corsHdrs, (req as any).params?.id));
 
 router.post("/api/:v/fixtures", (req, env, corsHdrs) => handleCreateFixture(req, env, corsHdrs));
 router.delete("/api/:v/fixtures/:id", (req, env, corsHdrs) => {

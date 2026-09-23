@@ -1,5 +1,5 @@
 import { json } from "../services/util";
-import { requireJWT } from "../services/auth";
+import { requireJWT, requireStaff } from "../services/auth";
 
 // Types
 interface WelcomePostOptions {
@@ -62,7 +62,7 @@ function generateWelcomePostContent(
 // Legacy: Bulk update squad (KV-based)
 export async function handleUpdateSquad(req: Request, env: any, corsHdrs: Headers) {
     try {
-        const claims = await requireJWT(req, env);
+        const claims = await requireStaff(req, env);
         const tenant = claims.tenantId;
 
         const body = await req.json() as any[];
@@ -109,7 +109,7 @@ export async function handleGetSquad(req: Request, env: any, corsHdrs: Headers) 
         const claims = await requireJWT(req, env);
 
         const players = await env.DB.prepare(
-            `SELECT * FROM squad WHERE tenant_id = ? ORDER BY squad_number ASC, name ASC`
+            `SELECT *, number AS squad_number, dob AS date_of_birth FROM squad WHERE tenant_id = ? ORDER BY number ASC, name ASC`
         ).bind(claims.tenantId).all();
 
         return json({ success: true, data: players.results || [] }, 200, corsHdrs);
@@ -142,7 +142,7 @@ export async function handleGetPlayer(req: Request, env: any, corsHdrs: Headers,
 // Add new player with optional welcome post
 export async function handleAddPlayer(req: Request, env: any, corsHdrs: Headers) {
     try {
-        const claims = await requireJWT(req, env);
+        const claims = await requireStaff(req, env);
         const body = await req.json() as AddPlayerRequest;
 
         // Validate required fields
@@ -156,7 +156,7 @@ export async function handleAddPlayer(req: Request, env: any, corsHdrs: Headers)
 
         // Insert player into squad table
         await env.DB.prepare(
-            `INSERT INTO squad (id, tenant_id, name, position, squad_number, photo_url, date_of_birth, previous_club, signed_date, created_at)
+            `INSERT INTO squad (id, tenant_id, name, position, number, photo_url, dob, previous_club, signed_date, created_at)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
         ).bind(
             playerId,
@@ -214,8 +214,8 @@ export async function handleAddPlayer(req: Request, env: any, corsHdrs: Headers)
             welcomePostId = crypto.randomUUID();
 
             await env.DB.prepare(
-                `INSERT INTO feed_posts (id, tenant_id, title, content, author, image_url, post_type, related_player_id, created_at)
-                 VALUES (?, ?, ?, ?, ?, ?, 'signing', ?, ?)`
+                `INSERT INTO feed_posts (id, tenant_id, title, content, author, image_url, post_type, related_player_id, created_at, updated_at)
+                 VALUES (?, ?, ?, ?, ?, ?, 'signing', ?, ?, ?)`
             ).bind(
                 welcomePostId,
                 claims.tenantId,
@@ -224,6 +224,7 @@ export async function handleAddPlayer(req: Request, env: any, corsHdrs: Headers)
                 'Club Admin',
                 (options.includePhoto !== false && body.photoUrl) ? body.photoUrl : null,
                 playerId,
+                now,
                 now
             ).run();
         }
@@ -245,7 +246,7 @@ export async function handleAddPlayer(req: Request, env: any, corsHdrs: Headers)
 // Update existing player
 export async function handleUpdatePlayer(req: Request, env: any, corsHdrs: Headers, playerId: string) {
     try {
-        const claims = await requireJWT(req, env);
+        const claims = await requireStaff(req, env);
         const body = await req.json() as Partial<AddPlayerRequest>;
 
         // Check player exists
@@ -334,7 +335,7 @@ export async function handleUpdatePlayer(req: Request, env: any, corsHdrs: Heade
 // Delete player
 export async function handleDeletePlayer(req: Request, env: any, corsHdrs: Headers, playerId: string) {
     try {
-        const claims = await requireJWT(req, env);
+        const claims = await requireStaff(req, env);
 
         // Check player exists
         const existing = await env.DB.prepare(

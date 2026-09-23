@@ -1,11 +1,15 @@
 import { json } from "../services/util";
-import { requireJWT } from "../services/auth";
+import { outcomeFromScores } from "../services/results";
+import { requireJWT, requireStaff } from "../services/auth";
 
 // Fixtures
 export async function handleCreateFixture(req: Request, env: any, corsHdrs: Headers) {
     try {
-        const claims = await requireJWT(req, env);
+        const claims = await requireStaff(req, env);
         const body = await req.json() as any;
+        if (!body?.date || !body?.opponent) {
+            return json({ success: false, error: "date and opponent are required" }, 400, corsHdrs);
+        }
         const id = crypto.randomUUID();
 
         // Get tenant name for home_team/away_team logic
@@ -25,8 +29,8 @@ export async function handleCreateFixture(req: Request, env: any, corsHdrs: Head
             `INSERT INTO fixtures (id, tenant_id, fixture_date, kick_off_time, opponent, venue, competition, status, home_team, away_team, home_score, away_score)
        VALUES (?, ?, ?, ?, ?, ?, ?, 'scheduled', ?, ?, ?, ?)`
         ).bind(
-            id, claims.tenantId, body.date, body.time, body.opponent, body.venue, body.competition,
-            homeTeam, awayTeam, body.homeScore, body.awayScore
+            id, claims.tenantId, body.date, body.time ?? null, body.opponent, body.venue ?? null, body.competition ?? null,
+            homeTeam, awayTeam, body.homeScore ?? null, body.awayScore ?? null
         ).run();
 
         return json({ success: true, id }, 200, corsHdrs);
@@ -38,7 +42,7 @@ export async function handleCreateFixture(req: Request, env: any, corsHdrs: Head
 
 export async function handleDeleteFixture(req: Request, env: any, corsHdrs: Headers, id: string) {
     try {
-        const claims = await requireJWT(req, env);
+        const claims = await requireStaff(req, env);
         await env.DB.prepare("DELETE FROM fixtures WHERE id = ? AND tenant_id = ?")
             .bind(id, claims.tenantId).run();
         return json({ success: true }, 200, corsHdrs);
@@ -50,7 +54,7 @@ export async function handleDeleteFixture(req: Request, env: any, corsHdrs: Head
 // Update fixture
 export async function handleUpdateFixture(req: Request, env: any, corsHdrs: Headers, id: string) {
     try {
-        const claims = await requireJWT(req, env);
+        const claims = await requireStaff(req, env);
         const body = await req.json() as any;
 
         // Build update query dynamically
@@ -162,19 +166,25 @@ export async function handleGetFixture(req: Request, env: any, corsHdrs: Headers
 // Results
 export async function handleCreateResult(req: Request, env: any, corsHdrs: Headers) {
     try {
-        const claims = await requireJWT(req, env);
+        const claims = await requireStaff(req, env);
         const body = await req.json() as any;
-        const id = crypto.randomUUID();
+        if (!body?.date || !body?.opponent) {
+            return json({ success: false, error: "date and opponent are required" }, 400, corsHdrs);
+        }
+        const ourScore = Number(body.ourScore) || 0;
+        const theirScore = Number(body.theirScore) || 0;
+        const { result, points } = outcomeFromScores(ourScore, theirScore);
 
-        await env.DB.prepare(
-            `INSERT INTO team_results (id, tenant_id, match_date, opponent, venue, competition, our_score, their_score, scorers)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        // team_results.id is an autoincrement integer; let SQLite assign it
+        const inserted = await env.DB.prepare(
+            `INSERT INTO team_results (tenant_id, match_date, opponent, venue, competition, our_score, their_score, result, points, scorers)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
         ).bind(
-            id, claims.tenantId, body.date, body.opponent, body.venue, body.competition,
-            body.ourScore, body.theirScore, body.scorers
+            claims.tenantId, body.date, body.opponent, body.venue || 'TBC', body.competition || 'League',
+            ourScore, theirScore, result, points, body.scorers ?? null
         ).run();
 
-        return json({ success: true, id }, 200, corsHdrs);
+        return json({ success: true, id: inserted?.meta?.last_row_id ?? null }, 200, corsHdrs);
     } catch (err) {
         return json({ success: false, error: "Failed to create result" }, 500, corsHdrs);
     }
@@ -182,7 +192,7 @@ export async function handleCreateResult(req: Request, env: any, corsHdrs: Heade
 
 export async function handleDeleteResult(req: Request, env: any, corsHdrs: Headers, id: string) {
     try {
-        const claims = await requireJWT(req, env);
+        const claims = await requireStaff(req, env);
         await env.DB.prepare("DELETE FROM team_results WHERE id = ? AND tenant_id = ?")
             .bind(id, claims.tenantId).run();
         return json({ success: true }, 200, corsHdrs);
@@ -194,7 +204,7 @@ export async function handleDeleteResult(req: Request, env: any, corsHdrs: Heade
 // Update result
 export async function handleUpdateResult(req: Request, env: any, corsHdrs: Headers, id: string) {
     try {
-        const claims = await requireJWT(req, env);
+        const claims = await requireStaff(req, env);
         const body = await req.json() as any;
 
         // Build update query dynamically
@@ -269,15 +279,23 @@ export async function handleGetResult(req: Request, env: any, corsHdrs: Headers,
 // Feed
 export async function handleCreatePost(req: Request, env: any, corsHdrs: Headers) {
     try {
-        const claims = await requireJWT(req, env);
+        const claims = await requireStaff(req, env);
         const body = await req.json() as any;
+        // The mobile composer sends only { content, media }; the web admin also sends title/author
+        const content = typeof body?.content === "string" ? body.content.trim() : "";
+        if (!content) {
+            return json({ success: false, error: "content is required" }, 400, corsHdrs);
+        }
+        const title = (typeof body.title === "string" && body.title.trim()) || content.split("\n")[0].slice(0, 80);
+        const author = (typeof body.author === "string" && body.author.trim()) || claims.name || "Club";
+        const imageUrl = body.imageUrl ?? (Array.isArray(body.media) && typeof body.media[0] === "string" ? body.media[0] : null);
         const id = crypto.randomUUID();
 
         await env.DB.prepare(
-            `INSERT INTO feed_posts (id, tenant_id, title, content, author, image_url, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`
+            `INSERT INTO feed_posts (id, tenant_id, title, content, author, image_url, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
         ).bind(
-            id, claims.tenantId, body.title, body.content, body.author, body.imageUrl, Date.now()
+            id, claims.tenantId, title, content, author, imageUrl, Date.now(), Date.now()
         ).run();
 
         return json({ success: true, id }, 200, corsHdrs);
@@ -288,7 +306,7 @@ export async function handleCreatePost(req: Request, env: any, corsHdrs: Headers
 
 export async function handleDeletePost(req: Request, env: any, corsHdrs: Headers, id: string) {
     try {
-        const claims = await requireJWT(req, env);
+        const claims = await requireStaff(req, env);
         await env.DB.prepare("DELETE FROM feed_posts WHERE id = ? AND tenant_id = ?")
             .bind(id, claims.tenantId).run();
         return json({ success: true }, 200, corsHdrs);
@@ -300,7 +318,7 @@ export async function handleDeletePost(req: Request, env: any, corsHdrs: Headers
 // Update post
 export async function handleUpdatePost(req: Request, env: any, corsHdrs: Headers, id: string) {
     try {
-        const claims = await requireJWT(req, env);
+        const claims = await requireStaff(req, env);
         const body = await req.json() as any;
 
         // Build update query dynamically
@@ -367,8 +385,11 @@ export async function handleGetPost(req: Request, env: any, corsHdrs: Headers, i
 // Table
 export async function handleUpdateTable(req: Request, env: any, corsHdrs: Headers) {
     try {
-        const claims = await requireJWT(req, env);
+        const claims = await requireStaff(req, env);
         const body = await req.json() as any[]; // Array of rows
+        if (!Array.isArray(body)) {
+            return json({ success: false, error: "Body must be an array of table rows" }, 400, corsHdrs);
+        }
 
         // Transaction: Delete all for tenant, insert new
         const batch = [
@@ -378,10 +399,10 @@ export async function handleUpdateTable(req: Request, env: any, corsHdrs: Header
         for (const row of body) {
             batch.push(
                 env.DB.prepare(
-                    `INSERT INTO league_standings (id, tenant_id, position, team_name, played, won, drawn, lost, goals_for, goals_against, points, competition)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+                    `INSERT INTO league_standings (tenant_id, position, team_name, played, won, drawn, lost, goals_for, goals_against, points, competition)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
                 ).bind(
-                    crypto.randomUUID(), claims.tenantId, row.position, row.team, row.played, row.won, row.drawn, row.lost,
+                    claims.tenantId, row.position, row.team, row.played, row.won, row.drawn, row.lost,
                     row.goalsFor, row.goalsAgainst, row.points, row.competition || 'League'
                 )
             );
@@ -396,7 +417,7 @@ export async function handleUpdateTable(req: Request, env: any, corsHdrs: Header
 
 export async function handleResignTeam(req: Request, env: any, corsHdrs: Headers) {
     try {
-        const claims = await requireJWT(req, env);
+        const claims = await requireStaff(req, env);
         const body = await req.json() as { teamName: string };
         const teamName = body.teamName;
 
@@ -506,19 +527,18 @@ export async function handleResignTeam(req: Request, env: any, corsHdrs: Headers
 // Auto-Import Fixtures from FA (using stored faSnippet URL)
 export async function handleAutoImportFixtures(req: Request, env: any, corsHdrs: Headers) {
     try {
-        const claims = await requireJWT(req, env);
+        const claims = await requireStaff(req, env);
 
         // Get tenant settings to find FA snippet URL
         const settings = await env.DB.prepare(
-            "SELECT setting_value FROM tenant_settings WHERE tenant_id = ? AND setting_key = 'fixture_settings'"
+            "SELECT fa_snippet_fixtures_url FROM fixture_settings WHERE tenant_id = ?"
         ).bind(claims.tenantId).first();
 
-        if (!settings?.setting_value) {
+        if (!settings?.fa_snippet_fixtures_url) {
             return json({ success: false, error: "No FA settings configured. Please set FA snippet URL in Settings." }, 400, corsHdrs);
         }
 
-        const fixtureSettings = JSON.parse(settings.setting_value);
-        const faSnippet = fixtureSettings.faSnippet;
+        const faSnippet = settings.fa_snippet_fixtures_url as string;
 
         if (!faSnippet) {
             return json({ success: false, error: "FA snippet URL not configured" }, 400, corsHdrs);
@@ -604,7 +624,7 @@ export async function handleAutoImportFixtures(req: Request, env: any, corsHdrs:
 // Auto-Calculate League Table from Results
 export async function handleAutoCalculateTable(req: Request, env: any, corsHdrs: Headers) {
     try {
-        const claims = await requireJWT(req, env);
+        const claims = await requireStaff(req, env);
 
         // Get all results for this tenant
         const results = await env.DB.prepare(
@@ -677,12 +697,12 @@ export async function handleAutoCalculateTable(req: Request, env: any, corsHdrs:
         // Insert standings
         let position = 1;
         for (const [teamName, stats] of sortedTeams) {
-            const id = crypto.randomUUID();
+            // league_standings.id is an autoincrement integer; competition is required
             await env.DB.prepare(
-                `INSERT INTO league_standings (id, tenant_id, position, team_name, played, won, drawn, lost, goals_for, goals_against, points)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+                `INSERT INTO league_standings (tenant_id, competition, position, team_name, played, won, drawn, lost, goals_for, goals_against, points)
+                 VALUES (?, 'League', ?, ?, ?, ?, ?, ?, ?, ?, ?)`
             ).bind(
-                id, claims.tenantId, position++, teamName,
+                claims.tenantId, position++, teamName,
                 stats.played, stats.won, stats.drawn, stats.lost,
                 stats.gf, stats.ga, stats.pts
             ).run();
@@ -722,5 +742,108 @@ export async function handleGetLeagueTable(req: Request, env: any, corsHdrs: Hea
     } catch (err) {
         console.error('Get league table error:', err);
         return json({ success: false, error: "Failed to fetch league table" }, 500, corsHdrs);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Read endpoints used by the mobile app (any signed-in club member)
+// ---------------------------------------------------------------------------
+
+function pageParams(url: URL, defaultLimit = 20): { limit: number; offset: number } {
+    const limit = Math.min(Math.max(parseInt(url.searchParams.get("limit") || String(defaultLimit), 10) || defaultLimit, 1), 100);
+    const page = Math.max(parseInt(url.searchParams.get("page") || "1", 10) || 1, 1);
+    return { limit, offset: (page - 1) * limit };
+}
+
+// GET /api/v1/feed?page=&limit= - newest club posts first
+export async function handleListPosts(req: Request, env: any, corsHdrs: Headers) {
+    try {
+        const claims = await requireJWT(req, env);
+        const { limit, offset } = pageParams(new URL(req.url));
+        const { results } = await env.DB.prepare(
+            `SELECT id, title, content, author, image_url, post_type, created_at, updated_at
+             FROM feed_posts WHERE tenant_id = ?
+             ORDER BY created_at DESC LIMIT ? OFFSET ?`
+        ).bind(claims.tenantId, limit, offset).all();
+
+        const posts = (results || []).map((p: any) => ({
+            id: p.id,
+            title: p.title,
+            content: p.content,
+            author: p.author,
+            imageUrl: p.image_url,
+            // Home screen shows "news" in the news list and vote/result/highlight as cards
+            type: ["vote", "result", "highlight"].includes(p.post_type) ? p.post_type : "news",
+            postType: p.post_type || "news",
+            createdAt: p.created_at,
+            updatedAt: p.updated_at,
+        }));
+        return json({ success: true, data: posts }, 200, corsHdrs);
+    } catch (err) {
+        console.error("List posts error:", err);
+        return json({ success: false, error: "Failed to load news" }, 500, corsHdrs);
+    }
+}
+
+// GET /api/v1/fixtures (and /admin list) - all fixtures in the shape ManageFixtures uses
+export async function handleListFixtures(req: Request, env: any, corsHdrs: Headers) {
+    try {
+        const claims = await requireJWT(req, env);
+        const tenant = await env.DB.prepare("SELECT name FROM tenants WHERE id = ?").bind(claims.tenantId).first();
+        const ourTeam = tenant?.name || "";
+        const { results } = await env.DB.prepare(
+            `SELECT * FROM fixtures WHERE tenant_id = ? ORDER BY fixture_date ASC LIMIT 500`
+        ).bind(claims.tenantId).all();
+
+        const fixtures = (results || []).map((f: any) => ({
+            id: f.id,
+            opponent: f.opponent,
+            date: f.fixture_date,
+            time: f.kick_off_time,
+            venue: f.venue,
+            competition: f.competition,
+            // Away when the opponent is the home side
+            homeAway: f.home_team && f.home_team === f.opponent && f.away_team !== f.opponent ? "away" : "home",
+            homeTeam: f.home_team || (ourTeam || null),
+            awayTeam: f.away_team || f.opponent,
+            homeScore: f.home_score,
+            awayScore: f.away_score,
+            status: f.status,
+        }));
+        return json({ success: true, data: fixtures }, 200, corsHdrs);
+    } catch (err) {
+        console.error("List fixtures error:", err);
+        return json({ success: false, error: "Failed to load fixtures" }, 500, corsHdrs);
+    }
+}
+
+// GET /api/v1/results and /api/v1/fixtures/results - most recent first
+export async function handleListResults(req: Request, env: any, corsHdrs: Headers) {
+    try {
+        const claims = await requireJWT(req, env);
+        const { limit } = pageParams(new URL(req.url), 50);
+        const { results } = await env.DB.prepare(
+            `SELECT id, match_date, opponent, venue, competition, our_score, their_score, result, points, scorers
+             FROM team_results WHERE tenant_id = ?
+             ORDER BY match_date DESC LIMIT ?`
+        ).bind(claims.tenantId, limit).all();
+
+        const rows = (results || []).map((r: any) => ({
+            id: r.id,
+            date: r.match_date,
+            opponent: r.opponent,
+            venue: r.venue,
+            competition: r.competition,
+            // "home" = us in this app's result cards
+            homeScore: r.our_score,
+            awayScore: r.their_score,
+            result: r.result,
+            points: r.points,
+            scorers: r.scorers,
+        }));
+        return json({ success: true, data: rows }, 200, corsHdrs);
+    } catch (err) {
+        console.error("List results error:", err);
+        return json({ success: false, error: "Failed to load results" }, 500, corsHdrs);
     }
 }

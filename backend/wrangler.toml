@@ -27,6 +27,11 @@ id = "local-idemp-kv"
 binding = "FEATURE_FLAGS"
 id = "local-flags-kv"
 
+# Local R2 buckets (simulated by wrangler dev / tests; production uses [env.production])
+[[r2_buckets]]
+binding = "R2_MEDIA"
+bucket_name = "syston-media-local"
+
 # ─────────────────────────────────────────────────────────
 # PRODUCTION ENVIRONMENT
 # ─────────────────────────────────────────────────────────
@@ -46,15 +51,15 @@ ALLOWED_WEBHOOK_HOSTS = "hook.make.com,hook.eu2.make.com,hook.us1.make.com,*.mak
 SETUP_URL = "https://setup-console.team-platform-2025.workers.dev"
 GALLERY_ALLOWED = "image/jpeg,image/png,image/webp"
 GALLERY_MAX_BYTES = "10485760"
-YT_REDIRECT_URL = "https://syston-postbus.team-platform-2025.workers.dev/api/v1/admin/yt/callback"
+YT_REDIRECT_URL = "https://app-production.team-platform-2025.workers.dev/api/v1/admin/yt/callback"
 RL_POSTS_PER_MIN = "60"
 RL_UPLOADS_PER_MIN = "20"
 APPS_SCRIPT_AUTO_DEPLOY = "true"
-BACKEND_URL = "https://syston-postbus.team-platform-2025.workers.dev"
+BACKEND_URL = "https://app-production.team-platform-2025.workers.dev"
 ADMIN_CONSOLE_URL = "https://admin-console.team-platform-2025.workers.dev"
 RESEND_FROM_EMAIL = "onboarding@syston.app"
 # Environment-specific vars
-WORKER_BASE_URL = "https://app.team-platform-2025.workers.dev"
+WORKER_BASE_URL = "https://app-production.team-platform-2025.workers.dev"
 ENVIRONMENT = "production"
 # BACKEND_API_KEY - Set via: wrangler secret put BACKEND_API_KEY --env production
 PYTHON_COACHING_SERVICE_URL = "http://localhost:8000"

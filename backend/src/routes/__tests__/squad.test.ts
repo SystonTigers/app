@@ -4,6 +4,7 @@ import { handleUpdateSquad } from "../squad";
 // Mock auth service
 vi.mock("../../services/auth", () => ({
     requireJWT: vi.fn().mockResolvedValue({ tenantId: "test-tenant", roles: ["admin"] }),
+    requireStaff: vi.fn().mockResolvedValue({ tenantId: "test-tenant", roles: ["admin"] }),
 }));
 
 // Mock util service
