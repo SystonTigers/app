@@ -697,30 +697,30 @@ export async function handleAutoCalculateTable(req: Request, env: any, corsHdrs:
         console.error('Auto-calculate error:', err);
         return json({ success: false, error: "Failed to calculate league table" }, 500, corsHdrs);
     }
+}
 
+// Get League Table
+export async function handleGetLeagueTable(req: Request, env: any, corsHdrs: Headers) {
+    try {
+        const claims = await requireJWT(req, env);
+        const url = new URL(req.url);
+        const competition = url.searchParams.get("competition");
 
-    // Get League Table
-    export async function handleGetLeagueTable(req: Request, env: any, corsHdrs: Headers) {
-        try {
-            const claims = await requireJWT(req, env);
-            const url = new URL(req.url);
-            const competition = url.searchParams.get("competition");
+        let query = "SELECT * FROM league_standings WHERE tenant_id = ?";
+        const params: any[] = [claims.tenantId];
 
-            let query = "SELECT * FROM league_standings WHERE tenant_id = ?";
-            const params: any[] = [claims.tenantId];
-
-            if (competition) {
-                query += " AND competition = ?";
-                params.push(competition);
-            }
-
-            query += " ORDER BY position ASC";
-
-            const { results } = await env.DB.prepare(query).bind(...params).all();
-
-            return json({ success: true, data: results }, 200, corsHdrs);
-        } catch (err) {
-            console.error('Get league table error:', err);
-            return json({ success: false, error: "Failed to fetch league table" }, 500, corsHdrs);
+        if (competition) {
+            query += " AND competition = ?";
+            params.push(competition);
         }
+
+        query += " ORDER BY position ASC";
+
+        const { results } = await env.DB.prepare(query).bind(...params).all();
+
+        return json({ success: true, data: results }, 200, corsHdrs);
+    } catch (err) {
+        console.error('Get league table error:', err);
+        return json({ success: false, error: "Failed to fetch league table" }, 500, corsHdrs);
     }
+}
