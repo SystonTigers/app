@@ -4,7 +4,7 @@
  */
 
 import Stripe from 'stripe';
-import { requireJWT } from '../services/auth';
+import { requireJWT, requireTenantJWT, hasAnyRole } from '../services/auth';
 import { json } from '../services/util';
 import { getCart } from '../services/cart';
 import { generatePersonalizedSVG } from './personalization';
@@ -431,39 +431,44 @@ export async function handleConfirmShopOrder(req: Request, env: any, corsHdrs: H
         const url = new URL(req.url);
         const orderId = url.pathname.split('/').slice(-2)[0];
 
-        let paymentId = '';
+        const body = await req.json().catch(() => ({})) as { sessionId?: string };
 
-        // Check query param for session_id (standard Stripe Checkout flow)
-        // Or body for manual confirm?
-        const body = await req.json().catch(() => ({})) as { paymentIntentId?: string, sessionId?: string };
-
-        const stripe = getStripe(env);
-
-        let shippingAddress = null;
-        if (body.sessionId) {
-            const session = await stripe.checkout.sessions.retrieve(body.sessionId);
-            if (session.payment_status !== 'paid') {
-                return json({ success: false, error: 'Not paid' }, 400, corsHdrs);
-            }
-            paymentId = session.payment_intent as string;
-            if (session.customer_details?.address) {
-                shippingAddress = session.customer_details.address;
-            }
-        } else if (body.paymentIntentId) {
-            // ...
-            // PaymentIntent usually doesn't have shipping address unless attached. 
-            // We'll focus on Session flow for now.
-            const pi = await stripe.paymentIntents.retrieve(body.paymentIntentId);
-            if (pi.status !== 'succeeded') {
-                return json({ success: false, error: 'Not succeeded' }, 400, corsHdrs);
-            }
-            paymentId = pi.id;
+        // SECURITY: an order is only confirmed against a paid Stripe Checkout session
+        // that was created for *this* order. Without this, anyone could POST here and
+        // trigger free Printify fulfilment.
+        if (!body.sessionId || typeof body.sessionId !== 'string') {
+            return json({ success: false, error: { message: 'sessionId is required' } }, 400, corsHdrs);
         }
 
-        // Get order
+        const stripe = getStripe(env);
+        const session = await stripe.checkout.sessions.retrieve(body.sessionId);
+
+        if (session.metadata?.order_id !== orderId) {
+            return json({ success: false, error: { message: 'Session does not match this order' } }, 400, corsHdrs);
+        }
+        if (session.payment_status !== 'paid') {
+            return json({ success: false, error: { message: 'Not paid' } }, 400, corsHdrs);
+        }
+
+        const paymentId = typeof session.payment_intent === 'string'
+            ? session.payment_intent
+            : session.payment_intent?.id || session.id;
+
+        // Prefer the shipping address collected at checkout; fall back to billing address
+        const sessionWithShipping = session as typeof session & {
+            shipping_details?: { address?: Stripe.Address | null } | null;
+            collected_information?: { shipping_details?: { address?: Stripe.Address | null } | null } | null;
+        };
+        const shippingAddress =
+            sessionWithShipping.collected_information?.shipping_details?.address
+            || sessionWithShipping.shipping_details?.address
+            || session.customer_details?.address
+            || null;
+
+        // Get order (scoped to the tenant the session was created for)
         const order = await env.DB.prepare(
-            'SELECT * FROM shop_orders WHERE id = ?'
-        ).bind(orderId).first();
+            'SELECT * FROM shop_orders WHERE id = ? AND tenant_id = ?'
+        ).bind(orderId, session.metadata?.tenant_id || '').first();
 
         if (!order) {
             return json({ success: false, error: { message: 'Order not found' } }, 404, corsHdrs);
@@ -473,12 +478,17 @@ export async function handleConfirmShopOrder(req: Request, env: any, corsHdrs: H
             return json({ success: true, message: 'Already confirmed' }, 200, corsHdrs);
         }
 
-        // Update order status AND address
-        await env.DB.prepare(`
-            UPDATE shop_orders 
-            SET status = 'paid', stripe_payment_id = ?, shipping_address_json = ? 
-            WHERE id = ?
+        // Update order status AND address. Conditional on status so two concurrent
+        // confirms (page refresh, double click) can't both trigger fulfilment.
+        const update = await env.DB.prepare(`
+            UPDATE shop_orders
+            SET status = 'paid', stripe_payment_id = ?, shipping_address_json = ?
+            WHERE id = ? AND status != 'paid'
         `).bind(paymentId, shippingAddress ? JSON.stringify(shippingAddress) : null, orderId).run();
+
+        if (!update?.meta?.changes) {
+            return json({ success: true, message: 'Already confirmed' }, 200, corsHdrs);
+        }
 
         // Record platform revenue
         await env.DB.prepare(`
@@ -607,6 +617,12 @@ async function fulfillOrder(order: any, env: any) {
         }
     }
 
+    if (lineItems.length > 0 && !order.shipping_address_json) {
+        // Never ship to a made-up address; leave the order paid for manual follow-up
+        console.warn(JSON.stringify({ level: 'warn', msg: 'Order paid without shipping address; Printify send skipped', orderId: order.id, tenantId: order.tenant_id }));
+        return;
+    }
+
     if (lineItems.length > 0) {
         // Send Order to Printify
         await fetch(`${PRINTIFY_API_BASE}/shops/${env.PRINTIFY_SHOP_ID}/orders.json`, {
@@ -653,10 +669,14 @@ async function fulfillOrder(order: any, env: any) {
  * List orders for the tenant
  */
 export async function handleListShopOrders(req: Request, env: any, corsHdrs: Headers) {
-    const tenantId = req.headers.get('x-tenant');
-    if (!tenantId) {return json({ success: false, error: 'Tenant ID required' }, 400, corsHdrs);}
-
     try {
+        // SECURITY: orders contain customer names, emails and addresses - tenant admins only
+        const claims = await requireTenantJWT(req, env);
+        if (!hasAnyRole(claims, ['admin', 'tenant_admin', 'owner', 'platform_admin'])) {
+            return json({ success: false, error: { message: 'Admin access required' } }, 403, corsHdrs);
+        }
+        const tenantId = claims.tenantId;
+
         const { results } = await env.DB.prepare(
             `SELECT * FROM shop_orders WHERE tenant_id = ? ORDER BY created_at DESC LIMIT 50`
         ).bind(tenantId).all();

@@ -9,51 +9,49 @@ const mockCtx = {
   props: {},
 } as unknown as ExecutionContext;
 
+async function send(path: string, init?: RequestInit) {
+  return worker.fetch(new Request(`https://example.com${path}`, init), env, mockCtx);
+}
+
+const jsonPost = (body: unknown, method = "POST"): RequestInit => ({
+  method,
+  headers: { "content-type": "application/json" },
+  body: JSON.stringify(body),
+});
+
 describe("Shop Routes", () => {
-  it("should require authentication for creating products", async () => {
-    const request = new Request("https://example.com/api/v1/shop/products", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        name: "Test Product",
-        price: 29.99,
-      }),
-    });
-    const response = await worker.fetch(request, env, mockCtx);
-    expect(response.status).toBe(401);
+  it("requires authentication to add a club product", async () => {
+    const res = await send("/api/v1/shop/club-products", jsonPost({ name: "Test Product", price: 2999 }));
+    expect(res.status).toBe(401);
   });
 
-  it("should require authentication for listing products", async () => {
-    const request = new Request("https://example.com/api/v1/shop/products");
-    const response = await worker.fetch(request, env, mockCtx);
-    expect(response.status).toBe(401);
+  it("requires authentication to add a personalisation phrase", async () => {
+    const res = await send("/api/v1/shop/phrases", jsonPost({ phrase: "Up the Tigers" }));
+    expect(res.status).toBe(401);
   });
 
-  it("should require authentication for updating products", async () => {
-    const request = new Request("https://example.com/api/v1/shop/products/test-id", {
-      method: "PUT",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        price: 39.99,
-      }),
-    });
-    const response = await worker.fetch(request, env, mockCtx);
-    expect(response.status).toBe(401);
+  it("requires authentication to delete a phrase", async () => {
+    const res = await send("/api/v1/shop/phrases/test-id", { method: "DELETE" });
+    expect(res.status).toBe(401);
   });
 
-  it("should require authentication for deleting products", async () => {
-    const request = new Request("https://example.com/api/v1/shop/products/test-id", {
-      method: "DELETE",
-    });
-    const response = await worker.fetch(request, env, mockCtx);
-    expect(response.status).toBe(401);
+  it("requires authentication for Printify product sync", async () => {
+    const res = await send("/api/v1/shop/sync", jsonPost({}));
+    expect(res.status).toBe(401);
   });
 
-  it("should require authentication for Printify sync", async () => {
-    const request = new Request("https://example.com/api/v1/shop/printify/sync", {
-      method: "POST",
-    });
-    const response = await worker.fetch(request, env, mockCtx);
-    expect(response.status).toBe(401);
+  it("does not expose shop orders (customer PII) without authentication", async () => {
+    const res = await send("/api/v1/shop/orders", { headers: { "x-tenant": "syston-tigers" } });
+    expect(res.status).toBe(401);
+  });
+
+  it("refuses to confirm an order without a Stripe session", async () => {
+    const res = await send("/api/v1/shop/orders/some-order/confirm", jsonPost({}));
+    expect(res.status).toBe(400);
+  });
+
+  it("lists public products only when a tenant is given", async () => {
+    const res = await send("/api/v1/shop/products");
+    expect(res.status).toBe(400);
   });
 });
