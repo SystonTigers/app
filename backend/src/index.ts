@@ -2,6 +2,7 @@ import { Router } from "itty-router";
 import { handlePublicTenantRequest } from "./routes/public";
 import { errorHandler } from "./middleware/errorHandler";
 import { getAuthFailure } from "./services/auth";
+import postQueueConsumer from "./queue-consumer";
 import { json } from "./services/util";
 import { handleGetMedia } from "./services/media";
 import { corsHeaders, isPreflight } from "./middleware/cors";
@@ -1384,6 +1385,12 @@ export default {
             const errorResponse = errorHandler(err, env, requestId);
             return respondWithCors(errorResponse, corsHdrs);
         }
+    },
+
+    // post-queue consumer (social publishing). wrangler.toml registers this Worker
+    // as the consumer, so the handler must be exported here or deploys fail.
+    async queue(batch: MessageBatch<any>, env: any): Promise<void> {
+        await postQueueConsumer.queue(batch, env);
     },
 
     // Scheduled handler for cron jobs
