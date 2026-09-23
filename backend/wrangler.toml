@@ -103,8 +103,8 @@ queue = "highlights-queue"
 binding = "DLQ"
 queue = "dead-letter"
 
-[[env.production.queues.consumers]]
-queue = "post-queue"
+# post-queue is consumed by a separate Worker (Cloudflare allows one consumer per queue),
+# so this Worker only produces to it.
 
 [[env.production.r2_buckets]]
 binding = "R2_MEDIA"
@@ -213,8 +213,8 @@ queue = "highlights-queue"
 binding = "DLQ"
 queue = "dead-letter"
 
-[[env.preview.queues.consumers]]
-queue = "post-queue"
+# post-queue is consumed by a separate Worker (Cloudflare allows one consumer per queue),
+# so this Worker only produces to it.
 
 [[env.preview.r2_buckets]]
 binding = "R2_MEDIA"
