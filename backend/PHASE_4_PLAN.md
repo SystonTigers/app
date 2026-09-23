@@ -50,7 +50,6 @@ Phase 4 focuses on making the application production-ready by addressing technic
 **Top Priority TODOs**:
 1. `lib/email.ts` - 6 FIXMEs for email logging
 2. `services/promoCodes.ts` - 11 TODOs for promo code logic
-3. `services/appsScriptDeployer.ts` - 8 TODOs for deployment logic
 4. `routes/fixtures.ts` - 7 TODOs for fixture generation
 5. `services/provisioning.ts` - 5 TODOs for tenant provisioning
 

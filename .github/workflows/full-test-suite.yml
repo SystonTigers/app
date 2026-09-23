@@ -72,27 +72,3 @@ jobs:
         run: |
           kill $(cat /tmp/next.pid) || true
 
-  apps-script:
-    name: Apps Script (clasp run)
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: apps-script
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - name: Install dependencies
-        run: npm install
-      - name: Configure clasp auth
-        env:
-          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
-        run: |
-          test -n "$CLASPRC_JSON"
-          printf '%s' "$CLASPRC_JSON" > "$HOME/.clasprc.json"
-          node -e "JSON.parse(require('fs').readFileSync(process.env.HOME + '/.clasprc.json', 'utf8'))"
-      - name: Verify clasp project
-        run: npx clasp status
-      - name: Run Apps Script tests
-        run: npm test

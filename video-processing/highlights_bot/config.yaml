@@ -27,7 +27,7 @@ detection:
 
   # Signal weights for fusion
   weights:
-    json: 5.0        # Ground truth from Apps Script
+    json: 5.0        # Ground truth from the match events JSON
     yolo: 2.0
     audio_energy: 1.5
     whistle: 1.0
@@ -356,10 +356,10 @@ performance:
 # INTEGRATION
 # ============================================
 integration:
-  # Apps Script
-  apps_script:
+  # Match events JSON (goals/cards logged in the app)
+  events_json:
     enabled: true
-    json_input: true         # Accept JSON from Apps Script
+    json_input: true         # Accept a match events JSON
     trust_ground_truth: true # Always include JSON events
 
   # YouTube

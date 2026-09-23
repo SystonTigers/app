@@ -9,7 +9,6 @@ import { corsHeaders, isPreflight } from "./middleware/cors";
 import { newRequestId, logJSON } from "./lib/log";
 import { withSecurity } from "./middleware/securityHeaders";
 import { healthz, readyz } from "./routes/health";
-import { registerTenantRoutes } from "./routes/tenants";
 import { updateTenantMe, getTenantMe } from "./routes/tenant-self";
 import {
     handleAuthRegister,
@@ -289,7 +288,6 @@ router.post("/api/:v/magic/start", (req, env, corsHdrs) => handleMagicStart(req,
 router.post("/api/:v/magic/verify", (req, env, corsHdrs) => handleMagicVerify(req, env, corsHdrs));
 
 // Tenant Routes
-registerTenantRoutes(router);
 router.patch("/api/:v/tenants/me", (req, env, corsHdrs) => updateTenantMe(req, env, corsHdrs));
 router.get("/api/:v/tenants/me", (req, env, corsHdrs) => getTenantMe(req, env, corsHdrs));
 

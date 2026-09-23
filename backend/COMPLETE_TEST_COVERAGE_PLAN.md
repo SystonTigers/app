@@ -49,8 +49,6 @@
 #### Medium Priority - Integrations (7 services)
 24. ❌ `googleAuth.ts` - Google OAuth
 25. ❌ `googleShards.ts` - Google Sheets sharding
-26. ❌ `gas.ts` - Google Apps Script
-27. ❌ `appsScriptDeployer.ts` - Apps Script deployment
 28. ❌ `autoPostsMatrix.ts` - Auto-posting
 29. ❌ `fx.ts` - Effects/transformations
 30. ❌ `render.ts` - Rendering service
@@ -142,8 +140,6 @@
 
 30. **googleAuth.ts** - Google OAuth (~15 tests)
 31. **googleShards.ts** - Sheets sharding (~12 tests)
-32. **gas.ts** - Apps Script (~10 tests)
-33. **appsScriptDeployer.ts** - Deployment (~10 tests)
 34. **autoPostsMatrix.ts** - Auto-posting (~12 tests)
 35. **fx.ts** - Effects (~8 tests)
 36. **render.ts** - Rendering (~10 tests)

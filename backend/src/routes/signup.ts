@@ -362,7 +362,7 @@ export async function signupProConfirm(req: Request, env: any, requestId: string
       return json({ success: false, error: { code: "PLAN_MISMATCH", message: "This endpoint is only for Pro plan" } }, 400, corsHdrs);
     }
 
-    // Create placeholder pro_automation record (Apps Script deployment happens async)
+    // Create placeholder pro_automation record (automations are set up by the provisioner)
     const autoId = `pro_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
     await env.DB.prepare(`
       INSERT INTO pro_automation (id, tenant_id)

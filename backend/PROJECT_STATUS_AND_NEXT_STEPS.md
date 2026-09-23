@@ -331,7 +331,6 @@ The **Test Coverage Plan** aims to achieve 99-100% test coverage by adding 440-5
 - googleAuth.ts (~15 tests)
 - googleShards.ts (~12 tests)
 - gas.ts (~10 tests)
-- appsScriptDeployer.ts (~10 tests)
 - autoPostsMatrix.ts (~12 tests)
 - fx.ts (~8 tests)
 - render.ts (~10 tests)

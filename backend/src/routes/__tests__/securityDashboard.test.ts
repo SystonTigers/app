@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { Env } from "../../types/env";
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- test env stub
+type Env = any;
 import {
   handleSecuritySummary,
   handleSecurityMetrics,

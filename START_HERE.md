@@ -73,8 +73,6 @@ It asks for the password without showing it and stores only a bcrypt hash.
 | Name | Used for |
 |---|---|
 | `JWT_SECRET` | Signing login tokens. Changing it logs everyone out. |
-| `BACKEND_API_KEY` | Passed to a club's Apps Script when it's provisioned |
-| `GAS_HMAC_SECRET` | Signing calls from the Worker to Apps Script |
 | `STRIPE_SECRET_KEY` | Shop checkout (optional until the shop is used) |
 | `PRINTIFY_API_TOKEN` | Merch (optional) |
 

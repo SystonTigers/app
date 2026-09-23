@@ -76,52 +76,6 @@ ERR_BACKEND_001
 | ERR_BACKEND_501 | Upload quota exceeded | Too many uploads today | Wait until quota resets |
 | ERR_BACKEND_502 | Storage quota exceeded | Tenant storage full | Delete old content or upgrade |
 
-## Apps Script Errors (ERR_SCRIPT_*)
-
-### Historical Import (001-099)
-
-| Code | Message | Cause | Resolution |
-|------|---------|-------|------------|
-| ERR_SCRIPT_001 | CSV file not found | Invalid file ID or path | Verify Google Drive file ID |
-| ERR_SCRIPT_002 | CSV parse error | Malformed CSV data | Check CSV formatting |
-| ERR_SCRIPT_003 | Missing required column | CSV lacks expected column | Add missing columns to CSV |
-| ERR_SCRIPT_004 | Invalid date format | Date can't be parsed | Use DD/MM/YYYY format |
-| ERR_SCRIPT_005 | Duplicate row detected | Row already imported | Skip or update existing |
-| ERR_SCRIPT_006 | Backend import failed | API returned error | Check backend logs, retry |
-| ERR_SCRIPT_007 | Validation failed | Data doesn't meet schema | Fix data and re-import |
-
-### Video Processing (100-199)
-
-| Code | Message | Cause | Resolution |
-|------|---------|-------|------------|
-| ERR_SCRIPT_100 | Video file not found | Invalid Drive file ID | Verify video uploaded to Drive |
-| ERR_SCRIPT_101 | Video metadata incomplete | Missing required fields | Fill all required metadata |
-| ERR_SCRIPT_102 | JSON export failed | Can't write to Drive | Check Drive permissions |
-| ERR_SCRIPT_103 | YouTube upload failed | API quota exceeded | Wait for quota reset |
-| ERR_SCRIPT_104 | YouTube auth failed | Invalid OAuth token | Refresh YouTube credentials |
-| ERR_SCRIPT_105 | Clip timestamp invalid | Start/end times incorrect | Verify timestamps in metadata |
-| ERR_SCRIPT_106 | Drive organization failed | Folder permissions issue | Grant folder write access |
-
-### Weekly Scheduler (200-299)
-
-| Code | Message | Cause | Resolution |
-|------|---------|-------|------------|
-| ERR_SCRIPT_200 | Scheduler execution failed | Function threw exception | Check Apps Script logs |
-| ERR_SCRIPT_201 | Webhook delivery failed | Make.com unreachable | Verify webhook URL, check Make.com |
-| ERR_SCRIPT_202 | Birthday data missing | No birthdays in roster | Add birthdays to roster sheet |
-| ERR_SCRIPT_203 | Quote rotation failed | Empty quotes sheet | Add quotes to sheet |
-| ERR_SCRIPT_204 | Fixture data missing | No fixtures for week | Add fixtures or skip week |
-| ERR_SCRIPT_205 | Invalid cron schedule | Trigger misconfigured | Fix trigger timing |
-
-### Configuration (300-399)
-
-| Code | Message | Cause | Resolution |
-|------|---------|-------|------------|
-| ERR_SCRIPT_300 | Missing script property | Required config missing | Set in Project Settings |
-| ERR_SCRIPT_301 | Invalid API URL | Malformed backend URL | Fix BACKEND_API_URL property |
-| ERR_SCRIPT_302 | Invalid webhook URL | Malformed Make.com URL | Fix WEBHOOK_URL property |
-| ERR_SCRIPT_303 | Missing API credentials | No auth token set | Set BACKEND_API_KEY property |
-
 ## Video Processing Errors (ERR_VIDEO_*)
 
 ### highlights_bot (001-099)
@@ -219,15 +173,6 @@ console.error('ERR_BACKEND_201', {
 });
 ```
 
-### Apps Script
-```javascript
-Logger.log('ERR_SCRIPT_001: ' + JSON.stringify({
-  file_id: fileId,
-  operation: 'CSV import',
-  row: currentRow
-}));
-```
-
 ### Video Processing
 ```python
 logger.error('ERR_VIDEO_001', extra={
@@ -246,13 +191,11 @@ logger.error('ERR_VIDEO_001', extra={
 | Authentication | >10/min |
 | Video Upload | >5 failures/hour |
 | Backend API | Error rate >2% |
-| Apps Script | Any ERR_SCRIPT_3XX |
 | Video Processing | >3 failures in queue |
 
 ### Error Dashboards
 
 **Cloudflare**: Analytics → Logs → Filter by status 4XX/5XX
-**Apps Script**: Apps Script → Executions → Filter by failed
 **Docker**: `docker-compose logs --tail=100 | grep ERR_`
 **Make.com**: Make.com → History → Filter by error
 
@@ -284,7 +227,6 @@ Check: ERR_SCRIPT_001-007
 
 ### "Birthday automation didn't run"
 Check: ERR_SCRIPT_200-204
-1. Check Apps Script trigger exists
 2. Verify roster has birthdays
 3. Check execution logs
 4. Verify webhook URL works

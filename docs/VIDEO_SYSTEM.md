@@ -34,7 +34,6 @@ Complete end-to-end video processing system with two entry points (mobile app + 
 
 **Workflow**:
 1. Upload full match video to Google Drive folder
-2. Apps Script detects new video
 3. Exports JSON metadata with event timestamps
 4. Triggers AI processing queue
 5. Generates highlight clips automatically
@@ -57,7 +56,6 @@ Complete end-to-end video processing system with two entry points (mobile app + 
 PATH A: MOBILE APP                PATH B: SERVER-SIDE
 ====                ======
 1. Record/select video            1. Upload to Drive
-2. Upload to R2                   2. Apps Script exports JSON
 3. API: POST /api/v1/videos/upload 3. JSON with timestamps
    │                                  │
    └────────────────┬─────────────────┘
@@ -190,65 +188,6 @@ docker-compose down
 cd video-processing/football-highlights-installer
 npm install
 npm run setup
-```
-
-## Apps Script Integration
-
-### Files
-- `apps-script/video-clips.gs`: Main video management
-- `apps-script/video/`: Modular video functions
-- `apps-script/user-menu-functions.gs`: UI triggers
-
-### Features
-1. **Metadata Tracking**
-   - Stores clip info in Google Sheets
-   - Tracks upload status
-   - Organizes by player/match
-
-2. **YouTube Upload**
-   - Automated uploads via YouTube API
-   - Title/description generation
-   - Playlist management
-
-3. **JSON Export**
-   - Exports event timestamps
-   - Includes player names
-   - Links to Drive videos
-
-**JSON Format**:
-```json
-{
-  "match_id": "20251007_syston_vs_panthers",
-  "date": "2025-10-07",
-  "home_team": "Syston Tigers U13",
-  "away_team": "Panthers FC",
-  "video_url": "https://drive.google.com/file/d/.../view",
-  "events": [
-    {
-      "minute": 12,
-      "timestamp": 720,
-      "type": "goal",
-      "player": "John Smith",
-      "team": "home",
-      "score_after": "1-0"
-    },
-    {
-      "minute": 23,
-      "timestamp": 1380,
-      "type": "yellow_card",
-      "player": "Mike Jones",
-      "team": "away"
-    }
-  ],
-  "clips": [
-    {
-      "start": 715,
-      "end": 730,
-      "event": "goal",
-      "player": "John Smith"
-    }
-  ]
-}
 ```
 
 ## API Endpoints

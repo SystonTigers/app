@@ -44,7 +44,6 @@ API_VERSION = "v1"
 JWT_ISSUER = "syston.app"
 JWT_AUDIENCE = "syston-mobile"
 APP_VERSION = "7.0.0"
-TEMPLATE_SPREADSHEET_ID = "1YourTemplateSpreadsheetId"
 YOUTUBE_API_KEY = "AIzaSyREPLACE"
 FIXTURES_REFRESH_URL = "https://syston-fixtures.team-platform-2025.workers.dev/refresh"
 ALLOWED_WEBHOOK_HOSTS = "hook.make.com,hook.eu2.make.com,hook.us1.make.com,*.make.com,webhook.site"
@@ -54,17 +53,13 @@ GALLERY_MAX_BYTES = "10485760"
 YT_REDIRECT_URL = "https://app-production.team-platform-2025.workers.dev/api/v1/admin/yt/callback"
 RL_POSTS_PER_MIN = "60"
 RL_UPLOADS_PER_MIN = "20"
-APPS_SCRIPT_AUTO_DEPLOY = "true"
 BACKEND_URL = "https://app-production.team-platform-2025.workers.dev"
 ADMIN_CONSOLE_URL = "https://admin-console.team-platform-2025.workers.dev"
 RESEND_FROM_EMAIL = "onboarding@syston.app"
 # Environment-specific vars
 WORKER_BASE_URL = "https://app-production.team-platform-2025.workers.dev"
 ENVIRONMENT = "production"
-# BACKEND_API_KEY - Set via: wrangler secret put BACKEND_API_KEY --env production
 PYTHON_COACHING_SERVICE_URL = "http://localhost:8000"
-GAS_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbwMEAZaXwn_1mvpa_XWFB4ywU8oP795NFVyVu6RmyCXpLIOA0MurWVVuWbocmWakF3O/exec"
-# GAS_HMAC_SECRET - Set via: wrangler secret put GAS_HMAC_SECRET --env production
 SUPABASE_URL = "https://prod-supabase.example.com"
 SUPABASE_ANON_KEY = "prod-anon-key"
 SUPABASE_SERVICE_ROLE = "prod-service-role"
@@ -154,7 +149,6 @@ API_VERSION = "v1"
 JWT_ISSUER = "syston.app"
 JWT_AUDIENCE = "syston-mobile"
 APP_VERSION = "7.0.0"
-TEMPLATE_SPREADSHEET_ID = "1YourTemplateSpreadsheetId"
 YOUTUBE_API_KEY = "AIzaSyREPLACE"
 FIXTURES_REFRESH_URL = "https://syston-fixtures.team-platform-2025.workers.dev/refresh"
 ALLOWED_WEBHOOK_HOSTS = "hook.make.com,hook.eu2.make.com,hook.us1.make.com,*.make.com,webhook.site"
@@ -164,17 +158,13 @@ GALLERY_MAX_BYTES = "10485760"
 YT_REDIRECT_URL = "https://syston-postbus.team-platform-2025.workers.dev/api/v1/admin/yt/callback"
 RL_POSTS_PER_MIN = "60"
 RL_UPLOADS_PER_MIN = "20"
-APPS_SCRIPT_AUTO_DEPLOY = "true"
 BACKEND_URL = "https://syston-postbus.team-platform-2025.workers.dev"
 ADMIN_CONSOLE_URL = "https://admin-console.team-platform-2025.workers.dev"
 RESEND_FROM_EMAIL = "onboarding@syston.app"
 # Environment-specific vars
 WORKER_BASE_URL = "https://app-preview.team-platform-2025.workers.dev"
 ENVIRONMENT = "preview"
-# BACKEND_API_KEY - Set via: wrangler secret put BACKEND_API_KEY --env preview
 PYTHON_COACHING_SERVICE_URL = "http://localhost:8000"
-GAS_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbwMEAZaXwn_1mvpa_XWFB4ywU8oP795NFVyVu6RmyCXpLIOA0MurWVVuWbocmWakF3O/exec"
-# GAS_HMAC_SECRET - Set via: wrangler secret put GAS_HMAC_SECRET --env preview
 SUPABASE_URL = "https://preview-supabase.example.com"
 SUPABASE_ANON_KEY = "preview-anon-key"
 SUPABASE_SERVICE_ROLE = "preview-service-role"
@@ -287,19 +277,12 @@ crons = [ "*/5 * * * *", "0 6 * * *" ]
 # Secrets must be set using wrangler secret put for each environment:
 #
 # Production:
-#   wrangler secret put GAS_WEBAPP_URL --env production
-#   wrangler secret put GAS_HMAC_SECRET --env production
+#   wrangler secret put JWT_SECRET --env production
 #   wrangler secret put SUPABASE_URL --env production
 #   wrangler secret put SUPABASE_SERVICE_ROLE --env production
-#   wrangler secret put GOOGLE_SERVICE_ACCOUNT_KEY --env production
-#   wrangler secret put APPS_SCRIPT_TEMPLATE_ID --env production
 #   wrangler secret put RESEND_API_KEY --env production
 #
 # Preview:
-#   wrangler secret put GAS_WEBAPP_URL --env preview
-#   wrangler secret put GAS_HMAC_SECRET --env preview
 #   wrangler secret put SUPABASE_URL --env preview
 #   wrangler secret put SUPABASE_SERVICE_ROLE --env preview
-#   wrangler secret put GOOGLE_SERVICE_ACCOUNT_KEY --env preview
-#   wrangler secret put APPS_SCRIPT_TEMPLATE_ID --env preview
 #   wrangler secret put RESEND_API_KEY --env preview

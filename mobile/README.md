@@ -189,7 +189,6 @@ Upload Full Match → AI Detection → Auto-Edit → YouTube → Social Media
 ### Backend (Server-Side Video Processing)
 - **Python AI Bot**: highlights_bot (AI detection + editing)
 - **Docker Processor**: football-highlights-processor (production scaling)
-- **Apps Script**: Metadata tracking + YouTube upload
 - See `../video-processing/README.md` for details
 
 ---

@@ -30,11 +30,6 @@ export interface ProvisioningResult {
     automationJWT: string;
     setupUrl: string;
     adminConsoleUrl: string;
-    appsScript?: {
-      scriptId?: string;
-      scriptUrl?: string;
-      webAppUrl?: string;
-    } | null;
   };
   error?: {
     code: string;
@@ -145,23 +140,6 @@ export async function provisionTenant(
       });
     }
 
-    // 7. Deploy Apps Script automatically (if enabled)
-    let appsScriptDeployment = null;
-    if (env.APPS_SCRIPT_AUTO_DEPLOY === "true") {
-      const { deployAppsScriptForTenant } = await import("./appsScriptDeployer");
-
-      appsScriptDeployment = await deployAppsScriptForTenant(
-        env,
-        tenantId,
-        request.clubName,
-        automationJWT
-      );
-
-      if (appsScriptDeployment.success) {
-      } else {
-      }
-    }
-
     return {
       success: true,
       tenant: {
@@ -171,11 +149,6 @@ export async function provisionTenant(
         automationJWT,
         setupUrl,
         adminConsoleUrl,
-        appsScript: appsScriptDeployment?.success ? {
-          scriptId: appsScriptDeployment.scriptId,
-          scriptUrl: appsScriptDeployment.scriptUrl,
-          webAppUrl: appsScriptDeployment.webAppUrl
-        } : null
       }
     };
 
@@ -274,48 +247,3 @@ async function sendWelcomeEmail(env: Env, data: {
   });
 }
 
-/**
- * Deploy Apps Script instance for tenant (advanced)
- * Requires Google Cloud Service Account + Clasp API
- */
-export async function deployAppsScript(
-  env: Env,
-  tenantId: string,
-  automationJWT: string
-): Promise<{ success: boolean; scriptId?: string; error?: string }> {
-  try {
-    // This requires:
-    // 1. Google Cloud Service Account with Apps Script API enabled
-    // 2. Template Apps Script project
-    // 3. clasp library or Google Apps Script API
-
-    // Pseudocode:
-    // const serviceAccountKey = env.GOOGLE_SERVICE_ACCOUNT_KEY;
-    // const templateScriptId = env.APPS_SCRIPT_TEMPLATE_ID;
-
-    // 1. Clone template script
-    // const newScriptId = await claspClone(templateScriptId, serviceAccountKey);
-
-    // 2. Update Script Properties
-    // await setScriptProperties(newScriptId, {
-    //   TENANT_ID: tenantId,
-    //   BACKEND_JWT: automationJWT,
-    //   BACKEND_API_URL: env.BACKEND_URL
-    // });
-
-    // 3. Deploy as web app
-    // await claspDeploy(newScriptId);
-
-    // For now, return placeholder
-    return {
-      success: false,
-      error: "Apps Script automation not yet implemented - requires Google Cloud setup"
-    };
-
-  } catch (error: any) {
-    return {
-      success: false,
-      error: error.message
-    };
-  }
-}

@@ -7,7 +7,7 @@ This module combines detection signals from multiple sources:
 - Whistle detection (referee signals)
 - Optical flow bursts (movement analysis)
 - Scene cuts (production switches)
-- JSON events (ground truth from Apps Script)
+- JSON events (ground truth logged from the app)
 
 Part of Phase 1: Multi-Signal Event Detection
 Created: 2025-11-03
@@ -37,7 +37,7 @@ class SignalFusion:
 
         # Default signal weights
         self.weights = {
-            'json': 5.0,      # Ground truth (Apps Script)
+            'json': 5.0,      # Ground truth (match events JSON)
             'yolo': 2.0,      # Visual object detection
             'audio': 1.5,     # Crowd reactions
             'whistle': 1.0,   # Referee whistles

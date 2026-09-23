@@ -34,7 +34,6 @@ Phase 4 successfully hardened the application for production deployment with com
 
 **Files Modified**:
 - `src/services/promoCodes.ts` - 11 console statements → logJSON
-- `src/services/appsScriptDeployer.ts` - 8 console statements → logJSON
 - `src/lib/email.ts` - 6 console statements → logJSON
 - `src/cron/league.ts` - 1 console statement → logJSON
 - 40+ other files - batch cleanup of FIXME comments

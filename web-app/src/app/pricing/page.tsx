@@ -152,12 +152,6 @@ export default function PricingPage() {
                 <svg className="h-6 w-6 text-yellow-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
-                <span className="ml-3 text-white">Apps Script deployment</span>
-              </li>
-              <li className="flex items-start">
-                <svg className="h-6 w-6 text-yellow-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
                 <span className="ml-3 text-white">Everything in Starter, plus:</span>
               </li>
               <li className="flex items-start">

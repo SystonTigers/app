@@ -106,7 +106,6 @@ Players under 16 or without consent are **automatically blocked** from social me
 ## 🆕 Updates
 
 The system automatically checks for updates. To update:
-1. Go to **Extensions** → **Apps Script**
 2. Click **Libraries**
 3. Select newer version if available
 4. Save

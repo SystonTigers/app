@@ -43,15 +43,12 @@
   - [ ] `API_VERSION = "v1"`
   - [ ] `JWT_ISSUER = "syston.app"`
   - [ ] `JWT_AUDIENCE = "syston-mobile"`
-  - [ ] `GAS_WEBAPP_URL` (Apps Script deployment URL)
   - [ ] `BACKEND_URL` (Worker URL)
   - [ ] `ALLOWED_WEBHOOK_HOSTS = "make.com,hook.us1.make.com"`
   - [ ] `compatibility_date = "2024-11-01"`
 
 ### External Services
-- [ ] **Google Apps Script** deployed and published:
   - [ ] Script ID noted
-  - [ ] Web App URL set in `GAS_WEBAPP_URL`
   - [ ] Service account has Editor access
 - [ ] **Make.com** account set up (for Starter plan support)
 - [ ] **Supabase** project created:

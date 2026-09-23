@@ -17,7 +17,6 @@
 - **Total**: ~$5-10/month for entire platform
 
 ### ✅ Free Services
-- **Google Apps Script**: Free (automation)
 - **Google Sheets**: Free (data storage)
 - **Make.com**: Free tier (1,000 ops/month) → Upgrade $9/month if needed
 - **Printify**: Free to connect (pay per order)
@@ -285,7 +284,6 @@ The platform offers **DUAL-MODE** video processing, both using the same AI backe
 
 **Workflow:**
 1. Upload full 90-minute match video to Google Drive
-2. Apps Script creates metadata and exports JSON with timestamps
 3. AI detects ALL highlight moments automatically
 4. Auto-creates professional clips
 5. Uploads to YouTube
@@ -342,7 +340,6 @@ python main.py --json events.json --video match.mp4 --output highlights/
 
 **What it does:**
 - Production-ready Docker containerization
-- Integrates with Apps Script
 - Monitoring and health checks
 - Scalable processing queue
 
@@ -387,7 +384,6 @@ PATH A: MOBILE APP
 PATH B: SERVER-SIDE
 =====
 1. Upload to Google Drive
-2. Apps Script exports JSON
 3. [Joins Path A at AI Processing]
 
 SHARED AI PROCESSING
@@ -398,35 +394,6 @@ SHARED AI PROCESSING
 7. Uploads to YouTube
 8. Posts to social media
 9. Notify user: "Highlights ready!"
-```
-
-### Apps Script Integration
-
-**Files:**
-- `apps-script/video-clips.gs`
-- `apps-script/video/`
-- `apps-script/user-menu-functions.gs`
-
-**What it does:**
-- Tracks clip metadata in Google Sheets
-- Manages YouTube uploads
-- Organizes clips by player
-- Generates graphics overlays
-- Exports JSON for AI processing
-
-**JSON Format:**
-```json
-{
-  "match_id": "20251007_syston_vs_panthers",
-  "events": [
-    {"minute": 23, "type": "goal", "player": "John Smith"},
-    {"minute": 45, "type": "yellow_card", "player": "Mike Jones"}
-  ],
-  "video_url": "https://drive.google.com/...",
-  "clips": [
-    {"start": 1380, "end": 1410, "event": "goal"}
-  ]
-}
 ```
 
 ### Tech Stack (Video)
@@ -461,7 +428,6 @@ SHARED AI PROCESSING
 - ✅ Mobile UI (`mobile/src/screens/VideoScreen.tsx`)
 - ✅ Video libraries installed
 - ✅ AI processing tools integrated
-- ✅ Apps Script integration ready
 - ✅ Documentation complete
 
 **Needs Setup:**
@@ -469,7 +435,6 @@ SHARED AI PROCESSING
 - [ ] Configure Docker processor
 - [ ] Set up R2 video storage
 - [ ] Test video upload from app
-- [ ] Configure Apps Script exports
 
 ---
 
@@ -1028,7 +993,6 @@ videos/
 ### Current (Manual):
 1. Admin creates tenant via curl
 2. Admin sets up Google Sheet manually
-3. Admin deploys Apps Script manually
 4. Tenant configures via setup console
 
 ### Target (Automated):
@@ -1036,8 +1000,6 @@ videos/
 2. **Payment** → Stripe checkout (if paid plan)
 3. **Backend auto-provisions**:
    - Creates tenant in KV
-   - Creates Google Sheet from template (Apps Script API)
-   - Deploys Apps Script (clasp programmatically)
    - Sends welcome email
 4. **Tenant logs into app** → Ready to use!
 

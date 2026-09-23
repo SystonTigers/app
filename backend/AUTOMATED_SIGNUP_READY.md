@@ -27,7 +27,6 @@ Your backend now has **fully automated self-service signup and provisioning** wo
 - **Automatically queues provisioning in background**
 
 **Step 3b: `/public/signup/pro/confirm`** - Pro Plan Setup
-- Creates placeholder for Apps Script automation
 - Marks tenant as "active"
 - **Automatically queues provisioning in background**
 
@@ -37,7 +36,6 @@ Once signup completes:
 1. **Service JWT generated** automatically
 2. **Internal `/internal/provision/queue` called** in background
 3. **Durable Object orchestrates**:
-   - Creates Google Apps Script spreadsheet (Pro plan)
    - Configures Make.com webhook (Starter plan)
    - Sets up tenant infrastructure
    - Validates setup
@@ -119,7 +117,6 @@ All authz decisions logged in JSON format:
    - `KV_IDEMP` - For tenant config & idempotency
    - `TENANTS` - For tenant metadata
 4. Durable Objects enabled
-5. Google Apps Script Web App deployed (for Pro plan)
 
 ### Step 1: Configure Secrets
 
@@ -168,7 +165,6 @@ class_name = "Provisioner"
 API_VERSION = "v1"
 JWT_ISSUER = "syston.app"
 JWT_AUDIENCE = "syston-mobile"
-GAS_WEBAPP_URL = "https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec"
 BACKEND_URL = "https://your-worker.workers.dev"
 ALLOWED_WEBHOOK_HOSTS = "make.com,hook.us1.make.com"
 ```
@@ -325,7 +321,6 @@ wrangler tail --env production --format json | \
 
 ### Provisioning stuck at "pending"
 **Check**:
-1. GAS_WEBAPP_URL is correct in environment vars
 2. Google Service Account has permissions
 3. Check Durable Object logs: `wrangler tail | grep PROVISIONER`
 

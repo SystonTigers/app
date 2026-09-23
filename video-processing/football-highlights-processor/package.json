@@ -1,7 +1,7 @@
 {
   "name": "football-highlights-processor",
   "version": "2.0.0",
-  "description": "Complete football highlights processing system with Google Apps Script integration, storage management, and customer success tracking",
+  "description": "Complete football highlights processing system with storage management, and customer success tracking",
   "main": "src/server.js",
   "type": "module",
   "engines": {
@@ -174,7 +174,6 @@
     "video-processing",
     "highlights",
     "youth-sports",
-    "google-apps-script",
     "youtube",
     "google-drive",
     "ai",

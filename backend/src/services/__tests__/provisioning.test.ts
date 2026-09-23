@@ -306,19 +306,6 @@ describe("Provisioning Service", () => {
       expect(config.metadata.createdAt).toBeTruthy();
     });
 
-    it("returns appsScript as null when auto-deploy not enabled", async () => {
-      const request: ProvisioningRequest = {
-        clubName: "Test Club",
-        clubShortName: "testclub",
-        contactEmail: "test@example.com",
-        contactName: "Test User",
-      };
-
-      const result = await provisionTenant(mockEnv, request);
-
-      expect(result.tenant?.appsScript).toBeNull();
-    });
-
     it("handles errors gracefully and returns error result", async () => {
       // Create an env that will cause an error
       const brokenEnv = {

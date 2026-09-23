@@ -6,7 +6,6 @@ to multiple languages.
 ## Principles
 
 - **Centralize Strings** – Keep user-facing copy in locale files instead of
-  scattering text across Apps Script modules or HTML templates.
 - **Sheet-Driven Config** – Reference translation keys from the Sheet Config tab
   or Script Properties so customers can control the active locale without code
   changes.
@@ -32,7 +31,6 @@ i18n/
 
 1. Product or support teams propose translation updates.
 2. Contributors update the relevant locale files and confirm formatting via the
-   Apps Script UI.
 3. Update acceptance tests or manual checklists to reference the new keys.
 4. Include screenshots for languages with right-to-left scripts when applicable.
 

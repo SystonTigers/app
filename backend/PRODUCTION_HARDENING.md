@@ -145,8 +145,7 @@ wrangler secret delete JWT_SECRET_NEXT --env production
 3. Grant Editor access to Drive folders
 4. Update secret:
    wrangler secret put GOOGLE_SERVICE_ACCOUNT_KEY --env production
-5. Test: curl GAS_WEBAPP_URL with test payload
-6. Revoke old service account
+5. Revoke old service account
 
 # Supabase (every 6 months)
 1. Generate new service role key in Supabase dashboard

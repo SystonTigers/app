@@ -6,7 +6,6 @@ export type ProvisionCheckpoint =
   | 'configureRouting'
   | 'validateWebhook'
   | 'deployAutomations'
-  | 'deployAppsScript'
   | 'sendOwnerEmails'
   | 'markReady';
 

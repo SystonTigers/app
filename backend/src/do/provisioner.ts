@@ -149,19 +149,6 @@ async function deployAutomations(env: Env, tenantId: string) {
   log('info', 'Automations deployed', { tenantId });
 }
 
-async function deployAppsScript(env: Env, tenantId: string) {
-  log('info', 'Deploying Apps Script', { tenantId });
-  const job = `deploy_${crypto.randomUUID()}`;
-  await env.DB.prepare(
-    `UPDATE pro_automation
-       SET apps_script_deploy_job_id = ?, apps_script_deploy_status = ?, updated_at = ?
-     WHERE tenant_id = ?`
-  )
-    .bind(job, 'ready', Date.now(), tenantId)
-    .run();
-  log('info', 'Apps Script deployment queued', { tenantId, job });
-}
-
 async function createOwnerUser(env: Env, tenantId: string, email: string) {
   log('info', 'Creating owner user', { tenantId, email });
 
@@ -334,11 +321,6 @@ export class Provisioner {
         }
       } else if (plan === 'pro') {
         await deployAutomations(this.env, tenantId);
-
-        // Deploy Apps Script if enabled
-        if (this.env.APPS_SCRIPT_AUTO_DEPLOY === 'true') {
-          await deployAppsScript(this.env, tenantId);
-        }
       }
 
       // 4) Create owner user (without password - will be set after magic link login)

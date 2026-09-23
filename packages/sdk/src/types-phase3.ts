@@ -97,7 +97,6 @@ export interface TenantDetailResponse extends Tenant {
   secondaryColor?: string;
   badgeUrl?: string;
   makeWebhookUrl?: string;
-  appsScriptId?: string;
   usageHistory: Array<{
     month: string;
     actionCount: number;

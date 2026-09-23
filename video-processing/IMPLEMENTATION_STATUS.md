@@ -50,7 +50,6 @@
    - ✅ Caption settings
    - ✅ Export settings
    - ✅ Logging & performance
-   - ✅ Integration settings (Apps Script, YouTube, Make.com)
    - ✅ Backward compatibility with legacy settings
 
 3. **Backups Created**:

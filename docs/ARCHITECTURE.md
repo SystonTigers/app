@@ -10,7 +10,6 @@ Multi-tenant SaaS platform for grassroots football clubs with mobile apps, autom
 ┌─────────────────────────────────────────────────────────────────┐
 │                     USERS & CLIENTS                              │
 ├─────────────────────────────────────────────────────────────────┤
-│  Mobile App (Expo)  │  Apps Script UI  │  Admin Console         │
 │  - React Native     │  - Google Sheets │  - Tenant Management   │
 │  - 5 Tabs           │  - Custom Menus  │  - Configuration       │
 │  - Video Upload     │  - Web App       │  -Analytics            │
@@ -58,45 +57,6 @@ Multi-tenant SaaS platform for grassroots football clubs with mobile apps, autom
     └───────────────────────────┘
 ```
 
-## Apps Script Architecture
-
-```
-┌──────────────────────────────────────────────────────────┐
-│             Google Apps Script (Server-Side)              │
-├──────────────────────────────────────────────────────────┤
-│                                                            │
-│  📋 Google Sheets (Data Source)                           │
-│  ├─ Fixtures                                              │
-│  ├─ Results                                               │
-│  ├─ Squad (with DOB for birthdays)                        │
-│  ├─ Live Match Updates                                    │
-│  ├─ Video Clips                                           │
-│  └─ CONFIG (tenant settings)                              │
-│                                                            │
-│  🔧 Core Modules                                          │
-│  ├─ Code.gs (entry point)                                 │
-│  ├─ config.gs (configuration)                             │
-│  ├─ utils.gs (shared utilities)                           │
-│  └─ logger.gs (structured logging)                        │
-│                                                            │
-│  📤 Integration Layer                                     │
-│  ├─ make-integration.gs (webhook sender)                  │
-│  ├─ video-clips.gs (highlights export)                    │
-│  └─ payload-builder.gs (event formatting)                 │
-│                                                            │
-│  ⏰ Automation Layer                                      │
-│  ├─ weekly-scheduler.gs (content automation)              │
-│  ├─ trigger-management-svc.gs (scheduled triggers)        │
-│  └─ BirthdayAutomation class                              │
-│                                                            │
-│  🎬 Video Processing                                      │
-│  ├─ Export match events → JSON                            │
-│  ├─ Trigger highlights bot webhook                        │
-│  └─ Upload finished clips to YouTube                      │
-│                                                            │
-└──────────────────────────────────────────────────────────┘
-```
-
 ## Video Processing Pipeline
 
 ```
@@ -106,7 +66,6 @@ Mobile App → Upload → R2 Storage → Webhook → AI Bot
 
 PATH B: SERVER-SIDE
 =====
-Google Drive → Apps Script → Export JSON → AI Bot
 
 SHARED PROCESSING
 ===
@@ -123,7 +82,6 @@ football-highlights-processor (Docker)
 
 Upload & Distribution
   ├─ YouTube API
-  ├─ Apps Script metadata
   └─ Social media (via Make.com)
 ```
 
@@ -134,7 +92,6 @@ Upload & Distribution
 ```
 1. User enters result in Sheets
    ↓
-2. Apps Script processes row
    ↓
 3. Build payload with event icons
    ↓
@@ -150,12 +107,10 @@ Upload & Distribution
 ```
 1. Match recorded → Upload to Drive
    ↓
-2. Apps Script: exportEventsForHighlights()
    ├─ Read match events from sheets
    ├─ Generate JSON with timestamps
    └─ Save to Drive
    ↓
-3. Apps Script: triggerHighlightsBot()
    ├─ Send webhook to processing server
    └─ Include video URL + events URL
    ↓
@@ -166,7 +121,6 @@ Upload & Distribution
    └─ Cut clips
    ↓
 5. Upload clips to YouTube
-   ├─ Apps Script YouTube integration
    └─ Update Video Clips sheet
    ↓
 6. Post clips to social media
@@ -241,7 +195,6 @@ curl -X POST https://admin-worker.workers.dev/api/v1/admin/tenants \
                    │                  │                         │
                    ▼                  ▼                         ▼
          ┌──────────────────┐  ┌──────────────┐  ┌──────────────────┐
-         │   Apps Script    │  │  Make.com    │  │  Video Processor │
          │   (Automation)   │  │  (Social)    │  │  (Python/Docker) │
          └────────┬─────────┘  └──────┬───────┘  └────────┬─────────┘
                   │                   │                   │
@@ -278,22 +231,9 @@ curl -X POST https://admin-worker.workers.dev/api/v1/admin/tenants \
 - **R2**: Object storage for videos and images
 - **Durable Objects**: Stateful coordination (geo-fencing, rate limiting)
 
-### 3. Apps Script (Automation Hub)
-**Tech**: Google Apps Script, JavaScript
-**Purpose**: Content automation and integrations
-**Files**: apps-script/ directory
-**Features**:
-- Weekly content scheduler
-- Historical data import (CSV)
-- Video highlights export (JSON)
-- Birthday automation
-- Drive organization
-- YouTube uploads
-
 ### 4. Make.com Integration
 **Tech**: Make.com (Integromat)
 **Purpose**: Social media cross-posting
-**Flow**: Apps Script → Webhook → Make.com → X/Instagram/Facebook
 
 ### 5. Video Processing System
 **Tech**: Python, OpenCV, YOLOv8, Docker
@@ -307,10 +247,7 @@ curl -X POST https://admin-worker.workers.dev/api/v1/admin/tenants \
 
 ### Content Publishing
 ```
-1. Admin creates post in Apps Script
-2. Apps Script → Make.com webhook
 3. Make.com posts to social media
-4. Apps Script → Cloudflare API
 5. Mobile app fetches via API
 6. Push notification sent
 ```
@@ -324,7 +261,6 @@ PATH A (Mobile):
 
 PATH B (Server-Side):
 1. Upload match video to Google Drive
-2. Apps Script exports JSON metadata
 3. Trigger processing queue
 
 SHARED:
@@ -346,9 +282,7 @@ R2 Paths: videos/syston-tigers/uploads/, images/syston-tigers/gallery/
 ## Security
 
 
-- **Apps Script**: OAuth 2.0 (Google account required)
 - **Workers**: JWT authentication with tenant_id claims
-- **API Keys**: Stored in Script Properties (Apps Script) and Secrets (Workers)
 - **Webhooks**: Signature verification (Make.com)
 - **Data**: Tenant-isolated in KV, no cross-tenant queries
 
@@ -361,7 +295,6 @@ R2 Paths: videos/syston-tigers/uploads/, images/syston-tigers/gallery/
 
 ## Monitoring
 
-- **Apps Script**: Structured logging with logger.gs
 - **Workers**: Cloudflare Analytics + Tail logs
 - **Webhooks**: @testHook markers for testing
 - **Video**: Processing status in KV
@@ -402,6 +335,5 @@ R2 Paths: videos/syston-tigers/uploads/, images/syston-tigers/gallery/
 1. **Multi-tenant from day 1**: No migration needed when scaling
 2. **Serverless-first**: No servers to manage, auto-scaling
 3. **Mobile-first**: PWA considered but native app for better UX
-4. **Automation hub**: Apps Script as central orchestrator
 5. **Dual video modes**: Mobile quick clips + server-side full matches
 32c0a597c19b01189537d4667d529682dac4ef4f

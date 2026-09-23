@@ -69,16 +69,13 @@ This directory contains **3 production-ready video processing tools** plus **mob
 
 **What it does**:
 - Production-ready Docker-based processing
-- Integrates with Apps Script
 - Monitoring and alerting
 - Scalable processing queue
 
-**Tech Stack**: Docker, Node.js, Apps Script integration
 
 **Key Files**:
 - `Dockerfile` - Container definition
 - `docker-compose.yml` - Multi-service orchestration
-- `apps-script/` - Apps Script integration
 - `integration/` - System integrations
 - `monitoring/` - Health checks
 
@@ -112,16 +109,6 @@ This directory contains **3 production-ready video processing tools** plus **mob
 - Upload to server
 - Track processing status
 - Notify when ready
-
-### Apps Script (Existing)
-**Location**: `apps-script/video-clips.gs`, `apps-script/video/`
-
-**What it does**:
-- Tracks clip metadata in Google Sheets
-- Manages YouTube uploads
-- Organizes clips by player
-- Generates graphics overlays
-- Exports JSON for processing
 
 ### Video Processing Tools (Server-Side)
 **Location**: `video-processing/`
@@ -166,8 +153,6 @@ PATH B: SERVER-SIDE (Full Match Automation)
    └─> Upload to designated folder
    └─> Or: Direct upload via web interface
 
-3. APPS SCRIPT TRACKING
-   └─> apps-script/video-clips.gs creates metadata
    └─> Stores: match_id, timestamp, players, event types
    └─> Exports JSON with clip markers
 
@@ -175,7 +160,6 @@ SHARED PROCESSING (Both Paths Converge Here)
 ==
 4. HIGHLIGHTS BOT (Python AI)
    └─> video-processing/highlights_bot/
-   └─> Reads JSON from Apps Script OR mobile upload
    └─> Analyzes video with AI (detect.py)
    └─> Cuts clips at exact timestamps
    └─> Edits and produces highlights
@@ -188,7 +172,6 @@ SHARED PROCESSING (Both Paths Converge Here)
    └─> Scales with demand
 
 6. FINAL UPLOAD & DISTRIBUTION
-   └─> Apps Script uploads to YouTube
    └─> Updates metadata in Sheets
    └─> Triggers Make.com webhooks
    └─> Posts to social media (X, Instagram, Facebook)
@@ -218,7 +201,6 @@ Server-side processing happens automatically. ✨
 - Python 3.8+ (for highlights_bot)
 - Docker & Docker Compose (for processor)
 - Node.js 18+ (for installer)
-- Google Apps Script access (already configured!)
 
 #### Quick Start
 
@@ -255,26 +237,6 @@ python main.py --input in/sample_match.mp4 --output out/
 ---
 
 ## 📋 Complete Integration Guide
-
-### 1. Apps Script → JSON Export
-
-**File**: `apps-script/user-menu-functions.gs`
-
-Already has function `exportHighlightsJsonMenu()` that:
-```javascript
-// Exports match events to JSON
-{
-  "match_id": "20251007_syston_vs_panthers",
-  "events": [
-    {"minute": 23, "type": "goal", "player": "John Smith"},
-    {"minute": 45, "type": "yellow_card", "player": "Mike Jones"}
-  ],
-  "video_url": "https://drive.google.com/...",
-  "clips": [
-    {"start": 1380, "end": 1410, "event": "goal"}  // 23 min in seconds
-  ]
-}
-```
 
 ### 2. highlights_bot Processing
 
@@ -344,33 +306,6 @@ export:
   codec: h264
 ```
 
-### Integration with Apps Script
-**File**: `video-processing/highlights_bot/apps_script_integration.md`
-
-Already documented! Check this file for:
-- How to export from Apps Script
-- JSON format requirements
-- Webhook integration
-- Error handling
-
----
-
-## 📊 Comparison: Apps Script vs Video Tools
-
-| Feature | Apps Script (Existing) | Video Tools (NEW) |
-|---------|------------------------|-------------------|
-| **Metadata tracking** | ✅ Yes (Google Sheets) | ❌ No |
-| **YouTube upload** | ✅ Yes | ❌ No |
-| **Video analysis** | ❌ No | ✅ AI-powered |
-| **Video cutting** | ❌ No | ✅ Automatic |
-| **Video editing** | ❌ No | ✅ Full editor |
-| **Production scale** | ❌ Limited | ✅ Docker queue |
-| **Automation** | 🟡 Partial (manual trigger) | ✅ Fully automated |
-
-**Together**: Complete end-to-end solution! 🚀
-
----
-
 ## 🎯 Workflow Examples
 
 ### Example 1: Manual Processing
@@ -382,16 +317,10 @@ Already documented! Check this file for:
 # 5. Run highlights bot:
 cd video-processing/highlights_bot
 python main.py --json ~/Downloads/events.json --video ~/match.mp4
-# 6. Upload finished clips to YouTube via Apps Script
-```
-
-### Example 2: Automated Processing
-```bash
 # 1. Start processor daemon
 cd video-processing/football-highlights-processor
 docker-compose up -d
 
-# 2. Apps Script automatically exports JSON to watched folder
 # 3. Processor detects new job
 # 4. highlights_bot processes video
 # 5. Finished clips uploaded automatically
@@ -459,14 +388,12 @@ docker-compose build --no-cache
 ## 🔐 Security
 
 ### Credentials Required
-- Google Apps Script OAuth (already configured in .clasprc.json)
 - Google Drive API access (for video input)
 - YouTube API access (for upload)
 
 ### Sensitive Files (DO NOT COMMIT)
 - `highlights_bot/.consent` (user consent)
 - `highlights_bot/config.yaml` (API keys)
-- `.clasprc.json` (OAuth tokens)
 - `football-highlights-processor/.env` (env vars)
 
 ---
@@ -475,12 +402,10 @@ docker-compose build --no-cache
 
 ### Each Tool Has Docs
 - `highlights_bot/README.md` - Bot usage guide
-- `highlights_bot/apps_script_integration.md` - Integration guide
 - `football-highlights-installer/README.md` - Installation guide
 - `football-highlights-installer/USAGE.md` - Usage examples
 
 ### Main System Docs
-- `apps-script/video-clips.gs` - Apps Script API
 - `CLAUDE.md` - Complete system guide
 - `PRODUCT_ROADMAP.md` - Video features timeline
 
@@ -512,7 +437,6 @@ docker-compose up -d --scale worker=3  # 3 workers
 ## 🎬 Next Steps
 
 1. **Test highlights_bot** with sample video
-2. **Configure Apps Script** JSON export
 3. **Set up processor** Docker environment
 4. **Integrate webhooks** for automation
 5. **Monitor performance** and tune settings
@@ -524,12 +448,10 @@ docker-compose up -d --scale worker=3  # 3 workers
 
 ### Current System (Before)
 ```
-Apps Script → Manual video editing → YouTube upload
 ```
 
 ### Complete System (After)
 ```
-Apps Script → Automated AI editing → Automated upload → Social posts
     ↓            ↓                      ↓
 Metadata     highlights_bot          Make.com
 tracking     (Python AI)              webhooks
@@ -544,7 +466,6 @@ tracking     (Python AI)              webhooks
 1. ✅ **Automated** - No manual video editing
 2. ✅ **AI-Powered** - Smart detection of highlights
 3. ✅ **Production-Ready** - Docker scaling
-4. ✅ **Integrated** - Works with existing Apps Script
 5. ✅ **Open Source** - Can customize everything
 6. ✅ **Fast** - Process videos in minutes not hours
 
@@ -554,7 +475,6 @@ tracking     (Python AI)              webhooks
 
 **Issues?**
 1. Check tool-specific README files
-2. View Apps Script integration docs
 3. Review CLAUDE.md for system overview
 4. Check logs in each tool's directory
 

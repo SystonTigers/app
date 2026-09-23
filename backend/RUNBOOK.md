@@ -85,7 +85,6 @@ curl $WORKER_URL/api/v1/tenants/TENANT_ID/provision-status \
 **Common Causes**:
 | Cause | Indicator | Fix |
 |-------|-----------|-----|
-| GAS timeout | No response from `GAS_WEBAPP_URL` | Verify GAS is deployed, check credentials |
 | External service down | Make.com/Sheets API unreachable | Wait for service recovery, or re-queue |
 | DO state stuck | Checkpoint shows error | Re-run provisioning step |
 | Missing credentials | `GOOGLE_SERVICE_ACCOUNT_KEY` missing | Set secret, restart Worker |
@@ -214,14 +213,10 @@ curl -X POST $WORKER_URL/api/v1/admin/tenant/webhook \
 
 **Diagnosis**:
 ```bash
-# 1. Check GAS_WEBAPP_URL is set correctly
-wrangler secret list --env production
-
 # 2. Check service account has permissions
 # Verify GOOGLE_SERVICE_ACCOUNT_KEY is valid JSON
 
 # 3. Test GAS endpoint manually
-curl -X POST $GAS_WEBAPP_URL \
   -H "Content-Type: application/json" \
   -d '{"action": "provision", "tenantId": "test", "teamName": "Test"}'
 ```
@@ -229,13 +224,10 @@ curl -X POST $GAS_WEBAPP_URL \
 **Common Causes**:
 | Cause | Fix |
 |-------|-----|
-| GAS not deployed | Deploy Apps Script, update `GAS_WEBAPP_URL` |
 | Service account lacks permissions | Grant `Editor` access to service account email |
-| GAS timeout | Increase Apps Script timeout, retry provisioning |
 | Invalid credentials | Re-download service account key, update secret |
 
 **Fix Steps**:
-1. **Verify GAS_WEBAPP_URL**: Should point to published Apps Script Web App
 2. **Check service account**:
    ```bash
    # Extract service account email

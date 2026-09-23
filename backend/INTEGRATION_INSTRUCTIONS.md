@@ -16,7 +16,6 @@ import { listTenants, getTenant, updateTenant, listPromoCodes, createPromoCode, 
 ```
 
 ### Step 2: Add signup route handlers
-After line 220 (after the existing signup route closes with `}`), before the "Apps Script Integration" comment, add:
 
 ```typescript
     // -------- Self-Serve Signup System (Phase 3) --------

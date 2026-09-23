@@ -102,12 +102,10 @@ export async function getTenant(req: Request, env: any, requestId: string, corsH
       SELECT
         t.*,
         tb.primary_color, tb.secondary_color, tb.badge_url,
-        mc.webhook_url as make_webhook_url,
-        pa.apps_script_id
+        mc.webhook_url as make_webhook_url
       FROM tenants t
       LEFT JOIN tenant_brand tb ON t.id = tb.tenant_id
       LEFT JOIN make_connections mc ON t.id = mc.tenant_id
-      LEFT JOIN pro_automation pa ON t.id = pa.tenant_id
       WHERE t.id = ?
     `).bind(tenantId).first();
 

@@ -115,18 +115,8 @@ Tom Brown,0,2,15,4,1,Defender,5
 
 ### Step 3: Run Import Script
 
-#### Option A: From Apps Script Menu
-
-1. Open Google Sheet
-2. Menu: Syston Tools → Import Data → Historical Import
-3. Select data type (Fixtures/Results/Stats)
-4. Paste file ID when prompted
-5. Click "Import"
-6. Wait for completion message
-
 #### Option B: From Script Editor
 
-1. Open Apps Script editor (Extensions → Apps Script)
 2. Run function: `importHistoricalData()`
 3. When prompted:
    - Enter file ID
@@ -317,7 +307,6 @@ Error Details:
 2. Close other browser tabs
 3. Run during off-peak times
 4. Split into smaller files
-5. Check Apps Script quotas
 
 ### "File not found" Error
 
@@ -408,7 +397,6 @@ importHistoricalData({...}) → Backend API
    - Document any manual corrections
 
 6. **Monitor quotas**:
-   - Apps Script: 6 min/execution max
    - Drive: 750 calls/hour
    - UrlFetch: 20,000 calls/day
 
@@ -438,7 +426,6 @@ files.forEach(file => {
 
 ### Custom Validation Rules
 
-Extend validation in `historical-import.gs`:
 
 ```javascript
 function validateCustom(row, dataType) {
@@ -476,7 +463,6 @@ function importFromAPI() {
 **Issues**:
 - Check Import Log for error details
 - Review ERROR_CODES.md for error explanations
-- Check Apps Script execution logs
 
 **Help**:
 - Community Forum: https://community.systonapp.com

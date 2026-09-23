@@ -28,7 +28,7 @@ const ResultSchema = z.object({
 });
 
 /**
- * POST /sync - Sync fixtures from Google Apps Script
+ * POST /sync - Bulk-sync fixtures from an external source
  * Receives fixture data from consolidator and stores in D1
  * SECURITY: Requires JWT authentication (admin or service token)
  */

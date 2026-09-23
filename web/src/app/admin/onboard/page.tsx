@@ -783,9 +783,6 @@ export default function OnboardPage() {
                       Your Pro plan includes:
                     </p>
                     <ul style={{ color: 'var(--text-muted)', paddingLeft: 'var(--spacing-lg)' }}>
-                      <li>Automatic Google Sheets creation</li>
-                      <li>Pre-configured Apps Script automation</li>
-                      <li>Team management spreadsheet</li>
                       <li>Content automation workflows</li>
                     </ul>
                     <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', margin: 0 }}>

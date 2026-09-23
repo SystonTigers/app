@@ -21,7 +21,6 @@ python webhook_handler.py --port 8080
 - **🎯 Smart Editing**: Creates clips with adaptive padding, intelligent zoom tracking, slow-motion replays, and professional graphics
 - **📱 Multi-Format Output**: Generates 16:9 master, 1:1 square, and 9:16 vertical variants for all social platforms
 - **🎞️ Highlights Reel**: Automatically assembles clips into a complete highlights package with intro/outro
-- **🔗 Make.com Integration**: Seamlessly connects with your existing Google Sheets → Apps Script → Make.com workflow
 
 ## 📁 Project Structure
 
@@ -224,7 +223,6 @@ python webhook_handler.py --port 8080
 ```
 
 ### Integration Flow
-1. **Apps Script** exports events.json at full-time
 2. **Make.com** triggers bot via webhook
 3. **Bot** processes match and generates clips
 4. **Callback** delivers manifest.json with file URLs

@@ -14,9 +14,6 @@ curl https://syston-postbus.YOUR-DOMAIN.workers.dev/health
 # 2. Check video processor
 docker-compose ps
 
-# 3. Check Apps Script logs
-# Open Google Apps Script → View → Logs
-
 # 4. Verify Make.com scenarios running
 # Open Make.com dashboard → Check last execution
 ```
@@ -24,7 +21,6 @@ docker-compose ps
 **Expected Results**:
 - Backend: 200 OK response
 - Docker: All containers "Up"
-- Apps Script: No errors in last 24h
 - Make.com: Last run < 1 hour ago
 
 ### Weekly Tasks (30 minutes)
@@ -116,7 +112,6 @@ docker-compose logs video-processor
 
 **Debugging**:
 1. Check Make.com scenario status
-2. Check webhook logs in Apps Script
 3. Verify social media API tokens valid
 4. Test webhook manually
 
@@ -132,7 +127,6 @@ curl -X POST https://hook.us1.make.com/YOUR_WEBHOOK \
 
 **Common Causes**:
 - Expired OAuth token → Refresh in Make.com
-- Webhook URL changed → Update in Apps Script config
 - Rate limit hit → Wait and retry, adjust posting frequency
 - Invalid content format → Check JSON structure
 
@@ -169,7 +163,6 @@ docker-compose logs -f worker
 **Symptoms**: Birthday automation missed a player
 
 **Debugging**:
-1. Check Apps Script logs for runDailyBirthdayAutomation
 2. Verify roster sheet has correct birthdays
 3. Check sent birthday log for duplicates
 
@@ -265,20 +258,11 @@ eas submit --platform android
 - App Store review: 1-3 days
 - Google Play review: Few hours to 1 day
 
-### Deploy Apps Script
-
-**Deployment**:
-```bash
 # 1. Test locally first
-clasp run testAllFunctions
 
 # 2. Push to production
-clasp push
 
 # 3. Verify deployment
-clasp open
-# Check version in Apps Script UI
-
 # 4. Test critical functions
 # Run weekly scheduler manually
 # Run historical import with test CSV
@@ -286,10 +270,7 @@ clasp open
 
 **Rollback**:
 ```bash
-# Apps Script doesn't have rollback
 # Must manually revert code changes
-clasp pull --versionNumber PREVIOUS_VERSION
-clasp push
 ```
 
 ### Deploy Video Processor
@@ -364,13 +345,6 @@ docker-compose logs -f
 wrangler kv:key list --namespace-id=YOUR_NS_ID > \
   backups/kv_$(date +%Y%m%d).json
 
-# 2. Apps Script code
-clasp pull
-tar -czf backups/apps-script_$(date +%Y%m%d).tar.gz .
-```
-
-**Weekly Backups**:
-```bash
 # 1. R2 storage (videos)
 wrangler r2 object list syston-videos > \
   backups/r2_inventory_$(date +%Y%m%d).txt
@@ -403,16 +377,10 @@ done
 # Otherwise, restore from local backup
 ```
 
-**Recover Apps Script**:
 ```bash
 # 1. Extract backup
-tar -xzf backups/apps-script_20251007.tar.gz
-
-# 2. Push to Apps Script
-clasp push
 
 # 3. Verify restoration
-clasp open
 ```
 
 ## Maintenance Windows
@@ -447,9 +415,6 @@ NEW_SECRET=$(openssl rand -base64 32)
 wrangler secret put JWT_SECRET
 # Enter new secret
 
-# 3. Update Apps Script properties
-# Apps Script → Project Settings → Script Properties
-
 # 4. Update Make.com webhooks
 # Regenerate webhook URLs in Make.com
 
@@ -462,7 +427,6 @@ curl -H "Authorization: Bearer NEW_JWT" https://... # Should succeed
 
 **Monthly**:
 1. Review Cloudflare team members
-2. Review Apps Script sharing settings
 3. Review Make.com team access
 4. Review GitHub repository access
 5. Remove any unnecessary access
@@ -582,19 +546,3 @@ docker-compose ps
 docker-compose logs -f worker
 docker-compose restart worker
 docker stats
-
-# Apps Script
-clasp logs
-clasp run testFunction
-clasp push
-clasp open
-```
-
-## Change Log
-
-All operational changes should be logged here:
-
-| Date | Change | Author | Impact |
-|------|--------|--------|--------|
-| 2025-10-07 | Initial runbook created | Clayton | N/A |
-| | | | |

@@ -36,7 +36,6 @@
 
   * [Auto-Posts Control Matrix](#auto-posts-control-matrix)
   * [Google Sheets (Control Panel)](#google-sheets-control-panel)
-  * [Apps Script (Standalone)](#apps-script-standalone)
   * [Make.com / n8n](#makecom--n8n)
   * [Cloudflare Workers + Queues](#cloudflare-workers--queues)
   * [GitHub Pages (Website)](#github-pages-website)
@@ -256,18 +255,6 @@
 * Results placeholders: `{{DATE}}, {{HOME_TEAM}}, {{AWAY_TEAM}}, {{HS}}/{{AS}}, {{HOME_SCORERS}}, {{AWAY_SCORERS}}`.
 * Frames: 150×150 square badges, locked.
 
-### Apps Script (Standalone)
-
-* Auto-install triggers (time-based + onEdit).
-* Key functions:
-
-  * `refreshAndMapLeague()`
-  * `postLeagueFixturesBatch()`
-  * `processLiveEdit()` → site + socials
-  * `birthdayScheduler()`, `quoteScheduler()`, `matchdayCountdowns()`
-  * `exportEventsJson()` for backend/video
-* Secrets via Properties; single Web App deployment target (CI updates only this one).
-
 ### Make.com / n8n
 
 * Webhooks from Sheet edits; router per post type; applies channel toggles.
@@ -412,9 +399,8 @@ export interface ResultEvent {
 
 ### Environment & Secrets
 
-* Apps Script: Script Properties (service keys, web app URL, Make webhook URLs).
 * Cloudflare Workers: `ADMIN_JWT`, Make API, YouTube keys; CORS allowlist (your domains).
-* GitHub Actions: `CLASPRC_JSON` only; updates a **single** Web App deployment.
+* GitHub Actions: Cloudflare API token for `wrangler deploy`.
 
 ### CI/CD Expectations
 

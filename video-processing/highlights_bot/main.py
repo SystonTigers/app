@@ -89,7 +89,7 @@ def extract_clip(video_path, output_path, start_time, duration):
 def main():
     parser = argparse.ArgumentParser(description='Enhanced Highlights Bot')
     parser.add_argument('--video', required=True, help='Path to input video')
-    parser.add_argument('--json', help='Path to Apps Script JSON (optional)')
+    parser.add_argument('--json', help='Path to match events JSON (optional)')
     parser.add_argument('--config', default='config.yaml', help='Path to config file')
     parser.add_argument('--output-dir', default='out', help='Output directory')
     parser.add_argument('--match-id', help='Match ID (for logging)')

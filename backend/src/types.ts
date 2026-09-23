@@ -112,10 +112,6 @@ export interface Env {
   API_VERSION: string;
   CORS_ALLOWED?: string;
   ALLOWED_WEBHOOK_HOSTS?: string;
-  // Apps Script automation
-  GOOGLE_SERVICE_ACCOUNT_KEY?: string;
-  APPS_SCRIPT_TEMPLATE_ID?: string;
-  APPS_SCRIPT_AUTO_DEPLOY?: string;
   BACKEND_URL?: string;
   RESEND_API_KEY?: string;
   RESEND_FROM_EMAIL?: string;

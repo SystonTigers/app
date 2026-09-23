@@ -4,9 +4,7 @@ This document explains how to maintain and update the SystonAutomationLib librar
 
 ## 🛠️ Runtime & Tooling Baselines
 
-- **Node.js**: Use version `22` locally (`nvm use` will read from `.nvmrc`). This matches the CI runtime used by the GitHub Action that deploys the Apps Script project.
 - **Formatting**: Run `npx prettier --write .` before committing. The repo's `.prettierrc` enforces a 2-space indent, single quotes, trailing commas, and LF line endings so our server and worker code render consistently in GAS and browser bundles.
-- **Linting**: Run `npx eslint .` to lint Cloudflare Worker, PWA, and Apps Script code. The `.eslintrc.cjs` profile enables JSX/TypeScript-aware rules, Cloudflare Worker globals, and overrides that understand Apps Script globals.
 - **Recommended dev dependencies** (install in a local clone once):
   ```bash
   npm install --save-dev \
@@ -14,38 +12,23 @@ This document explains how to maintain and update the SystonAutomationLib librar
     eslint-plugin-react eslint-plugin-react-hooks eslint-plugin-jsx-a11y \
     eslint-config-prettier prettier
   ```
-- **VS Code integration**: Enable "Format on Save" and point ESLint to the workspace folder so both tools run automatically as you edit Apps Script, worker, or UI code.
 
 ## 📁 Project Structure
 
 ```
-/library/               # Standalone Apps Script Library
   /lib/
-    version.gs         # Version management
-    config.gs          # Configuration system
-    setup.gs           # Installation and sheet creation
-    monitoring.gs      # Health checks and metrics
-    privacy.gs         # GDPR compliance
-    posting.gs         # Make.com integration
-    logger.gs          # Logging system
-    utils.gs           # Utility functions
-    cache.gs           # Caching system
-    security.gs        # Security and validation
 
 /template/              # Customer Template (Bound Script)
   /app/
-    ui.gs              # Menu system and UI functions
     wizard.html        # Setup Wizard interface
     dashboard.html     # System dashboard
     privacy.html       # Privacy manager interface
-    app_main.gs        # Template wrapper functions
 ```
 
 ## 🚀 Publishing New Library Versions
 
 ### 1. Update Version
 ```javascript
-// In library/lib/version.gs
 const LIB_VERSION = '1.1.0';  // Increment version
 
 // Update release notes in SA_getVersionInfo()
@@ -64,7 +47,6 @@ features: [
 4. Verify all functions work correctly
 
 ### 3. Deploy to Production
-1. Open Library project in Apps Script
 2. Click **Deploy** → **Manage deployments**
 3. Click **New deployment**
 4. Type: **Library**
@@ -259,7 +241,6 @@ function SA_functionName_(param) {
 
 ### Batch Operations
 - Process multiple items together
-- Respect Apps Script execution limits
 - Implement progress tracking
 - Handle timeouts gracefully
 
