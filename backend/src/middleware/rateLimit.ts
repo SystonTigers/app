@@ -58,7 +58,10 @@ export async function rateLimit(
     return { ok: true };
   }
 
-  const kv = env.RATE_LIMIT_KV;
+  // Dedicated namespace if configured, otherwise the always-bound KV_IDEMP
+  // (keys are prefixed "rl:"). Without this fallback production had no KV here
+  // and every login returned 429 "Rate limiting unavailable".
+  const kv = env.RATE_LIMIT_KV || env.KV_IDEMP;
 
   // ✅ SECURITY FIX: Fail closed if KV not configured in production
   if (!kv) {
