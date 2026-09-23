@@ -1,17 +1,11 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios, { AxiosError } from 'axios';
 import { Platform } from 'react-native';
 import { API_BASE_URL, TENANT_ID } from '../config';
 
-export const AUTH_STORAGE_KEYS = {
-  token: 'auth_token',
-  refreshToken: 'auth_refresh_token',
-  userId: 'user_id',
-  role: 'user_role',
-  firstName: 'user_firstName',
-  lastName: 'user_lastName',
-  email: 'user_email',
-} as const;
+import { AUTH_STORAGE_KEYS, authStorage, type AuthStorageKey } from './authStorage';
+
+// Re-exported for existing imports
+export { AUTH_STORAGE_KEYS };
 
 export interface AuthUser {
   id: string;
@@ -46,7 +40,7 @@ const sanitizeString = (value?: string | null) => {
 };
 
 const persistAuthResult = async ({ token, refreshToken, user }: AuthResult) => {
-  const entries: [string, string][] = [
+  const entries: [AuthStorageKey, string][] = [
     [AUTH_STORAGE_KEYS.token, token],
     [AUTH_STORAGE_KEYS.userId, user.id],
     [AUTH_STORAGE_KEYS.role, user.role],
@@ -68,23 +62,15 @@ const persistAuthResult = async ({ token, refreshToken, user }: AuthResult) => {
     entries.push([AUTH_STORAGE_KEYS.refreshToken, refreshToken]);
   }
 
-  await AsyncStorage.multiSet(entries);
+  await authStorage.multiSet(entries);
 
   if (!refreshToken) {
-    await AsyncStorage.removeItem(AUTH_STORAGE_KEYS.refreshToken);
+    await authStorage.removeItem(AUTH_STORAGE_KEYS.refreshToken);
   }
 };
 
 const clearAuthStorage = async () => {
-  await AsyncStorage.multiRemove([
-    AUTH_STORAGE_KEYS.token,
-    AUTH_STORAGE_KEYS.refreshToken,
-    AUTH_STORAGE_KEYS.userId,
-    AUTH_STORAGE_KEYS.role,
-    AUTH_STORAGE_KEYS.firstName,
-    AUTH_STORAGE_KEYS.lastName,
-    AUTH_STORAGE_KEYS.email,
-  ]);
+  await authStorage.clear();
 };
 
 const extractAuthResult = (responseData: any): AuthResult => {
@@ -209,7 +195,7 @@ export interface RegisterParams {
 }
 
 const readAuthFromStorage = async (): Promise<AuthResult | null> => {
-  const entries = await AsyncStorage.multiGet([
+  const entries = await authStorage.multiGet([
     AUTH_STORAGE_KEYS.token,
     AUTH_STORAGE_KEYS.refreshToken,
     AUTH_STORAGE_KEYS.userId,
@@ -359,7 +345,7 @@ api.interceptors.request.use(async (config) => {
   (headers as Record<string, string>)['x-tenant'] = TENANT_ID;
 
   try {
-    const token = await AsyncStorage.getItem(AUTH_STORAGE_KEYS.token);
+    const token = await authStorage.getToken();
     if (token) {
       (headers as Record<string, string>).Authorization = `Bearer ${token}`;
     }
@@ -370,6 +356,36 @@ api.interceptors.request.use(async (config) => {
   config.headers = headers as typeof config.headers;
   return config;
 });
+
+// Session expiry: when an authenticated request comes back 401 the stored
+// token is no longer valid. Clear it and tell listeners (AuthContext) so the
+// app returns to the login screen instead of failing every call silently.
+type UnauthorizedListener = () => void;
+const unauthorizedListeners = new Set<UnauthorizedListener>();
+
+/** Subscribe to "session expired" events. Returns an unsubscribe function. */
+export const onUnauthorized = (listener: UnauthorizedListener): (() => void) => {
+  unauthorizedListeners.add(listener);
+  return () => {
+    unauthorizedListeners.delete(listener);
+  };
+};
+
+api.interceptors.response.use(
+  (response) => response,
+  async (error: AxiosError) => {
+    const sentToken = Boolean((error.config?.headers as Record<string, unknown> | undefined)?.Authorization);
+    if (error.response?.status === 401 && sentToken) {
+      try {
+        await authStorage.clear();
+      } catch (clearError) {
+        console.warn('Failed to clear auth storage after 401', clearError);
+      }
+      unauthorizedListeners.forEach((listener) => listener());
+    }
+    return Promise.reject(error);
+  }
+);
 
 export const apiClient = api;
 
@@ -462,7 +478,7 @@ export const eventsApi = {
 
   // RSVP to event
   rsvp: async (eventId: string, status: 'going' | 'not_going' | 'maybe') => {
-    const userId = await AsyncStorage.getItem(AUTH_STORAGE_KEYS.userId) || '';
+    const userId = await authStorage.getItem(AUTH_STORAGE_KEYS.userId) || '';
     const response = await api.post(`/api/v1/events/${eventId}/rsvp`, {
       tenant: TENANT_ID,
       status,

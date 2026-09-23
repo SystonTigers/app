@@ -1,6 +1,7 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { usersApi, authApi, AUTH_STORAGE_KEYS } from '../services/api';
+import { usersApi, authApi, onUnauthorized } from '../services/api';
+import { AUTH_STORAGE_KEYS, authStorage, type AuthStorageKey } from '../services/authStorage';
+import { setCrashReportingUser } from '../services/crashReporting';
 
 interface User {
   userId: string;
@@ -31,9 +32,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     checkAuthStatus();
   }, []);
 
+  // Token expired or revoked server-side: drop back to signed-out state
+  useEffect(() => onUnauthorized(() => setUser(null)), []);
+
+  // Tag crash reports with the user id only (no names/emails)
+  useEffect(() => {
+    setCrashReportingUser(user?.userId ?? null);
+  }, [user?.userId]);
+
   const checkAuthStatus = async () => {
     try {
-      const entries = await AsyncStorage.multiGet([
+      const entries = await authStorage.multiGet([
         AUTH_STORAGE_KEYS.token,
         AUTH_STORAGE_KEYS.userId,
         AUTH_STORAGE_KEYS.role,
@@ -66,7 +75,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (userId: string, role: string, token: string) => {
     try {
-      await AsyncStorage.multiSet([
+      await authStorage.multiSet([
         [AUTH_STORAGE_KEYS.token, token],
         [AUTH_STORAGE_KEYS.userId, userId],
         [AUTH_STORAGE_KEYS.role, role],
@@ -76,11 +85,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const profile = await usersApi.getProfile();
         if (profile.success && profile.user) {
           const { firstName, lastName, email } = profile.user;
-          const profileEntries: [string, string][] = [];
+          const profileEntries: [AuthStorageKey, string][] = [];
           if (firstName) profileEntries.push([AUTH_STORAGE_KEYS.firstName, firstName]);
           if (lastName) profileEntries.push([AUTH_STORAGE_KEYS.lastName, lastName]);
           if (email) profileEntries.push([AUTH_STORAGE_KEYS.email, email]);
-          if (profileEntries.length > 0) await AsyncStorage.multiSet(profileEntries);
+          if (profileEntries.length > 0) await authStorage.multiSet(profileEntries);
         }
       } catch (err) {
         console.warn('Failed to fetch user profile during login', err);
@@ -104,23 +113,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = async () => {
     try {
-      await AsyncStorage.multiRemove([
-        AUTH_STORAGE_KEYS.token,
-        AUTH_STORAGE_KEYS.refreshToken,
-        AUTH_STORAGE_KEYS.userId,
-        AUTH_STORAGE_KEYS.role,
-        AUTH_STORAGE_KEYS.firstName,
-        AUTH_STORAGE_KEYS.lastName,
-        AUTH_STORAGE_KEYS.email,
-      ]);
-
+      // Revoke on the server first, while we still have the token to authenticate with
       try {
         await authApi.logout({ revokeRemote: true });
       } catch (err) {
-        // Non-fatal: local session is already cleared above.
-        // Server-side revocation failure is logged but shouldn't block the user.
+        // Non-fatal: the local session is cleared below regardless.
         console.warn('Remote session revocation failed', err);
       }
+
+      await authStorage.clear();
 
       setUser(null);
     } catch (error) {

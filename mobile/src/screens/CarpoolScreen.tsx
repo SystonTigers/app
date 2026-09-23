@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { View, ScrollView, StyleSheet, Alert, RefreshControl } from 'react-native';
 import { Text, Button, Card, Chip, IconButton, TextInput, List, Divider, ActivityIndicator, FAB, Portal, Modal } from 'react-native-paper';
 import { COLORS, API_BASE_URL } from '../config';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { authStorage, AUTH_STORAGE_KEYS } from '../services/authStorage';
 
 interface CarpoolOffer {
     id: string;
@@ -79,8 +79,8 @@ function CarpoolContent({ fixtureId, opponent, fixtureDate, navigation }: Conten
 
     const fetchData = useCallback(async () => {
         try {
-            const token = await AsyncStorage.getItem('authToken');
-            const storedUserId = await AsyncStorage.getItem('userId');
+            const token = await authStorage.getToken();
+            const storedUserId = await authStorage.getItem(AUTH_STORAGE_KEYS.userId);
             if (storedUserId) setUserId(storedUserId);
 
             // Fetch offers for this fixture
@@ -131,7 +131,7 @@ function CarpoolContent({ fixtureId, opponent, fixtureDate, navigation }: Conten
         }
 
         try {
-            const token = await AsyncStorage.getItem('authToken');
+            const token = await authStorage.getToken();
             const response = await fetch(
                 `${API_BASE_URL}/api/v1/fixtures/${fixtureId}/carpool`,
                 {
@@ -170,7 +170,7 @@ function CarpoolContent({ fixtureId, opponent, fixtureDate, navigation }: Conten
         }
 
         try {
-            const token = await AsyncStorage.getItem('authToken');
+            const token = await authStorage.getToken();
             const response = await fetch(
                 `${API_BASE_URL}/api/v1/carpool/${selectedOffer.id}/request`,
                 {
@@ -204,7 +204,7 @@ function CarpoolContent({ fixtureId, opponent, fixtureDate, navigation }: Conten
 
     const handleRespondToRequest = async (requestId: string, status: 'accepted' | 'declined') => {
         try {
-            const token = await AsyncStorage.getItem('authToken');
+            const token = await authStorage.getToken();
             const response = await fetch(
                 `${API_BASE_URL}/api/v1/carpool/requests/${requestId}`,
                 {

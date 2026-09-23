@@ -7,7 +7,7 @@ import {
   ActivityIndicator,
   Platform,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { authStorage } from '../services/authStorage';
 import { Picker } from '@react-native-picker/picker';
 import {
   Card,
@@ -110,7 +110,7 @@ export default function FixtureSettingsScreen() {
     setSaving(true);
 
     try {
-      const token = await AsyncStorage.getItem('auth_token') || '';
+      const token = await authStorage.getToken() || '';
 
       const response = await fetch(`${API_URL}/api/${API_VERSION}/fixtures/settings`, {
         method: 'PUT',

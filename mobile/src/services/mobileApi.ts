@@ -1,9 +1,8 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL, TENANT_ID } from '../config';
-import { AUTH_STORAGE_KEYS } from './api';
+import { authStorage } from './authStorage';
 
 const getAuthToken = async (): Promise<string | null> => {
-    return AsyncStorage.getItem(AUTH_STORAGE_KEYS.token);
+    return authStorage.getToken();
 };
 
 /**

@@ -11,7 +11,8 @@ import {
   Divider,
   Text,
 } from 'react-native-paper';
-import { COLORS, TENANT_ID, API_BASE_URL } from '../config';
+import { COLORS, TENANT_ID } from '../config';
+import { apiClient } from '../services/api';
 
 interface User {
   id: string;
@@ -62,23 +63,10 @@ export default function ManageUsersScreen() {
     try {
       setLoading(true);
 
-      // Call the admin API endpoint
-      const response = await fetch(
-        `${API_BASE_URL}/api/v1/admin/users?tenantId=${TENANT_ID}`,
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            // Note: In production, you'd include admin auth token here
-            // 'Authorization': `Bearer ${adminToken}`
-          },
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch users');
-      }
-
-      const data = await response.json();
+      // Uses the shared API client so the signed-in user's token is attached
+      const { data } = await apiClient.get('/api/v1/admin/users', {
+        params: { tenantId: TENANT_ID },
+      });
 
       if (data.success) {
         setUsers(data.users || []);

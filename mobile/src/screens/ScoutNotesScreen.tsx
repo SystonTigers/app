@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { View, ScrollView, StyleSheet, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { Text, TextInput, Button, Chip, IconButton, List, Divider, ActivityIndicator } from 'react-native-paper';
 import { COLORS, API_BASE_URL } from '../config';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { authStorage } from '../services/authStorage';
 
 interface KeyPlayer {
     number: string;
@@ -87,7 +87,7 @@ function ScoutNotesContent({ fixtureId, opponent, navigation }: ContentProps) {
 
     const fetchScoutNotes = useCallback(async () => {
         try {
-            const token = await AsyncStorage.getItem('authToken');
+            const token = await authStorage.getToken();
             const response = await fetch(`${API_BASE_URL}/api/v1/fixtures/${fixtureId}/scout`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
@@ -112,7 +112,7 @@ function ScoutNotesContent({ fixtureId, opponent, navigation }: ContentProps) {
     const handleSave = async () => {
         setSaving(true);
         try {
-            const token = await AsyncStorage.getItem('authToken');
+            const token = await authStorage.getToken();
             const response = await fetch(`${API_BASE_URL}/api/v1/fixtures/${fixtureId}/scout`, {
                 method: 'POST',
                 headers: {
