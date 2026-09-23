@@ -178,8 +178,9 @@ async function createOwnerUser(env: Env, tenantId: string, email: string) {
   // Create owner user without password (will be set after magic link login)
   const userId = `user_${Date.now()}_${crypto.randomUUID().slice(0, 8)}`;
   await env.DB.prepare(
-    `INSERT INTO auth_users (id, tenant_id, email, roles, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?)`
+    // '!' is an unusable hash: the owner sets a password after the magic-link login
+    `INSERT INTO auth_users (id, tenant_id, email, password_hash, roles, created_at, updated_at)
+     VALUES (?, ?, ?, '!', ?, ?, ?)`
   ).bind(
     userId,
     tenantId,

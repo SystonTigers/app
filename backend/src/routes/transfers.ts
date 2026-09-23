@@ -24,7 +24,7 @@ async function getPlayerStats(env: Env, tenantId: string, playerId: string) {
             me.minute,
             me.fixture_id,
             f.opponent,
-            f.match_date,
+            f.fixture_date AS match_date,
             f.home_score,
             f.away_score
         FROM match_events me

@@ -322,7 +322,7 @@ export async function handleRespondToMatch(req: Request, env: any, corsHdrs: Hea
             // Create fixture for host team
             const hostFixtureId = crypto.randomUUID();
             await env.DB.prepare(`
-                INSERT INTO fixtures (id, tenant_id, match_date, opponent, venue, kickoff, competition, status)
+                INSERT INTO fixtures (id, tenant_id, fixture_date, opponent, venue, kick_off_time, competition, status)
                 VALUES (?, ?, ?, ?, ?, ?, 'Friendly', 'scheduled')
             `).bind(
                 hostFixtureId,
@@ -336,7 +336,7 @@ export async function handleRespondToMatch(req: Request, env: any, corsHdrs: Hea
             // Create fixture for requester team
             const requesterFixtureId = crypto.randomUUID();
             await env.DB.prepare(`
-                INSERT INTO fixtures (id, tenant_id, match_date, opponent, venue, kickoff, competition, status)
+                INSERT INTO fixtures (id, tenant_id, fixture_date, opponent, venue, kick_off_time, competition, status)
                 VALUES (?, ?, ?, ?, ?, ?, 'Friendly', 'scheduled')
             `).bind(
                 requesterFixtureId,

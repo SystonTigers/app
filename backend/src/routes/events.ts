@@ -6,15 +6,46 @@ import { logJSON } from "../lib/log";
 import { rateLimitWithTenant } from "../middleware/rateLimit";
 
 // Zod Schemas
-const CreateEventSchema = z.object({
-    title: z.string().min(1),
-    date: z.string().datetime(),
-    location: z.string().optional(),
-    description: z.string().optional(),
-});
+// `date` may be a full ISO datetime (web) or YYYY-MM-DD with a separate
+// HH:MM `time` (mobile app). `start_time` is accepted as an alias for `date`.
+const DATE_OR_DATETIME = /^\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})?)?$/;
+const EventFields = {
+    title: z.string().trim().min(1).max(200),
+    date: z.string().regex(DATE_OR_DATETIME, "date must be YYYY-MM-DD or an ISO datetime"),
+    time: z.string().regex(/^\d{1,2}:\d{2}$/, "time must be HH:MM").optional().or(z.literal("")),
+    type: z.string().trim().max(30).optional(),
+    location: z.string().max(300).optional(),
+    description: z.string().max(5000).optional(),
+};
+const withStartTimeAlias = (body: unknown) => {
+    if (body && typeof body === "object" && !("date" in body) && "start_time" in body) {
+        const { start_time, ...rest } = body as Record<string, unknown>;
+        return { ...rest, date: start_time };
+    }
+    return body;
+};
+const CreateEventSchema = z.preprocess(withStartTimeAlias, z.object(EventFields));
+const UpdateEventSchema = z.preprocess(withStartTimeAlias, z.object(EventFields).partial());
 
+/** Combine date (+ optional time) into the stored start_time text. */
+function toStartTime(date: string, time?: string): string {
+    if (date.length > 10 || !time) { return date; }
+    const [h, m] = time.split(":");
+    return `${date}T${h.padStart(2, "0")}:${m}`;
+}
+
+/** Split stored start_time into the date/time pair the mobile app displays. */
+function splitStartTime(startTime: string): { date: string; time: string } {
+    const date = (startTime || "").slice(0, 10);
+    const t = (startTime || "").slice(11, 16);
+    return { date, time: /^\d{2}:\d{2}$/.test(t) ? t : "TBC" };
+}
+
+// Mobile app uses going / not_going / maybe; stored as yes / no / maybe
 const RsvpSchema = z.object({
-    status: z.enum(["yes", "no", "maybe"]),
+    status: z.enum(["yes", "no", "maybe", "going", "not_going"]).transform((s) =>
+        s === "going" ? "yes" : s === "not_going" ? "no" : s
+    ),
 });
 
 // Helper to get event with RSVP counts
@@ -63,13 +94,14 @@ export async function createEvent(req: Request, env: any, requestId: string, cor
         const now = Date.now();
 
         await env.DB.prepare(`
-      INSERT INTO calendar_events (id, tenant_id, title, start_time, location, description, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO calendar_events (id, tenant_id, title, event_type, start_time, location, description, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
             id,
             claims.tenantId,
             data.title,
-            data.date,
+            data.type || 'event',
+            toStartTime(data.date, data.time || undefined),
             data.location || null,
             data.description || null,
             now
@@ -96,8 +128,6 @@ export async function updateEvent(req: Request, env: any, requestId: string, cor
         const claims = await requireJWT(req, env);
         const body = await req.json();
 
-        // Use Partial of CreateEventSchema for updates
-        const UpdateEventSchema = CreateEventSchema.partial();
         const data = UpdateEventSchema.parse(body);
 
         const updates: string[] = [];
@@ -109,7 +139,11 @@ export async function updateEvent(req: Request, env: any, requestId: string, cor
         }
         if (data.date !== undefined) {
             updates.push("start_time = ?");
-            params.push(data.date);
+            params.push(toStartTime(data.date, data.time || undefined));
+        }
+        if (data.type !== undefined) {
+            updates.push("event_type = ?");
+            params.push(data.type);
         }
         if (data.location !== undefined) {
             updates.push("location = ?");
@@ -133,6 +167,9 @@ export async function updateEvent(req: Request, env: any, requestId: string, cor
         return json({ success: true }, 200, corsHdrs);
     } catch (err: any) {
         if (err instanceof Response) { throw err; }
+        if (err instanceof z.ZodError) {
+            return json({ success: false, error: { code: "INVALID_REQUEST", issues: err.issues } }, 400, corsHdrs);
+        }
         logJSON({ level: "error", requestId, msg: "UPDATE_EVENT_ERROR", error: err.message });
         return json({ success: false, error: { code: "SERVER_ERROR", message: err.message } }, 500, corsHdrs);
     }
@@ -195,7 +232,8 @@ export async function listEvents(req: Request, env: any, requestId: string, cors
 
             return {
                 ...event,
-                date: event.start_time,
+                ...splitStartTime(event.start_time),
+                type: event.event_type || 'event',
                 rsvp_yes_count: counts?.yes_count || 0,
                 rsvp_no_count: counts?.no_count || 0,
                 rsvp_maybe_count: counts?.maybe_count || 0,

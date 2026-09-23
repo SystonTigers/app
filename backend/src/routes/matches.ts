@@ -12,7 +12,7 @@ export async function handleMatchUpdates(
 
     // 1. Fetch match details - SECURITY: Filter by tenant_id to prevent cross-tenant access
     const match = await env.DB.prepare(
-        "SELECT * FROM matches WHERE id = ? AND tenant_id = ?"
+        "SELECT * FROM matches WHERE id = ? AND team_id = ?"
     ).bind(matchId, claims.tenantId).first();
 
     if (!match) {
@@ -72,7 +72,7 @@ export async function handleCreateMatchEvent(
 
         // SECURITY: Verify match belongs to tenant before creating event
         const match = await env.DB.prepare(
-            "SELECT id FROM matches WHERE id = ? AND tenant_id = ?"
+            "SELECT id FROM matches WHERE id = ? AND team_id = ?"
         ).bind(matchId, claims.tenantId).first();
         if (!match) {
             return json({ success: false, error: "Match not found" }, 404, corsHdrs);

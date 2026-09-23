@@ -149,7 +149,7 @@ export async function handlePaymentRequestStatus(req: Request, env: any, corsHdr
 
         // Get all players to show who hasn't paid
         const { results: players } = await env.DB.prepare(
-            'SELECT id, name, parent_email FROM players WHERE tenant_id = ?'
+            'SELECT id, name, parent_email FROM squad WHERE tenant_id = ?'
         ).bind(tenantId).all();
 
         const paidEmails = new Set((payments || []).filter((p: any) => p.status === 'completed').map((p: any) => p.payer_email));
@@ -391,7 +391,7 @@ export async function handleSendReminder(req: Request, env: any, corsHdrs: Heade
         const paidSet = new Set((paidEmails.results || []).map((r: any) => r.payer_email));
 
         const { results: players } = await env.DB.prepare(
-            'SELECT parent_email FROM players WHERE tenant_id = ? AND parent_email IS NOT NULL'
+            'SELECT parent_email FROM squad WHERE tenant_id = ? AND parent_email IS NOT NULL'
         ).bind(tenantId).all();
 
         const unpaidEmails = (players || [])

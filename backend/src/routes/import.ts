@@ -179,7 +179,6 @@ export async function handleImportResults(req: Request, env: any, corsHdrs: Head
                 continue;
             }
             try {
-                const id = crypto.randomUUID();
                 const matchDate = row.date || row.match_date;
 
                 let homeScore = parseInt(row.home_score || row.score_home || row.our_score || row.score_for || row.our_goals || '0');
@@ -191,19 +190,29 @@ export async function handleImportResults(req: Request, env: any, corsHdrs: Head
                     awayScore = a;
                 }
 
+                if (Number.isNaN(homeScore) || Number.isNaN(awayScore)) {
+                    errors.push(`Row ${i + 2}: scores must be numbers`);
+                    continue;
+                }
+
+                // Upsert so re-importing the same CSV doesn't duplicate results
                 await env.DB.prepare(`
-                    INSERT INTO matches (id, team_id, opponent, date_utc, home_score, away_score, competition, venue, status, created_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'completed', ?)
+                    INSERT INTO results (tenant_id, match_date, opponent, home_score, away_score, venue, competition)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(tenant_id, match_date, opponent) DO UPDATE SET
+                        home_score = excluded.home_score,
+                        away_score = excluded.away_score,
+                        venue = excluded.venue,
+                        competition = excluded.competition,
+                        updated_at = CURRENT_TIMESTAMP
                 `).bind(
-                    id,
                     tenant,
+                    matchDate,
                     row.opponent || row.team,
-                    Math.floor(new Date(matchDate).getTime() / 1000),
                     homeScore,
                     awayScore,
-                    row.competition || 'League',
                     row.venue || 'Home',
-                    Date.now()
+                    row.competition || 'League'
                 ).run();
 
                 imported++;
@@ -449,7 +458,7 @@ export async function handleGetImportStatus(req: Request, env: any, corsHdrs: He
 
         const [fixturesCount, matchesCount, playersCount, eventsCount] = await Promise.all([
             env.DB.prepare(`SELECT COUNT(*) as count FROM fixtures WHERE tenant_id = ?`).bind(tenant).first(),
-            env.DB.prepare(`SELECT COUNT(*) as count FROM matches WHERE team_id = ?`).bind(tenant).first(),
+            env.DB.prepare(`SELECT COUNT(*) as count FROM results WHERE tenant_id = ?`).bind(tenant).first(),
             env.DB.prepare(`SELECT COUNT(*) as count FROM squad WHERE tenant_id = ?`).bind(tenant).first(),
             env.DB.prepare(`SELECT COUNT(*) as count FROM match_events WHERE tenant_id = ?`).bind(tenant).first(),
         ]);

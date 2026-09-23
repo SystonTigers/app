@@ -1,4 +1,5 @@
 
+import { outcomeFromScores } from "../services/results";
 import { z } from 'zod';
 import { requireJWT } from '../services/auth';
 import { json } from '../services/util';
@@ -86,32 +87,30 @@ export async function handleSaveMatchReport(req: Request, env: any, id: string):
         if (fixture) {
             // Upsert Result based on fixture data
             // strict match on date/opponent might be brittle but it's what we have in `fixtures.ts`
+            // our_score = homeScore / their_score = awayScore, as elsewhere in the report flow
+            const { result, points } = outcomeFromScores(report.homeScore, report.awayScore);
             batch.push(
                 db.prepare(`
-              INSERT INTO team_results (id, tenant_id, match_date, opponent, venue, competition, our_score, their_score, scorers)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+              INSERT INTO team_results (tenant_id, match_date, opponent, venue, competition, our_score, their_score, result, points, scorers)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
               ON CONFLICT(tenant_id, match_date, opponent) DO UPDATE SET
                 our_score = excluded.our_score,
                 their_score = excluded.their_score,
+                result = excluded.result,
+                points = excluded.points,
                 scorers = excluded.scorers
             `).bind(
-                    // We need a stable ID for the result. If it doesn't exist, new UUID.
-                    // We can't easily guess it.
-                    // For ON CONFLICT to work, we need a unique constraint on (tenant_id, match_date, opponent).
-                    // I recall `fixtures.ts` uses `ON CONFLICT(match_date, opponent)` but checking `001_create_fixtures_tables.sql` would be wise.
-                    // Let's assume we just create a result record or update it.
-                    // Actually, `fixtures.ts` `handleAddResult` uses `ON CONFLICT(match_date, opponent)`.
-                    // So if we use the same date/opponent, it handles it.
-                    crypto.randomUUID(),
                     tenantId,
                     fixture.fixture_date,
                     fixture.opponent,
-                    fixture.venue,
-                    fixture.competition,
-                    report.homeScore,
-                    report.awayScore,
-                    // Generate string summary of scorers for legacy support
-                    report.events.filter(e => e.eventType === 'goal').map(e => e.playerId).join(', ') // naive, need names
+                    fixture.venue || 'TBC',
+                    fixture.competition || 'League',
+                    Number(report.homeScore) || 0,
+                    Number(report.awayScore) || 0,
+                    result,
+                    points,
+                    // Legacy text summary of scorers (player ids)
+                    report.events.filter(e => e.eventType === 'goal').map(e => e.playerId).join(', ')
                 )
             );
 

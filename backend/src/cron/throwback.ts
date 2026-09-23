@@ -87,14 +87,15 @@ async function createThrowbackPost(env: Env, config: any, now: any) {
 
 // Find old photos for throwback
 async function findThrowbackPhoto(env: Env, tenant: string, now: any) {
-  const oneYearAgo = now.minus({ years: 1 }).toMillis();
+  // albums.event_date / photos.uploaded_at are ISO-style text, so compare as text
+  const oneYearAgo = now.minus({ years: 1 }).toISODate();
 
   const result = await env.DB.prepare(`
-        SELECT g.*, a.name as album_name, a.date as album_date
-        FROM gallery_photos g
-        LEFT JOIN gallery_albums a ON g.album_id = a.id
-        WHERE g.tenant_id = ?
-        AND (a.date < ? OR g.created_at < ?)
+        SELECT p.*, a.title as album_name, a.event_date as album_date
+        FROM photos p
+        LEFT JOIN albums a ON p.album_id = a.id
+        WHERE p.tenant_id = ?
+        AND (a.event_date < ? OR p.uploaded_at < ?)
         ORDER BY RANDOM()
         LIMIT 10
     `).bind(tenant, oneYearAgo, oneYearAgo).all();

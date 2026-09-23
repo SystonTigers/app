@@ -59,7 +59,7 @@ export async function notifyTenantAdmins(
         const { results } = await env.DB.prepare(`
             SELECT d.token 
             FROM devices d
-            JOIN users u ON d.user_id = u.id
+            JOIN auth_users u ON d.user_id = u.id
             WHERE d.tenant_id = ?
             AND u.roles LIKE '%admin%'
         `).bind(tenantId).all();

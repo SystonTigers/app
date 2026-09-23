@@ -139,7 +139,7 @@ async function createWeeklyRoundup(env: Env, config: any): Promise<boolean> {
       p.name as player_name,
       COUNT(*) as goals
     FROM match_events me
-    INNER JOIN squad_players p ON me.player_id = p.id AND p.tenant_id = ?
+    INNER JOIN squad p ON me.player_id = p.id AND p.tenant_id = ?
     WHERE me.tenant_id = ?
     AND me.event_type = 'goal'
     AND me.created_at >= ?
@@ -211,7 +211,7 @@ async function createSeasonStartPost(env: Env, config: any) {
 
   // Get squad size
   const squad = await env.DB.prepare(
-    'SELECT COUNT(*) as count FROM squad_players WHERE tenant_id = ?'
+    'SELECT COUNT(*) as count FROM squad WHERE tenant_id = ?'
   ).bind(tenant).first();
 
   // Get first fixture
@@ -289,7 +289,7 @@ async function createMidSeasonReview(env: Env, config: any) {
       p.name,
       COUNT(*) as goals
     FROM match_events me
-    INNER JOIN squad_players p ON me.player_id = p.id AND p.tenant_id = ?
+    INNER JOIN squad p ON me.player_id = p.id AND p.tenant_id = ?
     WHERE me.tenant_id = ? AND me.event_type = 'goal'
     GROUP BY me.player_id
     ORDER BY goals DESC
@@ -373,7 +373,7 @@ async function createSeasonEndSummary(env: Env, config: any) {
       p.name,
       COUNT(*) as goals
     FROM match_events me
-    INNER JOIN squad_players p ON me.player_id = p.id AND p.tenant_id = ?
+    INNER JOIN squad p ON me.player_id = p.id AND p.tenant_id = ?
     WHERE me.tenant_id = ? AND me.event_type = 'goal'
     GROUP BY me.player_id
     ORDER BY goals DESC
@@ -386,7 +386,7 @@ async function createSeasonEndSummary(env: Env, config: any) {
       p.name,
       COUNT(*) as assists
     FROM match_events me
-    INNER JOIN squad_players p ON me.player_id = p.id AND p.tenant_id = ?
+    INNER JOIN squad p ON me.player_id = p.id AND p.tenant_id = ?
     WHERE me.tenant_id = ? AND me.event_type = 'assist'
     GROUP BY me.player_id
     ORDER BY assists DESC

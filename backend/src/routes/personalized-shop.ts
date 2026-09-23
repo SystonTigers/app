@@ -45,7 +45,7 @@ export async function handleGetPersonalizedProducts(req: Request, env: any, cors
 
         if (playerId) {
             const player = await env.DB.prepare(
-                'SELECT name, squad_number FROM players WHERE id = ?'
+                'SELECT name, number AS squad_number FROM squad WHERE id = ?'
             ).bind(playerId).first();
 
             if (player) {
@@ -56,7 +56,7 @@ export async function handleGetPersonalizedProducts(req: Request, env: any, cors
 
         // Get tenant/club info
         const tenant = await env.DB.prepare(
-            'SELECT name, logo_url FROM tenants WHERE id = ?'
+            'SELECT t.name, b.badge_url AS logo_url FROM tenants t LEFT JOIN tenant_brand b ON b.tenant_id = t.id WHERE t.id = ?'
         ).bind(tenantId).first();
 
         // Get Printify templates
@@ -517,7 +517,7 @@ export async function handleConfirmShopOrder(req: Request, env: any, corsHdrs: H
 async function fulfillOrder(order: any, env: any) {
     // 1. Parse items
     const items = JSON.parse(order.items_json);
-    const tenant = await env.DB.prepare('SELECT name, logo_url FROM tenants WHERE id = ?').bind(order.tenant_id).first();
+    const tenant = await env.DB.prepare('SELECT t.name, b.badge_url AS logo_url FROM tenants t LEFT JOIN tenant_brand b ON b.tenant_id = t.id WHERE t.id = ?').bind(order.tenant_id).first();
 
     const lineItems: any[] = [];
 

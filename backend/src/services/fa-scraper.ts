@@ -564,14 +564,14 @@ export async function syncFixturesToDB(
         SELECT id FROM fixtures 
         WHERE tenant_id = ? 
         AND opponent = ? 
-        AND date = ?
+        AND fixture_date = ?
       `).bind(tenantId, fixture.opponent, fixture.date).first();
 
             if (existing) {
                 // Update existing fixture
                 await env.DB.prepare(`
           UPDATE fixtures SET
-            time = ?,
+            kick_off_time = ?,
             home_team = ?,
             away_team = ?,
             venue = ?,
@@ -600,7 +600,7 @@ export async function syncFixturesToDB(
                 // Insert new fixture
                 await env.DB.prepare(`
           INSERT INTO fixtures (
-            id, tenant_id, date, time, home_team, away_team, opponent,
+            id, tenant_id, fixture_date, kick_off_time, home_team, away_team, opponent,
             venue, competition, status, home_score, away_score, source,
             created_at, updated_at
           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)

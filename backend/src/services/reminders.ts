@@ -1,56 +1,70 @@
 import { sendEventReminderEmail } from '../lib/email';
 
-export async function sendEventReminders(env: any, tenantId: string) {
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const tomorrowStart = Math.floor(tomorrow.setHours(0, 0, 0, 0) / 1000);
-  const tomorrowEnd = Math.floor(tomorrow.setHours(23, 59, 59, 999) / 1000);
+type Row = Record<string, any>;
 
-  // 1. Matches
-  const { results: matches } = await env.DB.prepare(`
-    SELECT * FROM matches 
-    WHERE team_id = ? AND date_utc BETWEEN ? AND ? 
-    AND status = 'scheduled'
-  `).bind(tenantId, tomorrowStart, tomorrowEnd).all();
+/** YYYY-MM-DD for tomorrow (UTC). Fixture and event dates are stored as ISO text. */
+function tomorrowIsoDate(now: Date = new Date()): string {
+  const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
+  return d.toISOString().slice(0, 10);
+}
 
-  // 2. Events
+/**
+ * Email reminders for tomorrow's fixtures and calendar events.
+ * - Fixtures: every squad member's parent email on file.
+ * - Calendar events: members who RSVP'd yes/maybe.
+ * Runs from the daily cron; one tenant per call.
+ */
+export async function sendEventReminders(env: any, tenantId: string, now: Date = new Date()) {
+  const day = tomorrowIsoDate(now);
+
+  const tenant = await env.DB.prepare('SELECT name FROM tenants WHERE id = ?').bind(tenantId).first() as Row | null;
+  const clubName: string = tenant?.name || 'Your club';
+
+  const { results: fixtures } = await env.DB.prepare(`
+    SELECT id, opponent, fixture_date, kick_off_time, venue
+    FROM fixtures
+    WHERE tenant_id = ? AND fixture_date = ? AND status = 'scheduled'
+  `).bind(tenantId, day).all();
+
   const { results: events } = await env.DB.prepare(`
-    SELECT * FROM events 
-    WHERE tenant_id = ? AND start_time BETWEEN ? AND ? 
-  `).bind(tenantId, tomorrowStart, tomorrowEnd).all();
+    SELECT id, title, start_time, location
+    FROM calendar_events
+    WHERE tenant_id = ? AND substr(start_time, 1, 10) = ?
+  `).bind(tenantId, day).all();
 
-  console.log(`[Reminders] Found ${matches?.length || 0} matches and ${events?.length || 0} events for tomorrow`);
+  let sent = 0;
 
-  const allItems = [...(matches || []).map((m: any) => ({ ...m, type: 'match' })), ...(events || []).map((e: any) => ({ ...e, type: 'event' }))];
+  if ((fixtures || []).length > 0) {
+    const { results: parents } = await env.DB.prepare(`
+      SELECT DISTINCT parent_email, name
+      FROM squad
+      WHERE tenant_id = ? AND parent_email IS NOT NULL AND parent_email != ''
+    `).bind(tenantId).all();
 
-  for (const item of allItems) {
-    // Get Attendees
-    const table = item.type === 'match' ? 'match_squad' : 'event_attendees';
-    const idCol = item.type === 'match' ? 'match_id' : 'event_id';
-
-    const { results: attendees } = await env.DB.prepare(`
-        SELECT p.parent_email, p.name 
-        FROM ${table} a
-        JOIN players p ON a.player_id = p.id
-        WHERE a.${idCol} = ? AND a.status IN ('selected', 'going', 'maybe')
-      `).bind(item.id).all();
-
-    if (attendees && attendees.length > 0) {
-      for (const attendee of attendees) {
-        if (attendee.parent_email) {
-          await sendEventReminderEmail(
-            attendee.parent_email,
-            `Parent of ${attendee.name}`,
-            item.type === 'match' ? `Match vs ${item.opponent}` : item.title,
-            new Date((item.date_utc || item.start_time) * 1000).toLocaleString(),
-            item.venue || 'TBC',
-            item.tenant_id, // TODO: resolve club name better
-            env
-          );
-        }
+    for (const fixture of fixtures as Row[]) {
+      const when = `${fixture.fixture_date}${fixture.kick_off_time ? ` ${fixture.kick_off_time}` : ''}`;
+      for (const p of (parents || []) as Row[]) {
+        await sendEventReminderEmail(p.parent_email, `Parent of ${p.name}`, `Match vs ${fixture.opponent}`, when, fixture.venue || 'TBC', clubName, env);
+        sent++;
       }
     }
   }
 
-  return { ok: true, sent: allItems.length };
+  for (const event of (events || []) as Row[]) {
+    const { results: attendees } = await env.DB.prepare(`
+      SELECT u.email
+      FROM event_rsvps r
+      JOIN auth_users u ON u.id = r.user_id
+      WHERE r.event_id = ? AND r.status IN ('yes', 'maybe')
+    `).bind(event.id).all();
+
+    for (const a of (attendees || []) as Row[]) {
+      if (!a.email) { continue; }
+      await sendEventReminderEmail(a.email, a.email, event.title, event.start_time, event.location || 'TBC', clubName, env);
+      sent++;
+    }
+  }
+
+  console.log(JSON.stringify({ level: 'info', msg: 'reminders_sent', tenant: tenantId, day, fixtures: fixtures?.length || 0, events: events?.length || 0, sent }));
+  return { ok: true, sent };
 }

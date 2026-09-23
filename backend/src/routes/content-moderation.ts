@@ -127,8 +127,8 @@ export async function handleGetReports(req: Request, env: any, corsHdrs: Headers
       SELECT 
         r.*,
         CASE 
-          WHEN r.content_type = 'post' THEN (SELECT content FROM posts WHERE id = r.content_id LIMIT 1)
-          WHEN r.content_type = 'comment' THEN (SELECT content FROM comments WHERE id = r.content_id LIMIT 1)
+          WHEN r.content_type = 'post' THEN (SELECT content FROM feed_posts WHERE id = r.content_id LIMIT 1)
+          WHEN r.content_type = 'comment' THEN (SELECT content FROM discussion_comments WHERE id = r.content_id LIMIT 1)
           ELSE NULL
         END as content_preview,
         u.email as reporter_email

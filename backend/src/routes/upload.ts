@@ -38,7 +38,7 @@ export async function handleUploadHeadshot(req: Request, env: any, corsHdrs: Hea
 
         // Verify player belongs to tenant
         const player = await env.DB.prepare(
-            'SELECT id FROM players WHERE id = ? AND tenant_id = ?'
+            'SELECT id FROM squad WHERE id = ? AND tenant_id = ?'
         ).bind(playerId, tenantId).first();
 
         if (!player) {
@@ -62,7 +62,7 @@ export async function handleUploadHeadshot(req: Request, env: any, corsHdrs: Hea
 
         // Update player record
         await env.DB.prepare(`
-            UPDATE players 
+            UPDATE squad 
             SET headshot_url = ?, headshot_uploaded_at = unixepoch()
             WHERE id = ?
         `).bind(headshotUrl, playerId).run();
@@ -94,7 +94,7 @@ export async function handleDeleteHeadshot(req: Request, env: any, corsHdrs: Hea
 
         // Verify player belongs to tenant
         const player = await env.DB.prepare(
-            'SELECT id, headshot_url FROM players WHERE id = ? AND tenant_id = ?'
+            'SELECT id, headshot_url FROM squad WHERE id = ? AND tenant_id = ?'
         ).bind(playerId, tenantId).first();
 
         if (!player) {
@@ -113,7 +113,7 @@ export async function handleDeleteHeadshot(req: Request, env: any, corsHdrs: Hea
 
         // Clear URL in database
         await env.DB.prepare(`
-            UPDATE players SET headshot_url = NULL, headshot_uploaded_at = NULL WHERE id = ?
+            UPDATE squad SET headshot_url = NULL, headshot_uploaded_at = NULL WHERE id = ?
         `).bind(playerId).run();
 
         return json({ success: true }, 200, corsHdrs);

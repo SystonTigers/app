@@ -503,7 +503,7 @@ export async function handleListStaffChildren(req: Request, env: any, corsHdrs: 
         const { results: links } = await env.DB.prepare(`
             SELECT sc.*, p.name as player_name
             FROM staff_children sc
-            JOIN players p ON sc.player_id = p.id
+            JOIN squad p ON sc.player_id = p.id
             WHERE sc.tenant_id = ?
             ORDER BY sc.created_at DESC
         `).bind(tenantId).all();

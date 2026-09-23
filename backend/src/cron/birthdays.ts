@@ -68,10 +68,10 @@ async function checkBirthdays(
 
   // Get players with birthdays today from D1
   const birthdayPlayers = await env.DB.prepare(`
-    SELECT id, name, photo_url, position, birthday
-    FROM squad_players
+    SELECT id, name, photo_url, position, dob AS birthday
+    FROM squad
     WHERE tenant_id = ?
-    AND strftime('%m-%d', birthday) = ?
+    AND strftime('%m-%d', dob) = ?
   `).bind(tenant, today).all();
 
   // Also check KV squad data for players with birthdays

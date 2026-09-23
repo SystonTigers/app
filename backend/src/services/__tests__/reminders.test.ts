@@ -10,71 +10,79 @@ import { sendEventReminderEmail } from "../../lib/email";
 type Row = Record<string, unknown>;
 
 /** Minimal D1 mock: answers each prepare() by matching the SQL text. */
-function makeEnv(data: { matches?: Row[]; events?: Row[]; attendees?: Row[] }) {
-    const binds: unknown[][] = [];
+function makeEnv(data: { fixtures?: Row[]; events?: Row[]; parents?: Row[]; attendees?: Row[] }) {
+    const binds: Array<{ sql: string; args: unknown[] }> = [];
     const prepare = vi.fn((sql: string) => ({
         bind: (...args: unknown[]) => {
-            binds.push(args);
+            binds.push({ sql, args });
             return {
+                first: async () => ({ name: "Syston Tigers" }),
                 all: async () => {
-                    if (sql.includes("FROM matches")) return { results: data.matches ?? [] };
-                    if (sql.includes("FROM events")) return { results: data.events ?? [] };
-                    return { results: data.attendees ?? [] };
+                    if (sql.includes("FROM fixtures")) return { results: data.fixtures ?? [] };
+                    if (sql.includes("FROM calendar_events")) return { results: data.events ?? [] };
+                    if (sql.includes("FROM squad")) return { results: data.parents ?? [] };
+                    if (sql.includes("FROM event_rsvps")) return { results: data.attendees ?? [] };
+                    return { results: [] };
                 },
             };
         },
     }));
-    return { env: { DB: { prepare } }, binds, prepare };
+    return { env: { DB: { prepare } }, binds };
 }
+
+const NOW = new Date("2026-09-25T10:00:00Z"); // tomorrow = 2026-09-26
 
 describe("Reminders Service", () => {
     beforeEach(() => {
         vi.mocked(sendEventReminderEmail).mockClear();
     });
 
-    it("returns ok with zero items when nothing is scheduled tomorrow", async () => {
+    it("sends nothing when nothing is on tomorrow", async () => {
         const { env } = makeEnv({});
-        const result = await sendEventReminders(env, "tenant-a");
+        const result = await sendEventReminders(env, "tenant-a", NOW);
 
         expect(result).toEqual({ ok: true, sent: 0 });
         expect(sendEventReminderEmail).not.toHaveBeenCalled();
     });
 
-    it("scopes match and event queries to the tenant", async () => {
+    it("scopes queries to the tenant and tomorrow's date", async () => {
         const { env, binds } = makeEnv({});
-        await sendEventReminders(env, "tenant-a");
+        await sendEventReminders(env, "tenant-a", NOW);
 
-        expect(binds[0][0]).toBe("tenant-a");
-        expect(binds[1][0]).toBe("tenant-a");
+        const fixtureQuery = binds.find((b) => b.sql.includes("FROM fixtures"))!;
+        expect(fixtureQuery.args).toEqual(["tenant-a", "2026-09-26"]);
+        const eventQuery = binds.find((b) => b.sql.includes("FROM calendar_events"))!;
+        expect(eventQuery.args).toEqual(["tenant-a", "2026-09-26"]);
     });
 
-    it("emails parents of selected players for a match", async () => {
+    it("emails every parent on file about a fixture", async () => {
         const { env } = makeEnv({
-            matches: [{ id: "m1", opponent: "Rovers", date_utc: 1_800_000_000, venue: "Home", tenant_id: "tenant-a" }],
-            attendees: [
-                { parent_email: "parent@example.com", name: "Sam" },
-                { parent_email: null, name: "No Email" },
+            fixtures: [{ id: "f1", opponent: "Rovers", fixture_date: "2026-09-26", kick_off_time: "10:30", venue: "Home" }],
+            parents: [
+                { parent_email: "a@example.com", name: "Sam" },
+                { parent_email: "b@example.com", name: "Alex" },
             ],
         });
 
-        const result = await sendEventReminders(env, "tenant-a");
+        const result = await sendEventReminders(env, "tenant-a", NOW);
 
-        expect(result).toEqual({ ok: true, sent: 1 });
-        expect(sendEventReminderEmail).toHaveBeenCalledTimes(1);
+        expect(result).toEqual({ ok: true, sent: 2 });
         const args = vi.mocked(sendEventReminderEmail).mock.calls[0];
-        expect(args[0]).toBe("parent@example.com");
+        expect(args[0]).toBe("a@example.com");
         expect(args[2]).toBe("Match vs Rovers");
-        expect(args[4]).toBe("Home");
+        expect(args[3]).toBe("2026-09-26 10:30");
+        expect(args[5]).toBe("Syston Tigers");
     });
 
-    it("uses the event title and TBC venue for events", async () => {
+    it("emails members who RSVP'd to a calendar event", async () => {
         const { env } = makeEnv({
-            events: [{ id: "e1", title: "Presentation Night", start_time: 1_800_000_000, tenant_id: "tenant-a" }],
-            attendees: [{ parent_email: "p@example.com", name: "Alex" }],
+            events: [{ id: "e1", title: "Presentation Night", start_time: "2026-09-26T19:00", location: null }],
+            attendees: [{ email: "p@example.com" }, { email: null }],
         });
 
-        await sendEventReminders(env, "tenant-a");
+        const result = await sendEventReminders(env, "tenant-a", NOW);
 
+        expect(result.sent).toBe(1);
         const args = vi.mocked(sendEventReminderEmail).mock.calls[0];
         expect(args[2]).toBe("Presentation Night");
         expect(args[4]).toBe("TBC");

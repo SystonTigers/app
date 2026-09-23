@@ -22,7 +22,7 @@ export async function handlePlayerPhotoUpload(req: Request, env: any, corsHdrs: 
 
         // Store metadata in D1
         await env.DB.prepare(
-            `UPDATE squad_players SET photo_url = ? WHERE id = ? AND tenant_id = ?`
+            `UPDATE squad SET photo_url = ? WHERE id = ? AND tenant_id = ?`
         ).bind(key, playerId, claims.tenantId).run();
 
         return json({ success: true, photoUrl: key }, 200, corsHdrs);
@@ -38,7 +38,7 @@ export async function handlePlayerPhotoDelete(req: Request, env: any, corsHdrs: 
 
         // Get current photo URL
         const player = await env.DB.prepare(
-            `SELECT photo_url FROM squad_players WHERE id = ? AND tenant_id = ?`
+            `SELECT photo_url FROM squad WHERE id = ? AND tenant_id = ?`
         ).bind(playerId, claims.tenantId).first();
 
         if (player && player.photo_url) {
@@ -47,7 +47,7 @@ export async function handlePlayerPhotoDelete(req: Request, env: any, corsHdrs: 
 
             // Clear from DB
             await env.DB.prepare(
-                `UPDATE squad_players SET photo_url = NULL WHERE id = ? AND tenant_id = ?`
+                `UPDATE squad SET photo_url = NULL WHERE id = ? AND tenant_id = ?`
             ).bind(playerId, claims.tenantId).run();
         }
 
@@ -107,7 +107,7 @@ export async function handleGetPlayer(req: Request, env: any, corsHdrs: Headers,
                 contact1_relationship, contact1_name, contact1_phone, contact1_email,
                 contact2_relationship, contact2_name, contact2_phone, contact2_email,
                 contact3_relationship, contact3_name, contact3_phone, contact3_email
-            FROM players
+            FROM squad
             WHERE id = ? AND tenant_id = ?
         `).bind(playerId, claims.tenantId).first();
 
@@ -115,7 +115,7 @@ export async function handleGetPlayer(req: Request, env: any, corsHdrs: Headers,
         if (!player) {
             const squadPlayer = await env.DB.prepare(`
                 SELECT id, name, number, position, dob, photo_url, role
-                FROM squad_players
+                FROM squad
                 WHERE id = ? AND tenant_id = ?
             `).bind(playerId, claims.tenantId).first();
 
@@ -165,7 +165,7 @@ export async function handleUpdatePlayer(req: Request, env: any, corsHdrs: Heade
         // Try players table first
         values.push(playerId, claims.tenantId);
         const result = await env.DB.prepare(`
-            UPDATE players SET ${updates.join(', ')} WHERE id = ? AND tenant_id = ?
+            UPDATE squad SET ${updates.join(', ')} WHERE id = ? AND tenant_id = ?
         `).bind(...values).run();
 
         // If no rows updated, try squad_players (for basic fields only)
@@ -184,7 +184,7 @@ export async function handleUpdatePlayer(req: Request, env: any, corsHdrs: Heade
             if (basicUpdates.length > 0) {
                 basicValues.push(playerId, claims.tenantId);
                 await env.DB.prepare(`
-                    UPDATE squad_players SET ${basicUpdates.join(', ')} WHERE id = ? AND tenant_id = ?
+                    UPDATE squad SET ${basicUpdates.join(', ')} WHERE id = ? AND tenant_id = ?
                 `).bind(...basicValues).run();
             }
         }
@@ -218,7 +218,7 @@ export async function handleRegenerateCode(req: Request, env: any, corsHdrs: Hea
 
         // Update player
         const result = await env.DB.prepare(`
-            UPDATE players SET login_code = ? WHERE id = ? AND tenant_id = ?
+            UPDATE squad SET login_code = ? WHERE id = ? AND tenant_id = ?
         `).bind(newCode, playerId, claims.tenantId).run();
 
         // Also try squad_players if players update didn't work
@@ -226,7 +226,7 @@ export async function handleRegenerateCode(req: Request, env: any, corsHdrs: Hea
             // Check if column exists, if not just return the code anyway
             try {
                 await env.DB.prepare(`
-                    UPDATE squad_players SET login_code = ? WHERE id = ? AND tenant_id = ?
+                    UPDATE squad SET login_code = ? WHERE id = ? AND tenant_id = ?
                 `).bind(newCode, playerId, claims.tenantId).run();
             } catch {
                 // Column might not exist in squad_players, that's ok

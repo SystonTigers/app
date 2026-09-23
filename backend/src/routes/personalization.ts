@@ -135,7 +135,7 @@ export async function handleGenerateDesign(req: Request, env: any, corsHdrs: Hea
 
         // Get club info
         const tenant = await env.DB.prepare(
-            'SELECT name, logo_url FROM tenants WHERE id = ?'
+            'SELECT t.name, b.badge_url AS logo_url FROM tenants t LEFT JOIN tenant_brand b ON b.tenant_id = t.id WHERE t.id = ?'
         ).bind(tenantId).first();
 
         // Get player info if playerId provided
@@ -144,7 +144,7 @@ export async function handleGenerateDesign(req: Request, env: any, corsHdrs: Hea
 
         if (body.playerId) {
             const player = await env.DB.prepare(
-                'SELECT name, squad_number FROM players WHERE id = ? AND tenant_id = ?'
+                'SELECT name, number AS squad_number FROM squad WHERE id = ? AND tenant_id = ?'
             ).bind(body.playerId, tenantId).first();
 
             if (player) {
@@ -248,7 +248,7 @@ export async function handleCreatePersonalizedOrder(req: Request, env: any, cors
 
         // 1. Get club info
         const tenant = await env.DB.prepare(
-            'SELECT name, logo_url FROM tenants WHERE id = ?'
+            'SELECT t.name, b.badge_url AS logo_url FROM tenants t LEFT JOIN tenant_brand b ON b.tenant_id = t.id WHERE t.id = ?'
         ).bind(tenantId).first();
 
         // 2. Get player info if provided
@@ -257,7 +257,7 @@ export async function handleCreatePersonalizedOrder(req: Request, env: any, cors
 
         if (body.playerId) {
             const player = await env.DB.prepare(
-                'SELECT name, squad_number FROM players WHERE id = ? AND tenant_id = ?'
+                'SELECT name, number AS squad_number FROM squad WHERE id = ? AND tenant_id = ?'
             ).bind(body.playerId, tenantId).first();
 
             if (player) {
@@ -397,7 +397,7 @@ export async function handleGetPlayerPreview(req: Request, env: any, corsHdrs: H
 
         // Get player info
         const player = await env.DB.prepare(
-            'SELECT name, squad_number FROM players WHERE id = ? AND tenant_id = ?'
+            'SELECT name, number AS squad_number FROM squad WHERE id = ? AND tenant_id = ?'
         ).bind(playerId, tenantId).first();
 
         if (!player) {
@@ -406,7 +406,7 @@ export async function handleGetPlayerPreview(req: Request, env: any, corsHdrs: H
 
         // Get club info
         const tenant = await env.DB.prepare(
-            'SELECT name, logo_url FROM tenants WHERE id = ?'
+            'SELECT t.name, b.badge_url AS logo_url FROM tenants t LEFT JOIN tenant_brand b ON b.tenant_id = t.id WHERE t.id = ?'
         ).bind(tenantId).first();
 
         // Generate preview SVG
