@@ -10,7 +10,7 @@ interface SectionHeaderProps {
 
 export function SectionHeader({ title, subtitle }: SectionHeaderProps) {
   return (
-    <View style={{ marginBottom: spacing(1.5) }}>
+    <View style={{ marginBottom: spacing.lg }}>
       <Text style={styles.title}>{title}</Text>
       {subtitle ? <Text style={styles.sub}>{subtitle}</Text> : null}
     </View>
@@ -20,14 +20,14 @@ export function SectionHeader({ title, subtitle }: SectionHeaderProps) {
 const styles = StyleSheet.create({
   title: {
     color: colors.text,
-    fontSize: fonts.sizes.h2,
-    fontFamily: fonts.family,
+    fontSize: fonts.fontSize.lg,
+    fontFamily: fonts.fontFamily.regular,
     fontWeight: '700',
     letterSpacing: 0.2,
   },
   sub: {
-    color: colors.textDim,
+    color: colors.textTertiary,
     marginTop: 4,
-    fontSize: fonts.sizes.sm,
+    fontSize: fonts.fontSize.sm,
   },
 });

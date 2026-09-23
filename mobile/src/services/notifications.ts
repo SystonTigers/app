@@ -1,7 +1,12 @@
 import * as Notifications from 'expo-notifications';
 import * as Location from 'expo-location';
+import * as Device from 'expo-device';
 import { Platform } from 'react-native';
-import api, { API_BASE_URL, TENANT_ID } from '../config';
+import { API_BASE_URL, TENANT_ID } from '../config';
+import { apiClient } from './api';
+
+// Use the shared axios client so auth headers are injected automatically
+const api = apiClient;
 
 // Configure notification handler
 Notifications.setNotificationHandler({
@@ -9,6 +14,8 @@ Notifications.setNotificationHandler({
     shouldShowAlert: true,
     shouldPlaySound: true,
     shouldSetBadge: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
   }),
 });
 
@@ -263,9 +270,6 @@ class NotificationService {
     return distance <= 500; // 500m radius
   }
 }
-
-// Fix: Add Device import for isDevice check
-import * as Device from 'expo-device';
 
 // Export singleton instance
 export const notificationService = new NotificationService();

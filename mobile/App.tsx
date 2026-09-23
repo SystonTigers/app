@@ -4,14 +4,29 @@ import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer } from '@react-navigation/native';
 import { createDrawerNavigator } from '@react-navigation/drawer';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Provider as PaperProvider, DefaultTheme, MD3DarkTheme } from 'react-native-paper';
+import { Provider as PaperProvider, MD3DarkTheme } from 'react-native-paper';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { ThemeProvider } from './src/theme/ThemeContext';
 import { AuthProvider } from './src/context/AuthContext';
-import { paperTheme } from './src/theme/defaultThemes';
 import { COLORS } from './src/config';
+
+// Build a react-native-paper theme from our design tokens
+const paperTheme = {
+  ...MD3DarkTheme,
+  colors: {
+    ...MD3DarkTheme.colors,
+    primary: COLORS.primary,
+    background: COLORS.background,
+    surface: COLORS.surface,
+    onSurface: COLORS.text,
+    onBackground: COLORS.text,
+    border: '#2F3439',
+    text: COLORS.text,
+    textSecondary: COLORS.textLight,
+  },
+};
 
 import CustomDrawerContent from './src/components/CustomDrawerContent';
 
@@ -70,7 +85,7 @@ function TabNavigator() {
         headerShown: false,
         tabBarStyle: {
           backgroundColor: COLORS.surface,
-          borderTopColor: COLORS.border,
+          borderTopColor: '#2F3439',
         },
         tabBarActiveTintColor: COLORS.primary,
         tabBarInactiveTintColor: COLORS.textLight,
@@ -185,7 +200,16 @@ export default function App() {
                 <Drawer.Screen name="ManageEvents" component={ManageEventsScreen} options={{ title: 'Manage Events' }} />
                 <Drawer.Screen name="ManageMOTM" component={ManageMOTMScreen} options={{ title: 'Manage MOTM' }} />
                 <Drawer.Screen name="ManagePlayerImages" component={ManagePlayerImagesScreen} options={{ title: 'Player Images' }} />
-                <Drawer.Screen name="PushNotificationsSetup" component={PushNotificationsSetupScreen} options={{ title: 'Push Notifications' }} />
+                <Drawer.Screen
+                  name="PushNotificationsSetup"
+                  options={{ title: 'Push Notifications' }}
+                  children={({ navigation }: any) => (
+                    <PushNotificationsSetupScreen
+                      onComplete={() => navigation.goBack()}
+                      onSkip={() => navigation.goBack()}
+                    />
+                  )}
+                />
                 <Drawer.Screen name="AutoPostsMatrix" component={AutoPostsMatrixScreen} options={{ title: 'Auto Posts' }} />
 
                 {/* Settings Group */}
@@ -205,11 +229,47 @@ export default function App() {
                 <Drawer.Screen name="ScoutNotes" component={ScoutNotesScreen} options={{ title: 'Scout Report' }} />
                 <Drawer.Screen name="Carpool" component={CarpoolScreen} options={{ title: 'Carpool' }} />
 
-                {/* Auth Screens (Hidden from Drawer via CustomContent logic) */}
-                <Drawer.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
-                <Drawer.Screen name="Register" component={RegisterScreen} options={{ headerShown: false }} />
-                <Drawer.Screen name="ForgotPassword" component={ForgotPasswordScreen} options={{ headerShown: false }} />
-                <Drawer.Screen name="Onboarding" component={OnboardingScreen} options={{ headerShown: false }} />
+                {/* Auth Screens — wrapped to bridge custom props to drawer navigation props */}
+                <Drawer.Screen
+                  name="Login"
+                  options={{ headerShown: false }}
+                  children={({ navigation }: any) => (
+                    <LoginScreen
+                      onLogin={() => navigation.navigate('TabNavigator')}
+                      onNavigateToRegister={() => navigation.navigate('Register')}
+                      onForgotPassword={() => navigation.navigate('ForgotPassword')}
+                    />
+                  )}
+                />
+                <Drawer.Screen
+                  name="Register"
+                  options={{ headerShown: false }}
+                  children={({ navigation }: any) => (
+                    <RegisterScreen
+                      onRegister={() => navigation.navigate('TabNavigator')}
+                      onNavigateToLogin={() => navigation.navigate('Login')}
+                    />
+                  )}
+                />
+                <Drawer.Screen
+                  name="ForgotPassword"
+                  options={{ headerShown: false }}
+                  children={({ navigation }: any) => (
+                    <ForgotPasswordScreen
+                      onBack={() => navigation.goBack()}
+                      onCodeSent={() => navigation.navigate('Login')}
+                    />
+                  )}
+                />
+                <Drawer.Screen
+                  name="Onboarding"
+                  options={{ headerShown: false }}
+                  children={({ navigation }: any) => (
+                    <OnboardingScreen
+                      onComplete={() => navigation.navigate('TabNavigator')}
+                    />
+                  )}
+                />
 
               </Drawer.Navigator>
             </NavigationContainer>

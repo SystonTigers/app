@@ -3,7 +3,7 @@ import { View, ScrollView, StyleSheet, TouchableOpacity, Dimensions, Linking, Al
 import { Card, Title, Paragraph, Button, Chip, List, IconButton, ProgressBar } from 'react-native-paper';
 import { Video, ResizeMode } from 'expo-av';
 import { COLORS } from '../config';
-import { fixturesApi, videosApi, gotmApi, squadApi } from '../services/api';
+import { fixturesApi, videosApi, motmApi, squadApi } from '../services/api';
 
 const { width } = Dimensions.get('window');
 

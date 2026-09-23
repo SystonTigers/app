@@ -9,11 +9,14 @@ import {
   darkTheme as baseDarkTheme,
   createCustomTheme,
 } from './theme/defaultThemes';
+// Import directly from the types file to avoid a circular reference:
+// src/theme.ts importing from './theme' would resolve to itself (the ./theme/ directory
+// index re-exports everything from ./theme/types, but TS sees src/theme.ts as ./theme).
 import type {
   Theme as BaseTheme,
   ThemeColors,
   TenantThemeConfig,
-} from './theme';
+} from './theme/types';
 
 /**
  * Additional design tokens layered on top of the shared theme contract.
@@ -86,7 +89,15 @@ export interface Theme extends BaseTheme {
   metadata: ThemeMetadata;
 }
 
-interface TenantThemePayload extends TenantThemeConfig {
+// TenantThemePayload is a superset of TenantThemeConfig with optional fields.
+// We intentionally do NOT extend TenantThemeConfig here so that all properties
+// are optional — the payload from the API may be partially filled.
+interface TenantThemePayload {
+  primaryColor?: string;
+  secondaryColor?: string;
+  accentColor?: string;
+  customColors?: Partial<ThemeColors>;
+  fontFamily?: string;
   brandName?: string;
   darkMode?: boolean;
 }

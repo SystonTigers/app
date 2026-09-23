@@ -1,34 +1,31 @@
 // lib/sdk.ts
-// SDK singleton for server and client components
+// SDK helpers for server and client components
 
 import { TeamPlatformSDK } from '@team-platform/sdk';
 
-// Server-side SDK instance (cached)
-let serverSDK: TeamPlatformSDK | null = null;
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8787';
 
 /**
- * Get SDK instance for server components
- * Safe to cache as it doesn't hold tenant-specific state
+ * Get an SDK instance scoped to a specific tenant for server components.
+ *
+ * IMPORTANT: Do NOT cache this as a module-level singleton. Next.js server
+ * components can run concurrently, so a mutable shared instance would leak
+ * tenant state between requests. A fresh instance is cheap to create.
  */
 export function getServerSDK(tenantId: string): TeamPlatformSDK {
-  if (!serverSDK) {
-    serverSDK = new TeamPlatformSDK({
-      apiBaseUrl: process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8787',
-      tenantId,
-    });
-  } else {
-    serverSDK.setTenant(tenantId);
-  }
-  return serverSDK;
+  return new TeamPlatformSDK({
+    apiBaseUrl: API_BASE_URL,
+    tenantId,
+  });
 }
 
 /**
- * Create SDK instance for client components
- * Each instance should be scoped to component lifecycle
+ * Create an SDK instance for client components.
+ * Each instance should be scoped to the component lifecycle.
  */
 export function createClientSDK(tenantId: string): TeamPlatformSDK {
   return new TeamPlatformSDK({
-    apiBaseUrl: process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8787',
+    apiBaseUrl: API_BASE_URL,
     tenantId,
   });
 }

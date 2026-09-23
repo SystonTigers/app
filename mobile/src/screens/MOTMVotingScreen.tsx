@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, StyleSheet, Alert, RefreshControl } from 'react-native';
+import { View, ScrollView, StyleSheet, Alert, RefreshControl, Text } from 'react-native';
 import { Card, Title, Paragraph, Button, Chip, ProgressBar, Divider, Avatar, RadioButton } from 'react-native-paper';
 import { COLORS } from '../config';
 import { motmApi } from '../services/api';
@@ -301,3 +301,12 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 });
+
+// TODO: Implement full MOTM voting UI — nominees, vote submission, live results
+export default function MOTMVotingScreen() {
+  return (
+    <View style={styles.container}>
+      <Text style={styles.emptyText}>Man of the Match voting coming soon.</Text>
+    </View>
+  );
+}

@@ -1,17 +1,17 @@
 import React, { createContext, useContext } from 'react';
-import { TeamSDK } from '@team-platform/sdk';
+import { TeamPlatformSDK } from '@team-platform/sdk';
 
 // Initialize SDK with backend URL
 const BASE_URL = 'https://syston-postbus.team-platform-2025.workers.dev';
 const TENANT = 'syston-tigers';
 
-const sdk = new TeamSDK({
-  baseURL: BASE_URL,
-  tenant: TENANT,
+const sdk = new TeamPlatformSDK({
+  apiBaseUrl: BASE_URL,
+  tenantId: TENANT,
 });
 
 interface SDKContextValue {
-  sdk: TeamSDK;
+  sdk: TeamPlatformSDK;
 }
 
 const SDKContext = createContext<SDKContextValue | undefined>(undefined);

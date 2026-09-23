@@ -54,7 +54,8 @@ interface LMSRound {
 }
 
 export default function LastManStandingScreen() {
-    const { colors } = useTheme();
+    const { theme } = useTheme();
+    const colors = theme.colors;
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [games, setGames] = useState<LMSGame[]>([]);

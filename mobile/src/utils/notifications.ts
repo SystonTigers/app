@@ -57,8 +57,8 @@ export const notifications = {
             },
             trigger:
                 typeof trigger === 'number'
-                    ? { seconds: trigger }
-                    : { date: trigger },
+                    ? { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: trigger }
+                    : { type: Notifications.SchedulableTriggerInputTypes.DATE, date: trigger },
         });
     },
 

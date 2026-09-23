@@ -1,6 +1,6 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { usersApi, authApi } from '../services/api';
+import { usersApi, authApi, AUTH_STORAGE_KEYS } from '../services/api';
 
 interface User {
   userId: string;
@@ -33,21 +33,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const checkAuthStatus = async () => {
     try {
-      const token = await AsyncStorage.getItem('auth_token');
-      const userId = await AsyncStorage.getItem('user_id');
-      const role = await AsyncStorage.getItem('user_role');
-      const firstName = await AsyncStorage.getItem('user_firstName');
-      const lastName = await AsyncStorage.getItem('user_lastName');
-      const email = await AsyncStorage.getItem('user_email');
+      const entries = await AsyncStorage.multiGet([
+        AUTH_STORAGE_KEYS.token,
+        AUTH_STORAGE_KEYS.userId,
+        AUTH_STORAGE_KEYS.role,
+        AUTH_STORAGE_KEYS.firstName,
+        AUTH_STORAGE_KEYS.lastName,
+        AUTH_STORAGE_KEYS.email,
+      ]);
+      const map = Object.fromEntries(entries) as Record<string, string | null>;
+
+      const token = map[AUTH_STORAGE_KEYS.token] || null;
+      const userId = map[AUTH_STORAGE_KEYS.userId] || null;
+      const role = map[AUTH_STORAGE_KEYS.role] || null;
 
       if (token && userId && role) {
         setUser({
           userId,
           role: role as User['role'],
           token,
-          firstName: firstName || undefined,
-          lastName: lastName || undefined,
-          email: email || undefined,
+          firstName: map[AUTH_STORAGE_KEYS.firstName] || undefined,
+          lastName: map[AUTH_STORAGE_KEYS.lastName] || undefined,
+          email: map[AUTH_STORAGE_KEYS.email] || undefined,
         });
       }
     } catch (error) {
@@ -59,18 +66,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (userId: string, role: string, token: string) => {
     try {
-      // Store auth data
-      await AsyncStorage.setItem('auth_token', token);
-      await AsyncStorage.setItem('user_id', userId);
-      await AsyncStorage.setItem('user_role', role);
+      await AsyncStorage.multiSet([
+        [AUTH_STORAGE_KEYS.token, token],
+        [AUTH_STORAGE_KEYS.userId, userId],
+        [AUTH_STORAGE_KEYS.role, role],
+      ]);
 
       try {
         const profile = await usersApi.getProfile();
         if (profile.success && profile.user) {
           const { firstName, lastName, email } = profile.user;
-          if (firstName) await AsyncStorage.setItem('user_firstName', firstName);
-          if (lastName) await AsyncStorage.setItem('user_lastName', lastName);
-          if (email) await AsyncStorage.setItem('user_email', email);
+          const profileEntries: [string, string][] = [];
+          if (firstName) profileEntries.push([AUTH_STORAGE_KEYS.firstName, firstName]);
+          if (lastName) profileEntries.push([AUTH_STORAGE_KEYS.lastName, lastName]);
+          if (email) profileEntries.push([AUTH_STORAGE_KEYS.email, email]);
+          if (profileEntries.length > 0) await AsyncStorage.multiSet(profileEntries);
         }
       } catch (err) {
         console.warn('Failed to fetch user profile during login', err);
@@ -94,20 +104,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = async () => {
     try {
-      // Clear stored auth data
       await AsyncStorage.multiRemove([
-        'auth_token',
-        'user_id',
-        'user_role',
-        'user_firstName',
-        'user_lastName',
-        'user_email',
+        AUTH_STORAGE_KEYS.token,
+        AUTH_STORAGE_KEYS.refreshToken,
+        AUTH_STORAGE_KEYS.userId,
+        AUTH_STORAGE_KEYS.role,
+        AUTH_STORAGE_KEYS.firstName,
+        AUTH_STORAGE_KEYS.lastName,
+        AUTH_STORAGE_KEYS.email,
       ]);
 
       try {
-        await authApi.logout();
+        await authApi.logout({ revokeRemote: true });
       } catch (err) {
-        console.warn('Logout API failed', err);
+        // Non-fatal: local session is already cleared above.
+        // Server-side revocation failure is logged but shouldn't block the user.
+        console.warn('Remote session revocation failed', err);
       }
 
       setUser(null);

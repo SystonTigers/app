@@ -7,5 +7,5 @@ export { UsageBar } from './UsageBar';
 export { Button } from './Button';
 export { Badge } from './Badge';
 export { Divider } from './Divider';
-export { EmptyState } from './EmptyState';
+export { default as EmptyState } from './EmptyState';
 export { LoadingSpinner } from './LoadingSpinner';

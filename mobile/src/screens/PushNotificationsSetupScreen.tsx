@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, StyleSheet, Alert, Platform } from 'react-native';
+import { View, ScrollView, StyleSheet, Alert, Platform, Linking } from 'react-native';
 import { Text, Card, Button, Divider } from 'react-native-paper';
 import { COLORS } from '../config';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import { useAuth } from '../context/AuthContext';
-import { notificationsApi } from '../services/api';
+import { pushApi } from '../services/api';
 
 interface PushNotificationsSetupScreenProps {
   onComplete: () => void;
@@ -19,6 +19,8 @@ Notifications.setNotificationHandler({
     shouldShowAlert: true,
     shouldPlaySound: true,
     shouldSetBadge: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
   }),
 });
 
@@ -125,7 +127,7 @@ export default function PushNotificationsSetupScreen({ onComplete, onSkip }: Pus
           data: { type: 'test' },
           sound: true,
         },
-        trigger: { seconds: 2 },
+        trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 2 },
       });
 
       Alert.alert('Test Sent', 'You should receive a test notification in 2 seconds!');
@@ -141,11 +143,11 @@ export default function PushNotificationsSetupScreen({ onComplete, onSkip }: Pus
         'Open Settings > Notifications > Syston Tigers > Allow Notifications',
         [
           { text: 'Cancel', style: 'cancel' },
-          { text: 'Open Settings', onPress: () => Notifications.openSettingsAsync() },
+          { text: 'Open Settings', onPress: () => Linking.openSettings() },
         ]
       );
     } else {
-      Notifications.openSettingsAsync();
+      Linking.openSettings();
     }
   };
 

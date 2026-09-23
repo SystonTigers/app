@@ -1,4 +1,10 @@
-import { API_BASE_URL, getAuthToken } from './api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_BASE_URL, TENANT_ID } from '../config';
+import { AUTH_STORAGE_KEYS } from './api';
+
+const getAuthToken = async (): Promise<string | null> => {
+    return AsyncStorage.getItem(AUTH_STORAGE_KEYS.token);
+};
 
 /**
  * Mobile-specific API functions for photo uploads and notifications

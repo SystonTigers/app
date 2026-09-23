@@ -58,6 +58,7 @@ export interface Result {
 }
 
 export interface FixtureQueryOptions {
+  [key: string]: unknown;
   status?: string;
   limit?: number;
   from?: string;

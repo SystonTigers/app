@@ -60,7 +60,7 @@ export default function TeamMembersScreen() {
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
 
-  const currentUser = { id: user?.id || '', role: user?.role || 'viewer' };
+  const currentUser = { id: user?.userId || '', role: user?.role || 'viewer' };
   const isAdmin = currentUser.role === 'admin';
 
   useEffect(() => {
@@ -329,7 +329,7 @@ export default function TeamMembersScreen() {
 
       {/* Role Changer Modal */}
       {showRoleChanger && selectedMember && (
-        <View style={[styles.modal, { backgroundColor: theme.colors.backdrop }]}>
+        <View style={[styles.modal, { backgroundColor: theme.colors.overlay }]}>
           <View style={[styles.modalContent, { backgroundColor: theme.colors.surface }]}>
             <Text style={[styles.modalTitle, { color: theme.colors.text }]}>
               Change Role for {selectedMember.name}
@@ -379,7 +379,7 @@ export default function TeamMembersScreen() {
 
       {/* Invite Modal */}
       {showInviteModal && (
-        <View style={[styles.modal, { backgroundColor: theme.colors.backdrop }]}>
+        <View style={[styles.modal, { backgroundColor: theme.colors.overlay }]}>
           <View style={[styles.modalContent, { backgroundColor: theme.colors.surface }]}>
             <Text style={[styles.modalTitle, { color: theme.colors.text }]}>
               Invite Team Member
