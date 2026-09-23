@@ -9,6 +9,7 @@ doc disagrees with this one, trust this one (and the code).
 |---|---|
 | Backend API (Cloudflare Worker) | `app-production` → https://app-production.team-platform-2025.workers.dev |
 | Database | D1 `syston-db` (binding `DB`), schema from `backend/migrations/` |
+| Website + club sign-up (`web-app/`) | `boost-huddle` Worker → https://boost-huddle.team-platform-2025.workers.dev |
 | Club | slug `syston-tigers` |
 | Mobile app | `mobile/` (Expo SDK 54), points at `app-production` by default |
 
@@ -61,6 +62,16 @@ npm run deploy:prod         # deploy the Worker
 
 Back up first if a migration changes existing tables:
 `npx wrangler d1 export syston-db --remote --env production --output backup.sql`
+
+## Deploy the website
+
+```powershell
+cd web-app
+npm run cf:deploy     # builds with OpenNext and deploys the boost-huddle Worker
+```
+
+New clubs sign up at `/create-team`: they get a 14-day free trial (no card)
+and land in their dashboard at `/<club-url>/admin`.
 
 ## Admin login
 
