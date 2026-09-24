@@ -85,6 +85,11 @@ id = "5948d4a91ac04b50904a06c923221994"
 binding = "FEATURE_FLAGS"
 id = "2b092164260d45d6a9a4af55555ffc09"
 
+# General cache/state used by scheduled jobs, shop, stats and audit
+[[env.production.kv_namespaces]]
+binding = "KV"
+id = "908ef48f308d44319fcb9fe7508f11e1"
+
 [[env.production.d1_databases]]
 binding = "DB"
 database_name = "syston-db"
