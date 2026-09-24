@@ -10,6 +10,7 @@ doc disagrees with this one, trust this one (and the code).
 | Backend API (Cloudflare Worker) | `app-production` → https://app-production.team-platform-2025.workers.dev |
 | Database | D1 `syston-db` (binding `DB`), schema from `backend/migrations/` |
 | Website + club sign-up (`web-app/`) | `boost-huddle` Worker → https://boost-huddle.team-platform-2025.workers.dev |
+| Web app (installable, no app store) | `boost-huddle-app` Worker → https://boost-huddle-app.team-platform-2025.workers.dev (built from `mobile/`) |
 | Club | slug `syston-tigers` |
 | Mobile app | `mobile/` (Expo SDK 54, "Boost Huddle"). One app for every club: people find their club on first launch |
 
@@ -78,6 +79,24 @@ npm run cf:deploy     # builds with OpenNext and deploys the boost-huddle Worker
 
 New clubs sign up at `/create-team`: they get a 14-day free trial (no card)
 and land in their dashboard at `/<club-url>/admin`.
+
+## Deploy the installable web app
+
+```powershell
+cd mobile
+npm run web:deploy    # builds the app for the web (scripts/build-web.mjs) and deploys boost-huddle-app
+```
+
+Share a club's link as `https://boost-huddle-app.team-platform-2025.workers.dev/?club=<club-url>`;
+the club dashboard's "Copy app link" does this for owners.
+
+## Payments
+
+Billing switches on when these are set on `app-production`:
+secrets `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`; vars
+`STRIPE_STARTER_MONTHLY_PRICE_ID`, `STRIPE_PRO_MONTHLY_PRICE_ID`. Point the Stripe
+webhook at `https://app-production.team-platform-2025.workers.dev/webhooks/stripe`.
+Plan names, prices shown and features live in `backend/src/routes/billing.ts` (PLANS).
 
 ## Admin login
 
