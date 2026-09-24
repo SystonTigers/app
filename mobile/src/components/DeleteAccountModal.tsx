@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Modal, Portal, Text, Button, TextInput } from 'react-native-paper';
 import { View, StyleSheet, Alert } from 'react-native';
-import { COLORS } from '../config';
+import { COLORS, SUPPORT_EMAIL } from '../config';
 
 interface DeleteAccountModalProps {
     visible: boolean;
@@ -150,7 +150,7 @@ export function DeleteAccountModal({
 
                     {/* Support Link */}
                     <Text style={styles.supportText}>
-                        Need help? Contact support@systontigers.co.uk
+                        Need help? Contact {SUPPORT_EMAIL}
                     </Text>
                 </View>
             </Modal>

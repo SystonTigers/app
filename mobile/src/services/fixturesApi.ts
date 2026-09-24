@@ -5,7 +5,8 @@
 
 import axios, { AxiosError } from 'axios';
 import apiClient from './api';
-import { HTTP_TIMEOUT, TENANT_ID } from '../config';
+import { HTTP_TIMEOUT } from '../config';
+import { getTenantId } from './club';
 
 const API_VERSION = 'v1';
 
@@ -81,7 +82,7 @@ const withTenant = (payload?: unknown) => {
     return payload;
   }
 
-  return { tenant: TENANT_ID, ...(payload as Record<string, unknown>) };
+  return { tenant: getTenantId(), ...(payload as Record<string, unknown>) };
 };
 
 const normalisePath = (path: string) => path.replace(/^\/+/, '');
@@ -130,7 +131,7 @@ const request = async <T>(path: string, options: RequestOptions = {}): Promise<T
     const response = await apiClient.request({
       url: `/api/${API_VERSION}/${normalisePath(path)}`,
       method: options.method ?? 'GET',
-      params: { tenant: TENANT_ID, ...(options.params ?? {}) },
+      params: { tenant: getTenantId(), ...(options.params ?? {}) },
       data: withTenant(options.data),
       timeout: HTTP_TIMEOUT,
     });

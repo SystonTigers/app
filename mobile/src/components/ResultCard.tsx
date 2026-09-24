@@ -7,6 +7,8 @@ import FeedCard from './FeedCard';
 import { social } from '../utils/social';
 import { haptics } from '../utils/haptics';
 import SwipeableCard from './SwipeableCard';
+import { useClub } from '../context/ClubContext';
+import { isOurTeam } from '../utils/clubMatch';
 
 interface ResultCardProps {
     homeTeam: string;
@@ -20,8 +22,9 @@ interface ResultCardProps {
 export default function ResultCard({ homeTeam, awayTeam, homeScore, awayScore, date, competition }: ResultCardProps) {
     const { theme } = useTheme();
     const { colors } = theme;
+    const { club } = useClub();
 
-    const isWin = homeTeam === 'Syston Tigers' ? homeScore > awayScore : awayScore > homeScore;
+    const isWin = isOurTeam(homeTeam, club) ? homeScore > awayScore : awayScore > homeScore;
     const isDraw = homeScore === awayScore;
     const outcomeColor = isWin ? colors.success : isDraw ? colors.textSecondary : colors.error;
 

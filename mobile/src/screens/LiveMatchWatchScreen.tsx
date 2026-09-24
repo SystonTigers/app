@@ -3,6 +3,7 @@ import { View, ScrollView, StyleSheet, RefreshControl, Animated } from 'react-na
 import { Card, Title, Paragraph, Button, Chip, Divider, ActivityIndicator } from 'react-native-paper';
 import { COLORS } from '../config';
 import { liveMatchApi, fixturesApi } from '../services/api';
+import { useClubName } from '../context/ClubContext';
 
 interface MatchEvent {
   id: string;
@@ -34,6 +35,7 @@ interface LiveMatch {
 }
 
 export default function LiveMatchWatchScreen() {
+  const clubName = useClubName();
   const [liveMatches, setLiveMatches] = useState<LiveMatch[]>([]);
   const [selectedMatch, setSelectedMatch] = useState<MatchState | null>(null);
   const [loading, setLoading] = useState(false);
@@ -99,8 +101,8 @@ export default function LiveMatchWatchScreen() {
 
       const mappedMatches: LiveMatch[] = live.map((f: any) => {
         const isHome = f.homeAway === 'home';
-        const homeTeam = isHome ? 'Syston Tigers' : f.opponent;
-        const awayTeam = isHome ? f.opponent : 'Syston Tigers';
+        const homeTeam = isHome ? clubName : f.opponent;
+        const awayTeam = isHome ? f.opponent : clubName;
 
         return {
           id: f.id,

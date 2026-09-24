@@ -1,5 +1,6 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { usersApi, authApi, onUnauthorized } from '../services/api';
+import { usersApi, authApi, onUnauthorized, type AuthResult } from '../services/api';
+import { fetchClubInfo, getTenantId, setCurrentClub } from '../services/club';
 import { AUTH_STORAGE_KEYS, authStorage, type AuthStorageKey } from '../services/authStorage';
 import { setCrashReportingUser } from '../services/crashReporting';
 
@@ -17,6 +18,8 @@ interface AuthContextType {
   isLoading: boolean;
   isAuthenticated: boolean;
   login: (userId: string, role: string, token: string) => Promise<void>;
+  /** Sign in with the result of login or registration (also switches to the user's club). */
+  signIn: (result: AuthResult) => Promise<void>;
   logout: () => Promise<void>;
   register: (userId: string, role: string, token: string) => Promise<void>;
 }
@@ -81,10 +84,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         [AUTH_STORAGE_KEYS.role, role],
       ]);
 
+      let names: Pick<User, 'firstName' | 'lastName' | 'email'> = {};
       try {
         const profile = await usersApi.getProfile();
         if (profile.success && profile.user) {
           const { firstName, lastName, email } = profile.user;
+          names = { firstName, lastName, email };
           const profileEntries: [AuthStorageKey, string][] = [];
           if (firstName) profileEntries.push([AUTH_STORAGE_KEYS.firstName, firstName]);
           if (lastName) profileEntries.push([AUTH_STORAGE_KEYS.lastName, lastName]);
@@ -99,11 +104,42 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         userId,
         role: role as User['role'],
         token,
+        ...names,
       });
     } catch (error) {
       console.error('Error during login:', error);
       throw error;
     }
+  };
+
+  const signIn = async ({ token, user: account }: AuthResult) => {
+    // Logging in without choosing a club first: open the club the account belongs to
+    if (account.clubSlug && account.clubSlug !== getTenantId()) {
+      try {
+        const club = await fetchClubInfo(account.clubSlug);
+        if (club) await setCurrentClub(club);
+      } catch (err) {
+        console.warn('Could not load the club for this account', err);
+      }
+    }
+
+    const names: [AuthStorageKey, string][] = [];
+    if (account.firstName) names.push([AUTH_STORAGE_KEYS.firstName, account.firstName]);
+    if (account.lastName) names.push([AUTH_STORAGE_KEYS.lastName, account.lastName]);
+    if (account.email) names.push([AUTH_STORAGE_KEYS.email, account.email]);
+    if (names.length > 0) await authStorage.multiSet(names);
+
+    await login(account.id, account.role, token);
+    setUser((prev) =>
+      prev
+        ? {
+            ...prev,
+            firstName: prev.firstName ?? account.firstName,
+            lastName: prev.lastName ?? account.lastName,
+            email: prev.email ?? account.email,
+          }
+        : prev,
+    );
   };
 
   const register = async (userId: string, role: string, token: string) => {
@@ -137,6 +173,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isLoading,
         isAuthenticated: !!user,
         login,
+        signIn,
         logout,
         register,
       }}

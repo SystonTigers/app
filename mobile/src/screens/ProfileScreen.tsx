@@ -12,10 +12,10 @@ export default function ProfileScreen() {
 
   const [isEditing, setIsEditing] = useState(false);
   const [profileData, setProfileData] = useState({
-    firstName: 'John',
-    lastName: 'Smith',
-    email: 'john.smith@example.com',
-    phone: '+44 7700 900123',
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
     profileImage: null as string | null,
   });
   const [passwordData, setPasswordData] = useState({

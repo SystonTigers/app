@@ -447,7 +447,7 @@ function CarpoolContent({ fixtureId, opponent, fixtureDate, navigation }: Conten
                         label="Departure Location"
                         value={offerForm.departure_location}
                         onChangeText={text => setOfferForm(f => ({ ...f, departure_location: text }))}
-                        placeholder="e.g., Syston, LE7"
+                        placeholder="e.g. LE7 or town name"
                         style={styles.input}
                     />
 

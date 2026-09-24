@@ -32,6 +32,12 @@ interface MOTMWinner {
 
 type LeaderboardType = 'scorers' | 'assisters' | 'combined' | 'cleansheets' | 'cards' | 'motm';
 
+/** Football seasons run August to May, e.g. "2026/27" from August 2026. */
+function currentSeasonLabel(now: Date = new Date()): string {
+  const startYear = now.getMonth() >= 7 ? now.getFullYear() : now.getFullYear() - 1;
+  return `${startYear}/${String((startYear + 1) % 100).padStart(2, '0')}`;
+}
+
 export default function StatsScreen() {
   const [selectedLeaderboard, setSelectedLeaderboard] = useState<LeaderboardType>('scorers');
   const [selectedPlayer, setSelectedPlayer] = useState<PlayerStats | null>(null);
@@ -285,7 +291,7 @@ export default function StatsScreen() {
     <ScrollView style={styles.container}>
       <View style={styles.header}>
         <Title style={styles.headerTitle}>Team Statistics</Title>
-        <Paragraph style={styles.headerSubtitle}>2024/25 Season</Paragraph>
+        <Paragraph style={styles.headerSubtitle}>{currentSeasonLabel()} Season</Paragraph>
       </View>
 
       {/* Leaderboard Selector */}

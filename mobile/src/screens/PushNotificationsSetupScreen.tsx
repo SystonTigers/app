@@ -4,9 +4,9 @@ import { Text, Card, Button, Divider } from 'react-native-paper';
 import { COLORS } from '../config';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Notifications from 'expo-notifications';
-import * as Device from 'expo-device';
 import { useAuth } from '../context/AuthContext';
-import { pushApi } from '../services/api';
+import { useClubName } from '../context/ClubContext';
+import { registerForPush } from '../services/push';
 
 interface PushNotificationsSetupScreenProps {
   onComplete: () => void;
@@ -26,6 +26,7 @@ Notifications.setNotificationHandler({
 
 export default function PushNotificationsSetupScreen({ onComplete, onSkip }: PushNotificationsSetupScreenProps) {
   const { user } = useAuth();
+  const clubName = useClubName();
   const [loading, setLoading] = useState(false);
   const [permissionStatus, setPermissionStatus] = useState<'undetermined' | 'granted' | 'denied'>('undetermined');
   const [expoPushToken, setExpoPushToken] = useState<string | null>(null);
@@ -40,57 +41,15 @@ export default function PushNotificationsSetupScreen({ onComplete, onSkip }: Pus
   };
 
   const registerForPushNotificationsAsync = async (): Promise<string | null> => {
-    let token: string | null = null;
-
-    // Check if running on physical device
-    if (!Device.isDevice) {
-      Alert.alert('Error', 'Push notifications only work on physical devices, not simulators.');
-      return null;
+    const result = await registerForPush({ prompt: true });
+    if (result.ok) {
+      setPermissionStatus('granted');
+      setExpoPushToken(result.token);
+      return result.token;
     }
-
-    // Check/request permissions
-    const { status: existingStatus } = await Notifications.getPermissionsAsync();
-    let finalStatus = existingStatus;
-
-    if (existingStatus !== 'granted') {
-      const { status } = await Notifications.requestPermissionsAsync();
-      finalStatus = status;
-    }
-
-    if (finalStatus !== 'granted') {
-      Alert.alert('Permission Denied', 'You need to enable notifications in your device settings.');
-      setPermissionStatus('denied');
-      return null;
-    }
-
-    setPermissionStatus('granted');
-
-    // Get Expo push token
-    try {
-      token = (await Notifications.getExpoPushTokenAsync()).data;
-      setExpoPushToken(token);
-
-      // Register token with backend
-      // Backend derives the user from the JWT, so only the token is sent
-      if (user && token) {
-        await pushApi.registerToken(token);
-      }
-    } catch (error) {
-      Alert.alert('Error', 'Failed to get push notification token.');
-      console.error(error);
-    }
-
-    // Configure notification channel for Android
-    if (Platform.OS === 'android') {
-      await Notifications.setNotificationChannelAsync('default', {
-        name: 'default',
-        importance: Notifications.AndroidImportance.MAX,
-        vibrationPattern: [0, 250, 250, 250],
-        lightColor: COLORS.primary,
-      });
-    }
-
-    return token;
+    if (result.reason === 'denied') setPermissionStatus('denied');
+    Alert.alert("Notifications aren't on", result.message);
+    return null;
   };
 
   const handleEnableNotifications = async () => {
@@ -124,7 +83,7 @@ export default function PushNotificationsSetupScreen({ onComplete, onSkip }: Pus
       await Notifications.scheduleNotificationAsync({
         content: {
           title: 'Test Notification 🎉',
-          body: 'This is what notifications from Syston Tigers will look like!',
+          body: `This is what notifications from ${clubName} will look like!`,
           data: { type: 'test' },
           sound: true,
         },
@@ -141,7 +100,7 @@ export default function PushNotificationsSetupScreen({ onComplete, onSkip }: Pus
     if (Platform.OS === 'ios') {
       Alert.alert(
         'Enable Notifications',
-        'Open Settings > Notifications > Syston Tigers > Allow Notifications',
+        'Open Settings > Notifications > Boost Huddle > Allow Notifications',
         [
           { text: 'Cancel', style: 'cancel' },
           { text: 'Open Settings', onPress: () => Linking.openSettings() },

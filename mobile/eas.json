@@ -1,22 +1,36 @@
 {
-  "cli": { "version": ">= 14.0.0" },
+  "cli": {
+    "version": ">= 14.0.0",
+    "appVersionSource": "remote"
+  },
   "build": {
-    "preview": {
-      "developmentClient": false,
-      "android": { "gradleCommand": ":app:assembleRelease" },
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_API_BASE": "https://api.yourdomain.com",
-        "EXPO_PUBLIC_SUPABASE_URL": "https://REPLACE.supabase.co",
-        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "REPLACE"
+        "EXPO_PUBLIC_API_BASE": "https://app-production.team-platform-2025.workers.dev",
+        "EXPO_PUBLIC_WEBSITE_URL": "https://boost-huddle.team-platform-2025.workers.dev"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_BASE": "https://app-production.team-platform-2025.workers.dev",
+        "EXPO_PUBLIC_WEBSITE_URL": "https://boost-huddle.team-platform-2025.workers.dev"
       }
     },
     "production": {
+      "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_API_BASE": "https://api.yourdomain.com",
-        "EXPO_PUBLIC_SUPABASE_URL": "https://REPLACE.supabase.co",
-        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "REPLACE"
+        "EXPO_PUBLIC_API_BASE": "https://app-production.team-platform-2025.workers.dev",
+        "EXPO_PUBLIC_WEBSITE_URL": "https://boost-huddle.team-platform-2025.workers.dev"
       }
     }
   },
-  "submit": { "production": {} }
+  "submit": {
+    "production": {}
+  }
 }

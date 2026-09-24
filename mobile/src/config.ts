@@ -7,7 +7,17 @@ const envOr = (value: string | undefined, fallback: string = ''): string =>
 
 // API Configuration
 export const API_BASE_URL = envOr(process.env.EXPO_PUBLIC_API_BASE, 'https://app-production.team-platform-2025.workers.dev');
-export const TENANT_ID = envOr(process.env.EXPO_PUBLIC_TENANT_ID, 'syston-tigers');
+// Optional: lock this build to one club (e.g. a club-branded app). Leave unset
+// for the multi-club app, where people choose their club on first launch.
+export const TENANT_ID = envOr(process.env.EXPO_PUBLIC_TENANT_ID, '');
+
+// Public website (club sign-up lives here, not in the app)
+export const WEBSITE_URL = envOr(process.env.EXPO_PUBLIC_WEBSITE_URL, 'https://boost-huddle.team-platform-2025.workers.dev');
+
+// Legal pages (App Store / Play Store require these to be reachable in the app)
+export const TERMS_URL = envOr(process.env.EXPO_PUBLIC_TERMS_URL, 'https://boosthuddle-legal.pages.dev/terms');
+export const PRIVACY_URL = envOr(process.env.EXPO_PUBLIC_PRIVACY_URL, 'https://boosthuddle-legal.pages.dev/privacy');
+export const SUPPORT_EMAIL = envOr(process.env.EXPO_PUBLIC_SUPPORT_EMAIL, 'systontowntigersfc@gmail.com');
 
 // Club Branding Defaults
 export const DEFAULT_CLUB_NAME = envOr(process.env.EXPO_PUBLIC_CLUB_NAME, 'Home Club');
@@ -98,18 +108,6 @@ export const validateConfig = (): { valid: boolean; errors: string[] } => {
 
   if (!API_BASE_URL || API_BASE_URL.includes('yourdomain.com')) {
     errors.push('EXPO_PUBLIC_API_BASE is not configured');
-  }
-
-  if (!SUPABASE_URL || SUPABASE_URL.includes('YOUR_SUPABASE')) {
-    errors.push('EXPO_PUBLIC_SUPABASE_URL is not configured');
-  }
-
-  if (!SUPABASE_ANON_KEY || SUPABASE_ANON_KEY.includes('REPLACE')) {
-    errors.push('EXPO_PUBLIC_SUPABASE_ANON_KEY is not configured');
-  }
-
-  if (!TENANT_ID) {
-    errors.push('EXPO_PUBLIC_TENANT_ID is not configured');
   }
 
   return {

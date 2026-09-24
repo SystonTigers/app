@@ -11,8 +11,9 @@ import {
   Divider,
   Text,
 } from 'react-native-paper';
-import { COLORS, TENANT_ID } from '../config';
+import { COLORS } from '../config';
 import { apiClient } from '../services/api';
+import { getTenantId } from '../services/club';
 
 interface User {
   id: string;
@@ -65,7 +66,7 @@ export default function ManageUsersScreen() {
 
       // Uses the shared API client so the signed-in user's token is attached
       const { data } = await apiClient.get('/api/v1/admin/users', {
-        params: { tenantId: TENANT_ID },
+        params: { tenantId: getTenantId() },
       });
 
       if (data.success) {

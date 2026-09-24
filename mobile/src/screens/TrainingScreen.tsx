@@ -6,7 +6,8 @@ import { useTheme } from '../theme/useTheme';
 import FeedCard from '../components/FeedCard';
 import { haptics } from '../utils/haptics';
 import { apiClient, trainingApi, squadApi } from '../services/api';
-import { TENANT_ID } from '../config';
+import { getTenantId } from '../services/club';
+
 
 // Static config (not mock data)
 const DRILL_OF_WEEK = {
@@ -130,7 +131,7 @@ export default function TrainingScreen({ navigation }: any) {
 
     try {
       await apiClient.post('/api/v1/training/performance', {
-        tenant: TENANT_ID,
+        tenant: getTenantId(),
         testType: selectedTestType,
         player: selectedPlayer,
         timeInSeconds: parseFloat(timeInSeconds),

@@ -15,6 +15,7 @@ import {
 } from 'react-native-paper';
 import { COLORS } from '../config';
 import { fixturesApi } from '../services/api';
+import { useClubName } from '../context/ClubContext';
 
 interface Fixture {
   id: string;
@@ -31,6 +32,7 @@ interface Fixture {
 
 
 export default function ManageFixturesScreen() {
+  const clubName = useClubName();
   const [fixtures, setFixtures] = useState<Fixture[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -207,11 +209,11 @@ export default function ManageFixturesScreen() {
 
                   <View style={styles.matchup}>
                     <Title style={styles.teamName}>
-                      {fixture.homeAway === 'home' ? 'Syston Tigers' : fixture.opponent}
+                      {fixture.homeAway === 'home' ? clubName : fixture.opponent}
                     </Title>
                     <Title style={styles.vs}>vs</Title>
                     <Title style={styles.teamName}>
-                      {fixture.homeAway === 'home' ? fixture.opponent : 'Syston Tigers'}
+                      {fixture.homeAway === 'home' ? fixture.opponent : clubName}
                     </Title>
                   </View>
 
@@ -349,7 +351,7 @@ export default function ManageFixturesScreen() {
 
             <View style={styles.scoreInputs}>
               <TextInput
-                label={formData.homeAway === 'home' ? 'Syston' : 'Opponent'}
+                label={formData.homeAway === 'home' ? clubName : 'Opponent'}
                 value={formData.homeScore}
                 onChangeText={(text) => setFormData({ ...formData, homeScore: text })}
                 style={styles.scoreInput}
@@ -358,7 +360,7 @@ export default function ManageFixturesScreen() {
               />
               <Title style={styles.scoreDash}>-</Title>
               <TextInput
-                label={formData.homeAway === 'away' ? 'Syston' : 'Opponent'}
+                label={formData.homeAway === 'away' ? clubName : 'Opponent'}
                 value={formData.awayScore}
                 onChangeText={(text) => setFormData({ ...formData, awayScore: text })}
                 style={styles.scoreInput}

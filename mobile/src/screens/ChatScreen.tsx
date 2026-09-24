@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, ScrollView, StyleSheet, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { Text, Card, TextInput, IconButton, Avatar, Chip, List, Portal, Modal } from 'react-native-paper';
-import { COLORS, TENANT_ID } from '../config';
+import { COLORS } from '../config';
 import { useAuth } from '../context/AuthContext';
 import { apiClient, chatApi } from '../services/api';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { getTenantId } from '../services/club';
 
 interface Message {
   id: string;
@@ -111,7 +112,7 @@ export default function ChatScreen() {
 
     try {
       await apiClient.post(`/api/v1/chat/${selectedRoom.id}/send`, {
-        tenant: TENANT_ID,
+        tenant: getTenantId(),
         userId: currentUserId,
         userName: currentUserName,
         content: messageText.trim(),
@@ -276,12 +277,6 @@ export default function ChatScreen() {
 
         {/* Input */}
         <View style={styles.inputContainer}>
-          <IconButton
-            icon="plus-circle"
-            iconColor={COLORS.primary}
-            size={28}
-            onPress={() => Alert.alert('Coming Soon', 'File attachments coming soon!')}
-          />
           <TextInput
             style={styles.messageInput}
             placeholder="Type a message..."

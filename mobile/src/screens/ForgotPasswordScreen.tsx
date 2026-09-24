@@ -7,13 +7,13 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 interface ForgotPasswordScreenProps {
   onBack: () => void;
-  onCodeSent: (email: string) => void;
 }
 
-export default function ForgotPasswordScreen({ onBack, onCodeSent }: ForgotPasswordScreenProps) {
+export default function ForgotPasswordScreen({ onBack }: ForgotPasswordScreenProps) {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [sent, setSent] = useState(false);
 
   const handleSendCode = async () => {
     // Validation
@@ -32,11 +32,11 @@ export default function ForgotPasswordScreen({ onBack, onCodeSent }: ForgotPassw
 
     try {
       await authApi.forgotPassword(email);
-      setLoading(false);
-      onCodeSent(email);
+      setSent(true);
     } catch (err) {
+      setError(err instanceof Error && err.message ? err.message : "We couldn't send the email. Please try again.");
+    } finally {
       setLoading(false);
-      setError('Failed to send reset code. Please try again.');
     }
   };
 
@@ -47,7 +47,9 @@ export default function ForgotPasswordScreen({ onBack, onCodeSent }: ForgotPassw
         <MaterialCommunityIcons name="lock-reset" size={80} color={COLORS.primary} />
         <Text style={styles.title}>Reset Password</Text>
         <Text style={styles.subtitle}>
-          Enter your email address and we'll send you a code to reset your password
+          {sent
+            ? `If there's an account for ${email.trim()}, we've emailed it a link to set a new password.`
+            : "Enter your email address and we'll send you a link to reset your password."}
         </Text>
       </View>
 
@@ -88,7 +90,7 @@ export default function ForgotPasswordScreen({ onBack, onCodeSent }: ForgotPassw
             buttonColor={COLORS.primary}
             textColor="#000"
           >
-            {loading ? 'Sending Code...' : 'Send Reset Code'}
+            {loading ? 'Sending…' : sent ? 'Send it again' : 'Send reset link'}
           </Button>
 
           <Button
@@ -97,7 +99,7 @@ export default function ForgotPasswordScreen({ onBack, onCodeSent }: ForgotPassw
             disabled={loading}
             style={styles.backButton}
           >
-            Back to Login
+            Back to log in
           </Button>
         </Card.Content>
       </Card>
@@ -108,7 +110,7 @@ export default function ForgotPasswordScreen({ onBack, onCodeSent }: ForgotPassw
           <View style={styles.infoRow}>
             <MaterialCommunityIcons name="information" size={24} color={COLORS.primary} />
             <Text style={styles.infoText}>
-              The reset code will be sent to your registered email address. It may take a few minutes to arrive.
+              The email can take a few minutes to arrive, so check your spam folder too. The link works for one hour.
             </Text>
           </View>
         </Card.Content>

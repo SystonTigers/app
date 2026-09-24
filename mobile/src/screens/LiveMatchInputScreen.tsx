@@ -3,6 +3,7 @@ import { View, ScrollView, StyleSheet, Alert, RefreshControl } from 'react-nativ
 import { Card, Title, Paragraph, Button, Chip, FAB, Portal, Modal, TextInput, RadioButton, Divider } from 'react-native-paper';
 import { COLORS } from '../config';
 import { liveMatchApi, fixturesApi } from '../services/api';
+import { useClubName } from '../context/ClubContext';
 
 interface MatchEvent {
   id: string;
@@ -35,6 +36,7 @@ interface Fixture {
 }
 
 export default function LiveMatchInputScreen() {
+  const clubName = useClubName();
   const [matchState, setMatchState] = useState<MatchState | null>(null);
   const [fixtures, setFixtures] = useState<Fixture[]>([]);
   const [loading, setLoading] = useState(false);
@@ -125,10 +127,10 @@ export default function LiveMatchInputScreen() {
       const kickoffTs = Date.now();
       const matchData = {
         title: selectedFixture.homeAway === 'home'
-          ? `Syston Tigers vs ${selectedFixture.opponent}`
-          : `${selectedFixture.opponent} vs Syston Tigers`,
-        home: selectedFixture.homeAway === 'home' ? 'Syston Tigers' : selectedFixture.opponent,
-        away: selectedFixture.homeAway === 'away' ? 'Syston Tigers' : selectedFixture.opponent,
+          ? `${clubName} vs ${selectedFixture.opponent}`
+          : `${selectedFixture.opponent} vs ${clubName}`,
+        home: selectedFixture.homeAway === 'home' ? clubName : selectedFixture.opponent,
+        away: selectedFixture.homeAway === 'away' ? clubName : selectedFixture.opponent,
         kickoffTs,
       };
 

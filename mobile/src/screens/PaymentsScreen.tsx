@@ -1,13 +1,11 @@
 // src/screens/PaymentsScreen.tsx - Premium redesign
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, ScrollView, Linking, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, FlatList, ScrollView, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Card } from 'react-native-paper';
 
 import { COLORS } from '../config';
 import { duesApi } from '../services/api';
-
-const PAYMENT_PORTAL_URL = 'https://example.com/payments/syston-tigers';
 
 export default function PaymentsScreen() {
   const [paymentData, setPaymentData] = useState<any>(null);
@@ -51,20 +49,16 @@ export default function PaymentsScreen() {
 
   const pct = paymentData ? Math.min(1, paymentData.expected > 0 ? paymentData.collected / paymentData.expected : 0) : 0;
 
-  const openPaymentPortal = () => {
-    Linking.openURL(PAYMENT_PORTAL_URL);
-  };
-
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.container}>
         <Text style={styles.header}>Payments</Text>
-        <Text style={styles.subtitle}>Season fees & sponsors</Text>
+        <Text style={styles.subtitle}>Season fees</Text>
 
         {/* Summary Card */}
         <Card style={styles.card}>
           <Card.Content>
-            <Text style={styles.cardTitle}>Season Fees 2024/25</Text>
+            <Text style={styles.cardTitle}>Season Fees</Text>
             <View style={styles.metricsRow}>
               <Metric label="Collected" value={`£${paymentData?.collected || 0}`} tone="good" />
               <Metric label="Expected" value={`£${paymentData?.expected || 0}`} />
@@ -76,10 +70,6 @@ export default function PaymentsScreen() {
               <View style={[styles.progressFill, { width: `${pct * 100}%` }]} />
             </View>
             <Text style={styles.progressText}>{Math.round(pct * 100)}% complete</Text>
-
-            <TouchableOpacity style={styles.button} onPress={openPaymentPortal}>
-              <Text style={styles.buttonText}>Pay Season Fees</Text>
-            </TouchableOpacity>
           </Card.Content>
         </Card>
 
@@ -94,34 +84,9 @@ export default function PaymentsScreen() {
               keyExtractor={(x) => x.name}
               ItemSeparatorComponent={() => <View style={styles.separator} />}
               renderItem={({ item }) => <PersonRow {...item} />}
+              ListEmptyComponent={<Text style={styles.placeholderText}>No payment requests yet.</Text>}
               scrollEnabled={false}
             />
-          </Card.Content>
-        </Card>
-
-        {/* Payment Info */}
-        <View style={{ height: 20 }} />
-        <Card style={styles.card}>
-          <Card.Content>
-            <Text style={styles.infoTitle}>Payment Information</Text>
-            <Text style={styles.infoText}>
-              • Season fees: £150 per player{'\n'}
-              • Payment deadline: 1st October 2025{'\n'}
-              • Late payments subject to £10 admin fee{'\n'}
-              • Financial assistance available
-            </Text>
-          </Card.Content>
-        </Card>
-
-        {/* Sponsors Section (Placeholder) */}
-        <View style={{ height: 20 }} />
-        <Text style={styles.sectionHeader}>Sponsors</Text>
-        <Text style={styles.sectionSubtitle}>Supporting our team</Text>
-        <Card style={styles.card}>
-          <Card.Content>
-            <Text style={styles.placeholderText}>
-              No sponsors yet — coming soon
-            </Text>
           </Card.Content>
         </Card>
 
@@ -254,18 +219,6 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
 
-  button: {
-    backgroundColor: COLORS.primary,
-    padding: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  buttonText: {
-    color: '#000',
-    fontWeight: 'bold',
-    fontSize: 16,
-  },
-
   separator: {
     height: 1,
     backgroundColor: '#333',
@@ -294,18 +247,6 @@ const styles = StyleSheet.create({
   chipText: {
     fontWeight: '700',
     fontSize: 11,
-  },
-
-  infoTitle: {
-    color: COLORS.text,
-    fontSize: 16,
-    fontWeight: '700',
-    marginBottom: 8,
-  },
-  infoText: {
-    color: COLORS.textLight,
-    fontSize: 14,
-    lineHeight: 20,
   },
 
   placeholderText: {

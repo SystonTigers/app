@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Theme, ColorScheme, TenantThemeConfig, ThemeContextValue } from './types';
 import { lightTheme, darkTheme, createCustomTheme } from './defaultThemes';
 import { fetchBrand, brandToTheme } from '../services/brandService';
+import { subscribeToClub } from '../services/club';
 
 const THEME_STORAGE_KEY = '@theme_preference';
 const TENANT_THEME_STORAGE_KEY = '@tenant_theme_config';
@@ -28,6 +29,10 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     loadThemePreference();
     loadTenantThemeConfig();
     fetchBrandFromAPI();
+    // Re-brand when the person switches club
+    return subscribeToClub(() => {
+      fetchBrandFromAPI();
+    });
   }, []);
 
   // Fetch brand from API and apply to theme

@@ -4,10 +4,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Picker } from '@react-native-picker/picker';
 import { useTheme } from '../theme/';
 import { Card, SectionHeader, Button, Badge, Divider, EmptyState, LoadingSpinner } from '../components';
-import { API_BASE_URL, TENANT_ID, API_ENDPOINTS } from '../config';
+import { API_BASE_URL, API_ENDPOINTS } from '../config';
 import { useAuth } from '../context/AuthContext';
 import { squadApi } from '../services/api';
 import axios from 'axios';
+import { getTenantId } from '../services/club';
 
 /**
  * TeamMembersScreen
@@ -15,7 +16,6 @@ import axios from 'axios';
  * Features:
  * - View all team members with their roles
  * - Change user roles (admin only)
- * - Invite new members
  * - Remove members
  * - Audit log of role changes (if audit endpoint enabled)
  */
@@ -57,7 +57,6 @@ export default function TeamMembersScreen() {
   const [saving, setSaving] = useState(false);
   const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
   const [showRoleChanger, setShowRoleChanger] = useState(false);
-  const [showInviteModal, setShowInviteModal] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
 
   const currentUser = { id: user?.userId || '', role: user?.role || 'viewer' };
@@ -158,7 +157,7 @@ export default function TeamMembersScreen() {
             try {
               // In production, call API
               // await axios.delete(`${API_BASE_URL}/api/v1/team/members/${member.id}`, {
-              //   params: { tenant: TENANT_ID }
+              //   params: { tenant: getTenantId() }
               // });
 
               setMembers(members.filter(m => m.id !== member.id));
@@ -201,10 +200,6 @@ export default function TeamMembersScreen() {
         <SectionHeader
           title="Team Members"
           subtitle={`${members.length} member${members.length !== 1 ? 's' : ''}`}
-          action={isAdmin ? {
-            label: 'Invite',
-            onPress: () => setShowInviteModal(true)
-          } : undefined}
         />
 
         {/* Role Legend */}
@@ -227,9 +222,7 @@ export default function TeamMembersScreen() {
           <EmptyState
             icon="account-group-outline"
             title="No Members"
-            description="Invite team members to get started"
-            actionLabel={isAdmin ? 'Invite Member' : undefined}
-            onAction={isAdmin ? () => setShowInviteModal(true) : undefined}
+            description="Members appear here once they sign up and join your club."
           />
         ) : (
           <View style={styles.membersList}>
@@ -376,27 +369,6 @@ export default function TeamMembersScreen() {
         </View>
       )}
 
-      {/* Invite Modal */}
-      {showInviteModal && (
-        <View style={[styles.modal, { backgroundColor: theme.colors.overlay }]}>
-          <View style={[styles.modalContent, { backgroundColor: theme.colors.surface }]}>
-            <Text style={[styles.modalTitle, { color: theme.colors.text }]}>
-              Invite Team Member
-            </Text>
-
-            <Text style={[styles.inviteText, { color: theme.colors.textSecondary }]}>
-              Feature coming soon! Members can be invited via email with a role assignment.
-            </Text>
-
-            <Button
-              variant="primary"
-              onPress={() => setShowInviteModal(false)}
-            >
-              Close
-            </Button>
-          </View>
-        </View>
-      )}
     </SafeAreaView>
   );
 }
@@ -529,10 +501,5 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'flex-end',
     gap: 12,
-  },
-  inviteText: {
-    fontSize: 14,
-    marginBottom: 24,
-    lineHeight: 20,
   },
 });

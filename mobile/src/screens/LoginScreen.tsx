@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -11,39 +11,39 @@ import {
 import { TextInput, IconButton } from 'react-native-paper';
 import { Button } from '../components/Button';
 import Card from '../components/ui/Card';
-import { COLORS, TENANT_ID, APP_VERSION } from '../config';
+import { COLORS, APP_VERSION } from '../config';
 import { submitLogin } from './authController';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import type { AuthResult } from '../services/api';
+import { useClub } from '../context/ClubContext';
 
 interface LoginScreenProps {
-  onLogin: (userId: string, role: string, token: string) => void;
+  onLogin: (result: AuthResult) => void;
   onNavigateToRegister: () => void;
   onForgotPassword?: () => void;
+  /** Go back to "Find your club" (hidden on single-club builds). */
+  onSwitchClub?: () => void;
 }
-
-const DEMO_ACCOUNTS = [
-  { label: 'Admin', email: 'admin@systontigers.co.uk', password: 'admin123' },
-  { label: 'Coach', email: 'coach@systontigers.co.uk', password: 'coach123' },
-  { label: 'Player', email: 'player@systontigers.co.uk', password: 'player123' },
-  { label: 'Parent', email: 'parent@systontigers.co.uk', password: 'parent123' },
-];
 
 export default function LoginScreen({
   onLogin,
   onNavigateToRegister,
   onForgotPassword,
+  onSwitchClub,
 }: LoginScreenProps) {
+  const { club, isLocked } = useClub();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [clubChoices, setClubChoices] = useState<{ id: string; name: string; slug: string }[]>([]);
 
-  const brandTitle = 'Syston Tigers';
+  const brandTitle = club?.name || 'Welcome back';
 
-  const handleLogin = async () => {
+  const handleLogin = async (clubId?: string) => {
     if (!email.trim() || !password.trim()) {
-      setError('Please enter email and password');
+      setError('Please enter your email and password');
       return;
     }
 
@@ -56,35 +56,20 @@ export default function LoginScreen({
     setError('');
 
     try {
-      setTimeout(() => {
-        if (email === 'admin@systontigers.co.uk' && password === 'admin123') {
-          onLogin('user-001', 'admin', 'mock-jwt-token-admin');
-        } else if (email === 'coach@systontigers.co.uk' && password === 'coach123') {
-          onLogin('user-002', 'coach', 'mock-jwt-token-coach');
-        } else if (email === 'player@systontigers.co.uk' && password === 'player123') {
-          onLogin('user-003', 'player', 'mock-jwt-token-player');
-        } else if (email === 'parent@systontigers.co.uk' && password === 'parent123') {
-          onLogin('user-004', 'parent', 'mock-jwt-token-parent');
-        } else {
-          setError('Invalid email or password');
-        }
-        setLoading(false);
-      }, 1500);
       const outcome = await submitLogin({
         email: email.trim().toLowerCase(),
         password,
+        clubId,
       });
 
-      if ('error' in outcome) {
+      if (outcome.success) {
+        setClubChoices([]);
+        onLogin(outcome.result);
+      } else if (outcome.clubs) {
+        setClubChoices(outcome.clubs);
         setError(outcome.error);
       } else {
-        onLogin(outcome.result.user.id, outcome.result.user.role, outcome.result.token);
-      }
-    } catch (err) {
-      if (err instanceof Error) {
-        setError(err.message || 'Unable to sign in. Please try again.');
-      } else {
-        setError('Unable to sign in. Please try again.');
+        setError(outcome.error);
       }
     } finally {
       setLoading(false);
@@ -107,14 +92,16 @@ export default function LoginScreen({
           </View>
           <Text style={styles.title}>{brandTitle}</Text>
           <Text style={styles.subtitle}>
-            Sign in to manage fixtures, comms, and player availability.
+            Fixtures, results, team news and match videos in one place.
           </Text>
         </View>
 
         <Card inset style={styles.card}>
           <View style={styles.cardHeader}>
             <Text style={styles.cardTitle}>Sign In</Text>
-            <Text style={styles.cardSubtitle}>Join the control room for {TENANT_ID}.</Text>
+            <Text style={styles.cardSubtitle}>
+              {club ? `Log in to ${club.name}.` : 'Log in with the email you joined your club with.'}
+            </Text>
           </View>
 
           {error ? (
@@ -167,25 +154,25 @@ export default function LoginScreen({
               }
               style={styles.input}
               disabled={loading}
-              onSubmitEditing={handleLogin}
+              onSubmitEditing={() => handleLogin()}
             />
           </View>
 
+          {onForgotPassword ? (
           <Button
             variant="ghost"
             size="small"
-            onPress={
-              onForgotPassword || (() => alert('Password reset feature coming soon!'))
-            }
+            onPress={onForgotPassword}
             style={styles.forgotButton}
             disabled={loading}
           >
             Forgot password?
           </Button>
+          ) : null}
 
           <Button
             variant="primary"
-            onPress={handleLogin}
+            onPress={() => handleLogin()}
             loading={loading}
             disabled={loading}
             style={styles.loginButton}
@@ -195,17 +182,26 @@ export default function LoginScreen({
           </Button>
         </Card>
 
-        <Card inset style={styles.demoCard}>
-          <Text style={styles.demoTitle}>Demo Accounts (Development Only)</Text>
-          {DEMO_ACCOUNTS.map((account) => (
-            <Text key={account.label} style={styles.demoText}>
-              • {account.label}: {account.email} / {account.password}
-            </Text>
-          ))}
-        </Card>
+        {clubChoices.length > 0 ? (
+          <Card inset style={styles.card}>
+            <Text style={styles.cardTitle}>Choose your club</Text>
+            {clubChoices.map((choice) => (
+              <Button
+                key={choice.id}
+                variant="secondary"
+                onPress={() => handleLogin(choice.id)}
+                disabled={loading}
+                style={styles.clubChoice}
+                fullWidth
+              >
+                {choice.name}
+              </Button>
+            ))}
+          </Card>
+        ) : null}
 
         <View style={styles.registerContainer}>
-          <Text style={styles.registerText}>Don&apos;t have an account?</Text>
+          <Text style={styles.registerText}>New to {club?.name || 'your club'} here?</Text>
           <Button
             variant="ghost"
             size="small"
@@ -213,11 +209,17 @@ export default function LoginScreen({
             style={styles.registerButton}
             disabled={loading}
           >
-            Sign Up
+            Create an account
           </Button>
         </View>
 
-        <Text style={styles.footer}>Version {APP_VERSION} • {TENANT_ID}</Text>
+        {!isLocked && onSwitchClub ? (
+          <Button variant="ghost" size="small" onPress={onSwitchClub} disabled={loading} style={styles.switchClub}>
+            {club ? 'Not your club? Find another' : 'Find your club'}
+          </Button>
+        ) : null}
+
+        <Text style={styles.footer}>Version {APP_VERSION}</Text>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -315,27 +317,12 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginLeft: 8,
   },
-  demoCard: {
-    backgroundColor: `${COLORS.primary}15`,
-    borderColor: `${COLORS.primary}50`,
-    marginBottom: 16,
+  clubChoice: {
+    marginTop: 8,
   },
-  demoCardContent: {
-    padding: 12,
-  },
-  demoTitle: {
-    fontSize: 16,
-    lineHeight: 24,
-    fontWeight: '600',
-    color: COLORS.text,
-    marginBottom: 8,
-  },
-  demoText: {
-    fontSize: 14,
-    lineHeight: 20,
-    color: COLORS.textLight,
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-    marginBottom: 8,
+  switchClub: {
+    alignSelf: 'center',
+    marginTop: 16,
   },
   registerContainer: {
     flexDirection: 'row',

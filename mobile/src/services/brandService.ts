@@ -2,7 +2,8 @@
 // Service for loading and applying dynamic branding
 
 import api from './api';
-import { TENANT_ID } from '../config';
+import { fetchClubInfo, getTenantId } from './club';
+
 
 export interface BrandKit {
   primaryColor: string;
@@ -16,21 +17,24 @@ export interface BrandKit {
 }
 
 /**
- * Fetch brand kit from API
+ * The current club's colours, name and badge.
  */
 export async function fetchBrand(): Promise<BrandKit | null> {
+  const slug = getTenantId();
+  if (!slug) return null;
   try {
-    const response = await api.get('/api/v1/brand', {
-      params: { tenant: TENANT_ID },
-    });
-
-    if (response.data?.success && response.data?.data) {
-      return response.data.data;
+    const club = await fetchClubInfo(slug);
+    if (!club?.primaryColor || !club.secondaryColor) {
+      return null;
     }
-
-    return null;
+    return {
+      primaryColor: club.primaryColor,
+      secondaryColor: club.secondaryColor,
+      clubBadge: club.badgeUrl ?? undefined,
+      clubName: club.name,
+    };
   } catch (error) {
-    console.error('Failed to fetch brand:', error);
+    console.warn('Failed to fetch club colours:', error);
     return null;
   }
 }
@@ -40,16 +44,12 @@ export async function fetchBrand(): Promise<BrandKit | null> {
  */
 export async function updateBrand(brand: Partial<BrandKit>): Promise<BrandKit | null> {
   try {
-    const response = await api.post('/api/v1/brand', {
-      tenant: TENANT_ID,
-      ...brand,
+    const response = await api.patch('/api/v1/tenants/me', {
+      ...(brand.primaryColor ? { primaryColor: brand.primaryColor } : {}),
+      ...(brand.secondaryColor ? { secondaryColor: brand.secondaryColor } : {}),
+      ...(brand.clubBadge ? { badgeUrl: brand.clubBadge } : {}),
     });
-
-    if (response.data?.success && response.data?.data) {
-      return response.data.data;
-    }
-
-    return null;
+    return response.data?.success ? await fetchBrand() : null;
   } catch (error) {
     console.error('Failed to update brand:', error);
     return null;

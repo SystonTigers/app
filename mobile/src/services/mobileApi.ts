@@ -1,4 +1,4 @@
-import { API_BASE_URL, TENANT_ID } from '../config';
+import { API_BASE_URL } from '../config';
 import { authStorage } from './authStorage';
 
 const getAuthToken = async (): Promise<string | null> => {

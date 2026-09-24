@@ -1,6 +1,7 @@
 import { useState, useEffect, type ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { API_BASE_URL, TENANT_ID, IS_DEV } from './config';
+import { API_BASE_URL, IS_DEV } from './config';
+import { getTenantId } from './services/club';
 
 /**
  * Feature Flags System
@@ -124,7 +125,7 @@ const STORAGE_OVERRIDES_KEY = '@feature_flags_overrides';
  */
 export async function loadFeatureFlagsFromAPI(): Promise<FeatureFlags> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/tenant/feature-flags?tenant=${TENANT_ID}`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/tenant/feature-flags?tenant=${getTenantId()}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',

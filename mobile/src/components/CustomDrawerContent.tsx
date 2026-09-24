@@ -15,9 +15,8 @@ const MENU_GROUPS = [
         title: 'Match Day',
         icon: 'soccer-field',
         items: [
-            { label: 'Live Console', screen: 'LiveMatchInput', icon: 'gamepad-variant', roles: ['admin', 'manager', 'coach', 'parent', 'player'] },
+            { label: 'Live Console', screen: 'LiveMatchInput', icon: 'gamepad-variant', roles: ['admin', 'manager', 'coach'] },
             { label: 'Watch Live', screen: 'LiveMatchWatch', icon: 'youtube-tv', roles: ['admin', 'manager', 'coach', 'parent', 'player'] },
-            { label: 'MOTM Voting', screen: 'MOTMVoting', icon: 'star-circle', roles: ['admin', 'manager', 'coach', 'parent', 'player'] },
             { label: 'Predictions', screen: 'LastManStanding', icon: 'crystal-ball', roles: ['admin', 'manager', 'coach', 'parent', 'player'] },
         ]
     },
@@ -30,7 +29,6 @@ const MENU_GROUPS = [
             { label: 'Drill Library', screen: 'DrillLibrary', icon: 'clipboard-list', roles: ['admin', 'manager', 'coach', 'player'] },
             { label: 'Stats Center', screen: 'Stats', icon: 'chart-bar', roles: ['admin', 'manager', 'coach', 'parent', 'player'] },
             { label: 'League Table', screen: 'LeagueTable', icon: 'format-list-numbered', roles: ['admin', 'manager', 'coach', 'parent', 'player'] },
-            { label: 'Wearables', screen: 'Wearables', icon: 'watch-variant', roles: ['player'] },
         ]
     },
     {
@@ -66,7 +64,6 @@ const MENU_GROUPS = [
         items: [
             { label: 'My Profile', screen: 'Profile', icon: 'account-circle', roles: ['admin', 'manager', 'coach', 'parent', 'player'] },
             { label: 'App Settings', screen: 'Settings', icon: 'tune', roles: ['admin', 'manager', 'coach', 'parent', 'player'] },
-            { label: 'System Config', screen: 'Config', icon: 'console', roles: ['admin'] },
         ]
     }
 ];

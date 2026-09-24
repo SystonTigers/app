@@ -1,22 +1,44 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, ScrollView, StyleSheet, RefreshControl, ImageBackground, TouchableOpacity, Modal } from 'react-native';
+import { View, ScrollView, StyleSheet, RefreshControl, ImageBackground } from 'react-native';
 import { Text, IconButton } from 'react-native-paper';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/useTheme';
 import { Fixture, getUpcomingFixtures, formatFixtureDate, formatKickOffTime } from '../services/fixturesApi';
-import { feedApi } from '../services/api';
+import { feedApi, fixturesApi } from '../services/api';
+import { useClub } from '../context/ClubContext';
+import { isOurTeam } from '../utils/clubMatch';
 
-import VoteCard from '../components/VoteCard';
 import HighlightCard from '../components/HighlightCard';
 import ResultCard from '../components/ResultCard';
 import FeedCard from '../components/FeedCard';
-import GlobalSearch from '../components/GlobalSearch';
 import { SkeletonCard } from '../components/LoadingSkeleton';
 
+interface QuickStats {
+  position: string;
+  points: string;
+  won: string;
+  goalDifference: string;
+}
 
+/** "5 minutes ago" style label for a post date (ISO string or epoch ms). */
+function timeAgo(value: unknown): string {
+  const ms = typeof value === 'number' ? value : typeof value === 'string' ? Date.parse(value) : NaN;
+  if (!Number.isFinite(ms)) return '';
+  const minutes = Math.round((Date.now() - ms) / 60000);
+  if (minutes < 1) return 'Just now';
+  if (minutes < 60) return `${minutes} minute${minutes === 1 ? '' : 's'} ago`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'} ago`;
+  const days = Math.round(hours / 24);
+  if (days < 7) return `${days} day${days === 1 ? '' : 's'} ago`;
+  return new Date(ms).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+}
 
 export default function HomeScreen({ navigation }: any) {
   const { theme } = useTheme();
   const { colors } = theme;
+  const { club } = useClub();
+  const insets = useSafeAreaInsets();
   const [refreshing, setRefreshing] = useState(false);
 
   // Data State
@@ -24,27 +46,36 @@ export default function HomeScreen({ navigation }: any) {
   const [fixturesLoading, setFixturesLoading] = useState(true);
   const [newsPosts, setNewsPosts] = useState<any[]>([]);
   const [feedItems, setFeedItems] = useState<any[]>([]);
-  const [quickStats, setQuickStats] = useState({ position: '-', points: '-', won: '-', goalDifference: '-' });
-  const [showSearch, setShowSearch] = useState(false);
+  const [quickStats, setQuickStats] = useState<QuickStats | null>(null);
 
   const loadData = useCallback(async () => {
     setFixturesLoading(true);
     try {
-      const [fixtures, news] = await Promise.all([
+      const [fixtures, news, table] = await Promise.all([
         getUpcomingFixtures({ limit: 1 }),
-        feedApi.getPosts(1, 10)
+        feedApi.getPosts(1, 10),
+        // The table is optional: a missing league must not blank the rest of the page.
+        fixturesApi.getLeagueTable().catch(() => null),
       ]);
       setNextFixture(fixtures[0] || null);
+      const rows: any[] = Array.isArray(table?.data) ? table.data : [];
+      const ourRow = rows.find((row) => isOurTeam(row.team_name, club));
+      setQuickStats(ourRow ? {
+        position: String(ourRow.position ?? '-'),
+        points: String(ourRow.points ?? '-'),
+        won: String(ourRow.won ?? '-'),
+        goalDifference: String((ourRow.goals_for ?? 0) - (ourRow.goals_against ?? 0)),
+      } : null);
       const allPosts = Array.isArray(news.data) ? news.data : [];
       setNewsPosts(allPosts.filter((p: any) => p.type === 'news' || !p.type));
-      // Extract vote, result, highlight items from feed
-      setFeedItems(allPosts.filter((p: any) => p.type === 'vote' || p.type === 'result' || p.type === 'highlight'));
+      // Extract result and highlight items from feed
+      setFeedItems(allPosts.filter((p: any) => p.type === 'result' || p.type === 'highlight'));
     } catch (error) {
       console.error('Failed to load home data', error);
     } finally {
       setFixturesLoading(false);
     }
-  }, []);
+  }, [club]);
 
   useEffect(() => {
     loadData();
@@ -63,14 +94,19 @@ export default function HomeScreen({ navigation }: any) {
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       contentContainerStyle={styles.contentContainer}
     >
-      {/* Search Button */}
-      <TouchableOpacity
-        style={[styles.searchButton, { backgroundColor: colors.surface, borderColor: colors.primary + '40' }]}
-        onPress={() => setShowSearch(true)}
-      >
-        <IconButton icon="magnify" iconColor={colors.primary} size={20} />
-        <Text style={[styles.searchText, { color: colors.textSecondary }]}>Search...</Text>
-      </TouchableOpacity>
+      {/* Club header with the menu (the drawer holds every other section) */}
+      <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
+        <IconButton
+          icon="menu"
+          iconColor={colors.text}
+          onPress={() => navigation.getParent?.()?.openDrawer?.()}
+          accessibilityLabel="Open menu"
+        />
+        <Text style={[styles.topBarTitle, { color: colors.text }]} numberOfLines={1}>
+          {club?.name || 'Home'}
+        </Text>
+      </View>
+
       {/* 1. HERO SECTION (Next Match) */}
       {fixturesLoading ? (
         <View style={{ paddingHorizontal: 16, marginTop: 16 }}>
@@ -86,7 +122,7 @@ export default function HomeScreen({ navigation }: any) {
             <Text style={[styles.heroLabel, { color: colors.primary }]}>NEXT MATCH</Text>
             <View style={styles.heroTeams}>
               <Text style={[styles.heroTeamName, { color: colors.primary }]}>
-                {nextFixture.homeTeamName || 'SYSTON TIGERS'}
+                {(nextFixture.homeTeamName || club?.name || 'HOME').toUpperCase()}
               </Text>
               <Text style={[styles.heroVs, { color: colors.text }]}>VS</Text>
               <Text style={[styles.heroTeamName, { color: colors.primary }]}>
@@ -100,13 +136,15 @@ export default function HomeScreen({ navigation }: any) {
         </ImageBackground>
       ) : null}
 
-      {/* 2. QUICK STATS ROW */}
-      <View style={styles.statsRow}>
-        <StatItem label="POS" value={quickStats.position} icon="trophy-variant" colors={colors} />
-        <StatItem label="PTS" value={quickStats.points} icon="star" colors={colors} />
-        <StatItem label="WON" value={quickStats.won} icon="trophy" colors={colors} />
-        <StatItem label="GD" value={quickStats.goalDifference} icon="target" colors={colors} />
-      </View>
+      {/* 2. QUICK STATS ROW (only when the club is in the league table) */}
+      {quickStats && (
+        <View style={styles.statsRow}>
+          <StatItem label="POS" value={quickStats.position} icon="trophy-variant" colors={colors} />
+          <StatItem label="PTS" value={quickStats.points} icon="star" colors={colors} />
+          <StatItem label="WON" value={quickStats.won} icon="trophy" colors={colors} />
+          <StatItem label="GD" value={quickStats.goalDifference} icon="target" colors={colors} />
+        </View>
+      )}
 
       {/* 3. TEAM FEED TIMELINE */}
       <View style={styles.feedContainer}>
@@ -114,14 +152,6 @@ export default function HomeScreen({ navigation }: any) {
 
         {/* Dynamic feed items */}
         {feedItems.map((item) => {
-          if (item.type === 'vote') return (
-            <VoteCard
-              key={item.id}
-              matchTitle={item.matchTitle || item.title || ''}
-              dueDate={item.dueDate || item.closesAt || ''}
-              onVote={() => navigation.navigate('MOTMVoting')}
-            />
-          );
           if (item.type === 'result') return (
             <ResultCard key={item.id} {...item} />
           );
@@ -135,24 +165,28 @@ export default function HomeScreen({ navigation }: any) {
           return null;
         })}
 
+        {!fixturesLoading && !nextFixture && feedItems.length === 0 && newsPosts.length === 0 ? (
+          <View style={[styles.emptyCard, { borderColor: colors.border }]}>
+            <Text style={[styles.emptyTitle, { color: colors.text }]}>Welcome to {club?.name || 'your club'}</Text>
+            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+              Fixtures, results and club news will show up here as soon as your club adds them. Pull down to refresh.
+            </Text>
+          </View>
+        ) : null}
+
         {/* FEED ITEMS: News Posts */}
         {newsPosts.map((post) => (
           <FeedCard key={post.id} title="CLUB NEWS">
             <View style={{ padding: 16 }}>
               <Text style={{ color: colors.text, fontSize: 14, lineHeight: 20 }}>{post.content}</Text>
               <View style={{ flexDirection: 'row', marginTop: 12, alignItems: 'center' }}>
-                <Text style={{ color: colors.textSecondary, fontSize: 12 }}>Just now</Text>
+                <Text style={{ color: colors.textSecondary, fontSize: 12 }}>{timeAgo(post.created_at ?? post.timestamp)}</Text>
               </View>
             </View>
           </FeedCard>
         ))}
 
       </View>
-
-      {/* Global Search Modal */}
-      <Modal visible={showSearch} animationType="slide" onRequestClose={() => setShowSearch(false)}>
-        <GlobalSearch onClose={() => setShowSearch(false)} onNavigate={navigation.navigate} />
-      </Modal>
     </ScrollView>
   );
 }
@@ -169,6 +203,32 @@ const StatItem = ({ label, value, icon, colors }: any) => (
 );
 
 const styles = StyleSheet.create({
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingTop: 8,
+    paddingRight: 16,
+  },
+  topBarTitle: {
+    flex: 1,
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  emptyCard: {
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 20,
+    marginTop: 8,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 8,
+  },
+  emptyText: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
   container: {
     flex: 1,
   },
@@ -261,18 +321,5 @@ const styles = StyleSheet.create({
     marginLeft: 16,
     marginBottom: 12,
     opacity: 0.7,
-  },
-  searchButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginHorizontal: 16,
-    marginTop: 8,
-    marginBottom: 8,
-    borderRadius: 12,
-    borderWidth: 1,
-    paddingRight: 16,
-  },
-  searchText: {
-    fontSize: 14,
   },
 });

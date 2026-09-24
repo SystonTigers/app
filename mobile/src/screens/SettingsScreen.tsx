@@ -1,16 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { View, ScrollView, StyleSheet, Alert } from 'react-native';
-import { Card, Title, Paragraph, Switch, List, Chip, TextInput, Button, Divider, SegmentedButtons } from 'react-native-paper';
-import * as Location from 'expo-location';
+import { Card, Title, Paragraph, Switch, List, TextInput, Button, Divider } from 'react-native-paper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { COLORS } from '../config';
 import { DeleteAccountModal } from '../components/DeleteAccountModal';
 import { useAuth } from '../context/AuthContext';
 import { usersApi } from '../services/api';
 
+const PREFERENCES_KEY = '@notification_preferences';
+
 interface NotificationPreferences {
   masterToggle: boolean;
-  teamsFollowed: string[];
   matchAlerts: {
     prematch24h: boolean;
     prematch3h: boolean;
@@ -22,12 +22,6 @@ interface NotificationPreferences {
     cards: boolean;
     potm: boolean;
     clips: boolean;
-  };
-  locationAware: {
-    enabled: boolean;
-    notifyOnlyNearVenue: boolean;
-    radius: number;
-    etaReminder: boolean;
   };
   venuePreferences: {
     favorites: string[];
@@ -54,21 +48,6 @@ interface UserProfile {
   timezone: string;
 }
 
-const AVAILABLE_TEAMS = [
-  'Syston Tigers U18',
-  'Syston Tigers U16',
-  'Syston Tigers U14',
-  'Syston Tigers First Team',
-  'Syston Tigers Reserves',
-];
-
-const RADIUS_OPTIONS = [
-  { label: '1km', value: '1000' },
-  { label: '5km', value: '5000' },
-  { label: '10km', value: '10000' },
-  { label: '20km', value: '20000' },
-];
-
 export default function SettingsScreen() {
   const { user, logout } = useAuth();
 
@@ -82,7 +61,6 @@ export default function SettingsScreen() {
 
   const [preferences, setPreferences] = useState<NotificationPreferences>({
     masterToggle: true,
-    teamsFollowed: ['Syston Tigers U18'],
     matchAlerts: {
       prematch24h: true,
       prematch3h: true,
@@ -94,12 +72,6 @@ export default function SettingsScreen() {
       cards: true,
       potm: true,
       clips: true,
-    },
-    locationAware: {
-      enabled: false,
-      notifyOnlyNearVenue: false,
-      radius: 5000,
-      etaReminder: false,
     },
     venuePreferences: {
       favorites: [],
@@ -118,33 +90,19 @@ export default function SettingsScreen() {
     },
   });
 
-  const [locationPermission, setLocationPermission] = useState<string>('undetermined');
   const [expandedSection, setExpandedSection] = useState<string>('');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
+  // Notification choices are kept on this device
   useEffect(() => {
-    checkLocationPermission();
+    AsyncStorage.getItem(PREFERENCES_KEY)
+      .then((raw) => {
+        if (raw) setPreferences((current) => ({ ...current, ...JSON.parse(raw) }));
+      })
+      .catch(() => {
+        // Keep the defaults
+      });
   }, []);
-
-  const checkLocationPermission = async () => {
-    const { status } = await Location.getForegroundPermissionsAsync();
-    setLocationPermission(status);
-  };
-
-  const requestLocationPermission = async () => {
-    const { status } = await Location.requestForegroundPermissionsAsync();
-    setLocationPermission(status);
-
-    if (status === 'granted') {
-      updatePreferences('locationAware', { ...preferences.locationAware, enabled: true });
-    } else {
-      Alert.alert(
-        'Location Permission Required',
-        'To use location-aware notifications, please enable location permissions in your device settings.',
-        [{ text: 'OK' }]
-      );
-    }
-  };
 
   const updateProfile = (field: keyof UserProfile, value: string) => {
     setProfile({ ...profile, [field]: value });
@@ -158,13 +116,6 @@ export default function SettingsScreen() {
     setPreferences({
       ...preferences,
       matchAlerts: { ...preferences.matchAlerts, [alert]: value },
-    });
-  };
-
-  const updateLocationAware = (setting: keyof NotificationPreferences['locationAware'], value: any) => {
-    setPreferences({
-      ...preferences,
-      locationAware: { ...preferences.locationAware, [setting]: value },
     });
   };
 
@@ -182,16 +133,9 @@ export default function SettingsScreen() {
     });
   };
 
-  const toggleTeamFollow = (team: string) => {
-    const followed = preferences.teamsFollowed.includes(team);
-    const newTeams = followed
-      ? preferences.teamsFollowed.filter(t => t !== team)
-      : [...preferences.teamsFollowed, team];
-    updatePreferences('teamsFollowed', newTeams);
-  };
-
   const handleSave = async () => {
     try {
+      await AsyncStorage.setItem(PREFERENCES_KEY, JSON.stringify(preferences));
       await usersApi.updateProfile({
         firstName: profile.name.split(' ')[0],
         lastName: profile.name.split(' ').slice(1).join(' '),
@@ -294,36 +238,6 @@ export default function SettingsScreen() {
 
       {preferences.masterToggle && (
         <>
-          {/* Teams Followed */}
-          <Card style={styles.card}>
-            <Card.Content>
-              <Title style={styles.cardTitle}>⚽ Teams Followed</Title>
-              <Paragraph style={styles.cardDescription}>
-                Select which teams you want to receive notifications for
-              </Paragraph>
-              <View style={styles.teamsContainer}>
-                {AVAILABLE_TEAMS.map((team) => (
-                  <Chip
-                    key={team}
-                    selected={preferences.teamsFollowed.includes(team)}
-                    onPress={() => toggleTeamFollow(team)}
-                    style={[
-                      styles.teamChip,
-                      preferences.teamsFollowed.includes(team) && styles.teamChipSelected,
-                    ]}
-                    textStyle={[
-                      styles.teamChipText,
-                      preferences.teamsFollowed.includes(team) && styles.teamChipTextSelected,
-                    ]}
-                    selectedColor={COLORS.primary}
-                  >
-                    {team}
-                  </Chip>
-                ))}
-              </View>
-            </Card.Content>
-          </Card>
-
           {/* Match Alerts */}
           <Card style={styles.card}>
             <Card.Content>
@@ -442,78 +356,6 @@ export default function SettingsScreen() {
                   )}
                 />
               </List.Section>
-            </Card.Content>
-          </Card>
-
-          {/* Location-Aware Notifications */}
-          <Card style={styles.card}>
-            <Card.Content>
-              <Title style={styles.cardTitle}>📍 Location-Aware Notifications</Title>
-              <Paragraph style={styles.cardDescription}>
-                Get notifications based on your proximity to match venues
-              </Paragraph>
-              <Divider style={styles.divider} />
-
-              <List.Item
-                title="Use my location"
-                description={
-                  locationPermission === 'granted'
-                    ? 'Location permission granted'
-                    : 'Requires location permission'
-                }
-                left={props => <List.Icon {...props} icon="map-marker" color={COLORS.primary} />}
-                right={() => (
-                  <Switch
-                    value={preferences.locationAware.enabled}
-                    onValueChange={(value) => {
-                      if (value && locationPermission !== 'granted') {
-                        requestLocationPermission();
-                      } else {
-                        updateLocationAware('enabled', value);
-                      }
-                    }}
-                    color={COLORS.primary}
-                  />
-                )}
-              />
-
-              {preferences.locationAware.enabled && locationPermission === 'granted' && (
-                <>
-                  <List.Item
-                    title="Notify only when near venue"
-                    description="Only send match notifications when you're within the selected radius"
-                    right={() => (
-                      <Switch
-                        value={preferences.locationAware.notifyOnlyNearVenue}
-                        onValueChange={(value) => updateLocationAware('notifyOnlyNearVenue', value)}
-                        color={COLORS.primary}
-                      />
-                    )}
-                  />
-
-                  <View style={styles.radiusContainer}>
-                    <Paragraph style={styles.radiusLabel}>Notification Radius</Paragraph>
-                    <SegmentedButtons
-                      value={preferences.locationAware.radius.toString()}
-                      onValueChange={(value) => updateLocationAware('radius', parseInt(value))}
-                      buttons={RADIUS_OPTIONS}
-                      style={styles.segmentedButtons}
-                    />
-                  </View>
-
-                  <List.Item
-                    title="ETA reminders while travelling"
-                    description="Get notified with estimated arrival time when heading to venue"
-                    right={() => (
-                      <Switch
-                        value={preferences.locationAware.etaReminder}
-                        onValueChange={(value) => updateLocationAware('etaReminder', value)}
-                        color={COLORS.primary}
-                      />
-                    )}
-                  />
-                </>
-              )}
             </Card.Content>
           </Card>
 
@@ -736,42 +578,6 @@ const styles = StyleSheet.create({
   },
   input: {
     marginBottom: 12,
-  },
-  teamsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 8,
-  },
-  teamChip: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: COLORS.primary,
-  },
-  teamChipSelected: {
-    backgroundColor: COLORS.primary,
-  },
-  teamChipText: {
-    color: COLORS.primary,
-  },
-  teamChipTextSelected: {
-    color: COLORS.secondary,
-    fontWeight: 'bold',
-  },
-  radiusContainer: {
-    padding: 16,
-    backgroundColor: COLORS.background,
-    borderRadius: 8,
-    marginVertical: 8,
-  },
-  radiusLabel: {
-    fontSize: 14,
-    fontWeight: '500',
-    marginBottom: 12,
-    color: COLORS.text,
-  },
-  segmentedButtons: {
-    marginBottom: 0,
   },
   timeContainer: {
     flexDirection: 'row',

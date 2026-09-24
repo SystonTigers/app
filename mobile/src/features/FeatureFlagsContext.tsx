@@ -3,7 +3,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { FeatureFlags, TenantConfig, FeatureFlagsContextValue, PlanFeatures } from './types';
 import { DEFAULT_FEATURES, mergeFeatures, getPlanFeatures } from './featureFlags';
-import { API_BASE_URL, TENANT_ID, API_ENDPOINTS } from '../config';
+import { API_BASE_URL, API_ENDPOINTS } from '../config';
+import { getTenantId } from '../services/club';
 
 const FEATURE_FLAGS_STORAGE_KEY = '@feature_flags';
 const TENANT_CONFIG_STORAGE_KEY = '@tenant_config';
@@ -77,13 +78,13 @@ export const FeatureFlagsProvider: React.FC<FeatureFlagsProviderProps> = ({ chil
       setError(null);
 
       const response = await axios.get(`${API_BASE_URL}${API_ENDPOINTS.TENANT_CONFIG}`, {
-        params: { tenant: TENANT_ID },
+        params: { tenant: getTenantId() },
         timeout: 5000, // Reduced timeout for faster fallback
       });
 
       if (response.data) {
         const tenantConfig: TenantConfig = {
-          tenantId: TENANT_ID,
+          tenantId: getTenantId(),
           plan: response.data.plan || 'free',
           features: response.data.features || {},
           limits: response.data.limits,

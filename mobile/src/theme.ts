@@ -1,9 +1,5 @@
 import { useState, useEffect } from 'react';
-import {
-  API_BASE_URL,
-  TENANT_ID,
-  COLORS as FALLBACK_COLORS,
-} from './config';
+import { API_BASE_URL, COLORS as FALLBACK_COLORS } from './config';
 import {
   lightTheme as baseLightTheme,
   darkTheme as baseDarkTheme,
@@ -17,6 +13,7 @@ import type {
   ThemeColors,
   TenantThemeConfig,
 } from './theme/types';
+import { getTenantId } from './services/club';
 
 /**
  * Additional design tokens layered on top of the shared theme contract.
@@ -290,7 +287,7 @@ function createTypographyScale(theme: BaseTheme): TypographyScale {
 export async function loadThemeFromAPI(): Promise<Theme> {
   try {
     const response = await fetch(
-      `${API_BASE_URL}/api/v1/tenant/config?tenant=${TENANT_ID}`,
+      `${API_BASE_URL}/api/v1/tenant/config?tenant=${getTenantId()}`,
       {
         method: 'GET',
         headers: {
@@ -316,7 +313,7 @@ export async function loadThemeFromAPI(): Promise<Theme> {
   try {
     // Fallback to brand endpoint for older deployments
     const brandResponse = await fetch(
-      `${API_BASE_URL}/api/v1/brand?tenant=${TENANT_ID}`,
+      `${API_BASE_URL}/api/v1/brand?tenant=${getTenantId()}`,
       {
         method: 'GET',
         headers: {

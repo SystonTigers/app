@@ -1,11 +1,11 @@
-import { authApi, AuthError, AuthResult, LoginParams, RegisterParams } from '../services/api';
+import { authApi, AuthError, AuthResult, LoginParams, MultipleClubsError, RegisterParams } from '../services/api';
 
 export type LoginSubmission = LoginParams;
 export type RegistrationSubmission = RegisterParams;
 
 export type LoginOutcome =
   | { success: true; result: AuthResult }
-  | { success: false; error: string };
+  | { success: false; error: string; clubs?: MultipleClubsError['clubs'] };
 
 export type RegistrationOutcome =
   | { success: true; result: AuthResult }
@@ -22,10 +22,14 @@ export const submitLogin = async (
     const result = await api.login({
       email: payload.email,
       password: payload.password,
+      clubId: payload.clubId,
     });
 
     return { success: true, result };
   } catch (error) {
+    if (error instanceof MultipleClubsError) {
+      return { success: false, error: error.message, clubs: error.clubs };
+    }
     if (error instanceof AuthError) {
       return { success: false, error: error.message || 'Unable to sign in. Please try again.' };
     }

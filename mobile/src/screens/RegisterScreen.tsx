@@ -1,16 +1,19 @@
 import React, { useState } from 'react';
-import { View, ScrollView, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, ScrollView, StyleSheet, KeyboardAvoidingView, Platform, Linking } from 'react-native';
 import { Text, TextInput, Button, Card, RadioButton, Chip } from 'react-native-paper';
-import { COLORS, TENANT_ID } from '../config';
+import { COLORS, PRIVACY_URL, TERMS_URL } from '../config';
+import type { AuthResult } from '../services/api';
+import { useClubName } from '../context/ClubContext';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { submitRegistration } from './authController';
 
 interface RegisterScreenProps {
-  onRegister: (userId: string, role: string, token: string) => void;
+  onRegister: (result: AuthResult) => void;
   onNavigateToLogin: () => void;
 }
 
 export default function RegisterScreen({ onRegister, onNavigateToLogin }: RegisterScreenProps) {
+  const clubName = useClubName();
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -20,7 +23,6 @@ export default function RegisterScreen({ onRegister, onNavigateToLogin }: Regist
     role: 'parent', // parent, player, coach
     phone: '',
     playerName: '', // Only if role is parent
-    promoCode: '', // Optional promo code
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -100,7 +102,6 @@ export default function RegisterScreen({ onRegister, onNavigateToLogin }: Regist
         role: formData.role,
         phone: formData.phone,
         playerName: formData.role === 'parent' ? formData.playerName : undefined,
-        promoCode: formData.promoCode,
       });
 
       if ('error' in outcome) {
@@ -110,7 +111,7 @@ export default function RegisterScreen({ onRegister, onNavigateToLogin }: Regist
         }
         setErrors(fieldErrors);
       } else {
-        onRegister(outcome.result.user.id, outcome.result.user.role, outcome.result.token);
+        onRegister(outcome.result);
       }
     } catch (err) {
       if (err instanceof Error) {
@@ -133,7 +134,7 @@ export default function RegisterScreen({ onRegister, onNavigateToLogin }: Regist
         <View style={styles.header}>
           <MaterialCommunityIcons name="account-plus" size={64} color={COLORS.primary} />
           <Text style={styles.title}>Create Account</Text>
-          <Text style={styles.subtitle}>Join Syston Tigers</Text>
+          <Text style={styles.subtitle}>Join {clubName}</Text>
         </View>
 
         {/* Registration Card */}
@@ -306,26 +307,6 @@ export default function RegisterScreen({ onRegister, onNavigateToLogin }: Regist
             />
             {errors.confirmPassword ? <Text style={styles.fieldError}>{errors.confirmPassword}</Text> : null}
 
-            {/* Promo Code (Optional) */}
-            <View style={styles.promoContainer}>
-              <Text style={styles.promoLabel}>Have a promo code?</Text>
-              <TextInput
-                label="Promo Code (Optional)"
-                value={formData.promoCode}
-                onChangeText={(text) => updateField('promoCode', text.toUpperCase())}
-                mode="outlined"
-                autoCapitalize="characters"
-                autoCorrect={false}
-                left={<TextInput.Icon icon="ticket-percent" />}
-                style={styles.input}
-                disabled={loading}
-                placeholder="SYSTON-PRO-2025"
-              />
-              <Text style={styles.promoHint}>
-                Get free upgrades or discounts with a promo code!
-              </Text>
-            </View>
-
             {/* Register Button */}
             <Button
               mode="contained"
@@ -341,7 +322,14 @@ export default function RegisterScreen({ onRegister, onNavigateToLogin }: Regist
 
             {/* Terms */}
             <Text style={styles.termsText}>
-              By creating an account, you agree to our Terms of Service and Privacy Policy
+              By creating an account, you agree to our{' '}
+              <Text style={styles.termsLink} onPress={() => Linking.openURL(TERMS_URL)} accessibilityRole="link">
+                Terms of Service
+              </Text>{' '}
+              and{' '}
+              <Text style={styles.termsLink} onPress={() => Linking.openURL(PRIVACY_URL)} accessibilityRole="link">
+                Privacy Policy
+              </Text>
             </Text>
           </Card.Content>
         </Card>
@@ -438,27 +426,13 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     marginLeft: 12,
   },
-  promoContainer: {
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  promoLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.text,
-    marginBottom: 8,
-  },
-  promoHint: {
-    fontSize: 11,
-    color: COLORS.textLight,
-    marginTop: -4,
-    marginBottom: 8,
-    marginLeft: 12,
-    fontStyle: 'italic',
-  },
   registerButton: {
     marginTop: 16,
     paddingVertical: 6,
+  },
+  termsLink: {
+    color: COLORS.primary,
+    textDecorationLine: 'underline',
   },
   termsText: {
     fontSize: 11,

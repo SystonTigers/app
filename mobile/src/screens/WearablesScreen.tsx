@@ -27,7 +27,7 @@ import {
 } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Svg, { Path, Rect, Circle, Line, Text as SvgText, G, Defs, LinearGradient, Stop } from 'react-native-svg';
-import { COLORS, API_BASE_URL, TENANT_ID } from '../config';
+import { COLORS, API_BASE_URL } from '../config';
 import { useAuth } from '../context/AuthContext';
 import api, { wearablesApi, squadApi } from '../services/api';
 

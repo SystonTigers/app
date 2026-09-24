@@ -2,15 +2,15 @@ import React, { useState } from 'react';
 import { View, ScrollView, StyleSheet, TouchableOpacity, Modal, Dimensions } from 'react-native';
 import { Text, IconButton } from 'react-native-paper';
 import { useTheme } from '../theme/useTheme';
+import { useClub } from '../context/ClubContext';
+import { isOurTeam } from '../utils/clubMatch';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-
-
-const OUR_TEAM = 'Syston Tigers';
 
 export default function LeagueTableScreen() {
   const { theme } = useTheme();
   const { colors } = theme;
+  const { club } = useClub();
   const [modalVisible, setModalVisible] = useState(false);
   const [leagueTable, setLeagueTable] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -47,7 +47,7 @@ export default function LeagueTableScreen() {
   };
 
   const renderCompactRow = (row: any) => {
-    const isOurTeam = row.team === OUR_TEAM;
+    const isUs = isOurTeam(row.team, club);
     const isTopTwo = row.position <= 2;
 
     return (
@@ -56,7 +56,7 @@ export default function LeagueTableScreen() {
         style={[
           styles.tableRow,
           { borderBottomColor: colors.border },
-          isOurTeam && { backgroundColor: colors.primary + '15' },
+          isUs && { backgroundColor: colors.primary + '15' },
         ]}
       >
         {/* Position Badge */}
@@ -77,7 +77,7 @@ export default function LeagueTableScreen() {
         {/* Team Name */}
         <View style={styles.teamCol}>
           <Text
-            style={[styles.teamText, { color: colors.text }, isOurTeam && { fontWeight: 'bold', color: colors.primary }]}
+            style={[styles.teamText, { color: colors.text }, isUs && { fontWeight: 'bold', color: colors.primary }]}
             numberOfLines={1}
           >
             {row.team.toUpperCase()}
@@ -95,7 +95,7 @@ export default function LeagueTableScreen() {
   };
 
   const renderFullRow = (row: any) => {
-    const isOurTeam = row.team === OUR_TEAM;
+    const isUs = isOurTeam(row.team, club);
     const isTopTwo = row.position <= 2;
 
     return (
@@ -104,7 +104,7 @@ export default function LeagueTableScreen() {
         style={[
           styles.fullTableRow,
           { borderBottomColor: colors.border },
-          isOurTeam && { backgroundColor: colors.primary + '15' },
+          isUs && { backgroundColor: colors.primary + '15' },
         ]}
       >
         {/* Position */}
@@ -125,7 +125,7 @@ export default function LeagueTableScreen() {
         {/* Team */}
         <View style={styles.fullTeamCol}>
           <Text
-            style={[styles.teamText, { color: colors.text }, isOurTeam && { fontWeight: 'bold', color: colors.primary }]}
+            style={[styles.teamText, { color: colors.text }, isUs && { fontWeight: 'bold', color: colors.primary }]}
             numberOfLines={1}
           >
             {row.team.toUpperCase()}

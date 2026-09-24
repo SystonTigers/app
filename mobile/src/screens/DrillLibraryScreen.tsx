@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { View, ScrollView, StyleSheet, TouchableOpacity, Alert, Share } from 'react-native';
+import { View, ScrollView, StyleSheet, TouchableOpacity, Share, Image } from 'react-native';
 import { Text, Card, Searchbar, Chip, Portal, Modal, IconButton, Button } from 'react-native-paper';
 import { COLORS } from '../config';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -171,29 +171,14 @@ export default function DrillLibraryScreen() {
             {selectedDrill.diagramUrl && (
               <View style={styles.diagramSection}>
                 <Text style={styles.sectionTitle}>Drill Diagram</Text>
-                <View style={styles.diagramPlaceholder}>
-                  <MaterialCommunityIcons name="image-outline" size={48} color={COLORS.textLight} />
-                  <Text style={styles.diagramText}>Diagram coming soon</Text>
-                </View>
+                <Image
+                  source={{ uri: selectedDrill.diagramUrl }}
+                  style={styles.diagramImage}
+                  resizeMode="contain"
+                  accessibilityLabel={`${selectedDrill.name} diagram`}
+                />
               </View>
             )}
-
-            <Button
-              mode="contained"
-              icon="plus"
-              onPress={() => {
-                Alert.alert(
-                  'Added to Session',
-                  `"${selectedDrill.name}" has been added to your training session.`,
-                  [{ text: 'OK' }]
-                );
-                setSelectedDrill(null);
-              }}
-              style={styles.addButton}
-              buttonColor={COLORS.primary}
-            >
-              Add to Session
-            </Button>
 
             <Button
               mode="outlined"
@@ -493,25 +478,15 @@ const styles = StyleSheet.create({
   diagramSection: {
     marginTop: 8,
   },
-  diagramPlaceholder: {
+  diagramImage: {
     height: 200,
     backgroundColor: COLORS.background,
     marginHorizontal: 16,
     borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  diagramText: {
-    fontSize: 14,
-    color: COLORS.textLight,
-    marginTop: 8,
-  },
-  addButton: {
-    margin: 16,
-    marginBottom: 8,
   },
   shareButton: {
     marginHorizontal: 16,
+    marginTop: 16,
     marginBottom: 16,
   },
   emptyCard: {

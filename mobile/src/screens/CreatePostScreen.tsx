@@ -12,6 +12,7 @@ import {
 } from 'react-native-paper';
 import { COLORS } from '../config';
 import { feedApi } from '../services/api';
+import { useClubName } from '../context/ClubContext';
 import * as ImagePicker from 'expo-image-picker';
 
 const socialChannels = [
@@ -22,6 +23,7 @@ const socialChannels = [
 ];
 
 export default function CreatePostScreen({ navigation }: any) {
+  const clubName = useClubName();
   const [content, setContent] = useState('');
   const [selectedChannels, setSelectedChannels] = useState<string[]>(['feed']);
   const [mediaUrls, setMediaUrls] = useState<string[]>([]);
@@ -191,7 +193,7 @@ export default function CreatePostScreen({ navigation }: any) {
             <Card style={styles.previewCard}>
               <Card.Content>
                 <View style={styles.previewHeader}>
-                  <Title style={styles.previewTeam}>Syston Tigers FC</Title>
+                  <Title style={styles.previewTeam}>{clubName}</Title>
                   <Paragraph style={styles.previewTime}>Just now</Paragraph>
                 </View>
                 <Paragraph style={styles.previewContent}>

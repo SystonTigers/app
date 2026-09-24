@@ -1,8 +1,9 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { View, FlatList, StyleSheet, Dimensions, Image, Animated } from 'react-native';
 import { Text, Button } from 'react-native-paper';
 import { COLORS } from '../config';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useClub } from '../context/ClubContext';
 
 const { width, height } = Dimensions.get('window');
 
@@ -18,11 +19,11 @@ interface Slide {
   color: string;
 }
 
-const slides: Slide[] = [
+const SLIDES: Slide[] = [
   {
     id: '1',
     icon: 'home-heart',
-    title: 'Welcome to Syston Tigers',
+    title: 'Welcome',
     description: 'Your complete team management platform. Stay connected with fixtures, events, news, and more - all in one place.',
     color: COLORS.primary,
   },
@@ -71,6 +72,11 @@ const slides: Slide[] = [
 ];
 
 export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
+  const { club } = useClub();
+  const slides = useMemo(
+    () => SLIDES.map((slide) => (slide.id === '1' && club?.name ? { ...slide, title: `Welcome to ${club.name}` } : slide)),
+    [club?.name]
+  );
   const [currentIndex, setCurrentIndex] = useState(0);
   const flatListRef = useRef<FlatList>(null);
   const scrollX = useRef(new Animated.Value(0)).current;
