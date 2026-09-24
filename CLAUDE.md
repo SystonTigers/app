@@ -56,3 +56,14 @@ with personal data.
   until then emails are only logged.
 - Mobile push notifications need a real EAS project id (`npx eas init`); until
   then the app skips push registration.
+- Privacy policy and terms: drafts awaiting legal review are in `legal-docs/drafts/`; the
+  live pages (`legal-docs/*.html`) are older and should be replaced once the
+  drafts are approved.
+- `web-app` `npm run lint` fails: Next 16 removed `next lint`. Use `npx tsc --noEmit`.
+
+## Access rules worth knowing
+
+- Club-admin writes are wrapped in `staffOnly(...)` in `index.ts`; add new
+  admin routes the same way.
+- Player records: staff see everything; other members get the team-sheet view
+  (`services/playerPrivacy.ts`) unless linked to that player.
