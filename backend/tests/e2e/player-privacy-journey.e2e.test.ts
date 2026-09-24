@@ -66,3 +66,52 @@ describe("Player privacy journey", () => {
     }
   });
 });
+
+describe("Public club page names", () => {
+  it("shows first name and initial without photos until the club chooses full names", async () => {
+    const owner = await registerAdmin("names-owner");
+    const parent = await registerMember("names-parent");
+    const added = await call("/api/v1/admin/squad", {
+      token: owner.token,
+      body: { name: "Harry Public", squadNumber: 23, position: "GK", photoUrl: "https://example.com/harry.jpg" },
+    });
+    expect(added.status).toBe(200);
+
+    const findHarry = async () =>
+      (await call("/public/syston/squad")).data.data.find((p: any) => p.number === 23 && p.position === "GK");
+
+    // Default: short name, no photo
+    const byDefault = await findHarry();
+    expect(byDefault.name).toBe("Harry P.");
+    expect(byDefault.photo).toBeUndefined();
+
+    // Only club admins can change the setting
+    expect((await call("/api/v1/tenants/me", { method: "PATCH", token: parent.token, body: { publicFullNames: true } })).status).toBe(403);
+    const saved = await call("/api/v1/tenants/me", { method: "PATCH", token: owner.token, body: { publicFullNames: true } });
+    expect(saved.status).toBe(200);
+    expect((await call("/api/v1/tenants/me", { token: owner.token })).data.tenant.public_full_names).toBe(1);
+
+    const full = await findHarry();
+    expect(full.name).toBe("Harry Public");
+    expect(full.photo).toBe("https://example.com/harry.jpg");
+
+    // Back to the default
+    await call("/api/v1/tenants/me", { method: "PATCH", token: owner.token, body: { publicFullNames: false } });
+    expect((await findHarry()).name).toBe("Harry P.");
+
+    // Logged-in members still see the normal team sheet
+    const inApp = (await call("/api/v1/squad", { token: parent.token })).data.data.find((p: any) => p.id === added.data.playerId);
+    expect(inApp.name).toBe("Harry Public");
+  });
+});
+
+describe("YouTube routes use the signed-in club", () => {
+  it("ignores a club named in the request", async () => {
+    const parent = await registerMember("yt-parent");
+    const status = await call("/api/v1/youtube/status?tenant_id=some-other-club", { token: parent.token });
+    expect(status.status).toBe(200);
+    expect(status.data.configured ?? status.data.data?.configured ?? false).toBe(false);
+    expect((await call("/api/v1/youtube/status")).status).toBe(401);
+    expect((await call("/api/v1/youtube/upload-url", { token: parent.token, body: { tenant_id: "other", title: "x" } })).status).toBe(403);
+  });
+});

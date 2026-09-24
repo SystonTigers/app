@@ -4,6 +4,10 @@
  */
 
 import { json } from '../services/util';
+import { requireStaff, requireTenantJWT } from '../services/auth';
+
+// The club always comes from the signed-in user's token, never the request,
+// so staff can only use their own club's YouTube connection.
 import { uploadVideoToYouTube, getYouTubeUploadUrl, YouTubeVideoUpload } from '../adapters/youtube';
 
 // ===========================================
@@ -11,13 +15,15 @@ import { uploadVideoToYouTube, getYouTubeUploadUrl, YouTubeVideoUpload } from '.
 // ===========================================
 export async function handleYouTubeGetUploadUrl(req: Request, env: any, corsHdrs: Headers) {
     try {
+        const claims = await requireStaff(req, env);
+        const tenant_id = claims.tenantId;
         const body = await req.json() as any;
-        const { tenant_id, title, description, privacy, content_type, content_length, tags } = body;
+        const { title, description, privacy, content_type, content_length, tags } = body;
 
         if (!tenant_id || !title || !content_type || !content_length) {
             return json({
                 success: false,
-                error: { message: 'tenant_id, title, content_type, and content_length required' }
+                error: { message: 'title, content_type, and content_length required' }
             }, 400, corsHdrs);
         }
 
@@ -45,6 +51,7 @@ export async function handleYouTubeGetUploadUrl(req: Request, env: any, corsHdrs
             }
         }, 200, corsHdrs);
     } catch (error: any) {
+        if (error instanceof Response) { throw error; }
         console.error('[YouTube Route] Get upload URL error:', error);
         return json({ success: false, error: { message: error.message } }, 500, corsHdrs);
     }
@@ -56,9 +63,10 @@ export async function handleYouTubeGetUploadUrl(req: Request, env: any, corsHdrs
 // ===========================================
 export async function handleYouTubeUpload(req: Request, env: any, corsHdrs: Headers) {
     try {
+        const claims = await requireStaff(req, env);
+        const tenantId = claims.tenantId;
         const formData = await req.formData();
         const file = formData.get('video') as File | null;
-        const tenantId = formData.get('tenant_id') as string | null;
         const title = formData.get('title') as string | null;
         const description = formData.get('description') as string | null;
         const privacy = formData.get('privacy') as string | null;
@@ -66,7 +74,7 @@ export async function handleYouTubeUpload(req: Request, env: any, corsHdrs: Head
         if (!file || !tenantId || !title) {
             return json({
                 success: false,
-                error: { message: 'video file, tenant_id, and title required' }
+                error: { message: 'video file and title required' }
             }, 400, corsHdrs);
         }
 
@@ -103,6 +111,7 @@ export async function handleYouTubeUpload(req: Request, env: any, corsHdrs: Head
             }
         }, 200, corsHdrs);
     } catch (error: any) {
+        if (error instanceof Response) { throw error; }
         console.error('[YouTube Route] Upload error:', error);
         return json({ success: false, error: { message: error.message } }, 500, corsHdrs);
     }
@@ -113,12 +122,8 @@ export async function handleYouTubeUpload(req: Request, env: any, corsHdrs: Head
 // ===========================================
 export async function handleYouTubeStatus(req: Request, env: any, corsHdrs: Headers) {
     try {
-        const url = new URL(req.url);
-        const tenantId = url.searchParams.get('tenant_id');
-
-        if (!tenantId) {
-            return json({ success: false, error: { message: 'tenant_id required' } }, 400, corsHdrs);
-        }
+        const claims = await requireTenantJWT(req, env);
+        const tenantId = claims.tenantId;
 
         const creds = await env.KV_IDEMP.get(`yt:${tenantId}`);
 
@@ -132,6 +137,7 @@ export async function handleYouTubeStatus(req: Request, env: any, corsHdrs: Head
             }
         }, 200, corsHdrs);
     } catch (error: any) {
+        if (error instanceof Response) { throw error; }
         console.error('[YouTube Route] Status error:', error);
         return json({ success: false, error: { message: error.message } }, 500, corsHdrs);
     }

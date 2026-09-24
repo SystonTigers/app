@@ -39,7 +39,9 @@ export async function updateTenantMe(req: Request, env: any, corsHdrs: Headers):
                 .optional(),
             primaryColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Colour must be a hex value like #FFD700").optional(),
             secondaryColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Colour must be a hex value like #000000").optional(),
-            badgeUrl: z.string().url().optional()
+            badgeUrl: z.string().url().optional(),
+            // Show players' full names and photos on the public club page (off = "Alfie S.", no photos)
+            publicFullNames: z.boolean().optional()
             // Status is deliberately not editable here: it's set by sign-up (trial) and billing (active).
         });
 
@@ -61,6 +63,11 @@ export async function updateTenantMe(req: Request, env: any, corsHdrs: Headers):
             }
             updates.push("slug = ?");
             params.push(data.slug);
+        }
+
+        if (data.publicFullNames !== undefined) {
+            updates.push("public_full_names = ?");
+            params.push(data.publicFullNames ? 1 : 0);
         }
 
         if (updates.length > 0) {
@@ -107,7 +114,7 @@ export async function updateTenantMe(req: Request, env: any, corsHdrs: Headers):
                 id: tenantId,
                 slug: newSlug,
                 name: data.name,
-                // ... include other returned fields if needed for frontend state update
+                ...(data.publicFullNames !== undefined ? { publicFullNames: data.publicFullNames } : {}),
             }
         }, 200, corsHdrs);
 

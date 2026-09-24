@@ -133,7 +133,7 @@ describe("E2E: Event Management Journey", () => {
         "Idempotency-Key": `validate-event-${Date.now()}`,
       },
       body: JSON.stringify({
-        tenant_id: "syston",
+        ageConfirmed: true, tenant_id: "syston",
         email,
         password: testPassword,
         profile: { name: "Validate User" },
@@ -170,7 +170,7 @@ describe("E2E: Event Management Journey", () => {
         "Idempotency-Key": `rsvp-reg-${Date.now()}`,
       },
       body: JSON.stringify({
-        tenant_id: "syston",
+        ageConfirmed: true, tenant_id: "syston",
         email,
         password: testPassword,
         profile: { name: "RSVP User" },

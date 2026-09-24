@@ -71,7 +71,7 @@ describe("Snapshot: Error Responses", () => {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         // Missing required fields
-        tenant_id: "syston",
+        ageConfirmed: true, tenant_id: "syston",
       }),
     });
 

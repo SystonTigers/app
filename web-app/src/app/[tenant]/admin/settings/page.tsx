@@ -2,14 +2,15 @@
 
 import { use } from 'react';
 import Link from 'next/link';
+import { PublicNamesSetting } from '@/components/PublicNamesSetting';
 
 interface PageProps {
     params: Promise<{ tenant: string }>;
 }
 
 /**
- * Club settings hub. Each card links to a settings page backed by a working
- * backend route; fixture import is configured on the FA Full-Time page.
+ * Club settings hub: fixture import (FA Full-Time page) and whether the public
+ * club page shows players' full names and photos.
  */
 export default function SettingsPage({ params }: PageProps) {
     const { tenant } = use(params);
@@ -27,7 +28,7 @@ export default function SettingsPage({ params }: PageProps) {
         <div className="container mx-auto p-6 space-y-6">
             <div className="bg-gradient-to-r from-brand to-brand/80 text-white p-6 rounded-lg">
                 <h2 className="text-2xl font-bold">Settings</h2>
-                <p className="text-sm opacity-90">Manage how fixtures get into your club dashboard</p>
+                <p className="text-sm opacity-90">Fixture import and privacy for your club</p>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
@@ -42,6 +43,7 @@ export default function SettingsPage({ params }: PageProps) {
                         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{section.description}</p>
                     </Link>
                 ))}
+                <PublicNamesSetting />
             </div>
         </div>
     );

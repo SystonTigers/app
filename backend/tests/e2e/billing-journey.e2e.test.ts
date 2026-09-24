@@ -81,7 +81,7 @@ describe("Billing journey", () => {
     const slug = (await env.DB.prepare("SELECT slug FROM tenants WHERE id = ?").bind(tenantId).first<any>()).slug;
     const email = `member-${Date.now()}@example.com`;
     const member = await call("/api/v1/auth/register", {
-      body: { tenant_id: slug, email, password: "MemberPass123" },
+      body: { ageConfirmed: true, tenant_id: slug, email, password: "MemberPass123" },
       headers: { "Idempotency-Key": `reg-${email}`, ...ip() },
     });
     const res = await call("/api/v1/billing/checkout", { token: member.data.data.token, body: { plan: "pro" } });

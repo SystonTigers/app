@@ -98,7 +98,8 @@ describe("Man of the Match journey", () => {
     // And the public club page shows the winner
     const page = await call(`/public/${TENANT}/motm/latest`);
     expect(page.status).toBe(200);
-    expect(page.data.data.winners[0]).toMatchObject({ name: "Ben Test", number: 9 });
+    // First name and initial, no photo, unless the club chooses full names
+    expect(page.data.data.winners[0]).toMatchObject({ name: "Ben T.", number: 9, photoUrl: null });
     expect(page.data.data.match.opponent).toBe("Motm Rovers");
   });
 

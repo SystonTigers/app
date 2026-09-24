@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, ScrollView, StyleSheet, KeyboardAvoidingView, Platform, Linking } from 'react-native';
-import { Text, TextInput, Button, Card, RadioButton, Chip } from 'react-native-paper';
+import { Text, TextInput, Button, Card, RadioButton, Chip, Checkbox } from 'react-native-paper';
 import { COLORS, PRIVACY_URL, TERMS_URL } from '../config';
 import type { AuthResult } from '../services/api';
 import { useClubName } from '../context/ClubContext';
@@ -28,6 +28,7 @@ export default function RegisterScreen({ onRegister, onNavigateToLogin }: Regist
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [ageConfirmed, setAgeConfirmed] = useState(false);
 
   const updateField = (field: string, value: string) => {
     setFormData({ ...formData, [field]: value });
@@ -81,6 +82,11 @@ export default function RegisterScreen({ onRegister, onNavigateToLogin }: Regist
       newErrors.playerName = 'Player name is required for parents';
     }
 
+    // Children under 13 use a parent's or carer's account
+    if (!ageConfirmed) {
+      newErrors.ageConfirmed = "Please confirm you're 13 or over, or a parent or carer";
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -102,6 +108,7 @@ export default function RegisterScreen({ onRegister, onNavigateToLogin }: Regist
         role: formData.role,
         phone: formData.phone,
         playerName: formData.role === 'parent' ? formData.playerName : undefined,
+        ageConfirmed,
       });
 
       if ('error' in outcome) {
@@ -307,6 +314,24 @@ export default function RegisterScreen({ onRegister, onNavigateToLogin }: Regist
             />
             {errors.confirmPassword ? <Text style={styles.fieldError}>{errors.confirmPassword}</Text> : null}
 
+            {/* Age confirmation */}
+            <Checkbox.Item
+              label="I'm 13 or over, or I'm a parent or carer"
+              status={ageConfirmed ? 'checked' : 'unchecked'}
+              onPress={() => {
+                setAgeConfirmed(!ageConfirmed);
+                if (errors.ageConfirmed) setErrors({ ...errors, ageConfirmed: '' });
+              }}
+              disabled={loading}
+              position="leading"
+              color={COLORS.primary}
+              labelStyle={styles.ageLabel}
+              style={styles.ageRow}
+              accessibilityLabel="I'm 13 or over, or I'm a parent or carer"
+            />
+            {errors.ageConfirmed ? <Text style={styles.fieldError}>{errors.ageConfirmed}</Text> : null}
+            <Text style={styles.ageHint}>Under 13? Ask a parent or carer to sign up and add you as their player.</Text>
+
             {/* Register Button */}
             <Button
               mode="contained"
@@ -433,6 +458,19 @@ const styles = StyleSheet.create({
   termsLink: {
     color: COLORS.primary,
     textDecorationLine: 'underline',
+  },
+  ageRow: {
+    paddingHorizontal: 0,
+    marginTop: 8,
+  },
+  ageLabel: {
+    textAlign: 'left',
+    fontSize: 14,
+  },
+  ageHint: {
+    fontSize: 12,
+    color: COLORS.textLight,
+    marginBottom: 8,
   },
   termsText: {
     fontSize: 11,

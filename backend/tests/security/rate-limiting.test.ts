@@ -71,7 +71,7 @@ describe("Security: Rate Limiting", () => {
           "CF-Connecting-IP": "192.168.1.3",
         },
         body: JSON.stringify({
-          tenant_id: "test-tenant",
+          ageConfirmed: true, tenant_id: "test-tenant",
           email: "newuser@example.com",
           password: "securePassword123",
         }),

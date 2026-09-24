@@ -224,6 +224,8 @@ export interface RegisterParams {
   phone?: string;
   playerName?: string;
   promoCode?: string;
+  /** The person confirmed they're 13 or over, or a parent or carer */
+  ageConfirmed: boolean;
 }
 
 const readAuthFromStorage = async (): Promise<AuthResult | null> => {
@@ -305,7 +307,7 @@ export const authApi = {
     try {
       const response = await api.post(
         '/api/v1/auth/register',
-        { tenant_id: club, email, password: params.password, profile },
+        { tenant_id: club, email, password: params.password, profile, ageConfirmed: params.ageConfirmed },
         // Retrying the same sign-up (e.g. after a dropped connection) mustn't create two accounts
         { headers: { 'Idempotency-Key': `register:${club}:${email}` } },
       );

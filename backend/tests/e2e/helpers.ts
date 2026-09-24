@@ -41,7 +41,7 @@ const unique = (prefix: string) => `${prefix}-${Date.now()}-${++counter}@example
 export async function registerMember(prefix = "member"): Promise<{ token: string; userId: string; email: string }> {
   const email = unique(prefix);
   const { status, data } = await call("/api/v1/auth/register", {
-    body: { tenant_id: TENANT, email, password: "SecurePass123!", profile: { name: prefix } },
+    body: { ageConfirmed: true, tenant_id: TENANT, email, password: "SecurePass123!", profile: { name: prefix } },
     headers: { "Idempotency-Key": `reg-${email}` },
   });
   if (status !== 201) throw new Error(`register failed ${status}: ${JSON.stringify(data)}`);

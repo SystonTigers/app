@@ -67,8 +67,8 @@ We will only send marketing emails if you have agreed to them, and every such em
 Many players are under 18. We have designed the service with the UK Information Commissioner's Children's Code in mind:
 
 - **Clubs add children's details, not children.** Player records are created and managed by club staff.
-- **Accounts.** Children under 13 should not have their own account; a parent or carer uses their own account instead. [Product decision needed: add an age confirmation when registering - see the review notes.]
-- **What is public.** Each club has a public web page. It can show players' names, squad numbers, positions, photos, match statistics and Man of the Match winners. It never shows dates of birth, emergency contacts, email addresses or phone numbers. Clubs are responsible for deciding which children appear publicly and for having parents' agreement. [Product decision needed: a club setting to show first names and initials only - see the review notes.]
+- **Accounts.** Children under 13 should not have their own account; a parent or carer uses their own account instead. Everyone who signs up in the app confirms they are 13 or over, or a parent or carer.
+- **What is public.** Each club has a public web page. By default it shows players by first name and surname initial (for example "Alfie S."), with squad numbers, positions, match statistics and Man of the Match winners, and no photos. A club can choose to show full names and photos; it should only do so with parents' agreement. The public page never shows dates of birth, emergency contacts, email addresses or phone numbers.
 - **Man of the Match voting** is limited to signed-in members of the club. Running vote counts are hidden until voting closes.
 - **No profiling or advertising.** We do not profile children, show them advertising or use their information for anything other than running their club.
 - **Parents' rights.** A parent or carer can exercise the rights in section 8 on behalf of their child. Young people who are old enough to understand their rights (generally from about 12 in the UK) can also exercise them themselves.
@@ -132,7 +132,7 @@ If we make important changes, we will tell club owners by email and show a notic
 - Your club uses Boost Huddle to run your team.
 - Your club puts in your name, shirt number, position, birthday, photo and stats, plus your parents' contact details in case of an emergency.
 - Your birthday and your family's phone numbers and emails are never shown on the public club page.
-- Your name, photo and stats might be shown on your club's page. If you are not happy with that, tell your parent or coach.
+- Your first name, the first letter of your surname and your stats might be shown on your club's page. Your club can only show your full name and photo if your parents agree. If you are not happy with anything shown, tell your parent or coach.
 - We never sell your information or show you adverts.
 - You or your parent can ask to see, fix or delete your information at any time.
 

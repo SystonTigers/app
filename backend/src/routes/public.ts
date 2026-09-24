@@ -1,6 +1,7 @@
 import { json } from "../services/util";
 import { logJSON } from "../lib/log";
 import { closeExpiredSessions, findMatch, parseWinnerIds, playerNames } from "../services/motm";
+import { getPublicNamePolicy, publicName, publicPhoto, publicScorers } from "../services/publicNames";
 
 type TenantRow = { id: string; slug: string; name?: string | null };
 type PublicFixture = {
@@ -368,7 +369,9 @@ export async function handlePublicTenantRequest(
 
             // Prefer result data if available (completed match), otherwise fixture data
             if (resultRow) {
-                const mapped = mapResultRow(resultRow, tenant.name ?? tenant.slug);
+                const policy = await getPublicNamePolicy(env, tenant.id);
+                const result = mapResultRow(resultRow, tenant.name ?? tenant.slug);
+                const mapped = { ...result, scorers: publicScorers(policy, result.scorers) };
                 return json({ success: true, data: mapped }, 200, corsHdrs);
             } else {
                 const mapped = mapFixtureRow(fixtureRow, tenant.name ?? tenant.slug);
@@ -424,7 +427,11 @@ export async function handlePublicTenantRequest(
                     .bind(...binds)
                     .all();
 
-                const mapped = (results.results || []).map((row: any) => mapResultRow(row, tenant.name ?? tenant.slug));
+                const policy = await getPublicNamePolicy(env, tenant.id);
+                const mapped = (results.results || []).map((row: any) => {
+                    const result = mapResultRow(row, tenant.name ?? tenant.slug);
+                    return { ...result, scorers: publicScorers(policy, result.scorers) };
+                });
                 return json({ success: true, data: mapped }, 200, corsHdrs);
             }
 
@@ -591,8 +598,16 @@ export async function handlePublicTenantRequest(
             ).bind(tenant.id).first() as { match_id: string; winner_player_ids: string; closed_at: string | null } | null;
             if (!session) { return json({ success: true, data: null }, 200, corsHdrs); }
             const ids = parseWinnerIds(session.winner_player_ids);
-            const [match, names] = await Promise.all([findMatch(env, tenant.id, session.match_id), playerNames(env, tenant.id, ids)]);
-            const winners = ids.map((id) => names.get(id)).filter(Boolean).map((p) => ({ name: p!.name, number: p!.number, photoUrl: p!.photoUrl }));
+            const [match, names, policy] = await Promise.all([
+                findMatch(env, tenant.id, session.match_id),
+                playerNames(env, tenant.id, ids),
+                getPublicNamePolicy(env, tenant.id),
+            ]);
+            const winners = ids.map((id) => names.get(id)).filter(Boolean).map((p) => ({
+                name: publicName(policy, p!.name),
+                number: p!.number,
+                photoUrl: publicPhoto(policy, p!.photoUrl) ?? null,
+            }));
             if (!winners.length) { return json({ success: true, data: null }, 200, corsHdrs); }
             return json({
                 success: true,
@@ -605,8 +620,13 @@ export async function handlePublicTenantRequest(
         }
 
         if (resource === "squad") {
-            const raw = (await env.KV_IDEMP.get(`squad:${tenant.id}:list`, "json")) as any[] | null;
-            if (!raw) {return json({ success: true, data: [] }, 200, corsHdrs);}
+            // The squad table is the source of truth (players added one at a time never reach the old KV list)
+            const { results: squadRows } = await env.DB.prepare(
+                `SELECT id, name, number, position, COALESCE(headshot_url, photo_url) AS photo
+                 FROM squad WHERE tenant_id = ? ORDER BY number IS NULL, number, name`
+            ).bind(tenant.id).all();
+            const raw = (squadRows || []) as any[];
+            if (!raw.length) {return json({ success: true, data: [] }, 200, corsHdrs);}
 
             // Fetch stats from D1
             const statsRows = await env.DB.prepare(`
@@ -629,7 +649,12 @@ export async function handlePublicTenantRequest(
             });
 
             // Merge stats into players
-            const squad = mapSquadPlayers(raw).map(p => {
+            const policy = await getPublicNamePolicy(env, tenant.id);
+            const squad = mapSquadPlayers(raw).map(player => ({
+                ...player,
+                name: publicName(policy, player.name),
+                photo: publicPhoto(policy, player.photo),
+            })).map(p => {
                 const s = statsMap.get(p.id);
                 if (s) {
                     return {

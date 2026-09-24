@@ -168,7 +168,7 @@ test("registers a tenant member and allows login", async () => {
       "Idempotency-Key": "abc123",
     },
     body: JSON.stringify({
-      tenant_id: "demo",
+      ageConfirmed: true, tenant_id: "demo",
       email: "User@Example.com",
       password: "supersecret",
       profile: { name: "Demo" },
@@ -209,6 +209,7 @@ test("returns cached response on idempotent retry", async () => {
   await seedTenant(env, "demo");
 
   const requestPayload = {
+    ageConfirmed: true,
     tenant_id: "demo",
     email: "retry@example.com",
     password: "anothersecret",
@@ -250,7 +251,7 @@ test("rejects invalid login credentials", async () => {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({
-      tenant_id: "demo",
+      ageConfirmed: true, tenant_id: "demo",
       email: "fail@example.com",
       password: "validpass1",
     }),

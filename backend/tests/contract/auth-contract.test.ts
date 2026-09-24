@@ -28,7 +28,7 @@ describe("Contract: Authentication API", () => {
           "Idempotency-Key": `contract-test-${Date.now()}`,
         },
         body: JSON.stringify({
-          tenant_id: "syston",
+          ageConfirmed: true, tenant_id: "syston",
           email: `contract-${Date.now()}@example.com`,
           password: "SecurePassword123!",
           profile: { name: "Contract Test User" },
@@ -73,7 +73,7 @@ describe("Contract: Authentication API", () => {
         },
         body: JSON.stringify({
           // Missing required fields
-          tenant_id: "syston",
+          ageConfirmed: true, tenant_id: "syston",
         }),
       });
 

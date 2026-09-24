@@ -62,6 +62,7 @@ test('submitRegistration returns field errors from server', async () => {
     phone: '1234567890',
     playerName: 'Jordan Park',
     promoCode: 'WELCOME',
+    ageConfirmed: true,
   };
 
   const outcome = await submitRegistration(payload, {
@@ -97,6 +98,7 @@ test('submitRegistration returns auth result on success', async () => {
       email: 'ava@example.com',
       password: 'complex-pass',
       role: 'coach',
+      ageConfirmed: true,
     },
     {
       async register(params) {

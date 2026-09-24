@@ -37,8 +37,8 @@ These have to be settled before publishing. Each one is marked in [brackets] in 
 
 These were found while writing the drafts. The owner decides on each; the drafts describe the product as it is now.
 
-1. **No age check at registration.** Anyone can create an account. The drafts say you need to be 13 or over. Suggestion: add an "I'm 13 or over, or I'm a parent or carer" confirmation to the sign-up form.
-2. **Children's full names and photos can appear on the public club page.** This covers the squad list and the Man of the Match winner. No dates of birth or contact details are shown. Suggestion: add a club setting "Show players' full names publicly", defaulting to first name and initial, with photos hidden publicly unless the club turns them on. This fits the Children's Code "high privacy by default" standard.
+1. **Age check at registration: done.** Sign-up in the app now asks people to confirm they're 13 or over, or a parent or carer, and the time of that confirmation is recorded.
+2. **Children on the public club page: done.** Players now appear as first name and initial with no photos by default. A club can turn on full names and photos in its settings.
 3. **No club-closure or export process.** The drafts promise deletion within 90 days of closure and a chance to download data first. Today this would be done by hand. A self-service export and close option should be built before there are many clubs.
 4. **Inactive-account deletion** (if 2 years is adopted) needs a scheduled job and a warning email.
 5. **Emergency contact data** is visible to club staff (owner, admin, manager, coach) in their club. Consider limiting it to named roles.

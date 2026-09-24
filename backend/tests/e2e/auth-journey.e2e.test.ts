@@ -36,7 +36,7 @@ describe("E2E: Authentication Journey", () => {
         "Idempotency-Key": `reg-${Date.now()}`,
       },
       body: JSON.stringify({
-        tenant_id: "syston",
+        ageConfirmed: true, tenant_id: "syston",
         email: testEmail,
         password: testPassword,
         profile: { name: "Test User" },
@@ -127,7 +127,7 @@ describe("E2E: Authentication Journey", () => {
   it("ignores roles sent at registration (no self-made admins)", async () => {
     const email = `sneaky-${Date.now()}@example.com`;
     const reg = await call("/api/v1/auth/register", {
-      body: { tenant_id: "syston", email, password: "SecurePass123!", roles: ["tenant_admin"] },
+      body: { ageConfirmed: true, tenant_id: "syston", email, password: "SecurePass123!", roles: ["tenant_admin"] },
       headers: { "Idempotency-Key": `sneaky-${email}` },
     });
     expect(reg.status).toBe(201);
@@ -145,5 +145,23 @@ describe("E2E: Authentication Journey", () => {
     const forged = `${b64({ alg: "HS256", typ: "JWT" })}.${b64({ sub: "x", tenant_id: "syston", roles: ["tenant_admin"] })}.not-a-signature`;
     expect((await call("/api/v1/videos", { token: forged })).status).toBe(401);
     expect((await call("/api/v1/feed", { token: forged })).status).toBe(401);
+  });
+
+  it("asks new members to confirm they're 13 or over, or a parent or carer", async () => {
+    const email = `age-${Date.now()}@example.com`;
+    const refused = await call("/api/v1/auth/register", {
+      body: { tenant_id: "syston", email, password: "SecurePass123!" },
+      headers: { "Idempotency-Key": `age-${email}`, "CF-Connecting-IP": "198.51.100.77" },
+    });
+    expect(refused.status).toBe(400);
+    expect(JSON.stringify(refused.data)).toMatch(/13 or over/);
+
+    const accepted = await call("/api/v1/auth/register", {
+      body: { ageConfirmed: true, tenant_id: "syston", email, password: "SecurePass123!" },
+      headers: { "Idempotency-Key": `age-ok-${email}`, "CF-Connecting-IP": "198.51.100.77" },
+    });
+    expect(accepted.status).toBe(201);
+    const row = await env.DB.prepare("SELECT profile FROM auth_users WHERE email = ?").bind(email).first<{ profile: string }>();
+    expect(JSON.parse(row!.profile).ageConfirmedAt).toBeTruthy();
   });
 });

@@ -46,7 +46,7 @@ describe("Mobile app club journey", () => {
     const email = `parent-${Date.now()}@example.com`;
 
     const reg = await call("/api/v1/auth/register", {
-      body: { tenant_id: slug, email, password: "ParentPass123", profile: { firstName: "Sam", lastName: "Parent" } },
+      body: { ageConfirmed: true, tenant_id: slug, email, password: "ParentPass123", profile: { firstName: "Sam", lastName: "Parent" } },
       headers: { "Idempotency-Key": `reg-${email}`, ...ip() },
     });
     expect(reg.status).toBe(201);
@@ -76,7 +76,7 @@ describe("Mobile app club journey", () => {
     const { slug } = await createClub("Hinckley Hornets");
     const email = `edit-${Date.now()}@example.com`;
     const reg = await call("/api/v1/auth/register", {
-      body: { tenant_id: slug, email, password: "ParentPass123", profile: { firstName: "Al" } },
+      body: { ageConfirmed: true, tenant_id: slug, email, password: "ParentPass123", profile: { firstName: "Al" } },
       headers: { "Idempotency-Key": `reg-${email}`, ...ip() },
     });
     const token = reg.data.data.token;
@@ -95,7 +95,7 @@ describe("Mobile app club journey", () => {
     const { slug } = await createClub("Oadby Owls");
     const email = `logout-${Date.now()}@example.com`;
     await call("/api/v1/auth/register", {
-      body: { tenant_id: slug, email, password: "ParentPass123" },
+      body: { ageConfirmed: true, tenant_id: slug, email, password: "ParentPass123" },
       headers: { "Idempotency-Key": `reg-${email}`, ...ip() },
     });
     const phone = (await call("/api/v1/auth/login", { body: { tenant_id: slug, email, password: "ParentPass123" }, headers: ip() })).data.data.token;

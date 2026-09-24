@@ -17,7 +17,11 @@ const RegisterSchema = z.object({
   email: z.string().email("valid email required"),
   password: z.string().min(8, "password must be at least 8 characters"),
   profile: z.record(z.unknown()).optional(),
-  roles: z.array(z.enum(["tenant_admin", "tenant_member"])).optional()
+  roles: z.array(z.enum(["tenant_admin", "tenant_member"])).optional(),
+  // Children under 13 use a parent's or carer's account (see the privacy policy)
+  ageConfirmed: z.literal(true, {
+    errorMap: () => ({ message: "Please confirm you're 13 or over, or a parent or carer" }),
+  }),
 });
 
 const LoginSchema = z.object({
@@ -82,7 +86,7 @@ export async function handleAuthRegister(req: Request, env: any, corsHdrs: Heade
       email: data.email,
       password: data.password,
       roles: ["tenant_member"],
-      profile: data.profile ?? null
+      profile: { ...(data.profile ?? {}), ageConfirmedAt: new Date().toISOString() }
     });
 
     if (!registration.success) {
