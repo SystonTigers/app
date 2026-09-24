@@ -5,7 +5,8 @@
  * __BUILD_ID__ is replaced at build time so each release gets a fresh cache.
  */
 const CACHE = 'boost-huddle-__BUILD_ID__';
-const SHELL = '/index.html';
+// The app shell is served at "/" (Cloudflare redirects /index.html there)
+const SHELL = '/';
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.add(SHELL)).then(() => self.skipWaiting()));
