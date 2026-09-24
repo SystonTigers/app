@@ -8,7 +8,7 @@
 // `npx wrangler deploy -c wrangler.web.jsonc`.
 
 import { spawnSync } from 'node:child_process';
-import { cpSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, readFileSync, readdirSync, renameSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -24,6 +24,30 @@ const exported = spawnSync('npx', ['expo', 'export', '--platform', 'web', '--cle
 if (exported.status !== 0) {
   console.error('✗ expo export failed');
   process.exit(exported.status || 1);
+}
+
+// Cloudflare's static hosting redirects paths containing "@" (e.g. the icon
+// fonts under node_modules/@expo/...) in a loop, so rename those folders and
+// point the bundle at the new paths.
+function renameAtDirs(dir) {
+  for (const name of readdirSync(dir)) {
+    const full = path.join(dir, name);
+    if (!statSync(full).isDirectory()) continue;
+    const target = name.startsWith('@') ? path.join(dir, `_at_${name.slice(1)}`) : full;
+    if (target !== full) renameSync(full, target);
+    renameAtDirs(target);
+  }
+}
+const assetsDir = path.join(dist, 'assets');
+if (existsSync(assetsDir)) {
+  renameAtDirs(assetsDir);
+  const jsDir = path.join(dist, '_expo', 'static', 'js', 'web');
+  for (const file of readdirSync(jsDir).filter((f) => f.endsWith('.js'))) {
+    const full = path.join(jsDir, file);
+    const code = readFileSync(full, 'utf8');
+    const fixed = code.replace(/(\/assets\/[^"'`]*?)\/@/g, '$1/_at_');
+    if (fixed !== code) writeFileSync(full, fixed);
+  }
 }
 
 for (const item of ['manifest.webmanifest', '_headers', 'icons']) {
