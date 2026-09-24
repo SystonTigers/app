@@ -2,6 +2,7 @@
 
 import { issueTenantAdminJWT } from "./jwt";
 import { putTenantConfig } from "./tenantConfig";
+import { sendWelcomeEmail } from "../lib/email";
 import type { TenantConfig, Env } from "../types";
 
 /**
@@ -130,15 +131,8 @@ export async function provisionTenant(
 
     const adminConsoleUrl = env.ADMIN_CONSOLE_URL || "https://admin-console.team-platform-2025.workers.dev";
 
-    // 6. Send welcome email (optional - implement later)
-    if (env.SENDGRID_API_KEY || env.RESEND_API_KEY) {
-      await sendWelcomeEmail(env, {
-        to: request.contactEmail,
-        clubName: request.clubName,
-        setupUrl,
-        adminJWT
-      });
-    }
+    // 6. Welcome email (shared Boost Huddle template; never includes tokens)
+    await sendWelcomeEmail(request.contactEmail, request.clubName, setupUrl, env);
 
     return {
       success: true,
@@ -203,47 +197,3 @@ async function generateSetupToken(env: Env, tenantId: string): Promise<string> {
 
   return token;
 }
-
-/**
- * Send welcome email to new tenant
- */
-async function sendWelcomeEmail(env: Env, data: {
-  to: string;
-  clubName: string;
-  setupUrl: string;
-  adminJWT: string;
-}) {
-  // Example using Resend API
-  if (!env.RESEND_API_KEY) {return;}
-
-  await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${env.RESEND_API_KEY}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      from: "onboarding@yourdomain.com",
-      to: data.to,
-      subject: `Welcome to ${data.clubName} - Platform Setup`,
-      html: `
-        <h1>Welcome to the Platform!</h1>
-        <p>Your club <strong>${data.clubName}</strong> has been set up successfully.</p>
-
-        <h2>Next Steps:</h2>
-        <ol>
-          <li><a href="${data.setupUrl}">Complete your setup</a> (link expires in 24 hours)</li>
-          <li>Configure your automation preferences</li>
-          <li>Connect your social media accounts</li>
-        </ol>
-
-        <h2>Your Credentials:</h2>
-        <p><strong>Admin Token:</strong> ${data.adminJWT.substring(0, 20)}...</p>
-        <p><em>Keep this secure - it provides full access to your account.</em></p>
-
-        <p>Need help? Reply to this email or visit our documentation.</p>
-      `
-    })
-  });
-}
-

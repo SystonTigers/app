@@ -1,6 +1,12 @@
 /**
- * Email Service - Resend Integration
- * Sends transactional emails (magic links, welcome emails, etc.)
+ * Email: transactional messages sent through Resend.
+ *
+ * Every email uses one Boost Huddle layout (renderEmail) with a plain-text
+ * version. Anything a user typed (names, club names, event titles) is
+ * HTML-escaped before it goes into a template.
+ *
+ * Needs RESEND_API_KEY and RESEND_FROM_EMAIL (an address on a domain verified
+ * in Resend). Without the key, emails are logged instead of sent.
  */
 
 import { logJSON } from "./log";
@@ -9,6 +15,7 @@ export interface EmailOptions {
   to: string;
   subject: string;
   html: string;
+  text?: string;
   from?: string;
 }
 
@@ -18,509 +25,186 @@ export interface EmailResult {
   error?: string;
 }
 
+type EmailEnv = { RESEND_API_KEY?: string; RESEND_FROM_EMAIL?: string };
+
+const BRAND = "Boost Huddle";
+
+/** Escape text for safe use inside HTML. */
+export function escapeHtml(value: unknown): string {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+/** "hello@club.app" -> "Boost Huddle <hello@club.app>" unless a name is already given. */
+function fromAddress(env: EmailEnv): string {
+  const address = env.RESEND_FROM_EMAIL || "onboarding@resend.dev";
+  return address.includes("<") ? address : `${BRAND} <${address}>`;
+}
+
 /**
- * Send email via Resend API
- * Requires RESEND_API_KEY environment variable
+ * Send an email via Resend. Without RESEND_API_KEY the email is logged
+ * (without its body, which can contain sign-in links) and reported as sent.
  */
-export async function sendEmail(
-  options: EmailOptions,
-  env: { RESEND_API_KEY?: string; RESEND_FROM_EMAIL?: string }
-): Promise<EmailResult> {
-  // If no API key configured, log the email instead (dev mode)
+export async function sendEmail(options: EmailOptions, env: EmailEnv): Promise<EmailResult> {
   if (!env.RESEND_API_KEY) {
-    logJSON({
-      level: "warn",
-      msg: "email_not_sent_no_api_key",
-      to: options.to,
-      subject: options.subject,
-      html: options.html
-    });
-    return {
-      success: true,
-      messageId: 'dev-mode-no-send',
-    };
+    logJSON({ level: "warn", msg: "email_not_sent_no_api_key", to: options.to, subject: options.subject });
+    return { success: true, messageId: "dev-mode-no-send" };
   }
 
   try {
-    const response = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${env.RESEND_API_KEY}`,
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${env.RESEND_API_KEY}`,
       },
       body: JSON.stringify({
-        from: options.from || env.RESEND_FROM_EMAIL || 'onboarding@syston.app',
+        from: options.from || fromAddress(env),
         to: options.to,
         subject: options.subject,
         html: options.html,
+        ...(options.text ? { text: options.text } : {}),
       }),
     });
 
     if (!response.ok) {
       const errorData = await response.text();
-      logJSON({
-        level: "error",
-        msg: "email_resend_api_error",
-        status: response.status,
-        error: errorData
-      });
-      return {
-        success: false,
-        error: `Resend API error: ${response.status} ${errorData}`,
-      };
+      logJSON({ level: "error", msg: "email_resend_api_error", status: response.status, error: errorData });
+      return { success: false, error: `Resend API error: ${response.status} ${errorData}` };
     }
 
-    const data = await response.json() as { id: string };
-    return {
-      success: true,
-      messageId: data.id,
-    };
+    const data = (await response.json()) as { id: string };
+    return { success: true, messageId: data.id };
   } catch (error) {
-    logJSON({
-      level: "error",
-      msg: "email_send_failed",
-      error: error instanceof Error ? error.message : String(error)
-    });
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-    };
+    logJSON({ level: "error", msg: "email_send_failed", error: error instanceof Error ? error.message : String(error) });
+    return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
   }
 }
 
-/**
- * Send magic link email for passwordless authentication
- */
-export async function sendMagicLinkEmail(
-  email: string,
-  magicLink: string,
-  clubName: string,
-  env: { RESEND_API_KEY?: string; RESEND_FROM_EMAIL?: string }
-): Promise<EmailResult> {
-  const html = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <style>
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      line-height: 1.6;
-      color: #333;
-      max-width: 600px;
-      margin: 0 auto;
-      padding: 20px;
-    }
-    .header {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      padding: 40px 20px;
-      text-align: center;
-      border-radius: 8px 8px 0 0;
-    }
-    .header h1 {
-      color: white;
-      margin: 0;
-      font-size: 28px;
-    }
-    .content {
-      background: #ffffff;
-      padding: 40px;
-      border: 1px solid #e0e0e0;
-      border-top: none;
-    }
-    .button {
-      display: inline-block;
-      background: #667eea;
-      color: white;
-      padding: 14px 32px;
-      text-decoration: none;
-      border-radius: 6px;
-      font-weight: 600;
-      margin: 20px 0;
-    }
-    .button:hover {
-      background: #5568d3;
-    }
-    .footer {
-      text-align: center;
-      padding: 20px;
-      color: #666;
-      font-size: 14px;
-    }
-    .warning {
-      background: #fff3cd;
-      border: 1px solid #ffeaa7;
-      padding: 12px;
-      border-radius: 4px;
-      margin: 20px 0;
-      font-size: 14px;
-    }
-  </style>
-</head>
-<body>
-  <div class="header">
-    <h1>⚽ Welcome to ${clubName}!</h1>
-  </div>
-  <div class="content">
-    <h2>Your team platform is ready! 🎉</h2>
-    <p>Hi there,</p>
-    <p>Your club's platform has been successfully set up. Click the button below to access your admin dashboard:</p>
-
-    <div style="text-align: center;">
-      <a href="${magicLink}" class="button">Access Admin Dashboard</a>
-    </div>
-
-    <div class="warning">
-      <strong>⏰ This link expires in 24 hours</strong> and can only be used once for security.
-    </div>
-
-    <p><strong>What's next?</strong></p>
-    <ul>
-      <li>Complete your club profile and branding</li>
-      <li>Configure fixture imports from your league</li>
-      <li>Set up social media integrations</li>
-      <li>Invite coaches, players, and parents</li>
-    </ul>
-
-    <p>If you didn't request this, you can safely ignore this email.</p>
-
-    <p>Questions? Reply to this email or check our documentation.</p>
-
-    <p style="margin-top: 30px;">
-      Best regards,<br>
-      <strong>The Syston Team</strong>
-    </p>
-  </div>
-  <div class="footer">
-    <p>This is an automated email. Please do not reply directly.</p>
-    <p>If you're having trouble with the button above, copy and paste this link into your browser:</p>
-    <p style="font-size: 12px; word-break: break-all;">${magicLink}</p>
-  </div>
-</body>
-</html>
-  `.trim();
-
-  return sendEmail(
-    {
-      to: email,
-      subject: `🎉 Welcome to ${clubName} - Your Platform is Ready!`,
-      html,
-    },
-    env
-  );
+interface EmailContent {
+  /** Big heading at the top. Plain text (escaped here). */
+  heading: string;
+  /** Paragraphs of plain text (escaped here). */
+  paragraphs: string[];
+  button?: { label: string; url: string };
+  /** Small print under the button (plain text). */
+  note?: string;
+  /** Extra detail rows, e.g. date / location (plain text). */
+  details?: Array<[string, string]>;
+  /** Who it's from, e.g. the club name. Defaults to Boost Huddle. */
+  signOff?: string;
 }
 
-/**
- * Send welcome email after successful signup
- */
-export async function sendWelcomeEmail(
-  email: string,
-  clubName: string,
-  setupUrl: string,
-  env: { RESEND_API_KEY?: string; RESEND_FROM_EMAIL?: string }
-): Promise<EmailResult> {
-  const html = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <style>
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      line-height: 1.6;
-      color: #333;
-      max-width: 600px;
-      margin: 0 auto;
-      padding: 20px;
-    }
-    .header {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      padding: 40px 20px;
-      text-align: center;
-      border-radius: 8px 8px 0 0;
-    }
-    .header h1 {
-      color: white;
-      margin: 0;
-      font-size: 28px;
-    }
-    .content {
-      background: #ffffff;
-      padding: 40px;
-      border: 1px solid #e0e0e0;
-      border-top: none;
-    }
-    .status {
-      background: #e3f2fd;
-      border-left: 4px solid #2196f3;
-      padding: 12px;
-      margin: 20px 0;
-    }
-    .footer {
-      text-align: center;
-      padding: 20px;
-      color: #666;
-      font-size: 14px;
-    }
-  </style>
-</head>
-<body>
-  <div class="header">
-    <h1>🏗️ Setting Up ${clubName}</h1>
-  </div>
-  <div class="content">
-    <h2>Your platform is being prepared...</h2>
-    <p>Hi there,</p>
-    <p>Thanks for signing up! We're currently setting up your club's platform. This usually takes just a few minutes.</p>
+/** The shared Boost Huddle email layout: HTML and a matching plain-text version. */
+export function renderEmail(content: EmailContent): { html: string; text: string } {
+  const signOff = content.signOff || `The ${BRAND} team`;
+  const paragraphs = content.paragraphs.map((p) => `<p style="margin:0 0 16px">${escapeHtml(p)}</p>`).join("");
+  const details = content.details?.length
+    ? `<table role="presentation" style="width:100%;margin:0 0 20px;border-collapse:collapse">${content.details
+        .map(
+          ([label, value]) =>
+            `<tr><td style="padding:8px 0;color:#6b7280;width:110px;vertical-align:top">${escapeHtml(label)}</td><td style="padding:8px 0;font-weight:600">${escapeHtml(value)}</td></tr>`,
+        )
+        .join("")}</table>`
+    : "";
+  const button = content.button
+    ? `<p style="margin:28px 0;text-align:center"><a href="${escapeHtml(content.button.url)}" style="display:inline-block;background:#00E5E5;color:#0B0D0F;text-decoration:none;font-weight:700;padding:14px 28px;border-radius:8px">${escapeHtml(content.button.label)}</a></p>`
+    : "";
+  const note = content.note ? `<p style="margin:0 0 16px;font-size:14px;color:#6b7280">${escapeHtml(content.note)}</p>` : "";
+  const fallback = content.button
+    ? `<p style="margin:24px 0 0;font-size:12px;color:#9ca3af;word-break:break-all">If the button doesn't work, copy this link into your browser:<br>${escapeHtml(content.button.url)}</p>`
+    : "";
 
-    <div class="status">
-      <strong>✨ What we're doing:</strong>
-      <ul style="margin: 10px 0 0 0; padding-left: 20px;">
-        <li>Creating your tenant database</li>
-        <li>Setting up fixture imports</li>
-        <li>Configuring webhooks and integrations</li>
-        <li>Deploying your automation scripts</li>
-      </ul>
-    </div>
-
-    <p><strong>You'll receive another email shortly with:</strong></p>
-    <ul>
-      <li>Your secure login link</li>
-      <li>Access to your admin dashboard</li>
-      <li>Next steps for configuration</li>
-    </ul>
-
-    <p style="margin-top: 30px;">
-      Excited to have you on board!<br>
-      <strong>The Syston Team</strong>
-    </p>
-  </div>
-  <div class="footer">
-    <p>This is an automated email from your team platform setup.</p>
-  </div>
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${escapeHtml(content.heading)}</title></head>
+<body style="margin:0;padding:0;background:#f3f4f6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#111827;line-height:1.6">
+  <table role="presentation" width="100%" style="background:#f3f4f6;padding:24px 12px"><tr><td align="center">
+    <table role="presentation" width="100%" style="max-width:560px;background:#ffffff;border-radius:12px;overflow:hidden">
+      <tr><td style="background:#0B0D0F;padding:20px 28px">
+        <span style="color:#ffffff;font-weight:900;font-style:italic;letter-spacing:1px;text-transform:uppercase;font-size:18px">${BRAND}</span>
+      </td></tr>
+      <tr><td style="padding:32px 28px">
+        <h1 style="margin:0 0 20px;font-size:24px;line-height:1.3">${escapeHtml(content.heading)}</h1>
+        ${paragraphs}${details}${button}${note}
+        <p style="margin:24px 0 0">${escapeHtml(signOff)}</p>
+        ${fallback}
+      </td></tr>
+      <tr><td style="padding:16px 28px;background:#f9fafb;font-size:12px;color:#9ca3af">Sent by ${BRAND}. This is an automated email; replies aren't read.</td></tr>
+    </table>
+  </td></tr></table>
 </body>
-</html>
-  `.trim();
+</html>`;
 
-  return sendEmail(
-    {
-      to: email,
-      subject: `⚙️ Setting up ${clubName} - Almost Ready!`,
-      html,
-    },
-    env
-  );
+  const text = [
+    content.heading,
+    "",
+    ...content.paragraphs.flatMap((p) => [p, ""]),
+    ...(content.details ?? []).map(([label, value]) => `${label}: ${value}`),
+    ...(content.details?.length ? [""] : []),
+    ...(content.button ? [`${content.button.label}: ${content.button.url}`, ""] : []),
+    ...(content.note ? [content.note, ""] : []),
+    signOff,
+  ].join("\n");
+
+  return { html, text };
 }
 
-/**
- * Send email verification link
- */
-export async function sendVerificationEmail(
-  email: string,
-  link: string,
-  env: { RESEND_API_KEY?: string; RESEND_FROM_EMAIL?: string }
-): Promise<EmailResult> {
-  const html = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <style>
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      line-height: 1.6;
-      color: #333;
-      max-width: 600px;
-      margin: 0 auto;
-      padding: 20px;
-    }
-    .header {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      padding: 40px 20px;
-      text-align: center;
-      border-radius: 8px 8px 0 0;
-    }
-    .header h1 {
-      color: white;
-      margin: 0;
-      font-size: 28px;
-    }
-    .content {
-      background: #ffffff;
-      padding: 40px;
-      border: 1px solid #e0e0e0;
-      border-top: none;
-    }
-    .button {
-      display: inline-block;
-      background: #667eea;
-      color: white;
-      padding: 14px 32px;
-      text-decoration: none;
-      border-radius: 6px;
-      font-weight: 600;
-      margin: 20px 0;
-    }
-    .button:hover {
-      background: #5568d3;
-    }
-    .footer {
-      text-align: center;
-      padding: 20px;
-      color: #666;
-      font-size: 14px;
-    }
-  </style>
-</head>
-<body>
-  <div class="header">
-    <h1>Verify your email</h1>
-  </div>
-  <div class="content">
-    <h2>You're almost there!</h2>
-    <p>Hi there,</p>
-    <p>Please verify your email address to complete your account setup and start building your team platform.</p>
-
-    <div style="text-align: center;">
-      <a href="${link}" class="button">Verify Email & Start Setup</a>
-    </div>
-
-    <p>If you didn't create an account, you can safely ignore this email.</p>
-  </div>
-  <div class="footer">
-    <p>This is an automated email. Please do not reply directly.</p>
-    <p>If you're having trouble with the button above, copy and paste this link into your browser:</p>
-    <p style="font-size: 12px; word-break: break-all;">${link}</p>
-  </div>
-</body>
-</html>
-  `.trim();
-
-  return sendEmail(
-    {
-      to: email,
-      subject: `Verify your email for Syston`,
-      html,
-    },
-    env
-  );
+async function send(env: EmailEnv, to: string, subject: string, content: EmailContent): Promise<EmailResult> {
+  const { html, text } = renderEmail(content);
+  return sendEmail({ to, subject, html, text }, env);
 }
 
-/**
- * Send password reset link
- */
-export async function sendPasswordResetEmail(
-  email: string,
-  resetLink: string,
-  env: { RESEND_API_KEY?: string; RESEND_FROM_EMAIL?: string }
-): Promise<EmailResult> {
-  const html = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <style>
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      line-height: 1.6;
-      color: #333;
-      max-width: 600px;
-      margin: 0 auto;
-      padding: 20px;
-    }
-    .header {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      padding: 40px 20px;
-      text-align: center;
-      border-radius: 8px 8px 0 0;
-    }
-    .header h1 {
-      color: white;
-      margin: 0;
-      font-size: 28px;
-    }
-    .content {
-      background: #ffffff;
-      padding: 40px;
-      border: 1px solid #e0e0e0;
-      border-top: none;
-    }
-    .button {
-      display: inline-block;
-      background: #667eea;
-      color: white;
-      padding: 14px 32px;
-      text-decoration: none;
-      border-radius: 6px;
-      font-weight: 600;
-      margin: 20px 0;
-    }
-    .button:hover {
-      background: #5568d3;
-    }
-    .footer {
-      text-align: center;
-      padding: 20px;
-      color: #666;
-      font-size: 14px;
-    }
-    .warning {
-      background: #fff3cd;
-      border: 1px solid #ffeaa7;
-      padding: 12px;
-      border-radius: 4px;
-      margin: 20px 0;
-      font-size: 14px;
-    }
-  </style>
-</head>
-<body>
-  <div class="header">
-    <h1>🔐 Reset Your Password</h1>
-  </div>
-  <div class="content">
-    <h2>Password Reset Request</h2>
-    <p>Hi there,</p>
-    <p>We received a request to reset your password. Click the button below to create a new password:</p>
-
-    <div style="text-align: center;">
-      <a href="${resetLink}" class="button">Reset Password</a>
-    </div>
-
-    <div class="warning">
-      <strong>⏰ This link expires in 1 hour</strong> and can only be used once for security.
-    </div>
-
-    <p>If you didn't request this password reset, you can safely ignore this email. Your password will remain unchanged.</p>
-
-    <p style="margin-top: 30px;">
-      Best regards,<br>
-      <strong>The Team Platform</strong>
-    </p>
-  </div>
-  <div class="footer">
-    <p>This is an automated email. Please do not reply directly.</p>
-    <p>If you're having trouble with the button above, copy and paste this link into your browser:</p>
-    <p style="font-size: 12px; word-break: break-all;">${resetLink}</p>
-  </div>
-</body>
-</html>
-  `.trim();
-
-  return sendEmail(
-    {
-      to: email,
-      subject: `Reset your password`,
-      html,
-    },
-    env
-  );
+/** Owner-console sign-in link (platform admins only). */
+export async function sendMagicLinkEmail(email: string, magicLink: string, clubName: string, env: EmailEnv): Promise<EmailResult> {
+  return send(env, email, `Your ${BRAND} sign-in link`, {
+    heading: "Sign in to the owner console",
+    paragraphs: [`Here's your sign-in link for ${clubName}.`],
+    button: { label: "Sign in", url: magicLink },
+    note: "The link works for 24 hours. If you didn't ask for it, you can ignore this email.",
+  });
 }
 
+/** Sent while a new club is being set up. */
+export async function sendWelcomeEmail(email: string, clubName: string, setupUrl: string, env: EmailEnv): Promise<EmailResult> {
+  return send(env, email, `Welcome to ${BRAND}, ${clubName}`, {
+    heading: `Welcome, ${clubName}`,
+    paragraphs: [
+      "Thanks for signing up. Your club is ready to go.",
+      "Add your players and fixtures, then send the app link to your players and parents from your dashboard.",
+    ],
+    button: { label: "Open your dashboard", url: setupUrl },
+  });
+}
 
-/**
- * Send payment reminder email
- */
+/** Confirms a new club owner's email address after sign-up. */
+export async function sendVerificationEmail(email: string, link: string, env: EmailEnv): Promise<EmailResult> {
+  return send(env, email, `Confirm your email for ${BRAND}`, {
+    heading: "Confirm your email",
+    paragraphs: [
+      "Thanks for starting your club on Boost Huddle.",
+      "Please confirm this is your email address so we can reach you about your club.",
+    ],
+    button: { label: "Confirm my email", url: link },
+    note: "The link works for 24 hours. If you didn't sign up, you can ignore this email.",
+  });
+}
+
+/** Password reset link. */
+export async function sendPasswordResetEmail(email: string, resetLink: string, env: EmailEnv): Promise<EmailResult> {
+  return send(env, email, "Reset your password", {
+    heading: "Reset your password",
+    paragraphs: ["We received a request to reset the password for your account."],
+    button: { label: "Choose a new password", url: resetLink },
+    note: "The link works for 1 hour. If you didn't ask to reset your password, you can ignore this email and nothing will change.",
+  });
+}
+
+/** Club payment request (subs, kit, trips). */
 export async function sendPaymentReminderEmail(
   email: string,
   name: string,
@@ -529,111 +213,22 @@ export async function sendPaymentReminderEmail(
   dueDate: string,
   link: string,
   clubName: string,
-  env: { RESEND_API_KEY?: string; RESEND_FROM_EMAIL?: string }
+  env: EmailEnv,
 ): Promise<EmailResult> {
-  const html = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <style>
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      line-height: 1.6;
-      color: #333;
-      max-width: 600px;
-      margin: 0 auto;
-      padding: 20px;
-    }
-    .header {
-      background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
-      padding: 40px 20px;
-      text-align: center;
-      border-radius: 8px 8px 0 0;
-    }
-    .header h1 {
-      color: white;
-      margin: 0;
-      font-size: 28px;
-    }
-    .content {
-      background: #ffffff;
-      padding: 40px;
-      border: 1px solid #e0e0e0;
-      border-top: none;
-    }
-    .button {
-      display: inline-block;
-      background: #ef4444;
-      color: white;
-      padding: 14px 32px;
-      text-decoration: none;
-      border-radius: 6px;
-      font-weight: 600;
-      margin: 20px 0;
-    }
-    .button:hover {
-      background: #dc2626;
-    }
-    .footer {
-      text-align: center;
-      padding: 20px;
-      color: #666;
-      font-size: 14px;
-    }
-    .amount {
-      font-size: 24px;
-      font-weight: bold;
-      color: #ef4444;
-      margin: 20px 0;
-    }
-  </style>
-</head>
-<body>
-  <div class="header">
-    <h1>🔔 Payment Reminder</h1>
-  </div>
-  <div class="content">
-    <h2>Payment Due for ${clubName}</h2>
-    <p>Hi ${name},</p>
-    <p>This is a friendly reminder that you have a pending payment request.</p>
-    
-    <div style="text-align: center; background: #f9fafb; padding: 20px; border-radius: 8px;">
-      <p style="margin: 0; color: #6b7280; font-size: 14px;">Total Amount Due</p>
-      <div class="amount">${amount}</div>
-      <p style="margin: 0;"><strong>${title}</strong></p>
-      <p style="margin: 5px 0 0 0; font-size: 14px;">Due Date: ${dueDate || 'Imminent'}</p>
-    </div>
-
-    <div style="text-align: center;">
-      <a href="${link}" class="button">Pay Now</a>
-    </div>
-
-    <p style="margin-top: 30px;">
-      Best regards,<br>
-      <strong>${clubName} Admin Team</strong>
-    </p>
-  </div>
-  <div class="footer">
-    <p>This is an automated email. Please do not reply directly.</p>
-  </div>
-</body>
-</html>
-  `.trim();
-
-  return sendEmail(
-    {
-      to: email,
-      subject: `Payment Reminder: ${title}`,
-      html,
-    },
-    env
-  );
+  return send(env, email, `Payment reminder: ${title}`, {
+    heading: "Payment reminder",
+    paragraphs: [`Hi ${name},`, `This is a reminder about a payment for ${clubName}.`],
+    details: [
+      ["For", title],
+      ["Amount", amount],
+      ["Due", dueDate || "As soon as possible"],
+    ],
+    button: { label: "Pay now", url: link },
+    signOff: clubName,
+  });
 }
 
-/**
- * Send event reminder email
- */
+/** Reminder the day before a fixture or event. */
 export async function sendEventReminderEmail(
   email: string,
   name: string,
@@ -641,89 +236,16 @@ export async function sendEventReminderEmail(
   eventDate: string,
   eventLocation: string,
   clubName: string,
-  env: { RESEND_API_KEY?: string; RESEND_FROM_EMAIL?: string }
+  env: EmailEnv,
 ): Promise<EmailResult> {
-  const html = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <style>
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      line-height: 1.6;
-      color: #333;
-      max-width: 600px;
-      margin: 0 auto;
-      padding: 20px;
-    }
-    .header {
-      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-      padding: 40px 20px;
-      text-align: center;
-      border-radius: 8px 8px 0 0;
-    }
-    .header h1 {
-      color: white;
-      margin: 0;
-      font-size: 28px;
-    }
-    .content {
-      background: #ffffff;
-      padding: 40px;
-      border: 1px solid #e0e0e0;
-      border-top: none;
-    }
-    .footer {
-      text-align: center;
-      padding: 20px;
-      color: #666;
-      font-size: 14px;
-    }
-    .event-card {
-      background: #f0fdf4;
-      border: 1px solid #bbf7d0;
-      padding: 20px;
-      border-radius: 8px;
-      margin: 20px 0;
-    }
-  </style>
-</head>
-<body>
-  <div class="header">
-    <h1>📅 Event Reminder</h1>
-  </div>
-  <div class="content">
-    <h2>Upcoming Event Tomorrow</h2>
-    <p>Hi ${name},</p>
-    <p>This is a reminder for your upcoming event with ${clubName}:</p>
-    
-    <div class="event-card">
-      <h3 style="margin: 0 0 10px 0; color: #047857;">${eventTitle}</h3>
-      <p style="margin: 5px 0;"><strong>Date:</strong> ${eventDate}</p>
-      <p style="margin: 5px 0;"><strong>Location:</strong> ${eventLocation}</p>
-    </div>
-
-    <p>Don't forget to update your RSVP if your plans have changed!</p>
-
-    <p style="margin-top: 30px;">
-      See you there,<br>
-      <strong>${clubName} Team</strong>
-    </p>
-  </div>
-  <div class="footer">
-    <p>This is an automated email. Please do not reply directly.</p>
-  </div>
-</body>
-</html>
-  `.trim();
-
-  return sendEmail(
-    {
-      to: email,
-      subject: `Reminder: ${eventTitle} Tomorrow`,
-      html,
-    },
-    env
-  );
+  return send(env, email, `Tomorrow: ${eventTitle}`, {
+    heading: `Tomorrow: ${eventTitle}`,
+    paragraphs: [`Hi ${name},`, `A quick reminder about tomorrow with ${clubName}.`],
+    details: [
+      ["When", eventDate],
+      ["Where", eventLocation],
+    ],
+    note: "If your plans have changed, please let the club know.",
+    signOff: clubName,
+  });
 }
