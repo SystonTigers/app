@@ -28,7 +28,7 @@ exports[`Snapshot: Error Responses > snapshots 404 Not Found response 1`] = `
 
 exports[`Snapshot: Error Responses > snapshots CORS headers on error responses 1`] = `
 {
-  "access-control-allow-headers": "authorization,content-type,x-tenant-id",
+  "access-control-allow-headers": "authorization,content-type,x-tenant-id,x-tenant,idempotency-key",
   "access-control-allow-methods": "GET,POST,PUT,DELETE,OPTIONS,PATCH",
   "access-control-allow-origin": null,
 }

@@ -59,6 +59,15 @@ export async function handleAuthRegister(req: Request, env: any, corsHdrs: Heade
     const body = await req.json().catch(() => ({}));
     const data = parse(RegisterSchema, body);
 
+    // The app knows a club by its web address (slug); accept either that or the id
+    if (!data.tenant_id.startsWith("tenant_")) {
+      const club = await env.DB.prepare("SELECT id FROM tenants WHERE LOWER(slug) = LOWER(?) LIMIT 1")
+        .bind(data.tenant_id).first() as { id: string } | null;
+      if (club) {
+        data.tenant_id = club.id;
+      }
+    }
+
     const idemKey = readIdempotencyKey(req);
     const idem = await ensureIdempotent(env, data.tenant_id, body, idemKey || undefined);
     if (idem.hit) {
@@ -1133,6 +1142,19 @@ async function autoAssignGroups(env: any, params: {
  */
 export async function handleRequestPasswordReset(req: Request, env: any, corsHdrs: Headers) {
   try {
+    const limited = await rateLimit(req, env, {
+      scope: "auth:password-reset",
+      limit: 5,
+      windowSeconds: 3600,
+      path: "/api/v1/auth/request-password-reset"
+    });
+    if (!limited.ok) {
+      return json({
+        success: false,
+        error: { code: "RATE_LIMITED", message: "Too many reset requests. Please try again in an hour." }
+      }, 429, corsHdrs);
+    }
+
     const data = await req.json().catch(() => ({})) as { email?: string };
 
     if (!data.email) {

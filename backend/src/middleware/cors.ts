@@ -63,7 +63,7 @@ export function corsHeaders(origin: string | null, env?: { CORS_ALLOWED?: string
 
   h.set("Vary", "Origin");
   h.set("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS,PATCH");
-  h.set("Access-Control-Allow-Headers", "authorization,content-type,x-tenant-id");
+  h.set("Access-Control-Allow-Headers", "authorization,content-type,x-tenant-id,x-tenant,idempotency-key");
   h.set("Access-Control-Max-Age", "600");
 
   return h;

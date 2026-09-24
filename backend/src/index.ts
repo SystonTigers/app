@@ -10,6 +10,7 @@ import { newRequestId, logJSON } from "./lib/log";
 import { withSecurity } from "./middleware/securityHeaders";
 import { healthz, readyz } from "./routes/health";
 import { updateTenantMe, getTenantMe } from "./routes/tenant-self";
+import { handleSearchClubs, handleGetMe, handleUpdateMyProfile } from "./routes/clubs";
 import {
     handleAuthRegister,
     handleAuthLogin,
@@ -290,6 +291,9 @@ router.post("/api/:v/magic/verify", (req, env, corsHdrs) => handleMagicVerify(re
 // Tenant Routes
 router.patch("/api/:v/tenants/me", (req, env, corsHdrs) => updateTenantMe(req, env, corsHdrs));
 router.get("/api/:v/tenants/me", (req, env, corsHdrs) => getTenantMe(req, env, corsHdrs));
+router.get("/api/:v/clubs/search", (req, env, corsHdrs) => handleSearchClubs(req, env, corsHdrs));
+router.get("/api/:v/users/me", (req, env, corsHdrs) => handleGetMe(req, env, corsHdrs));
+router.put("/api/:v/users/profile", (req, env, corsHdrs) => handleUpdateMyProfile(req, env, corsHdrs));
 
 // Signup Routes
 router.post("/public/signup/start", (req, env, corsHdrs, requestId) => signupStart(req, env, requestId, corsHdrs));

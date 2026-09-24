@@ -11,7 +11,7 @@ doc disagrees with this one, trust this one (and the code).
 | Database | D1 `syston-db` (binding `DB`), schema from `backend/migrations/` |
 | Website + club sign-up (`web-app/`) | `boost-huddle` Worker → https://boost-huddle.team-platform-2025.workers.dev |
 | Club | slug `syston-tigers` |
-| Mobile app | `mobile/` (Expo SDK 54), points at `app-production` by default |
+| Mobile app | `mobile/` (Expo SDK 54, "Boost Huddle"). One app for every club: people find their club on first launch |
 
 `syston-postbus` and `app` are older Workers and are not used by the apps any more.
 
@@ -34,7 +34,13 @@ Check it: open http://localhost:8787/healthz
 2. Set `EXPO_PUBLIC_API_BASE=http://<your PC's IP>:8787` (phone and PC on the same Wi-Fi)
 3. `cd mobile && npm install && npx expo start`, then scan the QR code with Expo Go
 
-Leave `EXPO_PUBLIC_API_BASE` unset to use the live backend.
+Leave `EXPO_PUBLIC_API_BASE` unset to use the live backend. Leave
+`EXPO_PUBLIC_TENANT_ID` empty for the multi-club app, or set it to a club's web
+address (e.g. `syston-tigers`) to build an app locked to that club.
+
+Before the first store build: run `npx eas init` in `mobile/` (needs a free
+Expo account). It replaces the `dev-placeholder` project id in `app.json`,
+which push notifications need.
 
 ## Tests
 

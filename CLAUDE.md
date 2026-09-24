@@ -13,7 +13,7 @@ A multi-club grassroots football app. One Cloudflare Worker serves every club
 |---|---|
 | `backend/` | Cloudflare Worker API (TypeScript, Wrangler). Live as `app-production`. |
 | `backend/migrations/` | D1 schema (`0001_baseline.sql` onwards; `archive/` is history only) |
-| `mobile/` | Expo SDK 54 React Native app for players, parents and coaches |
+| `mobile/` | Expo SDK 54 app for players, parents and coaches. Multi-club: the current club lives in `src/services/club.ts` (`getTenantId()`); never hardcode a club |
 | `web-app/` | Next.js site: landing page, club sign-up (`/create-team`), club pages and dashboards. Live as the `boost-huddle` Worker (OpenNext) |
 | `owner-admin/` | Platform owner console |
 | `packages/sdk/` | Typed API client shared by the web frontends |
@@ -54,4 +54,5 @@ with personal data.
 
 - Email isn't sent until `RESEND_API_KEY` and a verified sending domain are set;
   until then emails are only logged.
-- The mobile app is fixed to the Syston Tigers club (`syston-tigers`).
+- Mobile push notifications need a real EAS project id (`npx eas init`); until
+  then the app skips push registration.
