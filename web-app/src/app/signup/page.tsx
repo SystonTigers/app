@@ -163,9 +163,9 @@ export default function SignupPage() {
 
         {/* Terms */}
         <div className="text-center mt-8 space-x-6 text-xs font-mono text-gray-600 uppercase tracking-widest">
-          <a href="#" className="hover:text-brand transition-colors">Terms of Service</a>
+          <a href="https://boosthuddle-legal.pages.dev/terms" target="_blank" rel="noreferrer" className="hover:text-brand transition-colors">Terms of Service</a>
           <span>|</span>
-          <a href="#" className="hover:text-brand transition-colors">Privacy Protocol</a>
+          <a href="https://boosthuddle-legal.pages.dev/privacy" target="_blank" rel="noreferrer" className="hover:text-brand transition-colors">Privacy Policy</a>
         </div>
       </div>
     </div>

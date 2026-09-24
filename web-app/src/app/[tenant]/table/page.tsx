@@ -44,9 +44,6 @@ export default function TablePage({ params }: { params: Promise<{ tenant: string
             <h1 className="text-4xl font-black uppercase tracking-tighter mb-2">League Table</h1>
             <p className="text-gray-500">Current standings for the season.</p>
           </div>
-          <a href="#" className="px-5 py-2.5 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-900 dark:text-white font-bold chamfer-sm text-sm transition-colors">
-            View Official Site &rarr;
-          </a>
         </div>
       </div>
 
