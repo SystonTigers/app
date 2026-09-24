@@ -16,8 +16,16 @@
 
 import { spawnSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
+import { createRequire } from 'node:module';
+import path from 'node:path';
 import readline from 'node:readline';
 import bcrypt from 'bcryptjs';
+
+// Run wrangler's JS entry with node directly. Going through npx needs a shell on
+// Windows, and the shell splits the SQL argument apart at every space.
+const require = createRequire(import.meta.url);
+const wranglerPkg = require.resolve('wrangler/package.json');
+const wranglerBin = path.join(path.dirname(wranglerPkg), require(wranglerPkg).bin.wrangler);
 
 const remote = process.argv.includes('--remote');
 const email = (process.env.SYSTON_ADMIN_EMAIL || 'systontowntigersfc@gmail.com').trim().toLowerCase();
@@ -52,9 +60,9 @@ async function askHidden(questions) {
 }
 
 function d1(sql) {
-  const args = ['wrangler', 'd1', 'execute', 'DB', '--json', '--command', sql];
+  const args = [wranglerBin, 'd1', 'execute', 'DB', '--json', '--command', sql.replace(/\s+/g, ' ').trim()];
   args.push(...(remote ? ['--remote', '--env', 'production'] : ['--local']));
-  const result = spawnSync('npx', args, { stdio: ['inherit', 'pipe', 'pipe'], shell: process.platform === 'win32' });
+  const result = spawnSync(process.execPath, args, { stdio: ['ignore', 'pipe', 'pipe'] });
   const out = result.stdout?.toString() || '';
   if (result.status !== 0) {
     console.error('✗ wrangler d1 execute failed:');
