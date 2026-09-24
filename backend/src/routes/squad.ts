@@ -1,5 +1,6 @@
 import { json } from "../services/util";
-import { requireJWT, requireStaff } from "../services/auth";
+import { requireJWT, requireStaff, type TenantClaims } from "../services/auth";
+import { playersForViewer } from "../services/playerPrivacy";
 
 // Types
 interface WelcomePostOptions {
@@ -112,8 +113,10 @@ export async function handleGetSquad(req: Request, env: any, corsHdrs: Headers) 
             `SELECT *, number AS squad_number, dob AS date_of_birth FROM squad WHERE tenant_id = ? ORDER BY number ASC, name ASC`
         ).bind(claims.tenantId).all();
 
-        return json({ success: true, data: players.results || [] }, 200, corsHdrs);
+        const visible = await playersForViewer(env, claims as TenantClaims, players.results || []);
+        return json({ success: true, data: visible }, 200, corsHdrs);
     } catch (err) {
+        if (err instanceof Response) { throw err; }
         console.error('Get squad error:', err);
         return json({ success: false, error: "Failed to get squad" }, 500, corsHdrs);
     }
@@ -132,8 +135,10 @@ export async function handleGetPlayer(req: Request, env: any, corsHdrs: Headers,
             return json({ success: false, error: "Player not found" }, 404, corsHdrs);
         }
 
-        return json({ success: true, data: player }, 200, corsHdrs);
+        const [visible] = await playersForViewer(env, claims as TenantClaims, [player]);
+        return json({ success: true, data: visible }, 200, corsHdrs);
     } catch (err) {
+        if (err instanceof Response) { throw err; }
         console.error('Get player error:', err);
         return json({ success: false, error: "Failed to get player" }, 500, corsHdrs);
     }

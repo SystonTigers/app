@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { env } from "cloudflare:test";
 import worker from "../../src/index";
+import { registerAdmin } from "./helpers";
 
 // Mock ExecutionContext for worker tests
 const mockCtx = {
@@ -25,25 +26,8 @@ describe("E2E: Event Management Journey", () => {
   const testPassword = "SecurePass123!";
 
   it("completes event lifecycle: create -> list -> RSVP -> view attendees", async () => {
-    // Register user for this test
-    const email = `event-${Date.now()}@example.com`;
-    const registerRequest = new Request("https://example.com/api/v1/auth/register", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "Idempotency-Key": `event-reg-${Date.now()}`,
-      },
-      body: JSON.stringify({
-        tenant_id: "syston",
-        email,
-        password: testPassword,
-        profile: { name: "Event Organizer" },
-      }),
-    });
-
-    const registerResponse = await worker.fetch(registerRequest, env, mockCtx);
-    const registerData = await registerResponse.json() as any;
-    const authToken = registerData.data?.token || "";
+    // Club staff create events (parents and players can only RSVP)
+    const { token: authToken } = await registerAdmin("event-organiser");
     expect(authToken).toBeTruthy();
 
     // Continue with event lifecycle

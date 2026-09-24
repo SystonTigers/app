@@ -1,5 +1,6 @@
 import { json } from "../services/util";
-import { requireJWT } from "../services/auth";
+import { requireJWT, type TenantClaims } from "../services/auth";
+import { canSeeFullPlayer } from "../services/playerPrivacy";
 
 export async function handlePlayerPhotoUpload(req: Request, env: any, corsHdrs: Headers) {
     try {
@@ -95,10 +96,13 @@ export async function handleGetPlayerGoals(req: Request, env: any, corsHdrs: Hea
     }
 }
 
-// Get player details including contacts and login code
+// Get player details including contacts and login code (staff, or the player's own parent/account)
 export async function handleGetPlayer(req: Request, env: any, corsHdrs: Headers, playerId: string) {
     try {
         const claims = await requireJWT(req, env);
+        if (!claims.tenantId || !(await canSeeFullPlayer(env, claims as TenantClaims, playerId))) {
+            return json({ success: false, error: { code: "FORBIDDEN", message: "Only club staff can see this player's contact details." } }, 403, corsHdrs);
+        }
 
         const player = await env.DB.prepare(`
             SELECT 

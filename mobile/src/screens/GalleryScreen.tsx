@@ -4,6 +4,7 @@ import { Card, Title, Paragraph, Button, Chip, FAB, Portal, Modal, TextInput, Ch
 import * as ImagePicker from 'expo-image-picker';
 import { COLORS } from '../config';
 import { galleryApi } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 const { width } = Dimensions.get('window');
 const imageSize = (width - 48) / 3; // 3 images per row with spacing
@@ -30,6 +31,9 @@ interface Album {
 // Mocks removed
 
 export default function GalleryScreen() {
+  const { user } = useAuth();
+  // Club staff add photos; parents and players view them
+  const canUpload = !!user && user.role !== 'parent' && user.role !== 'player';
   const [albums, setAlbums] = useState<Album[]>([]);
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [loading, setLoading] = useState(false);
@@ -230,13 +234,15 @@ export default function GalleryScreen() {
           </View>
         </ScrollView>
 
-        <FAB
-          icon="camera"
-          label="Upload"
-          style={styles.fab}
-          color={COLORS.secondary}
-          onPress={showUploadOptions}
-        />
+        {canUpload && (
+          <FAB
+            icon="camera"
+            label="Upload"
+            style={styles.fab}
+            color={COLORS.secondary}
+            onPress={showUploadOptions}
+          />
+        )}
 
         {/* Photo Detail Modal */}
         <Portal>
@@ -338,13 +344,15 @@ export default function GalleryScreen() {
         </View>
       )}
 
-      <FAB
-        icon="camera"
-        label="Upload Photo"
-        style={styles.fab}
-        color={COLORS.secondary}
-        onPress={showUploadOptions}
-      />
+      {canUpload && (
+        <FAB
+          icon="camera"
+          label="Upload Photo"
+          style={styles.fab}
+          color={COLORS.secondary}
+          onPress={showUploadOptions}
+        />
+      )}
 
       {/* Upload Modal */}
       <Portal>

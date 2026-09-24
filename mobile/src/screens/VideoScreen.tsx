@@ -6,6 +6,7 @@ import * as MediaLibrary from 'expo-media-library';
 import { Video, ResizeMode } from 'expo-av';
 import { COLORS } from '../config';
 import { apiClient, videosApi } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 type UploadState = boolean;
 
@@ -19,6 +20,9 @@ interface VideoItem {
 }
 
 export default function VideoScreen() {
+  const { user } = useAuth();
+  // Club staff upload match footage; parents and players watch highlights
+  const canUpload = !!user && user.role !== 'parent' && user.role !== 'player';
   const [selectedVideo, setSelectedVideo] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -153,40 +157,42 @@ export default function VideoScreen() {
       <View style={styles.header}>
         <Title>🎬 Videos & Highlights</Title>
         <Paragraph style={styles.subtitle}>
-          Record, upload, or view match highlights
+          {canUpload ? 'Record, upload, or view match highlights' : 'Watch match highlights from your club'}
         </Paragraph>
       </View>
 
-      {/* Action Buttons */}
-      <Card style={styles.actionCard}>
-        <Card.Content>
-          <Title style={styles.sectionTitle}>Create Highlight</Title>
-          <Paragraph style={styles.sectionSubtitle}>
-            Record or upload match footage
-          </Paragraph>
+      {/* Action Buttons (staff only) */}
+      {canUpload && (
+        <Card style={styles.actionCard}>
+          <Card.Content>
+            <Title style={styles.sectionTitle}>Create Highlight</Title>
+            <Paragraph style={styles.sectionSubtitle}>
+              Record or upload match footage
+            </Paragraph>
 
-          <View style={styles.buttonRow}>
-            <Button
-              mode="contained"
-              icon="video"
-              onPress={recordVideo}
-              style={styles.actionButton}
-              buttonColor={COLORS.primary}
-              textColor={COLORS.secondary}
-            >
-              Record Video
-            </Button>
-            <Button
-              mode="outlined"
-              icon="folder-open"
-              onPress={selectVideo}
-              style={styles.actionButton}
-            >
-              Select Video
-            </Button>
-          </View>
-        </Card.Content>
-      </Card>
+            <View style={styles.buttonRow}>
+              <Button
+                mode="contained"
+                icon="video"
+                onPress={recordVideo}
+                style={styles.actionButton}
+                buttonColor={COLORS.primary}
+                textColor={COLORS.secondary}
+              >
+                Record Video
+              </Button>
+              <Button
+                mode="outlined"
+                icon="folder-open"
+                onPress={selectVideo}
+                style={styles.actionButton}
+              >
+                Select Video
+              </Button>
+            </View>
+          </Card.Content>
+        </Card>
+      )}
 
       {/* Selected Video Preview */}
       {selectedVideo && (

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { call, registerMember } from "./helpers";
+import { call, registerAdmin, registerMember } from "./helpers";
 
 /**
  * E2E: Video - upload a clip from the phone (multipart, as VideoScreen does),
@@ -7,7 +7,13 @@ import { call, registerMember } from "./helpers";
  */
 describe("E2E: Video Upload Journey", () => {
   it("uploads, lists, plays back (with Range) and deletes a clip", async () => {
-    const member = await registerMember("video");
+    const member = await registerAdmin("video");
+
+    // Parents and players can't upload footage of the team
+    const parent = await registerMember("video-parent");
+    const parentForm = new FormData();
+    parentForm.append("video", new File([new Uint8Array(16)], "video.mp4", { type: "video/mp4" }));
+    expect((await call("/api/v1/videos/upload", { token: parent.token, body: parentForm })).status).toBe(403);
 
     const bytes = new Uint8Array(4096).map((_, i) => i % 256);
     const form = new FormData();
@@ -36,7 +42,7 @@ describe("E2E: Video Upload Journey", () => {
   });
 
   it("accepts a YouTube link instead of a file", async () => {
-    const member = await registerMember("video-link");
+    const member = await registerAdmin("video-link");
     const res = await call("/api/v1/videos/upload", {
       token: member.token,
       body: { title: "Full match", youtubeUrl: "https://youtu.be/abc123" },
@@ -45,7 +51,7 @@ describe("E2E: Video Upload Journey", () => {
   });
 
   it("rejects bad uploads with a clear 4xx", async () => {
-    const member = await registerMember("video-bad");
+    const member = await registerAdmin("video-bad");
 
     const noTitle = await call("/api/v1/videos/upload", { token: member.token, body: { videoUrl: "https://x" } });
     expect(noTitle.status).toBe(400);
