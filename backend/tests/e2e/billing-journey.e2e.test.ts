@@ -53,6 +53,22 @@ describe("Billing journey", () => {
     expect(res.data.data.plans.map((p: any) => p.id)).toEqual(["starter", "pro"]);
   });
 
+  it("reports an ended trial without locking the club out", async () => {
+    const { token, tenantId } = await newClub();
+    await env.DB.prepare("UPDATE tenants SET trial_ends_at = unixepoch() - 86400 WHERE id = ?").bind(tenantId).run();
+
+    const status = await call("/api/v1/billing/status", { token });
+    expect(status.data.data.trialEnded).toBe(true);
+    expect(status.data.data.trialDaysRemaining).toBe(0);
+
+    // Everything still works: the owner can keep running the club
+    const fixture = await call("/api/v1/admin/fixtures", {
+      token,
+      body: { opponent: "Late FC", date: "2099-01-01", time: "10:00", venue: "Home", homeAway: "home" },
+    });
+    expect(fixture.status).toBe(200);
+  });
+
   it("explains that payments aren't on yet instead of failing", async () => {
     const { token } = await newClub();
     const res = await call("/api/v1/billing/checkout", { token, body: { plan: "starter" } });

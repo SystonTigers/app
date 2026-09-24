@@ -123,7 +123,9 @@ export default function BillingPage() {
         detail = 'Your last payment didn\'t go through. Update your card to keep your club running smoothly.';
     } else if (status?.trialEnded) {
         headline = 'Your free trial has ended';
-        detail = 'Choose a plan to keep your club app and website running.';
+        detail = status.paymentsEnabled
+            ? 'Choose a plan to keep your club app and website running.'
+            : "There's nothing to do yet: everything keeps working while we finish setting up payments.";
     } else {
         headline = `Free trial: ${status?.trialDaysRemaining ?? 0} day${status?.trialDaysRemaining === 1 ? '' : 's'} left`;
         detail = 'Choose a plan any time. You won\'t be charged until your trial ends.';
@@ -144,7 +146,7 @@ export default function BillingPage() {
                 </div>
             )}
 
-            <div className={`rounded-xl p-6 mb-8 border ${pastDue || status?.trialEnded ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800' : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'}`}>
+            <div className={`rounded-xl p-6 mb-8 border ${pastDue || (status?.trialEnded && status.paymentsEnabled) ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800' : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'}`}>
                 <div className="flex items-center justify-between flex-wrap gap-4">
                     <div>
                         <h2 className="text-xl font-bold text-gray-900 dark:text-white">{headline}</h2>
