@@ -30,6 +30,9 @@ export function getProjectId(): string | null {
  * device for the current club's notifications.
  */
 export async function registerForPush({ prompt }: { prompt: boolean }): Promise<PushResult> {
+  if (Platform.OS === 'web') {
+    return { ok: false, reason: 'not-configured', message: 'Notifications are available in the phone app.' };
+  }
   if (!Device.isDevice) {
     return { ok: false, reason: 'not-a-device', message: 'Notifications only work on a real phone, not a simulator.' };
   }

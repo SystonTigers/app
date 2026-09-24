@@ -10,7 +10,9 @@
     "web": "expo start --web",
     "lint": "eslint . --ext .ts,.tsx",
     "test:snapshots": "node test/theme.snapshot.test.js",
-    "test": "npm run test:snapshots"
+    "test": "npm run test:snapshots",
+    "web:build": "node scripts/build-web.mjs",
+    "web:deploy": "node scripts/build-web.mjs && npx wrangler@4 deploy -c wrangler.web.jsonc"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.2",
@@ -46,7 +48,6 @@
     "react-native-reanimated": "~4.1.1",
     "react-native-safe-area-context": "~5.6.0",
     "react-native-screens": "~4.16.0",
-    "react-native-share": "^12.2.5",
     "react-native-svg": "^15.15.1",
     "react-native-web": "^0.21.1",
     "react-native-webview": "13.15.0",

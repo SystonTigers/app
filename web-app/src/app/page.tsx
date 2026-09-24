@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { APP_URL } from '@/lib/app-link';
 
 export const metadata = {
   title: 'Boost Huddle – run your grassroots football club in one place',
@@ -13,8 +14,8 @@ const features = [
   { title: 'Your squad', body: 'Keep players, parents and coaches in one place instead of scattered group chats and spreadsheets.' },
   { title: 'Club news feed', body: 'Share match reports, training updates and announcements with everyone at the club.' },
   { title: 'Match videos', body: 'Upload match clips and highlights so families can watch back the big moments.' },
-  { title: 'Player of the Match', body: 'Let parents and fans vote after every game and celebrate your players.' },
   { title: 'Your club website', body: 'Every club gets its own page in its own colours with fixtures, results and news.' },
+  { title: 'An app for every family', body: 'Players and parents add your club app to their phone in one tap. No app store, nothing to pay.' },
 ];
 
 export default function HomePage() {
@@ -23,6 +24,7 @@ export default function HomePage() {
       <header className="max-w-6xl mx-auto px-4 py-6 flex items-center justify-between">
         <span className="text-2xl font-black italic uppercase">Boost Huddle</span>
         <nav className="flex items-center gap-5 text-sm font-bold">
+          <a href={APP_URL} className="text-gray-300 hover:text-white">Open the app</a>
           <Link href="/pricing" className="text-gray-300 hover:text-white">Pricing</Link>
           <Link href="/login" className="text-gray-300 hover:text-white">Log in</Link>
           <Link href="/create-team" className="px-4 py-2 bg-brand text-black chamfer-sm hover:bg-white">Start free trial</Link>

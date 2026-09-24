@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
+import { API_BASE, getSessionToken } from '@/lib/session';
 
 interface TrialBannerProps {
     className?: string;
@@ -15,25 +16,26 @@ export function TrialExpiryBanner({ className = '' }: TrialBannerProps) {
     const [dismissed, setDismissed] = useState(false);
     const [isActive, setIsActive] = useState(false);
 
-    const API_BASE = process.env.NEXT_PUBLIC_API_BASE || '';
-
     useEffect(() => {
         const checkStatus = async () => {
             try {
+                const token = getSessionToken();
+                if (!token) return;
                 const res = await fetch(`${API_BASE}/api/v1/billing/status`, {
-                    credentials: 'include',
+                    headers: { Authorization: `Bearer ${token}` },
                 });
                 const data = await res.json();
-                if (data.success) {
+                // No point nudging clubs to pay before online payments are switched on
+                if (data.success && data.data.paymentsEnabled) {
                     setTrialDaysRemaining(data.data.trialDaysRemaining);
-                    setIsActive(data.data.subscriptionStatus === 'active');
+                    setIsActive(data.data.subscriptionStatus === 'active' || data.data.comped);
                 }
             } catch {
                 // Silently fail
             }
         };
         checkStatus();
-    }, [API_BASE]);
+    }, []);
 
     // Don't show if dismissed, active subscriber, or more than 7 days left
     if (dismissed || isActive || trialDaysRemaining === null || trialDaysRemaining > 7) {
@@ -68,7 +70,7 @@ export function TrialExpiryBanner({ className = '' }: TrialBannerProps) {
                         href={`/${tenant}/admin/billing`}
                         className="bg-white text-gray-900 px-4 py-1.5 rounded-lg font-semibold text-sm hover:bg-gray-100 transition-colors"
                     >
-                        Upgrade Now
+                        Choose a plan
                     </Link>
                     <button
                         onClick={() => setDismissed(true)}

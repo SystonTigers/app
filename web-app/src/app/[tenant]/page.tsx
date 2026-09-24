@@ -1,6 +1,7 @@
 
 import { getServerSDK } from '@/lib/sdk';
 import { getClubInfo } from '@/lib/club';
+import { clubAppLink } from '@/lib/app-link';
 import { isClubTeam } from '@/lib/slug';
 import Link from 'next/link';
 import { Suspense } from 'react';
@@ -179,16 +180,19 @@ export default async function TenantHomePage({ params }: HomePageProps) {
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <p className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-1">Official Dashboard</p>
+            <p className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-1">Official club page</p>
             <h1 className="text-3xl font-black text-gray-900 dark:text-white uppercase italic">
               {club.name}
             </h1>
           </div>
-          <div className="hidden md:flex gap-3">
-            <Link href={`/${tenant}/shop`} className="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 chamfer-sm font-bold text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+          <div className="flex gap-3">
+            <a href={clubAppLink(tenant)} className="px-4 py-2 bg-brand text-black chamfer-sm font-bold text-sm hover:bg-white transition-colors">
+              Get the app
+            </a>
+            <Link href={`/${tenant}/shop`} className="hidden md:inline-block px-4 py-2 bg-white text-gray-900 dark:bg-gray-800 dark:text-white border border-gray-200 dark:border-gray-700 chamfer-sm font-bold text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
               Store
             </Link>
-            <Link href={`/${tenant}/sponsors`} className="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 chamfer-sm font-bold text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+            <Link href={`/${tenant}/sponsors`} className="hidden md:inline-block px-4 py-2 bg-white text-gray-900 dark:bg-gray-800 dark:text-white border border-gray-200 dark:border-gray-700 chamfer-sm font-bold text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
               Partners
             </Link>
           </div>

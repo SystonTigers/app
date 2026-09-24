@@ -14,6 +14,7 @@ import { TextInput } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Button } from '../components/Button';
 import Card from '../components/ui/Card';
+import InstallPrompt from '../components/InstallPrompt';
 import { COLORS, WEBSITE_URL } from '../config';
 import { useClub } from '../context/ClubContext';
 import { ClubSummary, fetchClubInfo, searchClubs } from '../services/club';
@@ -92,6 +93,8 @@ export default function FindClubScreen({ onClubChosen, onLogIn }: FindClubScreen
           <Text style={styles.title}>Find your club</Text>
           <Text style={styles.subtitle}>Search for your club to see fixtures, results, news and match videos.</Text>
         </View>
+
+        <InstallPrompt />
 
         <TextInput
           label="Club name"

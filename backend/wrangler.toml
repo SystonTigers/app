@@ -44,7 +44,6 @@ API_VERSION = "v1"
 JWT_ISSUER = "syston.app"
 JWT_AUDIENCE = "syston-mobile"
 APP_VERSION = "7.0.0"
-YOUTUBE_API_KEY = "AIzaSyREPLACE"
 FIXTURES_REFRESH_URL = "https://syston-fixtures.team-platform-2025.workers.dev/refresh"
 ALLOWED_WEBHOOK_HOSTS = "hook.make.com,hook.eu2.make.com,hook.us1.make.com,*.make.com,webhook.site"
 SETUP_URL = "https://setup-console.team-platform-2025.workers.dev"
@@ -59,17 +58,11 @@ RESEND_FROM_EMAIL = "onboarding@syston.app"
 # Public website (web-app, deployed as the boost-huddle Worker). Email links point here.
 APP_BASE_URL = "https://boost-huddle.team-platform-2025.workers.dev"
 FRONTEND_URL = "https://boost-huddle.team-platform-2025.workers.dev"
-CORS_ALLOWED = "https://boost-huddle.team-platform-2025.workers.dev"
+CORS_ALLOWED = "https://boost-huddle.team-platform-2025.workers.dev,https://boost-huddle-app.team-platform-2025.workers.dev"
 # Environment-specific vars
 WORKER_BASE_URL = "https://app-production.team-platform-2025.workers.dev"
 ENVIRONMENT = "production"
 PYTHON_COACHING_SERVICE_URL = "http://localhost:8000"
-SUPABASE_URL = "https://prod-supabase.example.com"
-SUPABASE_ANON_KEY = "prod-anon-key"
-SUPABASE_SERVICE_ROLE = "prod-service-role"
-EBAY_CLIENT_ID = "prod-ebay-client-id"
-EBAY_CLIENT_SECRET = "prod-ebay-client-secret"
-SENTRY_DSN = "https://prod-sentry.example.com/1"
 DRY_RUN = "false"
 MAKE_VALIDATE_STRICT = "true"
 
@@ -153,7 +146,6 @@ API_VERSION = "v1"
 JWT_ISSUER = "syston.app"
 JWT_AUDIENCE = "syston-mobile"
 APP_VERSION = "7.0.0"
-YOUTUBE_API_KEY = "AIzaSyREPLACE"
 FIXTURES_REFRESH_URL = "https://syston-fixtures.team-platform-2025.workers.dev/refresh"
 ALLOWED_WEBHOOK_HOSTS = "hook.make.com,hook.eu2.make.com,hook.us1.make.com,*.make.com,webhook.site"
 SETUP_URL = "https://setup-console.team-platform-2025.workers.dev"
@@ -169,12 +161,6 @@ RESEND_FROM_EMAIL = "onboarding@syston.app"
 WORKER_BASE_URL = "https://app-preview.team-platform-2025.workers.dev"
 ENVIRONMENT = "preview"
 PYTHON_COACHING_SERVICE_URL = "http://localhost:8000"
-SUPABASE_URL = "https://preview-supabase.example.com"
-SUPABASE_ANON_KEY = "preview-anon-key"
-SUPABASE_SERVICE_ROLE = "preview-service-role"
-EBAY_CLIENT_ID = "preview-ebay-client-id"
-EBAY_CLIENT_SECRET = "preview-ebay-client-secret"
-SENTRY_DSN = "https://preview-sentry.example.com/1"
 DRY_RUN = "true"
 MAKE_VALIDATE_STRICT = "false"
 
@@ -282,11 +268,10 @@ crons = [ "*/5 * * * *", "0 6 * * *" ]
 #
 # Production:
 #   wrangler secret put JWT_SECRET --env production
-#   wrangler secret put SUPABASE_URL --env production
-#   wrangler secret put SUPABASE_SERVICE_ROLE --env production
-#   wrangler secret put RESEND_API_KEY --env production
+#   wrangler secret put RESEND_API_KEY --env production        (email)
+#   wrangler secret put STRIPE_SECRET_KEY --env production     (payments)
+#   wrangler secret put STRIPE_WEBHOOK_SECRET --env production (payments)
+#   Plus plain vars STRIPE_STARTER_MONTHLY_PRICE_ID / STRIPE_PRO_MONTHLY_PRICE_ID
 #
 # Preview:
-#   wrangler secret put SUPABASE_URL --env preview
-#   wrangler secret put SUPABASE_SERVICE_ROLE --env preview
 #   wrangler secret put RESEND_API_KEY --env preview

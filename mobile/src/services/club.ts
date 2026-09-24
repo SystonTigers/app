@@ -93,6 +93,22 @@ export async function searchClubs(query: string): Promise<ClubSummary[]> {
   return Array.isArray(body?.data) ? body.data : [];
 }
 
+/** The `club` query parameter when running as the web app, cleaned from the address bar afterwards. */
+function clubFromLink(): string | null {
+  // Only the web app has an address bar (native apps have no `document`)
+  if (typeof window === 'undefined' || typeof document === 'undefined') return null;
+  try {
+    const url = new URL(window.location.href);
+    const slug = url.searchParams.get('club')?.trim().toLowerCase();
+    if (!slug || !/^[a-z0-9-]{3,40}$/.test(slug)) return null;
+    url.searchParams.delete('club');
+    window.history.replaceState(null, '', url.pathname + url.search + url.hash);
+    return slug;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Restore the club chosen last time (or the locked club) at app start.
  * Refreshes its name/colours in the background when online.
@@ -105,6 +121,18 @@ export async function loadStoredClub(): Promise<Club | null> {
     stored = isClub(parsed) ? parsed : null;
   } catch {
     stored = null;
+  }
+
+  // Web app opened from a club's share link (…/?club=riverside-rovers): open that club
+  const linked = !LOCKED_CLUB_SLUG ? clubFromLink() : null;
+  if (linked && linked !== stored?.slug) {
+    try {
+      const fromLink = await fetchClubInfo(linked);
+      if (fromLink) stored = fromLink;
+    } catch {
+      // Offline or unknown club: carry on with whatever was saved
+    }
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(stored)).catch(() => undefined);
   }
 
   // A locked build always uses its own club

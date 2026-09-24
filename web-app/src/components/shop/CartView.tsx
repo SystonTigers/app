@@ -61,12 +61,12 @@ export function CartView({ tenantId, onClose }: CartViewProps) {
         setCheckoutLoading(true);
         try {
             const sdk = createClientSDK(tenantId);
-            // Using a dummy email for now or ask user. 
-            // In a real flow we might ask for email in UI or get from auth.
-            // Let's prompt or use a placeholder if unauthenticated.
-            // Assuming user might be logged in, but SDK doesn't expose user email directly here easily without auth context.
-            // Let's use a browser prompt for simplicity or standard test email.
-            const email = prompt("Please enter your email for receipt:") || "guest@example.com";
+            // The receipt goes to this address, so a real one is required
+            const email = (prompt('Enter your email address for the receipt:') || '').trim();
+            if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+                if (email) alert("That email address doesn't look right. Please try again.");
+                return;
+            }
 
             const res = await sdk.createCheckoutSession(cartId, email);
             if (res.success && res.url) {

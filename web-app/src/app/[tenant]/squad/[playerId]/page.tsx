@@ -1,5 +1,6 @@
 
 import { getServerSDK } from '@/lib/sdk';
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { PlayerDiscussButton } from '@/components/PlayerDiscussButton';
 import { CareerHistory } from '@/components/CareerHistory';
@@ -95,9 +96,6 @@ export default async function PlayerBioPage({ params }: { params: Promise<{ tena
                             playerId={playerId}
                             playerName={p.name}
                         />
-                        <button className="bg-white text-gray-900 hover:bg-brand hover:text-white px-8 py-3 rounded-xl font-bold uppercase tracking-widest transition-all hover:scale-105 shadow-xl">
-                            Sponsor Player
-                        </button>
                     </div>
                 </div>
             </div>
@@ -186,20 +184,17 @@ export default async function PlayerBioPage({ params }: { params: Promise<{ tena
                             playerId={playerId}
                             playerName={p.name}
                         />
-                        <button className="w-full bg-brand text-white py-4 rounded-xl font-black uppercase tracking-widest shadow-lg">
-                            Sponsor Player
-                        </button>
                     </div>
 
                     {/* Shop Item Mini Teaser */}
-                    <div className="bg-gray-900 text-white p-6 rounded-3xl relative overflow-hidden group cursor-pointer">
+                    <Link href={`/${tenant}/shop`} className="block bg-gray-900 text-white p-6 rounded-3xl relative overflow-hidden group cursor-pointer">
                         <div className="absolute inset-0 bg-brand/20 opacity-0 group-hover:opacity-100 transition-opacity" />
                         <h3 className="text-xl font-black uppercase italic mb-2 relative z-10">Get the Kit</h3>
                         <p className="text-gray-300 text-sm mb-4 relative z-10">Support {p.name} with the official home jersey.</p>
                         <div className="inline-block bg-white text-black px-4 py-2 font-bold uppercase text-xs rounded-lg relative z-10">
                             Shop Now &rarr;
                         </div>
-                    </div>
+                    </Link>
                 </div>
             </div>
         </div>

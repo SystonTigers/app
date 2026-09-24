@@ -1,279 +1,197 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
+import { useCallback, useEffect, useState } from 'react';
+import { useParams, useSearchParams } from 'next/navigation';
+import { API_BASE, errorMessage, getSessionToken } from '@/lib/session';
+
+interface Plan {
+    id: string;
+    name: string;
+    monthlyPence: number;
+    features: string[];
+    available: boolean;
+}
 
 interface BillingStatus {
     plan: string;
-    status: string;
     subscriptionStatus: string;
-    billingTier: string;
-    trialEndsAt: number | null;
+    comped: boolean;
     trialDaysRemaining: number;
+    trialEnded: boolean;
+    paymentsEnabled: boolean;
     hasPaymentMethod: boolean;
-    subscription: {
-        status: string;
-        currentPeriodEnd: number;
-        cancelAtPeriodEnd: boolean;
-    } | null;
+    subscription: { status: string; currentPeriodEnd: number | null; cancelAtPeriodEnd: boolean } | null;
+    plans: Plan[];
 }
 
-const PLAN_FEATURES: Record<string, string[]> = {
-    essentials: ['1 team', 'Squad management', 'Fixtures & results', 'Match reports', 'Team chat'],
-    team: ['1 team', 'All Essentials features', 'Stats & leaderboards', 'Social media automation', 'Video highlights'],
-    club: ['Up to 5 teams', 'All Team features', 'Shared club branding', 'Priority support'],
-    club_pro: ['Unlimited teams', 'All Club features', 'AI Coaching assistant', 'Merchandise shop', 'Dedicated support'],
-};
-
-const PLAN_PRICES: Record<string, { monthly: number; annual: number; duesFee: string }> = {
-    essentials: { monthly: 5.99, annual: 57.50, duesFee: '3.0% + 20p' },
-    team: { monthly: 12.99, annual: 124.70, duesFee: '2.9% + 20p' },
-    club: { monthly: 39.99, annual: 383.90, duesFee: '2.5% + 20p' },
-    club_pro: { monthly: 79.99, annual: 767.90, duesFee: '2.0% + 18p' },
-};
-
-const PLAN_NAMES: Record<string, string> = {
-    essentials: 'Essentials',
-    team: 'Team',
-    club: 'Club',
-    club_pro: 'Club Pro',
-};
+const pounds = (pence: number) => `£${(pence / 100).toFixed(2)}`;
 
 export default function BillingPage() {
     const params = useParams();
+    const search = useSearchParams();
     const tenant = params?.tenant as string;
     const [status, setStatus] = useState<BillingStatus | null>(null);
     const [loading, setLoading] = useState(true);
-    const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
-    const [billingInterval, setBillingInterval] = useState<'monthly' | 'annual'>('monthly');
+    const [busy, setBusy] = useState<string | null>(null);
+    const [error, setError] = useState('');
 
-    const API_BASE = process.env.NEXT_PUBLIC_API_BASE || '';
+    const authHeaders = (): Record<string, string> => {
+        const token = getSessionToken();
+        return token ? { Authorization: `Bearer ${token}` } : {};
+    };
 
-    useEffect(() => {
-        fetchBillingStatus();
-    }, []);
-
-    const fetchBillingStatus = async () => {
+    const load = useCallback(async () => {
         try {
-            const res = await fetch(`${API_BASE}/api/v1/billing/status`, {
-                credentials: 'include',
-            });
-            const data = await res.json();
-            if (data.success) {
-                setStatus(data.data);
+            const res = await fetch(`${API_BASE}/api/v1/billing/status`, { headers: authHeaders() });
+            if (!res.ok) {
+                setError(await errorMessage(res, "We couldn't load your billing details."));
+                return;
             }
-        } catch (error) {
-            console.error('Failed to fetch billing status:', error);
+            setStatus((await res.json()).data);
+        } catch {
+            setError("We couldn't reach the server. Check your connection and try again.");
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
-    const handleCheckout = async (plan: string) => {
-        setCheckoutLoading(plan);
+    useEffect(() => {
+        load();
+    }, [load]);
+
+    const choosePlan = async (plan: string) => {
+        setBusy(plan);
+        setError('');
         try {
             const res = await fetch(`${API_BASE}/api/v1/billing/checkout`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify({
-                    plan,
-                    interval: billingInterval,
-                    successUrl: `${window.location.origin}/${tenant}/admin/billing?success=true`,
-                    cancelUrl: `${window.location.origin}/${tenant}/admin/billing?canceled=true`,
-                }),
+                headers: { 'Content-Type': 'application/json', ...authHeaders() },
+                body: JSON.stringify({ plan, interval: 'monthly' }),
             });
-            const data = await res.json();
-            if (data.success && data.data.url) {
-                window.location.href = data.data.url;
-            } else {
-                alert(data.error?.message || 'Failed to start checkout');
+            if (!res.ok) {
+                setError(await errorMessage(res, "We couldn't start the payment. Please try again."));
+                return;
             }
-        } catch (error) {
-            console.error('Checkout error:', error);
+            window.location.href = (await res.json()).data.url;
+        } catch {
+            setError("We couldn't reach the server. Check your connection and try again.");
         } finally {
-            setCheckoutLoading(null);
+            setBusy(null);
         }
     };
 
-    const handleManageSubscription = async () => {
+    const manage = async () => {
+        setBusy('portal');
+        setError('');
         try {
-            const res = await fetch(`${API_BASE}/api/v1/billing/portal`, {
-                method: 'POST',
-                credentials: 'include',
-            });
-            const data = await res.json();
-            if (data.success && data.data.url) {
-                window.location.href = data.data.url;
+            const res = await fetch(`${API_BASE}/api/v1/billing/portal`, { method: 'POST', headers: authHeaders() });
+            if (!res.ok) {
+                setError(await errorMessage(res, "We couldn't open billing. Please try again."));
+                return;
             }
-        } catch (error) {
-            console.error('Portal error:', error);
+            window.location.href = (await res.json()).data.url;
+        } catch {
+            setError("We couldn't reach the server. Check your connection and try again.");
+        } finally {
+            setBusy(null);
         }
     };
 
     if (loading) {
         return (
-            <div className="min-h-screen flex items-center justify-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500" />
+            <div className="min-h-[50vh] flex items-center justify-center">
+                <div className="animate-spin rounded-full h-10 w-10 border-2 border-brand border-t-transparent" />
             </div>
         );
     }
 
-    const isTrialing = status?.subscriptionStatus === 'trialing';
-    const isActive = status?.subscriptionStatus === 'active';
-    const isPastDue = status?.subscriptionStatus === 'past_due';
+    const paying = status?.subscriptionStatus === 'active' || status?.comped;
+    const pastDue = status?.subscriptionStatus === 'past_due';
+
+    let headline = '';
+    let detail = '';
+    if (status?.comped) {
+        headline = 'Free account';
+        detail = "Your club doesn't pay for Boost Huddle.";
+    } else if (paying) {
+        headline = `${status?.plans.find((p) => p.id === status.plan)?.name ?? 'Paid'} plan`;
+        detail = status?.subscription?.cancelAtPeriodEnd && status.subscription.currentPeriodEnd
+            ? `Cancelled. You can use Boost Huddle until ${new Date(status.subscription.currentPeriodEnd * 1000).toLocaleDateString('en-GB')}.`
+            : 'Thanks for supporting Boost Huddle.';
+    } else if (pastDue) {
+        headline = 'Payment needed';
+        detail = 'Your last payment didn\'t go through. Update your card to keep your club running smoothly.';
+    } else if (status?.trialEnded) {
+        headline = 'Your free trial has ended';
+        detail = 'Choose a plan to keep your club app and website running.';
+    } else {
+        headline = `Free trial: ${status?.trialDaysRemaining ?? 0} day${status?.trialDaysRemaining === 1 ? '' : 's'} left`;
+        detail = 'Choose a plan any time. You won\'t be charged until your trial ends.';
+    }
 
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4">
-            <div className="max-w-6xl mx-auto">
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-                    Billing & Subscription
-                </h1>
-                <p className="text-gray-600 dark:text-gray-400 mb-8">
-                    Manage your subscription and payment methods
-                </p>
+        <div className="max-w-5xl mx-auto px-4 py-8">
+            <h1 className="text-3xl font-black uppercase italic text-gray-900 dark:text-white mb-6">Billing</h1>
 
-                {/* Current Status Banner */}
-                <div className={`rounded-xl p-6 mb-8 ${isActive ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800' :
-                    isPastDue ? 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800' :
-                        'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800'
-                    }`}>
-                    <div className="flex items-center justify-between flex-wrap gap-4">
-                        <div>
-                            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                                {isActive ? '✅ Active Subscription' :
-                                    isPastDue ? '⚠️ Payment Required' :
-                                        `🎁 Trial - ${status?.trialDaysRemaining || 0} days left`}
-                            </h2>
-                            <p className="text-gray-600 dark:text-gray-400">
-                                Current plan: <span className="font-semibold capitalize">{status?.plan}</span>
-                                {status?.billingTier === 'lifetime' && ' (Lifetime)'}
-                            </p>
-                        </div>
-                        {isActive && (
-                            <button
-                                onClick={handleManageSubscription}
-                                className="px-6 py-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                            >
-                                Manage Subscription
-                            </button>
-                        )}
-                    </div>
+            {search.get('success') && (
+                <div className="mb-6 p-4 bg-green-50 dark:bg-green-900/20 border border-green-300 dark:border-green-800 text-green-800 dark:text-green-300 rounded-lg">
+                    Thank you. Your payment went through; it can take a minute for your plan to show here.
                 </div>
+            )}
+            {error && (
+                <div role="alert" className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-800 text-red-800 dark:text-red-300 rounded-lg">
+                    {error}
+                </div>
+            )}
 
-                {/* Billing Interval Toggle */}
-                {!isActive && (
-                    <div className="flex justify-center mb-8">
-                        <div className="bg-gray-200 dark:bg-gray-700 rounded-full p-1 flex">
-                            <button
-                                onClick={() => setBillingInterval('monthly')}
-                                className={`px-6 py-2 rounded-full text-sm font-medium transition-colors ${billingInterval === 'monthly'
-                                    ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow'
-                                    : 'text-gray-600 dark:text-gray-400'
-                                    }`}
-                            >
-                                Monthly
-                            </button>
-                            <button
-                                onClick={() => setBillingInterval('annual')}
-                                className={`px-6 py-2 rounded-full text-sm font-medium transition-colors ${billingInterval === 'annual'
-                                    ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow'
-                                    : 'text-gray-600 dark:text-gray-400'
-                                    }`}
-                            >
-                                Annual <span className="text-green-600 dark:text-green-400">(Save 20%)</span>
-                            </button>
-                        </div>
+            <div className={`rounded-xl p-6 mb-8 border ${pastDue || status?.trialEnded ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800' : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'}`}>
+                <div className="flex items-center justify-between flex-wrap gap-4">
+                    <div>
+                        <h2 className="text-xl font-bold text-gray-900 dark:text-white">{headline}</h2>
+                        <p className="text-gray-600 dark:text-gray-400">{detail}</p>
                     </div>
-                )}
-
-                {/* Pricing Cards */}
-                {!isActive && (
-                    <div className="grid md:grid-cols-4 gap-4 mb-8">
-                        {(['essentials', 'team', 'club', 'club_pro'] as const).map((plan) => {
-                            const isCurrentPlan = status?.plan === plan;
-                            const price = billingInterval === 'monthly'
-                                ? PLAN_PRICES[plan].monthly
-                                : PLAN_PRICES[plan].annual;
-
-                            return (
-                                <div
-                                    key={plan}
-                                    className={`relative bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden ${plan === 'club' ? 'ring-2 ring-blue-500' : ''
-                                        }`}
-                                >
-                                    {plan === 'club' && (
-                                        <div className="absolute top-0 left-0 right-0 bg-blue-500 text-white text-center py-1 text-sm font-medium">
-                                            Most Popular
-                                        </div>
-                                    )}
-                                    <div className={`p-4 ${plan === 'club' ? 'pt-10' : ''}`}>
-                                        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
-                                            {PLAN_NAMES[plan]}
-                                        </h3>
-                                        <div className="mb-4">
-                                            <span className="text-3xl font-bold text-gray-900 dark:text-white">
-                                                £{price.toFixed(2)}
-                                            </span>
-                                            <span className="text-gray-500 dark:text-gray-400 text-sm">
-                                                /{billingInterval === 'monthly' ? 'mo' : 'year'}
-                                            </span>
-                                        </div>
-                                        <ul className="space-y-2 mb-4 text-sm">
-                                            {PLAN_FEATURES[plan].map((feature) => (
-                                                <li key={feature} className="flex items-center text-gray-600 dark:text-gray-300">
-                                                    <svg className="w-4 h-4 text-green-500 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                                    </svg>
-                                                    {feature}
-                                                </li>
-                                            ))}
-                                        </ul>
-                                        <p className="text-xs text-gray-500 mb-3">Payment fees: {PLAN_PRICES[plan].duesFee}</p>
-                                        <button
-                                            onClick={() => handleCheckout(plan)}
-                                            disabled={checkoutLoading !== null || isCurrentPlan}
-                                            className={`w-full py-2.5 px-4 rounded-lg font-semibold transition-all text-sm ${isCurrentPlan
-                                                ? 'bg-gray-100 dark:bg-gray-700 text-gray-500 cursor-not-allowed'
-                                                : plan === 'club'
-                                                    ? 'bg-blue-600 text-white hover:bg-blue-700'
-                                                    : 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100'
-                                                }`}
-                                        >
-                                            {checkoutLoading === plan ? (
-                                                <span className="flex items-center justify-center gap-2">
-                                                    <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                                                    </svg>
-                                                    Loading...
-                                                </span>
-                                            ) : isCurrentPlan ? (
-                                                'Current Plan'
-                                            ) : (
-                                                'Subscribe'
-                                            )}
-                                        </button>
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                )}
-
-                {/* Payment Methods Info */}
-                <div className="bg-white dark:bg-gray-800 rounded-xl p-6 text-center">
-                    <p className="text-gray-600 dark:text-gray-400 mb-4">
-                        Secure payment powered by Stripe
-                    </p>
-                    <div className="flex items-center justify-center gap-4 opacity-60">
-                        <img src="https://upload.wikimedia.org/wikipedia/commons/b/ba/Stripe_Logo%2C_revised_2016.svg" alt="Stripe" className="h-8" />
-                        <span className="text-2xl">💳</span>
-                        <span className="font-semibold"> Apple Pay</span>
-                        <span className="font-semibold">G Pay</span>
-                    </div>
+                    {status?.hasPaymentMethod && status.paymentsEnabled && (
+                        <button onClick={manage} disabled={busy !== null}
+                            className="px-5 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg font-semibold text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50">
+                            {busy === 'portal' ? 'Opening…' : 'Change card or cancel'}
+                        </button>
+                    )}
                 </div>
             </div>
+
+            {!paying && status && (
+                <>
+                    {!status.paymentsEnabled && (
+                        <p className="mb-6 text-gray-600 dark:text-gray-400">
+                            Online payments are being set up. Your free trial carries on in the meantime, so there's nothing you need to do yet.
+                        </p>
+                    )}
+                    <div className="grid md:grid-cols-2 gap-6">
+                        {status.plans.map((plan) => (
+                            <div key={plan.id} className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 flex flex-col">
+                                <h3 className="text-xl font-bold text-gray-900 dark:text-white">{plan.name}</h3>
+                                <p className="mt-2 mb-4">
+                                    <span className="text-3xl font-black text-gray-900 dark:text-white">{pounds(plan.monthlyPence)}</span>
+                                    <span className="text-gray-500"> / month</span>
+                                </p>
+                                <ul className="space-y-2 mb-6 text-sm text-gray-700 dark:text-gray-300 flex-1">
+                                    {plan.features.map((feature) => (
+                                        <li key={feature} className="flex gap-2">
+                                            <span className="text-green-600" aria-hidden="true">✓</span>
+                                            {feature}
+                                        </li>
+                                    ))}
+                                </ul>
+                                <button onClick={() => choosePlan(plan.id)} disabled={!plan.available || busy !== null}
+                                    className="w-full py-3 rounded-lg font-bold bg-brand text-black hover:bg-gray-900 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed">
+                                    {busy === plan.id ? 'Opening secure payment…' : plan.available ? `Choose ${plan.name}` : 'Coming soon'}
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                    <p className="mt-6 text-center text-sm text-gray-500">Secure payment by Stripe. Cancel any time.</p>
+                </>
+            )}
         </div>
     );
 }

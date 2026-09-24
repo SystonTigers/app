@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { AdminGuard } from '@/components/AdminGuard';
 import { getClubInfo } from '@/lib/club';
+import { TrialExpiryBanner } from '@/components/TrialExpiryBanner';
 
 interface TenantAdminLayoutProps {
     children: React.ReactNode;
@@ -16,6 +17,7 @@ export default async function TenantAdminLayout({ children, params }: TenantAdmi
         <ThemeProvider tenant={tenant}>
             <AdminGuard>
                 <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
+                    <TrialExpiryBanner />
                     {/* Tenant Admin Header */}
                     <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 py-4 shadow-sm">
                         <nav className="container mx-auto px-4">
@@ -59,6 +61,9 @@ export default async function TenantAdminLayout({ children, params }: TenantAdmi
                                         </Link>
                                         <Link href={`/${tenant}/admin/settings`} className="text-gray-600 hover:text-brand dark:text-gray-300 dark:hover:text-white transition-colors">
                                             Settings
+                                        </Link>
+                                        <Link href={`/${tenant}/admin/billing`} className="text-gray-600 hover:text-brand dark:text-gray-300 dark:hover:text-white transition-colors">
+                                            Billing
                                         </Link>
                                     </div>
                                 </div>

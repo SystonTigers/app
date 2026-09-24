@@ -64,12 +64,6 @@ function FixtureCard({ fixture, isNext }: { fixture: any, isNext?: boolean }) {
               </div>
             </div>
 
-            {/* Right: CTA */}
-            <div className="md:w-1/4 flex justify-center md:justify-end">
-              <button className="px-8 py-4 bg-white text-black font-black uppercase tracking-widest hover:bg-brand hover:text-white transition-all transform hover:scale-105 chamfer-sm shadow-lg">
-                Get Tickets
-              </button>
-            </div>
           </div>
 
           {/* Countdown Timer */}

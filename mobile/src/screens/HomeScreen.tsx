@@ -12,6 +12,7 @@ import HighlightCard from '../components/HighlightCard';
 import ResultCard from '../components/ResultCard';
 import FeedCard from '../components/FeedCard';
 import { SkeletonCard } from '../components/LoadingSkeleton';
+import InstallPrompt from '../components/InstallPrompt';
 
 interface QuickStats {
   position: string;
@@ -105,6 +106,10 @@ export default function HomeScreen({ navigation }: any) {
         <Text style={[styles.topBarTitle, { color: colors.text }]} numberOfLines={1}>
           {club?.name || 'Home'}
         </Text>
+      </View>
+
+      <View style={{ paddingHorizontal: 16 }}>
+        <InstallPrompt />
       </View>
 
       {/* 1. HERO SECTION (Next Match) */}

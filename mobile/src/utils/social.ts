@@ -1,4 +1,4 @@
-import Share from 'react-native-share';
+import { Share } from 'react-native';
 
 /**
  * Social sharing utilities
@@ -10,13 +10,11 @@ export const social = {
      */
     shareText: async (message: string, title?: string) => {
         try {
-            const result = await Share.open({
-                title: title || 'Share',
-                message,
-            });
+            const result = await Share.share({ title: title || 'Share', message }, { dialogTitle: title || 'Share' });
             return result;
         } catch (error: any) {
-            if (error.message !== 'User did not share') {
+            // Cancelling the share sheet isn't an error worth reporting
+            if (error?.name !== 'AbortError' && error?.message !== 'User did not share') {
                 console.error('Share error:', error);
             }
         }
@@ -46,19 +44,4 @@ export const social = {
         return social.shareText(message, 'Match Fixture');
     },
 
-    /**
-     * Share to Instagram Stories (requires image)
-     */
-    shareToInstagram: async (imageUri: string) => {
-        try {
-            const result = await Share.shareSingle({
-                social: 'instagram-stories' as any,
-                url: imageUri,
-                backgroundImage: imageUri,
-            });
-            return result;
-        } catch (error) {
-            console.error('Instagram share error:', error);
-        }
-    },
 };
