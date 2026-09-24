@@ -55,6 +55,8 @@ RL_UPLOADS_PER_MIN = "20"
 BACKEND_URL = "https://app-production.team-platform-2025.workers.dev"
 ADMIN_CONSOLE_URL = "https://admin-console.team-platform-2025.workers.dev"
 RESEND_FROM_EMAIL = "onboarding@syston.app"
+# Only these emails can receive platform owner-console sign-in links (comma-separated)
+PLATFORM_ADMIN_EMAILS = "systontowntigersfc@gmail.com"
 # Public website (web-app, deployed as the boost-huddle Worker). Email links point here.
 APP_BASE_URL = "https://boost-huddle.team-platform-2025.workers.dev"
 FRONTEND_URL = "https://boost-huddle.team-platform-2025.workers.dev"

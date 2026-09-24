@@ -15,6 +15,13 @@ interface SyncResult {
     errors?: string[];
 }
 
+type SyncSource = 'website' | 'snippet';
+
+const SYNC_URLS: Record<SyncSource, string> = {
+    website: '/api/v1/fixtures/sync/website',
+    snippet: '/api/v1/fixtures/sync/snippet',
+};
+
 export default function FASyncSettingsPage() {
     const params = useParams();
     const tenant = params.tenant as string;
@@ -78,37 +85,58 @@ export default function FASyncSettingsPage() {
         }
     };
 
-    const syncNow = async (source: 'website' | 'snippet' | 'all') => {
+    /** Sync one source, sending the URLs currently on screen so unsaved edits are used. */
+    const syncSource = async (source: SyncSource): Promise<SyncResult> => {
+        const res = await fetch(SYNC_URLS[source], {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                'x-tenant': tenant
+            },
+            body: JSON.stringify(
+                source === 'website'
+                    ? { teamPageUrl: config.teamPageUrl, teamName: config.teamName }
+                    : { snippetUrl: config.snippetUrl, teamName: config.teamName }
+            )
+        });
+        const data = await res.json().catch(() => null);
+        if (!data?.success) {
+            throw new Error(data?.error || `${source === 'website' ? 'Website' : 'Snippet'} sync failed`);
+        }
+        return { added: data.synced?.added ?? 0, updated: data.synced?.updated ?? 0 };
+    };
+
+    const syncNow = async (source: SyncSource | 'all') => {
         setSyncing(true);
         setMessage(null);
         setLastSync(null);
 
-        try {
-            const res = await fetch(`/api/v1/fixtures/sync/${source}`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`,
-                    'x-tenant': tenant
-                },
-                body: JSON.stringify({})
-            });
-            const data = await res.json();
+        const sources: SyncSource[] = source === 'all'
+            ? [
+                ...(config.teamPageUrl ? ['website' as const] : []),
+                ...(config.snippetUrl ? ['snippet' as const] : []),
+            ]
+            : [source];
 
-            if (data.success) {
-                setLastSync(data.synced);
-                setMessage({
-                    type: 'success',
-                    text: `Sync complete! Added ${data.synced.added}, updated ${data.synced.updated} fixtures.`
-                });
-            } else {
-                setMessage({ type: 'error', text: data.error || 'Sync failed' });
+        const total: SyncResult = { added: 0, updated: 0 };
+        const errors: string[] = [];
+        for (const s of sources) {
+            try {
+                const result = await syncSource(s);
+                total.added += result.added;
+                total.updated += result.updated;
+            } catch (error) {
+                errors.push(error instanceof Error ? error.message : 'Failed to sync fixtures');
             }
-        } catch (error) {
-            setMessage({ type: 'error', text: 'Failed to sync fixtures' });
-        } finally {
-            setSyncing(false);
         }
+
+        if (errors.length) total.errors = errors;
+        setLastSync(total);
+        setMessage(errors.length
+            ? { type: 'error', text: `Sync finished with problems: ${errors.join('; ')}` }
+            : { type: 'success', text: `Sync complete! Added ${total.added}, updated ${total.updated} fixtures.` });
+        setSyncing(false);
     };
 
     if (loading) {

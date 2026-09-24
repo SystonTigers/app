@@ -91,6 +91,25 @@ describe("Mobile app club journey", () => {
     expect(bad.status).toBe(400);
   });
 
+  it("logging out ends that session only", async () => {
+    const { slug } = await createClub("Oadby Owls");
+    const email = `logout-${Date.now()}@example.com`;
+    await call("/api/v1/auth/register", {
+      body: { tenant_id: slug, email, password: "ParentPass123" },
+      headers: { "Idempotency-Key": `reg-${email}`, ...ip() },
+    });
+    const phone = (await call("/api/v1/auth/login", { body: { tenant_id: slug, email, password: "ParentPass123" }, headers: ip() })).data.data.token;
+    const laptop = (await call("/api/v1/auth/login", { body: { tenant_id: slug, email, password: "ParentPass123" }, headers: ip() })).data.data.token;
+
+    expect((await call("/api/v1/auth/logout", { method: "POST", token: phone })).status).toBe(200);
+    expect((await call("/api/v1/users/me", { token: phone })).status).toBe(401);
+    expect((await call("/api/v1/users/me", { token: laptop })).status).toBe(200);
+
+    // Logging back in on the same phone works straight away
+    const again = await call("/api/v1/auth/login", { body: { tenant_id: slug, email, password: "ParentPass123" }, headers: ip() });
+    expect((await call("/api/v1/users/me", { token: again.data.data.token })).status).toBe(200);
+  });
+
   it("requires a login for the profile", async () => {
     expect((await call("/api/v1/users/me")).status).toBe(401);
   });

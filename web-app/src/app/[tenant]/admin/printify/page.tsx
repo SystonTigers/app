@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
+import { getSessionToken } from '@/lib/session';
 
 interface PrintifyProduct {
     id: string;
@@ -22,6 +23,14 @@ interface Player {
     name: string;
     squadNumber: number | null;
     headshotUrl: string | null;
+}
+
+/** Row shape returned by GET /api/v1/squad. */
+interface SquadRow {
+    id: string;
+    name: string;
+    squad_number?: number | null;
+    photo_url?: string | null;
 }
 
 interface ShopOrder {
@@ -60,11 +69,16 @@ export default function PrintifyAdminPage() {
     const fetchData = async (query: string) => {
         setLoading(true);
         try {
+            const token = getSessionToken();
+            const init: RequestInit = {
+                credentials: 'include',
+                headers: token ? { Authorization: `Bearer ${token}` } : {},
+            };
             const [catalogRes, playersRes, shopsRes, ordersRes] = await Promise.all([
-                fetch(`${API_BASE}/api/v1/printify/catalog?category=${query}`, { credentials: 'include' }),
-                fetch(`${API_BASE}/api/v1/players`, { credentials: 'include' }),
-                fetch(`${API_BASE}/api/v1/printify/shops`, { credentials: 'include' }),
-                fetch(`${API_BASE}/api/v1/shop/orders`, { credentials: 'include' }),
+                fetch(`${API_BASE}/api/v1/printify/catalog?category=${query}`, init),
+                fetch(`${API_BASE}/api/v1/squad`, init),
+                fetch(`${API_BASE}/api/v1/printify/shops`, init),
+                fetch(`${API_BASE}/api/v1/shop/orders`, init),
             ]);
 
             const [catalogData, playersData, shopsData, ordersData] = await Promise.all([
@@ -75,8 +89,14 @@ export default function PrintifyAdminPage() {
             ]);
 
             if (catalogData.success) setCatalog(catalogData.data.slice(0, 20));
-            if (playersData.success) setPlayers(playersData.data);
-            if (playersData.success) setPlayers(playersData.data);
+            if (playersData.success && Array.isArray(playersData.data)) {
+                setPlayers(playersData.data.map((p: SquadRow) => ({
+                    id: p.id,
+                    name: p.name,
+                    squadNumber: p.squad_number ?? null,
+                    headshotUrl: p.photo_url ?? null,
+                })));
+            }
             if (shopsData.success && shopsData.data?.length > 0) {
                 setUserShopId(shopsData.data[0].id);
             }

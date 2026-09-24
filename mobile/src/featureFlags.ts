@@ -1,16 +1,14 @@
 import { useState, useEffect, type ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { API_BASE_URL, IS_DEV } from './config';
-import { getTenantId } from './services/club';
+import { IS_DEV } from './config';
 
 /**
  * Feature Flags System
  *
- * This module provides a dynamic feature flag system that can load flags
- * from the backend API based on tenant configuration.
+ * This module provides the app's feature flag system.
  *
  * Features:
- * - Dynamic flag loading from API
+ * - Shipped defaults for every club
  * - Local storage caching
  * - Local overrides for development/testing
  * - Type-safe flag definitions
@@ -77,11 +75,11 @@ export const defaultFeatureFlags: FeatureFlags = {
   // Social Features
   enableChat: false,
   enableComments: true,
-  enableLikes: true,
+  enableLikes: false,
   enableSharing: true,
 
   // Match Features
-  enableLiveMatch: true,
+  enableLiveMatch: false,
   enableMatchPredictions: false,
   enablePlayerRatings: true,
   enableMOTMVoting: true,
@@ -121,43 +119,19 @@ const STORAGE_KEY = '@feature_flags';
 const STORAGE_OVERRIDES_KEY = '@feature_flags_overrides';
 
 /**
- * Load feature flags from API
+ * Load the effective feature flags.
+ *
+ * The backend has no per-club app flag endpoint, so every club gets the
+ * shipped defaults. The result is cached so offline launches match.
  */
 export async function loadFeatureFlagsFromAPI(): Promise<FeatureFlags> {
+  const flags: FeatureFlags = { ...defaultFeatureFlags };
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/tenant/feature-flags?tenant=${getTenantId()}`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to load feature flags: ${response.status}`);
-    }
-
-    const data = await response.json();
-    const flags: FeatureFlags = {
-      ...defaultFeatureFlags,
-      ...data.flags,
-    };
-
-    // Cache flags locally
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(flags));
-
-    return flags;
-  } catch (error) {
-    console.error('Error loading feature flags from API:', error);
-
-    // Try to load from cache
-    const cached = await loadFeatureFlagsFromCache();
-    if (cached) {
-      return cached;
-    }
-
-    // Fall back to defaults
-    return defaultFeatureFlags;
+  } catch {
+    // Storage unavailable: the in-memory defaults still apply.
   }
+  return flags;
 }
 
 /**

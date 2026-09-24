@@ -4,11 +4,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Picker } from '@react-native-picker/picker';
 import { useTheme } from '../theme/';
 import { Card, SectionHeader, Button, Badge, Divider, EmptyState, LoadingSpinner } from '../components';
-import { API_BASE_URL, API_ENDPOINTS } from '../config';
 import { useAuth } from '../context/AuthContext';
 import { squadApi } from '../services/api';
-import axios from 'axios';
-import { getTenantId } from '../services/club';
 
 /**
  * TeamMembersScreen
@@ -16,7 +13,6 @@ import { getTenantId } from '../services/club';
  * Features:
  * - View all team members with their roles
  * - Change user roles (admin only)
- * - Remove members
  * - Audit log of role changes (if audit endpoint enabled)
  */
 
@@ -134,44 +130,6 @@ export default function TeamMembersScreen() {
     }
   };
 
-  const handleRemoveMember = (member: TeamMember) => {
-    if (!isAdmin) {
-      Alert.alert('Unauthorized', 'Only admins can remove members');
-      return;
-    }
-
-    if (member.id === currentUser.id) {
-      Alert.alert('Error', 'You cannot remove yourself');
-      return;
-    }
-
-    Alert.alert(
-      'Remove Member',
-      `Are you sure you want to remove ${member.name}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Remove',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              // In production, call API
-              // await axios.delete(`${API_BASE_URL}/api/v1/team/members/${member.id}`, {
-              //   params: { tenant: getTenantId() }
-              // });
-
-              setMembers(members.filter(m => m.id !== member.id));
-              Alert.alert('Success', 'Member removed');
-            } catch (error) {
-              console.error('Error removing member:', error);
-              Alert.alert('Error', 'Failed to remove member');
-            }
-          },
-        },
-      ]
-    );
-  };
-
   const getRoleBadgeVariant = (role: string) => {
     switch (role) {
       case 'admin': return 'error';
@@ -264,13 +222,6 @@ export default function TeamMembersScreen() {
                       }}
                     >
                       Change Role
-                    </Button>
-                    <Button
-                      variant="danger"
-                      size="small"
-                      onPress={() => handleRemoveMember(member)}
-                    >
-                      Remove
                     </Button>
                   </View>
                 )}

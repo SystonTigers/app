@@ -48,9 +48,6 @@ import SquadScreen from './src/screens/SquadScreen';
 import VideoScreen from './src/screens/VideoScreen';
 import ChatScreen from './src/screens/ChatScreen';
 import CreatePostScreen from './src/screens/CreatePostScreen';
-import AutoPostsMatrixScreen from './src/screens/AutoPostsMatrixScreen';
-import LiveMatchInputScreen from './src/screens/LiveMatchInputScreen';
-import LiveMatchWatchScreen from './src/screens/LiveMatchWatchScreen';
 import MOTMVotingScreen from './src/screens/MOTMVotingScreen';
 import GalleryScreen from './src/screens/GalleryScreen';
 import HighlightsScreen from './src/screens/HighlightsScreen';
@@ -74,7 +71,6 @@ import ImportDataScreen from './src/screens/ImportDataScreen';
 import FixtureSettingsScreen from './src/screens/FixtureSettingsScreen';
 import PushNotificationsSetupScreen from './src/screens/PushNotificationsSetupScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
-import ConfigScreen from './src/screens/ConfigScreen';
 import ScoutNotesScreen from './src/screens/ScoutNotesScreen';
 import CarpoolScreen from './src/screens/CarpoolScreen';
 
@@ -227,8 +223,6 @@ function MainDrawer() {
       />
 
       {/* Match Day Group */}
-      <Drawer.Screen name="LiveMatchInput" component={LiveMatchInputScreen} options={{ title: 'Live Console' }} />
-      <Drawer.Screen name="LiveMatchWatch" component={LiveMatchWatchScreen} options={{ title: 'Match Centre' }} />
       <Drawer.Screen name="MOTMVoting" component={MOTMVotingScreen} options={{ title: 'Vote for MOTM' }} />
       <Drawer.Screen name="LastManStanding" component={LastManStandingScreen} options={{ title: 'Predictions' }} />
 
@@ -261,12 +255,10 @@ function MainDrawer() {
           />
         )}
       />
-      <Drawer.Screen name="AutoPostsMatrix" component={AutoPostsMatrixScreen} options={{ title: 'Auto Posts' }} />
 
       {/* Settings Group */}
       <Drawer.Screen name="Profile" component={ProfileScreen} options={{ title: 'My Profile' }} />
       <Drawer.Screen name="Settings" component={SettingsScreen} options={{ title: 'Settings' }} />
-      <Drawer.Screen name="Config" component={ConfigScreen} options={{ title: 'System Config' }} />
 
       {/* Other/Hidden Screens */}
       <Drawer.Screen name="Chat" component={ChatScreen} />

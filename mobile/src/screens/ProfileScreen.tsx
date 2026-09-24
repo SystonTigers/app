@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { View, ScrollView, StyleSheet, Alert, Image } from 'react-native';
-import { Text, Card, TextInput, Button, Avatar, IconButton, Divider } from 'react-native-paper';
+import { Text, Card, TextInput, Button, Avatar, Divider } from 'react-native-paper';
 import { COLORS } from '../config';
 import { useAuth } from '../context/AuthContext';
 import { usersApi } from '../services/api';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
 
 export default function ProfileScreen() {
   const { user, logout } = useAuth();
@@ -65,35 +64,6 @@ export default function ProfileScreen() {
     setPasswordData({ ...passwordData, [field]: value });
   };
 
-  const handlePickImage = async () => {
-    // Request permission
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-    if (status !== 'granted') {
-      Alert.alert('Permission Required', 'Please grant camera roll permissions to upload a profile picture.');
-      return;
-    }
-
-    // Pick image
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
-    });
-
-    if (!result.canceled && result.assets[0].uri) {
-      setProfileData({ ...profileData, profileImage: result.assets[0].uri });
-      try {
-        await usersApi.uploadAvatar(result.assets[0].uri);
-        Alert.alert('Success', 'Profile picture updated');
-      } catch (err) {
-        console.error('Failed to upload avatar:', err);
-        Alert.alert('Error', 'Failed to upload profile picture');
-      }
-    }
-  };
-
   const handleSaveProfile = async () => {
     setLoading(true);
 
@@ -145,9 +115,15 @@ export default function ProfileScreen() {
         setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
         Alert.alert('Success', 'Password changed successfully!');
       }
-    } catch (error) {
+    } catch (error: any) {
       setLoading(false);
-      Alert.alert('Error', 'Failed to change password. Please check your current password and try again.');
+      const serverMessage = error?.response?.data?.error?.message;
+      Alert.alert(
+        'Error',
+        typeof serverMessage === 'string' && serverMessage
+          ? serverMessage
+          : 'Failed to change password. Please check your current password and try again.'
+      );
     }
   };
 
@@ -181,13 +157,6 @@ export default function ProfileScreen() {
               color="#000"
             />
           )}
-          <IconButton
-            icon="camera"
-            iconColor="#fff"
-            size={20}
-            style={styles.cameraButton}
-            onPress={handlePickImage}
-          />
         </View>
 
         <Text style={styles.name}>
@@ -425,14 +394,6 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-  },
-  cameraButton: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    backgroundColor: COLORS.primary,
-    borderWidth: 2,
-    borderColor: '#000',
   },
   name: {
     fontSize: 24,

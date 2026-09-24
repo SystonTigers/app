@@ -361,7 +361,7 @@ export async function handleSetFAConfig(
 
         // Save to KV
         const configKey = `fa_config:${claims.tenantId}`;
-        await env.KV.put(configKey, JSON.stringify(body));
+        await faConfigStore(env).put(configKey, JSON.stringify(body));
 
         return json({
             success: true,
@@ -377,12 +377,22 @@ export async function handleSetFAConfig(
     }
 }
 
+// ====== HELPER: FA Config storage ======
+
+/**
+ * KV namespace holding `fa_config:<tenant>`. Deployed Workers bind KV_IDEMP but
+ * not KV (see wrangler.toml), so fall back to it rather than failing every save.
+ */
+function faConfigStore(env: any): KVNamespace {
+    return env.KV ?? env.KV_IDEMP;
+}
+
 // ====== HELPER: Get FA Config ======
 
 async function getFAConfig(env: any, tenantId: string): Promise<FAConfig> {
     try {
         const configKey = `fa_config:${tenantId}`;
-        const stored = await env.KV?.get(configKey);
+        const stored = await faConfigStore(env)?.get(configKey);
 
         if (stored) {
             return JSON.parse(stored);

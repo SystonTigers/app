@@ -174,27 +174,13 @@ export default function GalleryScreen() {
     }
   };
 
-  const requestRemoval = (photo: Photo) => {
+  const requestRemoval = (_photo: Photo) => {
     Alert.alert(
-      'Request Photo Removal',
-      'Would you like to request removal of this photo? Your request will be reviewed by team admins.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Request Removal',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await galleryApi.requestRemoval(photo.id);
-              Alert.alert('Request Sent', 'Your removal request has been submitted to team admins.');
-              setSelectedPhoto(null);
-            } catch (err) {
-              Alert.alert('Error', 'Failed to submit request');
-            }
-          }
-        }
-      ]
+      'Remove This Photo',
+      'Please contact a club admin and they will remove this photo from the gallery.',
+      [{ text: 'OK' }]
     );
+    setSelectedPhoto(null);
   };
 
   const showUploadOptions = () => {

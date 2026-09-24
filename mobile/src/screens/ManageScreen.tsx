@@ -62,25 +62,11 @@ const managementCards: ManagementCard[] = [
     color: '#FFC107',
   },
   {
-    title: 'Auto-Posts',
-    description: 'Control automated social media posting',
-    icon: '🤖',
-    screen: 'AutoPostsMatrix',
-    color: '#00BCD4',
-  },
-  {
     title: 'User Management',
     description: 'View all registered users, roles, and permissions',
     icon: '👤',
     screen: 'ManageUsers',
     color: '#673AB7',
-  },
-  {
-    title: 'Club Config',
-    description: 'Settings, branding, features, integrations',
-    icon: '⚙️',
-    screen: 'Config',
-    color: '#607D8B',
   },
 ];
 

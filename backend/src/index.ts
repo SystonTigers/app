@@ -1,7 +1,7 @@
 import { Router } from "itty-router";
 import { handlePublicTenantRequest } from "./routes/public";
 import { errorHandler } from "./middleware/errorHandler";
-import { getAuthFailure } from "./services/auth";
+import { getAuthFailure, requireStaff } from "./services/auth";
 import postQueueConsumer from "./queue-consumer";
 import { json } from "./services/util";
 import { handleGetMedia } from "./services/media";
@@ -10,7 +10,7 @@ import { newRequestId, logJSON } from "./lib/log";
 import { withSecurity } from "./middleware/securityHeaders";
 import { healthz, readyz } from "./routes/health";
 import { updateTenantMe, getTenantMe } from "./routes/tenant-self";
-import { handleSearchClubs, handleGetMe, handleUpdateMyProfile } from "./routes/clubs";
+import { handleSearchClubs, handleGetMe, handleUpdateMyProfile, handleChangePassword, handleLogout } from "./routes/clubs";
 import {
     handleAuthRegister,
     handleAuthLogin,
@@ -284,6 +284,31 @@ router.post("/api/:v/auth/signup", (req, env, corsHdrs) => handleSignup(req, env
 router.post("/api/:v/auth/verify-signup", (req, env, corsHdrs) => handleVerifySignup(req, env, corsHdrs));
 router.delete("/api/:v/auth/account", (req, env, corsHdrs) => handleDeleteAccount(req, env, corsHdrs));
 
+
+/**
+ * Only club staff (owner, admin, manager, coach) may call the wrapped route.
+ * Answers 401/403 JSON itself so the handler never runs for anyone else.
+ */
+function staffOnly<A extends [Request, any, Headers, ...any[]]>(handler: (...args: A) => Promise<Response> | Response) {
+    return async (...args: A): Promise<Response> => {
+        const [req, env, corsHdrs] = args;
+        try {
+            await requireStaff(req, env);
+        } catch (err) {
+            const status = err instanceof Response ? err.status : 401;
+            const forbidden = status === 403;
+            return json({
+                success: false,
+                error: {
+                    code: forbidden ? "FORBIDDEN" : "UNAUTHORIZED",
+                    message: forbidden ? "Only club staff can do this." : "Please log in again.",
+                },
+            }, forbidden ? 403 : 401, corsHdrs);
+        }
+        return handler(...args);
+    };
+}
+
 // Magic Link Routes
 router.post("/api/:v/magic/start", (req, env, corsHdrs) => handleMagicStart(req, env, corsHdrs));
 router.post("/api/:v/magic/verify", (req, env, corsHdrs) => handleMagicVerify(req, env, corsHdrs));
@@ -294,6 +319,8 @@ router.get("/api/:v/tenants/me", (req, env, corsHdrs) => getTenantMe(req, env, c
 router.get("/api/:v/clubs/search", (req, env, corsHdrs) => handleSearchClubs(req, env, corsHdrs));
 router.get("/api/:v/users/me", (req, env, corsHdrs) => handleGetMe(req, env, corsHdrs));
 router.put("/api/:v/users/profile", (req, env, corsHdrs) => handleUpdateMyProfile(req, env, corsHdrs));
+router.post("/api/:v/users/change-password", (req, env, corsHdrs) => handleChangePassword(req, env, corsHdrs));
+router.post("/api/:v/auth/logout", (req, env, corsHdrs) => handleLogout(req, env, corsHdrs));
 
 // Signup Routes
 router.post("/public/signup/start", (req, env, corsHdrs, requestId) => signupStart(req, env, requestId, corsHdrs));
@@ -563,21 +590,25 @@ import {
 router.post("/api/:v/gallery/upload", (req, env, corsHdrs) => handlePhotoUpload(req, env, corsHdrs));
 // Public media (gallery photos, headshots) streamed from R2_MEDIA
 router.get("/api/:v/media/*", (req, env) => handleGetMedia(req, env));
-router.get("/api/:v/gallery/photos", (req, env, corsHdrs) => handleListPhotos(req, env, corsHdrs));
+router.get("/api/:v/gallery/photos", (req, env, corsHdrs) => {
+    // Optional ?albumId= narrows the list to one album
+    const albumId = new URL(req.url).searchParams.get("albumId") || undefined;
+    return handleListPhotos(req, env, corsHdrs, albumId);
+});
 router.get("/api/:v/gallery/photos/:id", (req, env, corsHdrs) => {
     const params = (req as any).params || {};
     return handleGetPhoto(req, env, corsHdrs, params.id);
 });
-router.delete("/api/:v/gallery/photos/:id", (req, env, corsHdrs) => {
+router.delete("/api/:v/gallery/photos/:id", staffOnly((req, env, corsHdrs) => {
     const params = (req as any).params || {};
     return handleDeletePhoto(req, env, corsHdrs, params.id);
-});
-router.post("/api/:v/gallery/albums", (req, env, corsHdrs) => handleCreateAlbum(req, env, corsHdrs));
+}));
+router.post("/api/:v/gallery/albums", staffOnly((req, env, corsHdrs) => handleCreateAlbum(req, env, corsHdrs)));
 router.get("/api/:v/gallery/albums", (req, env, corsHdrs) => handleListAlbums(req, env, corsHdrs));
-router.delete("/api/:v/gallery/albums/:id", (req, env, corsHdrs) => {
+router.delete("/api/:v/gallery/albums/:id", staffOnly((req, env, corsHdrs) => {
     const params = (req as any).params || {};
     return handleDeleteAlbum(req, env, corsHdrs, params.id);
-});
+}));
 
 // Training Routes
 import {
@@ -687,7 +718,7 @@ router.delete("/api/:v/social/posts/:id", (req, env, corsHdrs) => {
     const params = (req as any).params || {};
     return handleDeleteSocialPost(req, env, corsHdrs, params.id);
 });
-router.put("/api/:v/social/config", (req, env, corsHdrs) => handleUpdateSocialConfig(req, env, corsHdrs));
+router.put("/api/:v/social/config", staffOnly((req, env, corsHdrs) => handleUpdateSocialConfig(req, env, corsHdrs)));
 router.get("/api/:v/social/config", (req, env, corsHdrs) => handleGetSocialConfig(req, env, corsHdrs));
 
 // Player Photo Routes
@@ -1246,12 +1277,12 @@ router.get("/api/:v/import/template/:type", (req, env, corsHdrs) => {
 router.get("/api/:v/import/status", (req, env, corsHdrs) => handleGetImportStatus(req, env, corsHdrs));
 
 // FA Sync Routes (Fixture data from FA Full-Time)
-router.post("/api/:v/fixtures/sync/website", (req, env, corsHdrs) => handleSyncFromWebsite(req, env, corsHdrs));
-router.post("/api/:v/fixtures/sync/snippet", (req, env, corsHdrs) => handleSyncFromSnippet(req, env, corsHdrs));
-router.post("/api/:v/fixtures/sync/email", (req, env, corsHdrs) => handleParseEmail(req, env, corsHdrs));
-router.post("/api/:v/fixtures/sync/all", (req, env, corsHdrs) => handleSyncAll(req, env, corsHdrs));
+router.post("/api/:v/fixtures/sync/website", staffOnly((req, env, corsHdrs) => handleSyncFromWebsite(req, env, corsHdrs)));
+router.post("/api/:v/fixtures/sync/snippet", staffOnly((req, env, corsHdrs) => handleSyncFromSnippet(req, env, corsHdrs)));
+router.post("/api/:v/fixtures/sync/email", staffOnly((req, env, corsHdrs) => handleParseEmail(req, env, corsHdrs)));
+router.post("/api/:v/fixtures/sync/all", staffOnly((req, env, corsHdrs) => handleSyncAll(req, env, corsHdrs)));
 router.get("/api/:v/fixtures/fa-config", (req, env, corsHdrs) => handleGetFAConfig(req, env, corsHdrs));
-router.put("/api/:v/fixtures/fa-config", (req, env, corsHdrs) => handleSetFAConfig(req, env, corsHdrs));
+router.put("/api/:v/fixtures/fa-config", staffOnly((req, env, corsHdrs) => handleSetFAConfig(req, env, corsHdrs)));
 // Email webhook for Cloudflare Email Workers
 router.post("/webhooks/fa-email", (req, env, corsHdrs) => handleEmailWebhook(req, env, corsHdrs));
 

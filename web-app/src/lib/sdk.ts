@@ -59,18 +59,18 @@ export async function getProvisionStatus(tenantId: string) {
 }
 
 export async function startMagicLogin(input: { email: string; tenantId?: string }) {
-  const url = `${API_BASE}/auth/magic/start`;
-  console.log('[SDK] startMagicLogin URL:', url);
-  console.log('[SDK] startMagicLogin input:', input);
   return http<{ success: boolean; message?: string }>(
-    url,
+    `${API_BASE}/api/v1/magic/start`,
     { method: 'POST', body: JSON.stringify(input) }
   );
 }
 
 export async function verifyMagicToken(token: string) {
-  return http<{ success: boolean; redirect?: string }>(
-    `${API_BASE}/auth/magic/verify?token=${encodeURIComponent(token)}`
+  // The backend reads the token from the query string and sets the
+  // owner_session cookie on success.
+  return http<{ success: boolean; tenantId?: string }>(
+    `${API_BASE}/api/v1/magic/verify?token=${encodeURIComponent(token)}`,
+    { method: 'POST' }
   );
 }
 
@@ -142,7 +142,7 @@ export async function listTenants(params?: { status?: string; plan?: string; lim
     success: true;
     tenants: Tenant[];
     pagination: { total: number; limit: number; offset: number; hasMore: boolean };
-  }>(`${API_BASE}/api/v1/admin/tenants${qs ? `?${qs}` : ''}`);
+  }>(`${API_BASE}/api/v1/admin/tenants?${qs}`);
 }
 
 export async function getTenant(tenantId: string) {
@@ -651,11 +651,12 @@ class ClientSDK implements AnySDK {
   // LMS Game
   async getLMSGames(status?: 'active' | 'completed') {
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
-    const params = status ? `?status=${status}` : '';
-    return http<any[]>(
-      `${API_BASE}/api/v1/lms/games${params}`,
+    // An empty status means "all games" to the backend, which answers { success, games }.
+    const res = await http<{ success: boolean; games?: any[] }>(
+      `${API_BASE}/api/v1/lms/games?status=${status ?? ''}`,
       { headers: { Authorization: `Bearer ${token}` } }
     );
+    return Array.isArray(res.games) ? res.games : [];
   }
 
   async getLMSGame(gameId: string) {

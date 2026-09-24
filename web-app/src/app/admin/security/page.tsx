@@ -1,27 +1,38 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { API_BASE, getSessionToken } from '@/lib/session';
 
-interface SecuritySummary {
+/** Last-24h totals from GET /api/v1/security/summary (data.last24Hours). */
+interface SecurityTotals {
+    authFailures: number;
+    rateLimitHits: number;
+    unauthorizedAttempts: number;
+    suspiciousActivity: number;
     totalEvents: number;
-    threatsDetected: number;
-    activeSessions: number;
-    failedLogins: number;
 }
 
+/** One row from GET /api/v1/security/events (data.events). */
 interface SecurityEvent {
-    id: string;
+    timestamp: number;
     type: string;
     severity: 'low' | 'medium' | 'high' | 'critical';
-    timestamp: string;
     ip: string;
-    details: any;
+    path?: string;
+    details?: Record<string, unknown>;
+}
+
+function authHeaders(): Record<string, string> {
+    const token = getSessionToken();
+    return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
 export default function SecurityDashboard() {
-    const [summary, setSummary] = useState<SecuritySummary | null>(null);
+    const [summary, setSummary] = useState<SecurityTotals | null>(null);
     const [events, setEvents] = useState<SecurityEvent[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [exporting, setExporting] = useState(false);
 
     useEffect(() => {
         loadData();
@@ -29,53 +40,57 @@ export default function SecurityDashboard() {
 
     const loadData = async () => {
         try {
-            // Fetch summary
-            const summaryRes = await fetch('/api/v1/admin/security/summary');
-            const summaryData = await summaryRes.json();
+            const init: RequestInit = { credentials: 'include', headers: authHeaders() };
+            const [summaryRes, eventsRes] = await Promise.all([
+                fetch(`${API_BASE}/api/v1/security/summary`, init),
+                fetch(`${API_BASE}/api/v1/security/events?limit=20`, init),
+            ]);
 
-            if (summaryData.success) {
-                setSummary(summaryData.data);
-            } else {
-                // Mock data if backend empty/fails (for demo)
-                setSummary({
-                    totalEvents: 1250,
-                    threatsDetected: 3,
-                    activeSessions: 42,
-                    failedLogins: 12
-                });
+            if (summaryRes.status === 401 || summaryRes.status === 403) {
+                setError('You need a platform admin session to view security events.');
+                return;
             }
 
-            // Fetch events
-            const eventsRes = await fetch('/api/v1/admin/security/events?limit=20');
-            const eventsData = await eventsRes.json();
+            const summaryData = await summaryRes.json().catch(() => null);
+            const eventsData = await eventsRes.json().catch(() => null);
 
-            if (eventsData.success) {
-                setEvents(eventsData.data.events);
-            } else {
-                // Mock data
-                setEvents([
-                    {
-                        id: '1',
-                        type: 'login_failed',
-                        severity: 'medium',
-                        timestamp: new Date().toISOString(),
-                        ip: '192.168.1.1',
-                        details: { reason: 'Invalid password', email: 'admin@test.com' }
-                    },
-                    {
-                        id: '2',
-                        type: 'rate_limit_exceeded',
-                        severity: 'low',
-                        timestamp: new Date(Date.now() - 3600000).toISOString(),
-                        ip: '10.0.0.5',
-                        details: { endpoint: '/api/v1/videos' }
-                    }
-                ]);
+            if (summaryData?.success) {
+                setSummary(summaryData.data?.last24Hours ?? null);
             }
-        } catch (error) {
-            console.error('Failed to load security data', error);
+            if (eventsData?.success) {
+                setEvents(Array.isArray(eventsData.data?.events) ? eventsData.data.events : []);
+            }
+            if (!summaryData?.success && !eventsData?.success) {
+                setError('Security data is unavailable right now. Try again shortly.');
+            }
+        } catch (err) {
+            console.error('Failed to load security data', err);
+            setError('Security data is unavailable right now. Try again shortly.');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const exportCsv = async () => {
+        setExporting(true);
+        try {
+            const res = await fetch(`${API_BASE}/api/v1/security/export?format=csv`, {
+                credentials: 'include',
+                headers: authHeaders(),
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const blob = await res.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `security-events-${Date.now()}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+        } catch (err) {
+            console.error('Security export failed', err);
+            setError('Export failed. Check your admin session and try again.');
+        } finally {
+            setExporting(false);
         }
     };
 
@@ -95,17 +110,24 @@ export default function SecurityDashboard() {
                     <h1 className="text-3xl font-bold mb-2">Security Dashboard</h1>
                     <p className="text-muted-foreground">Monitor system health and security events</p>
                 </div>
-                <a
-                    href="/api/v1/admin/security/export?format=csv"
-                    target="_blank"
-                    className="btn btn-secondary flex items-center gap-2"
+                <button
+                    type="button"
+                    onClick={exportCsv}
+                    disabled={exporting}
+                    className="btn btn-secondary flex items-center gap-2 disabled:opacity-50"
                 >
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                     </svg>
-                    Export CSV
-                </a>
+                    {exporting ? 'Exporting...' : 'Export CSV'}
+                </button>
             </div>
+
+            {error && (
+                <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900 dark:bg-red-900/20 dark:text-red-300">
+                    {error}
+                </div>
+            )}
 
             {loading ? (
                 <div className="animate-pulse space-y-8">
@@ -119,20 +141,20 @@ export default function SecurityDashboard() {
                     {/* Summary Cards */}
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <div className="card p-4">
-                            <div className="text-sm text-muted mb-1">Total Events</div>
-                            <div className="text-3xl font-bold">{summary?.totalEvents.toLocaleString()}</div>
+                            <div className="text-sm text-muted mb-1">Events (24h)</div>
+                            <div className="text-3xl font-bold">{(summary?.totalEvents ?? 0).toLocaleString()}</div>
                         </div>
                         <div className="card p-4">
-                            <div className="text-sm text-muted mb-1">Threats Detected</div>
-                            <div className="text-3xl font-bold text-red-600">{summary?.threatsDetected}</div>
+                            <div className="text-sm text-muted mb-1">Suspicious Activity (24h)</div>
+                            <div className="text-3xl font-bold text-red-600">{summary?.suspiciousActivity ?? 0}</div>
                         </div>
                         <div className="card p-4">
-                            <div className="text-sm text-muted mb-1">Active Sessions</div>
-                            <div className="text-3xl font-bold text-blue-600">{summary?.activeSessions}</div>
+                            <div className="text-sm text-muted mb-1">Rate-limit Hits (24h)</div>
+                            <div className="text-3xl font-bold text-blue-600">{summary?.rateLimitHits ?? 0}</div>
                         </div>
                         <div className="card p-4">
                             <div className="text-sm text-muted mb-1">Failed Logins (24h)</div>
-                            <div className="text-3xl font-bold text-orange-600">{summary?.failedLogins}</div>
+                            <div className="text-3xl font-bold text-orange-600">{summary?.authFailures ?? 0}</div>
                         </div>
                     </div>
 
@@ -153,8 +175,15 @@ export default function SecurityDashboard() {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-border">
-                                    {events.map(event => (
-                                        <tr key={event.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/30">
+                                    {events.length === 0 && (
+                                        <tr>
+                                            <td colSpan={5} className="px-4 py-6 text-center text-muted">
+                                                No security events recorded.
+                                            </td>
+                                        </tr>
+                                    )}
+                                    {events.map((event, i) => (
+                                        <tr key={`${event.timestamp}-${i}`} className="hover:bg-gray-50 dark:hover:bg-gray-800/30">
                                             <td className="px-4 py-3 whitespace-nowrap">
                                                 {new Date(event.timestamp).toLocaleString()}
                                             </td>
@@ -170,7 +199,7 @@ export default function SecurityDashboard() {
                                                 {event.ip}
                                             </td>
                                             <td className="px-4 py-3 text-muted max-w-xs truncate">
-                                                {JSON.stringify(event.details)}
+                                                {event.details ? JSON.stringify(event.details) : event.path ?? ''}
                                             </td>
                                         </tr>
                                     ))}

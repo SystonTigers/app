@@ -1,6 +1,7 @@
 import { json } from "../services/util";
 import { requireTenantJWT } from "../services/auth";
 import { rateLimit } from "../middleware/rateLimit";
+import { revokeToken } from "../services/jwtRevocation";
 
 /** Sign-up gives each club a placeholder URL until the owner picks one; those clubs aren't set up yet. */
 const PLACEHOLDER_SLUG = /^club-[0-9a-f]{8}$/;
@@ -169,4 +170,86 @@ export async function handleUpdateMyProfile(req: Request, env: any, corsHdrs: He
     console.error(JSON.stringify({ event: "users_profile_update", outcome: "error", error: err?.message }));
     return json({ success: false, error: { code: "SERVER_ERROR", message: "Couldn't save your profile" } }, 500, corsHdrs);
   }
+}
+
+/** Password rules for a change made from the profile screen. */
+const MIN_PASSWORD_LENGTH = 8;
+const MAX_PASSWORD_LENGTH = 128;
+
+/**
+ * Change the signed-in user's password. The current password must be given.
+ * POST /api/v1/users/change-password  { currentPassword, newPassword }
+ * Other signed-in devices stay signed in.
+ */
+export async function handleChangePassword(req: Request, env: any, corsHdrs: Headers): Promise<Response> {
+  try {
+    const claims = await requireTenantJWT(req, env);
+    if (!claims.sub) {
+      return json({ success: false, error: { code: "UNAUTHORIZED", message: "Please log in again" } }, 401, corsHdrs);
+    }
+
+    const limited = await rateLimit(req, env, { scope: "users:change-password", limit: 10, windowSeconds: 900, path: "/api/v1/users/change-password" });
+    if (!limited.ok) {
+      return json({ success: false, error: { code: "RATE_LIMITED", message: "Too many attempts. Please wait a few minutes." } }, 429, corsHdrs);
+    }
+
+    const body = await req.json().catch(() => null) as Record<string, unknown> | null;
+    const currentPassword = body?.currentPassword;
+    const newPassword = body?.newPassword;
+    if (typeof currentPassword !== "string" || !currentPassword) {
+      return json({ success: false, error: { code: "INVALID_REQUEST", message: "Enter your current password" } }, 400, corsHdrs);
+    }
+    if (typeof newPassword !== "string" || newPassword.length < MIN_PASSWORD_LENGTH || newPassword.length > MAX_PASSWORD_LENGTH) {
+      return json({ success: false, error: { code: "INVALID_REQUEST", message: `New password must be ${MIN_PASSWORD_LENGTH} to ${MAX_PASSWORD_LENGTH} characters` } }, 400, corsHdrs);
+    }
+    if (newPassword === currentPassword) {
+      return json({ success: false, error: { code: "INVALID_REQUEST", message: "New password must be different from your current one" } }, 400, corsHdrs);
+    }
+
+    const row = await env.DB.prepare("SELECT password_hash FROM auth_users WHERE id = ? AND tenant_id = ?")
+      .bind(claims.sub, claims.tenantId).first() as { password_hash: string | null } | null;
+    if (!row) {
+      return json({ success: false, error: { code: "NOT_FOUND", message: "Account not found" } }, 404, corsHdrs);
+    }
+    if (!row.password_hash) {
+      return json({ success: false, error: { code: "NO_PASSWORD", message: "Your account has no password yet. Use 'Forgot password' to set one." } }, 400, corsHdrs);
+    }
+
+    const bcrypt = await import("bcryptjs");
+    if (!(await bcrypt.compare(currentPassword, row.password_hash))) {
+      console.log(JSON.stringify({ event: "users_change_password", outcome: "wrong_password", tenant: claims.tenantId, user: claims.sub }));
+      return json({ success: false, error: { code: "INVALID_PASSWORD", message: "Current password is incorrect" } }, 400, corsHdrs);
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+    await env.DB.prepare("UPDATE auth_users SET password_hash = ?, updated_at = ? WHERE id = ? AND tenant_id = ?")
+      .bind(passwordHash, Date.now(), claims.sub, claims.tenantId).run();
+
+    console.log(JSON.stringify({ event: "users_change_password", outcome: "ok", tenant: claims.tenantId, user: claims.sub }));
+    return json({ success: true }, 200, corsHdrs);
+  } catch (err: any) {
+    if (err instanceof Response) {return err;}
+    console.error(JSON.stringify({ event: "users_change_password", outcome: "error", error: err?.message }));
+    return json({ success: false, error: { code: "SERVER_ERROR", message: "Couldn't change your password" } }, 500, corsHdrs);
+  }
+}
+
+/**
+ * Log out this device: the token stops working immediately.
+ * POST /api/v1/auth/logout
+ * Only this session is ended (by its unique id); other devices stay signed in.
+ * Always answers 200 so an app can clear its session even with an old token.
+ */
+export async function handleLogout(req: Request, env: any, corsHdrs: Headers): Promise<Response> {
+  try {
+    const claims = await requireTenantJWT(req, env);
+    if (claims.jti && claims.sub && claims.exp) {
+      await revokeToken(env, { jti: claims.jti, sub: claims.sub, tenantId: claims.tenantId, exp: claims.exp }, "logout");
+    }
+  } catch (err: any) {
+    if (!(err instanceof Response)) {
+      console.error(JSON.stringify({ event: "logout", outcome: "error", error: err?.message }));
+    }
+  }
+  return json({ success: true }, 200, corsHdrs);
 }

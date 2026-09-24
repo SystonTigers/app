@@ -6,6 +6,7 @@ export type RawClaims = {
   roles?: string[]; role?: string;
   tenantId?: string; tenant_id?: string; tenant?: string;
   email?: string;
+  jti?: string;
   iat?: number; exp?: number;
 };
 
@@ -18,6 +19,8 @@ export type Claims = {
   userId?: string;
   name?: string;
   email?: string;
+  /** Unique id of this token, so one session can be logged out on its own. */
+  jti?: string;
   iat?: number;
   exp?: number;
 };
@@ -39,6 +42,7 @@ export function normalizeClaims(c: RawClaims): Claims {
     userId: c.sub,
     name: (c as any).name,
     email: typeof c.email === "string" ? c.email : undefined,
+    jti: typeof c.jti === "string" ? c.jti : undefined,
     iat: c.iat,
     exp: c.exp,
   };
@@ -94,6 +98,7 @@ export async function issueTenantAdminJWT(env: any, args: { tenant_id: string; t
     roles: ["tenant_admin", "owner"],  // Tenant admin only, NOT platform admin
     tenant_id: args.tenant_id,
   })
+    .setJti(crypto.randomUUID())
     .setProtectedHeader({ alg: "HS256", typ: "JWT" })
     .setIssuer(env.JWT_ISSUER)
     .setAudience(env.JWT_AUDIENCE) // Use mobile audience since not platform admin
@@ -134,6 +139,7 @@ export async function issueTenantMemberJWT(env: any, args: { tenant_id: string; 
     roles,
     tenant_id: args.tenant_id,
   })
+    .setJti(crypto.randomUUID())
     .setProtectedHeader({ alg: "HS256", typ: "JWT" })
     .setIssuer(env.JWT_ISSUER)
     .setAudience(env.JWT_AUDIENCE)

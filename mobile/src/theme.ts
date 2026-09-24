@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { API_BASE_URL, COLORS as FALLBACK_COLORS } from './config';
+import { COLORS as FALLBACK_COLORS } from './config';
 import {
   lightTheme as baseLightTheme,
   darkTheme as baseDarkTheme,
@@ -11,9 +11,8 @@ import {
 import type {
   Theme as BaseTheme,
   ThemeColors,
-  TenantThemeConfig,
 } from './theme/types';
-import { getTenantId } from './services/club';
+import { fetchClubInfo, getTenantId } from './services/club';
 
 /**
  * Additional design tokens layered on top of the shared theme contract.
@@ -99,11 +98,6 @@ interface TenantThemePayload {
   darkMode?: boolean;
 }
 
-interface TenantConfigResponse {
-  branding?: Partial<TenantThemeConfig> & { brandName?: string };
-  theme?: Partial<TenantThemeConfig> & { brandName?: string; darkMode?: boolean };
-  data?: TenantConfigResponse;
-}
 
 const DEFAULT_METADATA: ThemeMetadata = {
   source: 'default',
@@ -282,145 +276,30 @@ function createTypographyScale(theme: BaseTheme): TypographyScale {
 }
 
 /**
- * Load the tenant theme configuration from the API and build a rich theme.
+ * Build the current club's theme from its public club info
+ * (GET /public/:club/info), falling back to the default theme.
  */
 export async function loadThemeFromAPI(): Promise<Theme> {
-  try {
-    const response = await fetch(
-      `${API_BASE_URL}/api/v1/tenant/config?tenant=${getTenantId()}`,
-      {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }
-    );
-
-    if (!response.ok) {
-      throw new Error(`Failed to load theme: ${response.status}`);
-    }
-
-    const raw = (await response.json()) as TenantConfigResponse;
-    const payload = normaliseTenantTheme(raw);
-
-    if (payload) {
-      return buildTenantTheme(payload);
-    }
-  } catch (error) {
-    console.error('Error loading theme from tenant config API:', error);
+  const slug = getTenantId();
+  if (!slug) {
+    return defaultTheme;
   }
 
   try {
-    // Fallback to brand endpoint for older deployments
-    const brandResponse = await fetch(
-      `${API_BASE_URL}/api/v1/brand?tenant=${getTenantId()}`,
-      {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }
-    );
-
-    if (brandResponse.ok) {
-      const brandPayload = await brandResponse.json();
-      const brand = brandPayload?.data || brandPayload;
-
-      if (brand?.primaryColor || brand?.secondaryColor) {
-        const tenantPayload: TenantThemePayload = {
-          primaryColor: brand.primaryColor,
-          secondaryColor: brand.secondaryColor,
-          accentColor: brand.accentColor ?? brand.primaryColor,
-          brandName: brand.clubName ?? brand.clubShortName,
-        };
-
-        if (brand.onPrimary) {
-          tenantPayload.customColors = {
-            textInverse: brand.onPrimary,
-          } as Partial<ThemeColors>;
-        }
-
-        if (brand.onSecondary) {
-          tenantPayload.customColors = {
-            ...(tenantPayload.customColors || {}),
-            text: brand.onSecondary,
-          } as Partial<ThemeColors>;
-        }
-
-        return buildTenantTheme(tenantPayload);
-      }
+    const club = await fetchClubInfo(slug);
+    if (club?.primaryColor) {
+      return buildTenantTheme({
+        primaryColor: club.primaryColor,
+        secondaryColor: club.secondaryColor ?? undefined,
+        accentColor: club.primaryColor,
+        brandName: club.name,
+      });
     }
   } catch (error) {
-    console.error('Error loading theme from brand API:', error);
+    console.warn('Error loading club colours for theme:', error);
   }
 
   return defaultTheme;
-}
-
-/**
- * Normalise various tenant theme payload shapes.
- */
-function normaliseTenantTheme(payload?: TenantConfigResponse | null): TenantThemePayload | null {
-  if (!payload) {
-    return null;
-  }
-
-  if (payload.data) {
-    const nested = normaliseTenantTheme(payload.data);
-    if (nested) {
-      return nested;
-    }
-  }
-
-  const raw = payload.theme ?? payload.branding ?? (payload as unknown as TenantThemePayload);
-  if (!raw) {
-    return null;
-  }
-
-  const {
-    primaryColor,
-    secondaryColor,
-    accentColor,
-    customColors,
-    fontFamily,
-    brandName,
-    darkMode,
-    clubName,
-    clubShortName,
-    mode,
-    onPrimary,
-    onSecondary,
-  } = raw as TenantThemePayload & {
-    clubName?: string;
-    clubShortName?: string;
-    mode?: string;
-    onPrimary?: string;
-    onSecondary?: string;
-  };
-
-  const cleaned: TenantThemePayload = {};
-
-  if (primaryColor) cleaned.primaryColor = primaryColor;
-  if (secondaryColor) cleaned.secondaryColor = secondaryColor;
-  if (accentColor) cleaned.accentColor = accentColor;
-  if (customColors) cleaned.customColors = customColors;
-  if (fontFamily) cleaned.fontFamily = fontFamily;
-  if (brandName) cleaned.brandName = brandName;
-  if (!cleaned.brandName && clubName) cleaned.brandName = clubName;
-  if (!cleaned.brandName && clubShortName) cleaned.brandName = clubShortName;
-  if (typeof darkMode === 'boolean') cleaned.darkMode = darkMode;
-  if (typeof darkMode !== 'boolean' && typeof mode === 'string') {
-    cleaned.darkMode = mode.toLowerCase() === 'dark';
-  }
-  if (onPrimary || onSecondary) {
-    cleaned.customColors = {
-      ...(cleaned.customColors || {}),
-      ...(onPrimary ? { textInverse: onPrimary } : {}),
-      ...(onSecondary ? { text: onSecondary } : {}),
-    };
-  }
-
-  return Object.keys(cleaned).length > 0 ? cleaned : null;
 }
 
 /**

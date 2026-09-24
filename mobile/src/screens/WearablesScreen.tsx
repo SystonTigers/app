@@ -562,16 +562,14 @@ export default function WearablesScreen() {
   useEffect(() => {
     if (selectedPlayer) {
       loadPlayerSummary(selectedPlayer.id);
+      loadSessions(selectedPlayer.id);
     }
   }, [selectedPlayer]);
 
   const loadData = async () => {
     setLoading(true);
     try {
-      const [sessionsRes, squadRes] = await Promise.all([
-        wearablesApi.listSessions().catch(() => ({ data: [] })),
-        squadApi.getSquad().catch(() => ({ data: [] })),
-      ]);
+      const squadRes = await squadApi.getSquad().catch(() => ({ data: [] }));
       const squadData = (squadRes?.data || []).map((p: any) => ({
         id: p.id || p.playerId,
         name: p.name || `${p.firstName || ''} ${p.lastName || ''}`.trim(),
@@ -580,24 +578,29 @@ export default function WearablesScreen() {
       }));
       setPlayers(squadData);
       if (squadData.length > 0 && !selectedPlayer) setSelectedPlayer(squadData[0]);
-      const sessData = (sessionsRes?.data || []).map((s: any) => ({
-        id: s.id || s.sessionId,
-        sessionType: s.sessionType || s.type || 'training',
-        sessionName: s.sessionName || s.name || '',
-        sessionDate: s.sessionDate || s.date || '',
-        durationMinutes: s.durationMinutes || s.duration,
-        entryMethod: s.entryMethod || 'automatic',
-        metrics: s.metrics || {},
-        gpsTrack: s.gpsTrack,
-        player: s.player,
-      }));
-      setSessions(sessData);
-      if (sessData.length > 0) setSelectedSession(sessData[0]);
+      if (selectedPlayer) await loadSessions(selectedPlayer.id);
     } catch (err) {
       console.error('Error loading wearables:', err);
     } finally {
       setLoading(false);
     }
+  };
+
+  const loadSessions = async (playerId: string) => {
+    const sessionsRes = await wearablesApi.listSessions(playerId).catch(() => ({ data: [] }));
+    const sessData: Session[] = (sessionsRes?.data || []).map((s: any) => ({
+      id: s.id || s.sessionId,
+      sessionType: s.sessionType || s.type || 'training',
+      sessionName: s.sessionName || s.name || '',
+      sessionDate: s.sessionDate || s.date || '',
+      durationMinutes: s.durationMinutes || s.duration,
+      entryMethod: s.entryMethod || 'automatic',
+      metrics: s.metrics || {},
+      gpsTrack: s.gpsTrack,
+      player: s.player,
+    }));
+    setSessions(sessData);
+    setSelectedSession(sessData[0] ?? null);
   };
 
   const loadPlayerSummary = async (playerId: string) => {

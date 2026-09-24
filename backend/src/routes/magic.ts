@@ -4,12 +4,29 @@ import { json } from '../lib/validate';
 import { SignJWT, jwtVerify } from 'jose';
 import { sendMagicLinkEmail } from '../lib/email';
 
+/** Emails allowed to sign in to the platform owner console (comma-separated env var). */
+export function isPlatformAdminEmail(env: Env, email: string): boolean {
+  const list = String((env as any).PLATFORM_ADMIN_EMAILS || '')
+    .split(',')
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+  return list.includes(email.trim().toLowerCase());
+}
+
 // POST /auth/magic/start  { email, tenantId? }
 export async function handleMagicStart(req: Request, env: Env, corsHdrs?: Headers): Promise<Response> {
   const body: any = await req.json().catch(() => ({}));
   const email = (body.email || '').toString().trim().toLowerCase();
   const tenantId = (body.tenantId || 'platform').toString().trim(); // Default to 'platform' for admin login
-  if (!email) {return json({ success: false, error: 'email required' }, 400);}
+  if (!email) {return json({ success: false, error: 'email required' }, 400, corsHdrs);}
+
+  // These links grant platform-admin access, so only the owners listed in
+  // PLATFORM_ADMIN_EMAILS can receive one. Everyone else gets the same reply
+  // (so the endpoint doesn't reveal who is an admin) and no email is sent.
+  if (!isPlatformAdminEmail(env, email)) {
+    console.warn(JSON.stringify({ event: 'magic_link', outcome: 'refused_not_admin' }));
+    return json({ success: true }, 200, corsHdrs);
+  }
 
   // Get tenant name from database for personalized email
   let clubName = 'Platform Admin'; // Default for platform admin
@@ -54,11 +71,20 @@ export async function handleMagicVerify(req: Request, env: Env, corsHdrs?: Heade
   const token = new URL(req.url).searchParams.get('token') || '';
   if (!token) {return json({ success: false, error: 'token required' }, 400, corsHdrs);}
 
-  const { payload } = await jwtVerify(token, new TextEncoder().encode(env.JWT_SECRET), {
-    issuer: env.JWT_ISSUER || 'syston.app',
-    audience: 'syston-admin',
-    clockTolerance: 10,
-  });
+  let payload: Record<string, unknown>;
+  try {
+    ({ payload } = await jwtVerify(token, new TextEncoder().encode(env.JWT_SECRET), {
+      issuer: env.JWT_ISSUER || 'syston.app',
+      audience: 'syston-admin',
+      clockTolerance: 10,
+    }));
+  } catch {
+    return json({ success: false, error: 'This link has expired or is not valid' }, 401, corsHdrs);
+  }
+  // Only magic-link tokens, and only for emails still on the admin list
+  if (payload.type !== 'magic_link' || typeof payload.sub !== 'string' || !isPlatformAdminEmail(env, payload.sub)) {
+    return json({ success: false, error: 'This link has expired or is not valid' }, 401, corsHdrs);
+  }
 
   // Create owner session JWT (shorter ttl, e.g. 7d)
   const now = Math.floor(Date.now() / 1000);

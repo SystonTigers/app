@@ -444,14 +444,6 @@ export const feedApi = {
     });
     return response.data;
   },
-
-  // Like a post
-  likePost: async (postId: string) => {
-    const response = await api.post(`/api/v1/feed/${postId}/like`, {
-      tenant: getTenantId(),
-    });
-    return response.data;
-  },
 };
 
 // Content Moderation API
@@ -635,14 +627,6 @@ export const playerImagesApi = {
     return response.data;
   },
 
-  // Get single player image
-  getImage: async (imageId: string) => {
-    const response = await api.get(`/api/v1/admin/player-images/${imageId}`, {
-      params: { tenant: getTenantId() },
-    });
-    return response.data;
-  },
-
   // Create player image
   createImage: async (data: {
     playerId: string;
@@ -671,15 +655,6 @@ export const playerImagesApi = {
         'Content-Type': 'multipart/form-data',
       },
       params: { tenant: getTenantId() },
-    });
-    return response.data;
-  },
-
-  // Update player image
-  updateImage: async (imageId: string, updates: any) => {
-    const response = await api.patch(`/api/v1/admin/player-images/${imageId}`, {
-      tenant: getTenantId(),
-      ...updates,
     });
     return response.data;
   },
@@ -1031,11 +1006,25 @@ export const videosApi = {
 
 // ===== Wearables / GPS API =====
 export const wearablesApi = {
+  // A player's recent sessions, built from their per-session fitness metrics
+  // (GET /wearables/metrics/:playerId). There is no club-wide session list.
   listSessions: async (playerId?: string) => {
-    const response = await api.get('/api/v1/wearables/sessions', {
-      params: { tenant: getTenantId(), playerId },
+    if (!playerId) {
+      return { success: true, data: [] };
+    }
+    const response = await api.get(`/api/v1/wearables/metrics/${encodeURIComponent(playerId)}`, {
+      params: { limit: 20 },
     });
-    return response.data;
+    const metrics: any[] = Array.isArray(response.data?.data) ? response.data.data : [];
+    return {
+      success: true,
+      data: metrics.map((m) => ({
+        id: m.sessionId || m.id,
+        sessionDate: m.capturedAt ? new Date(m.capturedAt).toISOString() : '',
+        entryMethod: 'automatic',
+        metrics: m,
+      })),
+    };
   },
   getSession: async (sessionId: string) => {
     const response = await api.get(`/api/v1/wearables/sessions/${sessionId}`);
@@ -1106,27 +1095,6 @@ export const usersApi = {
     return response.data;
   },
 
-  // Upload avatar
-  uploadAvatar: async (uri: string) => {
-    const formData = new FormData();
-    const filename = uri.split('/').pop() || 'avatar.jpg';
-    const match = /\.(\w+)$/.exec(filename);
-    const type = match ? `image/${match[1]}` : 'image/jpeg';
-
-    formData.append('file', {
-      uri,
-      name: filename,
-      type,
-    } as any);
-
-    const response = await api.post(`/api/v1/users/profile/avatar?tenant=${getTenantId()}`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
-    return response.data;
-  },
-
   // Get current user profile
   getProfile: async () => {
     const response = await api.get('/api/v1/users/me', {
@@ -1137,20 +1105,20 @@ export const usersApi = {
 };
 
 export const galleryApi = {
-  // Get all albums
+  // Get all albums (unwrapped from the { success, data } envelope)
   getAlbums: async () => {
     const response = await api.get('/api/v1/gallery/albums', {
       params: { tenant: getTenantId() },
     });
-    return response.data;
+    return Array.isArray(response.data?.data) ? response.data.data : [];
   },
 
-  // Get photos in album
+  // Get photos in album (unwrapped from the { success, data } envelope)
   getPhotos: async (albumId: string) => {
-    const response = await api.get(`/api/v1/gallery/albums/${albumId}/photos`, {
-      params: { tenant: getTenantId() },
+    const response = await api.get('/api/v1/gallery/photos', {
+      params: { tenant: getTenantId(), albumId },
     });
-    return response.data;
+    return Array.isArray(response.data?.data) ? response.data.data : [];
   },
 
   // Upload photo
@@ -1175,7 +1143,7 @@ export const galleryApi = {
     if (data.albumId) formData.append('albumId', data.albumId);
     if (data.tags) formData.append('tags', JSON.stringify(data.tags));
 
-    const response = await api.post(`/api/v1/gallery/photos?tenant=${getTenantId()}`, formData, {
+    const response = await api.post(`/api/v1/gallery/upload?tenant=${getTenantId()}`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -1191,12 +1159,6 @@ export const galleryApi = {
     });
     return response.data;
   },
-
-  // Request removal (stub)
-  requestRemoval: async (photoId: string) => {
-    // Just a stub for now
-    return { success: true };
-  }
 };
 
 export default api;

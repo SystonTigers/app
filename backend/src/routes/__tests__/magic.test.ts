@@ -28,6 +28,8 @@ describe("Magic Link Authentication", () => {
       JWT_SECRET: "test-secret-key-at-least-32-characters-long",
       JWT_ISSUER: "test-issuer",
       ADMIN_CONSOLE_URL: "https://admin.example.com",
+      // Only listed emails can receive or use owner-console links
+      PLATFORM_ADMIN_EMAILS: "user@example.com,admin@example.com",
     };
 
     corsHdrs = new Headers();
@@ -351,7 +353,7 @@ describe("Magic Link Authentication", () => {
         }
       );
 
-      await expect(handleMagicVerify(request, mockEnv, corsHdrs)).rejects.toThrow();
+      expect((await handleMagicVerify(request, mockEnv, corsHdrs)).status).toBe(401); // refused, not a crash
     });
 
     it("rejects token with wrong signature", async () => {
@@ -382,7 +384,7 @@ describe("Magic Link Authentication", () => {
         }
       );
 
-      await expect(handleMagicVerify(request, mockEnv, corsHdrs)).rejects.toThrow();
+      expect((await handleMagicVerify(request, mockEnv, corsHdrs)).status).toBe(401); // refused, not a crash
     });
 
     it("rejects invalid token format", async () => {
@@ -393,7 +395,7 @@ describe("Magic Link Authentication", () => {
         }
       );
 
-      await expect(handleMagicVerify(request, mockEnv, corsHdrs)).rejects.toThrow();
+      expect((await handleMagicVerify(request, mockEnv, corsHdrs)).status).toBe(401); // refused, not a crash
     });
 
     it("transfers tenantId from magic link to session", async () => {
@@ -427,6 +429,22 @@ describe("Magic Link Authentication", () => {
   });
 
   describe("Magic Link Security", () => {
+    it("refuses a link for an email that isn't a platform admin", async () => {
+      const { SignJWT } = await import("jose");
+      const now = Math.floor(Date.now() / 1000);
+      const token = await new SignJWT({ type: "magic_link", roles: ["owner", "admin"], tenantId: "platform" })
+        .setProtectedHeader({ alg: "HS256", typ: "JWT" })
+        .setIssuer(mockEnv.JWT_ISSUER)
+        .setAudience("syston-admin")
+        .setSubject("stranger@example.com")
+        .setIssuedAt(now)
+        .setExpirationTime(now + 3600)
+        .sign(new TextEncoder().encode(mockEnv.JWT_SECRET));
+      const request = new Request(`https://example.com/auth/magic/verify?token=${token}`);
+      expect((await handleMagicVerify(request, mockEnv, corsHdrs)).status).toBe(401);
+    });
+
+
     it("magic link token is single-use (not tested in code, but recommended)", () => {
       // Note: Current implementation doesn't invalidate tokens after use
       // This is a security recommendation for future improvement
@@ -484,7 +502,7 @@ describe("Magic Link Authentication", () => {
         }
       );
 
-      await expect(handleMagicVerify(request, mockEnv, corsHdrs)).rejects.toThrow();
+      expect((await handleMagicVerify(request, mockEnv, corsHdrs)).status).toBe(401); // refused, not a crash
     });
   });
 });

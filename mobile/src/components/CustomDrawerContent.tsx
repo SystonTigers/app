@@ -15,8 +15,6 @@ const MENU_GROUPS = [
         title: 'Match Day',
         icon: 'soccer-field',
         items: [
-            { label: 'Live Console', screen: 'LiveMatchInput', icon: 'gamepad-variant', roles: ['admin', 'manager', 'coach'] },
-            { label: 'Watch Live', screen: 'LiveMatchWatch', icon: 'youtube-tv', roles: ['admin', 'manager', 'coach', 'parent', 'player'] },
             { label: 'Predictions', screen: 'LastManStanding', icon: 'crystal-ball', roles: ['admin', 'manager', 'coach', 'parent', 'player'] },
         ]
     },
@@ -54,7 +52,6 @@ const MENU_GROUPS = [
             { label: 'Manage MOTM', screen: 'ManageMOTM', icon: 'star-cog', roles: ['admin', 'manager'] },
             { label: 'Player Images', screen: 'ManagePlayerImages', icon: 'camera-account', roles: ['admin', 'manager'] },
             { label: 'Push Notifications', screen: 'PushNotificationsSetup', icon: 'bell-ring', roles: ['admin'] },
-            { label: 'Auto Posts', screen: 'AutoPostsMatrix', icon: 'robot', roles: ['admin'] },
         ]
     },
     {
