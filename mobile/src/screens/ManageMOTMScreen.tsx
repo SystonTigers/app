@@ -1,98 +1,100 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, ScrollView, StyleSheet, Alert, ActivityIndicator, RefreshControl } from 'react-native';
-import { Card, Title, Paragraph, Button, List, Chip, FAB, Portal, Modal, TextInput, Checkbox, ProgressBar, Divider, Text } from 'react-native-paper';
-import { COLORS } from '../config';
-import { motmApi, fixturesApi, squadApi } from '../services/api';
+import React, { useCallback, useState } from 'react';
+import { ActivityIndicator, Alert, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { Button, Card, Chip, FAB, Modal, Paragraph, Portal, Text, Title } from 'react-native-paper';
 import { useFocusEffect } from '@react-navigation/native';
+import { COLORS } from '../config';
+import {
+  apiErrorMessage,
+  fixturesApi,
+  motmApi,
+  squadApi,
+  type MotmSessionSummary,
+  type MotmVote,
+} from '../services/api';
 
-interface MOTMVote {
-  match_id: string; // From backend (motm_sessions table)
-  tenant_id: string;
-  status: 'draft' | 'active' | 'closed';
-  voting_start_at: string;
-  voting_end_at: string;
-  auto_post: number; // 0 or 1
-  created_at: string;
-  updated_at: string;
-  // Enriched data from frontend join
-  opponent?: string;
-  date?: string;
-  totalVotes?: number;
-  nominees?: any[];
+interface MatchOption {
+  id: string;
+  opponent: string;
+  date: string;
 }
 
+interface SquadPlayer {
+  id: string;
+  name: string;
+  number: number | null;
+}
+
+const VOTING_LENGTHS = [
+  { label: '24 hours', hours: 24 },
+  { label: '2 days', hours: 48 },
+  { label: '3 days', hours: 72 },
+];
+const MIN_NOMINEES = 2;
+const MAX_NOMINEES = 15;
+const DAY_MS = 24 * 3600_000;
+
+function formatDate(value: string | null | undefined): string {
+  if (!value) return '';
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+}
+
+function formatDateTime(value: string | null | undefined): string {
+  if (!value) return '';
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? '' : `${formatDate(value)}, ${d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`;
+}
+
+/**
+ * Managers run Man of the Match: pick a match and 2-15 nominees, open the
+ * vote for parents and players, watch the tally, then close it to announce
+ * the winner (shown in the app and on the club's web page).
+ */
 export default function ManageMOTMScreen() {
-  const [votes, setVotes] = useState<MOTMVote[]>([]);
-  const [matches, setMatches] = useState<any[]>([]); // Past results & Upcoming fixtures
-  const [players, setPlayers] = useState<any[]>([]); // Squad list
+  const [sessions, setSessions] = useState<MotmSessionSummary[]>([]);
+  const [matches, setMatches] = useState<MatchOption[]>([]);
+  const [players, setPlayers] = useState<SquadPlayer[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadError, setLoadError] = useState('');
 
-  const [createModalVisible, setCreateModalVisible] = useState(false);
-  const [selectedVote, setSelectedVote] = useState<MOTMVote | null>(null);
-  const [tallyData, setTallyData] = useState<any>(null); // For selected vote detail
+  // New vote
+  const [creating, setCreating] = useState(false);
+  const [matchId, setMatchId] = useState('');
+  const [nominees, setNominees] = useState<string[]>([]);
+  const [hours, setHours] = useState(48);
+  const [createError, setCreateError] = useState('');
+  const [saving, setSaving] = useState(false);
 
-  const [createData, setCreateData] = useState({
-    matchId: '',
-    opponent: '',
-    date: '',
-    nominees: [] as string[], // We might auto-select all who played
-    startDate: '',
-    startTime: '17:00',
-    endDate: '',
-    endTime: '23:59',
-    autoPost: true,
-    status: 'draft' as 'draft' | 'active'
-  });
+  // Vote detail
+  const [detail, setDetail] = useState<MotmVote | null>(null);
+  const [detailSummary, setDetailSummary] = useState<MotmSessionSummary | null>(null);
+  const [detailError, setDetailError] = useState('');
+  const [busy, setBusy] = useState(false);
 
-  const fetchData = useCallback(async () => {
+  const load = useCallback(async () => {
     try {
-      setLoading(true);
       const [sessionsRes, fixturesRes, resultsRes, squadRes] = await Promise.all([
         motmApi.listSessions(),
-        fixturesApi.getFixtures(),
-        fixturesApi.getResults(),
-        squadApi.getSquad()
+        fixturesApi.getFixtures().catch(() => ({ data: [] })),
+        fixturesApi.getResults().catch(() => ({ data: [] })),
+        squadApi.getSquad().catch(() => ({ data: [] })),
       ]);
-
-      // Combine fixtures and results for selection list
-      // Normalize structure: { id, opponent, date, kickOffTime }
-      const allMatches = [
-        ...(fixturesRes.data || []).map((f: any) => ({
-          id: f.id,
-          opponent: f.opponent,
-          date: f.date,
-          kickOffTime: f.kickOffTime,
-          type: 'fixture'
-        })),
-        ...(resultsRes.data || []).map((r: any) => ({
-          id: r.id,
-          opponent: r.opponent,
-          date: r.date,
-          kickOffTime: r.kickOffTime, // Might not exist on results depending on schema, stick to date
-          type: 'result'
-        }))
-      ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
-      setMatches(allMatches);
-      setPlayers(squadRes.data || []);
-
-      // Enrich sessions with match details
-      const sessions = (sessionsRes.data || []).map((s: any) => {
-        const match = allMatches.find(m => m.id === s.match_id);
-        return {
-          ...s,
-          opponent: match ? match.opponent : 'Unknown Match',
-          date: match ? match.date : '',
-          totalVotes: 0, // Need to fetch tally separately or just show '?'
-          nominees: []
-        };
-      });
-
-      setVotes(sessions);
+      const list = sessionsRes.data || [];
+      const used = new Set(list.map((s) => s.match_id));
+      const cutoff = Date.now() + DAY_MS; // today's game counts
+      const byId = new Map<string, MatchOption>();
+      for (const m of [...(resultsRes.data || []), ...(fixturesRes.data || [])] as Array<{ id: string | number; opponent: string; date: string }>) {
+        const id = String(m.id);
+        if (id && !used.has(id) && !byId.has(id) && Date.parse(m.date) <= cutoff) byId.set(id, { id, opponent: m.opponent, date: m.date });
+      }
+      const options = [...byId.values()].sort((a, b) => Date.parse(b.date) - Date.parse(a.date)).slice(0, 10);
+      setSessions(list);
+      setMatches(options);
+      setPlayers((squadRes.data || []).map((p: { id: string; name: string; number?: number | null }) => ({ id: p.id, name: p.name, number: p.number ?? null })));
+      setLoadError('');
     } catch (err) {
-      console.error(err);
-      Alert.alert('Error', 'Failed to load MOTM data');
+      setLoadError(apiErrorMessage(err, "We couldn't load Man of the Match votes. Pull down to try again."));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -101,425 +103,280 @@ export default function ManageMOTMScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      fetchData();
-    }, [fetchData])
+      load();
+    }, [load]),
   );
 
-  const onRefresh = () => {
-    setRefreshing(true);
-    fetchData();
+  const startCreate = () => {
+    setMatchId(matches[0]?.id ?? '');
+    setNominees([]);
+    setHours(48);
+    setCreateError('');
+    setCreating(true);
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'draft': return '#9E9E9E';
-      case 'active': return COLORS.success;
-      case 'closed': return COLORS.error;
-      default: return COLORS.textLight;
-    }
+  const toggleNominee = (id: string) => {
+    setNominees((current) =>
+      current.includes(id) ? current.filter((n) => n !== id) : current.length >= MAX_NOMINEES ? current : [...current, id],
+    );
   };
 
-  const handleCreateVote = async () => {
-    if (!createData.matchId) {
-      Alert.alert('Invalid Data', 'Please select a match.');
-      return;
-    }
-
+  const openVote = async () => {
+    if (!matchId) return setCreateError('Choose the match.');
+    if (nominees.length < MIN_NOMINEES) return setCreateError(`Pick at least ${MIN_NOMINEES} nominees.`);
+    setSaving(true);
+    setCreateError('');
     try {
-      const start = `${createData.startDate}T${createData.startTime}:00`;
-      const end = `${createData.endDate}T${createData.endTime}:00`;
-
-      await motmApi.openVoting(createData.matchId, {
-        votingWindow: { start, end },
-        autoPostEnabled: createData.autoPost,
-        status: createData.status,
-        nominees: [] // Backend logic handles candidates, usually whole squad or lineup
+      const start = new Date();
+      const end = new Date(start.getTime() + hours * 3600_000);
+      await motmApi.openVoting(matchId, {
+        nominees,
+        votingWindow: { start: start.toISOString(), end: end.toISOString() },
+        status: 'active',
       });
-
-      Alert.alert('Success', `MOTM vote saved as ${createData.status}!`);
-      setCreateModalVisible(false);
-      resetCreateData();
-      fetchData();
+      setCreating(false);
+      Alert.alert('Vote open', `Parents and players can vote in the app until ${formatDateTime(end.toISOString())}.`);
+      load();
     } catch (err) {
-      console.error(err);
-      Alert.alert('Error', 'Failed to save MOTM vote');
+      setCreateError(apiErrorMessage(err, "We couldn't open the vote. Please try again."));
+    } finally {
+      setSaving(false);
     }
   };
 
-  const resetCreateData = () => {
-    const today = new Date().toISOString().split('T')[0];
-    setCreateData({
-      matchId: '',
-      opponent: '',
-      date: '',
-      nominees: [],
-      startDate: today,
-      startTime: '17:00',
-      endDate: today,
-      endTime: '23:59',
-      autoPost: true,
-      status: 'active'
-    });
-  };
-
-  const selectMatch = (matchId: string) => {
-    const match = matches.find(m => m.id === matchId);
-    if (match) {
-      setCreateData({
-        ...createData,
-        matchId,
-        opponent: match.opponent,
-        date: match.date,
-        startDate: match.date.split('T')[0],
-        endDate: match.date.split('T')[0],
-      });
-    }
-  };
-
-  const loadVoteDetails = async (vote: MOTMVote) => {
-    setSelectedVote(vote);
-    if (vote.status !== 'draft') {
-      try {
-        const tallyRes = await motmApi.getTally(vote.match_id);
-        if (tallyRes.success) {
-          setTallyData(tallyRes.data);
-        }
-      } catch (err) {
-        console.error("Failed to load tally", err);
-      }
-    } else {
-      setTallyData(null);
-    }
-  };
-
-  const handleStatusChange = async (matchId: string, newStatus: 'active' | 'closed') => {
+  const showDetail = async (summary: MotmSessionSummary) => {
+    setDetailSummary(summary);
+    setDetail(null);
+    setDetailError('');
     try {
-      if (newStatus === 'closed') {
-        await motmApi.closeVoting(matchId);
-      } else {
-        // To re-open or activate draft, we use openVoting with current settings
-        // For now, simpler to just use specific endpoints if available, but openVoting handles upsert
-        const vote = votes.find(v => v.match_id === matchId);
-        if (vote) {
-          await motmApi.openVoting(matchId, {
-            votingWindow: { start: vote.voting_start_at, end: vote.voting_end_at || '' },
-            autoPostEnabled: !!vote.auto_post,
-            status: 'active',
-            nominees: []
-          });
-        }
-      }
-      fetchData();
-      if (selectedVote) setSelectedVote(null); // Close modal
-      Alert.alert('Success', `Vote is now ${newStatus}`);
+      const res = await motmApi.getVote(summary.match_id);
+      setDetail(res.data);
     } catch (err) {
-      Alert.alert('Error', 'Failed to update status');
+      setDetailError(apiErrorMessage(err, "We couldn't load this vote."));
     }
   };
 
-  if (loading && !refreshing) {
+  const closeVote = (summary: MotmSessionSummary) => {
+    Alert.alert('Close the vote?', 'Voting ends now and the winner is announced in the app and on your club page.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Close vote',
+        style: 'destructive',
+        onPress: async () => {
+          setBusy(true);
+          try {
+            const res = await motmApi.closeVoting(summary.match_id);
+            const names = res.data.winners.map((w) => w.name).join(' & ');
+            setDetailSummary(null);
+            Alert.alert('Vote closed', names ? `Man of the Match: ${names}` : 'Nobody voted, so there is no winner this time.');
+            load();
+          } catch (err) {
+            setDetailError(apiErrorMessage(err, "We couldn't close the vote. Please try again."));
+          } finally {
+            setBusy(false);
+          }
+        },
+      },
+    ]);
+  };
+
+  const activateDraft = async (summary: MotmSessionSummary) => {
+    setBusy(true);
+    try {
+      await motmApi.openVoting(summary.match_id, { status: 'active' });
+      setDetailSummary(null);
+      load();
+    } catch (err) {
+      setDetailError(apiErrorMessage(err, "We couldn't open the vote. Please try again."));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (loading) {
     return (
-      <View style={[styles.container, styles.centerContent]}>
+      <View style={[styles.container, styles.center]}>
         <ActivityIndicator size="large" color={COLORS.primary} />
       </View>
     );
   }
 
-  const activeVotes = votes.filter(v => v.status === 'active');
-  const draftVotes = votes.filter(v => v.status === 'draft');
-  const closedVotes = votes.filter(v => v.status === 'closed');
+  const groups: Array<{ title: string; items: MotmSessionSummary[] }> = [
+    { title: 'Open now', items: sessions.filter((s) => s.votingOpen) },
+    { title: 'Drafts', items: sessions.filter((s) => s.status === 'draft') },
+    { title: 'Finished', items: sessions.filter((s) => s.status === 'closed') },
+  ];
+
+  const statusLine = (s: MotmSessionSummary) => {
+    if (s.status === 'closed') return s.winners.length ? `Winner: ${s.winners.join(' & ')}` : 'No votes cast';
+    if (s.status === 'draft') return `${s.nominee_count} nominees · not open yet`;
+    return `${s.vote_count} vote${s.vote_count === 1 ? '' : 's'} · closes ${formatDateTime(s.voting_end_at)}`;
+  };
 
   return (
     <View style={styles.container}>
       <ScrollView
-        style={styles.scrollContainer}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        contentContainerStyle={styles.content}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} />}
       >
-        {/* Active Votes */}
-        {activeVotes.length > 0 && (
-          <>
-            <Title style={styles.sectionTitle}>🔴 Active Votes</Title>
-            {activeVotes.map(vote => (
-              <Card key={vote.match_id} style={styles.voteCard} onPress={() => loadVoteDetails(vote)}>
-                <Card.Content>
-                  <View style={styles.voteHeader}>
-                    <View style={styles.voteInfo}>
-                      <Title style={styles.voteTitle}>vs {vote.opponent}</Title>
-                      <Paragraph style={styles.voteDate}>
-                        {new Date(vote.date || '').toLocaleDateString()}
-                      </Paragraph>
-                    </View>
-                    <Chip style={[styles.statusChip, { backgroundColor: getStatusColor('active') }]} textStyle={styles.statusChipText}>Active</Chip>
-                  </View>
-                </Card.Content>
-              </Card>
-            ))}
-          </>
+        {loadError ? <Text style={styles.errorText}>{loadError}</Text> : null}
+
+        {groups.map((group) =>
+          group.items.length ? (
+            <View key={group.title}>
+              <Title style={styles.sectionTitle}>{group.title}</Title>
+              {group.items.map((s) => (
+                <Card key={s.match_id} style={styles.card} onPress={() => showDetail(s)}>
+                  <Card.Content>
+                    <Title style={styles.cardTitle}>vs {s.opponent ?? 'Unknown match'}</Title>
+                    <Paragraph style={styles.meta}>{formatDate(s.date)}</Paragraph>
+                    <Paragraph style={styles.status}>{statusLine(s)}</Paragraph>
+                  </Card.Content>
+                </Card>
+              ))}
+            </View>
+          ) : null,
         )}
 
-        {/* Draft Votes */}
-        {draftVotes.length > 0 && (
-          <>
-            <Title style={styles.sectionTitle}>📝 Drafts</Title>
-            {draftVotes.map(vote => (
-              <Card key={vote.match_id} style={styles.voteCard} onPress={() => loadVoteDetails(vote)}>
-                <Card.Content>
-                  <View style={styles.voteHeader}>
-                    <View style={styles.voteInfo}>
-                      <Title style={styles.voteTitle}>vs {vote.opponent}</Title>
-                      <Paragraph style={styles.voteDate}>
-                        {new Date(vote.date || '').toLocaleDateString()}
-                      </Paragraph>
-                    </View>
-                    <Chip style={[styles.statusChip, { backgroundColor: getStatusColor('draft') }]} textStyle={styles.statusChipText}>Draft</Chip>
-                  </View>
-                </Card.Content>
-              </Card>
-            ))}
-          </>
-        )}
-
-        {/* Closed Votes */}
-        {closedVotes.length > 0 && (
-          <>
-            <Title style={styles.sectionTitle}>✅ Completed</Title>
-            {closedVotes.map(vote => (
-              <Card key={vote.match_id} style={styles.voteCard} onPress={() => loadVoteDetails(vote)}>
-                <Card.Content>
-                  <View style={styles.voteHeader}>
-                    <View style={styles.voteInfo}>
-                      <Title style={styles.voteTitle}>vs {vote.opponent}</Title>
-                      <Paragraph style={styles.voteDate}>
-                        {new Date(vote.date || '').toLocaleDateString()}
-                      </Paragraph>
-                    </View>
-                    <Chip style={[styles.statusChip, { backgroundColor: getStatusColor('closed') }]} textStyle={styles.statusChipText}>Closed</Chip>
-                  </View>
-                </Card.Content>
-              </Card>
-            ))}
-          </>
-        )}
-
-        {votes.length === 0 && (
-          <View style={styles.emptyState}>
-            <Paragraph style={styles.emptyText}>No MOTM votes yet</Paragraph>
-            <Paragraph style={styles.emptySubtext}>Tap + to start a vote</Paragraph>
+        {sessions.length === 0 && !loadError ? (
+          <View style={styles.empty}>
+            <Text style={styles.emptyTitle}>No Man of the Match votes yet</Text>
+            <Paragraph style={styles.emptyText}>After a game, tap "New vote", pick your nominees and parents can vote in the app.</Paragraph>
           </View>
-        )}
+        ) : null}
       </ScrollView>
 
-      <FAB
-        icon="plus"
-        label="Create Vote"
-        style={styles.fab}
-        color={COLORS.secondary}
-        onPress={() => {
-          resetCreateData();
-          setCreateModalVisible(true);
-        }}
-      />
+      <FAB icon="star-plus" label="New vote" style={styles.fab} color={COLORS.background} onPress={startCreate} />
 
-      {/* Create Vote Modal */}
       <Portal>
-        <Modal visible={createModalVisible} onDismiss={() => setCreateModalVisible(false)} contentContainerStyle={styles.createModal}>
+        <Modal visible={creating} onDismiss={() => setCreating(false)} contentContainerStyle={styles.modal}>
           <ScrollView>
-            <Title style={styles.modalTitle}>Create MOTM Vote</Title>
+            <Title style={styles.modalTitle}>New Man of the Match vote</Title>
 
-            <Paragraph style={styles.modalLabel}>Select Match</Paragraph>
-            <View style={styles.matchList}>
-              {matches.slice(0, 10).map(match => (
-                <Chip
-                  key={match.id}
-                  selected={createData.matchId === match.id}
-                  onPress={() => selectMatch(match.id)}
-                  style={[
-                    styles.matchChip,
-                    createData.matchId === match.id && styles.matchChipSelected
-                  ]}
-                  textStyle={[
-                    styles.matchChipText,
-                    createData.matchId === match.id && styles.matchChipTextSelected
-                  ]}
-                >
-                  vs {match.opponent} ({new Date(match.date).toLocaleDateString()})
+            <Text style={styles.label}>Match</Text>
+            {matches.length ? (
+              <View style={styles.chips}>
+                {matches.map((m) => (
+                  <Chip key={m.id} selected={matchId === m.id} onPress={() => setMatchId(m.id)} style={styles.chip}>
+                    vs {m.opponent} · {formatDate(m.date)}
+                  </Chip>
+                ))}
+              </View>
+            ) : (
+              <Paragraph style={styles.help}>No recent matches without a vote. Add the fixture or result first.</Paragraph>
+            )}
+
+            <Text style={styles.label}>Nominees ({nominees.length} picked, {MIN_NOMINEES}-{MAX_NOMINEES})</Text>
+            {players.length ? (
+              <View style={styles.chips}>
+                {players.map((p) => (
+                  <Chip key={p.id} selected={nominees.includes(p.id)} onPress={() => toggleNominee(p.id)} style={styles.chip}>
+                    {p.number != null ? `${p.number} ` : ''}{p.name}
+                  </Chip>
+                ))}
+              </View>
+            ) : (
+              <Paragraph style={styles.help}>Add players to your squad first.</Paragraph>
+            )}
+
+            <Text style={styles.label}>Voting closes after</Text>
+            <View style={styles.chips}>
+              {VOTING_LENGTHS.map((v) => (
+                <Chip key={v.hours} selected={hours === v.hours} onPress={() => setHours(v.hours)} style={styles.chip}>
+                  {v.label}
                 </Chip>
               ))}
             </View>
 
-            <Paragraph style={styles.modalLabel}>Voting Window</Paragraph>
-            <View style={styles.dateTimeRow}>
-              <TextInput
-                label="Start Date"
-                value={createData.startDate}
-                onChangeText={t => setCreateData({ ...createData, startDate: t })}
-                style={styles.input}
-                placeholder="YYYY-MM-DD"
-              />
-              <TextInput
-                label="Time"
-                value={createData.startTime}
-                onChangeText={t => setCreateData({ ...createData, startTime: t })}
-                style={styles.input}
-                placeholder="HH:MM"
-              />
-            </View>
-            <View style={styles.dateTimeRow}>
-              <TextInput
-                label="End Date"
-                value={createData.endDate}
-                onChangeText={t => setCreateData({ ...createData, endDate: t })}
-                style={styles.input}
-                placeholder="YYYY-MM-DD"
-              />
-              <TextInput
-                label="Time"
-                value={createData.endTime}
-                onChangeText={t => setCreateData({ ...createData, endTime: t })}
-                style={styles.input}
-                placeholder="HH:MM"
-              />
-            </View>
+            {createError ? <Text style={styles.errorText}>{createError}</Text> : null}
 
-            <View style={styles.checkboxRow}>
-              <Checkbox
-                status={createData.autoPost ? 'checked' : 'unchecked'}
-                onPress={() => setCreateData({ ...createData, autoPost: !createData.autoPost })}
-                color={COLORS.primary}
-              />
-              <Paragraph style={styles.checkboxLabel}>Auto-post result</Paragraph>
-            </View>
-
-            <View style={styles.modalButtons}>
-              <Button mode="outlined" onPress={() => setCreateModalVisible(false)} style={styles.modalButton}>Cancel</Button>
-              <Button
-                mode="contained"
-                onPress={() => {
-                  setCreateData({ ...createData, status: 'draft' });
-                  // Need to use effect or a second wrapper to ensure state is updated, or just pass arg
-                  // Better to just call a helper
-                  handleCreateVoteWithStatus('draft');
-                }}
-                style={styles.modalButton}
-              >
-                Save Draft
-              </Button>
-              <Button
-                mode="contained"
-                onPress={() => {
-                  handleCreateVoteWithStatus('active');
-                }}
-                style={styles.modalButton}
-                buttonColor={COLORS.primary}
-              >
-                Activate
+            <View style={styles.buttons}>
+              <Button mode="outlined" onPress={() => setCreating(false)} style={styles.button}>Cancel</Button>
+              <Button mode="contained" onPress={openVote} loading={saving} disabled={saving} buttonColor={COLORS.primary} textColor={COLORS.background} style={styles.button}>
+                Open vote
               </Button>
             </View>
           </ScrollView>
         </Modal>
-      </Portal>
 
-      {/* Detail Modal */}
-      <Portal>
-        <Modal visible={!!selectedVote} onDismiss={() => setSelectedVote(null)} contentContainerStyle={styles.detailModal}>
-          {selectedVote && (
+        <Modal visible={!!detailSummary} onDismiss={() => setDetailSummary(null)} contentContainerStyle={styles.modal}>
+          {detailSummary ? (
             <ScrollView>
-              <Title style={styles.detailTitle}>vs {selectedVote.opponent}</Title>
-              <View style={{ flexDirection: 'row', marginBottom: 10 }}>
-                <Chip style={{ backgroundColor: getStatusColor(selectedVote.status) }} textStyle={{ color: 'white' }}>{selectedVote.status}</Chip>
-              </View>
+              <Title style={styles.modalTitle}>vs {detailSummary.opponent ?? 'Unknown match'}</Title>
+              <Paragraph style={styles.meta}>{statusLine(detailSummary)}</Paragraph>
 
-              {tallyData && (
+              {!detail && !detailError ? <ActivityIndicator style={styles.spinner} color={COLORS.primary} /> : null}
+
+              {detail ? (
                 <View>
-                  <Title style={styles.sectionSubtitle}>Results ({tallyData.totalVotes || 0} votes)</Title>
-                  {(tallyData.results || []).map((r: any, idx: number) => (
-                    <View key={r.player_id} style={styles.resultRow}>
-                      <Text>{idx + 1}. {r.player_name}</Text>
-                      <Text>{r.vote_count}</Text>
-                    </View>
-                  ))}
+                  <Text style={styles.label}>Votes ({detail.totalVotes ?? 0})</Text>
+                  {detail.nominees.map((n) => {
+                    const count = detail.results?.find((r) => r.player_id === n.playerId)?.vote_count ?? 0;
+                    const share = detail.totalVotes ? count / detail.totalVotes : 0;
+                    return (
+                      <View key={n.playerId} style={styles.tallyRow}>
+                        <View style={styles.tallyText}>
+                          <Text>{n.number != null ? `${n.number}  ` : ''}{n.name}</Text>
+                          <Text style={styles.tallyCount}>{count}</Text>
+                        </View>
+                        <View style={styles.bar}>
+                          <View style={[styles.barFill, { width: `${Math.round(share * 100)}%` }]} />
+                        </View>
+                      </View>
+                    );
+                  })}
                 </View>
-              )}
+              ) : null}
 
-              <View style={styles.detailButtons}>
-                {selectedVote.status !== 'active' && (
-                  <Button mode="contained" onPress={() => handleStatusChange(selectedVote.match_id, 'active')} style={styles.detailButton}>Activate</Button>
-                )}
-                {selectedVote.status === 'active' && (
-                  <Button mode="contained" buttonColor={COLORS.error} onPress={() => handleStatusChange(selectedVote.match_id, 'closed')} style={styles.detailButton}>Close Voting</Button>
-                )}
-                <Button onPress={() => setSelectedVote(null)}>Close</Button>
+              {detailError ? <Text style={styles.errorText}>{detailError}</Text> : null}
+
+              <View style={styles.buttons}>
+                <Button onPress={() => setDetailSummary(null)} style={styles.button}>Done</Button>
+                {detailSummary.status === 'draft' ? (
+                  <Button mode="contained" onPress={() => activateDraft(detailSummary)} loading={busy} disabled={busy} style={styles.button}>
+                    Open vote
+                  </Button>
+                ) : null}
+                {detailSummary.status === 'active' ? (
+                  <Button mode="contained" buttonColor={COLORS.error} onPress={() => closeVote(detailSummary)} loading={busy} disabled={busy} style={styles.button}>
+                    Close & announce
+                  </Button>
+                ) : null}
               </View>
             </ScrollView>
-          )}
+          ) : null}
         </Modal>
       </Portal>
     </View>
   );
-
-  // Helper to avoid stale closure state issues if we just set state then call function
-  async function handleCreateVoteWithStatus(status: 'draft' | 'active') {
-    if (!createData.matchId) {
-      Alert.alert('Invalid Data', 'Please select a match.');
-      return;
-    }
-
-    try {
-      const start = `${createData.startDate}T${createData.startTime}:00`;
-      const end = `${createData.endDate}T${createData.endTime}:00`;
-
-      await motmApi.openVoting(createData.matchId, {
-        votingWindow: { start, end },
-        autoPostEnabled: createData.autoPost,
-        status: status,
-        nominees: []
-      });
-
-      Alert.alert('Success', `MOTM vote saved as ${status}!`);
-      setCreateModalVisible(false);
-      resetCreateData();
-      fetchData();
-    } catch (err) {
-      console.error(err);
-      Alert.alert('Error', 'Failed to save MOTM vote');
-    }
-  }
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
-  centerContent: { justifyContent: 'center', alignItems: 'center', flex: 1 },
-  scrollContainer: { flex: 1, padding: 16 },
-  sectionTitle: { fontSize: 18, fontWeight: 'bold', marginVertical: 10 },
-  voteCard: { marginBottom: 10, borderRadius: 8, elevation: 2 },
-  voteHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  voteInfo: { flex: 1 },
-  voteTitle: { fontSize: 16, fontWeight: 'bold' },
-  voteDate: { fontSize: 12, color: COLORS.textLight },
-  statusChip: { height: 24 },
-  statusChipText: { fontSize: 10, lineHeight: 18, color: 'white' },
-  emptyState: { alignItems: 'center', marginTop: 50 },
-  emptyText: { fontSize: 18, fontWeight: 'bold', color: COLORS.textLight },
-  emptySubtext: { color: COLORS.textLight },
+  center: { justifyContent: 'center', alignItems: 'center' },
+  content: { padding: 16, paddingBottom: 100 },
+  sectionTitle: { color: COLORS.text, fontSize: 18, fontWeight: 'bold', marginVertical: 10 },
+  card: { marginBottom: 10, borderRadius: 8 },
+  cardTitle: { fontSize: 16, fontWeight: 'bold' },
+  meta: { fontSize: 13, opacity: 0.7 },
+  status: { fontSize: 14, marginTop: 4 },
+  empty: { alignItems: 'center', marginTop: 60, paddingHorizontal: 24 },
+  emptyTitle: { fontSize: 18, fontWeight: 'bold', color: COLORS.text, textAlign: 'center', marginBottom: 8 },
+  emptyText: { color: COLORS.textLight, textAlign: 'center' },
   fab: { position: 'absolute', margin: 16, right: 0, bottom: 0, backgroundColor: COLORS.primary },
-  createModal: { backgroundColor: 'white', padding: 20, margin: 20, borderRadius: 8, maxHeight: '80%' },
-  detailModal: { backgroundColor: 'white', padding: 20, margin: 20, borderRadius: 8, maxHeight: '80%' },
-  modalTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: 15 },
-  modalLabel: { fontSize: 14, fontWeight: 'bold', marginTop: 10, marginBottom: 5 },
-  matchList: { flexDirection: 'row', flexWrap: 'wrap' },
-  matchChip: { margin: 4 },
-  matchChipSelected: { backgroundColor: COLORS.primary },
-  matchChipText: {},
-  matchChipTextSelected: { color: 'white' },
-  dateTimeRow: { flexDirection: 'row', justifyContent: 'space-between' },
-  input: { flex: 1, margin: 4, backgroundColor: 'white' },
-  checkboxRow: { flexDirection: 'row', alignItems: 'center', marginVertical: 10 },
-  checkboxLabel: { marginLeft: 8 },
-  modalButtons: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 20 },
-  modalButton: { marginLeft: 10 },
-  detailTitle: { fontSize: 22, fontWeight: 'bold', marginBottom: 5 },
-  sectionSubtitle: { fontSize: 18, fontWeight: 'bold', marginTop: 15, marginBottom: 5 },
-  resultRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 5, borderBottomWidth: 1, borderBottomColor: '#eee' },
-  detailButtons: { marginTop: 20, flexDirection: 'row', justifyContent: 'space-around' },
-  detailButton: { flex: 1, marginHorizontal: 5 }
+  modal: { backgroundColor: 'white', padding: 20, margin: 20, borderRadius: 8, maxHeight: '85%' },
+  modalTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: 8 },
+  label: { fontWeight: 'bold', marginTop: 16, marginBottom: 6 },
+  help: { opacity: 0.7 },
+  chips: { flexDirection: 'row', flexWrap: 'wrap' },
+  chip: { margin: 4 },
+  buttons: { flexDirection: 'row', justifyContent: 'flex-end', flexWrap: 'wrap', marginTop: 20 },
+  button: { marginLeft: 8, marginTop: 8 },
+  errorText: { color: COLORS.error, marginTop: 12 },
+  spinner: { marginVertical: 20 },
+  tallyRow: { marginVertical: 6 },
+  tallyText: { flexDirection: 'row', justifyContent: 'space-between' },
+  tallyCount: { fontWeight: 'bold' },
+  bar: { height: 6, backgroundColor: '#eee', borderRadius: 3, marginTop: 4, overflow: 'hidden' },
+  barFill: { height: 6, backgroundColor: COLORS.primary },
 });

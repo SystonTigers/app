@@ -1,6 +1,7 @@
 
 import { getServerSDK } from '@/lib/sdk';
-import { getClubInfo } from '@/lib/club';
+import { getClubInfo, getLatestMotm } from '@/lib/club';
+import { MotmWinnerCard } from '@/components/MotmWinnerCard';
 import { clubAppLink } from '@/lib/app-link';
 import { isClubTeam } from '@/lib/slug';
 import Link from 'next/link';
@@ -141,12 +142,9 @@ function NewsFeed({ posts }: { posts: any[] }) {
                 {post.title || String(post.content ?? '').split('\n').find((line: string) => line.trim())?.trim()}
               </h3>
             )}
-            <p className="text-gray-500 dark:text-gray-400 text-sm line-clamp-3 mb-4 flex-1">
+            <p className="text-gray-500 dark:text-gray-400 text-sm line-clamp-6 flex-1">
               {post.content}
             </p>
-            <a href="#" className="font-bold text-sm text-gray-900 dark:text-white hover:text-brand transition-colors inline-flex items-center gap-1">
-              Read more <span className="text-brand">&rarr;</span>
-            </a>
           </div>
         </div>
       ))}
@@ -157,7 +155,7 @@ function NewsFeed({ posts }: { posts: any[] }) {
 export default async function TenantHomePage({ params }: HomePageProps) {
   const { tenant } = await params;
   const sdk = getServerSDK(tenant);
-  const club = await getClubInfo(tenant);
+  const [club, motm] = await Promise.all([getClubInfo(tenant), getLatestMotm(tenant)]);
 
   // Parallel data fetching
   const [nextFixtureRes, fixturesRes, postsRes, tableRes] = await Promise.allSettled([
@@ -208,15 +206,14 @@ export default async function TenantHomePage({ params }: HomePageProps) {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Left Col: News */}
           <div className="lg:col-span-2">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-black uppercase tracking-tight">Latest News</h2>
-              <a href="#" className="text-sm font-bold text-brand hover:underline">View All</a>
-            </div>
+            <h2 className="text-2xl font-black uppercase tracking-tight mb-6">Latest News</h2>
             <NewsFeed posts={displayPosts} />
           </div>
 
           {/* Right Col: Sidebar */}
           <div className="space-y-8">
+            {motm && <MotmWinnerCard motm={motm} />}
+
             {/* Mini League Table */}
             <div className="bg-white dark:bg-gray-800 chamfer-lg shadow-sm border border-gray-100 dark:border-gray-700 p-6">
               <h3 className="text-lg font-black uppercase tracking-tight mb-4">League Standings</h3>

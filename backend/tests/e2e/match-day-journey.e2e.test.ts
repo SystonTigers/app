@@ -2,11 +2,11 @@ import { describe, it, expect } from "vitest";
 import { call, registerAdmin, registerMember } from "./helpers";
 
 /**
- * E2E: Match day - fixtures, result and Man of the Match voting.
- * Staff create the fixture and run the vote; parents/players vote once each.
+ * E2E: Match day - fixtures, results and the league table.
+ * Staff create fixtures and results; parents and players read them.
  */
 describe("E2E: Match Day Journey", () => {
-  it("staff add a fixture, members see it, MOTM vote runs end to end", async () => {
+  it("staff add a fixture and members see it", async () => {
     const admin = await registerAdmin("coach");
     const parent = await registerMember("parent");
 
@@ -34,31 +34,7 @@ describe("E2E: Match Day Journey", () => {
     });
     expect(denied.status).toBe(403);
 
-    // Voting isn't open yet
-    const early = await call(`/api/v1/matches/${fixtureId}/motm/vote`, { token: parent.token, body: { candidateId: "player-1" } });
-    expect(early.status).toBe(400);
-
-    // Only staff can open voting
-    const parentOpen = await call(`/api/v1/admin/matches/${fixtureId}/motm/open`, { token: parent.token, body: {} });
-    expect(parentOpen.status).toBe(403);
-    const open = await call(`/api/v1/admin/matches/${fixtureId}/motm/open`, { token: admin.token, body: {} });
-    expect(open.status).toBe(200);
-
-    // Parent votes, then changes their mind: still one vote
-    expect((await call(`/api/v1/matches/${fixtureId}/motm/vote`, { token: parent.token, body: { candidateId: "player-1" } })).status).toBe(200);
-    expect((await call(`/api/v1/matches/${fixtureId}/motm/vote`, { token: parent.token, body: { candidateId: "player-2" } })).status).toBe(200);
-    // Coach votes too
-    expect((await call(`/api/v1/matches/${fixtureId}/motm/vote`, { token: admin.token, body: { candidateId: "player-2" } })).status).toBe(200);
-
-    const results = await call(`/api/v1/motm/${fixtureId}/results`, { token: parent.token });
-    expect(results.status).toBe(200);
-    expect(results.data.data.totalVotes).toBe(2);
-    expect(results.data.data.results[0]).toMatchObject({ player_id: "player-2", vote_count: 2 });
-
-    // Close voting: no more votes
-    expect((await call(`/api/v1/admin/matches/${fixtureId}/motm/close`, { token: admin.token, body: {} })).status).toBe(200);
-    const late = await call(`/api/v1/matches/${fixtureId}/motm/vote`, { token: parent.token, body: { candidateId: "player-1" } });
-    expect(late.status).toBe(400);
+    // Man of the Match voting is covered end to end in motm-journey.e2e.test.ts
   });
 
   it("records a result and builds the league table", async () => {

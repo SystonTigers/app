@@ -223,7 +223,7 @@ function MainDrawer() {
       />
 
       {/* Match Day Group */}
-      <Drawer.Screen name="MOTMVoting" component={MOTMVotingScreen} options={{ title: 'Vote for MOTM' }} />
+      <Drawer.Screen name="MOTMVoting" component={MOTMVotingScreen} options={{ title: 'Man of the Match' }} />
       <Drawer.Screen name="LastManStanding" component={LastManStandingScreen} options={{ title: 'Predictions' }} />
 
       {/* Training Group */}

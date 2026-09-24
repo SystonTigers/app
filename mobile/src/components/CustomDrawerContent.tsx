@@ -15,6 +15,7 @@ const MENU_GROUPS = [
         title: 'Match Day',
         icon: 'soccer-field',
         items: [
+            { label: 'Man of the Match', screen: 'MOTMVoting', icon: 'star-circle', roles: ['admin', 'manager', 'coach', 'parent', 'player'] },
             { label: 'Predictions', screen: 'LastManStanding', icon: 'crystal-ball', roles: ['admin', 'manager', 'coach', 'parent', 'player'] },
         ]
     },

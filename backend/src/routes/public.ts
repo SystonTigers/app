@@ -1,5 +1,6 @@
 import { json } from "../services/util";
 import { logJSON } from "../lib/log";
+import { closeExpiredSessions, findMatch, parseWinnerIds, playerNames } from "../services/motm";
 
 type TenantRow = { id: string; slug: string; name?: string | null };
 type PublicFixture = {
@@ -578,6 +579,29 @@ export async function handlePublicTenantRequest(
             }
 
             return json({ success: true, data: stats }, 200, corsHdrs);
+        }
+
+        // Latest Man of the Match winner(s) for the club page
+        if (resource === "motm" && segments[3] === "latest") {
+            await closeExpiredSessions(env, tenant.id);
+            const session = await env.DB.prepare(
+                `SELECT match_id, winner_player_ids, closed_at FROM motm_sessions
+                 WHERE tenant_id = ? AND status = 'closed' AND winner_player_ids IS NOT NULL AND winner_player_ids != '[]'
+                 ORDER BY closed_at DESC LIMIT 1`
+            ).bind(tenant.id).first() as { match_id: string; winner_player_ids: string; closed_at: string | null } | null;
+            if (!session) { return json({ success: true, data: null }, 200, corsHdrs); }
+            const ids = parseWinnerIds(session.winner_player_ids);
+            const [match, names] = await Promise.all([findMatch(env, tenant.id, session.match_id), playerNames(env, tenant.id, ids)]);
+            const winners = ids.map((id) => names.get(id)).filter(Boolean).map((p) => ({ name: p!.name, number: p!.number, photoUrl: p!.photoUrl }));
+            if (!winners.length) { return json({ success: true, data: null }, 200, corsHdrs); }
+            return json({
+                success: true,
+                data: {
+                    match: match ? { opponent: match.opponent, date: match.date, ourScore: match.ourScore, theirScore: match.theirScore } : null,
+                    winners,
+                    closedAt: session.closed_at,
+                },
+            }, 200, corsHdrs);
         }
 
         if (resource === "squad") {

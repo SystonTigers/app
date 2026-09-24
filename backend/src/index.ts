@@ -671,9 +671,12 @@ import {
     handleOpenVoting,
     handleCloseVoting,
     handleGetTally,
-    handleListMotmSessions
+    handleListMotmSessions,
+    handleListOpenVotes
 } from "./routes/motm";
 
+// Must come before /motm/:matchId
+router.get("/api/:v/motm/open", (req, env, corsHdrs) => handleListOpenVotes(req, env, corsHdrs));
 router.get("/api/:v/motm/:matchId", (req, env, corsHdrs) => {
     const params = (req as any).params || {};
     return handleInitVote(req, env, corsHdrs, params.matchId);

@@ -25,3 +25,21 @@ export async function getClubInfo(slug: string): Promise<ClubInfo> {
     return fallback;
   }
 }
+
+export interface LatestMotm {
+  match: { opponent: string; date: string; ourScore: number | null; theirScore: number | null } | null;
+  winners: Array<{ name: string; number: number | null; photoUrl: string | null }>;
+  closedAt: string | null;
+}
+
+/** The club's most recent Man of the Match winner(s), or null. Never throws. */
+export async function getLatestMotm(slug: string): Promise<LatestMotm | null> {
+  try {
+    const res = await fetch(`${API_BASE}/public/${encodeURIComponent(slug)}/motm/latest`, { cache: 'no-store' });
+    if (!res.ok) return null;
+    const body = await res.json();
+    return body?.data?.winners?.length ? (body.data as LatestMotm) : null;
+  } catch {
+    return null;
+  }
+}

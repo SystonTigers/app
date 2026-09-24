@@ -788,58 +788,92 @@ export const gotmApi = {
   },
 };
 
+export interface MotmNominee {
+  playerId: string;
+  name: string;
+  number: number | null;
+  photoUrl: string | null;
+}
+
+export interface MotmVote {
+  matchId: string;
+  match: { id: string; opponent: string; date: string; ourScore: number | null; theirScore: number | null } | null;
+  status: 'draft' | 'active' | 'closed';
+  votingOpen: boolean;
+  opensAt: string | null;
+  closesAt: string | null;
+  nominees: MotmNominee[];
+  userVote: string | null;
+  winners: MotmNominee[];
+  /** Only for staff, or once voting has closed */
+  results: { player_id: string; player_name: string | null; vote_count: number }[] | null;
+  totalVotes: number | null;
+}
+
+export interface MotmSessionSummary {
+  match_id: string;
+  status: 'draft' | 'active' | 'closed';
+  voting_start_at: string | null;
+  voting_end_at: string | null;
+  opponent: string | null;
+  date: string | null;
+  vote_count: number;
+  nominee_count: number;
+  votingOpen: boolean;
+  winners: string[];
+}
+
+/** The server's message for a failed request, or a fallback. */
+export function apiErrorMessage(error: unknown, fallback: string): string {
+  const data = (error as { response?: { data?: { error?: unknown; message?: unknown } } })?.response?.data;
+  const err = data?.error;
+  if (typeof err === 'string') return err;
+  if (err && typeof err === 'object' && typeof (err as { message?: unknown }).message === 'string') {
+    return (err as { message: string }).message;
+  }
+  if (typeof data?.message === 'string') return data.message;
+  return fallback;
+}
+
 export const motmApi = {
-  // Open voting for a match
+  /** Staff: open (or re-open) a vote with nominees; closes 48h later unless a window is given. */
   openVoting: async (matchId: string, data: {
-    nominees: { candidateId: string; name: string }[];
-    votingWindow: { start: string; end: string };
-    autoPostEnabled: boolean;
+    nominees?: string[];
+    votingWindow?: { start?: string; end?: string };
+    autoPostEnabled?: boolean;
     status?: 'draft' | 'active';
-  }) => {
-    const response = await api.post(`/api/v1/admin/matches/${matchId}/motm/open`, {
-      tenant: getTenantId(),
-      ...data,
-    });
+  }): Promise<{ success: boolean; data: MotmVote }> => {
+    const response = await api.post(`/api/v1/admin/matches/${matchId}/motm/open`, data);
     return response.data;
   },
 
-  // List all MOTM sessions (admin)
-  listSessions: async () => {
-    const response = await api.get('/api/v1/admin/motm/sessions', {
-      params: { tenant: getTenantId() },
-    });
+  /** Staff: every vote for the club */
+  listSessions: async (): Promise<{ success: boolean; data: MotmSessionSummary[] }> => {
+    const response = await api.get('/api/v1/admin/motm/sessions');
     return response.data;
   },
 
-  // Close voting
-  closeVoting: async (matchId: string) => {
-    const response = await api.post(`/api/v1/admin/matches/${matchId}/motm/close`, {
-      tenant: getTenantId(),
-    });
+  /** Staff: close the vote and announce the winner */
+  closeVoting: async (matchId: string): Promise<{ success: boolean; data: { winners: MotmNominee[] } }> => {
+    const response = await api.post(`/api/v1/admin/matches/${matchId}/motm/close`, {});
     return response.data;
   },
 
-  // Get vote tally
-  getTally: async (matchId: string) => {
-    const response = await api.get(`/api/v1/admin/matches/${matchId}/motm/tally`, {
-      params: { tenant: getTenantId() },
-    });
-    return response.data;
-  },
-
-
-  // Get vote status (public)
-  getVoteStatus: async (matchId: string) => {
+  /** Staff: one vote with nominees and live tally */
+  getVote: async (matchId: string): Promise<{ success: boolean; data: MotmVote }> => {
     const response = await api.get(`/api/v1/motm/${matchId}`);
     return response.data;
   },
 
-  // Cast a vote (public endpoint)
-  castVote: async (matchId: string, candidateId: string) => {
-    const response = await api.post(`/api/v1/matches/${matchId}/motm/vote`, {
-      tenant: getTenantId(),
-      candidateId,
-    });
+  /** Members: open votes and recent winners */
+  listOpen: async (): Promise<{ success: boolean; data: { open: MotmVote[]; recent: MotmVote[] } }> => {
+    const response = await api.get('/api/v1/motm/open');
+    return response.data;
+  },
+
+  /** Members: vote (or change vote) for a nominee */
+  castVote: async (matchId: string, candidateId: string): Promise<{ success: boolean }> => {
+    const response = await api.post(`/api/v1/matches/${matchId}/motm/vote`, { candidateId });
     return response.data;
   },
 };
