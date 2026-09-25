@@ -51,9 +51,10 @@ export async function loadFixture(env: DB, tenantId: string, fixtureId: string):
 /** Non-deleted events, oldest first. */
 export async function loadEvents(env: DB, tenantId: string, fixtureId: string): Promise<LiveEvent[]> {
   const { results } = await env.DB.prepare(
-    `SELECT id, type, minute, player_id, player_name, player2_id, player2_name, text, created_at
+    `SELECT id, type, minute, player_id, player_name, player2_id, player2_name, text,
+            COALESCE(occurred_at, created_at) AS created_at
      FROM live_match_events WHERE tenant_id = ? AND fixture_id = ? AND deleted_at IS NULL
-     ORDER BY created_at, rowid`,
+     ORDER BY COALESCE(occurred_at, created_at), rowid`,
   ).bind(tenantId, fixtureId).all<EventRow>();
   return (results || []).map((r) => ({
     id: r.id,

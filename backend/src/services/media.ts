@@ -7,7 +7,7 @@
  */
 
 /** Key prefixes the public media route will serve. Anything else is 404. */
-export const PUBLIC_MEDIA_PREFIXES = ["gallery/", "headshots/", "players/", "badges/", "sponsors/", "products/", "videos/"] as const;
+export const PUBLIC_MEDIA_PREFIXES = ["gallery/", "headshots/", "players/", "badges/", "sponsors/", "products/", "videos/", "social/"] as const;
 
 export const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // 10 MB
 
@@ -156,6 +156,10 @@ export async function handleGetMedia(req: Request, env: MediaEnv): Promise<Respo
     headers.set("cache-control", "public, max-age=31536000, immutable");
   }
   headers.set("x-content-type-options", "nosniff");
+  // Public media is shown by the app and website (other addresses) and drawn
+  // onto post graphics, so it must be loadable cross-origin
+  headers.set("cross-origin-resource-policy", "cross-origin");
+  headers.set("access-control-allow-origin", "*");
 
   // onlyIf precondition failed (e.g. If-None-Match matched): no body returned
   if (!("body" in object)) {

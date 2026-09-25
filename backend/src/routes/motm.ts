@@ -9,6 +9,7 @@
  */
 import { json } from "../services/util";
 import { requireStaff, requireTenantJWT, hasAnyRole, STAFF_ROLES, type TenantClaims } from "../services/auth";
+import { playersWhoPlayed } from "../services/lineup";
 import {
   closeExpiredSessions,
   closeSession,
@@ -17,13 +18,15 @@ import {
   getSession,
   getTally,
   isVotingOpen,
+  openVote,
   parseWinnerIds,
+  getJobBySource,
   playerNames,
   type MotmSessionRow,
 } from "../services/motm";
 
 const MIN_NOMINEES = 2;
-const MAX_NOMINEES = 15;
+const MAX_NOMINEES = 25;
 const DEFAULT_VOTING_HOURS = 48;
 
 type Env = { DB: D1Database; [key: string]: unknown };
@@ -226,26 +229,14 @@ export async function handleOpenVoting(req: Request, env: Env, corsHdrs: Headers
       }
     } else {
       ids = (await getNominees(env, claims.tenantId, matchId)).map((n) => n.playerId);
+      // No nominees chosen: everyone who played (starting line-up plus subs who came on)
+      if (!ids.length) ids = (await playersWhoPlayed(env, claims.tenantId, matchId)).slice(0, MAX_NOMINEES);
     }
     if (status === "active" && ids.length < MIN_NOMINEES) {
-      return fail(corsHdrs, 400, "VALIDATION", `Pick at least ${MIN_NOMINEES} nominees before opening the vote.`);
+      return fail(corsHdrs, 400, "VALIDATION", `Pick at least ${MIN_NOMINEES} nominees, or set the line-up so everyone who played is nominated.`);
     }
 
-    const now = new Date().toISOString();
-    await env.DB.batch([
-      env.DB.prepare(
-        `INSERT INTO motm_sessions (match_id, tenant_id, status, voting_start_at, voting_end_at, auto_post, winner_player_ids, closed_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, NULL, NULL, ?)
-         ON CONFLICT(match_id) DO UPDATE SET
-           status = excluded.status, voting_start_at = excluded.voting_start_at, voting_end_at = excluded.voting_end_at,
-           auto_post = excluded.auto_post, winner_player_ids = NULL, closed_at = NULL, updated_at = excluded.updated_at
-         WHERE motm_sessions.tenant_id = excluded.tenant_id`,
-      ).bind(matchId, claims.tenantId, status, start, end, body.autoPostEnabled === false ? 0 : 1, now),
-      env.DB.prepare(`DELETE FROM motm_nominees WHERE tenant_id = ? AND match_id = ?`).bind(claims.tenantId, matchId),
-      ...ids.map((playerId) =>
-        env.DB.prepare(`INSERT INTO motm_nominees (tenant_id, match_id, player_id) VALUES (?, ?, ?)`).bind(claims.tenantId, matchId, playerId),
-      ),
-    ]);
+    await openVote(env, claims.tenantId, matchId, { nominees: ids, status, start, end, autoPost: body.autoPostEnabled !== false });
 
     // Another club can't take over this match id
     const session = await getSession(env, claims.tenantId, matchId);
@@ -265,8 +256,11 @@ export async function handleCloseVoting(req: Request, env: Env, corsHdrs: Header
     const session = await getSession(env, claims.tenantId, matchId);
     if (!session) return fail(corsHdrs, 404, "NOT_FOUND", "There's no Man of the Match vote for this match.");
     const winnerIds = session.status === "closed" ? parseWinnerIds(session.winner_player_ids) : await closeSession(env, claims.tenantId, matchId);
-    const names = await playerNames(env, claims.tenantId, winnerIds);
-    return json({ success: true, data: { winners: winnerIds.map((id) => names.get(id)).filter(Boolean) } }, 200, corsHdrs);
+    const [names, post] = await Promise.all([
+      playerNames(env, claims.tenantId, winnerIds),
+      getJobBySource(env, claims.tenantId, "motm", matchId),
+    ]);
+    return json({ success: true, data: { winners: winnerIds.map((id) => names.get(id)).filter(Boolean), post } }, 200, corsHdrs);
   } catch (err) {
     return internalError(corsHdrs, "close", err);
   }

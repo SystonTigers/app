@@ -11,9 +11,30 @@
  *   DELETE /api/v1/fixtures/:id/live/events/:eventId     undo an event (staff)
  */
 import { json } from "../services/util";
-import { requireStaff, requireTenantJWT, type TenantClaims } from "../services/auth";
+import { hasAnyRole, requireStaff, requireTenantJWT, STAFF_ROLES, type TenantClaims } from "../services/auth";
 import { computeState, isLiveEventType, matchMinute, rejectReason, undoBlockedReason, type LiveEventType } from "../services/liveMatchState";
-import { describeMatch, loadEvents, loadFixture, recentLiveFixtureIds, recordFullTime, revertFullTime, setMatchStatus } from "../services/liveMatch";
+import { describeMatch, loadEvents, loadFixture, recentLiveFixtureIds, recordFullTime, revertFullTime, setMatchStatus, type LiveFixture } from "../services/liveMatch";
+import { cancelPost, jobsForFixture, postPerson, queuePost, type JobSummary } from "../services/social/jobs";
+import { isPostKind } from "../services/social/content";
+import type { LiveEvent } from "../services/liveMatchState";
+import { getSession, openVote } from "../services/motm";
+import { playersWhoPlayed } from "../services/lineup";
+
+const MOTM_VOTING_HOURS = 48;
+
+/**
+ * Full time: open Man of the Match voting straight away, nominating everyone
+ * who played (starting line-up plus subs who came on). Needs a line-up; if
+ * the manager already set up a vote, it's left alone.
+ */
+async function openMotmAtFullTime(env: Env, tenantId: string, fixtureId: string): Promise<boolean> {
+  if (await getSession(env, tenantId, fixtureId)) return false;
+  const nominees = await playersWhoPlayed(env, tenantId, fixtureId);
+  if (nominees.length < 2) return false;
+  const start = new Date();
+  const end = new Date(start.getTime() + MOTM_VOTING_HOURS * 3600_000);
+  return openVote(env, tenantId, fixtureId, { nominees: nominees.slice(0, 25), status: "active", start: start.toISOString(), end: end.toISOString(), autoPost: true });
+}
 
 type Env = { DB: D1Database; [key: string]: unknown };
 
@@ -37,10 +58,37 @@ function internalError(corsHdrs: Headers, where: string, err: unknown): Response
   return fail(corsHdrs, 500, "INTERNAL", "Something went wrong with the live match. Please try again.");
 }
 
-async function matchResponse(env: Env, tenantId: string, fixtureId: string, corsHdrs: Headers): Promise<Response> {
-  const fixture = await loadFixture(env, tenantId, fixtureId);
+async function matchResponse(env: Env, claims: TenantClaims, fixtureId: string, corsHdrs: Headers, extra: Record<string, unknown> = {}, status = 200): Promise<Response> {
+  const fixture = await loadFixture(env, claims.tenantId, fixtureId);
   if (!fixture) return fail(corsHdrs, 404, "NOT_FOUND", "Match not found.");
-  return json({ success: true, data: describeMatch(fixture, await loadEvents(env, tenantId, fixtureId)) }, 200, corsHdrs);
+  const view = describeMatch(fixture, await loadEvents(env, claims.tenantId, fixtureId));
+  // Staff also see what's been (or is about to be) posted for each update
+  const posts = hasAnyRole(claims, STAFF_ROLES) ? await jobsForFixture(env, claims.tenantId, fixtureId) : undefined;
+  return json({ success: true, data: { ...view, ...(posts ? { posts } : {}), ...extra } }, status, corsHdrs);
+}
+
+/** Queue the automatic post for a newly recorded event (if the club posts that kind of event). */
+async function queueEventPost(env: Env, tenantId: string, fixture: LiveFixture, events: LiveEvent[], event: LiveEvent): Promise<JobSummary | null> {
+  if (!isPostKind(event.type)) return null;
+  const state = describeMatch(fixture, events);
+  const [player, player2] = await Promise.all([
+    postPerson(env, tenantId, event.playerId, event.playerName),
+    postPerson(env, tenantId, event.player2Id, event.player2Name),
+  ]);
+  return queuePost(env, {
+    tenantId,
+    fixtureId: fixture.id,
+    sourceType: "live_event",
+    sourceId: event.id,
+    match: { opponent: fixture.opponent, homeAway: fixture.homeAway, ourScore: state.ourScore, theirScore: state.theirScore, competition: fixture.competition },
+    input: {
+      kind: event.type,
+      minute: event.minute,
+      player,
+      player2,
+      scorers: event.type === "full_time" ? events.filter((e) => e.type === "goal").map((e) => e.playerName ?? "Unknown") : undefined,
+    },
+  });
 }
 
 export async function handleListLive(req: Request, env: Env, corsHdrs: Headers): Promise<Response> {
@@ -63,7 +111,7 @@ export async function handleGetLive(req: Request, env: Env, corsHdrs: Headers, f
   const claims = await authenticate(req, env, corsHdrs, false);
   if (claims instanceof Response) return claims;
   try {
-    return await matchResponse(env, claims.tenantId, fixtureId, corsHdrs);
+    return await matchResponse(env, claims, fixtureId, corsHdrs);
   } catch (err) {
     return internalError(corsHdrs, "get", err);
   }
@@ -81,7 +129,7 @@ export async function handleRecordLiveEvent(req: Request, env: Env, corsHdrs: He
   if (claims instanceof Response) return claims;
   try {
     const body = (await req.json().catch(() => ({}))) as {
-      type?: unknown; playerId?: unknown; player2Id?: unknown; text?: unknown; minute?: unknown; clientEventId?: unknown; halfLength?: unknown;
+      type?: unknown; playerId?: unknown; player2Id?: unknown; text?: unknown; minute?: unknown; clientEventId?: unknown; halfLength?: unknown; occurredAt?: unknown;
     };
     if (!isLiveEventType(body.type)) return fail(corsHdrs, 400, "VALIDATION", "Choose what happened.");
     const type: LiveEventType = body.type;
@@ -93,7 +141,7 @@ export async function handleRecordLiveEvent(req: Request, env: Env, corsHdrs: He
     // A retried tap (poor signal on the touchline) is recorded once
     const repeat = await env.DB.prepare(`SELECT 1 AS hit FROM live_match_events WHERE tenant_id = ? AND client_event_id = ?`)
       .bind(claims.tenantId, clientEventId).first();
-    if (repeat) return matchResponse(env, claims.tenantId, fixtureId, corsHdrs);
+    if (repeat) return matchResponse(env, claims, fixtureId, corsHdrs);
 
     const events = await loadEvents(env, claims.tenantId, fixtureId);
     const state = computeState(events);
@@ -115,32 +163,54 @@ export async function handleRecordLiveEvent(req: Request, env: Env, corsHdrs: He
       text = Number.isInteger(half) && half >= 5 && half <= 60 ? String(half) : "";
     }
 
+    // When the manager tapped (sent by the phone), so a slow connection doesn't shift the
+    // match clock or the footage timings. Trusted only if it's within the last 15 minutes.
     const now = Date.now();
+    const tapped = Number(body.occurredAt);
+    const occurredAt = Number.isFinite(tapped) && tapped <= now + 60_000 && tapped >= now - 15 * 60_000 ? Math.round(tapped) : now;
     const given = Number(body.minute);
-    const minute = Number.isInteger(given) && given >= 0 && given <= 130 ? given : matchMinute(state, now);
+    const minute = Number.isInteger(given) && given >= 0 && given <= 130 ? given : matchMinute(state, occurredAt);
 
+    const eventId = crypto.randomUUID();
     try {
       await env.DB.prepare(
-        `INSERT INTO live_match_events (id, tenant_id, fixture_id, type, minute, player_id, player_name, player2_id, player2_name, text, client_event_id, created_by, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO live_match_events (id, tenant_id, fixture_id, type, minute, player_id, player_name, player2_id, player2_name, text, client_event_id, created_by, created_at, occurred_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       ).bind(
-        crypto.randomUUID(), claims.tenantId, fixtureId, type, minute,
+        eventId, claims.tenantId, fixtureId, type, minute,
         player?.id ?? null, player?.name ?? null, player2?.id ?? null, player2?.name ?? null,
-        text || null, clientEventId, claims.userId ?? null, now,
+        text || null, clientEventId, claims.userId ?? null, now, occurredAt,
       ).run();
     } catch (err) {
       // Two staff tapped the same half-time/full-time button at once
       if (/UNIQUE/.test(err instanceof Error ? err.message : String(err))) {
-        return matchResponse(env, claims.tenantId, fixtureId, corsHdrs);
+        return matchResponse(env, claims, fixtureId, corsHdrs);
       }
       throw err;
     }
 
     const updated = await loadEvents(env, claims.tenantId, fixtureId);
     const newState = computeState(updated);
-    if (type === "full_time") await recordFullTime(env, claims.tenantId, fixture, updated);
+    let motmOpened = false;
+    if (type === "full_time") {
+      await recordFullTime(env, claims.tenantId, fixture, updated);
+      try {
+        motmOpened = await openMotmAtFullTime(env, claims.tenantId, fixtureId);
+      } catch (err) {
+        console.error(JSON.stringify({ level: "error", msg: "motm_auto_open_failed", fixtureId, error: err instanceof Error ? err.message : String(err) }));
+      }
+    }
     await setMatchStatus(env, claims.tenantId, fixtureId, newState.status);
-    return json({ success: true, data: describeMatch(fixture, updated) }, 201, corsHdrs);
+
+    // A failed post must never lose the update itself
+    let newPost: JobSummary | null = null;
+    try {
+      const recorded = updated.find((e) => e.id === eventId);
+      if (recorded) newPost = await queueEventPost(env, claims.tenantId, fixture, updated, recorded);
+    } catch (err) {
+      console.error(JSON.stringify({ level: "error", msg: "social_queue_failed", fixtureId, error: err instanceof Error ? err.message : String(err) }));
+    }
+    return matchResponse(env, claims, fixtureId, corsHdrs, { newPost, motmOpened }, 201);
   } catch (err) {
     return internalError(corsHdrs, "record", err);
   }
@@ -162,7 +232,9 @@ export async function handleUndoLiveEvent(req: Request, env: Env, corsHdrs: Head
 
     const remaining = events.filter((e) => e.id !== eventId);
     await setMatchStatus(env, claims.tenantId, fixtureId, computeState(remaining).status);
-    return matchResponse(env, claims.tenantId, fixtureId, corsHdrs);
+    // Stop the post going out, or take it down from the app and Facebook if it already has
+    const undonePost = await cancelPost(env, claims.tenantId, "live_event", eventId);
+    return matchResponse(env, claims, fixtureId, corsHdrs, { undonePost });
   } catch (err) {
     return internalError(corsHdrs, "undo", err);
   }

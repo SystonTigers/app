@@ -271,7 +271,8 @@ new_classes = [ "Provisioner" ]
 # CRON TRIGGERS (Global)
 # ─────────────────────────────────────────────────────────
 [triggers]
-crons = [ "*/5 * * * *", "0 6 * * *" ]
+# One trigger: every minute sends due social posts; other jobs run on the 5-minute beat
+crons = [ "* * * * *" ]
 
 # ─────────────────────────────────────────────────────────
 # NOTES ON SECRETS

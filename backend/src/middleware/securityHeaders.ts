@@ -112,6 +112,8 @@ export function withSecurity(init: ResponseInit = {}, environment?: string): Res
   }
 
   for (const [k, v] of Object.entries(headers)) {
+    // Public media sets its own cross-origin policy so the app and website can show it
+    if (k === "Cross-Origin-Resource-Policy" && h.get(k) === "cross-origin") { continue; }
     h.set(k, v);
   }
 

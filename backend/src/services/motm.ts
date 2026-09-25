@@ -1,3 +1,6 @@
+import { loadFixture } from "./liveMatch";
+import { getJobBySource, postPerson, queuePost, type JobSummary } from "./social/jobs";
+
 /**
  * Man of the Match: data helpers shared by the MOTM routes and the public
  * club page. Every query is scoped to one club (tenant_id).
@@ -115,6 +118,57 @@ export function isVotingOpen(session: Pick<MotmSessionRow, "status" | "voting_st
 }
 
 /**
+ * Open (or re-open) a vote with these nominees. Returns false if another club
+ * already has a vote on this match id.
+ */
+export async function openVote(env: DB, tenantId: string, matchId: string, args: {
+  nominees: string[]; status: "active" | "draft"; start: string; end: string; autoPost: boolean;
+}): Promise<boolean> {
+  const now = new Date().toISOString();
+  await env.DB.batch([
+    env.DB.prepare(
+      `INSERT INTO motm_sessions (match_id, tenant_id, status, voting_start_at, voting_end_at, auto_post, winner_player_ids, closed_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, NULL, NULL, ?)
+       ON CONFLICT(match_id) DO UPDATE SET
+         status = excluded.status, voting_start_at = excluded.voting_start_at, voting_end_at = excluded.voting_end_at,
+         auto_post = excluded.auto_post, winner_player_ids = NULL, closed_at = NULL, updated_at = excluded.updated_at
+       WHERE motm_sessions.tenant_id = excluded.tenant_id`,
+    ).bind(matchId, tenantId, args.status, args.start, args.end, args.autoPost ? 1 : 0, now),
+    env.DB.prepare(`DELETE FROM motm_nominees WHERE tenant_id = ? AND match_id = ?`).bind(tenantId, matchId),
+    ...args.nominees.map((playerId) =>
+      env.DB.prepare(`INSERT INTO motm_nominees (tenant_id, match_id, player_id) VALUES (?, ?, ?)`).bind(tenantId, matchId, playerId),
+    ),
+  ]);
+  return !!(await getSession(env, tenantId, matchId));
+}
+
+/** The automatic post announcing the winner(s), if the club posts MOTM results. */
+export async function queueMotmPost(env: DB, tenantId: string, matchId: string, winnerIds: string[]): Promise<JobSummary | null> {
+  if (!winnerIds.length) return null;
+  const [fixture, match, first, second] = await Promise.all([
+    loadFixture(env, tenantId, matchId),
+    findMatch(env, tenantId, matchId),
+    postPerson(env, tenantId, winnerIds[0], null),
+    winnerIds[1] ? postPerson(env, tenantId, winnerIds[1], null) : Promise.resolve(null),
+  ]);
+  if (!match) return null;
+  return queuePost(env, {
+    tenantId,
+    fixtureId: fixture ? matchId : null,
+    sourceType: "motm",
+    sourceId: matchId,
+    match: {
+      opponent: match.opponent,
+      homeAway: fixture?.homeAway ?? "home",
+      ourScore: match.ourScore ?? 0,
+      theirScore: match.theirScore ?? 0,
+      competition: fixture?.competition ?? null,
+    },
+    input: { kind: "motm", minute: null, player: first, player2: second },
+  });
+}
+
+/**
  * Close a vote and store the winner(s). Safe to run twice: votes can't change
  * once closed, and the MOTM award is only added to player stats once.
  */
@@ -137,9 +191,21 @@ export async function closeSession(env: DB, tenantId: string, matchId: string): 
       ).bind(crypto.randomUUID(), tenantId, matchId, playerId, Date.now(), tenantId, matchId, playerId),
     ),
   ];
+  const alreadyClosed = await env.DB.prepare(`SELECT status FROM motm_sessions WHERE tenant_id = ? AND match_id = ?`)
+    .bind(tenantId, matchId).first<{ status: string }>();
   await env.DB.batch(statements);
+  // Announce the winner (once). A failed post must not stop the vote closing.
+  if (alreadyClosed?.status !== "closed") {
+    try {
+      await queueMotmPost(env, tenantId, matchId, winners);
+    } catch (err) {
+      console.error(JSON.stringify({ level: "error", msg: "motm_post_failed", matchId, error: err instanceof Error ? err.message : String(err) }));
+    }
+  }
   return winners;
 }
+
+export { getJobBySource };
 
 /** Close any of this club's votes whose closing time has passed. */
 export async function closeExpiredSessions(env: DB, tenantId: string, now = Date.now()): Promise<void> {

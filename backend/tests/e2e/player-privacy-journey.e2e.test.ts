@@ -89,7 +89,8 @@ describe("Public club page names", () => {
     expect((await call("/api/v1/tenants/me", { method: "PATCH", token: parent.token, body: { publicFullNames: true } })).status).toBe(403);
     const saved = await call("/api/v1/tenants/me", { method: "PATCH", token: owner.token, body: { publicFullNames: true } });
     expect(saved.status).toBe(200);
-    expect((await call("/api/v1/tenants/me", { token: owner.token })).data.tenant.public_full_names).toBe(1);
+    const saved2 = (await call("/api/v1/tenants/me", { token: owner.token })).data.tenant;
+    expect([saved2.public_name_style, saved2.public_photos]).toEqual(["full", 1]);
 
     const full = await findHarry();
     expect(full.name).toBe("Harry Public");
@@ -98,6 +99,13 @@ describe("Public club page names", () => {
     // Back to the default
     await call("/api/v1/tenants/me", { method: "PATCH", token: owner.token, body: { publicFullNames: false } });
     expect((await findHarry()).name).toBe("Harry P.");
+
+    // Initial and surname, without photos
+    await call("/api/v1/tenants/me", { method: "PATCH", token: owner.token, body: { publicNameStyle: "initial_last", publicPhotos: false } });
+    const initialLast = await findHarry();
+    expect(initialLast.name).toBe("H. Public");
+    expect(initialLast.photo).toBeUndefined();
+    await call("/api/v1/tenants/me", { method: "PATCH", token: owner.token, body: { publicNameStyle: "first_initial" } });
 
     // Logged-in members still see the normal team sheet
     const inApp = (await call("/api/v1/squad", { token: parent.token })).data.data.find((p: any) => p.id === added.data.playerId);

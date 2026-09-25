@@ -40,7 +40,10 @@ export async function updateTenantMe(req: Request, env: any, corsHdrs: Headers):
             primaryColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Colour must be a hex value like #FFD700").optional(),
             secondaryColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Colour must be a hex value like #000000").optional(),
             badgeUrl: z.string().url().optional(),
-            // Show players' full names and photos on the public club page (off = "Alfie S.", no photos)
+            // How players appear on the club page and social posts
+            publicNameStyle: z.enum(["full", "first_initial", "initial_last"]).optional(),
+            publicPhotos: z.boolean().optional(),
+            // Older single switch: full names and photos on/off
             publicFullNames: z.boolean().optional()
             // Status is deliberately not editable here: it's set by sign-up (trial) and billing (active).
         });
@@ -65,9 +68,15 @@ export async function updateTenantMe(req: Request, env: any, corsHdrs: Headers):
             params.push(data.slug);
         }
 
-        if (data.publicFullNames !== undefined) {
-            updates.push("public_full_names = ?");
-            params.push(data.publicFullNames ? 1 : 0);
+        const nameStyle = data.publicNameStyle ?? (data.publicFullNames === undefined ? undefined : data.publicFullNames ? "full" : "first_initial");
+        const photos = data.publicPhotos ?? data.publicFullNames;
+        if (nameStyle !== undefined) {
+            updates.push("public_name_style = ?");
+            params.push(nameStyle);
+        }
+        if (photos !== undefined) {
+            updates.push("public_photos = ?");
+            params.push(photos ? 1 : 0);
         }
 
         if (updates.length > 0) {
@@ -114,7 +123,8 @@ export async function updateTenantMe(req: Request, env: any, corsHdrs: Headers):
                 id: tenantId,
                 slug: newSlug,
                 name: data.name,
-                ...(data.publicFullNames !== undefined ? { publicFullNames: data.publicFullNames } : {}),
+                ...(nameStyle !== undefined ? { publicNameStyle: nameStyle } : {}),
+                ...(photos !== undefined ? { publicPhotos: photos } : {}),
             }
         }, 200, corsHdrs);
 

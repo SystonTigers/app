@@ -5,6 +5,7 @@ import { getAuthFailure, requireStaff } from "./services/auth";
 import postQueueConsumer from "./queue-consumer";
 import { json } from "./services/util";
 import { handleGetMedia } from "./services/media";
+import { processDueJobs } from "./services/social/jobs";
 import { corsHeaders, isPreflight } from "./middleware/cors";
 import { newRequestId, logJSON } from "./lib/log";
 import { withSecurity } from "./middleware/securityHeaders";
@@ -673,6 +674,12 @@ router.delete("/api/:v/fixtures/:id/live/events/:eventId", (req, env, corsHdrs) 
     return handleUndoLiveEvent(req, env, corsHdrs, params.id, params.eventId);
 });
 
+// Line-ups (routes/lineup.ts)
+import { handleGetLineup, handleSaveLineup, handlePublishLineup } from "./routes/lineup";
+router.get("/api/:v/fixtures/:id/lineup", (req, env, corsHdrs) => handleGetLineup(req, env, corsHdrs, ((req as any).params || {}).id));
+router.put("/api/:v/fixtures/:id/lineup", (req, env, corsHdrs) => handleSaveLineup(req, env, corsHdrs, ((req as any).params || {}).id));
+router.post("/api/:v/fixtures/:id/lineup/publish", (req, env, corsHdrs) => handlePublishLineup(req, env, corsHdrs, ((req as any).params || {}).id));
+
 // MOTM Voting Routes
 import {
     handleInitVote,
@@ -725,6 +732,20 @@ import {
     handleUpdateSocialConfig,
     handleGetSocialConfig
 } from "./routes/social";
+// Automatic posting to the club app, Facebook and Instagram (routes/socialPosting.ts)
+import {
+    handleGetSocialSettings, handlePutSocialSettings, handleStartMetaConnect, handleMetaCallback,
+    handleListMetaChoices, handleSelectMetaPage, handleDisconnectSocial, handleUploadGraphic
+} from "./routes/socialPosting";
+router.get("/api/:v/social/settings", (req, env, corsHdrs) => handleGetSocialSettings(req, env, corsHdrs));
+router.put("/api/:v/social/settings", (req, env, corsHdrs) => handlePutSocialSettings(req, env, corsHdrs));
+router.post("/api/:v/social/meta/start", (req, env, corsHdrs) => handleStartMetaConnect(req, env, corsHdrs));
+router.get("/api/:v/social/meta/callback", (req, env) => handleMetaCallback(req, env));
+router.get("/api/:v/social/meta/choices/:key", (req, env, corsHdrs) => handleListMetaChoices(req, env, corsHdrs, ((req as any).params || {}).key));
+router.post("/api/:v/social/meta/select", (req, env, corsHdrs) => handleSelectMetaPage(req, env, corsHdrs));
+router.delete("/api/:v/social/connections/:platform", (req, env, corsHdrs) => handleDisconnectSocial(req, env, corsHdrs, ((req as any).params || {}).platform));
+router.post("/api/:v/social/jobs/:id/graphic", (req, env, corsHdrs, _requestId, ctx) => handleUploadGraphic(req, env, corsHdrs, ((req as any).params || {}).id, ctx));
+
 router.post("/api/:v/social/posts", staffOnly((req, env, corsHdrs) => handleCreateSocialPost(req, env, corsHdrs)));
 router.get("/api/:v/social/posts", (req, env, corsHdrs) => handleListSocialPosts(req, env, corsHdrs));
 router.delete("/api/:v/social/posts/:id", (req, env, corsHdrs) => {
@@ -1411,7 +1432,7 @@ export default {
         }
 
         try {
-            const response = await router.handle(req, env, corsHdrs, requestId);
+            const response = await router.handle(req, env, corsHdrs, requestId, ctx);
             if (response instanceof Response) {
                 // A handler swallowed a failed auth check and returned a generic 5xx
                 const authStatus = response.status >= 500 ? getAuthFailure(req) : undefined;
@@ -1446,6 +1467,14 @@ export default {
         const minute = scheduledTime.getUTCMinutes();
         const dayOfWeek = scheduledTime.getUTCDay();
         const dayOfMonth = scheduledTime.getUTCDate();
+
+        // Every minute: send automatic social posts that are due
+        ctx.waitUntil(processDueJobs(env).catch((error) => logJSON({ level: 'error', msg: 'Social posting cron failed', error: error instanceof Error ? error.message : String(error) })));
+
+        // Everything else runs on the 5-minute beat (the checks below expect minute 0-4 once an hour)
+        if (minute % 5 !== 0) {
+            return;
+        }
 
         logJSON({ level: 'info', msg: 'Cron triggered', hour, minute, dayOfWeek, dayOfMonth });
 

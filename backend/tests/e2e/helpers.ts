@@ -19,6 +19,9 @@ export async function call(
   let body: BodyInit | undefined;
   if (opts.body instanceof FormData) {
     body = opts.body;
+  } else if (opts.body instanceof Uint8Array || opts.body instanceof Blob) {
+    // Raw bytes (e.g. an image); the caller sets content-type
+    body = opts.body as BodyInit;
   } else if (opts.body !== undefined) {
     headers["content-type"] = "application/json";
     body = JSON.stringify(opts.body);
