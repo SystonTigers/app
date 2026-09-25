@@ -9,7 +9,7 @@ import { json } from "../services/util";
 import { requireStaff, requireTenantJWT, type TenantClaims } from "../services/auth";
 import { getLineup, lineupProblem, saveLineup } from "../services/lineup";
 import { loadFixture } from "../services/liveMatch";
-import { queuePost } from "../services/social/jobs";
+import { drawAndPostSoon, queuePost } from "../services/social/jobs";
 
 type Env = { DB: D1Database; [key: string]: unknown };
 
@@ -60,7 +60,7 @@ export async function handleSaveLineup(req: Request, env: Env, corsHdrs: Headers
   return json({ success: true, data: await getLineup(env, claims.tenantId, fixtureId) }, 200, corsHdrs);
 }
 
-export async function handlePublishLineup(req: Request, env: Env, corsHdrs: Headers, fixtureId: string): Promise<Response> {
+export async function handlePublishLineup(req: Request, env: Env, corsHdrs: Headers, fixtureId: string, ctx?: ExecutionContext): Promise<Response> {
   const claims = await authenticate(req, env, corsHdrs, true);
   if (claims instanceof Response) return claims;
   const fixture = await loadFixture(env, claims.tenantId, fixtureId);
@@ -74,7 +74,10 @@ export async function handlePublishLineup(req: Request, env: Env, corsHdrs: Head
     fixtureId,
     sourceType: "lineup",
     sourceId: `${fixtureId}:${Date.now()}`,
-    match: { opponent: fixture.opponent, homeAway: fixture.homeAway, ourScore: 0, theirScore: 0, competition: fixture.competition },
+    match: {
+      opponent: fixture.opponent, homeAway: fixture.homeAway, ourScore: 0, theirScore: 0,
+      competition: fixture.competition, date: fixture.date, time: fixture.time, venue: fixture.venue,
+    },
     input: {
       kind: "lineup",
       minute: null,
@@ -88,5 +91,6 @@ export async function handlePublishLineup(req: Request, env: Env, corsHdrs: Head
     },
   });
   if (!newPost) return fail(corsHdrs, 409, "NOT_POSTED", "Line-up posts are switched off in your settings.");
+  drawAndPostSoon(env as never, ctx, claims.tenantId, newPost);
   return json({ success: true, data: { newPost } }, 201, corsHdrs);
 }

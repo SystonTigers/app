@@ -3,7 +3,6 @@ import { ActivityIndicator, Alert, RefreshControl, ScrollView, StyleSheet, View 
 import { Button, Card, Chip, FAB, Modal, Paragraph, Portal, Text, Title } from 'react-native-paper';
 import { useFocusEffect } from '@react-navigation/native';
 import { COLORS } from '../config';
-import { sendGraphic } from '../utils/postGraphic';
 import {
   apiErrorMessage,
   fixturesApi,
@@ -180,8 +179,6 @@ export default function ManageMOTMScreen() {
           setBusy(true);
           try {
             const res = await motmApi.closeVoting(summary.match_id);
-            // Draw the winner graphic for the automatic post
-            sendGraphic(res.data.post);
             const names = res.data.winners.map((w) => w.name).join(' & ');
             setDetailSummary(null);
             Alert.alert('Vote closed', names ? `Man of the Match: ${names}` : 'Nobody voted, so there is no winner this time.');

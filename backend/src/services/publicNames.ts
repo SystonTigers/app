@@ -5,7 +5,9 @@
  * always see the normal team sheet; this only affects public output.
  */
 
-export type NameStyle = "full" | "first_initial" | "initial_last";
+/** "Sam Smith" | "Sam S." | "S. Smith" | "Sam" | "Smith" */
+export const NAME_STYLES = ["full", "first_initial", "initial_last", "first", "last"] as const;
+export type NameStyle = (typeof NAME_STYLES)[number];
 
 export interface PublicNamePolicy {
   style: NameStyle;
@@ -15,7 +17,7 @@ export interface PublicNamePolicy {
 export const DEFAULT_NAME_POLICY: PublicNamePolicy = { style: "first_initial", photos: false };
 
 export function isNameStyle(value: unknown): value is NameStyle {
-  return value === "full" || value === "first_initial" || value === "initial_last";
+  return typeof value === "string" && (NAME_STYLES as readonly string[]).includes(value);
 }
 
 // Match shorthand that can follow a scorer's name
@@ -42,10 +44,24 @@ export function initialLastName(full: string): string {
   return [`${first[0]?.toUpperCase() ?? ""}.`, last, ...extras].join(" ");
 }
 
+/** "Alfie James Smith" -> "Alfie"; extras like "2" or "pen" are kept. */
+export function firstName(full: string): string {
+  const { first, extras } = splitName(full);
+  return [first, ...extras].filter(Boolean).join(" ");
+}
+
+/** "Alfie James Smith" -> "Smith" (just the first name when there's no surname). */
+export function lastName(full: string): string {
+  const { first, last, extras } = splitName(full);
+  return [last ?? first, ...extras].filter(Boolean).join(" ");
+}
+
 export function publicName(policy: PublicNamePolicy, full: string): string {
   switch (policy.style) {
     case "full": return full.trim();
     case "initial_last": return initialLastName(full);
+    case "first": return firstName(full);
+    case "last": return lastName(full);
     default: return shortName(full);
   }
 }

@@ -52,9 +52,9 @@ export async function registerMember(prefix = "member"): Promise<{ token: string
 }
 
 /** A club admin: registered as a member, promoted in the DB (as an admin would), then logged in. */
-export async function registerAdmin(prefix = "admin"): Promise<{ token: string; userId: string }> {
+export async function registerAdmin(prefix = "admin", role = "tenant_admin"): Promise<{ token: string; userId: string }> {
   const { email, userId } = await registerMember(prefix);
-  await env.DB.prepare(`UPDATE auth_users SET roles = '["tenant_admin"]' WHERE id = ?`).bind(userId).run();
+  await env.DB.prepare(`UPDATE auth_users SET roles = ? WHERE id = ?`).bind(JSON.stringify([role]), userId).run();
   const { status, data } = await call("/api/v1/auth/login", {
     body: { tenant_id: TENANT, email, password: "SecurePass123!" },
   });

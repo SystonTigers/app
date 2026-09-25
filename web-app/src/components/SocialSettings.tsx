@@ -1,11 +1,14 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { Fragment, useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { API_BASE, errorMessage, getSessionToken } from '@/lib/session';
+import { GraphicsSettings, type GraphicsInfo } from './GraphicsSettings';
 
-type NameStyle = 'full' | 'first_initial' | 'initial_last';
-type Kind = 'lineup' | 'goal' | 'opp_goal' | 'kick_off' | 'half_time' | 'second_half' | 'full_time' | 'yellow' | 'red' | 'sub' | 'motm';
+type NameStyle = 'full' | 'first_initial' | 'initial_last' | 'first' | 'last';
+type MatchKind = 'lineup' | 'goal' | 'opp_goal' | 'kick_off' | 'half_time' | 'second_half' | 'full_time' | 'yellow' | 'red' | 'sub' | 'motm';
+type ClubKind = 'countdown' | 'matchday' | 'fixtures' | 'results' | 'table' | 'postponed' | 'birthday' | 'player_of_week' | 'player_of_month' | 'milestone' | 'throwback' | 'quote';
+type Kind = MatchKind | ClubKind;
 type Events = Record<Kind, { feed: boolean; social: boolean }>;
 
 interface Settings {
@@ -15,9 +18,10 @@ interface Settings {
     events: Events;
     connections: { facebook: { id: string; name: string | null } | null; instagram: { id: string; name: string | null } | null };
     canConnect: boolean;
+    graphics: GraphicsInfo;
 }
 
-const KINDS: Array<[Kind, string]> = [
+const MATCH_KINDS: Array<[Kind, string]> = [
     ['lineup', 'Team news (line-up)'],
     ['kick_off', 'Kick-off'],
     ['goal', 'Our goals'],
@@ -31,10 +35,28 @@ const KINDS: Array<[Kind, string]> = [
     ['motm', 'Man of the Match'],
 ];
 
+/** Posted automatically on a schedule (UK time). */
+const CLUB_KINDS: Array<[Kind, string]> = [
+    ['countdown', '3 days to go (6pm, 3 days before)'],
+    ['matchday', 'Match day (8am)'],
+    ['postponed', 'Game postponed (when you mark it)'],
+    ['fixtures', "This week's fixtures (Monday 6pm)"],
+    ['results', "This week's results (Sunday 7pm)"],
+    ['table', 'League table (Monday 12pm)'],
+    ['player_of_week', 'Player of the week (Monday 7pm)'],
+    ['player_of_month', 'Player of the month (1st of the month)'],
+    ['milestone', 'Milestones: 10, 25, 50... appearances or goals (7pm)'],
+    ['birthday', 'Player birthdays (8am, no age shown)'],
+    ['throwback', 'Throwback Thursday photo (6pm)'],
+    ['quote', 'Quote of the week (Wednesday 12pm)'],
+];
+
 const NAME_STYLES: Array<[NameStyle, string]> = [
     ['first_initial', 'Sam S.'],
     ['initial_last', 'S. Smith'],
     ['full', 'Sam Smith'],
+    ['first', 'Sam'],
+    ['last', 'Smith'],
 ];
 
 const CONNECT_MESSAGES: Record<string, string> = {
@@ -102,19 +124,36 @@ export function SocialSettings() {
         }
     }, [request, search, headers]);
 
-    const saveNames = async (nameStyle: NameStyle, photos: boolean) => {
+    // Managers can change the name style; photos are the club admins' decision
+    const saveNameStyle = async (nameStyle: NameStyle) => {
+        const data = await request('/api/v1/social/settings', { method: 'PUT', body: JSON.stringify({ nameStyle }) }, "We couldn't save that.");
+        if (data) {
+            apply(data);
+            setMessage({ text: 'Saved. New posts use this name style.', error: false });
+        }
+    };
+
+    const savePhotos = async (photos: boolean) => {
         setBusy(true);
         setMessage(null);
         try {
-            const res = await fetch(`${API_BASE}/api/v1/tenants/me`, { method: 'PATCH', headers: headers(), body: JSON.stringify({ publicNameStyle: nameStyle, publicPhotos: photos }) });
+            const res = await fetch(`${API_BASE}/api/v1/tenants/me`, { method: 'PATCH', headers: headers(), body: JSON.stringify({ publicPhotos: photos }) });
             if (!res.ok) {
                 setMessage({ text: await errorMessage(res, "We couldn't save that."), error: true });
                 return;
             }
-            setSettings((s) => (s ? { ...s, nameStyle, photos } : s));
+            setSettings((s) => (s ? { ...s, photos } : s));
             setMessage({ text: 'Saved.', error: false });
         } finally {
             setBusy(false);
+        }
+    };
+
+    const saveGraphics = async (body: { pack?: string; sponsorName?: string | null }, done: string) => {
+        const data = await request('/api/v1/social/settings', { method: 'PUT', body: JSON.stringify(body) }, "We couldn't save that.");
+        if (data) {
+            apply(data);
+            setMessage({ text: done, error: false });
         }
     };
 
@@ -175,14 +214,14 @@ export function SocialSettings() {
 
             <section className={card} aria-labelledby="names-title">
                 <h3 id="names-title" className={heading}>Players on your club page and social posts</h3>
-                <p className={help}>Anyone can see these. Only show full names or photos if parents have agreed. Parents and players in your app always see full names.</p>
+                <p className={help}>Anyone can see these. Only show full names or photos if parents have agreed. Parents and players in your app always see full names. Team managers can change the name style; only club admins can switch photos on.</p>
                 <fieldset className="mt-4">
                     <legend className="text-sm font-medium text-gray-900 dark:text-white mb-2">Show names as</legend>
                     <div className="flex flex-wrap gap-3">
                         {NAME_STYLES.map(([value, label]) => (
                             <label key={value} className="flex items-center gap-2 text-sm text-gray-900 dark:text-white border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 cursor-pointer">
                                 <input id={`name-style-${value}`} type="radio" name="name-style" className="accent-brand" checked={settings.nameStyle === value} disabled={busy}
-                                    onChange={() => saveNames(value, settings.photos)} />
+                                    onChange={() => saveNameStyle(value)} />
                                 {label}
                             </label>
                         ))}
@@ -190,10 +229,13 @@ export function SocialSettings() {
                 </fieldset>
                 <label className="mt-4 flex items-start gap-3 cursor-pointer">
                     <input id="public-photos" type="checkbox" className="mt-1 h-5 w-5 accent-brand" checked={settings.photos} disabled={busy}
-                        onChange={(e) => saveNames(settings.nameStyle, e.target.checked)} />
+                        onChange={(e) => savePhotos(e.target.checked)} />
                     <span className="text-sm text-gray-900 dark:text-white">Show players&apos; photos (on goal graphics and the club page)</span>
                 </label>
             </section>
+
+            <GraphicsSettings graphics={settings.graphics} busy={busy} onSave={saveGraphics}
+                onMessage={(text, error) => setMessage({ text, error })} />
 
             <section className={card} aria-labelledby="connect-title">
                 <h3 id="connect-title" className={heading}>Facebook and Instagram</h3>
@@ -259,22 +301,27 @@ export function SocialSettings() {
                             </tr>
                         </thead>
                         <tbody>
-                            {KINDS.map(([kind, label]) => (
-                                <tr key={kind} className="border-b border-gray-100 dark:border-gray-700 text-gray-900 dark:text-white">
-                                    <td className="py-2">{label}</td>
-                                    {(['feed', 'social'] as const).map((where) => (
-                                        <td key={where} className="py-2 text-center">
-                                            <input
-                                                id={`post-${kind}-${where}`}
-                                                type="checkbox"
-                                                className="h-5 w-5 accent-brand"
-                                                aria-label={`${label}: ${where === 'feed' ? 'club app' : 'Facebook and Instagram'}`}
-                                                checked={events[kind][where]}
-                                                onChange={(e) => setEvents({ ...events, [kind]: { ...events[kind], [where]: e.target.checked } })}
-                                            />
-                                        </td>
+                            {([['During matches', MATCH_KINDS], ['Club posts', CLUB_KINDS]] as const).map(([group, kinds]) => (
+                                <Fragment key={group}>
+                                    <tr><th colSpan={3} scope="colgroup" className="pt-4 pb-1 text-left text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">{group}</th></tr>
+                                    {kinds.map(([kind, label]) => (
+                                        <tr key={kind} className="border-b border-gray-100 dark:border-gray-700 text-gray-900 dark:text-white">
+                                            <td className="py-2">{label}</td>
+                                            {(['feed', 'social'] as const).map((where) => (
+                                                <td key={where} className="py-2 text-center">
+                                                    <input
+                                                        id={`post-${kind}-${where}`}
+                                                        type="checkbox"
+                                                        className="h-5 w-5 accent-brand"
+                                                        aria-label={`${label}: ${where === 'feed' ? 'club app' : 'Facebook and Instagram'}`}
+                                                        checked={events[kind][where]}
+                                                        onChange={(e) => setEvents({ ...events, [kind]: { ...events[kind], [where]: e.target.checked } })}
+                                                    />
+                                                </td>
+                                            ))}
+                                        </tr>
                                     ))}
-                                </tr>
+                                </Fragment>
                             ))}
                         </tbody>
                     </table>

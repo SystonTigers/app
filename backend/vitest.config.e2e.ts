@@ -10,6 +10,8 @@ export default defineWorkersConfig(async () => {
   return {
     test: {
       include: E2E_TEST_FILES,
+      // Journeys that post to social media wait for the server to draw graphics
+      testTimeout: 30_000,
       setupFiles: ["./tests/e2e/setup.ts"],
       poolOptions: {
         workers: {
@@ -29,6 +31,8 @@ export default defineWorkersConfig(async () => {
               META_APP_ID: "meta-app-1",
               META_APP_SECRET: "meta-secret",
               META_LOGIN_CONFIG_ID: "cfg-1",
+              // Journeys draw and post explicitly (see services/social/publish.ts)
+              SOCIAL_BACKGROUND_DRAWING: "off",
             },
           },
         },

@@ -14,8 +14,8 @@ import { json } from "../services/util";
 import { hasAnyRole, requireStaff, requireTenantJWT, STAFF_ROLES, type TenantClaims } from "../services/auth";
 import { computeState, isLiveEventType, matchMinute, rejectReason, undoBlockedReason, type LiveEventType } from "../services/liveMatchState";
 import { describeMatch, loadEvents, loadFixture, recentLiveFixtureIds, recordFullTime, revertFullTime, setMatchStatus, type LiveFixture } from "../services/liveMatch";
-import { cancelPost, jobsForFixture, postPerson, queuePost, type JobSummary } from "../services/social/jobs";
-import { isPostKind } from "../services/social/content";
+import { cancelPost, drawAndPostSoon, jobsForFixture, postPerson, queuePost, type JobSummary } from "../services/social/jobs";
+import { MATCH_KINDS, type MatchKind } from "../services/social/content";
 import type { LiveEvent } from "../services/liveMatchState";
 import { getSession, openVote } from "../services/motm";
 import { playersWhoPlayed } from "../services/lineup";
@@ -67,7 +67,6 @@ async function matchResponse(env: Env, claims: TenantClaims, fixtureId: string, 
   return json({ success: true, data: { ...view, ...(posts ? { posts } : {}), ...extra } }, status, corsHdrs);
 }
 
-/** Queue the automatic post for a newly recorded event (if the club posts that kind of event). */
 /** How many goals this event's scorer has so far this match, counting this one. */
 function goalNumberFor(events: LiveEvent[], event: LiveEvent): number {
   if (!event.playerId) return 1;
@@ -77,9 +76,11 @@ function goalNumberFor(events: LiveEvent[], event: LiveEvent): number {
   return upTo === -1 ? n + 1 : n;
 }
 
+/** Queue the automatic post for a newly recorded event (if the club posts that kind of event). */
 async function queueEventPost(env: Env, tenantId: string, fixture: LiveFixture, events: LiveEvent[], event: LiveEvent): Promise<JobSummary | null> {
-  if (!isPostKind(event.type)) return null;
+  if (!(MATCH_KINDS as readonly string[]).includes(event.type)) return null;
   const state = describeMatch(fixture, events);
+  const upTo = events.slice(0, events.findIndex((e) => e.id === event.id) + 1);
   const [player, player2] = await Promise.all([
     postPerson(env, tenantId, event.playerId, event.playerName),
     postPerson(env, tenantId, event.player2Id, event.player2Name),
@@ -89,14 +90,19 @@ async function queueEventPost(env: Env, tenantId: string, fixture: LiveFixture, 
     fixtureId: fixture.id,
     sourceType: "live_event",
     sourceId: event.id,
-    match: { opponent: fixture.opponent, homeAway: fixture.homeAway, ourScore: state.ourScore, theirScore: state.theirScore, competition: fixture.competition },
+    match: {
+      opponent: fixture.opponent, homeAway: fixture.homeAway, ourScore: state.ourScore, theirScore: state.theirScore,
+      competition: fixture.competition, date: fixture.date, time: fixture.time, venue: fixture.venue,
+    },
     input: {
-      kind: event.type,
+      kind: event.type as MatchKind,
       minute: event.minute,
       player,
       player2,
       goalNumber: event.type === "goal" ? goalNumberFor(events, event) : undefined,
-      scorers: event.type === "full_time" ? events.filter((e) => e.type === "goal").map((e) => e.playerName ?? "Unknown") : undefined,
+      scorers: event.type === "full_time" || event.type === "half_time"
+        ? upTo.filter((e) => e.type === "goal").map((e) => ({ name: e.playerName ?? "Unknown", minute: e.minute }))
+        : undefined,
     },
   });
 }
@@ -134,7 +140,7 @@ async function squadName(env: Env, tenantId: string, playerId: unknown): Promise
   return row ?? "invalid";
 }
 
-export async function handleRecordLiveEvent(req: Request, env: Env, corsHdrs: Headers, fixtureId: string): Promise<Response> {
+export async function handleRecordLiveEvent(req: Request, env: Env, corsHdrs: Headers, fixtureId: string, ctx?: ExecutionContext): Promise<Response> {
   const claims = await authenticate(req, env, corsHdrs, true);
   if (claims instanceof Response) return claims;
   try {
@@ -217,6 +223,7 @@ export async function handleRecordLiveEvent(req: Request, env: Env, corsHdrs: He
     try {
       const recorded = updated.find((e) => e.id === eventId);
       if (recorded) newPost = await queueEventPost(env, claims.tenantId, fixture, updated, recorded);
+      drawAndPostSoon(env, ctx, claims.tenantId, newPost);
     } catch (err) {
       console.error(JSON.stringify({ level: "error", msg: "social_queue_failed", fixtureId, error: err instanceof Error ? err.message : String(err) }));
     }

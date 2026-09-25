@@ -81,19 +81,41 @@ with personal data.
 - Man of the Match: nominees default to everyone who played (starters plus subs
   who came on, `playersWhoPlayed`); full time opens a 48h vote automatically
   when a line-up exists. Closing the vote queues the winner post.
-- Automatic posts: `services/social/` builds the caption and graphic spec
-  (applying the club's name style: full / `first_initial` / `initial_last`;
-  photos only if `public_photos`). The manager's phone draws the JPEG
-  (`mobile/src/utils/socialGraphic.ts`) and uploads it. `social_jobs` wait for
-  the undo window (60s, per club) and the once-a-minute cron (`processDueJobs`)
-  posts to the club feed, Facebook and Instagram. Which events go where is set
-  per club in the website's admin settings. TikTok needs TikTok's app review
-  first; until then managers use Share.
+- Automatic posts: `services/social/` builds the caption and a `Graphic`
+  (`services/graphics/types.ts`), applying the club's name style (full /
+  `first_initial` / `initial_last` / `first` / `last`; managers can change it)
+  and showing photos only if `public_photos`. `social_jobs` wait for the undo
+  window (60s, per club) and the once-a-minute cron (`processDueJobs`) draws
+  any missing graphic and posts to the club feed, Facebook and Instagram.
+  Which events go where is set per club in the website's admin settings.
+  TikTok needs TikTok's app review first; until then managers use Share.
 - A scorer's 2nd, 3rd, 4th... goal in a match posts as BRACE! / HAT-TRICK! /
   FOUR GOALS! (`goalMilestone`); the graphic shows one ball per goal and turns
   gold from a hat-trick.
 - Cron runs every minute for social posts; the other scheduled jobs only run
   when `minute % 5 === 0`.
+
+## Social graphics and club posts
+
+- The server draws every graphic (`services/graphics/`): SVG layouts in a
+  design pack, rendered to JPEG by resvg (WASM, `resvg.wasm` is a copy of the
+  npm package's file; refresh with `npm run graphics:wasm`) with bundled OFL
+  fonts (`fonts/`, widths in `fonts/metrics.ts` from `scripts/font-metrics.py`).
+  `npm run graphics:preview -- <dir>` draws every layout in every pack.
+- Packs: Touchline and Floodlights (free, small "Made with Boost Huddle"
+  credit) and Elite (premium, unlocked per club in `graphics_unlocks` via
+  `PUT /api/v1/admin/tenants/:id/graphics/:pack`; no purchase flow until Stripe
+  is live). Clubs pick a pack and sponsor in the website's admin settings.
+- Opponent badges come from the website's Opponents page (`opponent_teams`);
+  opponents are added there automatically when a post mentions them. PNG/JPG
+  only: the renderer can't draw WebP or SVG (initials are shown instead).
+- Scheduled club posts (`services/social/scheduler.ts`, 5-minute cron, UK time):
+  countdown, match day, postponed, weekly fixtures/results, league table,
+  birthdays (club app only, no age), player of the week/month, milestones,
+  throwback (public only if the club allows player photos) and quotes. Each
+  has a unique `source_id`, so running twice never posts twice.
+- End-to-end tests set `SOCIAL_BACKGROUND_DRAWING=off` and draw/post
+  explicitly; the Workers test runner can't cope with WASM work left running.
 
 ## Access rules worth knowing
 

@@ -1,14 +1,14 @@
 /**
- * Journey: automatic posts from Match Centre. A goal is recorded, the phone
- * uploads the graphic, and a minute later it goes to the club app feed,
- * Facebook and Instagram. Undo within the minute stops it; undo afterwards
+ * Journey: automatic posts from Match Centre. A goal is recorded, the server
+ * draws the graphic in the club's style, and a minute later it goes to the
+ * club app feed, Facebook and Instagram. Undo within the minute stops it; undo afterwards
  * removes it from the app and Facebook. Facebook/Instagram are simulated.
  */
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { env } from "cloudflare:test";
 import { call, registerAdmin, registerMember } from "./helpers";
 import { encryptToken } from "../../src/services/social/tokenCrypto";
-import { processDueJobs } from "../../src/services/social/jobs";
+import { processDueJobs, renderJobImage } from "../../src/services/social/jobs";
 
 afterEach(() => { vi.restoreAllMocks(); });
 
@@ -66,15 +66,29 @@ describe("Automatic social posts", () => {
     const job = goal.data.data.newPost;
     expect(job.targets).toEqual(["feed", "facebook", "instagram"]);
     expect(job.caption).toBe("⚽ GOAL! Sam S. 23' (assist Will J.)\nSyston Tigers (test) 1–0 Social Rovers");
-    expect(job.graphic).toMatchObject({ headline: "GOAL!", playerName: "Sam S.", secondary: "Assist: Will J.", minute: 23, photoUrl: null });
+    expect(job.graphic).toMatchObject({
+      v: 2, layout: "moment", headline: "GOAL!", playerName: "Sam S.", secondary: "Assist: Will J.", minute: 23, photoUrl: null, footer: "League",
+      home: { name: "Syston Tigers (test)", score: 1, isUs: true }, away: { name: "Social Rovers", score: 0, badgeUrl: null },
+    });
     expect(job.postAfter - Date.now()).toBeGreaterThan(50_000);
 
-    // The phone uploads the graphic; parents can't
+    // The server draws the graphic (straight away in the background, or when posting)
+    expect(await renderJobImage(env as any, "syston", job.id)).toBe(true);
+    const imageKey = (await env.DB.prepare(`SELECT image_key FROM social_jobs WHERE id = ?`).bind(job.id).first<any>()).image_key as string;
+    expect(imageKey).toMatch(new RegExp(`^social/syston/${job.id}-[0-9a-f]{8}\\.jpg$`));
+    const drawn = await env.R2_MEDIA.get(imageKey);
+    const bytes = new Uint8Array(await drawn!.arrayBuffer());
+    expect([bytes[0], bytes[1]]).toEqual([0xff, 0xd8]);
+    expect(bytes.length).toBeGreaterThan(20_000);
+    // Older app versions still send their own; ignored once there's one, and parents can't
     const parent = await registerMember("social-parent");
     const denied = await call(`/api/v1/social/jobs/${job.id}/graphic`, { method: "POST", token: parent.token, body: JPEG, headers: { "content-type": "image/jpeg" } });
     expect(denied.status).toBe(403);
-    const upload = await uploadGraphic(coach.token, job.id);
-    expect(upload.data.data.hasImage).toBe(true);
+    await uploadGraphic(coach.token, job.id);
+    expect((await env.DB.prepare(`SELECT image_key FROM social_jobs WHERE id = ?`).bind(job.id).first<any>()).image_key).toBe(imageKey);
+    // The opponent now appears on the Opponents page, ready for a badge
+    const opp = await env.DB.prepare(`SELECT team_name FROM opponent_teams WHERE tenant_id = 'syston' AND normalized_name = 'social-rovers'`).first<any>();
+    expect(opp.team_name).toBe("Social Rovers");
 
     // Nothing goes out during the undo minute
     const meta = fakeMeta();
@@ -95,10 +109,10 @@ describe("Automatic social posts", () => {
     const feed = await call("/api/v1/feed", { token: parent.token });
     const item = feed.data.data.find((p: any) => p.id === `social-${job.id}`);
     expect(item.content).toContain("GOAL! Sam S.");
-    expect(item.imageUrl).toBe(`https://api.test/api/v1/media/social/syston/${job.id}.jpg`);
+    expect(item.imageUrl).toBe(`https://api.test/api/v1/media/${imageKey}`);
 
     // The graphic is publicly readable (Instagram fetches it) from any site
-    const image = await call(`/api/v1/media/social/syston/${job.id}.jpg`);
+    const image = await call(`/api/v1/media/${imageKey}`);
     expect(image.status).toBe(200);
     expect(image.res.headers.get("cross-origin-resource-policy")).toBe("cross-origin");
   });
@@ -118,7 +132,6 @@ describe("Automatic social posts", () => {
     // This one goes out, then gets undone
     const goal = await post({ type: "goal", playerId: sam, minute: 9 });
     const job = goal.data.data.newPost;
-    await uploadGraphic(coach.token, job.id);
     await processDueJobs(env as any, { now: Date.now() + 61_000, fetchImpl: meta.f });
     const deletes = vi.spyOn(globalThis, "fetch").mockResolvedValue(ok({ success: true }));
     const late = await call(`/api/v1/fixtures/${fixtureId}/live/events/${goal.data.data.events[0].id}`, { method: "DELETE", token: coach.token });
@@ -142,17 +155,62 @@ describe("Automatic social posts", () => {
     expect(saved.data.data.events.yellow).toEqual({ feed: true, social: true });
     expect((await call("/api/v1/social/settings", { method: "PUT", token: coach.token, body: { events: { nonsense: { feed: true, social: true } } } })).status).toBe(400);
 
-    await call("/api/v1/tenants/me", { method: "PATCH", token: coach.token, body: { publicNameStyle: "initial_last" } });
+    // Team managers can choose how names appear, but nothing else here
+    const manager = await registerAdmin("social-manager", "manager");
+    expect((await call("/api/v1/social/settings", { method: "PUT", token: manager.token, body: { undoWindow: true } })).status).toBe(403);
+    expect((await call("/api/v1/social/settings", { method: "PUT", token: manager.token, body: { nameStyle: "nickname" } })).status).toBe(400);
+    const styled = await call("/api/v1/social/settings", { method: "PUT", token: manager.token, body: { nameStyle: "initial_last" } });
+    expect(styled.data.data.nameStyle).toBe("initial_last");
 
     expect((await post({ type: "kick_off" })).data.data.newPost).toBeNull();
     const card = (await post({ type: "yellow", playerId: sam, minute: 30 })).data.data.newPost;
     expect(card.caption).toBe("🟨 Yellow card: S. Smith 30'");
     expect(card.targets).toEqual(["feed", "facebook", "instagram"]);
     expect(card.postAfter).toBeLessThanOrEqual(Date.now());
+    // No undo window: it's due straight away
+    expect(await processDueJobs(env as any, { fetchImpl: fakeMeta().f })).toBeGreaterThanOrEqual(1);
+    expect((await env.DB.prepare(`SELECT status FROM social_jobs WHERE id = ?`).bind(card.id).first<any>()).status).toBe("done");
 
     // Put the test club back to its defaults
     await call("/api/v1/social/settings", { method: "PUT", token: coach.token, body: { undoWindow: true, events: { yellow: { feed: true, social: false }, kick_off: { feed: true, social: false } } } });
-    await call("/api/v1/tenants/me", { method: "PATCH", token: coach.token, body: { publicNameStyle: "first_initial" } });
+    await call("/api/v1/social/settings", { method: "PUT", token: coach.token, body: { nameStyle: "first_initial" } });
+  });
+
+  it("lets clubs pick a style, add a sponsor and preview it; premium styles need unlocking", async () => {
+    const admin = await registerAdmin("graphics-admin");
+    const settings = await call("/api/v1/social/settings", { token: admin.token });
+    expect(settings.data.data.graphics).toMatchObject({ pack: "touchline", activePack: "touchline", sponsorName: null });
+    expect(settings.data.data.graphics.packs.map((p: any) => [p.id, p.unlocked])).toEqual([["touchline", true], ["floodlights", true], ["elite", false]]);
+
+    expect((await call("/api/v1/social/settings", { method: "PUT", token: admin.token, body: { pack: "elite" } })).status).toBe(402);
+    const chosen = await call("/api/v1/social/settings", { method: "PUT", token: admin.token, body: { pack: "floodlights", sponsorName: "Cherry Tree Nursery" } });
+    expect(chosen.data.data.graphics).toMatchObject({ pack: "floodlights", activePack: "floodlights", sponsorName: "Cherry Tree Nursery" });
+
+    // Sponsor logo: PNG/JPG only
+    expect((await call("/api/v1/social/sponsor-logo", { method: "POST", token: admin.token, body: new TextEncoder().encode("<svg/>") })).status).toBe(400);
+    const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0]);
+    const logo = await call("/api/v1/social/sponsor-logo", { method: "POST", token: admin.token, body: png });
+    expect(logo.data.data.sponsorLogoUrl).toMatch(/\/api\/v1\/media\/sponsors\/syston\/logo-\d+\.png$/);
+
+    // Previews use the club's details (drawn once, then cached)
+    const preview = await call("/api/v1/social/graphics/preview/floodlights/fulltime.jpg", { token: admin.token });
+    expect(preview.status).toBe(200);
+    expect(preview.res.headers.get("content-type")).toBe("image/jpeg");
+    expect((await call("/api/v1/social/graphics/preview/floodlights/nope.jpg", { token: admin.token })).status).toBe(404);
+    const parent = await registerMember("graphics-parent");
+    expect((await call("/api/v1/social/graphics/preview/floodlights/fulltime.jpg", { token: parent.token })).status).toBe(403);
+
+    // The platform owner unlocks the premium style for this club
+    await env.DB.prepare(`INSERT OR IGNORE INTO graphics_unlocks (tenant_id, pack_id, source, unlocked_at) VALUES ('syston', 'elite', 'owner', ?)`).bind(Date.now()).run();
+    const premium = await call("/api/v1/social/settings", { method: "PUT", token: admin.token, body: { pack: "elite" } });
+    expect(premium.data.data.graphics).toMatchObject({ pack: "elite", activePack: "elite" });
+    // Locked again: posts fall back to the free style
+    await env.DB.prepare(`DELETE FROM graphics_unlocks WHERE tenant_id = 'syston'`).run();
+    const locked = await call("/api/v1/social/settings", { token: admin.token });
+    expect(locked.data.data.graphics).toMatchObject({ pack: "elite", activePack: "touchline" });
+
+    await call("/api/v1/social/settings", { method: "PUT", token: admin.token, body: { pack: "touchline", sponsorName: null } });
+    await call("/api/v1/social/sponsor-logo", { method: "DELETE", token: admin.token });
   });
 
   it("sends club admins to Facebook to connect, and back to their settings", async () => {

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
+import { getSessionToken } from '@/lib/session';
 
 interface Opponent {
     id: string;
@@ -23,6 +24,7 @@ export default function AdminOpponentsPage() {
     const [showApprovalModal, setShowApprovalModal] = useState(false);
     const [newTeamName, setNewTeamName] = useState('');
     const [uploading, setUploading] = useState(false);
+    const [uploadError, setUploadError] = useState<string | null>(null);
 
     useEffect(() => {
         fetchOpponents();
@@ -30,7 +32,7 @@ export default function AdminOpponentsPage() {
 
     const fetchOpponents = async () => {
         try {
-            const token = localStorage.getItem('session_token');
+            const token = getSessionToken();
             const res = await fetch(`/api/v1/opponents?tenant_id=${tenantSlug}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -49,7 +51,7 @@ export default function AdminOpponentsPage() {
         if (!selectedOpponent) return;
 
         try {
-            const token = localStorage.getItem('session_token');
+            const token = getSessionToken();
             const res = await fetch(`/api/v1/opponents/${selectedOpponent.id}/confirm`, {
                 method: 'POST',
                 headers: {
@@ -76,7 +78,7 @@ export default function AdminOpponentsPage() {
         if (!newTeamName.trim()) return;
 
         try {
-            const token = localStorage.getItem('session_token');
+            const token = getSessionToken();
             const res = await fetch('/api/v1/opponents', {
                 method: 'POST',
                 headers: {
@@ -101,7 +103,7 @@ export default function AdminOpponentsPage() {
     const handleUploadBadge = async (opponentId: string, file: File) => {
         setUploading(true);
         try {
-            const token = localStorage.getItem('session_token');
+            const token = getSessionToken();
             const res = await fetch(`/api/v1/opponents/${opponentId}/upload-badge`, {
                 method: 'POST',
                 headers: {
@@ -112,10 +114,13 @@ export default function AdminOpponentsPage() {
             });
             const data = await res.json();
             if (data.success) {
+                setUploadError(null);
                 fetchOpponents();
+            } else {
+                setUploadError(data.error?.message ?? "We couldn't upload that badge.");
             }
-        } catch (error) {
-            console.error('Failed to upload badge:', error);
+        } catch {
+            setUploadError("We couldn't reach the server. Check your connection and try again.");
         } finally {
             setUploading(false);
         }
@@ -146,8 +151,10 @@ export default function AdminOpponentsPage() {
                         Opponent Badges
                     </h1>
                     <p className="text-gray-600 dark:text-gray-400">
-                        Manage team badges for your opponents. These are used in match graphics and social posts.
+                        Upload each opponent&apos;s badge once (PNG or JPG). It&apos;s used on every match graphic and social post; without one we show their initials. Teams are added here automatically when you play them.
                     </p>
+                    {uploading && <p role="status" className="mt-2 text-sm text-gray-600 dark:text-gray-400">Uploading…</p>}
+                    {uploadError && <p role="alert" className="mt-2 text-sm text-red-600">{uploadError}</p>}
                 </div>
 
                 {/* Add New Opponent */}
@@ -248,14 +255,14 @@ export default function AdminOpponentsPage() {
                                 </p>
 
                                 {/* Hover actions */}
-                                <div className="absolute inset-0 bg-black/60 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                <div className="absolute inset-0 bg-black/60 rounded-lg opacity-100 md:opacity-0 md:group-hover:opacity-100 md:focus-within:opacity-100 transition-opacity flex items-center justify-center gap-2">
                                     <label className="p-2 bg-white rounded-full cursor-pointer hover:bg-gray-100">
                                         <svg className="w-4 h-4 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                                         </svg>
                                         <input
                                             type="file"
-                                            accept="image/*"
+                                            accept="image/png,image/jpeg"
                                             className="hidden"
                                             onChange={(e) => {
                                                 if (e.target.files?.[0]) {

@@ -119,29 +119,6 @@ export function canUndo(events: LiveEvent[], target: LiveEvent): boolean {
   return true;
 }
 
-/** What the server says to draw on a post's graphic (names already in the club's style). */
-export interface GraphicSpec {
-  kind: string;
-  headline: string;
-  playerName: string | null;
-  secondary: string | null;
-  minute: number | null;
-  photoUrl: string | null;
-  homeName: string;
-  awayName: string;
-  homeScore: number;
-  awayScore: number;
-  clubName: string;
-  competition: string | null;
-  badgeUrl: string | null;
-  primaryColor: string;
-  secondaryColor: string;
-  /** Goals: the scorer's goals this match when 2 or more (brace, hat-trick...) */
-  goalCount?: number;
-  players?: Array<{ number: number | null; name: string }>;
-  subs?: string[];
-}
-
 export type PostTarget = 'feed' | 'facebook' | 'instagram';
 
 /** An automatic post for one update (staff only). */
@@ -154,8 +131,9 @@ export interface SocialPost {
   targets: PostTarget[];
   results: Record<string, { ok: boolean; id?: string; error?: string; skipped?: boolean }>;
   hasImage: boolean;
+  /** The graphic the server drew, once it's ready */
+  imageUrl: string | null;
   caption: string;
-  graphic: GraphicSpec;
 }
 
 const TARGET_NAMES: Record<PostTarget, string> = { feed: 'club app', facebook: 'Facebook', instagram: 'Instagram' };

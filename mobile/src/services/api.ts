@@ -904,14 +904,6 @@ export const lineupApi = {
   },
 };
 
-/** Automatic posts: the phone sends the graphic it drew. */
-export const socialApi = {
-  uploadGraphic: async (postId: string, jpeg: Blob): Promise<{ success: boolean; data: SocialPost }> => {
-    const response = await api.post(`/api/v1/social/jobs/${postId}/graphic`, jpeg, { headers: { 'Content-Type': 'image/jpeg' } });
-    return response.data;
-  },
-};
-
 /** Live match updates (see backend routes/liveMatch.ts). Types are in utils/liveMatch.ts. */
 export const liveApi = {
   /** Matches with live activity in the last 12 hours */

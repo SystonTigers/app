@@ -226,9 +226,7 @@ import {
 } from "./routes/wearables";
 // Cron Jobs
 import { runDaily } from "./cron/daily";
-import { runThrowback } from "./cron/throwback";
-import { runMilestones, checkMilestonesAfterMatch } from "./cron/milestones";
-import { runPlayerOfPeriod } from "./cron/playerOfPeriod";
+import { runScheduledPosts } from "./services/social/scheduler";
 import { runCleanup } from "./cron/cleanup";
 import { runLeague } from "./cron/league";
 import { runFASync } from "./cron/fa-sync";
@@ -668,7 +666,7 @@ router.put("/api/:v/content/reports/:reportId", (req, env, corsHdrs) => {
 import { handleListLive, handleGetLive, handleRecordLiveEvent, handleUndoLiveEvent } from "./routes/liveMatch";
 router.get("/api/:v/live", (req, env, corsHdrs) => handleListLive(req, env, corsHdrs));
 router.get("/api/:v/fixtures/:id/live", (req, env, corsHdrs) => handleGetLive(req, env, corsHdrs, ((req as any).params || {}).id));
-router.post("/api/:v/fixtures/:id/live/events", (req, env, corsHdrs) => handleRecordLiveEvent(req, env, corsHdrs, ((req as any).params || {}).id));
+router.post("/api/:v/fixtures/:id/live/events", (req, env, corsHdrs, _requestId, ctx) => handleRecordLiveEvent(req, env, corsHdrs, ((req as any).params || {}).id, ctx));
 router.delete("/api/:v/fixtures/:id/live/events/:eventId", (req, env, corsHdrs) => {
     const params = (req as any).params || {};
     return handleUndoLiveEvent(req, env, corsHdrs, params.id, params.eventId);
@@ -678,7 +676,7 @@ router.delete("/api/:v/fixtures/:id/live/events/:eventId", (req, env, corsHdrs) 
 import { handleGetLineup, handleSaveLineup, handlePublishLineup } from "./routes/lineup";
 router.get("/api/:v/fixtures/:id/lineup", (req, env, corsHdrs) => handleGetLineup(req, env, corsHdrs, ((req as any).params || {}).id));
 router.put("/api/:v/fixtures/:id/lineup", (req, env, corsHdrs) => handleSaveLineup(req, env, corsHdrs, ((req as any).params || {}).id));
-router.post("/api/:v/fixtures/:id/lineup/publish", (req, env, corsHdrs) => handlePublishLineup(req, env, corsHdrs, ((req as any).params || {}).id));
+router.post("/api/:v/fixtures/:id/lineup/publish", (req, env, corsHdrs, _requestId, ctx) => handlePublishLineup(req, env, corsHdrs, ((req as any).params || {}).id, ctx));
 
 // MOTM Voting Routes
 import {
@@ -745,6 +743,13 @@ router.get("/api/:v/social/meta/choices/:key", (req, env, corsHdrs) => handleLis
 router.post("/api/:v/social/meta/select", (req, env, corsHdrs) => handleSelectMetaPage(req, env, corsHdrs));
 router.delete("/api/:v/social/connections/:platform", (req, env, corsHdrs) => handleDisconnectSocial(req, env, corsHdrs, ((req as any).params || {}).platform));
 router.post("/api/:v/social/jobs/:id/graphic", (req, env, corsHdrs, _requestId, ctx) => handleUploadGraphic(req, env, corsHdrs, ((req as any).params || {}).id, ctx));
+import { handleDeleteSponsorLogo, handleGetTenantGraphics, handleGraphicPreview, handleSetTenantGraphics, handleUploadSponsorLogo } from "./routes/graphics";
+router.get("/api/:v/social/graphics/preview/:pack/:sample", (req, env, corsHdrs) => handleGraphicPreview(req, env, corsHdrs, ((req as any).params || {}).pack, ((req as any).params || {}).sample));
+router.post("/api/:v/social/sponsor-logo", (req, env, corsHdrs) => handleUploadSponsorLogo(req, env, corsHdrs));
+router.delete("/api/:v/social/sponsor-logo", (req, env, corsHdrs) => handleDeleteSponsorLogo(req, env, corsHdrs));
+router.get("/api/:v/admin/tenants/:id/graphics", (req, env, corsHdrs) => handleGetTenantGraphics(req, env, corsHdrs, ((req as any).params || {}).id));
+router.put("/api/:v/admin/tenants/:id/graphics/:pack", (req, env, corsHdrs) => handleSetTenantGraphics(req, env, corsHdrs, ((req as any).params || {}).id, ((req as any).params || {}).pack, true));
+router.delete("/api/:v/admin/tenants/:id/graphics/:pack", (req, env, corsHdrs) => handleSetTenantGraphics(req, env, corsHdrs, ((req as any).params || {}).id, ((req as any).params || {}).pack, false));
 
 router.post("/api/:v/social/posts", staffOnly((req, env, corsHdrs) => handleCreateSocialPost(req, env, corsHdrs)));
 router.get("/api/:v/social/posts", (req, env, corsHdrs) => handleListSocialPosts(req, env, corsHdrs));
@@ -1482,34 +1487,12 @@ export default {
             // Every 5 minutes: Cleanup expired data
             ctx.waitUntil(runCleanup(env, ctx));
 
-            // 06:00 UTC: Birthdays and daily quotes
+            // Every 5 minutes: scheduled club posts (fixtures, results, birthdays...); each is posted once
+            ctx.waitUntil(runScheduledPosts(env).catch((error) => logJSON({ level: 'error', msg: 'Scheduled posts failed', error: error instanceof Error ? error.message : String(error) })));
+
+            // 06:00 UTC: event reminders
             if (hour === 6 && minute < 5) {
-                ctx.waitUntil(runDaily(env, ctx));
-            }
-
-            // 08:00 UTC: Match day countdowns
-            if (hour === 8 && minute < 5) {
-                ctx.waitUntil(runDaily(env, ctx, { countdownsOnly: true }));
-            }
-
-            // Thursday 19:00 UTC: Throwback Thursday (photos + on this day)
-            if (dayOfWeek === 4 && hour === 19 && minute < 5) {
-                ctx.waitUntil(runThrowback(env, ctx));
-            }
-
-            // Sunday 18:00 UTC: Player of the Week
-            if (dayOfWeek === 0 && hour === 18 && minute < 5) {
-                ctx.waitUntil(runPlayerOfPeriod(env, ctx, { period: 'week' }));
-            }
-
-            // 1st of month, 10:00 UTC: Player of the Month
-            if (dayOfMonth === 1 && hour === 10 && minute < 5) {
-                ctx.waitUntil(runPlayerOfPeriod(env, ctx, { period: 'month' }));
-            }
-
-            // Saturday/Sunday 21:00 UTC: Check for player milestones
-            if ((dayOfWeek === 0 || dayOfWeek === 6) && hour === 21 && minute < 5) {
-                ctx.waitUntil(runMilestones(env, ctx));
+                ctx.waitUntil(runDaily(env));
             }
 
             // Every 6 hours: League table updates

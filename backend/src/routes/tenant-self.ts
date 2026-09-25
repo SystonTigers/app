@@ -4,6 +4,7 @@ import { json } from "../services/util";
 import { parse, isValidationError } from "../lib/validate";
 import { requireJWT, hasRole } from "../services/auth";
 import { logJSON } from "../lib/log";
+import { NAME_STYLES } from "../services/publicNames";
 
 /**
  * Club URLs share the web app's top-level paths, so these can't be used as slugs.
@@ -41,7 +42,7 @@ export async function updateTenantMe(req: Request, env: any, corsHdrs: Headers):
             secondaryColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Colour must be a hex value like #000000").optional(),
             badgeUrl: z.string().url().optional(),
             // How players appear on the club page and social posts
-            publicNameStyle: z.enum(["full", "first_initial", "initial_last"]).optional(),
+            publicNameStyle: z.enum(NAME_STYLES).optional(),
             publicPhotos: z.boolean().optional(),
             // Older single switch: full names and photos on/off
             publicFullNames: z.boolean().optional()

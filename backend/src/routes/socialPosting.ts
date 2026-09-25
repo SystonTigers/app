@@ -1,9 +1,10 @@
 /**
- * Automatic social posting: club settings, connecting Facebook/Instagram,
- * and receiving the graphic the manager's phone draws for each post.
+ * Automatic social posting: club settings (events, graphics style, sponsor),
+ * connecting Facebook/Instagram, and graphics sent by older app versions.
  *
  *   GET    /api/v1/social/settings                 staff
- *   PUT    /api/v1/social/settings                 club admins: { undoWindow?, events? }
+ *   PUT    /api/v1/social/settings                 club admins: { undoWindow?, events?, pack?, sponsorName?, nameStyle? }
+ *                                                  managers: { nameStyle } only
  *   POST   /api/v1/social/meta/start               club admins -> { url } to send them to Facebook
  *   GET    /api/v1/social/meta/callback            Facebook sends them back here
  *   POST   /api/v1/social/meta/select              club admins: { key, pageId } when they run several Pages
@@ -16,11 +17,14 @@ import { encryptToken } from "../services/social/tokenCrypto";
 import { exchangeCode, listPages, loginUrl, metaConfigured, type MetaPage } from "../services/social/meta";
 import { isPostKind, POST_KINDS, type EventSettings } from "../services/social/content";
 import { attachImage, loadClubSocial, processDueJobs, type SocialEnv } from "../services/social/jobs";
-import { getPublicNamePolicy } from "../services/publicNames";
+import { getPublicNamePolicy, isNameStyle } from "../services/publicNames";
+import { getPack, PACKS } from "../services/graphics/packs";
 
 type Env = SocialEnv & { KV_IDEMP: KVNamespace; APP_BASE_URL?: string; FRONTEND_URL?: string; [key: string]: unknown };
 
 const ADMIN_ROLES = ["owner", "tenant_admin", "admin", "platform_admin"] as const;
+/** Team managers can choose how names appear, as well as club admins */
+const NAME_STYLE_ROLES = [...ADMIN_ROLES, "manager"] as const;
 const MAX_GRAPHIC_BYTES = 3 * 1024 * 1024;
 
 function fail(corsHdrs: Headers, status: number, code: string, message: string): Response {
@@ -63,15 +67,33 @@ export async function handleGetSocialSettings(req: Request, env: Env, corsHdrs: 
       events: club.settings,
       connections: club.connections,
       canConnect: metaConfigured(env) && !!env.SOCIAL_TOKEN_KEY,
+      graphics: {
+        pack: club.chosenPack,
+        activePack: club.pack.id,
+        packs: PACKS.map((p) => ({ id: p.id, name: p.name, description: p.description, premium: p.premium, unlocked: !p.premium || club.unlockedPacks.includes(p.id) })),
+        sponsorName: club.brand.sponsorName,
+        sponsorLogoUrl: club.brand.sponsorLogoUrl,
+      },
     },
   }, 200, corsHdrs);
 }
 
 export async function handlePutSocialSettings(req: Request, env: Env, corsHdrs: Headers): Promise<Response> {
-  const claims = await staff(req, env, corsHdrs, true);
+  const claims = await staff(req, env, corsHdrs);
   if (claims instanceof Response) return claims;
-  const body = (await req.json().catch(() => ({}))) as { undoWindow?: unknown; events?: unknown };
+  const body = (await req.json().catch(() => ({}))) as { undoWindow?: unknown; events?: unknown; pack?: unknown; sponsorName?: unknown; nameStyle?: unknown };
+  const onlyNameStyle = Object.keys(body).every((k) => k === "nameStyle");
+  if (!hasAnyRole(claims, onlyNameStyle ? NAME_STYLE_ROLES : ADMIN_ROLES)) {
+    return fail(corsHdrs, 403, "FORBIDDEN", onlyNameStyle ? "Only managers and club admins can change how names appear." : "Only the club's owner or admins can change this.");
+  }
+  if (body.nameStyle !== undefined && !isNameStyle(body.nameStyle)) return fail(corsHdrs, 400, "VALIDATION", "Pick one of the name styles.");
   if (body.undoWindow !== undefined && typeof body.undoWindow !== "boolean") return fail(corsHdrs, 400, "VALIDATION", "undoWindow must be true or false.");
+  if (body.pack !== undefined && (typeof body.pack !== "string" || !PACKS.some((p) => p.id === body.pack))) {
+    return fail(corsHdrs, 400, "VALIDATION", "Pick one of the graphics styles.");
+  }
+  if (body.sponsorName !== undefined && body.sponsorName !== null && (typeof body.sponsorName !== "string" || body.sponsorName.trim().length > 60)) {
+    return fail(corsHdrs, 400, "VALIDATION", "The sponsor's name must be 60 characters or fewer.");
+  }
 
   let events: Partial<EventSettings> | undefined;
   if (body.events !== undefined) {
@@ -87,6 +109,20 @@ export async function handlePutSocialSettings(req: Request, env: Env, corsHdrs: 
   }
 
   const club = await loadClubSocial(env, claims.tenantId);
+  if (isNameStyle(body.nameStyle)) {
+    await env.DB.prepare(`UPDATE tenants SET public_name_style = ? WHERE id = ?`).bind(body.nameStyle, claims.tenantId).run();
+  }
+  if (typeof body.pack === "string") {
+    const pack = getPack(body.pack);
+    if (pack.premium && !club.unlockedPacks.includes(pack.id)) {
+      return fail(corsHdrs, 402, "LOCKED", `${pack.name} is a premium style. Unlock it for your club to use it.`);
+    }
+    await env.DB.prepare(`UPDATE tenants SET graphics_pack = ? WHERE id = ?`).bind(pack.id, claims.tenantId).run();
+  }
+  if (body.sponsorName !== undefined) {
+    const name = typeof body.sponsorName === "string" ? body.sponsorName.trim() : "";
+    await env.DB.prepare(`UPDATE tenants SET sponsor_name = ? WHERE id = ?`).bind(name || null, claims.tenantId).run();
+  }
   const merged = { ...club.settings, ...events };
   await env.DB.prepare(`UPDATE tenants SET social_undo_window = ?, social_events = ? WHERE id = ?`).bind(
     (body.undoWindow ?? club.undoWindow) ? 1 : 0,

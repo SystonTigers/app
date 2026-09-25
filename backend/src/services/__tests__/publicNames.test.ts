@@ -20,6 +20,16 @@ describe("public player names", () => {
     expect(initialLastName("Smith")).toBe("Smith");
   });
 
+  it("can show just the first name or just the surname", () => {
+    const firstOnly = { style: "first" as const, photos: false };
+    const lastOnly = { style: "last" as const, photos: false };
+    expect(publicName(firstOnly, "Mary Jane Watson")).toBe("Mary");
+    expect(publicName(lastOnly, "Mary Jane Watson")).toBe("Watson");
+    expect(publicName(lastOnly, "Smith")).toBe("Smith");
+    expect(publicScorers(firstOnly, ["Alfie Smith 2"])).toEqual(["Alfie 2"]);
+    expect(publicScorers(lastOnly, ["Alfie Smith (pen)"])).toEqual(["Smith (pen)"]);
+  });
+
   it("follows the club's choice of name style and photos", () => {
     const full = { style: "full" as const, photos: true };
     const first = { style: "first_initial" as const, photos: false };

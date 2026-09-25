@@ -7,17 +7,10 @@
 
 import { json } from '../services/util';
 import { requireJWT } from '../services/auth';
+import { normalizeTeamName } from '../services/opponentBadges';
+import { imageMime } from '../services/graphics/images';
+import { mediaUrl, putMedia } from '../services/media';
 
-// Helper to normalize team names for matching
-function normalizeTeamName(name: string): string {
-    return name
-        .toLowerCase()
-        .trim()
-        .replace(/\b(fc|f\.c\.|afc|a\.f\.c\.|football club|united|town|city)\b/gi, '')
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-+|-+$/g, '')
-        .trim();
-}
 
 // ===========================================
 // GET /api/v1/opponents - List tenant's opponents
@@ -344,18 +337,15 @@ export async function handleUploadBadge(req: Request, env: any, corsHdrs: Header
             return json({ success: false, error: { message: 'Opponent not found' } }, 404, corsHdrs);
         }
 
-        // Upload to R2 - uses tenant's folder for isolation
-        const fileBuffer = await req.arrayBuffer();
-        const extension = contentType.includes('png') ? 'png' : contentType.includes('webp') ? 'webp' : 'jpg';
-        const r2Key = `badges/${tenantId}/${opponent.normalized_name}.${extension}`;
-
-        await env.R2_MEDIA.put(r2Key, fileBuffer, {
-            httpMetadata: { contentType }
-        });
-
-        // Use public bucket URL from env if available
-        const publicBucketUrl = env.R2_PUBLIC_URL || 'https://pub-YOUR_R2_PUBLIC_URL.r2.dev';
-        const badgeUrl = `${publicBucketUrl}/${r2Key}`;
+        // Upload to R2 - uses tenant's folder for isolation. PNG/JPG only: the graphics renderer can't draw WebP.
+        const fileBuffer = new Uint8Array(await req.arrayBuffer());
+        const mime = imageMime(fileBuffer);
+        if (!fileBuffer.length || fileBuffer.length > 2 * 1024 * 1024 || (mime !== 'image/png' && mime !== 'image/jpeg')) {
+            return json({ success: false, error: { message: 'Please upload the badge as a PNG or JPG under 2 MB.' } }, 400, corsHdrs);
+        }
+        const r2Key = `badges/${tenantId}/${opponent.normalized_name}-${Date.now()}.${mime === 'image/png' ? 'png' : 'jpg'}`;
+        await putMedia(env, r2Key, fileBuffer.buffer as ArrayBuffer, mime);
+        const badgeUrl = mediaUrl(env, req.url, r2Key);
 
         // Update opponent with custom badge
         await env.DB.prepare(`

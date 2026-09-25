@@ -7,7 +7,7 @@ import { COLORS } from '../config';
 import { useClubName } from '../context/ClubContext';
 import { apiErrorMessage, fixturesApi, lineupApi, liveApi, squadApi, type Lineup } from '../services/api';
 import { newClientEventId, type LiveEvent, type LiveEventType, type LiveMatchView, type NewLiveEvent, type SocialPost } from '../utils/liveMatch';
-import { sendGraphic, shareGraphic } from '../utils/postGraphic';
+import { shareGraphic } from '../utils/postGraphic';
 import LineupEditor from '../components/live/LineupEditor';
 import ScoreHeader from '../components/live/ScoreHeader';
 import LiveTimeline from '../components/live/LiveTimeline';
@@ -99,17 +99,17 @@ export default function LiveMatchInputScreen() {
     return () => clearInterval(timer);
   }, [match?.fixture.id, match?.status]);
 
-  /** Draw and send the post's graphic, then refresh so the post status shows. */
-  const attachGraphic = async (fixtureId: string | null, post: SocialPost | null | undefined) => {
+  /** The server draws each post's graphic in a few seconds; refresh then so Share has it. */
+  const refreshAfterDrawing = (fixtureId: string, post: SocialPost | null | undefined) => {
     if (!post) return;
-    await sendGraphic(post);
-    if (!fixtureId) return;
-    try {
-      const res = await liveApi.get(fixtureId);
-      if (matchRef.current?.fixture.id === fixtureId) setMatch(res.data);
-    } catch {
-      // The 15-second refresh will catch up
-    }
+    setTimeout(async () => {
+      try {
+        const res = await liveApi.get(fixtureId);
+        if (matchRef.current?.fixture.id === fixtureId) setMatch(res.data);
+      } catch {
+        // The 15-second refresh will catch up
+      }
+    }, 5000);
   };
 
   const send = async (fixtureId: string, event: NewLiveEvent) => {
@@ -120,7 +120,7 @@ export default function LiveMatchInputScreen() {
       setMatch(res.data);
       setFailed(null);
       if (res.data.motmOpened) setMotmOpened(true);
-      attachGraphic(fixtureId, res.data.newPost);
+      refreshAfterDrawing(fixtureId, res.data.newPost);
     } catch (err) {
       const status = (err as { response?: { status?: number } })?.response?.status;
       const text = apiErrorMessage(err, "That didn't send. Check your signal and tap Send again.");
@@ -176,7 +176,8 @@ export default function LiveMatchInputScreen() {
   const share = async (post: SocialPost) => {
     const outcome = await shareGraphic(post);
     if (outcome === 'downloaded') setNotice('Picture saved. Open TikTok and post it from your photos.');
-    if (outcome === 'unavailable') setNotice("This phone can't make the picture. Try the web app in Chrome or Safari.");
+    if (outcome === 'not_ready') setNotice('The picture is still being made. Try again in a few seconds.');
+    if (outcome === 'unavailable') setNotice("We couldn't get the picture. Check your signal and try again.");
   };
 
   const lineupSaved = async (lineup: Lineup, publish: boolean) => {
@@ -189,8 +190,7 @@ export default function LiveMatchInputScreen() {
     }
     try {
       const res = await lineupApi.publish(fixture.id);
-      setNotice('Team news posted.');
-      attachGraphic(null, res.data.newPost);
+      setNotice(res.data.newPost ? 'Team news posted.' : 'Team saved.');
     } catch (err) {
       setMessage(apiErrorMessage(err, "The team was saved but we couldn't post it. Try again."));
     }
