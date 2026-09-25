@@ -1,11 +1,9 @@
-// Default allowed origins for production
+// Always-allowed origins (our own consoles). The website and app are added
+// through CORS_ALLOWED. Never add wildcards or domains we don't own: an
+// allowed origin can call the API from a visitor's browser.
 const DEFAULT_ALLOWED = new Set<string>([
-  "https://app.systontigers.co.uk",
-  "https://admin.systontigers.co.uk",
-  "https://setup.systontigers.co.uk",
   "https://admin-console.team-platform-2025.workers.dev",
   "https://setup-console.team-platform-2025.workers.dev",
-  "https://*.vercel.app", // Allow all Vercel deployments
 ]);
 
 // Development origins (localhost)
@@ -43,7 +41,7 @@ export function corsHeaders(origin: string | null, env?: { CORS_ALLOWED?: string
     if (allowed.has(origin)) {
       allow = origin;
     } else {
-      // Check for wildcard patterns like https://*.vercel.app
+      // Wildcard patterns (e.g. from CORS_ALLOWED) like https://*.example.com
       for (const pattern of allowed) {
         if (pattern.includes('*')) {
           const regex = new RegExp('^' + pattern.replace(/\./g, '\\.').replace(/\*/g, '.*') + '$');
