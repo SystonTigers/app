@@ -34,6 +34,10 @@ describe("Scheduled club posts", () => {
     await fixture("Weekend Wanderers", "2026-10-10");
     const postponed = await fixture("Rained Off Rovers", "2026-10-12");
     await call(`/api/v1/admin/fixtures/${postponed}`, { method: "PUT", token: coach.token, body: { status: "postponed" } });
+    // Postponed a while back, so the scheduler doesn't announce it (e.g. when posting is first switched on)
+    const oldOff = await fixture("Long Ago Rovers", "2026-10-13");
+    await env.DB.prepare(`UPDATE fixtures SET status = 'postponed', updated_at = '2026-09-01T10:00:00Z' WHERE id = ?`).bind(oldOff).run();
+    await env.DB.prepare(`UPDATE fixtures SET updated_at = '2026-10-05T09:00:00Z' WHERE id = ?`).bind(postponed).run();
 
     const birthdayId = (await call("/api/v1/admin/squad", { token: coach.token, body: { name: "Bday Brown", squadNumber: 30, dob: "2014-10-05" } })).data.playerId as string;
     await env.DB.prepare(`UPDATE squad SET dob = '2014-10-05' WHERE id = ?`).bind(birthdayId).run();
@@ -56,6 +60,7 @@ describe("Scheduled club posts", () => {
     expect(countdown).toHaveLength(1);
     expect(JSON.parse(countdown[0].graphic)).toMatchObject({ layout: "fixture", countdown: 3, date: "THU 8 OCT", away: { name: "Countdown United" } });
 
+    expect(await jobsFor(`postponed:${oldOff}`)).toHaveLength(0);
     const off = await jobsFor(`postponed:${postponed}`);
     expect(off[0].caption).toBe("⚠️ POSTPONED: Syston Tigers (test) v Rained Off Rovers on MON 12 OCT is off. New date to be confirmed.");
 

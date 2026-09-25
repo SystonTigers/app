@@ -49,12 +49,18 @@ async function fixtureFacts(env: SocialEnv, tenantId: string, r: FixtureRow): Pr
   };
 }
 
+/**
+ * Fixtures in a date range. "postponed" only returns ones changed in the last
+ * week, so turning this on doesn't announce old postponements.
+ */
 async function fixturesBetween(env: SocialEnv, tenantId: string, from: string, to: string, status: "live" | "postponed"): Promise<FixtureRow[]> {
-  const filter = status === "postponed" ? `status = 'postponed'` : `COALESCE(status, 'scheduled') NOT IN ('postponed', 'cancelled', 'completed')`;
+  const filter = status === "postponed"
+    ? `status = 'postponed' AND substr(COALESCE(updated_at, ''), 1, 10) >= ?`
+    : `COALESCE(status, 'scheduled') NOT IN ('postponed', 'cancelled', 'completed') AND ? = ?`;
   const { results } = await env.DB.prepare(
     `SELECT id, opponent, fixture_date, kick_off_time, venue, competition, home_team, away_team FROM fixtures
      WHERE tenant_id = ? AND substr(fixture_date, 1, 10) BETWEEN ? AND ? AND ${filter} ORDER BY fixture_date, kick_off_time LIMIT 12`,
-  ).bind(tenantId, from, to).all<FixtureRow>();
+  ).bind(tenantId, from, to, ...(status === "postponed" ? [addDays(from, -7)] : [1, 1])).all<FixtureRow>();
   return results || [];
 }
 
