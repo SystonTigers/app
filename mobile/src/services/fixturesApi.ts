@@ -32,6 +32,8 @@ export interface Fixture {
   kickOffTime: string;
   status: string;
   source?: string;
+  /** Whether we're the home side (from the fixture) */
+  homeAway?: 'home' | 'away';
   location?: string;
   teamName?: string;
   teamShortName?: string;

@@ -10,7 +10,7 @@
     "web": "expo start --web",
     "lint": "eslint . --ext .ts,.tsx",
     "test:snapshots": "node test/theme.snapshot.test.js",
-    "test": "npm run test:snapshots && node test/webAlert.test.js",
+    "test": "npm run test:snapshots && node test/webAlert.test.js && node test/liveMatch.test.js",
     "web:build": "node scripts/build-web.mjs",
     "web:deploy": "node scripts/build-web.mjs && npx wrangler@4 deploy -c wrangler.web.jsonc"
   },

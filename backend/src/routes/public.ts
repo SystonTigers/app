@@ -2,6 +2,7 @@ import { json } from "../services/util";
 import { logJSON } from "../lib/log";
 import { closeExpiredSessions, findMatch, parseWinnerIds, playerNames } from "../services/motm";
 import { getPublicNamePolicy, publicName, publicPhoto, publicScorers } from "../services/publicNames";
+import { describeMatch, loadEvents, loadFixture, recentLiveFixtureIds } from "../services/liveMatch";
 
 type TenantRow = { id: string; slug: string; name?: string | null };
 type PublicFixture = {
@@ -586,6 +587,33 @@ export async function handlePublicTenantRequest(
             }
 
             return json({ success: true, data: stats }, 200, corsHdrs);
+        }
+
+        // Live and just-finished matches for the club page. Goals and match
+        // phases only (no staff notes); player names follow the club's setting.
+        if (resource === "live") {
+            const policy = await getPublicNamePolicy(env, tenant.id);
+            const shown = new Set(["kick_off", "half_time", "second_half", "full_time", "goal", "opp_goal"]);
+            const matches = [];
+            for (const id of await recentLiveFixtureIds(env, tenant.id)) {
+                const fixture = await loadFixture(env, tenant.id, id);
+                if (!fixture) { continue; }
+                const view = describeMatch(fixture, await loadEvents(env, tenant.id, id));
+                matches.push({
+                    opponent: fixture.opponent,
+                    homeAway: fixture.homeAway,
+                    status: view.status,
+                    minute: view.minute,
+                    ourScore: view.ourScore,
+                    theirScore: view.theirScore,
+                    events: view.events.filter((e) => shown.has(e.type)).map((e) => ({
+                        type: e.type,
+                        minute: e.minute,
+                        player: e.type === "goal" && e.playerName ? publicName(policy, e.playerName) : null,
+                    })),
+                });
+            }
+            return json({ success: true, data: matches }, 200, corsHdrs);
         }
 
         // Latest Man of the Match winner(s) for the club page

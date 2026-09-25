@@ -15,6 +15,7 @@ const MENU_GROUPS = [
         title: 'Match Day',
         icon: 'soccer-field',
         items: [
+            { label: 'Live Match', screen: 'LiveMatch', icon: 'whistle', roles: ['admin', 'manager', 'coach', 'parent', 'player'] },
             { label: 'Man of the Match', screen: 'MOTMVoting', icon: 'star-circle', roles: ['admin', 'manager', 'coach', 'parent', 'player'] },
             { label: 'Predictions', screen: 'LastManStanding', icon: 'crystal-ball', roles: ['admin', 'manager', 'coach', 'parent', 'player'] },
         ]
@@ -48,6 +49,7 @@ const MENU_GROUPS = [
         roles: ['admin', 'manager', 'coach'], // Only these roles see this group
         items: [
             { label: 'Manage Squad', screen: 'ManageSquad', icon: 'account-cog', roles: ['admin', 'manager', 'coach'] },
+            { label: 'Match Centre', screen: 'MatchCentre', icon: 'scoreboard', roles: ['admin', 'manager', 'coach'] },
             { label: 'Manage Fixtures', screen: 'ManageFixtures', icon: 'calendar-edit', roles: ['admin', 'manager'] },
             { label: 'Manage Events', screen: 'ManageEvents', icon: 'calendar-clock', roles: ['admin', 'manager'] },
             { label: 'Manage MOTM', screen: 'ManageMOTM', icon: 'star-cog', roles: ['admin', 'manager'] },

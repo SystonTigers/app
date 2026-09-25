@@ -663,6 +663,16 @@ router.put("/api/:v/content/reports/:reportId", (req, env, corsHdrs) => {
     return handleUpdateReport(req, env, corsHdrs, reportId);
 });
 
+// Live match updates from the touchline (see routes/liveMatch.ts)
+import { handleListLive, handleGetLive, handleRecordLiveEvent, handleUndoLiveEvent } from "./routes/liveMatch";
+router.get("/api/:v/live", (req, env, corsHdrs) => handleListLive(req, env, corsHdrs));
+router.get("/api/:v/fixtures/:id/live", (req, env, corsHdrs) => handleGetLive(req, env, corsHdrs, ((req as any).params || {}).id));
+router.post("/api/:v/fixtures/:id/live/events", (req, env, corsHdrs) => handleRecordLiveEvent(req, env, corsHdrs, ((req as any).params || {}).id));
+router.delete("/api/:v/fixtures/:id/live/events/:eventId", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleUndoLiveEvent(req, env, corsHdrs, params.id, params.eventId);
+});
+
 // MOTM Voting Routes
 import {
     handleInitVote,

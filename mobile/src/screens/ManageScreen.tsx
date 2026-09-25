@@ -13,6 +13,13 @@ interface ManagementCard {
 
 const managementCards: ManagementCard[] = [
   {
+    title: 'Match Centre',
+    description: 'Post live score, goals, cards and subs from the touchline',
+    icon: '📣',
+    screen: 'MatchCentre',
+    color: '#00B8B8',
+  },
+  {
     title: 'Fixtures & Results',
     description: 'Add matches, update scores, manage competitions',
     icon: '⚽',

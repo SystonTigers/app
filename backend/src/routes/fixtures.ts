@@ -127,12 +127,13 @@ export async function handleGetUpcomingFixtures(req: Request, env: any): Promise
         competition,
         kick_off_time as kickOffTime,
         status,
-        source
+        source,
+        CASE WHEN home_team = opponent AND IFNULL(away_team, '') != opponent THEN 'away' ELSE 'home' END AS homeAway
       FROM fixtures
       WHERE tenant_id = ?
         AND fixture_date >= DATE('now')
-        AND status != 'postponed'
-      ORDER BY fixture_date ASC
+        AND status NOT IN ('postponed', 'completed', 'final')
+      ORDER BY fixture_date ASC, kick_off_time ASC
       LIMIT 10
     `).bind(claims.tenantId).all();
 

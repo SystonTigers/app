@@ -49,6 +49,8 @@ import VideoScreen from './src/screens/VideoScreen';
 import ChatScreen from './src/screens/ChatScreen';
 import CreatePostScreen from './src/screens/CreatePostScreen';
 import MOTMVotingScreen from './src/screens/MOTMVotingScreen';
+import LiveMatchWatchScreen from './src/screens/LiveMatchWatchScreen';
+import LiveMatchInputScreen from './src/screens/LiveMatchInputScreen';
 import GalleryScreen from './src/screens/GalleryScreen';
 import HighlightsScreen from './src/screens/HighlightsScreen';
 import TrainingScreen from './src/screens/TrainingScreen';
@@ -223,6 +225,7 @@ function MainDrawer() {
       />
 
       {/* Match Day Group */}
+      <Drawer.Screen name="LiveMatch" component={LiveMatchWatchScreen} options={{ title: 'Live Match' }} />
       <Drawer.Screen name="MOTMVoting" component={MOTMVotingScreen} options={{ title: 'Man of the Match' }} />
       <Drawer.Screen name="LastManStanding" component={LastManStandingScreen} options={{ title: 'Predictions' }} />
 
@@ -243,6 +246,7 @@ function MainDrawer() {
       <Drawer.Screen name="ManageSquad" component={ManageSquadScreen} options={{ title: 'Manage Squad' }} />
       <Drawer.Screen name="ManageFixtures" component={ManageFixturesScreen} options={{ title: 'Manage Fixtures' }} />
       <Drawer.Screen name="ManageEvents" component={ManageEventsScreen} options={{ title: 'Manage Events' }} />
+      <Drawer.Screen name="MatchCentre" component={LiveMatchInputScreen} options={{ title: 'Match Centre' }} />
       <Drawer.Screen name="ManageMOTM" component={ManageMOTMScreen} options={{ title: 'Manage MOTM' }} />
       <Drawer.Screen name="ManagePlayerImages" component={ManagePlayerImagesScreen} options={{ title: 'Player Images' }} />
       <Drawer.Screen

@@ -2,6 +2,7 @@
 import { getServerSDK } from '@/lib/sdk';
 import { getClubInfo, getLatestMotm } from '@/lib/club';
 import { MotmWinnerCard } from '@/components/MotmWinnerCard';
+import { LiveScoreCard } from '@/components/LiveScoreCard';
 import { clubAppLink } from '@/lib/app-link';
 import { isClubTeam } from '@/lib/slug';
 import Link from 'next/link';
@@ -195,6 +196,8 @@ export default async function TenantHomePage({ params }: HomePageProps) {
             </Link>
           </div>
         </div>
+
+        <LiveScoreCard tenant={tenant} clubName={club.name} />
 
         {/* Hero */}
         <HeroSection nextFixture={nextFixture || fixtures[0]} tenant={tenant} clubName={club.name} />

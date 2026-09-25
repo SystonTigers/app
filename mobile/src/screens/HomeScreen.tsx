@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, ScrollView, StyleSheet, RefreshControl, ImageBackground } from 'react-native';
+import { View, ScrollView, StyleSheet, RefreshControl, ImageBackground, Pressable } from 'react-native';
 import { Text, IconButton } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/useTheme';
 import { Fixture, getUpcomingFixtures, formatFixtureDate, formatKickOffTime } from '../services/fixturesApi';
-import { feedApi, fixturesApi } from '../services/api';
+import { feedApi, fixturesApi, liveApi } from '../services/api';
+import { scoreline, statusLabel, type LiveMatchView } from '../utils/liveMatch';
 import { useClub } from '../context/ClubContext';
 import { isOurTeam } from '../utils/clubMatch';
 
@@ -48,17 +49,20 @@ export default function HomeScreen({ navigation }: any) {
   const [newsPosts, setNewsPosts] = useState<any[]>([]);
   const [feedItems, setFeedItems] = useState<any[]>([]);
   const [quickStats, setQuickStats] = useState<QuickStats | null>(null);
+  const [liveMatches, setLiveMatches] = useState<LiveMatchView[]>([]);
 
   const loadData = useCallback(async () => {
     setFixturesLoading(true);
     try {
-      const [fixtures, news, table] = await Promise.all([
+      const [fixtures, news, table, live] = await Promise.all([
         getUpcomingFixtures({ limit: 1 }),
         feedApi.getPosts(1, 10),
-        // The table is optional: a missing league must not blank the rest of the page.
+        // The table and live score are optional: they must not blank the rest of the page.
         fixturesApi.getLeagueTable().catch(() => null),
+        liveApi.list().catch(() => ({ data: [] as LiveMatchView[] })),
       ]);
       setNextFixture(fixtures[0] || null);
+      setLiveMatches(live.data.filter((m) => m.status === 'live' || m.status === 'half_time'));
       const rows: any[] = Array.isArray(table?.data) ? table.data : [];
       const ourRow = rows.find((row) => isOurTeam(row.team_name, club));
       setQuickStats(ourRow ? {
@@ -112,6 +116,24 @@ export default function HomeScreen({ navigation }: any) {
         <InstallPrompt />
       </View>
 
+      {/* Live score while a match is on */}
+      {liveMatches.map((m) => {
+        const s = scoreline(m, club?.name || 'Us');
+        return (
+          <Pressable
+            key={m.fixture.id}
+            onPress={() => navigation.navigate('LiveMatch')}
+            accessibilityRole="button"
+            accessibilityLabel={`Live: ${s.home} ${s.homeScore}, ${s.away} ${s.awayScore}. Follow live`}
+            style={[styles.liveBanner, { borderColor: colors.primary }]}
+          >
+            <Text style={[styles.liveBannerLabel, { color: colors.primary }]}>● LIVE · {statusLabel(m, Date.now())}</Text>
+            <Text style={[styles.liveBannerScore, { color: colors.text }]}>{s.home} {s.homeScore} – {s.awayScore} {s.away}</Text>
+            <Text style={[styles.liveBannerLink, { color: colors.primary }]}>Follow live →</Text>
+          </Pressable>
+        );
+      })}
+
       {/* 1. HERO SECTION (Next Match) */}
       {fixturesLoading ? (
         <View style={{ paddingHorizontal: 16, marginTop: 16 }}>
@@ -127,15 +149,15 @@ export default function HomeScreen({ navigation }: any) {
             <Text style={[styles.heroLabel, { color: colors.primary }]}>NEXT MATCH</Text>
             <View style={styles.heroTeams}>
               <Text style={[styles.heroTeamName, { color: colors.primary }]}>
-                {(nextFixture.homeTeamName || club?.name || 'HOME').toUpperCase()}
+                {(nextFixture.homeAway === 'away' ? nextFixture.opponent : club?.name || 'Us').toUpperCase()}
               </Text>
               <Text style={[styles.heroVs, { color: colors.text }]}>VS</Text>
               <Text style={[styles.heroTeamName, { color: colors.primary }]}>
-                {nextFixture.awayTeamName || 'OPPONENT'}
+                {(nextFixture.homeAway === 'away' ? club?.name || 'Us' : nextFixture.opponent).toUpperCase()}
               </Text>
             </View>
             <Text style={[styles.heroDetails, { color: colors.text }]}>
-              {formatFixtureDate(nextFixture.date).toUpperCase()} | {formatKickOffTime(nextFixture.kickOffTime)} | {nextFixture.location || 'HOME'}
+              {formatFixtureDate(nextFixture.date).toUpperCase()} | {formatKickOffTime(nextFixture.kickOffTime)} | {(nextFixture.venue || (nextFixture.homeAway === 'away' ? 'Away' : 'Home')).toUpperCase()}
             </Text>
           </View>
         </ImageBackground>
@@ -208,6 +230,10 @@ const StatItem = ({ label, value, icon, colors }: any) => (
 );
 
 const styles = StyleSheet.create({
+  liveBanner: { marginHorizontal: 16, marginTop: 12, borderWidth: 2, borderRadius: 12, padding: 14 },
+  liveBannerLabel: { fontWeight: '900', fontSize: 12, letterSpacing: 1 },
+  liveBannerScore: { fontSize: 18, fontWeight: '900', marginTop: 4, textTransform: 'uppercase' },
+  liveBannerLink: { fontWeight: '700', marginTop: 6 },
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',

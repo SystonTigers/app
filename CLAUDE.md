@@ -61,9 +61,22 @@ with personal data.
   drafts are approved.
 - `web-app` `npm run lint` fails: Next 16 removed `next lint`. Use `npx tsc --noEmit`.
 
+## Match day
+
+- Live match updates: staff use Match Centre in the app (`LiveMatchInputScreen`),
+  everyone follows on Live Match and the home banner, and the public club page
+  shows the score (`/public/:club/live`). Backend: `routes/liveMatch.ts`; the
+  score and clock are worked out from `live_match_events`
+  (`services/liveMatchState.ts`), so Undo fixes everything.
+- Full time saves the result (`team_results.fixture_id`), league points and
+  players' goals/assists/cards (`match_events` ids starting `live-`), and marks
+  the fixture completed. Undoing full time takes them back out.
+
 ## Access rules worth knowing
 
 - Club-admin writes are wrapped in `staffOnly(...)` in `index.ts`; add new
   admin routes the same way.
+- CORS: only our own sites (plus `CORS_ALLOWED`) may call the API from a
+  browser; never add wildcards or domains we don't own.
 - Player records: staff see everything; other members get the team-sheet view
   (`services/playerPrivacy.ts`) unless linked to that player.

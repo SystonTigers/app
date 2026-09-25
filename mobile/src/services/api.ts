@@ -1,4 +1,5 @@
 import axios, { AxiosError } from 'axios';
+import type { LiveMatchView, NewLiveEvent } from '../utils/liveMatch';
 import { Platform } from 'react-native';
 import { API_BASE_URL } from '../config';
 
@@ -880,63 +881,28 @@ export const motmApi = {
   },
 };
 
-export const liveMatchApi = {
-  // Get live match data
-  getLiveMatch: async (matchId: string) => {
-    const response = await api.get(`/api/v1/matches/${matchId}/live`, {
-      params: { tenant: getTenantId() },
-    });
+/** Live match updates (see backend routes/liveMatch.ts). Types are in utils/liveMatch.ts. */
+export const liveApi = {
+  /** Matches with live activity in the last 12 hours */
+  list: async (): Promise<{ success: boolean; data: LiveMatchView[] }> => {
+    const response = await api.get('/api/v1/live');
     return response.data;
   },
 
-  // Update live match event (admin)
-  updateLiveMatch: async (matchId: string, event: any) => {
-    const response = await api.post(`/api/v1/admin/matches/${matchId}/live`, {
-      tenant: getTenantId(),
-      ...event,
-    });
+  get: async (fixtureId: string): Promise<{ success: boolean; data: LiveMatchView }> => {
+    const response = await api.get(`/api/v1/fixtures/${fixtureId}/live`);
     return response.data;
   },
 
-  // Get live match events
-  getLiveEvents: async (matchId: string) => {
-    const response = await api.get(`/api/v1/matches/${matchId}/live/events`, {
-      params: { tenant: getTenantId() },
-    });
+  /** Staff: record what happened. Reuse clientEventId when retrying so it's only counted once. */
+  record: async (fixtureId: string, event: NewLiveEvent): Promise<{ success: boolean; data: LiveMatchView }> => {
+    const response = await api.post(`/api/v1/fixtures/${fixtureId}/live/events`, event);
     return response.data;
   },
 
-  // Get live match tally/stats
-  getTally: async (matchId: string) => {
-    const response = await api.get(`/api/v1/admin/matches/${matchId}/live/tally`, {
-      params: { tenant: getTenantId() },
-    });
-    return response.data;
-  },
-
-  // Open live match (admin)
-  openMatch: async (matchId: string, matchData: any) => {
-    const response = await api.post(`/api/v1/admin/matches/${matchId}/live/open`, {
-      tenant: getTenantId(),
-      ...matchData,
-    });
-    return response.data;
-  },
-
-  // Record live match event (admin)
-  recordEvent: async (matchId: string, event: any) => {
-    const response = await api.post(`/api/v1/admin/matches/${matchId}/live/event`, {
-      tenant: getTenantId(),
-      ...event,
-    });
-    return response.data;
-  },
-
-  // Close live match (admin)
-  closeMatch: async (matchId: string) => {
-    const response = await api.post(`/api/v1/admin/matches/${matchId}/live/close`, {
-      tenant: getTenantId(),
-    });
+  /** Staff: undo an update */
+  undo: async (fixtureId: string, eventId: string): Promise<{ success: boolean; data: LiveMatchView }> => {
+    const response = await api.delete(`/api/v1/fixtures/${fixtureId}/live/events/${eventId}`);
     return response.data;
   },
 };
