@@ -57,6 +57,11 @@ describe("Line-ups and Man of the Match", () => {
     const goal = await post({ type: "goal", playerId: starters[3], occurredAt: kickOffAt + 7 * 60_000 + 5000 });
     expect(goal.data.data.kickedOffAt).toBe(kickOffAt);
     expect(goal.data.data.events[0].minute).toBe(8);
+    expect(goal.data.data.newPost.graphic.headline).toBe("GOAL!");
+    // Same player scores again: it's a brace
+    const second = await post({ type: "goal", playerId: starters[3], occurredAt: kickOffAt + 9 * 60_000 });
+    expect(second.data.data.newPost.graphic).toMatchObject({ headline: "BRACE!", goalCount: 2 });
+    expect(second.data.data.newPost.caption).toMatch(/^⚽⚽ BRACE! Player D\. 10'/);
     // A tap time far in the past isn't trusted
     const odd = await post({ type: "note", text: "Rain", occurredAt: Date.now() - 3 * 3600_000 });
     expect(Math.abs(odd.data.data.events[0].createdAt - Date.now())).toBeLessThan(5000);

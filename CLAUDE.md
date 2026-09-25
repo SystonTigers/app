@@ -89,6 +89,9 @@ with personal data.
   posts to the club feed, Facebook and Instagram. Which events go where is set
   per club in the website's admin settings. TikTok needs TikTok's app review
   first; until then managers use Share.
+- A scorer's 2nd, 3rd, 4th... goal in a match posts as BRACE! / HAT-TRICK! /
+  FOUR GOALS! (`goalMilestone`); the graphic shows one ball per goal and turns
+  gold from a hat-trick.
 - Cron runs every minute for social posts; the other scheduled jobs only run
   when `minute % 5 === 0`.
 

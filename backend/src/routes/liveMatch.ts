@@ -68,6 +68,15 @@ async function matchResponse(env: Env, claims: TenantClaims, fixtureId: string, 
 }
 
 /** Queue the automatic post for a newly recorded event (if the club posts that kind of event). */
+/** How many goals this event's scorer has so far this match, counting this one. */
+function goalNumberFor(events: LiveEvent[], event: LiveEvent): number {
+  if (!event.playerId) return 1;
+  const upTo = events.findIndex((e) => e.id === event.id);
+  const earlier = upTo === -1 ? events : events.slice(0, upTo + 1);
+  const n = earlier.filter((e) => e.type === "goal" && e.playerId === event.playerId).length;
+  return upTo === -1 ? n + 1 : n;
+}
+
 async function queueEventPost(env: Env, tenantId: string, fixture: LiveFixture, events: LiveEvent[], event: LiveEvent): Promise<JobSummary | null> {
   if (!isPostKind(event.type)) return null;
   const state = describeMatch(fixture, events);
@@ -86,6 +95,7 @@ async function queueEventPost(env: Env, tenantId: string, fixture: LiveFixture, 
       minute: event.minute,
       player,
       player2,
+      goalNumber: event.type === "goal" ? goalNumberFor(events, event) : undefined,
       scorers: event.type === "full_time" ? events.filter((e) => e.type === "goal").map((e) => e.playerName ?? "Unknown") : undefined,
     },
   });

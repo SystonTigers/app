@@ -61,8 +61,45 @@ function inkFor(hex: string): string {
   return lum > 0.55 ? '#0B0D0F' : '#FFFFFF';
 }
 
+const GOLD = '#FFC83D';
+
+/** Hat-tricks and better get gold, whatever the club colour. */
+function accentFor(spec: GraphicSpec): string {
+  return (spec.goalCount ?? 0) >= 3 ? GOLD : spec.primaryColor || '#00E5E5';
+}
+
+/** A simple football: white ball, dark centre patch and seams. */
+function drawBall(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number) {
+  ctx.save();
+  ctx.fillStyle = '#FFFFFF';
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#0B0D0F';
+  ctx.strokeStyle = '#0B0D0F';
+  ctx.lineWidth = Math.max(2, r * 0.08);
+  const patch = r * 0.38;
+  ctx.beginPath();
+  for (let i = 0; i < 5; i++) {
+    const a = -Math.PI / 2 + (i * 2 * Math.PI) / 5;
+    const px = cx + patch * Math.cos(a);
+    const py = cy + patch * Math.sin(a);
+    if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+  }
+  ctx.closePath();
+  ctx.fill();
+  for (let i = 0; i < 5; i++) {
+    const a = -Math.PI / 2 + (i * 2 * Math.PI) / 5;
+    ctx.beginPath();
+    ctx.moveTo(cx + patch * Math.cos(a), cy + patch * Math.sin(a));
+    ctx.lineTo(cx + r * Math.cos(a), cy + r * Math.sin(a));
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
 function draw(ctx: CanvasRenderingContext2D, spec: GraphicSpec, photo: HTMLImageElement | null, badge: HTMLImageElement | null) {
-  const accent = spec.primaryColor || '#00E5E5';
+  const accent = accentFor(spec);
   const ink = '#FFFFFF';
 
   // Background with a bold diagonal band in the club colour
@@ -177,7 +214,11 @@ function drawMoment(ctx: CanvasRenderingContext2D, spec: GraphicSpec, photo: HTM
   const hSize = fit(ctx, spec.headline, DISPLAY, 'italic 900', photo ? 150 : 200, 60, textW);
   const nSize = spec.playerName ? fit(ctx, spec.playerName.toUpperCase(), DISPLAY, '900', photo ? 72 : 110, 36, textW) : 0;
   const sSize = spec.secondary ? fit(ctx, spec.secondary, BODY, '600', photo ? 44 : 52, 26, textW) : 0;
-  const blockH = hSize + (nSize ? 40 + nSize : 0) + (sSize ? 32 + sSize : 0);
+  // Brace, hat-trick...: one ball per goal, shrinking to fit the column
+  const goals = Math.min(spec.goalCount ?? 0, 10);
+  const ballGap = 14;
+  const ballR = goals >= 2 ? Math.min(photo ? 30 : 44, (textW - ballGap * (goals - 1)) / goals / 2) : 0;
+  const blockH = hSize + (nSize ? 40 + nSize : 0) + (sSize ? 32 + sSize : 0) + (ballR ? 36 + ballR * 2 : 0);
   let y = photo ? top : top + Math.max(0, (bottom - top - blockH) / 2);
 
   ctx.fillStyle = accent;
@@ -195,6 +236,10 @@ function drawMoment(ctx: CanvasRenderingContext2D, spec: GraphicSpec, photo: HTM
     fit(ctx, spec.secondary, BODY, '600', photo ? 44 : 52, 26, textW);
     y += 32 + sSize;
     ctx.fillText(spec.secondary, 64, y);
+  }
+  if (ballR) {
+    y += 36;
+    for (let i = 0; i < goals; i++) drawBall(ctx, 64 + ballR + i * (ballR * 2 + ballGap), y + ballR, ballR);
   }
 }
 

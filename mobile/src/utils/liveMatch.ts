@@ -136,6 +136,8 @@ export interface GraphicSpec {
   badgeUrl: string | null;
   primaryColor: string;
   secondaryColor: string;
+  /** Goals: the scorer's goals this match when 2 or more (brace, hat-trick...) */
+  goalCount?: number;
   players?: Array<{ number: number | null; name: string }>;
   subs?: string[];
 }

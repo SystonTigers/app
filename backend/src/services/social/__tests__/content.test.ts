@@ -15,6 +15,21 @@ describe("social post content", () => {
     expect(graphic).toMatchObject({ headline: "GOAL!", playerName: "Sam S.", secondary: "Assist: Will J.", minute: 23, photoUrl: null, homeScore: 2, awayScore: 1 });
   });
 
+  it("celebrates a brace, a hat-trick and more", () => {
+    const post = (goalNumber: number, player = sam) => buildPost({ style: "first_initial", photos: false }, match, { kind: "goal", minute: 40, player, goalNumber });
+    expect(post(1).graphic.headline).toBe("GOAL!");
+    expect(post(1).graphic.goalCount).toBeUndefined();
+    expect(post(2).caption).toBe("⚽⚽ BRACE! Sam S. 40' – 2 goals today!\nSyston Tigers 2–1 Hillside");
+    expect(post(2).graphic).toMatchObject({ headline: "BRACE!", goalCount: 2 });
+    expect(post(3).caption).toMatch(/^🎩 HAT-TRICK! Sam S\. 40' – 3 goals today!/);
+    expect(post(3).graphic).toMatchObject({ headline: "HAT-TRICK!", goalCount: 3 });
+    expect(post(4).graphic.headline).toBe("FOUR GOALS!");
+    expect(post(12).graphic.headline).toBe("12 GOALS!");
+    // Without a named scorer there's nothing to count
+    expect(buildPost({ style: "full", photos: false }, match, { kind: "goal", minute: 40, player: null, goalNumber: 3 }).graphic)
+      .toMatchObject({ headline: "GOAL!" });
+  });
+
   it("uses the player's photo only when the club allows it", () => {
     expect(buildPost({ style: "full", photos: true }, match, { kind: "goal", minute: 5, player: sam }).graphic)
       .toMatchObject({ playerName: "Sam Smith", photoUrl: "https://x/sam.jpg" });
@@ -31,6 +46,8 @@ describe("social post content", () => {
   it("lists scorers at full time and names the MOTM winner", () => {
     expect(buildPost({ style: "first_initial", photos: false }, match, { kind: "full_time", minute: null, scorers: ["Sam Smith", "Will Jones", "Sam Smith"] }).caption)
       .toBe("Full time: Syston Tigers 2–1 Hillside\n⚽ Sam S. 2, Will J.");
+    expect(buildPost({ style: "first_initial", photos: false }, match, { kind: "full_time", minute: null, scorers: ["Sam Smith", "Sam Smith", "Sam Smith"] }).caption)
+      .toMatch(/⚽ Sam S\. \(hat-trick\)$/);
     expect(buildPost({ style: "full", photos: false }, match, { kind: "motm", minute: null, player: sam }).caption)
       .toBe("⭐ Man of the Match: Sam Smith vs Hillside. Voted for by our players and parents.");
   });

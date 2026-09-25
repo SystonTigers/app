@@ -70,6 +70,7 @@ export interface PostInput {
   player?: PostPerson | null;   // scorer, booked player, player coming on, MOTM winner
   player2?: PostPerson | null;  // assist, player going off, joint MOTM winner
   scorers?: string[];           // full time: our scorers (full names, in order)
+  goalNumber?: number;          // goals: this scorer's goals so far this match, counting this one (2 = brace, 3 = hat-trick)
   lineup?: { starters: LineupPerson[]; subs: LineupPerson[]; teamSize: number; kickOff: string | null; venue: string | null };
 }
 
@@ -92,6 +93,8 @@ export interface GraphicSpec {
   badgeUrl: string | null;
   primaryColor: string;
   secondaryColor: string;
+  /** Goals: the scorer's goals so far this match when it's 2 or more (brace, hat-trick...) */
+  goalCount?: number;
   /** Line-up posts: the starting players and subs, names in the club's style */
   players?: Array<{ number: number | null; name: string }>;
   subs?: string[];
@@ -101,6 +104,16 @@ const HEADLINES: Record<PostKind, string> = {
   lineup: "STARTING LINE-UP", goal: "GOAL!", opp_goal: "GOAL", kick_off: "KICK-OFF", half_time: "HALF TIME", second_half: "SECOND HALF",
   full_time: "FULL TIME", yellow: "YELLOW CARD", red: "RED CARD", sub: "SUBSTITUTION", motm: "MAN OF THE MATCH",
 };
+
+const COUNT_WORDS = ["", "ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE", "TEN"];
+
+/** Headline and caption lead for a scorer's nth goal of the match. */
+export function goalMilestone(n: number): { headline: string; lead: string } {
+  if (n >= 4) return { headline: `${COUNT_WORDS[n] ?? n} GOALS!`, lead: `🔥 ${COUNT_WORDS[n] ?? n} GOALS!` };
+  if (n === 3) return { headline: "HAT-TRICK!", lead: "🎩 HAT-TRICK!" };
+  if (n === 2) return { headline: "BRACE!", lead: "⚽⚽ BRACE!" };
+  return { headline: "GOAL!", lead: "⚽ GOAL!" };
+}
 
 function scoreline(m: MatchContext): { home: string; away: string; homeScore: number; awayScore: number } {
   return m.homeAway === "home"
@@ -112,7 +125,7 @@ function scoreline(m: MatchContext): { home: string; away: string; homeScore: nu
 export function scorerSummary(policy: PublicNamePolicy, scorers: string[]): string {
   const counts = new Map<string, number>();
   for (const s of scorers) counts.set(s, (counts.get(s) ?? 0) + 1);
-  return [...counts].map(([name, n]) => `${publicName(policy, name)}${n > 1 ? ` ${n}` : ""}`).join(", ");
+  return [...counts].map(([name, n]) => `${publicName(policy, name)}${n === 3 ? " (hat-trick)" : n > 1 ? ` ${n}` : ""}`).join(", ");
 }
 
 export function buildPost(policy: PublicNamePolicy, match: MatchContext, input: PostInput): { caption: string; graphic: GraphicSpec } {
@@ -126,6 +139,9 @@ export function buildPost(policy: PublicNamePolicy, match: MatchContext, input: 
   let secondary: string | null = null;
   let players: GraphicSpec["players"];
   let subs: string[] | undefined;
+  // Only a named scorer can have a brace or hat-trick
+  const goalCount = input.kind === "goal" && name && (input.goalNumber ?? 1) > 1 ? Math.floor(input.goalNumber ?? 1) : undefined;
+  const milestone = goalMilestone(goalCount ?? 1);
   switch (input.kind) {
     case "lineup": {
       const l = input.lineup ?? { starters: [], subs: [], teamSize: 11, kickOff: null, venue: null };
@@ -138,7 +154,7 @@ export function buildPost(policy: PublicNamePolicy, match: MatchContext, input: 
     }
     case "goal":
       secondary = name2 ? `Assist: ${name2}` : null;
-      caption = `⚽ GOAL! ${name ?? match.clubName}${at}${name2 ? ` (assist ${name2})` : ""}\n${score}`;
+      caption = `${milestone.lead} ${name ?? match.clubName}${at}${name2 ? ` (assist ${name2})` : ""}${goalCount ? ` – ${goalCount} goals today!` : ""}\n${score}`;
       break;
     case "opp_goal":
       caption = `${match.opponent} score${at}.\n${score}`;
@@ -181,7 +197,7 @@ export function buildPost(policy: PublicNamePolicy, match: MatchContext, input: 
     caption,
     graphic: {
       kind: input.kind,
-      headline: HEADLINES[input.kind],
+      headline: input.kind === "goal" ? milestone.headline : HEADLINES[input.kind],
       playerName: input.kind === "motm" ? [name, name2].filter(Boolean).join(" & ") || null : name,
       secondary,
       minute: input.minute,
@@ -195,6 +211,7 @@ export function buildPost(policy: PublicNamePolicy, match: MatchContext, input: 
       badgeUrl: match.badgeUrl,
       primaryColor: match.primaryColor || "#00E5E5",
       secondaryColor: match.secondaryColor || "#0B0D0F",
+      ...(goalCount ? { goalCount } : {}),
       ...(players ? { players, subs } : {}),
     },
   };
