@@ -1,5 +1,5 @@
 import axios, { AxiosError } from 'axios';
-import type { LiveMatchView, NewLiveEvent } from '../utils/liveMatch';
+import type { LiveMatchView, NewLiveEvent, SocialPost } from '../utils/liveMatch';
 import { Platform } from 'react-native';
 import { API_BASE_URL } from '../config';
 
@@ -857,7 +857,7 @@ export const motmApi = {
   },
 
   /** Staff: close the vote and announce the winner */
-  closeVoting: async (matchId: string): Promise<{ success: boolean; data: { winners: MotmNominee[] } }> => {
+  closeVoting: async (matchId: string): Promise<{ success: boolean; data: { winners: MotmNominee[]; post: SocialPost | null } }> => {
     const response = await api.post(`/api/v1/admin/matches/${matchId}/motm/close`, {});
     return response.data;
   },
@@ -877,6 +877,37 @@ export const motmApi = {
   /** Members: vote (or change vote) for a nominee */
   castVote: async (matchId: string, candidateId: string): Promise<{ success: boolean }> => {
     const response = await api.post(`/api/v1/matches/${matchId}/motm/vote`, { candidateId });
+    return response.data;
+  },
+};
+
+export interface LineupPlayer { playerId: string; name: string; number: number | null; position: string | null }
+export interface Lineup { teamSize: number; clubDefaultTeamSize: number; starters: LineupPlayer[]; subs: LineupPlayer[] }
+
+/** Starting line-ups (see backend routes/lineup.ts). */
+export const lineupApi = {
+  get: async (fixtureId: string): Promise<{ success: boolean; data: Lineup }> => {
+    const response = await api.get(`/api/v1/fixtures/${fixtureId}/lineup`);
+    return response.data;
+  },
+
+  /** Staff: save the team. makeClubDefault remembers the team size for next time. */
+  save: async (fixtureId: string, body: { teamSize: number; starters: string[]; subs: string[]; makeClubDefault?: boolean }): Promise<{ success: boolean; data: Lineup }> => {
+    const response = await api.put(`/api/v1/fixtures/${fixtureId}/lineup`, body);
+    return response.data;
+  },
+
+  /** Staff: post the team news (club app, and Facebook/Instagram if connected) */
+  publish: async (fixtureId: string): Promise<{ success: boolean; data: { newPost: SocialPost } }> => {
+    const response = await api.post(`/api/v1/fixtures/${fixtureId}/lineup/publish`, {});
+    return response.data;
+  },
+};
+
+/** Automatic posts: the phone sends the graphic it drew. */
+export const socialApi = {
+  uploadGraphic: async (postId: string, jpeg: Blob): Promise<{ success: boolean; data: SocialPost }> => {
+    const response = await api.post(`/api/v1/social/jobs/${postId}/graphic`, jpeg, { headers: { 'Content-Type': 'image/jpeg' } });
     return response.data;
   },
 };

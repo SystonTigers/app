@@ -1,12 +1,14 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Chip, Modal, Portal, TextInput } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { COLORS } from '../config';
 import { useClubName } from '../context/ClubContext';
-import { apiErrorMessage, fixturesApi, liveApi, squadApi } from '../services/api';
-import { newClientEventId, type LiveEvent, type LiveEventType, type LiveMatchView, type NewLiveEvent } from '../utils/liveMatch';
+import { apiErrorMessage, fixturesApi, lineupApi, liveApi, squadApi, type Lineup } from '../services/api';
+import { newClientEventId, type LiveEvent, type LiveEventType, type LiveMatchView, type NewLiveEvent, type SocialPost } from '../utils/liveMatch';
+import { sendGraphic, shareGraphic } from '../utils/postGraphic';
+import LineupEditor from '../components/live/LineupEditor';
 import ScoreHeader from '../components/live/ScoreHeader';
 import LiveTimeline from '../components/live/LiveTimeline';
 import PlayerPicker, { type PickablePlayer } from '../components/live/PlayerPicker';
@@ -46,6 +48,9 @@ export default function LiveMatchInputScreen() {
   const [failed, setFailed] = useState<{ fixtureId: string; event: NewLiveEvent; message: string } | null>(null);
   const [undoing, setUndoing] = useState<string | null>(null);
   const [message, setMessage] = useState('');
+  const [notice, setNotice] = useState('');
+  const [lineupFor, setLineupFor] = useState<FixtureOption | null>(null);
+  const [motmOpened, setMotmOpened] = useState(false);
   const matchRef = useRef<LiveMatchView | null>(null);
   matchRef.current = match;
 
@@ -94,6 +99,19 @@ export default function LiveMatchInputScreen() {
     return () => clearInterval(timer);
   }, [match?.fixture.id, match?.status]);
 
+  /** Draw and send the post's graphic, then refresh so the post status shows. */
+  const attachGraphic = async (fixtureId: string | null, post: SocialPost | null | undefined) => {
+    if (!post) return;
+    await sendGraphic(post);
+    if (!fixtureId) return;
+    try {
+      const res = await liveApi.get(fixtureId);
+      if (matchRef.current?.fixture.id === fixtureId) setMatch(res.data);
+    } catch {
+      // The 15-second refresh will catch up
+    }
+  };
+
   const send = async (fixtureId: string, event: NewLiveEvent) => {
     setSending(true);
     setMessage('');
@@ -101,6 +119,8 @@ export default function LiveMatchInputScreen() {
       const res = await liveApi.record(fixtureId, event);
       setMatch(res.data);
       setFailed(null);
+      if (res.data.motmOpened) setMotmOpened(true);
+      attachGraphic(fixtureId, res.data.newPost);
     } catch (err) {
       const status = (err as { response?: { status?: number } })?.response?.status;
       const text = apiErrorMessage(err, "That didn't send. Check your signal and tap Send again.");
@@ -115,11 +135,13 @@ export default function LiveMatchInputScreen() {
   const record = (type: LiveEventType, extra: Partial<NewLiveEvent> = {}) => {
     const fixtureId = match?.fixture.id;
     if (!fixtureId) return;
-    send(fixtureId, { type, clientEventId: newClientEventId(), ...extra });
+    // The tap time goes with it, so a slow connection doesn't shift the clock or footage timings
+    send(fixtureId, { type, clientEventId: newClientEventId(), occurredAt: Date.now(), ...extra });
   };
 
   const kickOff = (fixture: FixtureOption) => {
-    send(fixture.id, { type: 'kick_off', clientEventId: newClientEventId(), halfLength });
+    setMotmOpened(false);
+    send(fixture.id, { type: 'kick_off', clientEventId: newClientEventId(), occurredAt: Date.now(), halfLength });
   };
 
   const onPick = (player: PickablePlayer) => {
@@ -141,10 +163,36 @@ export default function LiveMatchInputScreen() {
     try {
       const res = await liveApi.undo(match.fixture.id, event.id);
       setMatch(res.data);
+      if (res.data.undonePost?.instagramLeftUp) {
+        Alert.alert('Removed from the app and Facebook', "Instagram doesn't let apps delete posts, so please delete it in the Instagram app.");
+      }
     } catch (err) {
       setMessage(apiErrorMessage(err, "We couldn't undo that. Please try again."));
     } finally {
       setUndoing(null);
+    }
+  };
+
+  const share = async (post: SocialPost) => {
+    const outcome = await shareGraphic(post);
+    if (outcome === 'downloaded') setNotice('Picture saved. Open TikTok and post it from your photos.');
+    if (outcome === 'unavailable') setNotice("This phone can't make the picture. Try the web app in Chrome or Safari.");
+  };
+
+  const lineupSaved = async (lineup: Lineup, publish: boolean) => {
+    const fixture = lineupFor;
+    setLineupFor(null);
+    if (!fixture) return;
+    if (!publish) {
+      setNotice(`Team saved: ${lineup.starters.length} starting, ${lineup.subs.length} subs.`);
+      return;
+    }
+    try {
+      const res = await lineupApi.publish(fixture.id);
+      setNotice('Team news posted.');
+      attachGraphic(null, res.data.newPost);
+    } catch (err) {
+      setMessage(apiErrorMessage(err, "The team was saved but we couldn't post it. Try again."));
     }
   };
 
@@ -168,11 +216,12 @@ export default function LiveMatchInputScreen() {
           </View>
         ) : null}
         {message ? <Text style={styles.error} accessibilityRole="alert">{message}</Text> : null}
+        {notice ? <Text style={styles.notice} accessibilityRole="alert" onPress={() => setNotice('')}>{notice}</Text> : null}
 
         {!match ? (
           <>
             <Text style={styles.heading}>Start a match</Text>
-            <Text style={styles.help}>Choose today's game, set the half length and tap Kick off when the referee blows.</Text>
+            <Text style={styles.help}>Pick your team, post the team news, then tap Kick off when the referee blows.</Text>
             <Text style={styles.label}>Each half lasts</Text>
             <View style={styles.chips}>
               {HALF_LENGTHS.map((m) => (
@@ -185,6 +234,9 @@ export default function LiveMatchInputScreen() {
                   <Text style={styles.fixtureTitle}>vs {f.opponent}</Text>
                   <Text style={styles.help}>{new Date(f.date).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}{f.time ? ` · ${f.time}` : ''}</Text>
                 </View>
+                <Pressable onPress={() => setLineupFor(f)} accessibilityRole="button" style={styles.pickTeam}>
+                  <Text style={styles.pickTeamText}>Team</Text>
+                </Pressable>
                 <Pressable onPress={() => kickOff(f)} disabled={sending} accessibilityRole="button" style={styles.kickOff}>
                   <Text style={styles.kickOffText}>Kick off</Text>
                 </Pressable>
@@ -199,10 +251,13 @@ export default function LiveMatchInputScreen() {
             {match.status === 'full_time' ? (
               <View style={styles.finished}>
                 <Text style={styles.finishedText}>Result saved to your results, league table and player stats.</Text>
+                {motmOpened ? (
+                  <Text style={styles.finishedText}>Man of the Match voting is open for parents and players, with everyone who played nominated.</Text>
+                ) : null}
                 <Pressable onPress={() => navigation.navigate('ManageMOTM')} accessibilityRole="button" style={styles.kickOff}>
-                  <Text style={styles.kickOffText}>Start Man of the Match vote</Text>
+                  <Text style={styles.kickOffText}>{motmOpened ? 'See the Man of the Match vote' : 'Start Man of the Match vote'}</Text>
                 </Pressable>
-                <Pressable onPress={() => { setMatch(null); load(); }} accessibilityRole="button" style={styles.linkButton}>
+                <Pressable onPress={() => { setMatch(null); setMotmOpened(false); load(); }} accessibilityRole="button" style={styles.linkButton}>
                   <Text style={styles.linkText}>Back to fixtures</Text>
                 </Pressable>
               </View>
@@ -225,10 +280,19 @@ export default function LiveMatchInputScreen() {
             )}
 
             <Text style={styles.label}>Timeline</Text>
-            <LiveTimeline events={match.events} opponent={match.fixture.opponent} onUndo={undo} busyId={undoing} />
+            <LiveTimeline events={match.events} opponent={match.fixture.opponent} onUndo={undo} busyId={undoing} posts={match.posts} onShare={share} />
           </>
         )}
       </ScrollView>
+
+      <LineupEditor
+        visible={!!lineupFor}
+        fixtureId={lineupFor?.id ?? null}
+        opponent={lineupFor?.opponent ?? ''}
+        players={players}
+        onClose={() => setLineupFor(null)}
+        onSaved={lineupSaved}
+      />
 
       <PlayerPicker
         visible={!!pick}
@@ -304,6 +368,9 @@ const styles = StyleSheet.create({
   fixture: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(192,192,192,0.25)' },
   fixtureText: { flex: 1 },
   fixtureTitle: { color: COLORS.text, fontSize: 17, fontWeight: '800' },
+  pickTeam: { borderWidth: 1, borderColor: COLORS.primary, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, marginRight: 8 },
+  pickTeamText: { color: COLORS.primary, fontWeight: '900', fontSize: 15 },
+  notice: { color: COLORS.primary, marginBottom: 12, fontSize: 14 },
   kickOff: { backgroundColor: COLORS.primary, borderRadius: 10, paddingHorizontal: 18, paddingVertical: 12, alignItems: 'center' },
   kickOffText: { color: COLORS.background, fontWeight: '900', fontSize: 15 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 10 },

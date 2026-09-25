@@ -34,11 +34,21 @@ export interface LiveMatchView {
   minute: number | null;
   /** Newest first */
   events: LiveEvent[];
+  /** Staff only: automatic posts for these updates */
+  posts?: SocialPost[];
+  /** Staff only, after recording: the post just queued for it */
+  newPost?: SocialPost | null;
+  /** After undo: whether a post was stopped or taken down */
+  undonePost?: { cancelled: boolean; instagramLeftUp: boolean };
+  /** After full time: Man of the Match voting opened automatically */
+  motmOpened?: boolean;
 }
 
 export interface NewLiveEvent {
   type: LiveEventType;
   clientEventId: string;
+  /** When the manager tapped (ms); used for the match clock and footage timings */
+  occurredAt?: number;
   playerId?: string;
   player2Id?: string;
   text?: string;
@@ -107,4 +117,65 @@ export function canUndo(events: LiveEvent[], target: LiveEvent): boolean {
   if (events.some((e) => e.type === 'full_time')) return target.type === 'full_time';
   if (PHASES.includes(target.type)) return events[0]?.id === target.id;
   return true;
+}
+
+/** What the server says to draw on a post's graphic (names already in the club's style). */
+export interface GraphicSpec {
+  kind: string;
+  headline: string;
+  playerName: string | null;
+  secondary: string | null;
+  minute: number | null;
+  photoUrl: string | null;
+  homeName: string;
+  awayName: string;
+  homeScore: number;
+  awayScore: number;
+  clubName: string;
+  competition: string | null;
+  badgeUrl: string | null;
+  primaryColor: string;
+  secondaryColor: string;
+  players?: Array<{ number: number | null; name: string }>;
+  subs?: string[];
+}
+
+export type PostTarget = 'feed' | 'facebook' | 'instagram';
+
+/** An automatic post for one update (staff only). */
+export interface SocialPost {
+  id: string;
+  sourceId: string;
+  kind: string;
+  status: 'pending' | 'posting' | 'done' | 'cancelled' | 'failed';
+  postAfter: number;
+  targets: PostTarget[];
+  results: Record<string, { ok: boolean; id?: string; error?: string; skipped?: boolean }>;
+  hasImage: boolean;
+  caption: string;
+  graphic: GraphicSpec;
+}
+
+const TARGET_NAMES: Record<PostTarget, string> = { feed: 'club app', facebook: 'Facebook', instagram: 'Instagram' };
+
+/** "Posting to club app, Facebook in 42s" / "Posted to club app, Facebook" / problems. */
+export function postStatusText(post: SocialPost, now: number): string {
+  const names = post.targets.map((t) => TARGET_NAMES[t]).join(', ');
+  switch (post.status) {
+    case 'pending': {
+      const secs = Math.ceil((post.postAfter - now) / 1000);
+      return secs > 0 ? `Posting to ${names} in ${secs}s. Undo stops it.` : `Posting to ${names}…`;
+    }
+    case 'posting': return `Posting to ${names}…`;
+    case 'cancelled': return 'Post cancelled';
+    case 'done': {
+      const posted = post.targets.filter((t) => post.results[t]?.ok && !post.results[t]?.skipped).map((t) => TARGET_NAMES[t]);
+      const skipped = post.targets.filter((t) => post.results[t]?.skipped).map((t) => `${TARGET_NAMES[t]} (${post.results[t]?.error ?? 'skipped'})`);
+      return [`Posted to ${posted.join(', ') || 'nowhere'}`, skipped.length ? `Not posted: ${skipped.join(', ')}` : ''].filter(Boolean).join('. ');
+    }
+    case 'failed': {
+      const errors = post.targets.filter((t) => post.results[t] && !post.results[t].ok).map((t) => `${TARGET_NAMES[t]}: ${post.results[t].error ?? 'failed'}`);
+      return `Couldn't post. ${errors.join('; ')}`;
+    }
+  }
 }

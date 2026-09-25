@@ -47,6 +47,9 @@ Type checks: `npx tsc --noEmit` in `backend/`, `mobile/` and `web-app/`.
 Set with `npx wrangler secret put NAME --env production`; never commit values.
 `JWT_SECRET` is required. `RESEND_API_KEY` (email), `STRIPE_SECRET_KEY` and
 `PRINTIFY_API_TOKEN` are optional until those features are used.
+`SOCIAL_TOKEN_KEY` (32 random bytes, base64) encrypts clubs' Facebook/Instagram
+tokens; `META_APP_SECRET` is needed to connect them. Plain vars in
+`wrangler.toml`: `META_APP_ID`, `META_LOGIN_CONFIG_ID`, `APP_BASE_URL`.
 `claude-ops/` and `*.bundle` are git-ignored because they can contain backups
 with personal data.
 
@@ -71,6 +74,23 @@ with personal data.
 - Full time saves the result (`team_results.fixture_id`), league points and
   players' goals/assists/cards (`match_events` ids starting `live-`), and marks
   the fixture completed. Undoing full time takes them back out.
+- Each tap sends `occurredAt` (the phone's time, trusted within 15 minutes), so
+  kick-off, half time and goals line up with match footage later.
+- Line-ups: `routes/lineup.ts` (5/7/9/11-a-side; club `default_team_size`,
+  fixture `team_size`). "Post team news" queues a line-up post.
+- Man of the Match: nominees default to everyone who played (starters plus subs
+  who came on, `playersWhoPlayed`); full time opens a 48h vote automatically
+  when a line-up exists. Closing the vote queues the winner post.
+- Automatic posts: `services/social/` builds the caption and graphic spec
+  (applying the club's name style: full / `first_initial` / `initial_last`;
+  photos only if `public_photos`). The manager's phone draws the JPEG
+  (`mobile/src/utils/socialGraphic.ts`) and uploads it. `social_jobs` wait for
+  the undo window (60s, per club) and the once-a-minute cron (`processDueJobs`)
+  posts to the club feed, Facebook and Instagram. Which events go where is set
+  per club in the website's admin settings. TikTok needs TikTok's app review
+  first; until then managers use Share.
+- Cron runs every minute for social posts; the other scheduled jobs only run
+  when `minute % 5 === 0`.
 
 ## Access rules worth knowing
 

@@ -3,9 +3,11 @@ import { ActivityIndicator, Alert, RefreshControl, ScrollView, StyleSheet, View 
 import { Button, Card, Chip, FAB, Modal, Paragraph, Portal, Text, Title } from 'react-native-paper';
 import { useFocusEffect } from '@react-navigation/native';
 import { COLORS } from '../config';
+import { sendGraphic } from '../utils/postGraphic';
 import {
   apiErrorMessage,
   fixturesApi,
+  lineupApi,
   motmApi,
   squadApi,
   type MotmSessionSummary,
@@ -30,7 +32,7 @@ const VOTING_LENGTHS = [
   { label: '3 days', hours: 72 },
 ];
 const MIN_NOMINEES = 2;
-const MAX_NOMINEES = 15;
+const MAX_NOMINEES = 25;
 const DAY_MS = 24 * 3600_000;
 
 function formatDate(value: string | null | undefined): string {
@@ -107,8 +109,20 @@ export default function ManageMOTMScreen() {
     }, [load]),
   );
 
+  /** Nominate everyone in the match's line-up (the manager can untick anyone). */
+  const chooseMatch = async (id: string) => {
+    setMatchId(id);
+    setNominees([]);
+    try {
+      const res = await lineupApi.get(id);
+      setNominees([...res.data.starters, ...res.data.subs].map((p) => p.playerId).slice(0, MAX_NOMINEES));
+    } catch {
+      // No line-up: the manager picks nominees by hand
+    }
+  };
+
   const startCreate = () => {
-    setMatchId(matches[0]?.id ?? '');
+    if (matches[0]) chooseMatch(matches[0].id); else setMatchId('');
     setNominees([]);
     setHours(48);
     setCreateError('');
@@ -166,6 +180,8 @@ export default function ManageMOTMScreen() {
           setBusy(true);
           try {
             const res = await motmApi.closeVoting(summary.match_id);
+            // Draw the winner graphic for the automatic post
+            sendGraphic(res.data.post);
             const names = res.data.winners.map((w) => w.name).join(' & ');
             setDetailSummary(null);
             Alert.alert('Vote closed', names ? `Man of the Match: ${names}` : 'Nobody voted, so there is no winner this time.');
@@ -257,7 +273,7 @@ export default function ManageMOTMScreen() {
             {matches.length ? (
               <View style={styles.chips}>
                 {matches.map((m) => (
-                  <Chip key={m.id} selected={matchId === m.id} onPress={() => setMatchId(m.id)} style={styles.chip}>
+                  <Chip key={m.id} selected={matchId === m.id} onPress={() => chooseMatch(m.id)} style={styles.chip}>
                     vs {m.opponent} · {formatDate(m.date)}
                   </Chip>
                 ))}

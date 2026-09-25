@@ -43,3 +43,12 @@ assert.equal(canUndo([ht, g, k], ht), true);
 assert.equal(canUndo([ft, g, k], g), false);
 assert.equal(canUndo([ft, g, k], ft), true);
 console.log('canUndo tests passed');
+
+const { postStatusText } = require('../src/utils/liveMatch.ts');
+const basePost = { targets: ['feed', 'facebook', 'instagram'], results: {}, postAfter: 60000 };
+assert.equal(postStatusText({ ...basePost, status: 'pending' }, 18000), 'Posting to club app, Facebook, Instagram in 42s. Undo stops it.');
+assert.equal(postStatusText({ ...basePost, status: 'done', results: { feed: { ok: true }, facebook: { ok: true }, instagram: { ok: true, skipped: true, error: "Instagram isn't connected." } } }, 0),
+  "Posted to club app, Facebook. Not posted: Instagram (Instagram isn't connected.)");
+assert.equal(postStatusText({ ...basePost, status: 'failed', results: { feed: { ok: true }, facebook: { ok: false, error: 'Reconnect Facebook and Instagram in Settings.' } } }, 0),
+  "Couldn't post. Facebook: Reconnect Facebook and Instagram in Settings.");
+console.log('postStatusText tests passed');
