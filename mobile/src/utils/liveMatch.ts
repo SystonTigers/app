@@ -39,7 +39,9 @@ export interface LiveMatchView {
   /** Staff only, after recording: the post just queued for it */
   newPost?: SocialPost | null;
   /** After undo: whether a post was stopped or taken down */
-  undonePost?: { cancelled: boolean; instagramLeftUp: boolean };
+  undonePost?: { cancelled: boolean; instagramLeftUp: boolean; wasPublished?: boolean };
+  /** After undoing an update that had already gone out: the "CORRECTION" post queued for it */
+  correctionPost?: SocialPost | null;
   /** After full time: Man of the Match voting opened automatically */
   motmOpened?: boolean;
 }

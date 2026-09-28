@@ -150,13 +150,13 @@ export async function processDueJobs(env: SocialEnv, opts: { now?: number; jobId
  * Undo: cancel a post that hasn't gone out. If it already went out, remove it
  * from the club app and Facebook; Instagram posts can't be removed by apps.
  */
-export async function cancelPost(env: SocialEnv, tenantId: string, sourceType: string, sourceId: string, fetchImpl: typeof fetch = fetch): Promise<{ cancelled: boolean; instagramLeftUp: boolean }> {
+export async function cancelPost(env: SocialEnv, tenantId: string, sourceType: string, sourceId: string, fetchImpl: typeof fetch = fetch): Promise<{ cancelled: boolean; instagramLeftUp: boolean; wasPublished: boolean }> {
   const row = await env.DB.prepare(`SELECT * FROM social_jobs WHERE tenant_id = ? AND source_type = ? AND source_id = ?`)
     .bind(tenantId, sourceType, sourceId).first<JobRow>();
-  if (!row) return { cancelled: false, instagramLeftUp: false };
+  if (!row) return { cancelled: false, instagramLeftUp: false, wasPublished: false };
   const pending = await env.DB.prepare(`UPDATE social_jobs SET status = 'cancelled', updated_at = ? WHERE id = ? AND status = 'pending'`)
     .bind(Date.now(), row.id).run();
-  if (pending.meta.changes) return { cancelled: true, instagramLeftUp: false };
+  if (pending.meta.changes) return { cancelled: true, instagramLeftUp: false, wasPublished: false };
 
   const results: Record<string, TargetResult> = row.results ? JSON.parse(row.results) : {};
   if (results.feed?.ok && results.feed.id) {
@@ -171,7 +171,11 @@ export async function cancelPost(env: SocialEnv, tenantId: string, sourceType: s
     }
   }
   await env.DB.prepare(`UPDATE social_jobs SET status = 'cancelled', updated_at = ? WHERE id = ?`).bind(Date.now(), row.id).run();
-  return { cancelled: true, instagramLeftUp: !!(results.instagram?.ok && results.instagram.id) };
+  return {
+    cancelled: true,
+    instagramLeftUp: !!(results.instagram?.ok && results.instagram.id),
+    wasPublished: Object.values(results).some((r) => r?.ok),
+  };
 }
 
 /**

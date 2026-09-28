@@ -7,7 +7,7 @@ import type { Brand, Graphic, TeamSide } from "../graphics/types";
 
 /** Match events posted live, then scheduled club posts. */
 export const MATCH_KINDS = [
-  "lineup", "goal", "opp_goal", "kick_off", "half_time", "second_half", "full_time", "yellow", "red", "sub", "motm",
+  "lineup", "goal", "opp_goal", "kick_off", "half_time", "second_half", "full_time", "yellow", "red", "sub", "motm", "correction",
 ] as const;
 export const SCHEDULED_KINDS = [
   "countdown", "matchday", "fixtures", "results", "table", "postponed", "birthday", "player_of_week", "player_of_month", "milestone", "throwback", "quote",
@@ -29,7 +29,7 @@ const APP_ONLY = { feed: true, social: false };
  */
 export const DEFAULT_EVENT_SETTINGS: EventSettings = {
   lineup: BOTH, goal: BOTH, opp_goal: APP_ONLY, kick_off: APP_ONLY, half_time: BOTH, second_half: { feed: false, social: false },
-  full_time: BOTH, yellow: APP_ONLY, red: APP_ONLY, sub: APP_ONLY, motm: BOTH,
+  full_time: BOTH, yellow: APP_ONLY, red: APP_ONLY, sub: APP_ONLY, motm: BOTH, correction: BOTH,
   countdown: BOTH, matchday: BOTH, fixtures: BOTH, results: BOTH, table: BOTH, postponed: BOTH,
   birthday: APP_ONLY, player_of_week: BOTH, player_of_month: BOTH, milestone: BOTH, throwback: APP_ONLY, quote: APP_ONLY,
 };
@@ -82,6 +82,8 @@ export interface PostInput {
   /** Half/full time: our goals so far (full names), in order */
   scorers?: Array<{ name: string; minute: number | null }>;
   goalNumber?: number;          // goals: this scorer's goals so far this match, counting this one (2 = brace, 3 = hat-trick)
+  /** Corrections: the kind of update that was posted in error (the score in `match` is the corrected one) */
+  corrects?: MatchKind;
   lineup?: { starters: LineupPerson[]; subs: LineupPerson[]; teamSize: number; kickOff: string | null; venue: string | null };
 }
 
@@ -124,8 +126,11 @@ export function scorerLines(policy: PublicNamePolicy, scorers: Array<{ name: str
 
 const HEADLINES: Record<MatchKind, string> = {
   lineup: "STARTING XI", goal: "GOAL!", opp_goal: "GOAL", kick_off: "KICK OFF", half_time: "HALF TIME", second_half: "SECOND HALF",
-  full_time: "FULL TIME", yellow: "YELLOW CARD", red: "RED CARD", sub: "SUBSTITUTION", motm: "MAN OF THE MATCH",
+  full_time: "FULL TIME", yellow: "YELLOW CARD", red: "RED CARD", sub: "SUBSTITUTION", motm: "MAN OF THE MATCH", correction: "CORRECTION",
 };
+
+/** Updates that get a correction post if they were undone after going out. */
+export const CORRECTABLE_KINDS: readonly MatchKind[] = ["goal", "opp_goal", "yellow", "red", "half_time", "full_time"];
 
 function sides(m: MatchContext, ourScorers: string[] = []): { home: TeamSide; away: TeamSide } {
   const us: TeamSide = { name: m.brand.clubName, badgeUrl: m.brand.badgeUrl, score: m.ourScore, scorers: ourScorers, isUs: true };
@@ -199,6 +204,29 @@ export function buildPost(policy: PublicNamePolicy, match: MatchContext, input: 
       return {
         caption: `${lead}: ${score}${summary ? `\n⚽ ${summary}` : ""}`,
         graphic: { ...base, layout: "score", headline: HEADLINES[input.kind], home: withScorers.home, away: withScorers.away, minute: input.kind === "half_time" ? input.minute : null, showScore: true, detail: null },
+      };
+    }
+    case "correction": {
+      const who = input.corrects === "opp_goal" ? match.opponent : name;
+      const when = input.minute !== null ? ` (${input.minute}')` : "";
+      const [detail, caption] = (() => {
+        switch (input.corrects) {
+          case "goal":
+          case "opp_goal":
+            return [`No goal${who ? ` · ${who}` : ""}${at}`, `⚠️ Correction: no goal${who ? ` for ${who}` : ""}${when}. That update was posted in error.\nScore: ${score}`];
+          case "yellow":
+          case "red":
+            return [`No ${input.corrects} card${who ? ` · ${who}` : ""}`, `⚠️ Correction: the ${input.corrects} card${who ? ` for ${who}` : ""}${when} was posted in error.`];
+          case "half_time":
+          case "full_time":
+            return ["Match still in play", `⚠️ Correction: our ${input.corrects === "full_time" ? "full time" : "half time"} update was posted too early. The match is still going.\nScore: ${score}`];
+          default:
+            return ["Update posted in error", `⚠️ Correction: our last update was posted in error.\nScore: ${score}`];
+        }
+      })();
+      return {
+        caption,
+        graphic: { ...base, layout: "score", headline: HEADLINES.correction, home, away, minute: input.minute, showScore: true, detail },
       };
     }
     case "motm": {

@@ -6,7 +6,7 @@ import { API_BASE, errorMessage, getSessionToken } from '@/lib/session';
 import { GraphicsSettings, type GraphicsInfo } from './GraphicsSettings';
 
 type NameStyle = 'full' | 'first_initial' | 'initial_last' | 'first' | 'last';
-type MatchKind = 'lineup' | 'goal' | 'opp_goal' | 'kick_off' | 'half_time' | 'second_half' | 'full_time' | 'yellow' | 'red' | 'sub' | 'motm';
+type MatchKind = 'lineup' | 'goal' | 'opp_goal' | 'kick_off' | 'half_time' | 'second_half' | 'full_time' | 'yellow' | 'red' | 'sub' | 'motm' | 'correction';
 type ClubKind = 'countdown' | 'matchday' | 'fixtures' | 'results' | 'table' | 'postponed' | 'birthday' | 'player_of_week' | 'player_of_month' | 'milestone' | 'throwback' | 'quote';
 type Kind = MatchKind | ClubKind;
 type Events = Record<Kind, { feed: boolean; social: boolean }>;
@@ -33,6 +33,7 @@ const MATCH_KINDS: Array<[Kind, string]> = [
     ['second_half', 'Second half'],
     ['full_time', 'Full time'],
     ['motm', 'Man of the Match'],
+    ['correction', 'Corrections (an update undone after it was posted)'],
 ];
 
 /** Posted automatically on a schedule (UK time). */

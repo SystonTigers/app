@@ -124,7 +124,9 @@ describe("Automatic social posts", () => {
 
     const mistake = await post({ type: "goal", playerId: sam, minute: 5 });
     const undo = await call(`/api/v1/fixtures/${fixtureId}/live/events/${mistake.data.data.events[0].id}`, { method: "DELETE", token: coach.token });
-    expect(undo.data.data.undonePost).toEqual({ cancelled: true, instagramLeftUp: false });
+    expect(undo.data.data.undonePost).toEqual({ cancelled: true, instagramLeftUp: false, wasPublished: false });
+    // Stopped before it went out: nothing to correct
+    expect(undo.data.data.correctionPost).toBeNull();
     const meta = fakeMeta();
     await processDueJobs(env as any, { now: Date.now() + 200_000, fetchImpl: meta.f });
     expect(meta.calls.some((c) => c.includes("/photos"))).toBe(false);
@@ -135,7 +137,12 @@ describe("Automatic social posts", () => {
     await processDueJobs(env as any, { now: Date.now() + 61_000, fetchImpl: meta.f });
     const deletes = vi.spyOn(globalThis, "fetch").mockResolvedValue(ok({ success: true }));
     const late = await call(`/api/v1/fixtures/${fixtureId}/live/events/${goal.data.data.events[0].id}`, { method: "DELETE", token: coach.token });
-    expect(late.data.data.undonePost).toEqual({ cancelled: true, instagramLeftUp: true });
+    expect(late.data.data.undonePost).toEqual({ cancelled: true, instagramLeftUp: true, wasPublished: true });
+    // It had gone out, so a CORRECTION post with the right score follows
+    expect(late.data.data.correctionPost).toMatchObject({ kind: "correction" });
+    const correction = await env.DB.prepare(`SELECT caption, graphic FROM social_jobs WHERE source_id = ?`).bind(`correction:${goal.data.data.events[0].id}`).first<any>();
+    expect(correction.caption).toMatch(/^⚠️ Correction: no goal for .+ \(9'\)\. That update was posted in error\.\nScore: .+ 0–0 Undo Rovers$/);
+    expect(JSON.parse(correction.graphic)).toMatchObject({ layout: "score", headline: "CORRECTION", showScore: true });
     expect(deletes.mock.calls.some(([u, init]) => String(u).includes("/page1_post1") && (init as RequestInit)?.method === "DELETE")).toBe(true);
     const feedRow = await env.DB.prepare(`SELECT COUNT(*) AS c FROM feed_posts WHERE id = ?`).bind(`social-${job.id}`).first<any>();
     expect(feedRow.c).toBe(0);

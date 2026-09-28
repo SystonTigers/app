@@ -25,6 +25,7 @@ export function sampleGraphics(brand: Brand = DEFAULT_BRAND): Record<string, Gra
     card: { ...base, layout: "moment", kind: "yellow", headline: "YELLOW CARD", playerName: "Ben T.", secondary: null, minute: 38, photoUrl: null, home: us(1), away: them(0), card: "yellow" },
     kickoff: { ...base, layout: "score", kind: "kick_off", headline: "KICK OFF", home: us(0), away: them(0), minute: null, showScore: false, detail: "We're under way at Syston Park" },
     halftime: { ...base, layout: "score", kind: "half_time", headline: "HALF TIME", home: us(1, ["Sam S. 23'"]), away: them(0), minute: 25, showScore: true, detail: null },
+    correction: { ...base, layout: "score", kind: "correction", headline: "CORRECTION", home: us(1, []), away: them(1), minute: 23, showScore: true, detail: "No goal · Sam S. 23'" },
     fulltime: { ...base, layout: "score", kind: "full_time", headline: "FULL TIME", home: us(3, ["Sam S. 23', 41'", "Will J. 52'"]), away: them(1), minute: null, showScore: true, detail: null },
     lineup: {
       ...base, layout: "lineup", kind: "lineup", headline: "STARTING XI", home: us(null), away: them(null), date: "SAT 4 OCT", time: "10:30", venue: "Syston Park",

@@ -92,6 +92,10 @@ with personal data.
 - A scorer's 2nd, 3rd, 4th... goal in a match posts as BRACE! / HAT-TRICK! /
   FOUR GOALS! (`goalMilestone`); the graphic shows one ball per goal and turns
   gold from a hat-trick.
+- Undoing an update whose post already went out takes it down from the app
+  and Facebook and queues a CORRECTION post (`correction` kind, score layout,
+  source_id `correction:<eventId>`) with the corrected score, because
+  Instagram posts can't be deleted. Goals, cards, half and full time only.
 - Cron runs every minute for social posts; the other scheduled jobs only run
   when `minute % 5 === 0`.
 

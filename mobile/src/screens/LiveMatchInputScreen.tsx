@@ -163,8 +163,11 @@ export default function LiveMatchInputScreen() {
     try {
       const res = await liveApi.undo(match.fixture.id, event.id);
       setMatch(res.data);
+      const correcting = res.data.correctionPost ? ' A CORRECTION post with the right score is going out too.' : '';
       if (res.data.undonePost?.instagramLeftUp) {
-        Alert.alert('Removed from the app and Facebook', "Instagram doesn't let apps delete posts, so please delete it in the Instagram app.");
+        Alert.alert('Removed from the app and Facebook', `Instagram doesn't let apps delete posts, so please delete it in the Instagram app.${correcting}`);
+      } else if (correcting) {
+        setNotice(`That update had already been posted.${correcting}`);
       }
     } catch (err) {
       setMessage(apiErrorMessage(err, "We couldn't undo that. Please try again."));

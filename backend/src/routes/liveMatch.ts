@@ -15,7 +15,7 @@ import { hasAnyRole, requireStaff, requireTenantJWT, STAFF_ROLES, type TenantCla
 import { computeState, isLiveEventType, matchMinute, rejectReason, undoBlockedReason, type LiveEventType } from "../services/liveMatchState";
 import { describeMatch, loadEvents, loadFixture, recentLiveFixtureIds, recordFullTime, revertFullTime, setMatchStatus, type LiveFixture } from "../services/liveMatch";
 import { cancelPost, drawAndPostSoon, jobsForFixture, postPerson, queuePost, type JobSummary } from "../services/social/jobs";
-import { MATCH_KINDS, type MatchKind } from "../services/social/content";
+import { CORRECTABLE_KINDS, MATCH_KINDS, type MatchKind } from "../services/social/content";
 import type { LiveEvent } from "../services/liveMatchState";
 import { getSession, openVote } from "../services/motm";
 import { playersWhoPlayed } from "../services/lineup";
@@ -105,6 +105,25 @@ async function queueEventPost(env: Env, tenantId: string, fixture: LiveFixture, 
         ? upTo.filter((e) => e.type === "goal").map((e) => ({ name: e.playerName ?? "Unknown", minute: e.minute }))
         : undefined,
     },
+  });
+}
+
+/** A "CORRECTION" post for an update that went out and was then undone, with the corrected score. */
+async function queueCorrection(env: Env, tenantId: string, fixtureId: string, remaining: LiveEvent[], undone: LiveEvent): Promise<JobSummary | null> {
+  const fixture = await loadFixture(env, tenantId, fixtureId);
+  if (!fixture) return null;
+  const state = describeMatch(fixture, remaining);
+  const player = await postPerson(env, tenantId, undone.playerId, undone.playerName);
+  return queuePost(env, {
+    tenantId,
+    fixtureId,
+    sourceType: "live_event",
+    sourceId: `correction:${undone.id}`,
+    match: {
+      opponent: fixture.opponent, homeAway: fixture.homeAway, ourScore: state.ourScore, theirScore: state.theirScore,
+      competition: fixture.competition, date: fixture.date, time: fixture.time, venue: fixture.venue,
+    },
+    input: { kind: "correction", corrects: undone.type as MatchKind, minute: undone.minute, player },
   });
 }
 
@@ -256,7 +275,16 @@ export async function handleUndoLiveEvent(req: Request, env: Env, corsHdrs: Head
     await setMatchStatus(env, claims.tenantId, fixtureId, computeState(remaining).status);
     // Stop the post going out, or take it down from the app and Facebook if it already has
     const undonePost = await cancelPost(env, claims.tenantId, "live_event", eventId);
-    return matchResponse(env, claims, fixtureId, corsHdrs, { undonePost });
+    // It had already gone out: tell followers it was wrong (Instagram posts can't be deleted)
+    let correctionPost: JobSummary | null = null;
+    if (undonePost.wasPublished && CORRECTABLE_KINDS.includes(target.type as MatchKind)) {
+      try {
+        correctionPost = await queueCorrection(env, claims.tenantId, fixtureId, remaining, target);
+      } catch (err) {
+        console.error(JSON.stringify({ level: "error", msg: "correction_queue_failed", fixtureId, error: err instanceof Error ? err.message : String(err) }));
+      }
+    }
+    return matchResponse(env, claims, fixtureId, corsHdrs, { undonePost, correctionPost });
   } catch (err) {
     return internalError(corsHdrs, "undo", err);
   }
