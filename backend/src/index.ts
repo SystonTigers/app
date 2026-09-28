@@ -230,6 +230,7 @@ import { runCleanup } from "./cron/cleanup";
 import { runLeague } from "./cron/league";
 import { runFASync } from "./cron/fa-sync";
 import { handleGetFaFullTime, handleSetFaFullTime } from "./routes/faFullTime";
+import { handleClearLeagueResults, handleGetLeague, handlePasteLeague, handleSetLeague } from "./routes/league";
 import { processScheduledNotifications } from "./routes/mobile-notifications";
 
 // Export Durable Objects
@@ -1320,6 +1321,11 @@ router.post("/api/:v/fixtures/sync/website", staffOnly((req, env, corsHdrs) => h
 router.post("/api/:v/fixtures/sync/snippet", staffOnly((req, env, corsHdrs) => handleSyncFromSnippet(req, env, corsHdrs)));
 router.post("/api/:v/fixtures/sync/email", staffOnly((req, env, corsHdrs) => handleParseEmail(req, env, corsHdrs)));
 router.post("/api/:v/fixtures/sync/all", staffOnly((req, env, corsHdrs) => handleSyncAll(req, env, corsHdrs)));
+// The club's own league table from pasted results or a pasted table (routes/league.ts)
+router.get("/api/:v/club/league", (req, env, corsHdrs) => handleGetLeague(req, env, corsHdrs));
+router.put("/api/:v/club/league", staffOnly((req, env, corsHdrs) => handleSetLeague(req, env, corsHdrs)));
+router.post("/api/:v/club/league/paste", staffOnly((req, env, corsHdrs) => handlePasteLeague(req, env, corsHdrs)));
+router.delete("/api/:v/club/league/results", staffOnly((req, env, corsHdrs) => handleClearLeagueResults(req, env, corsHdrs)));
 // FA Full-Time code snippets shown on the club's league pages (routes/faFullTime.ts)
 router.get("/api/:v/club/fa-full-time", (req, env, corsHdrs) => handleGetFaFullTime(req, env, corsHdrs));
 router.put("/api/:v/club/fa-full-time", staffOnly((req, env, corsHdrs) => handleSetFaFullTime(req, env, corsHdrs)));

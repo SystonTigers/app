@@ -9,6 +9,7 @@ export default function TablePage({ params }: { params: Promise<{ tenant: string
   const [tenant, setTenant] = useState('');
   const [seasonId, setSeasonId] = useState<string | null>(null);
   const [table, setTable] = useState<any[]>([]);
+  const [source, setSource] = useState<string>('manual');
   const [loading, setLoading] = useState(true);
   const { snippets, loaded: faLoaded } = useFaSnippets(tenant);
 
@@ -29,6 +30,7 @@ export default function TablePage({ params }: { params: Promise<{ tenant: string
       const data = await res.json();
       if (data.success && data.data) {
         setTable(data.data);
+        setSource(data.meta?.source || 'manual');
       }
     } catch (err) {
       console.error('Failed to load table:', err);
@@ -50,10 +52,11 @@ export default function TablePage({ params }: { params: Promise<{ tenant: string
       </div>
 
       <div className="container px-6 py-12">
-        {faLoaded && snippets.table ? (
-          <FaFullTimeEmbed code={snippets.table} title="League Table" highlight={tenant.split('-')[0]} />
-        ) : (
+        {!loading && table.length === 0 && faLoaded && snippets.table ? null : (
         <>
+        {(source === 'results' || source === 'table') && (
+          <p className="mb-4 text-xs font-bold uppercase tracking-wider text-gray-500">Sorted by points, then goal difference, then goals scored</p>
+        )}
         {tenant && (
           <PublicSeasonTabs
             tenant={tenant}
@@ -151,6 +154,12 @@ export default function TablePage({ params }: { params: Promise<{ tenant: string
           </div>
         </div>
         </>
+        )}
+
+        {faLoaded && snippets.table && (
+          <div className="mt-12">
+            <FaFullTimeEmbed code={snippets.table} title="Official League Table" highlight={tenant.split('-')[0]} />
+          </div>
         )}
       </div>
     </div>

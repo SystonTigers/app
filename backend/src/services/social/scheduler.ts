@@ -10,6 +10,7 @@
  * (3 days before) · 19:00 milestones · postponements whenever they happen.
  */
 import { opponentBadgeUrl, normalizeTeamName } from "../opponentBadges";
+import { guessOurTeam } from "../league/table";
 import type { SocialEnv } from "./club";
 import {
   birthdayPost, countdownPost, fixturesPost, matchdayPost, milestonePost, playerOfPeriodPost, postponedPost, QUOTES, quotePost,
@@ -148,18 +149,21 @@ export async function scheduleClub(env: SocialEnv, tenantId: string, now: Date):
   if (t.weekday === 1 && t.hour >= 12) {
     await queue("table", `table:${t.date}`, async (club) => {
       const { results } = await env.DB.prepare(
-        `SELECT competition, team_name, played, won, drawn, lost, goals_for, goals_against, points, position FROM league_standings
+        `SELECT competition, team_name, played, won, drawn, lost, goals_for, goals_against, goal_difference, points, position FROM league_standings
          WHERE tenant_id = ? ORDER BY competition, COALESCE(position, 999), points DESC`,
-      ).bind(tenantId).all<{ competition: string; team_name: string; played: number; won: number; drawn: number; lost: number; goals_for: number; goals_against: number; points: number; position: number | null }>();
+      ).bind(tenantId).all<{ competition: string; team_name: string; played: number; won: number; drawn: number; lost: number; goals_for: number; goals_against: number; goal_difference: number | null; points: number; position: number | null }>();
       if (!results?.length) return null;
-      const ours = normalizeTeamName(club.clubName);
+      // Our name in the league ("Syston Town Juniors U18 Tigers") can differ from the club's name
+      const league = await env.DB.prepare(`SELECT our_team FROM league_settings WHERE tenant_id = ?`).bind(tenantId).first<{ our_team: string | null }>();
+      const leagueName = league?.our_team || guessOurTeam(results.map((r) => r.team_name), club.clubName);
+      const ours = normalizeTeamName(leagueName || club.clubName);
       const byComp = new Map<string, typeof results>();
       results.forEach((r) => byComp.set(r.competition, [...(byComp.get(r.competition) ?? []), r]));
       const [competition, rows] = [...byComp].find(([, rs]) => rs.some((r) => normalizeTeamName(r.team_name) === ours)) ?? [...byComp].sort((a, b) => b[1].length - a[1].length)[0];
       if (rows.length < 3) return null;
       return tablePost(club.brand, competition, rows.map((r, i) => ({
         position: r.position ?? i + 1, team: r.team_name, played: Number(r.played), won: Number(r.won), drawn: Number(r.drawn), lost: Number(r.lost),
-        goalDifference: Number(r.goals_for) - Number(r.goals_against), points: Number(r.points), isUs: normalizeTeamName(r.team_name) === ours,
+        goalDifference: r.goal_difference ?? Number(r.goals_for) - Number(r.goals_against), points: Number(r.points), isUs: normalizeTeamName(r.team_name) === ours,
       })));
     });
   }

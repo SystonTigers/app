@@ -229,7 +229,8 @@ describe("Content Routes", () => {
 
                 expect(body.success).toBe(true);
                 // Stored with the derived outcome (3-1 = win, 3 points)
-                const bindArgs = (env.DB.prepare as any).mock.results.at(-1).value.bind.mock.calls.at(-1);
+                const binds = (env.DB.prepare as any).mock.results.flatMap((r: any) => r.value.bind.mock.calls);
+                const bindArgs = binds.find((args: unknown[]) => args.includes("Rival FC"));
                 expect(bindArgs).toContain("win");
                 expect(bindArgs).toContain(3);
             });

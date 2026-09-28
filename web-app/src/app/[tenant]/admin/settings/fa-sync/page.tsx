@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { API_BASE, errorMessage, getSessionToken } from '@/lib/session';
 import { FaFullTimeEmbed, type FaSnippetKind, type FaSnippets } from '@/components/FaFullTimeEmbed';
+import { LeagueTableSettings } from '@/components/LeagueTableSettings';
 
 const BOXES: Array<{ kind: FaSnippetKind; type: string; label: string; shows: string }> = [
     { kind: 'table', type: 'Division - Table', label: 'League table', shows: 'the League Table page' },
@@ -14,8 +15,8 @@ const BOXES: Array<{ kind: FaSnippetKind; type: string; label: string; shows: st
 ];
 
 /**
- * FA Full-Time: the club pastes the code snippets the FA gives it, and the
- * club pages show the FA's own league table, fixtures and results.
+ * League table settings: the club's own table (pasted results or table,
+ * plus Match Centre) and, optionally, FA Full-Time code snippets.
  */
 export default function FaFullTimeSettingsPage() {
     const params = useParams();
@@ -73,9 +74,15 @@ export default function FaFullTimeSettingsPage() {
         <div className="container mx-auto p-6 space-y-6 max-w-4xl">
             <div>
                 <Link href={`/${tenant}/admin/settings`} className="text-sm text-gray-500 hover:text-brand">← Settings</Link>
-                <h1 className="text-2xl font-bold mt-2">League table, fixtures &amp; results from FA Full-Time</h1>
-                <p className="text-gray-500 mt-1">
-                    Your club pages show the FA&apos;s own table, fixtures and results, straight from FA Full-Time, so they&apos;re always up to date.
+                <h1 className="text-2xl font-bold mt-2">League table, fixtures &amp; results</h1>
+            </div>
+
+            <LeagueTableSettings />
+
+            <div>
+                <h2 className="text-xl font-bold">FA Full-Time snippets (optional)</h2>
+                <p className="text-gray-500 mt-1 text-sm">
+                    If your league is on FA Full-Time, your club pages can also show the FA&apos;s own table, fixtures and results. They load from the FA, so they only appear when the FA lets visitors&apos; browsers through.
                 </p>
             </div>
 

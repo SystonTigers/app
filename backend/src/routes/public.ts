@@ -536,11 +536,15 @@ export async function handlePublicTenantRequest(
                 lost: Number(row.lost ?? 0),
                 goalsFor: Number(row.goals_for ?? 0),
                 goalsAgainst: Number(row.goals_against ?? 0),
-                // Worked out from the goals: older rows were saved without goal_difference
-                goalDifference: Number(row.goals_for ?? 0) - Number(row.goals_against ?? 0),
+                goalDifference: row.goal_difference !== null && row.goal_difference !== undefined
+                    ? Number(row.goal_difference)
+                    : Number(row.goals_for ?? 0) - Number(row.goals_against ?? 0),
                 points: Number(row.points ?? 0),
             }));
-            return json({ success: true, data: table }, 200, corsHdrs);
+            // How the table was made, so pages can say how it's sorted
+            const league = await env.DB.prepare(`SELECT mode, competition FROM league_settings WHERE tenant_id = ?`)
+                .bind(tenant.id).first() as { mode?: string; competition?: string } | null;
+            return json({ success: true, data: table, meta: { source: league?.mode ?? "manual", competition: league?.competition ?? null } }, 200, corsHdrs);
         }
 
         if (resource === "stats" && segments[3] !== "fun") {

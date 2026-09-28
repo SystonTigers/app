@@ -19,6 +19,7 @@ import { MATCH_KINDS, type MatchKind } from "../services/social/content";
 import type { LiveEvent } from "../services/liveMatchState";
 import { getSession, openVote } from "../services/motm";
 import { playersWhoPlayed } from "../services/lineup";
+import { refreshLeagueTable } from "../services/league/store";
 
 const MOTM_VOTING_HOURS = 48;
 
@@ -210,6 +211,7 @@ export async function handleRecordLiveEvent(req: Request, env: Env, corsHdrs: He
     let motmOpened = false;
     if (type === "full_time") {
       await recordFullTime(env, claims.tenantId, fixture, updated);
+      await refreshLeagueTable(env, claims.tenantId);
       try {
         motmOpened = await openMotmAtFullTime(env, claims.tenantId, fixtureId);
       } catch (err) {
@@ -245,7 +247,10 @@ export async function handleUndoLiveEvent(req: Request, env: Env, corsHdrs: Head
 
     await env.DB.prepare(`UPDATE live_match_events SET deleted_at = ? WHERE tenant_id = ? AND id = ?`)
       .bind(Date.now(), claims.tenantId, eventId).run();
-    if (target.type === "full_time") await revertFullTime(env, claims.tenantId, fixtureId);
+    if (target.type === "full_time") {
+      await revertFullTime(env, claims.tenantId, fixtureId);
+      await refreshLeagueTable(env, claims.tenantId);
+    }
 
     const remaining = events.filter((e) => e.id !== eventId);
     await setMatchStatus(env, claims.tenantId, fixtureId, computeState(remaining).status);

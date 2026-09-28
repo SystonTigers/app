@@ -19,8 +19,8 @@ export default function SettingsPage({ params }: PageProps) {
         {
             href: `/${tenant}/admin/settings/fa-sync`,
             icon: '📅',
-            title: 'League Table & Fixtures (FA Full-Time)',
-            description: 'Paste your FA Full-Time code snippets to show the league table, fixtures and results on your club pages.',
+            title: 'League Table',
+            description: 'Paste your league\'s results once a week and we work out the table, sorted by goal difference. Add FA Full-Time snippets too.',
         },
     ];
 

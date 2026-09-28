@@ -56,7 +56,7 @@ export default function LeagueTableScreen() {
           lost: row.lost,
           gf: row.goals_for,
           ga: row.goals_against,
-          gd: row.goals_for - row.goals_against,
+          gd: row.goal_difference ?? row.goals_for - row.goals_against,
           points: row.points,
         }));
         setLeagueTable(mapped);
@@ -169,7 +169,8 @@ export default function LeagueTableScreen() {
     );
   };
 
-  if (faSnippets?.table) {
+  // Our own table (sorted by goal difference) comes first; the FA's is the fallback
+  if (faSnippets?.table && !loading && leagueTable.length === 0) {
     return (
       <ScrollView style={{ backgroundColor: colors.background }} contentContainerStyle={styles.container}>
         <View style={styles.header}>

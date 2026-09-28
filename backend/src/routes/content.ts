@@ -1,6 +1,7 @@
 import { json } from "../services/util";
 import { outcomeFromScores } from "../services/results";
 import { requireJWT, requireStaff } from "../services/auth";
+import { refreshLeagueTable } from "../services/league/store";
 
 // Fixtures
 export async function handleCreateFixture(req: Request, env: any, corsHdrs: Headers) {
@@ -183,6 +184,7 @@ export async function handleCreateResult(req: Request, env: any, corsHdrs: Heade
             claims.tenantId, body.date, body.opponent, body.venue || 'TBC', body.competition || 'League',
             ourScore, theirScore, result, points, body.scorers ?? null
         ).run();
+        await refreshLeagueTable(env, claims.tenantId);
 
         return json({ success: true, id: inserted?.meta?.last_row_id ?? null }, 200, corsHdrs);
     } catch (err) {
@@ -195,6 +197,7 @@ export async function handleDeleteResult(req: Request, env: any, corsHdrs: Heade
         const claims = await requireStaff(req, env);
         await env.DB.prepare("DELETE FROM team_results WHERE id = ? AND tenant_id = ?")
             .bind(id, claims.tenantId).run();
+        await refreshLeagueTable(env, claims.tenantId);
         return json({ success: true }, 200, corsHdrs);
     } catch (err) {
         return json({ success: false, error: "Failed to delete result" }, 500, corsHdrs);
@@ -249,6 +252,7 @@ export async function handleUpdateResult(req: Request, env: any, corsHdrs: Heade
         await env.DB.prepare(
             `UPDATE team_results SET ${updates.join(", ")} WHERE id = ? AND tenant_id = ?`
         ).bind(...params).run();
+        await refreshLeagueTable(env, claims.tenantId);
 
         return json({ success: true }, 200, corsHdrs);
     } catch (err) {

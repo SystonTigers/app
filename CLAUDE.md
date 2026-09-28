@@ -133,6 +133,23 @@ with personal data.
   "Around the League".
 - Our own results, scorers and points still come from Match Centre.
 
+## Our league table (sorted by goal difference)
+
+- Leagues don't offer open data feeds (FA Full-Time, FAW COMET, GotSport and
+  the rest), so the club's table is worked out by us (`services/league/`):
+  managers paste the league's results page, or its table, copied from any
+  site (Settings → League Table; `POST /api/v1/club/league/paste`).
+  `parse.ts` reads tab/space separated rows, dd/mm and US m/d dates and date
+  headings; postponed games are skipped. Results are kept in `league_results`
+  (repeat pastes are ignored) and settings in `league_settings`.
+- `store.ts` rebuilds `league_standings` from the season's results plus our
+  Match Centre/manual results on days the paste doesn't cover, sorted by
+  points, goal difference, goals scored (`table.ts`). It runs after each
+  paste, full time, undo and result edit. A pasted table is re-sorted instead
+  (`mode = 'table'`) and isn't touched by later results until the next paste.
+- The website, app and weekly table graphic all read `league_standings`;
+  `/public/:club/table` returns `meta.source` so pages can say how it's sorted.
+
 ## Access rules worth knowing
 
 - Club-admin writes are wrapped in `staffOnly(...)` in `index.ts`; add new
