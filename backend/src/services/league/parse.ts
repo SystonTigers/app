@@ -109,6 +109,18 @@ function cleanTeam(name: string): string {
   return name.replace(/\((ht|h\/t|half[- ]time|aet|a\.e\.t\.|pens?|penalties)\b[^)]*\)/gi, " ").replace(WEEKDAY, " ").replace(TIME, " ").replace(/\s+/g, " ").replace(/^[\s\-–|:]+|[\s\-–|:]+$/g, "").trim();
 }
 
+/**
+ * Results pages often end each row with the venue in capitals
+ * ("Anstey Nomads U18 Nomads MEMORIAL PARK (SYSTON)"): drop a trailing run of
+ * two or more all-capital words. Team names are mixed case ("FC" alone stays).
+ */
+function withoutTrailingVenue(text: string): string {
+  const words = text.trim().split(/\s+/);
+  let cut = words.length;
+  while (cut > 1 && /^\(?[A-Z][A-Z'&.()/-]*\)?,?$/.test(words[cut - 1]) && /[A-Z]{2,}|^[A-Z&]$/.test(words[cut - 1])) cut--;
+  return words.length - cut >= 2 ? words.slice(0, cut).join(" ") : text;
+}
+
 const isTeamName = (s: string) => /[A-Za-z]{2,}/.test(s) && s.length <= 80;
 
 /** One result from a line, or null. Uses cells when the line has them, otherwise the text around the score. */
@@ -134,7 +146,7 @@ function resultFromLine(rest: string): Omit<ParsedResult, "date"> | null {
   const m = /^(.*[A-Za-z].*?)\s+(\d{1,2})\s*[-–—]\s*(\d{1,2})\s+(.*[A-Za-z].*)$/.exec(withoutTimes.replace(/\s+/g, " ").trim());
   if (m) {
     const home = cleanTeam(m[1]);
-    const away = cleanTeam(m[4]);
+    const away = cleanTeam(withoutTrailingVenue(m[4]));
     if (isTeamName(home) && isTeamName(away)) return { home, away, homeScore: Number(m[2]), awayScore: Number(m[3]) };
   }
   return null;

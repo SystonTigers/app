@@ -73,3 +73,28 @@ describe("reading a pasted league table", () => {
     expect(parseLeaguePaste("1 A Team 5 9 0 1 12 4 12\n2 B Team 5 1 1 1 3 3 3\n3 C Team 2 1 1 1 1 1 1", TODAY).kind).toBe("none");
   });
 });
+
+describe("the FA Full-Time results feed as copied from the page", () => {
+  const rows = [
+    ["AFC Barwell U18 Lions", "1", "-", "1", "Stoneygate Lions U18 Blues", "BARWELL CRICKET AND SPORTS CLUB"],
+    ["Syston Town Juniors U18 Tigers", "7", "-", "0", "Anstey Nomads U18 Nomads", "MEMORIAL PARK (SYSTON)"],
+    ["Carib Sport & Social Football Club", "0", "-", "5", "Barwell United FC U18", "VICTORIA PARK (LEICESTER)"],
+  ];
+  const expected = [
+    { date: "2026-09-27", home: "AFC Barwell U18 Lions", away: "Stoneygate Lions U18 Blues", homeScore: 1, awayScore: 1 },
+    { date: "2026-09-27", home: "Syston Town Juniors U18 Tigers", away: "Anstey Nomads U18 Nomads", homeScore: 7, awayScore: 0 },
+    { date: "2026-09-27", home: "Carib Sport & Social Football Club", away: "Barwell United FC U18", homeScore: 0, awayScore: 5 },
+  ];
+
+  it("reads tab-separated cells with the venue column", () => {
+    const text = ["Sun 27 Sept 2026 14:00", ...rows.map((r) => r.join("\t")), "League | Table"].join("\n");
+    const parsed = parseLeaguePaste(text, TODAY);
+    expect(parsed).toEqual({ kind: "results", results: expected, skipped: 0 });
+  });
+
+  it("reads single-spaced text and drops the capitalised venue", () => {
+    const text = ["Sun 27 Sept 2026 14:00", ...rows.map((r) => r.join(" "))].join("\n");
+    const parsed = parseLeaguePaste(text, TODAY);
+    expect(parsed).toEqual({ kind: "results", results: expected, skipped: 0 });
+  });
+});
