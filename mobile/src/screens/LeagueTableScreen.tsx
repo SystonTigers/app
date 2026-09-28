@@ -4,6 +4,9 @@ import { Text, IconButton } from 'react-native-paper';
 import { useTheme } from '../theme/useTheme';
 import { useClub } from '../context/ClubContext';
 import { isOurTeam } from '../utils/clubMatch';
+import { getTenantId } from '../services/club';
+import FaFullTimeView from '../components/faFullTime/FaFullTimeView';
+import { fetchFaSnippets, type FaSnippets } from '../components/faFullTime/frame';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -15,9 +18,28 @@ export default function LeagueTableScreen() {
   const [leagueTable, setLeagueTable] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const [faSnippets, setFaSnippets] = useState<FaSnippets | null>(null);
+
   React.useEffect(() => {
     loadTable();
   }, []);
+
+  // A club that added its FA Full-Time snippet sees the FA's own table
+  const clubKey = club?.slug || getTenantId();
+  React.useEffect(() => {
+    let live = true;
+    fetchFaSnippets(clubKey).then((s) => live && setFaSnippets(s));
+    return () => {
+      live = false;
+    };
+  }, [clubKey]);
+  const palette = React.useMemo(() => ({
+    text: colors.text,
+    muted: colors.textSecondary,
+    line: colors.border,
+    head: colors.backgroundSecondary,
+    brand: colors.primary,
+  }), [colors]);
 
   const loadTable = async () => {
     try {
@@ -146,6 +168,20 @@ export default function LeagueTableScreen() {
       </View>
     );
   };
+
+  if (faSnippets?.table) {
+    return (
+      <ScrollView style={{ backgroundColor: colors.background }} contentContainerStyle={styles.container}>
+        <View style={styles.header}>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>LEAGUE STANDINGS</Text>
+          <Text style={{ color: colors.textSecondary, fontSize: 12, marginTop: 4 }}>From FA Full-Time</Text>
+        </View>
+        <View style={[styles.tableCard, { backgroundColor: colors.surface, borderColor: colors.primary + '40' }]}>
+          <FaFullTimeView code={faSnippets.table} palette={palette} highlight={(club?.name || '').split(' ')[0]} />
+        </View>
+      </ScrollView>
+    );
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>

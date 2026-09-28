@@ -229,6 +229,7 @@ import { runScheduledPosts } from "./services/social/scheduler";
 import { runCleanup } from "./cron/cleanup";
 import { runLeague } from "./cron/league";
 import { runFASync } from "./cron/fa-sync";
+import { handleGetFaFullTime, handleSetFaFullTime } from "./routes/faFullTime";
 import { processScheduledNotifications } from "./routes/mobile-notifications";
 
 // Export Durable Objects
@@ -1319,6 +1320,9 @@ router.post("/api/:v/fixtures/sync/website", staffOnly((req, env, corsHdrs) => h
 router.post("/api/:v/fixtures/sync/snippet", staffOnly((req, env, corsHdrs) => handleSyncFromSnippet(req, env, corsHdrs)));
 router.post("/api/:v/fixtures/sync/email", staffOnly((req, env, corsHdrs) => handleParseEmail(req, env, corsHdrs)));
 router.post("/api/:v/fixtures/sync/all", staffOnly((req, env, corsHdrs) => handleSyncAll(req, env, corsHdrs)));
+// FA Full-Time code snippets shown on the club's league pages (routes/faFullTime.ts)
+router.get("/api/:v/club/fa-full-time", (req, env, corsHdrs) => handleGetFaFullTime(req, env, corsHdrs));
+router.put("/api/:v/club/fa-full-time", staffOnly((req, env, corsHdrs) => handleSetFaFullTime(req, env, corsHdrs)));
 router.get("/api/:v/fixtures/fa-config", (req, env, corsHdrs) => handleGetFAConfig(req, env, corsHdrs));
 router.put("/api/:v/fixtures/fa-config", staffOnly((req, env, corsHdrs) => handleSetFAConfig(req, env, corsHdrs)));
 

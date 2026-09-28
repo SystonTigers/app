@@ -4,12 +4,14 @@ import { useState, useEffect } from 'react';
 import { isClubTeam } from '@/lib/slug';
 import { useRouter } from 'next/navigation';
 import { PublicSeasonTabs } from '@/components/PublicSeasonTabs';
+import { FaFullTimeEmbed, useFaSnippets } from '@/components/FaFullTimeEmbed';
 
 export default function ResultsPage({ params }: { params: Promise<{ tenant: string }> }) {
   const [tenant, setTenant] = useState('');
   const [seasonId, setSeasonId] = useState<string | null>(null);
   const [results, setResults] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const { snippets } = useFaSnippets(tenant);
 
   useEffect(() => {
     params.then(p => setTenant(p.tenant));
@@ -113,6 +115,8 @@ export default function ResultsPage({ params }: { params: Promise<{ tenant: stri
               <div key={i} className="h-48 bg-gray-200 dark:bg-gray-700 chamfer-lg animate-pulse"></div>
             ))}
           </div>
+        ) : sortedResults.length === 0 && snippets.team ? (
+          <FaFullTimeEmbed code={snippets.team} title="Our Fixtures & Results" />
         ) : (
           <div className="grid gap-6">
             {sortedResults.map((result: any) => {
@@ -191,6 +195,12 @@ export default function ResultsPage({ params }: { params: Promise<{ tenant: stri
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {snippets.results && (
+          <div className="max-w-4xl mx-auto mt-12">
+            <FaFullTimeEmbed code={snippets.results} title="Around the League" highlight={tenant.split('-')[0]} />
           </div>
         )}
       </div>

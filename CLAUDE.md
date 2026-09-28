@@ -117,6 +117,22 @@ with personal data.
 - End-to-end tests set `SOCIAL_BACKGROUND_DRAWING=off` and draw/post
   explicitly; the Workers test runner can't cope with WASM work left running.
 
+## League table, fixtures and results from FA Full-Time
+
+- FA Full-Time sits behind a Cloudflare bot check: servers (and curl) get a
+  403 challenge, so the old scraper (`services/fa-scraper.ts`, `cron/fa-sync.ts`)
+  can't fetch anything. Don't try to get around it.
+- Instead clubs paste the FA's official code snippets (Full-Time admin →
+  Create Code Snippets) on the website's Settings → League Table & Fixtures
+  page. The codes live in `tenants.fa_snippets` (`services/faFullTime.ts`,
+  `routes/faFullTime.ts`; public: `/public/:club/fa-full-time`).
+- The website (`components/FaFullTimeEmbed.tsx`) and app
+  (`components/faFullTime/`) load the FA's `cs1.js` inside a sandboxed frame
+  without same-origin, so the FA script can't read our tokens. The table page
+  and app League screen show the FA table when set; Fixtures/Results show
+  "Around the League".
+- Our own results, scorers and points still come from Match Centre.
+
 ## Access rules worth knowing
 
 - Club-admin writes are wrapped in `staffOnly(...)` in `index.ts`; add new

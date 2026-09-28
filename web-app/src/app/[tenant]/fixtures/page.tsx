@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { PublicSeasonTabs } from '@/components/PublicSeasonTabs';
+import { FaFullTimeEmbed, useFaSnippets } from '@/components/FaFullTimeEmbed';
 import { CountdownTimer } from '@/components/ui/CountdownTimer';
 
 function FixtureCard({ fixture, isNext }: { fixture: any, isNext?: boolean }) {
@@ -116,6 +117,7 @@ export default function FixturesPage({ params }: { params: Promise<{ tenant: str
   const [seasonId, setSeasonId] = useState<string | null>(null);
   const [fixtures, setFixtures] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const { snippets } = useFaSnippets(tenant);
 
   useEffect(() => {
     params.then(p => setTenant(p.tenant));
@@ -187,11 +189,21 @@ export default function FixturesPage({ params }: { params: Promise<{ tenant: str
               </div>
             )}
           </>
+        ) : snippets.team ? (
+          <div className="max-w-4xl mx-auto">
+            <FaFullTimeEmbed code={snippets.team} title="Our Fixtures & Results" />
+          </div>
         ) : (
           <div className="text-center py-20 bg-white dark:bg-gray-800 chamfer-lg shadow-sm border border-gray-100 dark:border-gray-700">
             <div className="text-6xl mb-4">📅</div>
             <h3 className="text-2xl font-bold mb-2">No Fixtures Scheduled</h3>
             <p className="text-gray-500 mb-6">Check back soon for the new season schedule.</p>
+          </div>
+        )}
+
+        {snippets.fixtures && (
+          <div className="max-w-4xl mx-auto mt-12">
+            <FaFullTimeEmbed code={snippets.fixtures} title="Around the League" highlight={tenant.split('-')[0]} />
           </div>
         )}
       </div>

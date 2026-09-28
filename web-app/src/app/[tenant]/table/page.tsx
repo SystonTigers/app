@@ -3,12 +3,14 @@
 import { useState, useEffect } from 'react';
 import { isClubTeam } from '@/lib/slug';
 import { PublicSeasonTabs } from '@/components/PublicSeasonTabs';
+import { FaFullTimeEmbed, useFaSnippets } from '@/components/FaFullTimeEmbed';
 
 export default function TablePage({ params }: { params: Promise<{ tenant: string }> }) {
   const [tenant, setTenant] = useState('');
   const [seasonId, setSeasonId] = useState<string | null>(null);
   const [table, setTable] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const { snippets, loaded: faLoaded } = useFaSnippets(tenant);
 
   useEffect(() => {
     params.then(p => setTenant(p.tenant));
@@ -48,6 +50,10 @@ export default function TablePage({ params }: { params: Promise<{ tenant: string
       </div>
 
       <div className="container px-6 py-12">
+        {faLoaded && snippets.table ? (
+          <FaFullTimeEmbed code={snippets.table} title="League Table" highlight={tenant.split('-')[0]} />
+        ) : (
+        <>
         {tenant && (
           <PublicSeasonTabs
             tenant={tenant}
@@ -144,6 +150,8 @@ export default function TablePage({ params }: { params: Promise<{ tenant: string
             <span className="w-3 h-3 rotate-45 bg-red-500"></span> Relegation
           </div>
         </div>
+        </>
+        )}
       </div>
     </div>
   );

@@ -1,4 +1,5 @@
 import { json } from "../services/util";
+import { loadFaSnippets } from "../services/faFullTime";
 import { logJSON } from "../lib/log";
 import { closeExpiredSessions, findMatch, parseWinnerIds, playerNames } from "../services/motm";
 import { getPublicNamePolicy, publicName, publicPhoto, publicScorers } from "../services/publicNames";
@@ -334,6 +335,11 @@ export async function handlePublicTenantRequest(
     const resource = segments[2] || "fixtures";
 
     try {
+        // FA Full-Time snippet codes: the pages load the FA's own script with these
+        if (resource === "fa-full-time") {
+            return json({ success: true, data: await loadFaSnippets(env.DB, tenant.id) }, 200, corsHdrs);
+        }
+
         // Club name and colours for the club's public pages
         if (resource === "info") {
             const brand = await env.DB.prepare(

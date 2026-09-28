@@ -1,347 +1,152 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useParams } from 'next/navigation';
+import { API_BASE, errorMessage, getSessionToken } from '@/lib/session';
+import { FaFullTimeEmbed, type FaSnippetKind, type FaSnippets } from '@/components/FaFullTimeEmbed';
 
-interface FAConfig {
-    teamPageUrl?: string;
-    snippetUrl?: string;
-    teamName: string;
-}
+const BOXES: Array<{ kind: FaSnippetKind; type: string; label: string; shows: string }> = [
+    { kind: 'table', type: 'Division - Table', label: 'League table', shows: 'the League Table page' },
+    { kind: 'fixtures', type: 'Division - Upcoming Fixtures', label: 'League fixtures', shows: '"Around the League" on the Fixtures page' },
+    { kind: 'results', type: 'Division - Recent Results', label: 'League results', shows: '"Around the League" on the Results page' },
+    { kind: 'team', type: 'Team - Fixtures / Results', label: 'Our fixtures & results', shows: 'Fixtures and Results when you haven\'t added your own yet' },
+];
 
-interface SyncResult {
-    added: number;
-    updated: number;
-    errors?: string[];
-}
-
-type SyncSource = 'website' | 'snippet';
-
-const SYNC_URLS: Record<SyncSource, string> = {
-    website: '/api/v1/fixtures/sync/website',
-    snippet: '/api/v1/fixtures/sync/snippet',
-};
-
-export default function FASyncSettingsPage() {
+/**
+ * FA Full-Time: the club pastes the code snippets the FA gives it, and the
+ * club pages show the FA's own league table, fixtures and results.
+ */
+export default function FaFullTimeSettingsPage() {
     const params = useParams();
     const tenant = params.tenant as string;
-
-    const [config, setConfig] = useState<FAConfig>({ teamName: '' });
+    const [saved, setSaved] = useState<FaSnippets>({});
+    const [drafts, setDrafts] = useState<Record<FaSnippetKind, string>>({ table: '', fixtures: '', results: '', team: '' });
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
-    const [syncing, setSyncing] = useState(false);
-    const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-    const [lastSync, setLastSync] = useState<SyncResult | null>(null);
+    const [message, setMessage] = useState<{ error: boolean; text: string; field?: string } | null>(null);
 
-    // Load config on mount
+    function authHeaders(): Record<string, string> {
+        const token = getSessionToken();
+        return token ? { Authorization: `Bearer ${token}` } : {};
+    }
+
     useEffect(() => {
-        loadConfig();
+        fetch(`${API_BASE}/api/v1/club/fa-full-time`, { headers: authHeaders() })
+            .then(async (res) => {
+                if (!res.ok) throw new Error(await errorMessage(res, 'Couldn\'t load your FA Full-Time settings.'));
+                return res.json();
+            })
+            .then((body) => setSaved((body.data || {}) as FaSnippets))
+            .catch((err: Error) => setMessage({ error: true, text: err.message }))
+            .finally(() => setLoading(false));
     }, []);
 
-    const loadConfig = async () => {
-        try {
-            const res = await fetch(`/api/v1/fixtures/fa-config`, {
-                headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`,
-                    'x-tenant': tenant
-                }
-            });
-            const data = await res.json();
-            if (data.success && data.config) {
-                setConfig(data.config);
-            }
-        } catch (error) {
-            console.error('Failed to load FA config:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const saveConfig = async () => {
+    async function save(body: Partial<Record<FaSnippetKind, string>>, done: string) {
         setSaving(true);
         setMessage(null);
-
         try {
-            const res = await fetch(`/api/v1/fixtures/fa-config`, {
+            const res = await fetch(`${API_BASE}/api/v1/club/fa-full-time`, {
                 method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`,
-                    'x-tenant': tenant
-                },
-                body: JSON.stringify(config)
+                headers: { 'Content-Type': 'application/json', ...authHeaders() },
+                body: JSON.stringify(body),
             });
-            const data = await res.json();
-
-            if (data.success) {
-                setMessage({ type: 'success', text: 'Configuration saved successfully!' });
-            } else {
-                setMessage({ type: 'error', text: data.error || 'Failed to save' });
+            const data = await res.json().catch(() => null);
+            if (!res.ok || !data?.success) {
+                const field = data?.error?.field as string | undefined;
+                setMessage({ error: true, text: data?.error?.message || 'Couldn\'t save that. Please try again.', field });
+                return;
             }
-        } catch (error) {
-            setMessage({ type: 'error', text: 'Failed to save configuration' });
+            setSaved(data.data as FaSnippets);
+            setDrafts({ table: '', fixtures: '', results: '', team: '' });
+            setMessage({ error: false, text: done });
+        } catch {
+            setMessage({ error: true, text: 'Couldn\'t reach the server. Check your connection and try again.' });
         } finally {
             setSaving(false);
         }
-    };
-
-    /** Sync one source, sending the URLs currently on screen so unsaved edits are used. */
-    const syncSource = async (source: SyncSource): Promise<SyncResult> => {
-        const res = await fetch(SYNC_URLS[source], {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${localStorage.getItem('token')}`,
-                'x-tenant': tenant
-            },
-            body: JSON.stringify(
-                source === 'website'
-                    ? { teamPageUrl: config.teamPageUrl, teamName: config.teamName }
-                    : { snippetUrl: config.snippetUrl, teamName: config.teamName }
-            )
-        });
-        const data = await res.json().catch(() => null);
-        if (!data?.success) {
-            throw new Error(data?.error || `${source === 'website' ? 'Website' : 'Snippet'} sync failed`);
-        }
-        return { added: data.synced?.added ?? 0, updated: data.synced?.updated ?? 0 };
-    };
-
-    const syncNow = async (source: SyncSource | 'all') => {
-        setSyncing(true);
-        setMessage(null);
-        setLastSync(null);
-
-        const sources: SyncSource[] = source === 'all'
-            ? [
-                ...(config.teamPageUrl ? ['website' as const] : []),
-                ...(config.snippetUrl ? ['snippet' as const] : []),
-            ]
-            : [source];
-
-        const total: SyncResult = { added: 0, updated: 0 };
-        const errors: string[] = [];
-        for (const s of sources) {
-            try {
-                const result = await syncSource(s);
-                total.added += result.added;
-                total.updated += result.updated;
-            } catch (error) {
-                errors.push(error instanceof Error ? error.message : 'Failed to sync fixtures');
-            }
-        }
-
-        if (errors.length) total.errors = errors;
-        setLastSync(total);
-        setMessage(errors.length
-            ? { type: 'error', text: `Sync finished with problems: ${errors.join('; ')}` }
-            : { type: 'success', text: `Sync complete! Added ${total.added}, updated ${total.updated} fixtures.` });
-        setSyncing(false);
-    };
-
-    if (loading) {
-        return (
-            <div className="p-6">
-                <div className="animate-pulse">
-                    <div className="h-8 bg-gray-200 rounded w-1/3 mb-4"></div>
-                    <div className="h-4 bg-gray-200 rounded w-2/3 mb-8"></div>
-                    <div className="space-y-4">
-                        <div className="h-10 bg-gray-200 rounded"></div>
-                        <div className="h-10 bg-gray-200 rounded"></div>
-                        <div className="h-10 bg-gray-200 rounded"></div>
-                    </div>
-                </div>
-            </div>
-        );
     }
 
+    const pending = Object.fromEntries(Object.entries(drafts).filter(([, v]) => v.trim())) as Partial<Record<FaSnippetKind, string>>;
+
     return (
-        <div className="p-6 max-w-4xl mx-auto">
-            {/* Header */}
-            <div className="mb-8">
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-                    FA Full-Time Integration
-                </h1>
-                <p className="text-gray-600 dark:text-gray-400">
-                    Configure automatic fixture syncing from FA Full-Time website
+        <div className="container mx-auto p-6 space-y-6 max-w-4xl">
+            <div>
+                <Link href={`/${tenant}/admin/settings`} className="text-sm text-gray-500 hover:text-brand">← Settings</Link>
+                <h1 className="text-2xl font-bold mt-2">League table, fixtures &amp; results from FA Full-Time</h1>
+                <p className="text-gray-500 mt-1">
+                    Your club pages show the FA&apos;s own table, fixtures and results, straight from FA Full-Time, so they&apos;re always up to date.
                 </p>
             </div>
 
-            {/* Alert Message */}
+            <ol className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 space-y-2 text-sm list-decimal list-inside text-gray-700 dark:text-gray-300">
+                <li>Log in to <strong>FA Full-Time admin</strong> and open <strong>Create Code Snippets</strong>.</li>
+                <li>Pick the type shown on a box below, your season and division, then press <strong>Create</strong>.</li>
+                <li>Copy the whole code it gives you and paste it into that box. Do this for each one you want.</li>
+            </ol>
+
             {message && (
-                <div className={`mb-6 p-4 rounded-lg ${message.type === 'success'
-                        ? 'bg-green-50 border border-green-200 text-green-800'
-                        : 'bg-red-50 border border-red-200 text-red-800'
-                    }`}>
+                <div className={`p-4 rounded-lg text-sm ${message.error ? 'bg-red-50 text-red-800 dark:bg-red-900/30 dark:text-red-200' : 'bg-green-50 text-green-800 dark:bg-green-900/30 dark:text-green-200'}`}>
                     {message.text}
                 </div>
             )}
 
-            {/* Configuration Form */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-6">
-                <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
-                    Configuration
-                </h2>
-
-                <div className="space-y-4">
-                    {/* Team Name */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                            Team Name *
-                        </label>
-                        <input
-                            type="text"
-                            value={config.teamName}
-                            onChange={(e) => setConfig({ ...config, teamName: e.target.value })}
-                            placeholder="e.g., Syston Tigers U16"
-                            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
-                                     bg-white dark:bg-gray-700 text-gray-900 dark:text-white
-                                     focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        />
-                        <p className="mt-1 text-sm text-gray-500">
-                            Your team name as it appears on FA Full-Time
-                        </p>
-                    </div>
-
-                    {/* Team Page URL */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                            FA Full-Time Team Page URL
-                        </label>
-                        <input
-                            type="url"
-                            value={config.teamPageUrl || ''}
-                            onChange={(e) => setConfig({ ...config, teamPageUrl: e.target.value })}
-                            placeholder="https://fulltime.thefa.com/..."
-                            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
-                                     bg-white dark:bg-gray-700 text-gray-900 dark:text-white
-                                     focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        />
-                        <p className="mt-1 text-sm text-gray-500">
-                            The public URL of your team's fixtures page on FA Full-Time
-                        </p>
-                    </div>
-
-                    {/* Snippet URL */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                            FA Embed/Widget URL (Optional)
-                        </label>
-                        <input
-                            type="url"
-                            value={config.snippetUrl || ''}
-                            onChange={(e) => setConfig({ ...config, snippetUrl: e.target.value })}
-                            placeholder="https://fulltime.thefa.com/fixtures.html?..."
-                            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
-                                     bg-white dark:bg-gray-700 text-gray-900 dark:text-white
-                                     focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        />
-                        <p className="mt-1 text-sm text-gray-500">
-                            The embed widget URL if you have one (alternative data source)
-                        </p>
+            {loading ? (
+                <div className="h-40 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse" />
+            ) : (
+                <div className="grid gap-4">
+                    {BOXES.map((box) => (
+                        <div key={box.kind} className={`bg-white dark:bg-gray-800 rounded-lg shadow p-5 space-y-3 ${message?.field === box.kind ? 'ring-2 ring-red-500' : ''}`}>
+                            <div className="flex flex-wrap items-start justify-between gap-2">
+                                <div>
+                                    <h2 className="font-semibold text-gray-900 dark:text-white">{box.label}</h2>
+                                    <p className="text-xs text-gray-500">Type in FA Full-Time: <strong>{box.type}</strong>. Shows on {box.shows}.</p>
+                                </div>
+                                {saved[box.kind] ? (
+                                    <div className="flex items-center gap-3 text-sm">
+                                        <span className="text-green-700 dark:text-green-400 font-semibold">✓ Added ({saved[box.kind]})</span>
+                                        <button
+                                            type="button"
+                                            disabled={saving}
+                                            onClick={() => save({ [box.kind]: '' }, `${box.label} removed.`)}
+                                            className="text-gray-500 hover:text-red-600 underline disabled:opacity-50"
+                                        >
+                                            Remove
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <span className="text-sm text-gray-400">Not added</span>
+                                )}
+                            </div>
+                            <textarea
+                                value={drafts[box.kind]}
+                                onChange={(e) => setDrafts({ ...drafts, [box.kind]: e.target.value })}
+                                rows={3}
+                                spellCheck={false}
+                                placeholder={saved[box.kind] ? 'Paste a new snippet to replace it' : 'Paste the code snippet here'}
+                                className="w-full font-mono text-xs p-3 rounded border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900"
+                            />
+                        </div>
+                    ))}
+                    <div className="flex justify-end">
+                        <button
+                            type="button"
+                            disabled={saving || Object.keys(pending).length === 0}
+                            onClick={() => save(pending, 'Saved. Your club pages now show the FA\'s table, fixtures and results.')}
+                            className="px-6 py-2 bg-brand text-white font-bold rounded disabled:opacity-50"
+                        >
+                            {saving ? 'Saving…' : 'Save'}
+                        </button>
                     </div>
                 </div>
+            )}
 
-                {/* Save Button */}
-                <div className="mt-6">
-                    <button
-                        onClick={saveConfig}
-                        disabled={saving || !config.teamName}
-                        className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700
-                                 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    >
-                        {saving ? 'Saving...' : 'Save Configuration'}
-                    </button>
+            {saved.table && (
+                <div className="space-y-2">
+                    <h2 className="font-semibold">Preview</h2>
+                    <FaFullTimeEmbed code={saved.table} title="League Table" highlight={tenant.split('-')[0]} />
                 </div>
-            </div>
-
-            {/* Manual Sync Section */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-6">
-                <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
-                    Manual Sync
-                </h2>
-                <p className="text-gray-600 dark:text-gray-400 mb-4">
-                    Manually sync fixtures from FA Full-Time. Automatic daily sync runs at 6:00 AM.
-                </p>
-
-                <div className="flex flex-wrap gap-3">
-                    <button
-                        onClick={() => syncNow('website')}
-                        disabled={syncing || !config.teamPageUrl}
-                        className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700
-                                 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    >
-                        {syncing ? 'Syncing...' : 'Sync from Website'}
-                    </button>
-
-                    <button
-                        onClick={() => syncNow('snippet')}
-                        disabled={syncing || !config.snippetUrl}
-                        className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700
-                                 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    >
-                        {syncing ? 'Syncing...' : 'Sync from Widget'}
-                    </button>
-
-                    <button
-                        onClick={() => syncNow('all')}
-                        disabled={syncing || (!config.teamPageUrl && !config.snippetUrl)}
-                        className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700
-                                 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    >
-                        {syncing ? 'Syncing...' : 'Sync All Sources'}
-                    </button>
-                </div>
-
-                {/* Last Sync Result */}
-                {lastSync && (
-                    <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                        <h3 className="font-medium mb-2">Last Sync Result:</h3>
-                        <ul className="text-sm space-y-1">
-                            <li>✅ Added: {lastSync.added} fixtures</li>
-                            <li>🔄 Updated: {lastSync.updated} fixtures</li>
-                            {lastSync.errors && lastSync.errors.length > 0 && (
-                                <li className="text-red-600">
-                                    ⚠️ Errors: {lastSync.errors.length}
-                                </li>
-                            )}
-                        </ul>
-                    </div>
-                )}
-            </div>
-
-            {/* Email Integration */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-                <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
-                    Email Integration
-                </h2>
-                <p className="text-gray-600 dark:text-gray-400 mb-4">
-                    You can also add fixtures by pasting FA fixture confirmation emails.
-                </p>
-
-                <a
-                    href={`/${tenant}/admin/fixtures/import`}
-                    className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600
-                             text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700
-                             transition-colors"
-                >
-                    Go to Fixture Import →
-                </a>
-            </div>
-
-            {/* Help Section */}
-            <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                <h3 className="font-medium text-blue-900 dark:text-blue-200 mb-2">
-                    How to find your FA Full-Time URL:
-                </h3>
-                <ol className="text-sm text-blue-800 dark:text-blue-300 space-y-1 list-decimal list-inside">
-                    <li>Go to <a href="https://fulltime.thefa.com" target="_blank" rel="noopener" className="underline">fulltime.thefa.com</a></li>
-                    <li>Search for your team name</li>
-                    <li>Navigate to your team's fixtures page</li>
-                    <li>Copy the URL from your browser's address bar</li>
-                    <li>Paste it in the "Team Page URL" field above</li>
-                </ol>
-            </div>
+            )}
         </div>
     );
 }

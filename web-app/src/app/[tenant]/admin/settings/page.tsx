@@ -9,7 +9,7 @@ interface PageProps {
 }
 
 /**
- * Club settings hub: fixture import (FA Full-Time page), how players appear
+ * Club settings hub: FA Full-Time snippets (league table, fixtures, results), how players appear
  * publicly, the Facebook/Instagram connection and automatic posting.
  */
 export default function SettingsPage({ params }: PageProps) {
@@ -19,8 +19,8 @@ export default function SettingsPage({ params }: PageProps) {
         {
             href: `/${tenant}/admin/settings/fa-sync`,
             icon: '📅',
-            title: 'Fixture Import (FA Full-Time)',
-            description: 'Connect your FA Full-Time team page and pull fixtures in with one click.',
+            title: 'League Table & Fixtures (FA Full-Time)',
+            description: 'Paste your FA Full-Time code snippets to show the league table, fixtures and results on your club pages.',
         },
     ];
 
@@ -28,7 +28,7 @@ export default function SettingsPage({ params }: PageProps) {
         <div className="container mx-auto p-6 space-y-6">
             <div className="bg-gradient-to-r from-brand to-brand/80 text-white p-6 rounded-lg">
                 <h2 className="text-2xl font-bold">Settings</h2>
-                <p className="text-sm opacity-90">Fixture import, privacy and automatic posts for your club</p>
+                <p className="text-sm opacity-90">League table, privacy and automatic posts for your club</p>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
