@@ -399,11 +399,11 @@ export async function handleUpdateTable(req: Request, env: any, corsHdrs: Header
         for (const row of body) {
             batch.push(
                 env.DB.prepare(
-                    `INSERT INTO league_standings (tenant_id, position, team_name, played, won, drawn, lost, goals_for, goals_against, points, competition)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+                    `INSERT INTO league_standings (tenant_id, position, team_name, played, won, drawn, lost, goals_for, goals_against, goal_difference, points, competition)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
                 ).bind(
                     claims.tenantId, row.position, row.team, row.played, row.won, row.drawn, row.lost,
-                    row.goalsFor, row.goalsAgainst, row.points, row.competition || 'League'
+                    row.goalsFor, row.goalsAgainst, (Number(row.goalsFor) || 0) - (Number(row.goalsAgainst) || 0), row.points, row.competition || 'League'
                 )
             );
         }
@@ -485,9 +485,9 @@ export async function handleResignTeam(req: Request, env: any, corsHdrs: Headers
             // Update your team's standing with recalculated stats
             env.DB.prepare(
                 `UPDATE league_standings 
-                 SET played = ?, won = ?, drawn = ?, lost = ?, goals_for = ?, goals_against = ?, points = ?
+                 SET played = ?, won = ?, drawn = ?, lost = ?, goals_for = ?, goals_against = ?, goal_difference = ?, points = ?
                  WHERE tenant_id = ? AND team_name = (SELECT name FROM tenants WHERE id = ?)`
-            ).bind(played, won, drawn, lost, goalsFor, goalsAgainst, points, claims.tenantId, claims.tenantId),
+            ).bind(played, won, drawn, lost, goalsFor, goalsAgainst, goalsFor - goalsAgainst, points, claims.tenantId, claims.tenantId),
             // Remove fixtures against resigned team
             env.DB.prepare("DELETE FROM fixtures WHERE tenant_id = ? AND opponent = ?")
                 .bind(claims.tenantId, teamName),
@@ -699,12 +699,12 @@ export async function handleAutoCalculateTable(req: Request, env: any, corsHdrs:
         for (const [teamName, stats] of sortedTeams) {
             // league_standings.id is an autoincrement integer; competition is required
             await env.DB.prepare(
-                `INSERT INTO league_standings (tenant_id, competition, position, team_name, played, won, drawn, lost, goals_for, goals_against, points)
-                 VALUES (?, 'League', ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+                `INSERT INTO league_standings (tenant_id, competition, position, team_name, played, won, drawn, lost, goals_for, goals_against, goal_difference, points)
+                 VALUES (?, 'League', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
             ).bind(
                 claims.tenantId, position++, teamName,
                 stats.played, stats.won, stats.drawn, stats.lost,
-                stats.gf, stats.ga, stats.pts
+                stats.gf, stats.ga, stats.gf - stats.ga, stats.pts
             ).run();
         }
 

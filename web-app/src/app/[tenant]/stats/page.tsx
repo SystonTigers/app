@@ -6,13 +6,15 @@ export default async function StatsPage({ params }: { params: Promise<{ tenant: 
   const { tenant } = await params;
   const sdk = getServerSDK(tenant);
 
-  const [teamStatsRes, topScorersRes] = await Promise.allSettled([
+  const [teamStatsRes, topScorersRes, topAssistsRes] = await Promise.allSettled([
     sdk.getTeamStats().catch(() => null),
     sdk.getTopScorers(10).catch(() => []),
+    sdk.getTopAssists(10).catch(() => []),
   ]);
 
   const rawStats = teamStatsRes.status === 'fulfilled' ? teamStatsRes.value : null;
   const rawScorers = topScorersRes.status === 'fulfilled' ? topScorersRes.value : [];
+  const rawAssists = topAssistsRes.status === 'fulfilled' ? topAssistsRes.value : [];
 
   const num = (v: unknown): number => (typeof v === 'number' && !Number.isNaN(v) ? v : Number(v) || 0);
   const stats = rawStats && typeof rawStats === 'object'
@@ -30,6 +32,8 @@ export default async function StatsPage({ params }: { params: Promise<{ tenant: 
 
   const scorers = (Array.isArray(rawScorers) ? rawScorers : [])
     .filter((player: any) => player && player.name && num(player.stats?.goals) > 0);
+  const assisters = (Array.isArray(rawAssists) ? rawAssists : [])
+    .filter((player: any) => player && player.name && num(player.stats?.assists) > 0);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-black pb-20">
@@ -103,11 +107,11 @@ export default async function StatsPage({ params }: { params: Promise<{ tenant: 
         </section>
 
         {/* Player Statistics */}
-        {scorers.length > 0 ? (
+        {scorers.length > 0 || assisters.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-8">
             {/* Top Scorers */}
             <StatCard title="Top Scorers ⚽" icon="⚽">
-              {scorers.map((player: any, index: number) => (
+              {scorers.length ? scorers.map((player: any, index: number) => (
                 <PlayerStatRow
                   key={player.id ?? player.name}
                   rank={index + 1}
@@ -115,7 +119,20 @@ export default async function StatsPage({ params }: { params: Promise<{ tenant: 
                   stat={num(player.stats?.goals)}
                   isTop={index === 0}
                 />
-              ))}
+              )) : <p className="text-gray-500 dark:text-gray-400 font-medium">No goals recorded yet.</p>}
+            </StatCard>
+
+            {/* Top Assists */}
+            <StatCard title="Top Assists" icon="🎯">
+              {assisters.length ? assisters.map((player: any, index: number) => (
+                <PlayerStatRow
+                  key={player.id ?? player.name}
+                  rank={index + 1}
+                  name={player.name}
+                  stat={num(player.stats?.assists)}
+                  isTop={index === 0}
+                />
+              )) : <p className="text-gray-500 dark:text-gray-400 font-medium">No assists recorded yet.</p>}
             </StatCard>
           </div>
         ) : (

@@ -200,7 +200,6 @@ import {
     handleSyncFromWebsite,
     handleSyncFromSnippet,
     handleParseEmail,
-    handleEmailWebhook,
     handleSyncAll,
     handleGetFAConfig,
     handleSetFAConfig
@@ -1092,7 +1091,7 @@ router.get("/api/:v/matches/:id/report", (req, env, corsHdrs) => {
     const params = (req as any).params || {};
     return handleGetMatchReport(req, env, params.id);
 });
-router.get("/api/:v/stats/players", (req, env, corsHdrs) => handleGetPlayerStats(req, env));
+router.get("/api/:v/stats/players", (req, env, corsHdrs) => handleGetPlayerStats(req, env, corsHdrs));
 
 // Mobile app read endpoints (registered before /fixtures/:id patterns)
 router.get("/api/:v/feed", (req, env, corsHdrs) => handleListPosts(req, env, corsHdrs));
@@ -1322,8 +1321,6 @@ router.post("/api/:v/fixtures/sync/email", staffOnly((req, env, corsHdrs) => han
 router.post("/api/:v/fixtures/sync/all", staffOnly((req, env, corsHdrs) => handleSyncAll(req, env, corsHdrs)));
 router.get("/api/:v/fixtures/fa-config", (req, env, corsHdrs) => handleGetFAConfig(req, env, corsHdrs));
 router.put("/api/:v/fixtures/fa-config", staffOnly((req, env, corsHdrs) => handleSetFAConfig(req, env, corsHdrs)));
-// Email webhook for Cloudflare Email Workers
-router.post("/webhooks/fa-email", (req, env, corsHdrs) => handleEmailWebhook(req, env, corsHdrs));
 
 // Season Scraper Configuration Routes
 import {
@@ -1339,14 +1336,14 @@ router.get("/api/:v/scraper/configs/:seasonId", (req, env, corsHdrs) => {
     return handleGetScraperConfig(req, env, corsHdrs, params.seasonId);
 });
 router.post("/api/:v/scraper/configs", staffOnly((req, env, corsHdrs) => handleSaveScraperConfig(req, env, corsHdrs)));
-router.delete("/api/:v/scraper/configs/:seasonId", (req, env, corsHdrs) => {
+router.delete("/api/:v/scraper/configs/:seasonId", staffOnly((req: any, env: any, corsHdrs: Headers) => {
     const params = (req as any).params || {};
     return handleDeleteScraperConfig(req, env, corsHdrs, params.seasonId);
-});
-router.post("/api/:v/scraper/run/:seasonId", (req, env, corsHdrs) => {
+}));
+router.post("/api/:v/scraper/run/:seasonId", staffOnly((req: any, env: any, corsHdrs: Headers) => {
     const params = (req as any).params || {};
     return handleRunScraperForSeason(req, env, corsHdrs, params.seasonId);
-});
+}));
 
 
 

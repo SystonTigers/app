@@ -152,30 +152,62 @@ export async function handleGetMatchReport(req: Request, env: any, id: string): 
     }
 }
 
-export async function handleGetPlayerStats(req: Request, env: any): Promise<Response> {
+/**
+ * GET /api/v1/stats/players (club members): every squad player with their
+ * goals, assists, MOTM awards, cards and appearances. Goals and assists come
+ * from match_events (Match Centre full time, imports, match reports);
+ * appearances count matches in a line-up (starters and subs who came on) or
+ * with an event, whichever is higher.
+ */
+export async function handleGetPlayerStats(req: Request, env: any, corsHdrs?: Headers): Promise<Response> {
+    let tenantId: string;
     try {
         const claims = await requireJWT(req, env);
-        const tenantId = claims.tenantId;
-        const db = env.DB as D1Database;
-
-        // Aggregate stats
-        const stats = await db.prepare(`
-            SELECT 
-                player_id,
-                COUNT(CASE WHEN event_type = 'goal' THEN 1 END) as goals,
-                COUNT(CASE WHEN event_type = 'assist' THEN 1 END) as assists,
-                COUNT(CASE WHEN event_type = 'motm' THEN 1 END) as motm,
-                COUNT(CASE WHEN event_type = 'yellow_card' THEN 1 END) as yellow_cards,
-                COUNT(CASE WHEN event_type = 'red_card' THEN 1 END) as red_cards,
-                COUNT(DISTINCT fixture_id) as appearances
-            FROM match_events
-            WHERE tenant_id = ?
-            GROUP BY player_id
-        `).bind(tenantId).all();
-
-        return json({ success: true, stats: stats.results });
-
+        if (!claims.tenantId) throw new Error("no club");
+        tenantId = claims.tenantId;
+    } catch {
+        return json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Please log in again.' } }, 401, corsHdrs);
+    }
+    try {
+        const { results } = await (env.DB as D1Database).prepare(`
+            SELECT s.id, s.name, s.number, s.position, COALESCE(s.headshot_url, s.photo_url) AS photo,
+                   COALESCE(e.goals, 0) AS goals, COALESCE(e.assists, 0) AS assists, COALESCE(e.motm, 0) AS motm,
+                   COALESCE(e.yellow, 0) AS yellow_cards, COALESCE(e.red, 0) AS red_cards,
+                   MAX(COALESCE(a.apps, 0), COALESCE(e.fixtures, 0)) AS appearances
+            FROM squad s
+            LEFT JOIN (
+                SELECT player_id, SUM(event_type = 'goal') AS goals, SUM(event_type = 'assist') AS assists,
+                       SUM(event_type = 'motm') AS motm, SUM(event_type = 'yellow_card') AS yellow,
+                       SUM(event_type = 'red_card') AS red, COUNT(DISTINCT fixture_id) AS fixtures
+                FROM match_events WHERE tenant_id = ? AND player_id IS NOT NULL GROUP BY player_id
+            ) e ON e.player_id = s.id
+            LEFT JOIN (
+                SELECT ml.player_id, COUNT(DISTINCT ml.fixture_id) AS apps
+                FROM match_lineups ml JOIN fixtures f ON f.id = ml.fixture_id AND f.tenant_id = ml.tenant_id
+                WHERE ml.tenant_id = ? AND f.status = 'completed' AND (ml.role = 'starter' OR EXISTS (
+                    SELECT 1 FROM live_match_events le WHERE le.tenant_id = ml.tenant_id AND le.fixture_id = ml.fixture_id
+                      AND le.type = 'sub' AND le.player_id = ml.player_id AND le.deleted_at IS NULL))
+                GROUP BY ml.player_id
+            ) a ON a.player_id = s.id
+            WHERE s.tenant_id = ?
+            ORDER BY goals DESC, assists DESC, s.name
+        `).bind(tenantId, tenantId, tenantId).all<Record<string, any>>();
+        const data = (results || []).map((r) => ({
+            id: r.id,
+            name: r.name,
+            number: r.number,
+            position: r.position,
+            photo: r.photo,
+            goals: Number(r.goals),
+            assists: Number(r.assists),
+            motmCount: Number(r.motm),
+            yellowCards: Number(r.yellow_cards),
+            redCards: Number(r.red_cards),
+            appearances: Number(r.appearances),
+        }));
+        return json({ success: true, data }, 200, corsHdrs);
     } catch (err) {
-        return json({ error: 'Failed to fetch stats' }, 500);
+        console.error(JSON.stringify({ level: 'error', msg: 'player_stats_failed', tenantId, error: err instanceof Error ? err.message : String(err) }));
+        return json({ success: false, error: { code: 'INTERNAL', message: "We couldn't load the stats. Please try again." } }, 500, corsHdrs);
     }
 }

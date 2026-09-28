@@ -220,8 +220,8 @@ function parseTableFixtures(html: string, teamName: string): FAFixture[] {
         const timeMatch = row.match(/(\d{1,2}:\d{2})/);
         const time = timeMatch ? timeMatch[1] : '15:00';
 
-        // Extract score if result
-        const scoreMatch = row.match(/(\d+)\s*[-:]\s*(\d+)/);
+        // Extract score if result. Kick-off times ("15:00") are removed first so they aren't read as a score.
+        const scoreMatch = row.replace(/\b\d{1,2}:\d{2}\b/g, ' ').match(/\b(\d{1,2})\s*-\s*(\d{1,2})\b/);
 
         fixtures.push({
             date,
@@ -550,6 +550,33 @@ function deduplicateFixtures(fixtures: FAFixture[]): FAFixture[] {
 
 // ====== SYNC TO DATABASE ======
 
+const MONTHS = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
+
+/**
+ * "04/10/2026", "4-10-2026", "4 October 2026" or "2026-10-04" -> "2026-10-04"
+ * (UK day-first order). Null when it isn't a real date. Fixtures are stored
+ * with ISO dates so date comparisons and sorting work.
+ */
+export function toIsoDate(raw: string): string | null {
+    const text = raw.trim();
+    let y: number, m: number, d: number;
+    let match = /^(\d{4})-(\d{2})-(\d{2})/.exec(text);
+    if (match) {
+        [y, m, d] = [Number(match[1]), Number(match[2]), Number(match[3])];
+    } else if ((match = /^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/.exec(text))) {
+        [d, m, y] = [Number(match[1]), Number(match[2]), Number(match[3])];
+    } else if ((match = /^(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})$/.exec(text))) {
+        const month = MONTHS.indexOf(match[2].toLowerCase());
+        if (month < 0) return null;
+        [d, m, y] = [Number(match[1]), month + 1, Number(match[3])];
+    } else {
+        return null;
+    }
+    const date = new Date(Date.UTC(y, m - 1, d));
+    if (date.getUTCFullYear() !== y || date.getUTCMonth() !== m - 1 || date.getUTCDate() !== d) return null;
+    return date.toISOString().slice(0, 10);
+}
+
 export async function syncFixturesToDB(
     fixtures: FAFixture[],
     env: any,
@@ -557,7 +584,13 @@ export async function syncFixturesToDB(
 ): Promise<{ added: number; updated: number; errors: string[] }> {
     const result = { added: 0, updated: 0, errors: [] as string[] };
 
-    for (const fixture of fixtures) {
+    for (const found of fixtures) {
+        const isoDate = toIsoDate(found.date);
+        if (!isoDate) {
+            result.errors.push(`Skipped ${found.opponent}: unreadable date "${found.date}"`);
+            continue;
+        }
+        const fixture = { ...found, date: isoDate };
         try {
             // Check if fixture already exists
             const existing = await env.DB.prepare(`

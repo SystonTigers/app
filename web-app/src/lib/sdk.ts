@@ -1,6 +1,16 @@
 // src/lib/sdk.ts
 import { API_BASE, getSessionToken } from './session';
 
+
+/** Players with at least one of `by`, highest first (ties broken by `then`, then name). */
+function rankPlayers(squad: any[], by: 'goals' | 'assists', then: 'goals' | 'assists', limit: number): any[] {
+  const n = (p: any, k: string) => Number(p?.stats?.[k]) || 0;
+  return (Array.isArray(squad) ? squad : [])
+    .filter((p) => p && p.name && n(p, by) > 0)
+    .sort((a, b) => n(b, by) - n(a, by) || n(b, then) - n(a, then) || String(a.name).localeCompare(String(b.name)))
+    .slice(0, limit);
+}
+
 export type ProvisionCheckpoint =
   | 'seedDefaultContent'
   | 'configureRouting'
@@ -388,6 +398,7 @@ export type AnySDK = {
   getStats: () => Promise<Record<string, unknown>>;
   getLeagueTable: () => Promise<Array<Record<string, unknown>>>;
   getTopScorers: (limit?: number) => Promise<Array<Record<string, unknown>>>;
+  getTopAssists: (limit?: number) => Promise<Array<Record<string, unknown>>>;
   getTeamStats: () => Promise<Record<string, unknown> | null>;
   listFixtures: () => Promise<Array<Record<string, unknown>>>;
   listFeed: (page: number, limit: number) => Promise<Array<Record<string, unknown>>>;
@@ -443,6 +454,7 @@ const compat: AnySDK = {
   getStats: async () => ({}),
   getLeagueTable: async () => [],
   getTopScorers: async () => [],
+  getTopAssists: async () => [],
   getTeamStats: async () => null,
   listFixtures: async () => [],
   listFeed: async () => [],
@@ -514,8 +526,14 @@ class ClientSDK implements AnySDK {
     return publicGet<any>(`${API_BASE}/public/${this.tenantId}/stats`);
   }
 
+  /** Players ranked by goals (then assists), from the public squad list with its stats. */
   async getTopScorers(limit = 10) {
-    return [];
+    return rankPlayers(await this.getSquad(), 'goals', 'assists', limit);
+  }
+
+  /** Players ranked by assists (then goals). */
+  async getTopAssists(limit = 10) {
+    return rankPlayers(await this.getSquad(), 'assists', 'goals', limit);
   }
 
   async getSquad() {

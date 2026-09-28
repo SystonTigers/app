@@ -530,7 +530,8 @@ export async function handlePublicTenantRequest(
                 lost: Number(row.lost ?? 0),
                 goalsFor: Number(row.goals_for ?? 0),
                 goalsAgainst: Number(row.goals_against ?? 0),
-                goalDifference: Number(row.goal_difference ?? (row.goals_for ?? 0) - (row.goals_against ?? 0)),
+                // Worked out from the goals: older rows were saved without goal_difference
+                goalDifference: Number(row.goals_for ?? 0) - Number(row.goals_against ?? 0),
                 points: Number(row.points ?? 0),
             }));
             return json({ success: true, data: table }, 200, corsHdrs);
