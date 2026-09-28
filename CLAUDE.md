@@ -134,7 +134,9 @@ with personal data.
   (`components/faFullTime/`) load the FA's `cs1.js` inside a sandboxed frame
   without same-origin, so the FA script can't read our tokens. The table page
   and app League screen show the FA table when set; Fixtures/Results show
-  "Around the League".
+  "Around the League". The website's frame reports what happened (FA
+  unreachable, `cs1.html` blocked by the FA's security check, or loaded) so
+  the card says why when it can't show the table.
 - Our own results, scorers and points still come from Match Centre.
 
 ## Our league table (sorted by goal difference)
