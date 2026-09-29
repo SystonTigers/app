@@ -35,3 +35,14 @@ assert.equal(greeting(new Date('2026-10-01T07:00:00Z')), 'Good morning');
 assert.equal(greeting(new Date('2026-10-01T13:00:00Z')), 'Good afternoon');
 assert.equal(greeting(new Date('2026-10-01T19:00:00Z')), 'Good evening');
 console.log('home tests passed');
+
+// Match Centre phase bar
+const { nextPhase, phasesDone } = require('../src/components/matchCentre/phase.ts');
+assert.equal(nextPhase(null, null), 'kick_off');
+assert.equal(nextPhase('scheduled', null), 'kick_off');
+assert.equal(nextPhase('live', 1), 'half_time');
+assert.equal(nextPhase('half_time', 1), 'second_half');
+assert.equal(nextPhase('live', 2), 'full_time');
+assert.equal(nextPhase('full_time', 2), null);
+assert.deepEqual(['kick_off', 'half_time', 'second_half', 'full_time', null].map(phasesDone), [0, 1, 2, 3, 4]);
+console.log('phase tests passed');

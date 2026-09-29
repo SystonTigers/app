@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS } from '../../config';
+import { useTheme } from '../../theme/useTheme';
 import { canUndo, describeEvent, describeEventOnSide, eventSide, postStatusText, type LiveEvent, type SocialPost } from '../../utils/liveMatch';
 
 const ICONS: Record<LiveEvent['type'], { name: string; color: string }> = {
@@ -37,6 +38,7 @@ export default function LiveTimeline({ events, opponent, onUndo, busyId, posts, 
   posts?: SocialPost[];
   onShare?: (post: SocialPost) => void;
 }) {
+  const accent = useTheme().theme.colors.primary;
   const [now, setNow] = useState(Date.now());
   const counting = !!posts?.some((p) => p.status === 'pending' || p.status === 'posting');
   useEffect(() => {
@@ -57,8 +59,8 @@ export default function LiveTimeline({ events, opponent, onUndo, busyId, posts, 
           <View key={e.id}>
           <View style={styles.row}>
             <Text style={styles.minute}>{e.minute !== null ? `${e.minute}'` : ''}</Text>
-            <MaterialCommunityIcons name={icon.name as any} size={20} color={icon.color} style={styles.icon} />
-            <Text style={[styles.text, e.type === 'goal' ? styles.goal : null]}>{describeEvent(e, opponent)}</Text>
+            <MaterialCommunityIcons name={icon.name as any} size={20} color={icon.color === COLORS.primary ? accent : icon.color} style={styles.icon} />
+            <Text style={[styles.text, e.type === 'goal' ? [styles.goal, { color: accent }] : null]}>{describeEvent(e, opponent)}</Text>
             {onUndo && canUndo(events, e) ? (
               <Pressable
                 onPress={() => onUndo(e)}
@@ -92,6 +94,7 @@ export default function LiveTimeline({ events, opponent, onUndo, busyId, posts, 
 const SHOWN_AT_FIRST = 5;
 
 function SideBySide({ events, opponent, usIsHome }: { events: LiveEvent[]; opponent: string; usIsHome: boolean }) {
+  const accent = useTheme().theme.colors.primary;
   // Only the latest few until asked, so a high-scoring match doesn't push the live video off the screen
   const [all, setAll] = useState(false);
   const hidden = events.length - SHOWN_AT_FIRST;
@@ -105,7 +108,7 @@ function SideBySide({ events, opponent, usIsHome }: { events: LiveEvent[]; oppon
         if (side === 'middle') {
           return (
             <View key={e.id} style={[styles.row, styles.middleRow]}>
-              <MaterialCommunityIcons name={icon.name as any} size={16} color={icon.color} />
+              <MaterialCommunityIcons name={icon.name as any} size={16} color={icon.color === COLORS.primary ? accent : icon.color} />
               <Text style={styles.middleText}>{minute ? `${minute} ` : ''}{describeEvent(e, opponent)}</Text>
             </View>
           );
@@ -113,8 +116,8 @@ function SideBySide({ events, opponent, usIsHome }: { events: LiveEvent[]; oppon
         const left = (side === 'us') === usIsHome;
         const content = (
           <View style={[styles.sideContent, left ? styles.sideLeft : styles.sideRight]}>
-            <MaterialCommunityIcons name={icon.name as any} size={18} color={icon.color} />
-            <Text style={[styles.sideText, left ? styles.textRight : null, e.type === 'goal' ? styles.goal : e.type === 'opp_goal' ? styles.oppGoal : null]}>
+            <MaterialCommunityIcons name={icon.name as any} size={18} color={icon.color === COLORS.primary ? accent : icon.color} />
+            <Text style={[styles.sideText, left ? styles.textRight : null, e.type === 'goal' ? [styles.goal, { color: accent }] : e.type === 'opp_goal' ? styles.oppGoal : null]}>
               {describeEventOnSide(e, opponent)}
             </Text>
           </View>
@@ -142,7 +145,7 @@ const styles = StyleSheet.create({
   minute: { width: 36, color: COLORS.textLight, fontWeight: '700', fontVariant: ['tabular-nums'] },
   icon: { marginRight: 10 },
   text: { flex: 1, color: COLORS.text, fontSize: 15 },
-  goal: { fontWeight: '800', color: COLORS.primary },
+  goal: { fontWeight: '800' },
   undo: { paddingHorizontal: 10, paddingVertical: 6 },
   undoText: { color: COLORS.textLight, fontWeight: '700', textDecorationLine: 'underline' },
   postRow: { flexDirection: 'row', alignItems: 'center', paddingLeft: 66, paddingBottom: 8, marginTop: -4 },

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { TextInput } from 'react-native-paper';
 import { COLORS } from '../../config';
+import { useTheme } from '../../theme/useTheme';
 import { apiErrorMessage, matchDayApi } from '../../services/api';
 import { askLocation, currentPosition } from '../../services/location';
 import type { MatchDayFixture } from '../../utils/matchDay';
@@ -15,6 +16,7 @@ const GROUND_ACCURACY_M = 100;
  * the club's YouTube channel is connected on the website, which finds it itself.
  */
 export default function StreamLinkCard({ fixture, onChanged }: { fixture: MatchDayFixture; onChanged: () => void }) {
+  const accent = useTheme().theme.colors.primary;
   const [link, setLink] = useState('');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
@@ -62,11 +64,11 @@ export default function StreamLinkCard({ fixture, onChanged }: { fixture: MatchD
       <Text style={styles.heading}>Live video</Text>
       {stream ? (
         <View style={styles.row}>
-          <Text style={styles.status}>
+          <Text style={[styles.status, { color: accent }]}>
             {stream.status === 'live' ? '● In the app now' : 'Stream ended (still watchable)'}{stream.source === 'youtube' ? ' · found on your YouTube channel' : ''}
           </Text>
           <Pressable onPress={remove} disabled={busy} accessibilityRole="button">
-            <Text style={styles.link}>Remove</Text>
+            <Text style={[styles.link, { color: accent }]}>Remove</Text>
           </Pressable>
         </View>
       ) : (
@@ -84,7 +86,7 @@ export default function StreamLinkCard({ fixture, onChanged }: { fixture: MatchD
           style={styles.input}
           accessibilityLabel="YouTube link for this match"
         />
-        <Pressable onPress={save} disabled={busy || !link.trim()} accessibilityRole="button" style={[styles.button, (busy || !link.trim()) && styles.disabled]}>
+        <Pressable onPress={save} disabled={busy || !link.trim()} accessibilityRole="button" style={[styles.button, { backgroundColor: accent }, (busy || !link.trim()) && styles.disabled]}>
           <Text style={styles.buttonText}>{stream ? 'Change' : 'Add'}</Text>
         </Pressable>
       </View>
@@ -92,7 +94,7 @@ export default function StreamLinkCard({ fixture, onChanged }: { fixture: MatchD
       <View style={styles.row}>
         <Text style={styles.help}>{fixture.venueLocation ? 'Ground location set.' : "Ground location not set, so everyone gets alerts."}</Text>
         <Pressable onPress={groundHere} disabled={busy} accessibilityRole="button">
-          <Text style={styles.link}>The ground is here</Text>
+          <Text style={[styles.link, { color: accent }]}>The ground is here</Text>
         </Pressable>
       </View>
 
@@ -103,7 +105,7 @@ export default function StreamLinkCard({ fixture, onChanged }: { fixture: MatchD
 }
 
 const styles = StyleSheet.create({
-  card: { borderWidth: 1, borderColor: '#2F3439', borderRadius: 12, padding: 14, marginBottom: 16 },
+  card: { borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', backgroundColor: '#12161B', borderRadius: 18, padding: 14, marginBottom: 16 },
   heading: { color: COLORS.text, fontWeight: '900', fontSize: 15, marginBottom: 6 },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginTop: 6 },
   status: { color: COLORS.primary, fontWeight: '700', flex: 1 },
@@ -112,7 +114,7 @@ const styles = StyleSheet.create({
   input: { flex: 1, backgroundColor: 'transparent' },
   button: { backgroundColor: COLORS.primary, borderRadius: 8, paddingHorizontal: 16, paddingVertical: 12 },
   disabled: { opacity: 0.5 },
-  buttonText: { color: COLORS.background, fontWeight: '800' },
+  buttonText: { color: '#06080B', fontWeight: '900' },
   link: { color: COLORS.primary, fontWeight: '700' },
   message: { color: COLORS.text, marginTop: 10 },
   error: { color: COLORS.error, marginTop: 10 },

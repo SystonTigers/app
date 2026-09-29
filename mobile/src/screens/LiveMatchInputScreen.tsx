@@ -1,16 +1,22 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Chip, Modal, Portal, TextInput } from 'react-native-paper';
+import { Modal, Portal, TextInput } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { COLORS } from '../config';
-import { useClubName } from '../context/ClubContext';
+import { useClub, useClubName } from '../context/ClubContext';
 import { useMatchDay } from '../context/MatchDayContext';
 import { apiErrorMessage, fixturesApi, lineupApi, liveApi, squadApi, type Lineup } from '../services/api';
 import { newClientEventId, type LiveEvent, type LiveEventType, type LiveMatchView, type NewLiveEvent, type SocialPost } from '../utils/liveMatch';
 import { shareGraphic } from '../utils/postGraphic';
 import LineupEditor from '../components/live/LineupEditor';
-import ScoreHeader from '../components/live/ScoreHeader';
+import MatchScoreboard from '../components/matchCentre/MatchScoreboard';
+import PhaseBar from '../components/matchCentre/PhaseBar';
+import ActionTile from '../components/matchCentre/ActionTile';
+import Crest from '../components/home/Crest';
+import { nextPhase } from '../components/matchCentre/phase';
+import { FONTS } from '../theme/brandFonts';
+import { useTheme } from '../theme/useTheme';
 import LiveTimeline from '../components/live/LiveTimeline';
 import PlayerPicker, { type PickablePlayer } from '../components/live/PlayerPicker';
 import StreamLinkCard from '../components/live/StreamLinkCard';
@@ -36,6 +42,9 @@ type PickStep =
  */
 export default function LiveMatchInputScreen() {
   const clubName = useClubName();
+  const { club } = useClub();
+  const { theme } = useTheme();
+  const color = theme.colors.primary;
   const navigation = useNavigation<any>();
   const { day, refresh: refreshDay } = useMatchDay();
   const [match, setMatch] = useState<LiveMatchView | null>(null);
@@ -203,16 +212,18 @@ export default function LiveMatchInputScreen() {
   };
 
   if (loading) {
-    return <View style={[styles.container, styles.center]}><ActivityIndicator size="large" color={COLORS.primary} /></View>;
+    return <View style={[styles.container, styles.center]}><ActivityIndicator size="large" color={color} /></View>;
   }
 
   const pickTitle = pick ? {
     goal: 'Who scored?', assist: 'Who made the assist?', yellow: 'Yellow card for…', red: 'Red card for…', sub_on: 'Who is coming on?', sub_off: 'Who is going off?',
   }[pick.kind] : '';
+  const next = match ? nextPhase(match.status, match.period) : 'kick_off';
+  const playing = match?.status === 'live';
 
   return (
     <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.content} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={COLORS.primary} />}>
+      <ScrollView contentContainerStyle={styles.content} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={color} />}>
         {failed ? (
           <View style={styles.retry} accessibilityRole="alert">
             <Text style={styles.retryText}>{failed.message}</Text>
@@ -222,35 +233,45 @@ export default function LiveMatchInputScreen() {
           </View>
         ) : null}
         {message ? <Text style={styles.error} accessibilityRole="alert">{message}</Text> : null}
-        {notice ? <Text style={styles.notice} accessibilityRole="alert" onPress={() => setNotice('')}>{notice}</Text> : null}
+        {notice ? <Text style={[styles.notice, { color }]} accessibilityRole="alert" onPress={() => setNotice('')}>{notice}</Text> : null}
 
         {!match ? (
           <>
             {(day?.fixtures ?? []).filter((f) => f.matchStatus !== 'full_time').map((f) => (
               <View key={f.id}>
-                <Text style={styles.label}>Today vs {f.opponent}</Text>
+                <Text style={styles.section}>TODAY VS {f.opponent.toUpperCase()}</Text>
                 <StreamLinkCard fixture={f} onChanged={refreshDay} />
               </View>
             ))}
-            <Text style={styles.heading}>Start a match</Text>
+            <Text style={styles.section}>MATCH DAY</Text>
+            <PhaseBar next="kick_off" color={color} />
             <Text style={styles.help}>Pick your team, post the team news, then tap Kick off when the referee blows.</Text>
             <Text style={styles.label}>Each half lasts</Text>
-            <View style={styles.chips}>
+            <View style={styles.pills}>
               {HALF_LENGTHS.map((m) => (
-                <Chip key={m} selected={halfLength === m} onPress={() => setHalfLength(m)} style={styles.chip}>{m} min</Chip>
+                <Pressable key={m} onPress={() => setHalfLength(m)} accessibilityRole="radio" accessibilityState={{ selected: halfLength === m }}
+                  style={[styles.pill, halfLength === m ? { backgroundColor: color, borderColor: color } : null]}>
+                  <Text style={[styles.pillText, halfLength === m ? styles.pillTextOn : null]}>{m} min</Text>
+                </Pressable>
               ))}
             </View>
             {fixtures.map((f) => (
               <View key={f.id} style={styles.fixture}>
-                <View style={styles.fixtureText}>
-                  <Text style={styles.fixtureTitle}>vs {f.opponent}</Text>
-                  <Text style={styles.help}>{new Date(f.date).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}{f.time ? ` · ${f.time}` : ''}</Text>
+                <View style={styles.fixtureTop}>
+                  <Crest name={f.opponent} color="#8E99A4" size={44} />
+                  <View style={styles.fixtureText}>
+                    <Text style={styles.fixtureTitle} numberOfLines={2}>VS {f.opponent.toUpperCase()}</Text>
+                    <Text style={styles.help}>{new Date(f.date).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}{f.time ? ` · ${f.time}` : ''}</Text>
+                  </View>
+                  <Pressable onPress={() => setLineupFor(f)} accessibilityRole="button" style={[styles.pickTeam, { borderColor: color }]}>
+                    <MaterialCommunityIcons name="account-group" size={18} color={color} />
+                    <Text style={[styles.pickTeamText, { color }]}>Team</Text>
+                  </Pressable>
                 </View>
-                <Pressable onPress={() => setLineupFor(f)} accessibilityRole="button" style={styles.pickTeam}>
-                  <Text style={styles.pickTeamText}>Team</Text>
-                </Pressable>
-                <Pressable onPress={() => kickOff(f)} disabled={sending} accessibilityRole="button" style={styles.kickOff}>
-                  <Text style={styles.kickOffText}>Kick off</Text>
+                <Pressable onPress={() => kickOff(f)} disabled={sending} accessibilityRole="button" accessibilityLabel={`Kick off against ${f.opponent}`}
+                  style={({ pressed }) => [styles.kickOff, { backgroundColor: color }, pressed ? styles.pressed : null, sending ? styles.disabled : null]}>
+                  <MaterialCommunityIcons name="whistle" size={22} color="#06080B" />
+                  <Text style={styles.kickOffText}>KICK OFF</Text>
                 </Pressable>
               </View>
             ))}
@@ -258,23 +279,29 @@ export default function LiveMatchInputScreen() {
           </>
         ) : (
           <>
-            <ScoreHeader match={match} clubName={clubName} />
-            {(() => {
-              const today = match.status !== 'full_time' ? day?.fixtures.find((f) => f.id === match.fixture.id) : undefined;
-              return today ? <StreamLinkCard fixture={today} onChanged={refreshDay} /> : null;
-            })()}
+            <MatchScoreboard match={match} clubName={clubName} color={color} badgeUrl={club?.badgeUrl} />
+            <PhaseBar
+              next={next}
+              color={color}
+              disabled={sending}
+              onPress={(step) => record(step)}
+              onEndEarly={() => record('full_time')}
+            />
 
             {match.status === 'full_time' ? (
               <View style={styles.finished}>
+                <Text style={styles.finishedTitle}>FULL TIME</Text>
                 <Text style={styles.finishedText}>Result saved to your results, league table and player stats.</Text>
                 {motmOpened ? (
                   <Text style={styles.finishedText}>Man of the Match voting is open for parents and players, with everyone who played nominated.</Text>
                 ) : null}
-                <Pressable onPress={() => navigation.navigate('ManageMOTM')} accessibilityRole="button" style={styles.kickOff}>
-                  <Text style={styles.kickOffText}>{motmOpened ? 'See the Man of the Match vote' : 'Start Man of the Match vote'}</Text>
+                <Pressable onPress={() => navigation.navigate('ManageMOTM')} accessibilityRole="button" style={[styles.kickOff, { backgroundColor: color }]}>
+                  <MaterialCommunityIcons name="star-circle" size={22} color="#06080B" />
+                  <Text style={styles.kickOffText}>{motmOpened ? 'MAN OF THE MATCH VOTE' : 'START MOTM VOTE'}</Text>
                 </Pressable>
-                <Pressable onPress={() => navigation.navigate('MatchHighlights', { fixtureId: match.fixture.id })} accessibilityRole="button" style={styles.linkButton}>
-                  <Text style={styles.linkText}>Highlights: line up the video and check the clips</Text>
+                <Pressable onPress={() => navigation.navigate('MatchHighlights', { fixtureId: match.fixture.id })} accessibilityRole="button" style={[styles.outline, { borderColor: color }]}>
+                  <MaterialCommunityIcons name="play-box-multiple" size={20} color={color} />
+                  <Text style={[styles.outlineText, { color }]}>Highlights: line up the video and check the clips</Text>
                 </Pressable>
                 <Pressable onPress={() => { setMatch(null); setMotmOpened(false); load(); }} accessibilityRole="button" style={styles.linkButton}>
                   <Text style={styles.linkText}>Back to fixtures</Text>
@@ -282,36 +309,38 @@ export default function LiveMatchInputScreen() {
               </View>
             ) : (
               <>
+                <Text style={styles.section}>GOALS</Text>
                 <View style={styles.grid}>
-                  <Action icon="soccer" label="We scored" primary onPress={() => setPick({ kind: 'goal' })} disabled={sending || match.status === 'half_time'} />
-                  <Action icon="soccer" label="They scored" onPress={() => record('opp_goal')} disabled={sending || match.status === 'half_time'} />
-                  <Action icon="card" label="Our yellow" onPress={() => setPick({ kind: 'yellow' })} disabled={sending} color="#F5C400" />
-                  <Action icon="card" label="Our red" onPress={() => setPick({ kind: 'red' })} disabled={sending} color={COLORS.error} />
-                  <Action icon="swap-horizontal" label="Sub" onPress={() => setPick({ kind: 'sub_on' })} disabled={sending} />
-                  <Action icon="message-text-outline" label="Update" onPress={() => setNoteOpen(true)} disabled={sending} />
+                  <ActionTile hero wide icon="soccer" label="WE SCORED" color={color} onPress={() => setPick({ kind: 'goal' })} disabled={sending || !playing} />
+                  <ActionTile wide icon="soccer" label="They scored" color="#8E99A4" iconColor="#C9D1D8" onPress={() => record('opp_goal')} disabled={sending || !playing} />
                 </View>
-                {/* Shown on their side of the timeline; no stats, posts or alerts */}
-                <Text style={styles.label}>Their cards</Text>
+                <Text style={styles.section}>CARDS</Text>
                 <View style={styles.grid}>
-                  <Action icon="card" label="Their yellow" onPress={() => record('opp_yellow')} disabled={sending} color="#F5C400" />
-                  <Action icon="card" label="Their red" onPress={() => record('opp_red')} disabled={sending} color={COLORS.error} />
+                  <ActionTile quarter icon="card" label="Our yellow" color={color} iconColor={YELLOW} onPress={() => setPick({ kind: 'yellow' })} disabled={sending} />
+                  <ActionTile quarter icon="card" label="Our red" color={color} iconColor={RED} onPress={() => setPick({ kind: 'red' })} disabled={sending} />
+                  <ActionTile quarter icon="card" label="Their yellow" color={color} iconColor={YELLOW} onPress={() => record('opp_yellow')} disabled={sending} />
+                  <ActionTile quarter icon="card" label="Their red" color={color} iconColor={RED} onPress={() => record('opp_red')} disabled={sending} />
+                </View>
+                <Text style={styles.section}>TEAM</Text>
+                <View style={styles.grid}>
+                  <ActionTile icon="swap-horizontal" label="Sub" color={color} onPress={() => setPick({ kind: 'sub_on' })} disabled={sending} />
+                  <ActionTile icon="message-text-outline" label="Post an update" color={color} onPress={() => setNoteOpen(true)} disabled={sending} />
                 </View>
                 {/* One tap marks the moment for the highlights video; nothing is posted */}
-                <Text style={styles.label}>Mark for highlights</Text>
+                <Text style={styles.section}>MARK FOR HIGHLIGHTS</Text>
                 <View style={styles.grid}>
-                  <Action icon="target" label="Chance" onPress={() => record('chance')} disabled={sending || match.status === 'half_time'} />
-                  <Action icon="hand-back-left" label="Save" onPress={() => record('save')} disabled={sending || match.status === 'half_time'} />
-                  <Action icon="star-outline" label="Great play" onPress={() => record('skill')} disabled={sending || match.status === 'half_time'} />
-                </View>
-                <View style={styles.phaseRow}>
-                  {match.status === 'live' && match.period === 1 ? <Phase label="Half time" onPress={() => record('half_time')} disabled={sending} /> : null}
-                  {match.status === 'half_time' ? <Phase label="Start 2nd half" onPress={() => record('second_half')} disabled={sending} /> : null}
-                  <Phase label="Full time" danger onPress={() => record('full_time')} disabled={sending} />
+                  <ActionTile icon="target" label="Chance" color={color} onPress={() => record('chance')} disabled={sending || !playing} />
+                  <ActionTile icon="hand-back-left" label="Save" color={color} onPress={() => record('save')} disabled={sending || !playing} />
+                  <ActionTile icon="star-outline" label="Great play" color={color} onPress={() => record('skill')} disabled={sending || !playing} />
                 </View>
               </>
             )}
 
-            <Text style={styles.label}>Timeline</Text>
+            {(() => {
+              const today = match.status !== 'full_time' ? day?.fixtures.find((f) => f.id === match.fixture.id) : undefined;
+              return today ? <><Text style={styles.section}>LIVE VIDEO</Text><StreamLinkCard fixture={today} onChanged={refreshDay} /></> : null;
+            })()}
+            <Text style={styles.section}>TIMELINE</Text>
             <LiveTimeline events={match.events} opponent={match.fixture.opponent} onUndo={undo} busyId={undoing} posts={match.posts} onShare={share} />
           </>
         )}
@@ -354,9 +383,9 @@ export default function LiveMatchInputScreen() {
             <Pressable
               onPress={() => { if (note.trim()) { record('note', { text: note.trim() }); setNote(''); setNoteOpen(false); } }}
               accessibilityRole="button"
-              style={styles.kickOff}
+              style={[styles.kickOff, { backgroundColor: color, paddingHorizontal: 22 }]}
             >
-              <Text style={styles.kickOffText}>Post</Text>
+              <Text style={styles.kickOffText}>POST</Text>
             </Pressable>
           </View>
         </Modal>
@@ -365,67 +394,45 @@ export default function LiveMatchInputScreen() {
   );
 }
 
-function Action({ icon, label, onPress, disabled, primary, color }: { icon: string; label: string; onPress: () => void; disabled?: boolean; primary?: boolean; color?: string }) {
-  return (
-    <Pressable
-      onPress={onPress}
-      disabled={disabled}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      style={({ pressed }) => [styles.action, primary ? styles.actionPrimary : null, pressed ? styles.pressed : null, disabled ? styles.disabled : null]}
-    >
-      <MaterialCommunityIcons name={icon as any} size={28} color={primary ? COLORS.background : color ?? COLORS.text} />
-      <Text style={[styles.actionText, primary ? styles.actionTextPrimary : null]}>{label}</Text>
-    </Pressable>
-  );
-}
-
-function Phase({ label, onPress, disabled, danger }: { label: string; onPress: () => void; disabled?: boolean; danger?: boolean }) {
-  return (
-    <Pressable onPress={onPress} disabled={disabled} accessibilityRole="button" style={[styles.phase, danger ? styles.phaseDanger : null, disabled ? styles.disabled : null]}>
-      <Text style={[styles.phaseText, danger ? styles.phaseTextDanger : null]}>{label}</Text>
-    </Pressable>
-  );
-}
+const YELLOW = '#F5C400';
+const RED = '#E5334B';
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
+  container: { flex: 1, backgroundColor: '#07090C' },
   center: { justifyContent: 'center', alignItems: 'center' },
-  content: { padding: 16, paddingBottom: 48 },
-  heading: { color: COLORS.text, fontSize: 20, fontWeight: '900', textTransform: 'uppercase', fontStyle: 'italic', marginBottom: 6 },
-  help: { color: COLORS.textLight, fontSize: 14 },
-  label: { color: COLORS.text, fontWeight: '800', marginTop: 20, marginBottom: 8, textTransform: 'uppercase', fontSize: 13, letterSpacing: 1 },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 12 },
-  chip: { margin: 4 },
-  fixture: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(192,192,192,0.25)' },
+  content: { padding: 16, paddingBottom: 56 },
+  heading: { color: '#F2F5F7', fontFamily: FONTS.display, fontSize: 24, letterSpacing: 1, marginBottom: 6 },
+  section: { color: 'rgba(242,245,247,0.55)', fontFamily: FONTS.displaySemi, fontSize: 14, letterSpacing: 2, marginTop: 22, marginBottom: 10 },
+  help: { color: 'rgba(242,245,247,0.65)', fontSize: 14, marginTop: 6 },
+  label: { color: '#F2F5F7', fontWeight: '800', marginTop: 18, marginBottom: 8, fontSize: 13, letterSpacing: 0.5 },
+  pills: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 6 },
+  pill: { borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', borderRadius: 999, paddingHorizontal: 14, paddingVertical: 8 },
+  pillText: { color: '#F2F5F7', fontWeight: '700' },
+  pillTextOn: { color: '#06080B', fontWeight: '900' },
+  fixture: { marginTop: 14, padding: 14, borderRadius: 18, backgroundColor: '#12161B', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', gap: 12 },
+  fixtureTop: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   fixtureText: { flex: 1 },
-  fixtureTitle: { color: COLORS.text, fontSize: 17, fontWeight: '800' },
-  pickTeam: { borderWidth: 1, borderColor: COLORS.primary, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, marginRight: 8 },
-  pickTeamText: { color: COLORS.primary, fontWeight: '900', fontSize: 15 },
-  notice: { color: COLORS.primary, marginBottom: 12, fontSize: 14 },
-  kickOff: { backgroundColor: COLORS.primary, borderRadius: 10, paddingHorizontal: 18, paddingVertical: 12, alignItems: 'center' },
-  kickOffText: { color: COLORS.background, fontWeight: '900', fontSize: 15 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 10 },
-  action: { width: '31%', minHeight: 84, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(192,192,192,0.35)', alignItems: 'center', justifyContent: 'center', paddingVertical: 10 },
-  actionPrimary: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
-  actionText: { color: COLORS.text, fontWeight: '800', marginTop: 6, fontSize: 13 },
-  actionTextPrimary: { color: COLORS.background },
-  pressed: { opacity: 0.7 },
-  disabled: { opacity: 0.35 },
-  phaseRow: { flexDirection: 'row', gap: 10, marginTop: 14 },
-  phase: { flex: 1, borderRadius: 10, borderWidth: 1, borderColor: COLORS.primary, paddingVertical: 14, alignItems: 'center' },
-  phaseDanger: { borderColor: COLORS.error },
-  phaseText: { color: COLORS.primary, fontWeight: '900' },
-  phaseTextDanger: { color: COLORS.error },
-  finished: { alignItems: 'stretch', gap: 12 },
-  finishedText: { color: COLORS.text, textAlign: 'center', fontSize: 15 },
+  fixtureTitle: { color: '#F2F5F7', fontFamily: FONTS.display, fontSize: 22, lineHeight: 23 },
+  pickTeam: { flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1.5, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10 },
+  pickTeamText: { fontWeight: '900', fontSize: 14 },
+  notice: { marginBottom: 12, fontSize: 14, fontWeight: '700' },
+  kickOff: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, borderRadius: 16, paddingVertical: 15 },
+  kickOffText: { color: '#06080B', fontFamily: FONTS.display, fontSize: 22, letterSpacing: 2 },
+  outline: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderWidth: 1.5, borderRadius: 14, paddingVertical: 13, paddingHorizontal: 12 },
+  outlineText: { fontWeight: '800', flexShrink: 1, textAlign: 'center' },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  pressed: { opacity: 0.85 },
+  disabled: { opacity: 0.4 },
+  finished: { alignItems: 'stretch', gap: 12, marginTop: 18 },
+  finishedTitle: { color: '#F2F5F7', fontFamily: FONTS.display, fontSize: 30, letterSpacing: 2, textAlign: 'center' },
+  finishedText: { color: 'rgba(242,245,247,0.8)', textAlign: 'center', fontSize: 15 },
   linkButton: { paddingVertical: 12, paddingHorizontal: 12, alignItems: 'center' },
-  linkText: { color: COLORS.textLight, fontWeight: '700', textDecorationLine: 'underline' },
-  retry: { backgroundColor: 'rgba(245,158,11,0.15)', borderRadius: 10, padding: 12, marginBottom: 12 },
-  retryText: { color: COLORS.text, marginBottom: 8 },
+  linkText: { color: 'rgba(242,245,247,0.6)', fontWeight: '700', textDecorationLine: 'underline' },
+  retry: { backgroundColor: 'rgba(245,158,11,0.15)', borderRadius: 12, padding: 12, marginBottom: 12 },
+  retryText: { color: '#F2F5F7', marginBottom: 8 },
   retryButton: { alignSelf: 'flex-start', backgroundColor: COLORS.warning, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 8 },
-  retryButtonText: { color: COLORS.background, fontWeight: '900' },
+  retryButtonText: { color: '#06080B', fontWeight: '900' },
   error: { color: COLORS.error, marginBottom: 12, fontSize: 14 },
-  noteModal: { backgroundColor: '#14181C', margin: 16, borderRadius: 12, padding: 16 },
+  noteModal: { backgroundColor: '#14181C', margin: 16, borderRadius: 16, padding: 16 },
   noteActions: { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: 8, marginTop: 12 },
 });
