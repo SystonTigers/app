@@ -23,6 +23,7 @@ describe("match notification wording", () => {
     expect(buildAlert({ ...base, kind: "opp_goal", ourScore: 1, theirScore: 1, minute: 30 })).toEqual({ title: "Rovers score: Syston Tigers 1-1 Rovers", body: "Goal for Rovers (30')." });
     expect(buildAlert({ ...base, kind: "half_time" }).title).toBe("Half time: Syston Tigers 1-0 Rovers");
     expect(buildAlert({ ...base, kind: "red", player: "Ben J.", minute: 55 }).title).toBe("🟥 Red card: Ben J. (55')");
+    expect(buildAlert({ ...base, kind: "yellow", player: "Ben J.", minute: 30 }).title).toBe("🟨 Yellow card: Ben J. (30')");
     expect(buildAlert({ ...base, kind: "full_time", scorers: "Sam S. 2" }).body).toBe("Win. Scorers: Sam S. 2");
     expect(buildAlert({ ...base, kind: "full_time", ourScore: 0, theirScore: 0 }).body).toBe("Draw. Tap for the match report.");
     expect(buildAlert({ ...base, kind: "stream", homeAway: "away" }).title).toBe("🔴 Live now: Rovers v Syston Tigers");

@@ -21,7 +21,7 @@ the free Web Push and Expo push services.
 | Website: connect YouTube (Settings) | `web-app/src/components/LiveVideoSettings.tsx` |
 | Web app notifications (service worker) | `mobile/web/sw.js` |
 
-- **Alerts**: kick-off, our goals, their goals, half time, red cards and full
+- **Alerts**: kick-off, our goals, their goals, half time, yellow and red cards and full
   time. They wait for the club's undo window (1 minute, the same setting as
   automatic posts), so an undone mistake never goes out; one that already went
   out is followed by a "Correction" with the right score. The once-a-minute

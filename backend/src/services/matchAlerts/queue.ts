@@ -90,7 +90,7 @@ export async function cancelEventAlert(env: AlertsEnv, tenantId: string, fixture
     const res = await env.DB.prepare(`UPDATE match_alerts SET status = 'cancelled', updated_at = ? WHERE id = ? AND status = 'pending'`).bind(Date.now(), row.id).run();
     if ((res.meta?.changes ?? 0) > 0) return { cancelled: true, corrected: false };
   }
-  if (!fixture || !["goal", "opp_goal", "red", "half_time", "full_time"].includes(undone.type)) return { cancelled: false, corrected: false };
+  if (!fixture || !["goal", "opp_goal", "yellow", "red", "half_time", "full_time"].includes(undone.type)) return { cancelled: false, corrected: false };
   const club = await loadClub(env, tenantId);
   const text = buildAlert(baseInput(club, fixture, remaining, "correction"));
   await insertAlert(env, { tenantId, fixtureId: fixture.id, sourceId: `correction:${undone.id}`, kind: "correction", ...text, skipUserId: null, sendAfter: Date.now() });

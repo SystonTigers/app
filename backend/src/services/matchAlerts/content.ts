@@ -4,11 +4,11 @@
  * because notifications show on lock screens.
  */
 
-export const ALERT_KINDS = ["kick_off", "goal", "opp_goal", "half_time", "red", "full_time", "stream", "correction"] as const;
+export const ALERT_KINDS = ["kick_off", "goal", "opp_goal", "half_time", "yellow", "red", "full_time", "stream", "correction"] as const;
 export type AlertKind = (typeof ALERT_KINDS)[number];
 
 /** Live event types that notify people who aren't at the match. */
-export const EVENT_ALERT_KINDS: readonly string[] = ["kick_off", "goal", "opp_goal", "half_time", "red", "full_time"];
+export const EVENT_ALERT_KINDS: readonly string[] = ["kick_off", "goal", "opp_goal", "half_time", "yellow", "red", "full_time"];
 
 export interface AlertInput {
   kind: AlertKind;
@@ -18,7 +18,7 @@ export interface AlertInput {
   ourScore: number;
   theirScore: number;
   minute?: number | null;
-  /** Scorer or the player sent off */
+  /** Scorer, or the player booked or sent off */
   player?: string | null;
   /** This scorer's goal number in the match (2 = brace, 3 = hat-trick) */
   goalNumber?: number;
@@ -67,6 +67,8 @@ export function buildAlert(i: AlertInput): AlertText {
       return { title: `${i.opponent} score: ${scoreText(i)}`, body: `Goal for ${i.opponent}${at(i.minute)}.` };
     case "half_time":
       return { title: `Half time: ${scoreText(i)}`, body: "Second half coming up." };
+    case "yellow":
+      return { title: `🟨 Yellow card${i.player ? `: ${i.player}` : ""}${at(i.minute)}`, body: scoreText(i) };
     case "red":
       return { title: `🟥 Red card${i.player ? `: ${i.player}` : ""}${at(i.minute)}`, body: scoreText(i) };
     case "full_time":
