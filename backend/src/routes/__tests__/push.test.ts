@@ -32,7 +32,11 @@ describe("Push Routes", () => {
     const originalFetch = global.fetch;
 
     beforeEach(() => {
-        global.fetch = vi.fn().mockResolvedValue({ ok: true });
+        // Expo's push service: one "ok" ticket per message
+        global.fetch = vi.fn().mockImplementation(async (_url: string, init: RequestInit) => ({
+            ok: true,
+            json: async () => ({ data: JSON.parse(String(init.body)).map(() => ({ status: "ok" })) }),
+        }));
     });
 
     afterEach(() => {
@@ -59,7 +63,7 @@ describe("Push Routes", () => {
                 headers: new Headers({ Authorization: "Bearer valid-token" }),
                 json: vi.fn().mockResolvedValue({
                     platform: "ios",
-                    token: "device-token-123",
+                    token: "ExponentPushToken[device-123]",
                 }),
             };
 
@@ -117,7 +121,10 @@ describe("Push Routes", () => {
                 headers: new Headers({ Authorization: "Bearer valid-token" }),
                 json: vi.fn().mockResolvedValue({
                     platform: "web",
-                    token: "web-push-token",
+                    token: JSON.stringify({
+                        endpoint: "https://web.push.example.com/send/1",
+                        keys: { p256dh: "BNzV-dGFBW-6zSAbSxx_ZjjpxH7zhJIhZg7tGGYcaMAJgKLtaYgHPzEf3-a3ZaoDSL6dUCVlczRjorYC-oDatGc", auth: "_zq0nrhdBcyfgr7B5Vt4Wg" },
+                    }),
                 }),
             };
 
@@ -125,6 +132,15 @@ describe("Push Routes", () => {
             const body = await response.json() as any;
 
             expect(body.success).toBe(true);
+        });
+
+        it("rejects tokens nothing can send to (old FCM tokens, bad web subscriptions)", async () => {
+            const env = createMockEnv();
+            for (const body of [{ platform: "android", token: "fcm-legacy-token" }, { platform: "web", token: "web-push-token" }]) {
+                const request = { headers: new Headers({ Authorization: "Bearer valid-token" }), json: vi.fn().mockResolvedValue(body) };
+                const response = await handlePushRegister(request as any, env as any);
+                expect(response.status).toBe(400);
+            }
         });
     });
 
@@ -134,7 +150,7 @@ describe("Push Routes", () => {
             (env.DB.prepare as any).mockReturnValue({
                 bind: vi.fn().mockReturnThis(),
                 all: vi.fn().mockResolvedValue({
-                    results: [{ token: "device-token-1", platform: "ios" }],
+                    results: [{ token: "ExponentPushToken[device-1]", platform: "ios" }],
                 }),
             });
 
@@ -224,9 +240,9 @@ describe("Push Routes", () => {
                 bind: vi.fn().mockReturnThis(),
                 all: vi.fn().mockResolvedValue({
                     results: [
-                        { token: "token-1", platform: "ios" },
-                        { token: "token-2", platform: "android" },
-                        { token: "token-3", platform: "web" },
+                        { token: "ExponentPushToken[1]", platform: "ios" },
+                        { token: "ExponentPushToken[2]", platform: "android" },
+                        { token: "ExponentPushToken[3]", platform: "ios" },
                     ],
                 }),
             });

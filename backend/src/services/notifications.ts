@@ -1,7 +1,9 @@
 /**
  * Notification Service
  * Centralized helper for sending push notifications across the app
+ * (delivered by services/push/delivery.ts: Web Push and Expo).
  */
+import { deliver } from "./push/delivery";
 
 export interface NotificationPayload {
     title: string;
@@ -17,11 +19,6 @@ export async function notifyTenant(
     tenantId: string,
     notification: NotificationPayload
 ): Promise<{ sent: number }> {
-    if (!env.FCM_SERVER_KEY) {
-        console.log('[Notify] FCM not configured, skipping notification');
-        return { sent: 0 };
-    }
-
     try {
         // Get all devices for tenant
         const { results } = await env.DB.prepare(
@@ -50,10 +47,6 @@ export async function notifyTenantAdmins(
     tenantId: string,
     notification: NotificationPayload
 ): Promise<{ sent: number }> {
-    if (!env.FCM_SERVER_KEY) {
-        return { sent: 0 };
-    }
-
     try {
         // Get devices for admin users in this tenant
         const { results } = await env.DB.prepare(`
@@ -106,33 +99,14 @@ export async function createInAppNotification(
     ).run();
 }
 
-/**
- * Send FCM push notification
- */
+/** Send one notification to these device tokens. */
 async function sendFCM(
     env: any,
     tokens: string[],
     notification: NotificationPayload
 ): Promise<void> {
-    const response = await fetch("https://fcm.googleapis.com/fcm/send", {
-        method: "POST",
-        headers: {
-            "Authorization": `key=${env.FCM_SERVER_KEY}`,
-            "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-            registration_ids: tokens,
-            notification: {
-                title: notification.title,
-                body: notification.body,
-            },
-            data: notification.data,
-        }),
-    });
-
-    if (!response.ok) {
-        console.error('[FCM] Send failed:', await response.text());
-    }
+    const data = Object.fromEntries(Object.entries(notification.data ?? {}).map(([k, v]) => [k, typeof v === "string" ? v : JSON.stringify(v)]));
+    await deliver(env, tokens, { title: notification.title, body: notification.body, data });
 }
 
 // Pre-built notification templates

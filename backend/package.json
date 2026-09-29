@@ -15,6 +15,7 @@
     "admin:password:prod": "node scripts/set-admin-password.mjs --remote",
     "deploy:prod": "wrangler deploy --env production",
     "secrets:rotate:prod": "node scripts/rotate-secrets.mjs --env production",
+    "push:keys:prod": "node scripts/generate-vapid-keys.mjs --env production",
     "test": "npm run test:node && npm run test:workers && npm run test:e2e",
     "graphics:wasm": "node -e \"require('fs').copyFileSync(require.resolve('@resvg/resvg-wasm/index_bg.wasm'), 'src/services/graphics/resvg.wasm')\"",
     "graphics:preview": "tsx scripts/preview-graphics.ts",

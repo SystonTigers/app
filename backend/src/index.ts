@@ -6,6 +6,8 @@ import postQueueConsumer from "./queue-consumer";
 import { json } from "./services/util";
 import { handleGetMedia } from "./services/media";
 import { processDueJobs } from "./services/social/jobs";
+import { processDueAlerts } from "./services/matchAlerts/queue";
+import { detectStreams } from "./services/stream/detect";
 import { corsHeaders, isPreflight } from "./middleware/cors";
 import { newRequestId, logJSON } from "./lib/log";
 import { withSecurity } from "./middleware/securityHeaders";
@@ -514,7 +516,8 @@ router.get("/api/:v/security/export", (req, env, corsHdrs, requestId) => handleS
 
 // Push Routes
 export * from "./services/fixtures";
-import { handlePushRegister, handlePushSend, handlePushBroadcast } from "./routes/push";
+import { handlePushRegister, handlePushSend, handlePushBroadcast, handlePushConfig } from "./routes/push";
+router.get("/api/:v/push/config", (req, env) => handlePushConfig(req, env));
 router.post("/api/:v/push/register", (req, env) => handlePushRegister(req, env));
 router.post("/api/:v/push/send", staffOnly((req: any, env: any, _corsHdrs: Headers) => handlePushSend(req, env)));
 router.post("/api/:v/push/broadcast", staffOnly((req: any, env: any, _corsHdrs: Headers) => handlePushBroadcast(req, env)));
@@ -672,6 +675,22 @@ router.delete("/api/:v/fixtures/:id/live/events/:eventId", (req, env, corsHdrs) 
     const params = (req as any).params || {};
     return handleUndoLiveEvent(req, env, corsHdrs, params.id, params.eventId);
 });
+
+// Match day: live video, "at the match?" and the ground's location (routes/matchDay.ts)
+import { handleGetMatchDay, handlePutAttendance, handleDeleteAttendance, handlePutStream, handleDeleteStream, handlePutVenue } from "./routes/matchDay";
+router.get("/api/:v/matchday", (req, env, corsHdrs) => handleGetMatchDay(req, env, corsHdrs));
+router.put("/api/:v/fixtures/:id/attendance", (req, env, corsHdrs) => handlePutAttendance(req, env, corsHdrs, ((req as any).params || {}).id));
+router.delete("/api/:v/fixtures/:id/attendance", (req, env, corsHdrs) => handleDeleteAttendance(req, env, corsHdrs, ((req as any).params || {}).id));
+router.put("/api/:v/fixtures/:id/stream", staffOnly((req, env, corsHdrs, _requestId, ctx) => handlePutStream(req, env, corsHdrs, ((req as any).params || {}).id, ctx)));
+router.delete("/api/:v/fixtures/:id/stream", staffOnly((req, env, corsHdrs) => handleDeleteStream(req, env, corsHdrs, ((req as any).params || {}).id)));
+router.put("/api/:v/fixtures/:id/venue", staffOnly((req, env, corsHdrs) => handlePutVenue(req, env, corsHdrs, ((req as any).params || {}).id)));
+
+// Connecting the club's YouTube channel for automatic live video (routes/stream.ts)
+import { handleGetStreamSettings, handleStartYouTubeConnect, handleYouTubeCallback, handleDisconnectYouTube } from "./routes/stream";
+router.get("/api/:v/stream/settings", staffOnly((req, env, corsHdrs) => handleGetStreamSettings(req, env, corsHdrs)));
+router.post("/api/:v/stream/youtube/start", staffOnly((req, env, corsHdrs) => handleStartYouTubeConnect(req, env, corsHdrs)));
+router.get("/api/:v/stream/youtube/callback", (req, env) => handleYouTubeCallback(req, env));
+router.delete("/api/:v/stream/youtube", staffOnly((req, env, corsHdrs) => handleDisconnectYouTube(req, env, corsHdrs)));
 
 // Line-ups (routes/lineup.ts)
 import { handleGetLineup, handleSaveLineup, handlePublishLineup } from "./routes/lineup";
@@ -1482,6 +1501,13 @@ export default {
 
         // Every minute: send automatic social posts that are due
         ctx.waitUntil(processDueJobs(env).catch((error) => logJSON({ level: 'error', msg: 'Social posting cron failed', error: error instanceof Error ? error.message : String(error) })));
+        // Every minute: find live streams on clubs' YouTube channels, then send match notifications that are due
+        ctx.waitUntil(
+            detectStreams(env)
+                .catch((error) => { logJSON({ level: 'error', msg: 'Stream detection failed', error: error instanceof Error ? error.message : String(error) }); return 0; })
+                .then(() => processDueAlerts(env))
+                .catch((error) => logJSON({ level: 'error', msg: 'Match alerts cron failed', error: error instanceof Error ? error.message : String(error) })),
+        );
 
         // Everything else runs on the 5-minute beat (the checks below expect minute 0-4 once an hour)
         if (minute % 5 !== 0) {

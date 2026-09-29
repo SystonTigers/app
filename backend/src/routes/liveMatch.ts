@@ -20,6 +20,8 @@ import type { LiveEvent } from "../services/liveMatchState";
 import { getSession, openVote } from "../services/motm";
 import { playersWhoPlayed } from "../services/lineup";
 import { refreshLeagueTable } from "../services/league/store";
+import { cancelEventAlert, queueEventAlert, type AlertsEnv } from "../services/matchAlerts/queue";
+import { validCoords } from "../services/matchDay";
 
 const MOTM_VOTING_HOURS = 48;
 
@@ -166,6 +168,7 @@ export async function handleRecordLiveEvent(req: Request, env: Env, corsHdrs: He
   try {
     const body = (await req.json().catch(() => ({}))) as {
       type?: unknown; playerId?: unknown; player2Id?: unknown; text?: unknown; minute?: unknown; clientEventId?: unknown; halfLength?: unknown; occurredAt?: unknown;
+      venue?: { lat?: unknown; lng?: unknown; accuracy?: unknown };
     };
     if (!isLiveEventType(body.type)) return fail(corsHdrs, 400, "VALIDATION", "Choose what happened.");
     const type: LiveEventType = body.type;
@@ -239,6 +242,21 @@ export async function handleRecordLiveEvent(req: Request, env: Env, corsHdrs: He
     }
     await setMatchStatus(env, claims.tenantId, fixtureId, newState.status);
 
+    // Kick-off from the touchline: the staff phone is at the ground, so (if it
+    // shared an accurate location) that's where "at the match" is measured from
+    if (type === "kick_off" && body.venue && validCoords(body.venue.lat, body.venue.lng) && Number(body.venue.accuracy) <= 100) {
+      await env.DB.prepare(`UPDATE fixtures SET venue_lat = ?, venue_lng = ? WHERE tenant_id = ? AND id = ?`)
+        .bind(body.venue.lat as number, body.venue.lng as number, claims.tenantId, fixtureId).run();
+    }
+
+    // Notify members who aren't at the match (after the undo window)
+    try {
+      const recorded = updated.find((e) => e.id === eventId);
+      if (recorded) await queueEventAlert(env as unknown as AlertsEnv, claims.tenantId, fixture, updated, recorded, claims.userId ?? null);
+    } catch (err) {
+      console.error(JSON.stringify({ level: "error", msg: "match_alert_queue_failed", fixtureId, error: err instanceof Error ? err.message : String(err) }));
+    }
+
     // A failed post must never lose the update itself
     let newPost: JobSummary | null = null;
     try {
@@ -273,6 +291,12 @@ export async function handleUndoLiveEvent(req: Request, env: Env, corsHdrs: Head
 
     const remaining = events.filter((e) => e.id !== eventId);
     await setMatchStatus(env, claims.tenantId, fixtureId, computeState(remaining).status);
+    // Stop its notification, or send a correction if it already went out
+    try {
+      await cancelEventAlert(env as unknown as AlertsEnv, claims.tenantId, await loadFixture(env, claims.tenantId, fixtureId), remaining, target);
+    } catch (err) {
+      console.error(JSON.stringify({ level: "error", msg: "match_alert_cancel_failed", fixtureId, error: err instanceof Error ? err.message : String(err) }));
+    }
     // Stop the post going out, or take it down from the app and Facebook if it already has
     const undonePost = await cancelPost(env, claims.tenantId, "live_event", eventId);
     // It had already gone out: tell followers it was wrong (Instagram posts can't be deleted)

@@ -3,12 +3,18 @@ import { Env } from "../types";
 import { z } from "zod";
 import { verifyJWT } from "./auth";
 import { createResponse, errorResponse } from "../middleware/errorHandler";
+import { deliver, isExpoToken } from "../services/push/delivery";
+import { parseSubscription } from "../services/push/webPush";
 
-// Schema for device registration
+// Schema for device registration. Phones send an Expo push token; the web
+// app sends its browser push subscription as JSON.
 const registerSchema = z.object({
     platform: z.enum(["ios", "android", "web"]),
-    token: z.string().min(1),
-});
+    token: z.string().min(1).max(4096),
+}).refine(
+    (d) => (d.platform === "web" ? parseSubscription(d.token) !== null : isExpoToken(d.token)),
+    { message: "Not a push token this app can send to", path: ["token"] },
+);
 
 // Schema for sending notification
 const sendSchema = z.object({
@@ -94,10 +100,8 @@ export async function handlePushSend(request: IRequest, env: Env) {
             return createResponse({ success: true, sent: 0 });
         }
 
-        // Send to FCM
-        await sendToFCM(env, results as any[], notification, data);
-
-        return createResponse({ success: true, sent: results.length });
+        const delivery = await sendTo(env, results as { token: string }[], notification, data);
+        return createResponse({ success: true, devices: results.length, sent: delivery.sent });
     } catch (error: any) {
         if (error.message.includes("Unauthorized")) {return errorResponse("unauthorized", "Unauthorized", 401);}
         return errorResponse("server_error", error.message, 500);
@@ -127,39 +131,20 @@ export async function handlePushBroadcast(request: IRequest, env: Env) {
             return createResponse({ success: true, sent: 0 });
         }
 
-        // Send to FCM
-        await sendToFCM(env, results as any[], notification, data);
-
-        return createResponse({ success: true, sent: results.length });
+        const delivery = await sendTo(env, results as { token: string }[], notification, data);
+        return createResponse({ success: true, devices: results.length, sent: delivery.sent });
     } catch (error: any) {
         if (error.message.includes("Unauthorized")) {return errorResponse("unauthorized", "Unauthorized", 401);}
         return errorResponse("server_error", error.message, 500);
     }
 }
 
-async function sendToFCM(env: Env, devices: { token: string }[], notification: any, data?: any) {
-    if (!env.FCM_SERVER_KEY) {
-        return;
-    }
+/** The public key the web app needs to subscribe to push (GET /api/v1/push/config). */
+export async function handlePushConfig(_request: IRequest, env: Env) {
+    return createResponse({ success: true, data: { webPushKey: env.VAPID_PUBLIC_KEY ?? null } });
+}
 
-    const tokens = devices.map(d => d.token);
-
-    // FCM legacy HTTP API (as used in test mock)
-    // https://fcm.googleapis.com/fcm/send
-
-    const response = await fetch("https://fcm.googleapis.com/fcm/send", {
-        method: "POST",
-        headers: {
-            "Authorization": `key=${env.FCM_SERVER_KEY}`,
-            "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-            registration_ids: tokens,
-            notification,
-            data,
-        }),
-    });
-
-    if (!response.ok) {
-    }
+function sendTo(env: Env, devices: { token: string }[], notification: { title: string; body: string }, data?: Record<string, unknown>) {
+    const strings = Object.fromEntries(Object.entries(data ?? {}).map(([k, v]) => [k, typeof v === "string" ? v : JSON.stringify(v)]));
+    return deliver(env, devices.map((d) => d.token), { title: notification.title, body: notification.body, data: strings });
 }

@@ -105,6 +105,13 @@ export interface Env {
   YT_SHARDS_JSON?: string;
   YT_REDIRECT_URL: string;
   FCM_SERVER_KEY?: string;
+  /** Web Push (installable web app): base64url P-256 key pair from scripts/generate-vapid-keys.mjs */
+  VAPID_PUBLIC_KEY?: string;
+  VAPID_PRIVATE_KEY?: string;
+  /** Contact for push services, e.g. mailto:you@club.org */
+  VAPID_SUBJECT?: string;
+  /** Only if "enhanced push security" is on in the Expo project */
+  EXPO_ACCESS_TOKEN?: string;
   FIXTURES_REFRESH_URL?: string;
   SETUP_URL: string;
   GALLERY_MAX_BYTES?: string;

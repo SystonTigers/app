@@ -31,6 +31,12 @@ export default defineWorkersConfig(async () => {
               META_APP_ID: "meta-app-1",
               META_APP_SECRET: "meta-secret",
               META_LOGIN_CONFIG_ID: "cfg-1",
+              // Test-only Web Push and Google keys (throwaway values, never used anywhere real)
+              VAPID_PUBLIC_KEY: "BJkXIr-0IaavUaiC7iQLUuFO_YUxs07MFzck0c2YfBQlsKvlW_-NelU0F8l_Ckj7BhBewPkJi7kcUWSS7abzeVk",
+              VAPID_PRIVATE_KEY: "iqLQnxdGWcWmHFnxLiXQHr4ByZ35w57XqFkoMGCuS0A",
+              VAPID_SUBJECT: "mailto:test@example.com",
+              YT_CLIENT_ID: "yt-client-1",
+              YT_CLIENT_SECRET: "yt-secret",
               // Journeys draw and post explicitly (see services/social/publish.ts)
               SOCIAL_BACKGROUND_DRAWING: "off",
             },

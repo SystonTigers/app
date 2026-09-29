@@ -77,6 +77,8 @@ export async function handleUpdateFixture(req: Request, env: any, corsHdrs: Head
         if (body.venue !== undefined) {
             updates.push("venue = ?");
             params.push(body.venue);
+            // A new ground: work its location out again (match-day "at the match?" check)
+            updates.push("venue_lat = NULL", "venue_lng = NULL");
         }
         if (body.competition !== undefined) {
             updates.push("competition = ?");
