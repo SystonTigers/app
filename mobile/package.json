@@ -10,7 +10,7 @@
     "web": "expo start --web",
     "lint": "eslint . --ext .ts,.tsx",
     "test:snapshots": "node test/theme.snapshot.test.js",
-    "test": "npm run test:snapshots && node test/webAlert.test.js && node test/liveMatch.test.js && node test/faFullTime.test.js",
+    "test": "npm run test:snapshots && node test/webAlert.test.js && node test/liveMatch.test.js && node test/faFullTime.test.js && node test/matchDay.test.js",
     "web:build": "node scripts/build-web.mjs",
     "web:deploy": "node scripts/build-web.mjs && npx wrangler@4 deploy -c wrangler.web.jsonc"
   },
@@ -33,6 +33,7 @@
     "expo-haptics": "^15.0.8",
     "expo-image-picker": "~17.0.8",
     "expo-localization": "~17.0.7",
+    "expo-location": "~19.0.8",
     "expo-media-library": "~18.2.0",
     "expo-notifications": "^0.32.16",
     "expo-secure-store": "~15.0.7",

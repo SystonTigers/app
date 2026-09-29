@@ -6,7 +6,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Notifications from 'expo-notifications';
 import { useAuth } from '../context/AuthContext';
 import { useClubName } from '../context/ClubContext';
-import { registerForPush } from '../services/push';
+import { pushPermission, registerForPush } from '../services/push';
 
 interface PushNotificationsSetupScreenProps {
   onComplete: () => void;
@@ -36,7 +36,7 @@ export default function PushNotificationsSetupScreen({ onComplete, onSkip }: Pus
   }, []);
 
   const checkPermissionStatus = async () => {
-    const { status } = await Notifications.getPermissionsAsync();
+    const status = await pushPermission();
     setPermissionStatus(status === 'granted' ? 'granted' : status === 'denied' ? 'denied' : 'undetermined');
   };
 
@@ -79,6 +79,12 @@ export default function PushNotificationsSetupScreen({ onComplete, onSkip }: Pus
     }
 
     try {
+      if (Platform.OS === 'web') {
+        // The web app shows notifications through its service worker
+        const registration = await navigator.serviceWorker.ready;
+        await registration.showNotification('Test Notification 🎉', { body: `This is what notifications from ${clubName} will look like!`, icon: '/icons/icon-192.png' });
+        return;
+      }
       // Schedule a local test notification
       await Notifications.scheduleNotificationAsync({
         content: {

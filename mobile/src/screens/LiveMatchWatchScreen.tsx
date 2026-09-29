@@ -4,18 +4,23 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { COLORS } from '../config';
 import { useClubName } from '../context/ClubContext';
+import { useMatchDay } from '../context/MatchDayContext';
 import { apiErrorMessage, liveApi } from '../services/api';
 import type { LiveMatchView } from '../utils/liveMatch';
 import Card from '../components/ui/Card';
 import ScoreHeader from '../components/live/ScoreHeader';
 import LiveTimeline from '../components/live/LiveTimeline';
+import MatchDayPanel from '../components/live/MatchDayPanel';
+import { fixtureTitle } from '../utils/matchDay';
 
 /**
  * Live Match (everyone): today's score and updates from the touchline,
- * refreshed every 15 seconds while a match is on.
+ * refreshed every 15 seconds while a match is on, with the match's live video
+ * and "I'm at the match" (pauses match alerts).
  */
 export default function LiveMatchWatchScreen() {
   const clubName = useClubName();
+  const { day, refresh: refreshDay } = useMatchDay();
   const [matches, setMatches] = useState<LiveMatchView[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -39,8 +44,9 @@ export default function LiveMatchWatchScreen() {
     useCallback(() => {
       setFocused(true);
       load();
+      refreshDay();
       return () => setFocused(false);
-    }, [load]),
+    }, [load, refreshDay]),
   );
 
   const anyLive = matches.some((m) => m.status === 'live' || m.status === 'half_time');
@@ -49,6 +55,8 @@ export default function LiveMatchWatchScreen() {
     const timer = setInterval(load, 15000);
     return () => clearInterval(timer);
   }, [focused, anyLive, load]);
+
+  const upcoming = (day?.fixtures ?? []).filter((f) => !matches.some((m) => m.fixture.id === f.id) && f.matchStatus !== 'full_time');
 
   if (loading) {
     return <View style={[styles.container, styles.center]}><ActivityIndicator size="large" color={COLORS.primary} /></View>;
@@ -62,14 +70,27 @@ export default function LiveMatchWatchScreen() {
     >
       {error ? <Text style={styles.error} accessibilityRole="alert">{error}</Text> : null}
 
-      {matches.map((m) => (
-        <Card key={m.fixture.id} inset style={styles.card}>
-          <ScoreHeader match={m} clubName={clubName} />
-          <LiveTimeline events={m.events} opponent={m.fixture.opponent} />
+      {/* Today's matches that haven't kicked off yet (the stream often starts first) */}
+      {upcoming.map((f) => (
+        <Card key={f.id} inset style={styles.card}>
+          <Text style={styles.upcomingTitle}>{fixtureTitle(f, clubName)}</Text>
+          <Text style={styles.emptyText}>{f.time ? `Kick-off ${f.time}` : 'Today'}{f.venue ? ` · ${f.venue}` : ''}</Text>
+          <View style={styles.panel}><MatchDayPanel fixture={f} /></View>
         </Card>
       ))}
 
-      {!matches.length && !error ? (
+      {matches.map((m) => {
+        const today = day?.fixtures.find((f) => f.id === m.fixture.id);
+        return (
+          <Card key={m.fixture.id} inset style={styles.card}>
+            {today ? <MatchDayPanel fixture={today} /> : null}
+            <ScoreHeader match={m} clubName={clubName} />
+            <LiveTimeline events={m.events} opponent={m.fixture.opponent} />
+          </Card>
+        );
+      })}
+
+      {!matches.length && !upcoming.length && !error ? (
         <View style={styles.empty}>
           <MaterialCommunityIcons name="whistle" size={56} color={COLORS.textLight} />
           <Text style={styles.emptyTitle}>No match on right now</Text>
@@ -89,4 +110,6 @@ const styles = StyleSheet.create({
   empty: { alignItems: 'center', paddingVertical: 48, paddingHorizontal: 24 },
   emptyTitle: { color: COLORS.text, fontSize: 17, fontWeight: 'bold', marginTop: 16, marginBottom: 8, textAlign: 'center' },
   emptyText: { color: COLORS.textLight, fontSize: 14, textAlign: 'center' },
+  upcomingTitle: { color: COLORS.text, fontSize: 17, fontWeight: '900', textTransform: 'uppercase', textAlign: 'center', marginBottom: 4 },
+  panel: { marginTop: 16 },
 });

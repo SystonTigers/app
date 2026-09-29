@@ -5,6 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import { COLORS } from '../config';
 import { pushApi } from './api';
+import { subscribeWebPush, webPushState } from './webPush';
 
 /**
  * Push notifications: permission, the Expo push token, and registering it
@@ -13,7 +14,19 @@ import { pushApi } from './api';
 
 export type PushResult =
   | { ok: true; token: string }
-  | { ok: false; reason: 'not-a-device' | 'denied' | 'not-configured' | 'failed'; message: string };
+  | { ok: false; reason: 'not-a-device' | 'denied' | 'not-configured' | 'failed' | 'needs-install' | 'unsupported'; message: string };
+
+export type PushPermission = 'granted' | 'denied' | 'undetermined' | 'needs-install' | 'unsupported';
+
+/** Whether match alerts are allowed on this phone or browser (never prompts). */
+export async function pushPermission(): Promise<PushPermission> {
+  if (Platform.OS === 'web') {
+    const state = webPushState();
+    return state === 'default' ? 'undetermined' : state;
+  }
+  const { status } = await Notifications.getPermissionsAsync();
+  return status === 'granted' ? 'granted' : status === 'denied' ? 'denied' : 'undetermined';
+}
 
 const ASKED_KEY = '@push_permission_asked';
 
@@ -31,7 +44,8 @@ export function getProjectId(): string | null {
  */
 export async function registerForPush({ prompt }: { prompt: boolean }): Promise<PushResult> {
   if (Platform.OS === 'web') {
-    return { ok: false, reason: 'not-configured', message: 'Notifications are available in the phone app.' };
+    // Installable web app: Web Push. Browsers only allow the prompt straight after a tap.
+    return subscribeWebPush(prompt);
   }
   if (!Device.isDevice) {
     return { ok: false, reason: 'not-a-device', message: 'Notifications only work on a real phone, not a simulator.' };
@@ -73,11 +87,12 @@ export async function registerForPush({ prompt }: { prompt: boolean }): Promise<
 /**
  * After sign-in: register quietly if already allowed, or ask once
  * (people can change their mind later in their phone's settings).
+ * The web app can't ask without a tap, so there it only re-registers.
  */
 export async function registerForPushAfterSignIn(): Promise<void> {
   try {
     const asked = await AsyncStorage.getItem(ASKED_KEY).catch(() => null);
-    await registerForPush({ prompt: !asked });
+    await registerForPush({ prompt: Platform.OS !== 'web' && !asked });
   } catch (error) {
     console.warn('Push registration after sign-in failed', error);
   }

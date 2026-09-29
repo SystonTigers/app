@@ -12,6 +12,9 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { ThemeProvider } from './src/theme/ThemeContext';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { ClubProvider, useClub } from './src/context/ClubContext';
+import { MatchDayProvider } from './src/context/MatchDayContext';
+import MatchDayHost from './src/components/live/MatchDayHost';
+import { navigationRef } from './src/navigation/navigationRef';
 import { usersApi } from './src/services/api';
 import { fetchClubInfo } from './src/services/club';
 import { registerForPushAfterSignIn } from './src/services/push';
@@ -328,7 +331,13 @@ function RootNavigator() {
   if (authLoading || clubLoading) return <Splash />;
   if (!isAuthenticated) return <AuthNavigator />;
   if (!club && !isLocked) return <Splash />;
-  return <MainDrawer />;
+  return (
+    <MatchDayProvider>
+      <MainDrawer />
+      {/* Match days: live video pop-up, "at the ground?" check, alert taps */}
+      <MatchDayHost />
+    </MatchDayProvider>
+  );
 }
 
 export default function App() {
@@ -339,7 +348,7 @@ export default function App() {
       <AuthProvider>
         <SafeAreaProvider>
           <PaperProvider theme={paperTheme}>
-            <NavigationContainer>
+            <NavigationContainer ref={navigationRef}>
               <StatusBar style="auto" />
               <RootNavigator />
             </NavigationContainer>

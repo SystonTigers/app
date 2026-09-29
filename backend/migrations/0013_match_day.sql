@@ -1,7 +1,7 @@
 -- Match day: live video, and match alerts that skip people at the ground.
 
 -- Where the match is played, for the "at the ground?" check done on each
--- phone. Set from the venue's UK postcode, or from the staff phone at kick-off.
+-- phone. Set from the venue's UK postcode, or by staff in Match Centre ("the ground is here").
 ALTER TABLE fixtures ADD COLUMN venue_lat REAL;
 ALTER TABLE fixtures ADD COLUMN venue_lng REAL;
 

@@ -5,6 +5,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { COLORS } from '../config';
 import { useClubName } from '../context/ClubContext';
+import { useMatchDay } from '../context/MatchDayContext';
 import { apiErrorMessage, fixturesApi, lineupApi, liveApi, squadApi, type Lineup } from '../services/api';
 import { newClientEventId, type LiveEvent, type LiveEventType, type LiveMatchView, type NewLiveEvent, type SocialPost } from '../utils/liveMatch';
 import { shareGraphic } from '../utils/postGraphic';
@@ -12,6 +13,7 @@ import LineupEditor from '../components/live/LineupEditor';
 import ScoreHeader from '../components/live/ScoreHeader';
 import LiveTimeline from '../components/live/LiveTimeline';
 import PlayerPicker, { type PickablePlayer } from '../components/live/PlayerPicker';
+import StreamLinkCard from '../components/live/StreamLinkCard';
 
 interface FixtureOption { id: string; opponent: string; date: string; time: string | null }
 
@@ -35,6 +37,7 @@ type PickStep =
 export default function LiveMatchInputScreen() {
   const clubName = useClubName();
   const navigation = useNavigation<any>();
+  const { day, refresh: refreshDay } = useMatchDay();
   const [match, setMatch] = useState<LiveMatchView | null>(null);
   const [fixtures, setFixtures] = useState<FixtureOption[]>([]);
   const [players, setPlayers] = useState<PickablePlayer[]>([]);
@@ -83,7 +86,7 @@ export default function LiveMatchInputScreen() {
     }
   }, []);
 
-  useFocusEffect(useCallback(() => { load(); }, [load]));
+  useFocusEffect(useCallback(() => { load(); refreshDay(); }, [load, refreshDay]));
 
   // Pick up updates from other staff every 15 seconds while the match is on
   useEffect(() => {
@@ -223,6 +226,12 @@ export default function LiveMatchInputScreen() {
 
         {!match ? (
           <>
+            {(day?.fixtures ?? []).filter((f) => f.matchStatus !== 'full_time').map((f) => (
+              <View key={f.id}>
+                <Text style={styles.label}>Today vs {f.opponent}</Text>
+                <StreamLinkCard fixture={f} onChanged={refreshDay} />
+              </View>
+            ))}
             <Text style={styles.heading}>Start a match</Text>
             <Text style={styles.help}>Pick your team, post the team news, then tap Kick off when the referee blows.</Text>
             <Text style={styles.label}>Each half lasts</Text>
@@ -250,6 +259,10 @@ export default function LiveMatchInputScreen() {
         ) : (
           <>
             <ScoreHeader match={match} clubName={clubName} />
+            {(() => {
+              const today = match.status !== 'full_time' ? day?.fixtures.find((f) => f.id === match.fixture.id) : undefined;
+              return today ? <StreamLinkCard fixture={today} onChanged={refreshDay} /> : null;
+            })()}
 
             {match.status === 'full_time' ? (
               <View style={styles.finished}>

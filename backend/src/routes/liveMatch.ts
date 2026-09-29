@@ -21,7 +21,6 @@ import { getSession, openVote } from "../services/motm";
 import { playersWhoPlayed } from "../services/lineup";
 import { refreshLeagueTable } from "../services/league/store";
 import { cancelEventAlert, queueEventAlert, type AlertsEnv } from "../services/matchAlerts/queue";
-import { validCoords } from "../services/matchDay";
 
 const MOTM_VOTING_HOURS = 48;
 
@@ -168,7 +167,6 @@ export async function handleRecordLiveEvent(req: Request, env: Env, corsHdrs: He
   try {
     const body = (await req.json().catch(() => ({}))) as {
       type?: unknown; playerId?: unknown; player2Id?: unknown; text?: unknown; minute?: unknown; clientEventId?: unknown; halfLength?: unknown; occurredAt?: unknown;
-      venue?: { lat?: unknown; lng?: unknown; accuracy?: unknown };
     };
     if (!isLiveEventType(body.type)) return fail(corsHdrs, 400, "VALIDATION", "Choose what happened.");
     const type: LiveEventType = body.type;
@@ -241,13 +239,6 @@ export async function handleRecordLiveEvent(req: Request, env: Env, corsHdrs: He
       }
     }
     await setMatchStatus(env, claims.tenantId, fixtureId, newState.status);
-
-    // Kick-off from the touchline: the staff phone is at the ground, so (if it
-    // shared an accurate location) that's where "at the match" is measured from
-    if (type === "kick_off" && body.venue && validCoords(body.venue.lat, body.venue.lng) && Number(body.venue.accuracy) <= 100) {
-      await env.DB.prepare(`UPDATE fixtures SET venue_lat = ?, venue_lng = ? WHERE tenant_id = ? AND id = ?`)
-        .bind(body.venue.lat as number, body.venue.lng as number, claims.tenantId, fixtureId).run();
-    }
 
     // Notify members who aren't at the match (after the undo window)
     try {

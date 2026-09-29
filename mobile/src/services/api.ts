@@ -1,5 +1,6 @@
 import axios, { AxiosError } from 'axios';
 import type { LiveMatchView, NewLiveEvent, SocialPost } from '../utils/liveMatch';
+import type { MatchDay, MatchDayStream } from '../utils/matchDay';
 import { Platform } from 'react-native';
 import { API_BASE_URL } from '../config';
 
@@ -761,10 +762,53 @@ export interface GotmVotingResponse {
 
 /** Push notification token registration (backend: /api/v1/push/register). */
 export const pushApi = {
+  /** An Expo push token (phone app) or the browser's push subscription as JSON (web app). */
   registerToken: async (token: string): Promise<{ success: boolean; error?: string }> => {
     const platform = Platform.OS === 'ios' ? 'ios' : Platform.OS === 'android' ? 'android' : 'web';
     const response = await api.post('/api/v1/push/register', { tenant: getTenantId(), token, platform });
     return response.data;
+  },
+
+  /** The server's public key browsers need to subscribe (null until set up on the server). */
+  webPushKey: async (): Promise<string | null> => {
+    const response = await api.get('/api/v1/push/config');
+    return response.data?.data?.webPushKey ?? null;
+  },
+};
+
+/** Match day: live video and "at the match?" (backend routes/matchDay.ts and routes/stream.ts). */
+export const matchDayApi = {
+  /** Today's fixtures with stream, ground location and this person's attendance */
+  get: async (): Promise<{ success: boolean; data: MatchDay }> => {
+    const response = await api.get('/api/v1/matchday');
+    return response.data;
+  },
+
+  /** Only yes/no is sent: the phone works it out, its location never leaves it. */
+  setAttendance: async (fixtureId: string, atVenue: boolean, source: 'location' | 'manual'): Promise<{ success: boolean; data: { atVenue: boolean; source: 'location' | 'manual' } }> => {
+    const response = await api.put(`/api/v1/fixtures/${fixtureId}/attendance`, { atVenue, source });
+    return response.data;
+  },
+
+  /** Forget a manual choice, so the phone decides again */
+  clearAttendance: async (fixtureId: string): Promise<void> => {
+    await api.delete(`/api/v1/fixtures/${fixtureId}/attendance`);
+  },
+
+  /** Staff: the YouTube link for this match */
+  setStream: async (fixtureId: string, url: string): Promise<{ success: boolean; data: { stream: MatchDayStream | null } }> => {
+    const response = await api.put(`/api/v1/fixtures/${fixtureId}/stream`, { url });
+    return response.data;
+  },
+
+  /** Staff */
+  clearStream: async (fixtureId: string): Promise<void> => {
+    await api.delete(`/api/v1/fixtures/${fixtureId}/stream`);
+  },
+
+  /** Staff: "the ground is here" (their phone's location) */
+  setVenue: async (fixtureId: string, lat: number, lng: number): Promise<void> => {
+    await api.put(`/api/v1/fixtures/${fixtureId}/venue`, { lat, lng });
   },
 };
 

@@ -48,7 +48,9 @@ Set with `npx wrangler secret put NAME --env production`; never commit values.
 `JWT_SECRET` is required. `RESEND_API_KEY` (email), `STRIPE_SECRET_KEY` and
 `PRINTIFY_API_TOKEN` are optional until those features are used.
 `SOCIAL_TOKEN_KEY` (32 random bytes, base64) encrypts clubs' Facebook/Instagram
-tokens; `META_APP_SECRET` is needed to connect them. Plain vars in
+and YouTube tokens; `META_APP_SECRET` is needed to connect Facebook.
+`VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY` (Web Push, `npm run push:keys:prod`) and
+`YT_CLIENT_ID`/`YT_CLIENT_SECRET` (connecting YouTube) are optional until used. Plain vars in
 `wrangler.toml`: `META_APP_ID`, `META_LOGIN_CONFIG_ID`, `APP_BASE_URL`.
 `claude-ops/` and `*.bundle` are git-ignored because they can contain backups
 with personal data.
@@ -57,8 +59,11 @@ with personal data.
 
 - Email isn't sent until `RESEND_API_KEY` and a verified sending domain are set;
   until then emails are only logged.
-- Mobile push notifications need a real EAS project id (`npx eas init`); until
-  then the app skips push registration.
+- Phone-app (Expo) push needs a real EAS project id (`npx eas init`); until
+  then the phone app skips push registration. The installable web app uses Web
+  Push and only needs the VAPID keys (`npm run push:keys:prod`).
+- `GeoFenceManager` (Durable Object) is unused: it stored raw locations on the
+  server. "At the match" is now worked out on the phone (see Match day).
 - Privacy policy and terms: drafts awaiting legal review are in `legal-docs/drafts/`; the
   live pages (`legal-docs/*.html`) are older and should be replaced once the
   drafts are approved.
@@ -96,8 +101,15 @@ with personal data.
   and Facebook and queues a CORRECTION post (`correction` kind, score layout,
   source_id `correction:<eventId>`) with the corrected score, because
   Instagram posts can't be deleted. Goals, cards, half and full time only.
-- Cron runs every minute for social posts; the other scheduled jobs only run
-  when `minute % 5 === 0`.
+- Cron runs every minute for social posts, live stream detection and match
+  alerts; the other scheduled jobs only run when `minute % 5 === 0`.
+- Live video and match alerts: see `docs/MATCH_DAY_LIVE.md`. Alerts
+  (`services/matchAlerts/`) go to everyone's devices except people at the
+  match (`match_attendance`, yes/no only: phones compare their own location
+  with the ground's) and whoever recorded the update, after the undo window.
+  Video is a YouTube stream: pasted in Match Centre or found on the club's
+  connected channel (`services/stream/`). Sending: `services/push/` (Web Push
+  for the web app, Expo for the phone app); the old FCM sender is gone.
 
 ## Social graphics and club posts
 

@@ -111,5 +111,7 @@ It asks for the password without showing it and stores only a bcrypt hash.
 | `JWT_SECRET` | Signing login tokens. Changing it logs everyone out. |
 | `STRIPE_SECRET_KEY` | Shop checkout (optional until the shop is used) |
 | `PRINTIFY_API_TOKEN` | Merch (optional) |
+| `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` | Match alerts in the web app. Create once with `npm run push:keys:prod` |
+| `YT_CLIENT_ID`, `YT_CLIENT_SECRET` | Clubs connecting YouTube so live streams show in the app (optional; see `docs/MATCH_DAY_LIVE.md`) |
 
 Never commit secret values. The old ones in git history were rotated on 23 Sep 2026.

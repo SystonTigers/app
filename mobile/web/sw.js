@@ -2,6 +2,7 @@
  * - Page loads: network first, falling back to the saved app shell when offline.
  * - Built files (/_expo/static/*, icons): cache first; their names change every build.
  * - Anything else, including every call to the API, goes straight to the network.
+ * - Match alerts (Web Push): shown as notifications; tapping one opens Live Match.
  * __BUILD_ID__ is replaced at build time so each release gets a fresh cache.
  */
 const CACHE = 'boost-huddle-__BUILD_ID__';
@@ -54,4 +55,43 @@ self.addEventListener('fetch', (event) => {
       ),
     );
   }
+});
+
+// Match alerts sent by the server (backend services/push). Every push must show
+// a notification: browsers stop delivering to sites that push silently.
+self.addEventListener('push', (event) => {
+  let msg = {};
+  try {
+    msg = event.data ? event.data.json() : {};
+  } catch (e) {
+    msg = { title: event.data ? event.data.text() : '' };
+  }
+  const title = msg.title || 'Match update';
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body: msg.body || '',
+      icon: '/icons/icon-192.png',
+      badge: '/icons/favicon-48.png',
+      tag: msg.tag || undefined,
+      renotify: !!msg.tag,
+      data: msg.data || {},
+    }),
+  );
+});
+
+// Tap: bring the app forward (or open it) on Live Match
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const data = event.notification.data || {};
+  const message = { type: 'open-screen', screen: data.screen || 'LiveMatch', fixtureId: data.fixtureId || null };
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windows) => {
+      const open = windows.find((w) => new URL(w.url).origin === self.location.origin);
+      if (open) {
+        open.postMessage(message);
+        return open.focus();
+      }
+      return self.clients.openWindow('/?open=' + encodeURIComponent(message.screen));
+    }),
+  );
 });

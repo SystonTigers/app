@@ -288,7 +288,7 @@ export function SocialSettings() {
                     <input id="undo-window" type="checkbox" className="mt-1 h-5 w-5 accent-brand" checked={settings.undoWindow} disabled={busy}
                         onChange={(e) => savePosting(e.target.checked)} />
                     <span className="text-sm text-gray-900 dark:text-white">
-                        Wait 1 minute before posting, so a mistake can be undone in Match Centre
+                        Wait 1 minute before posting and sending match alerts, so a mistake can be undone in Match Centre
                         <span className="block text-gray-500 dark:text-gray-400">Instagram doesn&apos;t let apps delete posts, so this is the only way to stop a wrong one there.</span>
                     </span>
                 </label>

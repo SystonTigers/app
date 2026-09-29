@@ -7,6 +7,8 @@ import { Fixture, getUpcomingFixtures, formatFixtureDate, formatKickOffTime } fr
 import { feedApi, fixturesApi, liveApi } from '../services/api';
 import { scoreline, statusLabel, type LiveMatchView } from '../utils/liveMatch';
 import { useClub } from '../context/ClubContext';
+import { useMatchDay } from '../context/MatchDayContext';
+import { fixtureTitle } from '../utils/matchDay';
 import { isOurTeam } from '../utils/clubMatch';
 
 import HighlightCard from '../components/HighlightCard';
@@ -40,6 +42,7 @@ export default function HomeScreen({ navigation }: any) {
   const { theme } = useTheme();
   const { colors } = theme;
   const { club } = useClub();
+  const { day } = useMatchDay();
   const insets = useSafeAreaInsets();
   const [refreshing, setRefreshing] = useState(false);
 
@@ -116,9 +119,27 @@ export default function HomeScreen({ navigation }: any) {
         <InstallPrompt />
       </View>
 
+      {/* Live video that's on before kick-off has been tapped in Match Centre */}
+      {(day?.fixtures ?? [])
+        .filter((f) => f.stream?.status === 'live' && f.matchStatus !== 'full_time' && !liveMatches.some((m) => m.fixture.id === f.id))
+        .map((f) => (
+          <Pressable
+            key={`video-${f.id}`}
+            onPress={() => navigation.navigate('LiveMatch')}
+            accessibilityRole="button"
+            accessibilityLabel={`Live video: ${fixtureTitle(f, club?.name || 'Us')}. Watch now`}
+            style={[styles.liveBanner, { borderColor: colors.primary }]}
+          >
+            <Text style={[styles.liveBannerLabel, { color: colors.primary }]}>● LIVE VIDEO</Text>
+            <Text style={[styles.liveBannerScore, { color: colors.text }]}>{fixtureTitle(f, club?.name || 'Us')}</Text>
+            <Text style={[styles.liveBannerLink, { color: colors.primary }]}>Watch now →</Text>
+          </Pressable>
+        ))}
+
       {/* Live score while a match is on */}
       {liveMatches.map((m) => {
         const s = scoreline(m, club?.name || 'Us');
+        const video = day?.fixtures.find((f) => f.id === m.fixture.id)?.stream?.status === 'live';
         return (
           <Pressable
             key={m.fixture.id}
@@ -127,9 +148,9 @@ export default function HomeScreen({ navigation }: any) {
             accessibilityLabel={`Live: ${s.home} ${s.homeScore}, ${s.away} ${s.awayScore}. Follow live`}
             style={[styles.liveBanner, { borderColor: colors.primary }]}
           >
-            <Text style={[styles.liveBannerLabel, { color: colors.primary }]}>● LIVE · {statusLabel(m, Date.now())}</Text>
+            <Text style={[styles.liveBannerLabel, { color: colors.primary }]}>● LIVE · {statusLabel(m, Date.now())}{video ? ' · ▶ VIDEO' : ''}</Text>
             <Text style={[styles.liveBannerScore, { color: colors.text }]}>{s.home} {s.homeScore} – {s.awayScore} {s.away}</Text>
-            <Text style={[styles.liveBannerLink, { color: colors.primary }]}>Follow live →</Text>
+            <Text style={[styles.liveBannerLink, { color: colors.primary }]}>{video ? 'Watch and follow live →' : 'Follow live →'}</Text>
           </Pressable>
         );
       })}
