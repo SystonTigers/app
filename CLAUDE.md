@@ -127,7 +127,15 @@ with personal data.
   full time → `MatchHighlightsScreen`; clips play one after another
   (`components/highlights/ClipPlayer`, YouTube's player messages say when a
   clip ends). YouTube's rules don't allow downloading, so a video file for
-  social media has to come from the camera's own recording.
+  social media comes from the camera's own recording:
+- "Make a video to post" (web app, staff; `MakeHighlightsVideo.web.tsx`): the
+  manager picks the recording, shows where kick-off is, ticks the moments and
+  the video is cut on their device by `services/highlightsVideo.ts`
+  (mediabunny: reads the file in pieces, copies packets from each clip's key
+  frame without re-encoding, joins them into an MP4). Nothing is uploaded.
+  Clip times come from `momentsFromKickOff` (staff only, seconds from
+  kick-off). mediabunny is only loaded when making a video (its own chunk).
+  `node test/highlightsVideo.test.js some.mp4` cuts a real file.
 
 ## Social graphics and club posts
 

@@ -63,8 +63,14 @@ async function highlightsView(env: Env, claims: TenantClaims, fixtureId: string)
   const kickoffSec = row.video_kickoff_sec ?? auto;
   const staff = isStaff(claims);
   const all = video && kickoffSec !== null ? buildHighlights(events, kickoffSec, fixture.opponent, parseEdits(row.highlight_edits)) : [];
+  // Staff making a video from the camera's own recording: clip times from kick-off (can be negative)
+  const OFFSET = 100_000;
+  const fromKickOff = staff
+    ? buildHighlights(events, OFFSET, fixture.opponent, parseEdits(row.highlight_edits)).map((m) => ({ ...m, start: m.start - OFFSET, end: m.end - OFFSET }))
+    : [];
   return {
     fixture: { ...fixture, homeScore: row.home_score, awayScore: row.away_score },
+    momentsFromKickOff: fromKickOff,
     video,
     kickoffSec,
     lineUp: row.video_kickoff_sec !== null ? "manual" : auto !== null ? "automatic" : null,

@@ -119,3 +119,15 @@ Both stream from the XbotGo app to YouTube or any RTMP address for free.
   on their own. If the link was pasted, a manager lines the video up once:
   play it, pause on the kick-off whistle and tap "Kick-off is at…".
 - Managers can start a clip earlier, end it later or hide it.
+
+## A highlights video to post (Facebook, Instagram, TikTok)
+
+- Copy the camera's recording of the match to your laptop or phone (the XbotGo
+  app saves it). Open the club app in a web browser, go to the match's
+  highlights and use **Make a video to post**: choose the recording, pause on
+  kick-off (or type the time), untick any moments you don't want, then
+  **Make the video** and **Save or share**.
+- It's made on your device: nothing is uploaded, so it's free. A laptop is
+  quickest; a long match on an older phone can run out of memory.
+- Clips start at the nearest "key frame" just before each moment (usually a
+  second or two earlier) so the video isn't re-encoded and keeps its quality.

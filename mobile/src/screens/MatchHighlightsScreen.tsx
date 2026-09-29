@@ -6,6 +6,7 @@ import { COLORS } from '../config';
 import { useClubName } from '../context/ClubContext';
 import { apiErrorMessage, highlightsApi } from '../services/api';
 import ClipPlayer from '../components/highlights/ClipPlayer';
+import MakeHighlightsVideo from '../components/highlights/MakeHighlightsVideo';
 import { formatClock, matchDate, nextClip, parseClock, type HighlightMoment, type HighlightsView } from '../utils/highlights';
 import { fixtureTitle } from '../utils/matchDay';
 
@@ -140,6 +141,13 @@ export default function MatchHighlightsScreen() {
           ) : null}
         </>
       )}
+
+      {view.canEdit && view.momentsFromKickOff?.length ? (
+        <MakeHighlightsVideo
+          moments={view.momentsFromKickOff}
+          fileName={`${title} highlights`.replace(/[^\w\s-]/g, '').trim()}
+        />
+      ) : null}
 
       {view.video ? (
         <Pressable onPress={() => Linking.openURL(view.video!.watchUrl)} accessibilityRole="link">

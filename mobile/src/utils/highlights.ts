@@ -26,6 +26,8 @@ export interface HighlightsView {
   kickoffSec: number | null;
   lineUp: 'automatic' | 'manual' | null;
   moments: HighlightMoment[];
+  /** Staff only: the same clips as seconds from kick-off, for making a video from the camera's recording */
+  momentsFromKickOff: HighlightMoment[];
   momentsTapped: number;
   canEdit: boolean;
 }

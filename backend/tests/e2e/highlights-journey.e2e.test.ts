@@ -31,7 +31,13 @@ describe("Match highlights", () => {
 
     // No video yet: nothing to watch, but the taps are counted
     let view = (await call(`/api/v1/fixtures/${fixtureId}/highlights`, { token: parent.token })).data.data;
-    expect(view).toMatchObject({ video: null, moments: [], momentsTapped: 4, canEdit: false });
+    expect(view).toMatchObject({ video: null, moments: [], momentsTapped: 4, canEdit: false, momentsFromKickOff: [] });
+
+    // Staff can make a video from the camera's recording without YouTube: clip times from kick-off
+    const staffView = (await call(`/api/v1/fixtures/${fixtureId}/highlights`, { token: coach.token })).data.data;
+    expect(staffView.momentsFromKickOff.map((m: any) => [m.type, m.start, m.end])).toEqual([
+      ["goal", 150 - 20, 150 + 6], ["chance", 330 - 15, 330 + 4], ["save", 450 - 12, 450 + 4], ["chance", 500 - 15, 500 + 4],
+    ]);
 
     // The manager adds the match video (a pasted link, so the video isn't lined up yet)
     expect((await call(`/api/v1/fixtures/${fixtureId}/stream`, { method: "PUT", token: coach.token, body: { url: "https://youtu.be/abcdefghijk" } })).status).toBe(200);
