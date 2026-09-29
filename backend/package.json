@@ -13,6 +13,8 @@
     "db:migrate:prod": "wrangler d1 migrations apply DB --remote --env production",
     "admin:password": "node scripts/set-admin-password.mjs",
     "admin:password:prod": "node scripts/set-admin-password.mjs --remote",
+    "owner:create": "node scripts/create-owner.mjs",
+    "owner:create:prod": "node scripts/create-owner.mjs --remote",
     "deploy:prod": "wrangler deploy --env production",
     "secrets:rotate:prod": "node scripts/rotate-secrets.mjs --env production",
     "push:keys:prod": "node scripts/generate-vapid-keys.mjs --env production",

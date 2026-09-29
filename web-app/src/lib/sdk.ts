@@ -68,141 +68,6 @@ export async function getProvisionStatus(tenantId: string) {
   );
 }
 
-export async function startMagicLogin(input: { email: string; tenantId?: string }) {
-  return http<{ success: boolean; message?: string }>(
-    `${API_BASE}/api/v1/magic/start`,
-    { method: 'POST', body: JSON.stringify(input) }
-  );
-}
-
-export async function verifyMagicToken(token: string) {
-  // The backend reads the token from the query string and sets the
-  // owner_session cookie on success.
-  return http<{ success: boolean; tenantId?: string }>(
-    `${API_BASE}/api/v1/magic/verify?token=${encodeURIComponent(token)}`,
-    { method: 'POST' }
-  );
-}
-
-export async function getAdminOverview(tenantId: string) {
-  return http<{
-    success: true;
-    data: {
-      id: string;
-      slug: string;
-      name: string;
-      plan: string;
-      status: string;
-      route_ready: number;
-      provisioned_at: string | null;
-      posts_count: number;
-      webhooks_validated: number;
-    };
-  }>(`${API_BASE}/api/v1/tenants/${encodeURIComponent(tenantId)}/overview`);
-}
-
-// ---- Admin endpoints ----
-
-export interface Tenant {
-  id: string;
-  slug: string;
-  name: string;
-  email: string;
-  plan: 'starter' | 'pro';
-  status: 'trial' | 'active' | 'suspended' | 'cancelled' | 'deactivated';
-  comped: boolean;
-  trial_ends_at?: number;
-  created_at: number;
-  updated_at: number;
-}
-
-export interface PromoCode {
-  id: string;
-  code: string;
-  discount_percent: number;
-  max_uses?: number | null;
-  used_count: number;
-  valid_until?: number | null;
-  active?: boolean;
-  created_at: number;
-}
-
-export interface AdminStats {
-  byStatus: Array<{ status: string; count: number }>;
-  byPlan: Array<{ plan: string; count: number }>;
-  recentSignups: number;
-  monthlyUsage: number;
-}
-
-export async function getAdminStats() {
-  return http<{ success: true; stats: AdminStats }>(
-    `${API_BASE}/api/v1/admin/stats`
-  );
-}
-
-export async function listTenants(params?: { status?: string; plan?: string; limit?: number; offset?: number }) {
-  const query = new URLSearchParams();
-  if (params?.status) query.set('status', params.status);
-  if (params?.plan) query.set('plan', params.plan);
-  if (params?.limit) query.set('limit', params.limit.toString());
-  if (params?.offset) query.set('offset', params.offset.toString());
-
-  const qs = query.toString();
-  return http<{
-    success: true;
-    tenants: Tenant[];
-    pagination: { total: number; limit: number; offset: number; hasMore: boolean };
-  }>(`${API_BASE}/api/v1/admin/tenants?${qs}`);
-}
-
-export async function getTenant(tenantId: string) {
-  return http<{ success: true; tenant: Tenant }>(
-    `${API_BASE}/api/v1/admin/tenants/${encodeURIComponent(tenantId)}`
-  );
-}
-
-export async function updateTenant(
-  tenantId: string,
-  updates: { status?: Tenant['status']; comped?: boolean; plan?: Tenant['plan'] }
-) {
-  return http<{ success: true }>(
-    `${API_BASE}/api/v1/admin/tenants/${encodeURIComponent(tenantId)}`,
-    { method: 'PATCH', body: JSON.stringify(updates) }
-  );
-}
-
-export async function deactivateTenant(tenantId: string) {
-  return http<{ success: true }>(
-    `${API_BASE}/api/v1/admin/tenants/${encodeURIComponent(tenantId)}/deactivate`,
-    { method: 'POST' }
-  );
-}
-
-export async function deleteTenant(tenantId: string) {
-  return http<{ success: true }>(
-    `${API_BASE}/api/v1/admin/tenants/${encodeURIComponent(tenantId)}`,
-    { method: 'DELETE' }
-  );
-}
-
-export async function listPromoCodes() {
-  return http<{ success: true; promoCodes: PromoCode[] }>(
-    `${API_BASE}/api/v1/admin/promo-codes`
-  );
-}
-
-export async function createPromoCode(data: {
-  code: string;
-  discountPercent: number;
-  maxUses?: number;
-  validUntil?: number;
-}) {
-  return http<{ success: true; promoCode: PromoCode }>(
-    `${API_BASE}/api/v1/admin/promo-codes`,
-    { method: 'POST', body: JSON.stringify(data) }
-  );
-}
-
 export async function updateSquad(players: any[]) {
   return http<{ success: true; count: number }>(
     `${API_BASE}/api/v1/squad`,
@@ -371,20 +236,10 @@ export async function deleteEvent(id: string) {
   );
 }
 
-export async function deactivatePromoCode(code: string) {
-  return http<{ success: true }>(
-    `${API_BASE}/api/v1/admin/promo-codes/${encodeURIComponent(code)}/deactivate`,
-    { method: 'POST' }
-  );
-}
-
 // ---- Compatibility shims for legacy imports ----
 export type AnySDK = {
   // real endpoints
   getProvisionStatus: (tenantId: string) => Promise<ProvisionState>;
-  startMagicLogin: (p: { email: string; tenantId?: string }) => Promise<{ success: boolean; message?: string }>;
-  verifyMagicToken: (token: string) => Promise<{ success: boolean; redirect?: string }>;
-  getAdminOverview: (tenantId: string) => Promise<{ success: true; data: Record<string, unknown> | null }>;
 
   // UI-only placeholders so pages compile & render empty states
   getBrand: () => Promise<Record<string, unknown>>;
@@ -438,9 +293,6 @@ export type AnySDK = {
 // One shared instance; hook these up to real calls later as needed
 const compat: AnySDK = {
   getProvisionStatus,
-  startMagicLogin,
-  verifyMagicToken,
-  getAdminOverview,
 
   // temporary no-op implementations (return empty data so UI shows empty state)
   getBrand: async () => ({}),
@@ -735,9 +587,6 @@ class ClientSDK implements AnySDK {
 
   // Fallback to compat/mocks for others
   getProvisionStatus = compat.getProvisionStatus;
-  startMagicLogin = compat.startMagicLogin;
-  verifyMagicToken = compat.verifyMagicToken;
-  getAdminOverview = compat.getAdminOverview;
   getBrand = compat.getBrand;
   getBrandKit = compat.getBrandKit;
   getFeed = this.listFeed; // Alias

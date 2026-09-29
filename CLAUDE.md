@@ -15,7 +15,6 @@ A multi-club grassroots football app. One Cloudflare Worker serves every club
 | `backend/migrations/` | D1 schema (`0001_baseline.sql` onwards; `archive/` is history only) |
 | `mobile/` | Expo SDK 54 app for players, parents and coaches. Multi-club: the current club lives in `src/services/club.ts` (`getTenantId()`); never hardcode a club |
 | `web-app/` | Next.js site: landing page, club sign-up (`/create-team`), club pages and dashboards. Live as the `boost-huddle` Worker (OpenNext) |
-| `owner-admin/` | Platform owner console |
 | `packages/sdk/` | Typed API client shared by the web frontends |
 | `video-processing/` | Python highlights editor (`highlights_bot`) and Docker processor |
 
@@ -262,6 +261,26 @@ with personal data.
 - Home (`screens/HomeScreen.tsx`, `components/home/`): header with crest,
   live cards, next match, league snapshot, quick links, latest feed. The menu
   (`CustomDrawerContent.tsx`) shows every section open, staff zone boxed.
+
+## Owner panel
+
+- Website `/owner` (`web-app/src/app/owner`, `components/owner`, `lib/owner`)
+  for Boost Huddle staff: overview, clubs (search, status filter, detail),
+  members search by email, money (plans, trial pipeline, `platform_revenue`)
+  and history. Backend: `routes/owner.ts`, `services/owner/*`,
+  `services/ownerAuth.ts` (`/api/v1/owner/*`).
+- Owners are in `platform_owners`, created with `npm run owner:create[:prod]`
+  (never through the API). Sign-in gives a 12-hour token (roles `admin`,
+  `platform_owner`) kept in an HttpOnly, SameSite=Strict cookie scoped to
+  `/api/owner`; the website's `/api/owner/[...path]` forwards only the panel's
+  own calls (`lib/owner/proxy.ts`).
+- Actions (`services/owner/actions.ts`): extend trial, set plan, free access
+  (`comped`), premium graphics unlocks, suspend (club login refused with
+  `CLUB_SUSPENDED` and every session revoked) and reactivate. Each is written
+  to `owner_audit`. Only "reactivate" lifts a suspension.
+- The old consoles (`owner-admin/`, `admin/`, the website's root `/admin`,
+  `/api/v1/admin/tenants|promo-codes|stats|users`, magic links, `/dev/*`,
+  `/owner-api/*`) were removed in September 2026.
 
 ## Access rules worth knowing
 

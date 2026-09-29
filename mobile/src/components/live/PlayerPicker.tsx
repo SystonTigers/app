@@ -9,8 +9,11 @@ export interface PickablePlayer {
   number: number | null;
 }
 
-/** Full-screen-ish list of the squad with big tap targets, for use on the touchline. */
-export default function PlayerPicker({ visible, title, players, onPick, onSkip, skipLabel, onCancel, excludeId }: {
+/**
+ * Full-screen-ish list of the squad with big tap targets, for use on the touchline.
+ * Tapping outside the list calls onDismiss (defaults to onCancel).
+ */
+export default function PlayerPicker({ visible, title, players, onPick, onSkip, skipLabel, onCancel, cancelLabel, onDismiss, excludeId }: {
   visible: boolean;
   title: string;
   players: PickablePlayer[];
@@ -18,11 +21,13 @@ export default function PlayerPicker({ visible, title, players, onPick, onSkip, 
   onCancel: () => void;
   onSkip?: () => void;
   skipLabel?: string;
+  cancelLabel?: string;
+  onDismiss?: () => void;
   excludeId?: string | null;
 }) {
   return (
     <Portal>
-      <Modal visible={visible} onDismiss={onCancel} contentContainerStyle={styles.modal}>
+      <Modal visible={visible} onDismiss={onDismiss ?? onCancel} contentContainerStyle={styles.modal}>
         <Text style={styles.title}>{title}</Text>
         <ScrollView style={styles.list}>
           {players.filter((p) => p.id !== excludeId).map((p) => (
@@ -37,7 +42,7 @@ export default function PlayerPicker({ visible, title, players, onPick, onSkip, 
           {onSkip ? (
             <Pressable onPress={onSkip} accessibilityRole="button" style={styles.action}><Text style={styles.actionText}>{skipLabel ?? 'Skip'}</Text></Pressable>
           ) : null}
-          <Pressable onPress={onCancel} accessibilityRole="button" style={styles.action}><Text style={styles.actionText}>Cancel</Text></Pressable>
+          <Pressable onPress={onCancel} accessibilityRole="button" style={styles.action}><Text style={styles.actionText}>{cancelLabel ?? 'Cancel'}</Text></Pressable>
         </View>
       </Modal>
     </Portal>
@@ -53,7 +58,7 @@ const styles = StyleSheet.create({
   number: { width: 40, color: COLORS.textLight, fontWeight: '800', fontSize: 16 },
   name: { color: COLORS.text, fontSize: 17, fontWeight: '600' },
   empty: { color: COLORS.textLight, paddingVertical: 16 },
-  actions: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 12 },
+  actions: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-end', marginTop: 12 },
   action: { paddingHorizontal: 14, paddingVertical: 10 },
   actionText: { color: COLORS.primary, fontWeight: '700', fontSize: 16 },
 });

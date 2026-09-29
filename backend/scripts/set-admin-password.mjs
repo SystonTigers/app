@@ -14,24 +14,15 @@
 // The account gets the tenant_admin + owner roles. The password is hashed with
 // bcrypt (what the login route checks) and only the hash is sent to D1.
 
-import { spawnSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import { createRequire } from 'node:module';
-import path from 'node:path';
-import readline from 'node:readline';
 import bcrypt from 'bcryptjs';
-
-// Run wrangler's JS entry with node directly. Going through npx needs a shell on
-// Windows, and the shell splits the SQL argument apart at every space.
-const require = createRequire(import.meta.url);
-const wranglerPkg = require.resolve('wrangler/package.json');
-const wranglerBin = path.join(path.dirname(wranglerPkg), require(wranglerPkg).bin.wrangler);
+import { askHidden, d1 as runSql, EMAIL_RE } from './lib/cli.mjs';
 
 const remote = process.argv.includes('--remote');
 const email = (process.env.SYSTON_ADMIN_EMAIL || 'systontowntigersfc@gmail.com').trim().toLowerCase();
 const slug = (process.env.SYSTON_TENANT_SLUG || 'syston-tigers').trim();
 
-if (!/^[^@\s']+@[^@\s']+\.[^@\s']+$/.test(email)) {
+if (!EMAIL_RE.test(email)) {
   console.error('✗ SYSTON_ADMIN_EMAIL is not a valid email address.');
   process.exit(1);
 }
@@ -40,44 +31,7 @@ if (!/^[a-z0-9-]+$/.test(slug)) {
   process.exit(1);
 }
 
-/** Ask questions without echoing what's typed (works with a terminal or piped input). */
-async function askHidden(questions) {
-  const rl = readline.createInterface({ input: process.stdin, output: process.stdout, terminal: !!process.stdin.isTTY });
-  const write = rl._writeToOutput?.bind(rl);
-  if (write) {
-    rl._writeToOutput = () => {}; // never echo keystrokes
-  }
-  const lines = rl[Symbol.asyncIterator]();
-  const answers = [];
-  for (const q of questions) {
-    process.stdout.write(q);
-    const { value, done } = await lines.next();
-    process.stdout.write('\n');
-    answers.push(done ? '' : value);
-  }
-  rl.close();
-  return answers;
-}
-
-function d1(sql) {
-  const args = [wranglerBin, 'd1', 'execute', 'DB', '--json', '--command', sql.replace(/\s+/g, ' ').trim()];
-  args.push(...(remote ? ['--remote', '--env', 'production'] : ['--local']));
-  const result = spawnSync(process.execPath, args, { stdio: ['ignore', 'pipe', 'pipe'] });
-  const out = result.stdout?.toString() || '';
-  if (result.status !== 0) {
-    console.error('✗ wrangler d1 execute failed:');
-    console.error(result.stderr?.toString() || out);
-    process.exit(result.status || 1);
-  }
-  try {
-    // wrangler may print notices before the JSON payload
-    return JSON.parse(out.slice(out.indexOf('[')))?.[0]?.results ?? [];
-  } catch {
-    console.error('✗ Could not read the result from wrangler:');
-    console.error(out);
-    process.exit(1);
-  }
-}
+const d1 = (sql) => runSql(sql, remote);
 
 let password = process.env.SYSTON_ADMIN_PASSWORD || '';
 if (!password) {

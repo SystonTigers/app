@@ -223,7 +223,6 @@ curl -X POST https://admin-worker.workers.dev/api/v1/admin/tenants \
 **Workers**:
 - `syston-postbus`: Main API gateway
 - `fixtures`: Match data aggregation
-- `admin-console`: Tenant management
 - `setup-console`: Self-serve onboarding
 
 **Storage**:

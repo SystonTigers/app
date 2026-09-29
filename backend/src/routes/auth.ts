@@ -432,13 +432,20 @@ export async function handleAuthLogin(req: Request, env: any, corsHdrs: Headers)
       }, 401, corsHdrs);
     }
 
+    // The web app needs the club URL to send the user to their club after login
+    const tenantRow = await env.DB.prepare("SELECT slug, status FROM tenants WHERE id = ?").bind(user.tenant_id).first();
+    // A club paused from the owner panel can't sign in until it's reactivated
+    if (tenantRow?.status === "suspended") {
+      return json({ success: false, error: { code: "CLUB_SUSPENDED", message: "This club's account is paused. Please contact Boost Huddle." } }, 403, corsHdrs);
+    }
+
     const isAdmin = user.roles.includes("tenant_admin");
     const token = isAdmin
       ? await issueTenantAdminJWT(env, { tenant_id: user.tenant_id, user_id: user.id, ttlMinutes: SESSION_TTL_MINUTES })
       : await issueTenantMemberJWT(env, { tenant_id: user.tenant_id, user_id: user.id, roles: user.roles, ttlMinutes: SESSION_TTL_MINUTES });
-
-    // The web app needs the club URL to send the user to their club after login
-    const tenantRow = await env.DB.prepare("SELECT slug FROM tenants WHERE id = ?").bind(user.tenant_id).first();
+    // "Last active" for the owner panel; never worth failing a sign-in over
+    await env.DB.prepare("UPDATE auth_users SET last_login_at = ? WHERE id = ?").bind(Date.now(), user.id).run()
+      .catch((err: unknown) => console.warn(JSON.stringify({ level: "warn", msg: "last_login_update_failed", error: err instanceof Error ? err.message : String(err) })));
 
     return json({ success: true, data: { user: { ...user, tenant_slug: tenantRow?.slug ?? null }, token } }, 200, corsHdrs);
   } catch (err: any) {

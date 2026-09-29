@@ -311,3 +311,9 @@ export async function listRevokedTokens(
     return [];
   }
 }
+
+/** Lift a tenant-wide revocation (e.g. a club reactivated after being suspended). */
+export async function unrevokeTenantTokens(env: Env, tenantId: string): Promise<void> {
+  await env.KV_IDEMP?.delete(tenantRevocationKey(tenantId));
+  logJSON({ level: "info", msg: "jwt_tenant_revocation_lifted", tenantId });
+}

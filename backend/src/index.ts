@@ -115,11 +115,6 @@ import {
     handleListShopOrders
 } from "./routes/personalized-shop";
 import {
-    handleGetRevenueSummary,
-    handleGetRevenueByTenant,
-    handleGetRevenueProjections
-} from "./routes/owner-revenue";
-import {
     handleUploadHeadshot,
     handleDeleteHeadshot,
     handleUploadDocument,
@@ -145,33 +140,11 @@ import {
     handleGetPlayerPreview
 } from "./routes/personalization";
 import {
-    listTenants,
-    getTenant,
-    updateTenant,
-    listPromoCodes,
-    createPromoCode,
-    deactivateTenant,
-    deleteTenant,
-    deactivatePromoCode,
-    getAdminStats,
-    listUsers,
-    upsertPromoCode,
-    getSystemConfig,
-    updateSystemConfig,
-    togglePromoCode,
-    listTenantPromos,
-    applyTenantPromo,
-    removeTenantPromo,
-    deletePromoCode
-} from "./routes/admin";
-import {
     handleProvisionQueue,
     handleProvisionStatus,
     handleTenantOverview,
     handleProvisionRetry
 } from "./routes/provisioning";
-import { handleMagicStart, handleMagicVerify } from "./routes/magic";
-import { handleDevAdminJWT, handleDevMagicLink, handleDevInfo } from "./routes/devAuth";
 import { getUsage, incrementUsage } from "./routes/usage";
 import {
     handleSecuritySummary,
@@ -303,10 +276,6 @@ function staffOnly<A extends [Request, any, Headers, ...any[]]>(handler: (...arg
     };
 }
 
-// Magic Link Routes
-router.post("/api/:v/magic/start", (req, env, corsHdrs) => handleMagicStart(req, env, corsHdrs));
-router.post("/api/:v/magic/verify", (req, env, corsHdrs) => handleMagicVerify(req, env, corsHdrs));
-
 // Tenant Routes
 router.patch("/api/:v/tenants/me", (req, env, corsHdrs) => updateTenantMe(req, env, corsHdrs));
 router.get("/api/:v/tenants/me", (req, env, corsHdrs) => getTenantMe(req, env, corsHdrs));
@@ -322,55 +291,6 @@ router.post("/public/signup/brand", (req, env, corsHdrs, requestId) => signupBra
 router.post("/public/signup/starter/make", (req, env, corsHdrs, requestId) => signupStarterMake(req, env, requestId, corsHdrs));
 router.post("/public/signup/pro/confirm", (req, env, corsHdrs, requestId) => signupProConfirm(req, env, requestId, corsHdrs));
 router.post("/public/signup/verify-promo", (req, env, corsHdrs, requestId) => signupVerifyPromo(req, env, requestId, corsHdrs));
-
-// Admin Routes
-router.get("/api/:v/admin/tenants", (req, env, corsHdrs, requestId) => listTenants(req, env, requestId, corsHdrs));
-router.get("/api/:v/admin/tenants/:id", (req, env, corsHdrs, requestId) => {
-    const params = (req as any).params || {};
-    return getTenant(req, env, requestId, corsHdrs, params.id);
-});
-router.patch("/api/:v/admin/tenants/:id", (req, env, corsHdrs, requestId) => {
-    const params = (req as any).params || {};
-    return updateTenant(req, env, requestId, corsHdrs, params.id);
-});
-router.post("/api/:v/admin/tenants/:id/deactivate", (req, env, corsHdrs, requestId) => {
-    const params = (req as any).params || {};
-    return deactivateTenant(req, env, requestId, corsHdrs, params.id);
-});
-router.delete("/api/:v/admin/tenants/:id", (req, env, corsHdrs, requestId) => {
-    const params = (req as any).params || {};
-    return deleteTenant(req, env, requestId, corsHdrs, params.id);
-});
-router.get("/api/:v/admin/promo-codes", (req, env, corsHdrs, requestId) => listPromoCodes(req, env, requestId, corsHdrs));
-router.post("/api/:v/admin/promo-codes", (req, env, corsHdrs, requestId) => createPromoCode(req, env, requestId, corsHdrs));
-router.post("/api/:v/admin/promo/upsert", (req, env, corsHdrs, requestId) => upsertPromoCode(req, env, requestId, corsHdrs));
-router.post("/api/:v/admin/promo-codes/:code/deactivate", (req, env, corsHdrs, requestId) => {
-    const params = (req as any).params || {};
-    return deactivatePromoCode(req, env, requestId, corsHdrs, params.code);
-});
-router.post("/api/:v/admin/promo-codes/:code/toggle", (req, env, corsHdrs, requestId) => {
-    const params = (req as any).params || {};
-    return togglePromoCode(req, env, requestId, corsHdrs, params.code);
-});
-router.delete("/api/:v/admin/promo-codes/:code", (req, env, corsHdrs, requestId) => {
-    const params = (req as any).params || {};
-    return deletePromoCode(req, env, requestId, corsHdrs, params.code);
-});
-router.get("/api/:v/admin/tenants/:id/promos", (req, env, corsHdrs, requestId) => {
-    const params = (req as any).params || {};
-    return listTenantPromos(req, env, requestId, corsHdrs, params.id);
-});
-router.post("/api/:v/admin/tenants/:id/promos", (req, env, corsHdrs, requestId) => {
-    const params = (req as any).params || {};
-    return applyTenantPromo(req, env, requestId, corsHdrs, params.id);
-});
-router.delete("/api/:v/admin/tenants/:id/promos/:code", (req, env, corsHdrs, requestId) => {
-    const params = (req as any).params || {};
-    return removeTenantPromo(req, env, requestId, corsHdrs, params.id, params.code);
-});
-
-router.get("/api/:v/admin/stats", (req, env, corsHdrs, requestId) => getAdminStats(req, env, requestId, corsHdrs));
-router.get("/api/:v/admin/users", (req, env, corsHdrs, requestId) => listUsers(req, env, requestId, corsHdrs));
 
 // Opponent Badge Management Routes
 router.get("/api/:v/opponents", (req, env, corsHdrs) => handleListOpponents(req, env, corsHdrs));
@@ -445,11 +365,6 @@ router.post("/api/:v/shop/checkout", (req, env, corsHdrs) => handleCreateCheckou
 router.post("/api/:v/shop/orders/:id/confirm", (req, env, corsHdrs) => handleConfirmShopOrder(req, env, corsHdrs));
 router.get("/api/:v/shop/orders", (req, env, corsHdrs) => handleListShopOrders(req, env, corsHdrs));
 
-// Owner Revenue Routes (requires OWNER_API_KEY)
-router.get("/owner-api/revenue/summary", (req, env) => handleGetRevenueSummary(req, env));
-router.get("/owner-api/revenue/by-tenant", (req, env) => handleGetRevenueByTenant(req, env));
-router.get("/owner-api/revenue/projections", (req, env) => handleGetRevenueProjections(req, env));
-
 // Upload Routes (R2 Storage)
 router.post("/api/:v/upload/headshot", staffOnly((req, env, corsHdrs) => handleUploadHeadshot(req, env, corsHdrs)));
 router.delete("/api/:v/upload/headshot/:playerId", staffOnly((req, env, corsHdrs) => handleDeleteHeadshot(req, env, corsHdrs)));
@@ -474,12 +389,6 @@ router.post("/api/:v/personalization/generate", (req, env, corsHdrs) => handleGe
 router.post("/api/:v/personalization/upload-to-printify", (req, env, corsHdrs) => handleUploadDesignToPrintify(req, env, corsHdrs));
 router.post("/api/:v/personalization/order", (req, env, corsHdrs) => handleCreatePersonalizedOrder(req, env, corsHdrs));
 router.get("/api/:v/personalization/preview/:playerId", (req, env, corsHdrs) => handleGetPlayerPreview(req, env, corsHdrs));
-
-// Alias for legacy tests
-router.get("/api/:v/users", (req, env, corsHdrs, requestId) => listUsers(req, env, requestId, corsHdrs));
-
-router.get("/api/:v/admin/system/config", (req, env, corsHdrs, requestId) => getSystemConfig(req, env, requestId, corsHdrs));
-router.put("/api/:v/admin/system/config", (req, env, corsHdrs, requestId) => updateSystemConfig(req, env, requestId, corsHdrs));
 
 // Provisioning Routes
 router.post("/internal/provision/queue", (req, env, corsHdrs, requestId) => handleProvisionQueue(req, env));
@@ -676,6 +585,18 @@ router.delete("/api/:v/fixtures/:id/attendance", (req, env, corsHdrs) => handleD
 router.put("/api/:v/fixtures/:id/stream", staffOnly((req, env, corsHdrs, _requestId, ctx) => handlePutStream(req, env, corsHdrs, ((req as any).params || {}).id, ctx)));
 router.delete("/api/:v/fixtures/:id/stream", staffOnly((req, env, corsHdrs) => handleDeleteStream(req, env, corsHdrs, ((req as any).params || {}).id)));
 router.put("/api/:v/fixtures/:id/venue", staffOnly((req, env, corsHdrs) => handlePutVenue(req, env, corsHdrs, ((req as any).params || {}).id)));
+
+// Platform owner panel (routes/owner.ts); the website's /owner pages call these through their own server
+import { handleOwnerAction, handleOwnerGet, handleOwnerLogin, handleOwnerLogout } from "./routes/owner";
+router.post("/api/:v/owner/login", (req, env, corsHdrs) => handleOwnerLogin(req, env, corsHdrs));
+router.post("/api/:v/owner/logout", (req, env, corsHdrs) => handleOwnerLogout(req, env, corsHdrs));
+router.get("/api/:v/owner/overview", (req, env, corsHdrs) => handleOwnerGet(req, env, corsHdrs, "overview"));
+router.get("/api/:v/owner/money", (req, env, corsHdrs) => handleOwnerGet(req, env, corsHdrs, "money"));
+router.get("/api/:v/owner/history", (req, env, corsHdrs) => handleOwnerGet(req, env, corsHdrs, "history"));
+router.get("/api/:v/owner/members", (req, env, corsHdrs) => handleOwnerGet(req, env, corsHdrs, "members"));
+router.get("/api/:v/owner/clubs", (req, env, corsHdrs) => handleOwnerGet(req, env, corsHdrs, "clubs"));
+router.get("/api/:v/owner/clubs/:id", (req, env, corsHdrs) => handleOwnerGet(req, env, corsHdrs, "clubs", ((req as any).params || {}).id));
+router.post("/api/:v/owner/clubs/:id/actions", (req, env, corsHdrs) => handleOwnerAction(req, env, corsHdrs, ((req as any).params || {}).id));
 
 // Linking parents to their children with an invite code (routes/parentLinks.ts)
 import { handleCreateParentInvite, handleLinkChild, handleListParents, handleUnlinkParent } from "./routes/parentLinks";
@@ -1328,11 +1249,6 @@ router.delete("/api/:v/shop/cart/:id/items", (req, env, corsHdrs) => handleRemov
 
 // POST /shop/checkout is registered earlier (personalized-shop), which creates the
 // shop_orders row the confirm/fulfilment flow depends on.
-
-// Dev Auth Routes (only in development)
-router.post("/dev/admin-jwt", (req, env) => handleDevAdminJWT(req, env));
-router.post("/dev/magic-link", (req, env) => handleDevMagicLink(req, env));
-router.get("/dev/info", (req, env) => handleDevInfo(req, env));
 
 // CSV Import Routes
 router.post("/api/:v/import/fixtures", staffOnly((req, env, corsHdrs) => handleImportFixtures(req, env, corsHdrs)));

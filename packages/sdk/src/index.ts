@@ -21,12 +21,6 @@ import type {
   BrandUpdateRequest,
   MakeConnectionRequest,
   UsageResponse,
-  AdminStatsResponse,
-  TenantListResponse,
-  TenantDetailResponse,
-  PromoCode,
-  CreatePromoCodeRequest,
-  UpdateTenantRequest,
 } from './types';
 
 export * from './types';
@@ -562,95 +556,7 @@ export class TeamPlatformSDK {
     return response.data.usage;
   }
 
-  // ====== PHASE 3: ADMIN/OWNER CONSOLE ======
-
-  /**
-   * Get dashboard statistics (admin only)
-   */
-  async getAdminStats(): Promise<AdminStatsResponse> {
-    const response = await this.client.get<{ success: boolean; stats: AdminStatsResponse }>('/api/v1/admin/stats');
-    if (!response.data.success || !response.data.stats) {
-      throw new Error('Failed to get admin stats');
-    }
-    return response.data.stats;
-  }
-
-  /**
-   * List all tenants (admin only)
-   */
-  async listTenants(filters?: {
-    status?: string;
-    plan?: string;
-    limit?: number;
-    offset?: number;
-  }): Promise<TenantListResponse> {
-    const params = new URLSearchParams();
-    if (filters?.status) params.append('status', filters.status);
-    if (filters?.plan) params.append('plan', filters.plan);
-    if (filters?.limit) params.append('limit', filters.limit.toString());
-    if (filters?.offset) params.append('offset', filters.offset.toString());
-
-    const response = await this.client.get<{ success: boolean } & TenantListResponse>(
-      `/api/v1/admin/tenants?${params.toString()}`
-    );
-    if (!response.data.success) {
-      throw new Error('Failed to list tenants');
-    }
-    return {
-      tenants: response.data.tenants,
-      pagination: response.data.pagination,
-    };
-  }
-
-  /**
-   * Get tenant details (admin only)
-   */
-  async getTenantDetail(tenantId: string): Promise<TenantDetailResponse> {
-    const response = await this.client.get<{ success: boolean; tenant: TenantDetailResponse }>(
-      `/api/v1/admin/tenants/${tenantId}`
-    );
-    if (!response.data.success || !response.data.tenant) {
-      throw new Error('Failed to get tenant details');
-    }
-    return response.data.tenant;
-  }
-
-  /**
-   * Update tenant (admin only)
-   */
-  async updateTenant(tenantId: string, updates: UpdateTenantRequest): Promise<void> {
-    const response = await this.client.patch<ApiResponse<void>>(`/api/v1/admin/tenants/${tenantId}`, updates);
-    if (!response.data.success) {
-      throw new Error(response.data.error?.message || 'Failed to update tenant');
-    }
-  }
-
-  /**
-   * List promo codes (admin only)
-   */
-  async listPromoCodes(): Promise<PromoCode[]> {
-    const response = await this.client.get<{ success: boolean; promoCodes: PromoCode[] }>('/api/v1/admin/promo-codes');
-    if (!response.data.success) {
-      throw new Error('Failed to list promo codes');
-    }
-    return response.data.promoCodes || [];
-  }
-
-  /**
-   * Create promo code (admin only)
-   */
-  async createPromoCode(request: CreatePromoCodeRequest): Promise<PromoCode> {
-    const response = await this.client.post<{ success: boolean; promoCode: PromoCode }>(
-      '/api/v1/admin/promo-codes',
-      request
-    );
-    if (!response.data.success || !response.data.promoCode) {
-      throw new Error('Failed to create promo code');
-    }
-    return response.data.promoCode;
-  }
-
-  // ====== PROVISIONING & MAGIC LINKS ======
+  // ====== PROVISIONING ======
 
   /**
    * Get provisioning status for a tenant
@@ -663,43 +569,6 @@ export class TeamPlatformSDK {
       return null;
     }
     return response.data.data as ProvisionState;
-  }
-
-  /**
-   * Start magic link login flow
-   */
-  async startMagicLogin(email: string, tenantId: string): Promise<{ success: boolean }> {
-    const response = await this.client.post<{ success: boolean }>(
-      '/auth/magic/start',
-      { email, tenantId }
-    );
-    return response.data;
-  }
-
-  /**
-   * Verify magic token and get session
-   */
-  async verifyMagicToken(token: string): Promise<{ success: boolean; tenantId?: string }> {
-    const response = await this.client.get<{ success: boolean; tenantId?: string }>(
-      `/auth/magic/verify?token=${encodeURIComponent(token)}`,
-      {
-        withCredentials: true, // Allow cookies
-      }
-    );
-    return response.data;
-  }
-
-  /**
-   * Get admin overview/dashboard data
-   */
-  async getAdminOverview(tenantId: string): Promise<any> {
-    const response = await this.client.get(
-      `/api/v1/tenants/${tenantId}/overview`,
-      {
-        withCredentials: true, // Allow cookies for admin auth
-      }
-    );
-    return response.data;
   }
 
   // ====== LAST MAN STANDING (LMS) GAME ======

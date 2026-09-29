@@ -2,7 +2,6 @@
 // through CORS_ALLOWED. Never add wildcards or domains we don't own: an
 // allowed origin can call the API from a visitor's browser.
 const DEFAULT_ALLOWED = new Set<string>([
-  "https://admin-console.team-platform-2025.workers.dev",
   "https://setup-console.team-platform-2025.workers.dev",
 ]);
 

@@ -104,6 +104,15 @@ There is no password in this repo. Create or reset it with
 `npm run admin:password:prod` (live) or `npm run admin:password` (local).
 It asks for the password without showing it and stores only a bcrypt hash.
 
+## Owner panel (Boost Huddle staff)
+
+The website's `/owner` pages show every club, its plan, trial, members and
+activity, and let you extend trials, change plan, give free access, unlock
+premium graphics, and suspend or reactivate a club. Create your owner login
+with `npm run owner:create:prod` (live) or `npm run owner:create` (local)
+from `backend/`: it asks for your email and a password (hidden) and stores
+only a bcrypt hash. Run it again to change the password.
+
 ## Secrets (set with `npx wrangler secret put NAME --env production`)
 
 | Name | Used for |

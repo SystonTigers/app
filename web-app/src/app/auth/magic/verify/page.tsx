@@ -1,8 +1,7 @@
 import { redirect } from 'next/navigation';
 
 /**
- * Member magic-link verification is not offered (see ../page.tsx). Admin
- * onboarding links are verified at /admin/onboard.
+ * Magic-link sign-in is not offered (see ../page.tsx).
  */
 export default function MagicLinkVerifyPage() {
     redirect('/login');

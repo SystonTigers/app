@@ -156,6 +156,15 @@ export default function LiveMatchInputScreen() {
     send(fixture.id, { type: 'kick_off', clientEventId: newClientEventId(), occurredAt: Date.now(), halfLength });
   };
 
+  // The goal counts even if nobody is picked: the scorer or assist is just left empty
+  const goalWithoutScorer = () => { setPick(null); record('goal', {}); };
+  const goalWithoutAssist = () => {
+    if (pick?.kind !== 'assist') return;
+    const scorer = pick.scorerId;
+    setPick(null);
+    record('goal', { playerId: scorer });
+  };
+
   const onPick = (player: PickablePlayer) => {
     if (!pick) return;
     switch (pick.kind) {
@@ -362,8 +371,10 @@ export default function LiveMatchInputScreen() {
         excludeId={pick?.kind === 'assist' ? pick.scorerId : pick?.kind === 'sub_off' ? pick.onId : null}
         onPick={onPick}
         onCancel={() => setPick(null)}
-        onSkip={pick?.kind === 'assist' ? () => { const scorer = pick.scorerId; setPick(null); record('goal', { playerId: scorer }); } : undefined}
-        skipLabel="No assist"
+        cancelLabel={pick?.kind === 'assist' ? 'Cancel goal' : 'Cancel'}
+        onDismiss={pick?.kind === 'assist' ? goalWithoutAssist : undefined}
+        onSkip={pick?.kind === 'goal' ? goalWithoutScorer : pick?.kind === 'assist' ? goalWithoutAssist : undefined}
+        skipLabel={pick?.kind === 'goal' ? 'Own goal / not sure' : 'No assist'}
       />
 
       <Portal>
