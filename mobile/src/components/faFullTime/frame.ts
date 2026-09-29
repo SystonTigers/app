@@ -28,7 +28,14 @@ export async function fetchFaSnippets(club: string): Promise<FaSnippets> {
   }
 }
 
-export type FrameMessage = { height?: number; rows?: number; done?: boolean; changed?: boolean };
+export type FrameMessage = { height?: number; rows?: number; done?: boolean; changed?: boolean; stage?: 'script-error' | 'data-error' | 'data-loaded' };
+
+/** What to tell people when the FA's table doesn't load. */
+export const FAILURES: Record<string, string> = {
+  'script-error': "We couldn't reach FA Full-Time just now.",
+  'data-error': "FA Full-Time's security check stopped it loading here.",
+  timeout: "FA Full-Time didn't answer in time.",
+};
 
 export function parseFrameMessage(data: unknown): FrameMessage | null {
   try {
@@ -70,9 +77,7 @@ html,body{margin:0;background:transparent;color:${p.text};font:14px/1.4 system-u
 #lrep${code} tr.bh-mine td{background:${p.brand}22;font-weight:700}
 #lrep${code} a{color:${p.brand};text-decoration:none}
 </style></head><body>
-<div id="lrep${code}">Loading from FA Full-Time…</div>
-<script>var lrcode='${code}';</script>
-<script src="https://fulltime.thefa.com/client/api/cs1.js"></script>
+<div id="lrep${code}"></div>
 <script>
 (function(){
   var box=document.getElementById('lrep${code}'),mine='${mine}',sent=-1,tries=0;
@@ -80,11 +85,19 @@ html,body{margin:0;background:transparent;color:${p.text};font:14px/1.4 system-u
   function report(){
     var rows=box.querySelectorAll('tr');
     if(mine){for(var i=0;i<rows.length;i++){if((rows[i].textContent||'').toLowerCase().indexOf(mine)>-1&&rows[i].className.indexOf('bh-mine')<0)rows[i].className+=' bh-mine';}}
-    var h=document.documentElement.scrollHeight;
+    var h=box.innerHTML?document.documentElement.scrollHeight:0;
     if(h!==sent){sent=h;send({height:h,rows:rows.length});}
   }
+  // The FA's script adds a second one that fetches the data: watch it so we can say what went wrong
+  new MutationObserver(function(muts){muts.forEach(function(m){m.addedNodes.forEach(function(n){
+    if(n.tagName==='SCRIPT'&&String(n.src).indexOf('cs1.html')>-1){n.addEventListener('error',function(){send({stage:'data-error'});});n.addEventListener('load',function(){send({stage:'data-loaded'});});}
+  });});}).observe(document.head,{childList:true});
   new MutationObserver(report).observe(box,{childList:true,subtree:true});
-  var t=setInterval(function(){tries++;report();if(tries>=40){clearInterval(t);send({done:true,rows:box.querySelectorAll('tr').length,changed:(box.textContent||'').indexOf('Loading from FA Full-Time')<0});}},500);
+  window.lrcode='${code}';
+  var s=document.createElement('script');s.src='https://fulltime.thefa.com/client/api/cs1.js';
+  s.onerror=function(){send({stage:'script-error'});};
+  document.head.appendChild(s);
+  var t=setInterval(function(){tries++;report();if(tries>=40){clearInterval(t);send({done:true,rows:box.querySelectorAll('tr').length,changed:!!(box.textContent||'').trim()});}},500);
   report();
 })();
 </script></body></html>`;

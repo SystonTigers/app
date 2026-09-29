@@ -28,9 +28,11 @@ assert.equal(isSnippetCode(undefined), false);
 
 const palette = { text: '#ffffff', muted: '#c0c0c0', line: '#2f3439', head: '#15181c', brand: '#00ffff' };
 const doc = frameDocument('995652226', palette, "Syston'</script>");
-assert.match(doc, /var lrcode='995652226'/);
+assert.match(doc, /window\.lrcode='995652226'/);
 assert.match(doc, /id="lrep995652226"/);
-assert.match(doc, /src="https:\/\/fulltime\.thefa\.com\/client\/api\/cs1\.js"/);
+assert.match(doc, /s\.src='https:\/\/fulltime\.thefa\.com\/client\/api\/cs1\.js'/);
+new Function(doc.match(/<script>([\s\S]*?)<\/script>/)[1]); // the frame's script is valid JavaScript
+assert.deepEqual(parseFrameMessage('{"bh":"fa","stage":"data-error"}'), { bh: 'fa', stage: 'data-error' });
 assert.match(doc, /mine='systonscript'/, 'highlight is stripped to letters and digits');
 assert.doesNotMatch(frameDocument('995652226', { ...palette, brand: 'red;}</style><script>' }, ''), /<\/style><script>/, 'colours are validated');
 

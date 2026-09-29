@@ -6,9 +6,6 @@ import { call, registerMember, registerAdmin } from "./helpers";
 
 describe("Staff-only club actions", () => {
   const blocked: Array<[string, string, unknown?]> = [
-    ["PUT", "/api/v1/fixtures/fa-config", { teamName: "x" }],
-    ["POST", "/api/v1/fixtures/sync/all", {}],
-    ["POST", "/api/v1/fixtures/sync/website", {}],
     ["PUT", "/api/v1/social/config", {}],
     ["POST", "/api/v1/gallery/albums", { name: "x" }],
     ["DELETE", "/api/v1/gallery/photos/some-photo", undefined],

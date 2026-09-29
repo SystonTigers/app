@@ -199,14 +199,6 @@ import {
     handleGetImportStatus
 } from "./routes/import";
 import {
-    handleSyncFromWebsite,
-    handleSyncFromSnippet,
-    handleParseEmail,
-    handleSyncAll,
-    handleGetFAConfig,
-    handleSetFAConfig
-} from "./routes/fa-sync";
-import {
     handleListDevices,
     handleCreateDevice,
     handleGetDevice,
@@ -229,8 +221,6 @@ import {
 import { runDaily } from "./cron/daily";
 import { runScheduledPosts } from "./services/social/scheduler";
 import { runCleanup } from "./cron/cleanup";
-import { runLeague } from "./cron/league";
-import { runFASync } from "./cron/fa-sync";
 import { handleGetFaFullTime, handleSetFaFullTime } from "./routes/faFullTime";
 import { handleClearLeagueResults, handleGetLeague, handlePasteLeague, handleSetLeague } from "./routes/league";
 import { processScheduledNotifications } from "./routes/mobile-notifications";
@@ -1336,10 +1326,6 @@ router.get("/api/:v/import/template/:type", (req, env, corsHdrs) => {
 router.get("/api/:v/import/status", (req, env, corsHdrs) => handleGetImportStatus(req, env, corsHdrs));
 
 // FA Sync Routes (Fixture data from FA Full-Time)
-router.post("/api/:v/fixtures/sync/website", staffOnly((req, env, corsHdrs) => handleSyncFromWebsite(req, env, corsHdrs)));
-router.post("/api/:v/fixtures/sync/snippet", staffOnly((req, env, corsHdrs) => handleSyncFromSnippet(req, env, corsHdrs)));
-router.post("/api/:v/fixtures/sync/email", staffOnly((req, env, corsHdrs) => handleParseEmail(req, env, corsHdrs)));
-router.post("/api/:v/fixtures/sync/all", staffOnly((req, env, corsHdrs) => handleSyncAll(req, env, corsHdrs)));
 // The club's own league table from pasted results or a pasted table (routes/league.ts)
 router.get("/api/:v/club/league", (req, env, corsHdrs) => handleGetLeague(req, env, corsHdrs));
 router.put("/api/:v/club/league", staffOnly((req, env, corsHdrs) => handleSetLeague(req, env, corsHdrs)));
@@ -1348,31 +1334,8 @@ router.delete("/api/:v/club/league/results", staffOnly((req, env, corsHdrs) => h
 // FA Full-Time code snippets shown on the club's league pages (routes/faFullTime.ts)
 router.get("/api/:v/club/fa-full-time", (req, env, corsHdrs) => handleGetFaFullTime(req, env, corsHdrs));
 router.put("/api/:v/club/fa-full-time", staffOnly((req, env, corsHdrs) => handleSetFaFullTime(req, env, corsHdrs)));
-router.get("/api/:v/fixtures/fa-config", (req, env, corsHdrs) => handleGetFAConfig(req, env, corsHdrs));
-router.put("/api/:v/fixtures/fa-config", staffOnly((req, env, corsHdrs) => handleSetFAConfig(req, env, corsHdrs)));
 
 // Season Scraper Configuration Routes
-import {
-    handleGetScraperConfigs,
-    handleGetScraperConfig,
-    handleSaveScraperConfig,
-    handleDeleteScraperConfig,
-    handleRunScraperForSeason
-} from "./routes/scraper";
-router.get("/api/:v/scraper/configs", (req, env, corsHdrs) => handleGetScraperConfigs(req, env, corsHdrs));
-router.get("/api/:v/scraper/configs/:seasonId", (req, env, corsHdrs) => {
-    const params = (req as any).params || {};
-    return handleGetScraperConfig(req, env, corsHdrs, params.seasonId);
-});
-router.post("/api/:v/scraper/configs", staffOnly((req, env, corsHdrs) => handleSaveScraperConfig(req, env, corsHdrs)));
-router.delete("/api/:v/scraper/configs/:seasonId", staffOnly((req: any, env: any, corsHdrs: Headers) => {
-    const params = (req as any).params || {};
-    return handleDeleteScraperConfig(req, env, corsHdrs, params.seasonId);
-}));
-router.post("/api/:v/scraper/run/:seasonId", staffOnly((req: any, env: any, corsHdrs: Headers) => {
-    const params = (req as any).params || {};
-    return handleRunScraperForSeason(req, env, corsHdrs, params.seasonId);
-}));
 
 
 
@@ -1528,15 +1491,6 @@ export default {
                 ctx.waitUntil(runDaily(env));
             }
 
-            // Every 6 hours: League table updates
-            if (hour % 6 === 0 && minute < 5) {
-                ctx.waitUntil(runLeague(env, ctx));
-            }
-
-            // 06:00 UTC: FA Full-Time Sync
-            if (hour === 6 && minute < 5) {
-                ctx.waitUntil(runFASync(env, ctx));
-            }
 
         } catch (error) {
             logJSON({ level: 'error', msg: 'Cron error', error: error instanceof Error ? error.message : String(error) });

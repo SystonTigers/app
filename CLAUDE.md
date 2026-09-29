@@ -136,8 +136,8 @@ with personal data.
 ## League table, fixtures and results from FA Full-Time
 
 - FA Full-Time sits behind a Cloudflare bot check: servers (and curl) get a
-  403 challenge, so the old scraper (`services/fa-scraper.ts`, `cron/fa-sync.ts`)
-  can't fetch anything. Don't try to get around it.
+  403 challenge. The old scraper that tried anyway was removed in September
+  2026. Don't try to get around the check.
 - Instead clubs paste the FA's official code snippets (Full-Time admin →
   Create Code Snippets) on the website's Settings → League Table & Fixtures
   page. The codes live in `tenants.fa_snippets` (`services/faFullTime.ts`,

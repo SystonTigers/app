@@ -73,7 +73,6 @@ import ManageEventsScreen from './src/screens/ManageEventsScreen';
 import ManageMOTMScreen from './src/screens/ManageMOTMScreen';
 import ManagePlayerImagesScreen from './src/screens/ManagePlayerImagesScreen';
 import ImportDataScreen from './src/screens/ImportDataScreen';
-import FixtureSettingsScreen from './src/screens/FixtureSettingsScreen';
 import PushNotificationsSetupScreen from './src/screens/PushNotificationsSetupScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import ScoutNotesScreen from './src/screens/ScoutNotesScreen';
@@ -275,7 +274,6 @@ function MainDrawer() {
       <Drawer.Screen name="Manage" component={ManageScreen} />
       <Drawer.Screen name="ManageUsers" component={ManageUsersScreen} />
       <Drawer.Screen name="ImportData" component={ImportDataScreen} />
-      <Drawer.Screen name="FixtureSettings" component={FixtureSettingsScreen} />
       <Drawer.Screen name="ScoutNotes" component={ScoutNotesScreen} options={{ title: 'Scout Report' }} />
       <Drawer.Screen name="Carpool" component={CarpoolScreen} options={{ title: 'Carpool' }} />
 
