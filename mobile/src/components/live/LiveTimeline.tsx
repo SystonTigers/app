@@ -87,10 +87,16 @@ export default function LiveTimeline({ events, opponent, onUndo, busyId, posts, 
 }
 
 /** Each update under its team's name: home on the left, away on the right, minute in the middle. */
+const SHOWN_AT_FIRST = 5;
+
 function SideBySide({ events, opponent, usIsHome }: { events: LiveEvent[]; opponent: string; usIsHome: boolean }) {
+  // Only the latest few until asked, so a high-scoring match doesn't push the live video off the screen
+  const [all, setAll] = useState(false);
+  const hidden = events.length - SHOWN_AT_FIRST;
+  const shown = all || hidden <= 1 ? events : events.slice(0, SHOWN_AT_FIRST);
   return (
     <View>
-      {events.map((e) => {
+      {shown.map((e) => {
         const icon = ICONS[e.type];
         const side = eventSide(e);
         const minute = e.minute !== null ? `${e.minute}'` : '';
@@ -119,6 +125,11 @@ function SideBySide({ events, opponent, usIsHome }: { events: LiveEvent[]; oppon
           </View>
         );
       })}
+      {hidden > 1 ? (
+        <Pressable onPress={() => setAll((a) => !a)} accessibilityRole="button" style={styles.more}>
+          <Text style={styles.moreText}>{all ? 'Show fewer' : `Show all ${events.length} updates`}</Text>
+        </Pressable>
+      ) : null}
     </View>
   );
 }
@@ -146,4 +157,6 @@ const styles = StyleSheet.create({
   sideText: { flexShrink: 1, color: COLORS.text, fontSize: 14 },
   textRight: { textAlign: 'right' },
   oppGoal: { fontWeight: '800' },
+  more: { alignItems: 'center', paddingVertical: 12 },
+  moreText: { color: COLORS.primary, fontWeight: '800' },
 });
