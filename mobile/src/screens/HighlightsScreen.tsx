@@ -4,6 +4,7 @@ import { Card, Title, Paragraph, Button, Chip, List, IconButton, ProgressBar } f
 import { Video, ResizeMode } from 'expo-av';
 import { COLORS } from '../config';
 import { fixturesApi, videosApi, gotmApi, squadApi } from '../services/api';
+import MatchHighlightsList from '../components/highlights/MatchHighlightsList';
 
 const { width } = Dimensions.get('window');
 
@@ -341,6 +342,9 @@ export default function HighlightsScreen() {
           </View>
 
           <ScrollView style={styles.scrollContainer}>
+            {/* Highlights made from each match's video and the Match Centre taps */}
+            {selectedTab === 'recent' && <View style={{ paddingHorizontal: 16, paddingTop: 16 }}><MatchHighlightsList /></View>}
+
             {/* Recent Clips Tab */}
             {selectedTab === 'recent' && (
               <View style={styles.matchesList}>

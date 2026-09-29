@@ -1,4 +1,5 @@
 import axios, { AxiosError } from 'axios';
+import type { HighlightsMatch, HighlightsView } from '../utils/highlights';
 import type { LiveMatchView, NewLiveEvent, SocialPost } from '../utils/liveMatch';
 import type { MatchDay, MatchDayStream } from '../utils/matchDay';
 import { Platform } from 'react-native';
@@ -1235,3 +1236,22 @@ export default api;
 // Export convenience function for account deletion
 export const deleteAccount = authApi.deleteAccount;
 
+
+export const highlightsApi = {
+  /** Recent matches with a video and moments tapped in Match Centre */
+  list: async (): Promise<{ success: boolean; data: HighlightsMatch[] }> => {
+    const response = await api.get('/api/v1/highlights');
+    return response.data;
+  },
+
+  get: async (fixtureId: string): Promise<{ success: boolean; data: HighlightsView }> => {
+    const response = await api.get(`/api/v1/fixtures/${fixtureId}/highlights`);
+    return response.data;
+  },
+
+  /** Staff: where kick-off is in the video (seconds), or tweak one clip */
+  update: async (fixtureId: string, body: { kickoffSec?: number | null; moment?: { id: string; start?: number; end?: number; hidden?: boolean } }): Promise<{ success: boolean; data: HighlightsView }> => {
+    const response = await api.put(`/api/v1/fixtures/${fixtureId}/highlights`, body);
+    return response.data;
+  },
+};

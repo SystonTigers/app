@@ -111,6 +111,24 @@ with personal data.
   connected channel (`services/stream/`). Sending: `services/push/` (Web Push
   for the web app, Expo for the phone app); the old FCM sender is gone.
 
+## Match highlights
+
+- Match Centre's Chance, Save and Great play buttons (`chance`/`save`/`skill`
+  events: no score, posts or alerts) mark moments; goals, their goals and
+  cards are moments too. After the match, `GET /api/v1/fixtures/:id/highlights`
+  (`routes/highlights.ts`, `services/highlights.ts`) turns each tap into a clip
+  of the match's YouTube video (a window before and after the tap, per type).
+  Nothing is downloaded or re-encoded, so it's free.
+- The video is lined up by where kick-off is in it (`fixtures.video_kickoff_sec`):
+  worked out from the stream's real start time when YouTube detection found
+  it, otherwise staff pause on kick-off in the app. Staff can start clips
+  earlier, end them later or hide them (`fixtures.highlight_edits`).
+- App: Highlights screen list, Live Match after full time, Match Centre after
+  full time → `MatchHighlightsScreen`; clips play one after another
+  (`components/highlights/ClipPlayer`, YouTube's player messages say when a
+  clip ends). YouTube's rules don't allow downloading, so a video file for
+  social media has to come from the camera's own recording.
+
 ## Social graphics and club posts
 
 - The server draws every graphic (`services/graphics/`): SVG layouts in a

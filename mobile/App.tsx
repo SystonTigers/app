@@ -56,6 +56,7 @@ import LiveMatchWatchScreen from './src/screens/LiveMatchWatchScreen';
 import LiveMatchInputScreen from './src/screens/LiveMatchInputScreen';
 import GalleryScreen from './src/screens/GalleryScreen';
 import HighlightsScreen from './src/screens/HighlightsScreen';
+import MatchHighlightsScreen from './src/screens/MatchHighlightsScreen';
 import TrainingScreen from './src/screens/TrainingScreen';
 import DrillLibraryScreen from './src/screens/DrillLibraryScreen';
 import StatsScreen from './src/screens/StatsScreen';
@@ -271,6 +272,7 @@ function MainDrawer() {
       <Drawer.Screen name="CreatePost" component={CreatePostScreen} />
       <Drawer.Screen name="Gallery" component={GalleryScreen} />
       <Drawer.Screen name="Highlights" component={HighlightsScreen} />
+      <Drawer.Screen name="MatchHighlights" component={MatchHighlightsScreen} options={{ title: 'Match Highlights' }} />
       <Drawer.Screen name="Manage" component={ManageScreen} />
       <Drawer.Screen name="ManageUsers" component={ManageUsersScreen} />
       <Drawer.Screen name="ImportData" component={ImportDataScreen} />

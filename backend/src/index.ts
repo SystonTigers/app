@@ -675,6 +675,12 @@ router.put("/api/:v/fixtures/:id/stream", staffOnly((req, env, corsHdrs, _reques
 router.delete("/api/:v/fixtures/:id/stream", staffOnly((req, env, corsHdrs) => handleDeleteStream(req, env, corsHdrs, ((req as any).params || {}).id)));
 router.put("/api/:v/fixtures/:id/venue", staffOnly((req, env, corsHdrs) => handlePutVenue(req, env, corsHdrs, ((req as any).params || {}).id)));
 
+// Match highlights from the match's YouTube video and the Match Centre taps (routes/highlights.ts)
+import { handleGetHighlights, handleListHighlights, handlePutHighlights } from "./routes/highlights";
+router.get("/api/:v/highlights", (req, env, corsHdrs) => handleListHighlights(req, env, corsHdrs));
+router.get("/api/:v/fixtures/:id/highlights", (req, env, corsHdrs) => handleGetHighlights(req, env, corsHdrs, ((req as any).params || {}).id));
+router.put("/api/:v/fixtures/:id/highlights", (req, env, corsHdrs) => handlePutHighlights(req, env, corsHdrs, ((req as any).params || {}).id));
+
 // Connecting the club's YouTube channel for automatic live video (routes/stream.ts)
 import { handleGetStreamSettings, handleStartYouTubeConnect, handleYouTubeCallback, handleDisconnectYouTube } from "./routes/stream";
 router.get("/api/:v/stream/settings", staffOnly((req, env, corsHdrs) => handleGetStreamSettings(req, env, corsHdrs)));

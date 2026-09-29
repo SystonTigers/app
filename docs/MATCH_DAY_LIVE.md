@@ -108,3 +108,14 @@ Both stream from the XbotGo app to YouTube or any RTMP address for free.
   the YouTube channel detection.
 - Logs (`npx wrangler tail --env production`): `match_alert` (sent, device
   counts), `stream_detect` (failures), `youtube_connect`, `venue_geocode`.
+
+## Highlights after the match
+
+- During the match, tap **Chance**, **Save** or **Great play** in Match Centre
+  when something worth seeing again happens (goals and cards count already).
+  Tap as soon as it happens: each clip starts 10–20 seconds before the tap.
+- After full time, open **Highlights** (or Live Match → Watch the highlights).
+  If the stream was found on the club's connected channel, the clips line up
+  on their own. If the link was pasted, a manager lines the video up once:
+  play it, pause on the kick-off whistle and tap "Kick-off is at…".
+- Managers can start a clip earlier, end it later or hide it.

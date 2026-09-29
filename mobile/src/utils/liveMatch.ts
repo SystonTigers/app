@@ -5,7 +5,9 @@
 
 export type LiveEventType =
   | 'kick_off' | 'half_time' | 'second_half' | 'full_time'
-  | 'goal' | 'opp_goal' | 'yellow' | 'red' | 'sub' | 'note';
+  | 'goal' | 'opp_goal' | 'yellow' | 'red' | 'sub' | 'note'
+  /** Moments for the highlights: no score change, no posts or alerts */
+  | 'chance' | 'save' | 'skill';
 
 export type LiveStatus = 'scheduled' | 'live' | 'half_time' | 'full_time';
 
@@ -101,6 +103,9 @@ export function describeEvent(e: LiveEvent, opponent: string): string {
     case 'red': return `Red card: ${e.playerName ?? 'Unknown'}`;
     case 'sub': return `Sub: ${e.playerName ?? '?'} on for ${e.player2Name ?? '?'}`;
     case 'note': return e.text ?? '';
+    case 'chance': return `Chance${e.playerName ? `: ${e.playerName}` : ''}`;
+    case 'save': return `Save${e.playerName ? `: ${e.playerName}` : ''}`;
+    case 'skill': return `Great play${e.playerName ? `: ${e.playerName}` : ''}`;
   }
 }
 

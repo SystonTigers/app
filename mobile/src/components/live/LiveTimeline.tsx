@@ -15,6 +15,9 @@ const ICONS: Record<LiveEvent['type'], { name: string; color: string }> = {
   red: { name: 'card', color: COLORS.error },
   sub: { name: 'swap-horizontal', color: COLORS.textLight },
   note: { name: 'message-text-outline', color: COLORS.textLight },
+  chance: { name: 'target', color: COLORS.textLight },
+  save: { name: 'hand-back-left', color: COLORS.textLight },
+  skill: { name: 'star-outline', color: COLORS.primary },
 };
 
 /**

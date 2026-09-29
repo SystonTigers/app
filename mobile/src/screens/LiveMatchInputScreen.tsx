@@ -273,6 +273,9 @@ export default function LiveMatchInputScreen() {
                 <Pressable onPress={() => navigation.navigate('ManageMOTM')} accessibilityRole="button" style={styles.kickOff}>
                   <Text style={styles.kickOffText}>{motmOpened ? 'See the Man of the Match vote' : 'Start Man of the Match vote'}</Text>
                 </Pressable>
+                <Pressable onPress={() => navigation.navigate('MatchHighlights', { fixtureId: match.fixture.id })} accessibilityRole="button" style={styles.linkButton}>
+                  <Text style={styles.linkText}>Highlights: line up the video and check the clips</Text>
+                </Pressable>
                 <Pressable onPress={() => { setMatch(null); setMotmOpened(false); load(); }} accessibilityRole="button" style={styles.linkButton}>
                   <Text style={styles.linkText}>Back to fixtures</Text>
                 </Pressable>
@@ -286,6 +289,13 @@ export default function LiveMatchInputScreen() {
                   <Action icon="card" label="Red" onPress={() => setPick({ kind: 'red' })} disabled={sending} color={COLORS.error} />
                   <Action icon="swap-horizontal" label="Sub" onPress={() => setPick({ kind: 'sub_on' })} disabled={sending} />
                   <Action icon="message-text-outline" label="Update" onPress={() => setNoteOpen(true)} disabled={sending} />
+                </View>
+                {/* One tap marks the moment for the highlights video; nothing is posted */}
+                <Text style={styles.label}>Mark for highlights</Text>
+                <View style={styles.grid}>
+                  <Action icon="target" label="Chance" onPress={() => record('chance')} disabled={sending || match.status === 'half_time'} />
+                  <Action icon="hand-back-left" label="Save" onPress={() => record('save')} disabled={sending || match.status === 'half_time'} />
+                  <Action icon="star-outline" label="Great play" onPress={() => record('skill')} disabled={sending || match.status === 'half_time'} />
                 </View>
                 <View style={styles.phaseRow}>
                   {match.status === 'live' && match.period === 1 ? <Phase label="Half time" onPress={() => record('half_time')} disabled={sending} /> : null}

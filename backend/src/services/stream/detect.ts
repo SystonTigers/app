@@ -28,12 +28,13 @@ const accessKey = (tenantId: string) => `yt_access:${tenantId}`;
  * Point a fixture at a stream. Returns true if it changed. The first stream
  * for a match (before full time) queues the "Live now" notification.
  */
-export async function setFixtureStream(env: StreamEnv, tenantId: string, fixtureId: string, stream: { videoId: string; source: "youtube" | "link"; embeddable: boolean }, now = Date.now()): Promise<boolean> {
+export async function setFixtureStream(env: StreamEnv, tenantId: string, fixtureId: string, stream: { videoId: string; source: "youtube" | "link"; embeddable: boolean; startedAt?: number | null }, now = Date.now()): Promise<boolean> {
   const res = await env.DB.prepare(
-    `UPDATE fixtures SET youtube_live_id = ?, youtube_status = 'live', stream_source = ?, stream_embeddable = ?,
+    `UPDATE fixtures SET video_kickoff_sec = CASE WHEN youtube_live_id = ? THEN video_kickoff_sec END,
+       youtube_live_id = ?, youtube_status = 'live', stream_source = ?, stream_embeddable = ?,
        stream_started_at = COALESCE(CASE WHEN youtube_live_id = ? THEN stream_started_at END, ?)
      WHERE tenant_id = ? AND id = ? AND NOT (COALESCE(youtube_live_id, '') = ? AND COALESCE(youtube_status, '') = 'live' AND COALESCE(stream_source, '') = ? AND COALESCE(stream_embeddable, -1) = ?)`,
-  ).bind(stream.videoId, stream.source, stream.embeddable ? 1 : 0, stream.videoId, now, tenantId, fixtureId, stream.videoId, stream.source, stream.embeddable ? 1 : 0).run();
+  ).bind(stream.videoId, stream.videoId, stream.source, stream.embeddable ? 1 : 0, stream.videoId, stream.startedAt ?? now, tenantId, fixtureId, stream.videoId, stream.source, stream.embeddable ? 1 : 0).run();
   if ((res.meta?.changes ?? 0) === 0) return false;
 
   const fixture = await loadFixture(env, tenantId, fixtureId);
@@ -46,7 +47,8 @@ export async function setFixtureStream(env: StreamEnv, tenantId: string, fixture
 
 export async function clearFixtureStream(env: StreamEnv, tenantId: string, fixtureId: string): Promise<void> {
   await env.DB.prepare(
-    `UPDATE fixtures SET youtube_live_id = NULL, youtube_status = NULL, stream_source = NULL, stream_embeddable = NULL, stream_started_at = NULL
+    `UPDATE fixtures SET youtube_live_id = NULL, youtube_status = NULL, stream_source = NULL, stream_embeddable = NULL, stream_started_at = NULL,
+       video_kickoff_sec = NULL
      WHERE tenant_id = ? AND id = ?`,
   ).bind(tenantId, fixtureId).run();
 }
@@ -144,7 +146,7 @@ export async function detectClubStreams(env: StreamEnv, tenantId: string, stored
     if (b.privacy === "private" || known.has(b.videoId)) continue;
     const target = pickFixture(rows, now);
     if (!target) break;
-    if (await setFixtureStream(env, tenantId, target.id, { videoId: b.videoId, source: "youtube", embeddable: b.embeddable }, now)) changed++;
+    if (await setFixtureStream(env, tenantId, target.id, { videoId: b.videoId, source: "youtube", embeddable: b.embeddable, startedAt: b.startedAt }, now)) changed++;
     target.youtube_live_id = b.videoId;
     target.youtube_status = "live";
     known.add(b.videoId);
