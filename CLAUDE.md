@@ -246,6 +246,23 @@ with personal data.
 - Match Centre also has Their yellow / Their red (`opp_yellow`, `opp_red`):
   timeline only, no stats, posts or alerts.
 
+## App look (brand)
+
+- Brand: the Boost Huddle hexagon emblem (`assets/emblem.png`, cut out of the
+  logo), dark ink `#06080B`, cyan glow `#19E3FF`; club screens use the club's
+  colour (`theme.colors.primary`). Display type is Barlow Condensed
+  (`assets/fonts`, OFL, `theme/brandFonts.ts`); body text is the system font.
+- `components/brand/Backdrop.tsx` draws the hex grid, circuit traces and glow
+  (react-native-svg), used by the launch screen, home header and menu.
+- Launch: `web/boot.html` is shown by the page while the code loads, then
+  `BrandSplash` (at least 1.2s, until fonts load); iPhones get full-screen
+  launch images (`web/splash`, regenerate with `node scripts/make-splash.mjs`
+  after changing `boot.html`). Android always shows its own small icon first;
+  the manifest's "any" icons are the cut-out emblem so there's no square box.
+- Home (`screens/HomeScreen.tsx`, `components/home/`): header with crest,
+  live cards, next match, league snapshot, quick links, latest feed. The menu
+  (`CustomDrawerContent.tsx`) shows every section open, staff zone boxed.
+
 ## Access rules worth knowing
 
 - Club-admin writes are wrapped in `staffOnly(...)` in `index.ts`; add new

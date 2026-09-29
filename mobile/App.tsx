@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer } from '@react-navigation/native';
@@ -88,6 +88,9 @@ import OnboardingScreen from './src/screens/OnboardingScreen';
 import FindClubScreen from './src/screens/FindClubScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import { captureInviteFromLink } from './src/services/inviteLink';
+import BrandSplash from './src/components/brand/BrandSplash';
+import { useBrandFonts } from './src/theme/brandFonts';
+import { useTheme } from './src/theme/useTheme';
 
 // A parent opened the manager's invite link: keep the code until they're signed in
 captureInviteFromLink();
@@ -97,24 +100,27 @@ const Tab = createBottomTabNavigator();
 const AuthStack = createNativeStackNavigator();
 
 function TabNavigator() {
+  const { theme } = useTheme();
   return (
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: COLORS.surface,
-          borderTopColor: '#2F3439',
+          backgroundColor: '#0B0E12',
+          borderTopColor: 'rgba(255,255,255,0.08)',
         },
-        tabBarActiveTintColor: COLORS.primary,
-        tabBarInactiveTintColor: COLORS.textLight,
+        tabBarLabelStyle: { fontWeight: '700', fontSize: 11 },
+        tabBarActiveTintColor: theme.colors.primary,
+        tabBarInactiveTintColor: 'rgba(242,245,247,0.5)',
       }}
     >
       <Tab.Screen
         name="Dashboard"
         component={HomeScreen}
         options={{
+          tabBarLabel: 'Home',
           tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="view-dashboard" size={size} color={color} />
+            <MaterialCommunityIcons name="home-variant" size={size} color={color} />
           ),
         }}
       />
@@ -150,11 +156,8 @@ function TabNavigator() {
 }
 
 function Splash() {
-  return (
-    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.background }}>
-      <ActivityIndicator size="large" color={COLORS.primary} />
-    </View>
-  );
+  const { club } = useClub();
+  return <BrandSplash clubName={club?.name} />;
 }
 
 /** Signed-out screens: find your club, then log in or create an account. */
@@ -212,7 +215,7 @@ function MainDrawer() {
           fontWeight: 'bold',
         },
         drawerStyle: {
-          backgroundColor: paperTheme.colors.background,
+          backgroundColor: '#07090C',
           width: '80%',
         },
         drawerActiveTintColor: paperTheme.colors.primary,
@@ -300,6 +303,13 @@ function MainDrawer() {
 }
 
 function RootNavigator() {
+  const fontsReady = useBrandFonts();
+  // Show the launch screen for a moment on a cold start, even when everything loads instantly
+  const [splashShown, setSplashShown] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setSplashShown(true), 1200);
+    return () => clearTimeout(t);
+  }, []);
   const { isAuthenticated, isLoading: authLoading, logout } = useAuth();
   const { club, isLoading: clubLoading, isLocked, chooseClub } = useClub();
 
@@ -334,7 +344,7 @@ function RootNavigator() {
     }
   }, [isAuthenticated, readyClub]);
 
-  if (authLoading || clubLoading) return <Splash />;
+  if (authLoading || clubLoading || !fontsReady || !splashShown) return <Splash />;
   if (!isAuthenticated) return <AuthNavigator />;
   if (!club && !isLocked) return <Splash />;
   return (

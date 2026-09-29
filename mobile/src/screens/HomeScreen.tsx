@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, ScrollView, StyleSheet, RefreshControl, ImageBackground, Pressable } from 'react-native';
-import { Text, IconButton } from 'react-native-paper';
+import { View, ScrollView, StyleSheet, RefreshControl } from 'react-native';
+import { Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/useTheme';
 import { Fixture, getUpcomingFixtures, formatFixtureDate, formatKickOffTime } from '../services/fixturesApi';
@@ -8,7 +8,6 @@ import { feedApi, fixturesApi, liveApi } from '../services/api';
 import { scoreline, statusLabel, type LiveMatchView } from '../utils/liveMatch';
 import { useClub } from '../context/ClubContext';
 import { useMatchDay } from '../context/MatchDayContext';
-import { fixtureTitle } from '../utils/matchDay';
 import { isOurTeam } from '../utils/clubMatch';
 
 import HighlightCard from '../components/HighlightCard';
@@ -17,6 +16,13 @@ import FeedCard from '../components/FeedCard';
 import { SkeletonCard } from '../components/LoadingSkeleton';
 import InstallPrompt from '../components/InstallPrompt';
 import ConsentPrompt from '../components/ConsentPrompt';
+import HomeHeader from '../components/home/HomeHeader';
+import NextMatchCard from '../components/home/NextMatchCard';
+import LeagueSnapshot from '../components/home/LeagueSnapshot';
+import LiveCard from '../components/home/LiveCard';
+import QuickActions, { type QuickAction } from '../components/home/QuickActions';
+import SectionTitle from '../components/home/SectionTitle';
+import { useAuth } from '../context/AuthContext';
 
 interface QuickStats {
   position: string;
@@ -43,6 +49,7 @@ export default function HomeScreen({ navigation }: any) {
   const { theme } = useTheme();
   const { colors } = theme;
   const { club } = useClub();
+  const { user } = useAuth();
   const { day } = useMatchDay();
   const insets = useSafeAreaInsets();
   const [refreshing, setRefreshing] = useState(false);
@@ -59,14 +66,16 @@ export default function HomeScreen({ navigation }: any) {
     setFixturesLoading(true);
     try {
       const [fixtures, news, table, live] = await Promise.all([
-        getUpcomingFixtures({ limit: 1 }),
+        getUpcomingFixtures({ limit: 2 }),
         feedApi.getPosts(1, 10),
         // The table and live score are optional: they must not blank the rest of the page.
         fixturesApi.getLeagueTable().catch(() => null),
         liveApi.list().catch(() => ({ data: [] as LiveMatchView[] })),
       ]);
-      setNextFixture(fixtures[0] || null);
-      setLiveMatches(live.data.filter((m) => m.status === 'live' || m.status === 'half_time'));
+      const onNow = live.data.filter((m) => m.status === 'live' || m.status === 'half_time');
+      setLiveMatches(onNow);
+      // A match that's on now shows as the live card, so "next up" is the one after it
+      setNextFixture(fixtures.find((f) => !onNow.some((m) => String(m.fixture.id) === String(f.id))) || null);
       const rows: any[] = Array.isArray(table?.data) ? table.data : [];
       const ourRow = rows.find((row) => isOurTeam(row.team_name, club));
       setQuickStats(ourRow ? {
@@ -97,24 +106,39 @@ export default function HomeScreen({ navigation }: any) {
   }, [loadData]);
 
 
+  const color = colors.primary;
+  const clubName = club?.name || 'Your club';
+  const staff = user?.role === 'admin' || user?.role === 'coach' || (user?.role as string) === 'manager';
+  const videoFirst = (day?.fixtures ?? [])
+    .filter((f) => f.stream?.status === 'live' && f.matchStatus !== 'full_time' && !liveMatches.some((m) => m.fixture.id === f.id));
+  const matchToday = (day?.fixtures ?? []).length > 0;
+  const actions: QuickAction[] = [
+    { label: 'Live Match', icon: 'whistle', onPress: () => navigation.navigate('LiveMatch'), highlight: matchToday || liveMatches.length > 0 },
+    { label: 'Fixtures', icon: 'calendar-month', onPress: () => navigation.navigate('Matches') },
+    { label: 'League', icon: 'format-list-numbered', onPress: () => navigation.navigate('LeagueTable') },
+    { label: 'Highlights', icon: 'play-box-multiple', onPress: () => navigation.navigate('Highlights') },
+    { label: 'Man of the Match', icon: 'star-circle', onPress: () => navigation.navigate('MOTMVoting') },
+    { label: 'Squad', icon: 'account-group', onPress: () => navigation.navigate('Squad') },
+    { label: 'Stats', icon: 'chart-bar', onPress: () => navigation.navigate('Stats') },
+    staff
+      ? { label: 'Match Centre', icon: 'scoreboard', onPress: () => navigation.navigate('MatchCentre') }
+      : { label: 'Club Shop', icon: 'shopping', onPress: () => navigation.navigate('Shop') },
+  ];
+
   return (
     <ScrollView
-      style={[styles.container, { backgroundColor: colors.background }]}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      style={[styles.container, { backgroundColor: '#07090C' }]}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={color} />}
       contentContainerStyle={styles.contentContainer}
     >
-      {/* Club header with the menu (the drawer holds every other section) */}
-      <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
-        <IconButton
-          icon="menu"
-          iconColor={colors.text}
-          onPress={() => navigation.getParent?.()?.openDrawer?.()}
-          accessibilityLabel="Open menu"
-        />
-        <Text style={[styles.topBarTitle, { color: colors.text }]} numberOfLines={1}>
-          {club?.name || 'Home'}
-        </Text>
-      </View>
+      <HomeHeader
+        clubName={clubName}
+        color={color}
+        badgeUrl={club?.badgeUrl}
+        firstName={user?.firstName}
+        topInset={insets.top}
+        onMenu={() => navigation.getParent?.()?.openDrawer?.()}
+      />
 
       <View style={{ paddingHorizontal: 16 }}>
         <InstallPrompt />
@@ -122,85 +146,84 @@ export default function HomeScreen({ navigation }: any) {
       </View>
 
       {/* Live video that's on before kick-off has been tapped in Match Centre */}
-      {(day?.fixtures ?? [])
-        .filter((f) => f.stream?.status === 'live' && f.matchStatus !== 'full_time' && !liveMatches.some((m) => m.fixture.id === f.id))
-        .map((f) => (
-          <Pressable
-            key={`video-${f.id}`}
-            onPress={() => navigation.navigate('LiveMatch')}
-            accessibilityRole="button"
-            accessibilityLabel={`Live video: ${fixtureTitle(f, club?.name || 'Us')}. Watch now`}
-            style={[styles.liveBanner, { borderColor: colors.primary }]}
-          >
-            <Text style={[styles.liveBannerLabel, { color: colors.primary }]}>● LIVE VIDEO</Text>
-            <Text style={[styles.liveBannerScore, { color: colors.text }]}>{fixtureTitle(f, club?.name || 'Us')}</Text>
-            <Text style={[styles.liveBannerLink, { color: colors.primary }]}>Watch now →</Text>
-          </Pressable>
-        ))}
+      {videoFirst.map((f) => (
+        <LiveCard
+          key={`video-${f.id}`}
+          status="VIDEO ON"
+          home={f.homeAway === 'away' ? f.opponent : clubName}
+          away={f.homeAway === 'away' ? clubName : f.opponent}
+          homeScore={null}
+          awayScore={null}
+          video
+          color={color}
+          onPress={() => navigation.navigate('LiveMatch')}
+        />
+      ))}
 
       {/* Live score while a match is on */}
       {liveMatches.map((m) => {
-        const s = scoreline(m, club?.name || 'Us');
+        const s = scoreline(m, clubName);
         const video = day?.fixtures.find((f) => f.id === m.fixture.id)?.stream?.status === 'live';
         return (
-          <Pressable
+          <LiveCard
             key={m.fixture.id}
+            status={statusLabel(m, Date.now()).toUpperCase()}
+            home={s.home}
+            away={s.away}
+            homeScore={s.homeScore}
+            awayScore={s.awayScore}
+            video={!!video}
+            color={color}
             onPress={() => navigation.navigate('LiveMatch')}
-            accessibilityRole="button"
-            accessibilityLabel={`Live: ${s.home} ${s.homeScore}, ${s.away} ${s.awayScore}. Follow live`}
-            style={[styles.liveBanner, { borderColor: colors.primary }]}
-          >
-            <Text style={[styles.liveBannerLabel, { color: colors.primary }]}>● LIVE · {statusLabel(m, Date.now())}{video ? ' · ▶ VIDEO' : ''}</Text>
-            <Text style={[styles.liveBannerScore, { color: colors.text }]}>{s.home} {s.homeScore} – {s.awayScore} {s.away}</Text>
-            <Text style={[styles.liveBannerLink, { color: colors.primary }]}>{video ? 'Watch and follow live →' : 'Follow live →'}</Text>
-          </Pressable>
+          />
         );
       })}
 
-      {/* 1. HERO SECTION (Next Match) */}
+      {/* Next match */}
       {fixturesLoading ? (
-        <View style={{ paddingHorizontal: 16, marginTop: 16 }}>
+        <View style={{ paddingHorizontal: 16, marginTop: 8 }}>
           <SkeletonCard />
         </View>
       ) : nextFixture ? (
-        <ImageBackground
-          source={{ uri: 'https://images.unsplash.com/photo-1518091043644-c1d4457512c6?w=800' }}
-          style={styles.heroCard}
-          imageStyle={styles.heroImage}
-        >
-          <View style={[styles.heroOverlay, { backgroundColor: 'rgba(11, 13, 15, 0.85)' }]}>
-            <Text style={[styles.heroLabel, { color: colors.primary }]}>NEXT MATCH</Text>
-            <View style={styles.heroTeams}>
-              <Text style={[styles.heroTeamName, { color: colors.primary }]}>
-                {(nextFixture.homeAway === 'away' ? nextFixture.opponent : club?.name || 'Us').toUpperCase()}
-              </Text>
-              <Text style={[styles.heroVs, { color: colors.text }]}>VS</Text>
-              <Text style={[styles.heroTeamName, { color: colors.primary }]}>
-                {(nextFixture.homeAway === 'away' ? club?.name || 'Us' : nextFixture.opponent).toUpperCase()}
-              </Text>
-            </View>
-            <Text style={[styles.heroDetails, { color: colors.text }]}>
-              {formatFixtureDate(nextFixture.date).toUpperCase()} | {formatKickOffTime(nextFixture.kickOffTime)} | {(nextFixture.venue || (nextFixture.homeAway === 'away' ? 'Away' : 'Home')).toUpperCase()}
-            </Text>
-          </View>
-        </ImageBackground>
+        <>
+          <SectionTitle title="NEXT UP" color={color} action="All fixtures" onAction={() => navigation.navigate('Matches')} />
+          <NextMatchCard
+            clubName={clubName}
+            color={color}
+            badgeUrl={club?.badgeUrl}
+            opponent={nextFixture.opponent}
+            homeAway={nextFixture.homeAway === 'away' ? 'away' : 'home'}
+            date={String(nextFixture.date).slice(0, 10)}
+            dateText={formatFixtureDate(nextFixture.date)}
+            time={formatKickOffTime(nextFixture.kickOffTime)}
+            venue={nextFixture.venue || null}
+            competition={nextFixture.competition || null}
+            onPress={() => navigation.navigate('Matches')}
+          />
+        </>
       ) : null}
 
-      {/* 2. QUICK STATS ROW (only when the club is in the league table) */}
-      {quickStats && (
-        <View style={styles.statsRow}>
-          <StatItem label="POS" value={quickStats.position} icon="trophy-variant" colors={colors} />
-          <StatItem label="PTS" value={quickStats.points} icon="star" colors={colors} />
-          <StatItem label="WON" value={quickStats.won} icon="trophy" colors={colors} />
-          <StatItem label="GD" value={quickStats.goalDifference} icon="target" colors={colors} />
-        </View>
-      )}
+      {/* League position (only when the club is in the table) */}
+      {quickStats ? (
+        <>
+          <SectionTitle title="THE TABLE" color={color} />
+          <LeagueSnapshot
+            position={Number(quickStats.position) || null}
+            points={quickStats.points}
+            won={quickStats.won}
+            goalDifference={Number(quickStats.goalDifference) || 0}
+            color={color}
+            onPress={() => navigation.navigate('LeagueTable')}
+          />
+        </>
+      ) : null}
 
-      {/* 3. TEAM FEED TIMELINE */}
+      <SectionTitle title="QUICK LINKS" color={color} />
+      <QuickActions actions={actions} color={color} />
+
+      {/* Team feed */}
+      <SectionTitle title="LATEST" color={color} />
       <View style={styles.feedContainer}>
-        <Text style={[styles.feedHeader, { color: colors.text }]}>LATEST UPDATES</Text>
-
-        {/* Dynamic feed items */}
         {feedItems.map((item) => {
           if (item.type === 'result') return (
             <ResultCard key={item.id} {...item} />
@@ -215,16 +238,15 @@ export default function HomeScreen({ navigation }: any) {
           return null;
         })}
 
-        {!fixturesLoading && !nextFixture && feedItems.length === 0 && newsPosts.length === 0 ? (
-          <View style={[styles.emptyCard, { borderColor: colors.border }]}>
-            <Text style={[styles.emptyTitle, { color: colors.text }]}>Welcome to {club?.name || 'your club'}</Text>
-            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-              Fixtures, results and club news will show up here as soon as your club adds them. Pull down to refresh.
+        {!fixturesLoading && feedItems.length === 0 && newsPosts.length === 0 ? (
+          <View style={styles.emptyCard}>
+            <Text style={styles.emptyTitle}>All quiet for now</Text>
+            <Text style={styles.emptyText}>
+              Results, goals, team news and club posts land here as they happen. Pull down to refresh.
             </Text>
           </View>
         ) : null}
 
-        {/* FEED ITEMS: News Posts */}
         {newsPosts.map((post) => (
           <FeedCard key={post.id} title="CLUB NEWS">
             <View style={{ padding: 16 }}>
@@ -235,145 +257,16 @@ export default function HomeScreen({ navigation }: any) {
             </View>
           </FeedCard>
         ))}
-
       </View>
     </ScrollView>
   );
 }
 
-// Helper for Stats
-const StatItem = ({ label, value, icon, colors }: any) => (
-  <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.primary + '40' }]}>
-    <View style={[styles.statIcon, { backgroundColor: colors.primary + '20' }]}>
-      <IconButton icon={icon} iconColor={colors.primary} size={18} />
-    </View>
-    <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{label}</Text>
-    <Text style={[styles.statValue, { color: colors.primary }]}>{value}</Text>
-  </View>
-);
-
 const styles = StyleSheet.create({
-  liveBanner: { marginHorizontal: 16, marginTop: 12, borderWidth: 2, borderRadius: 12, padding: 14 },
-  liveBannerLabel: { fontWeight: '900', fontSize: 12, letterSpacing: 1 },
-  liveBannerScore: { fontSize: 18, fontWeight: '900', marginTop: 4, textTransform: 'uppercase' },
-  liveBannerLink: { fontWeight: '700', marginTop: 6 },
-  topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingTop: 8,
-    paddingRight: 16,
-  },
-  topBarTitle: {
-    flex: 1,
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  emptyCard: {
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 20,
-    marginTop: 8,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
-  emptyText: {
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  container: {
-    flex: 1,
-  },
-  contentContainer: {
-    paddingBottom: 40,
-  },
-  heroCard: {
-    height: 160,
-    marginHorizontal: 16,
-    marginTop: 16,
-    marginBottom: 16,
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
-  heroImage: {
-    borderRadius: 12,
-  },
-  heroOverlay: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 16,
-  },
-  heroLabel: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    letterSpacing: 2,
-    marginBottom: 8,
-  },
-  heroTeams: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  heroTeamName: {
-    fontSize: 16,
-    fontWeight: '900',
-    fontStyle: 'italic',
-    letterSpacing: 0.5,
-  },
-  heroVs: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    opacity: 0.7,
-  },
-  heroDetails: {
-    fontSize: 10,
-    marginTop: 8,
-    letterSpacing: 1,
-    opacity: 0.8,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    gap: 8,
-    marginBottom: 24,
-  },
-  statCard: {
-    flex: 1,
-    padding: 8,
-    borderRadius: 8,
-    borderWidth: 1,
-    alignItems: 'center',
-  },
-  statIcon: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  statLabel: {
-    fontSize: 8,
-    fontWeight: 'bold',
-    letterSpacing: 1,
-  },
-  statValue: {
-    fontSize: 16,
-    fontWeight: '900',
-    marginTop: 2,
-  },
-  feedContainer: {
-    flex: 1,
-  },
-  feedHeader: {
-    fontSize: 12,
-    fontWeight: '900',
-    letterSpacing: 1.5,
-    marginLeft: 16,
-    marginBottom: 12,
-    opacity: 0.7,
-  },
+  container: { flex: 1 },
+  contentContainer: { paddingBottom: 48 },
+  feedContainer: { flex: 1 },
+  emptyCard: { marginHorizontal: 16, padding: 20, borderRadius: 18, borderWidth: 1, borderStyle: 'dashed', borderColor: 'rgba(255,255,255,0.15)' },
+  emptyTitle: { color: '#F2F5F7', fontSize: 17, fontWeight: '800', marginBottom: 6 },
+  emptyText: { color: 'rgba(242,245,247,0.65)', fontSize: 14, lineHeight: 20 },
 });

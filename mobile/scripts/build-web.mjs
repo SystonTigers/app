@@ -50,7 +50,7 @@ if (existsSync(assetsDir)) {
   }
 }
 
-for (const item of ['manifest.webmanifest', '_headers', 'icons']) {
+for (const item of ['manifest.webmanifest', '_headers', 'icons', 'splash', 'fonts']) {
   cpSync(path.join(webDir, item), path.join(dist, item), { recursive: true });
 }
 
@@ -67,6 +67,8 @@ html = html.replace(
   /<meta name="viewport"[^>]*>/,
   '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />',
 );
+/** iPhone launch screens (CSS width, height, pixel ratio): full-screen images made by scripts/make-splash.mjs */
+const IOS_SPLASH = [[375, 667, 2], [414, 896, 2], [375, 812, 3], [414, 896, 3], [390, 844, 3], [393, 852, 3], [428, 926, 3], [430, 932, 3], [402, 874, 3], [440, 956, 3]];
 const head = [
   '<meta name="description" content="Fixtures, results, team news and match videos for your football club." />',
   '<meta name="theme-color" content="#0B0D0F" />',
@@ -77,9 +79,12 @@ const head = [
   '<link rel="manifest" href="/manifest.webmanifest" />',
   '<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />',
   '<link rel="icon" type="image/png" sizes="48x48" href="/icons/favicon-48.png" />',
-  '<style>html,body{background:#0B0D0F}</style>',
+  ...IOS_SPLASH.map(([w, h, r]) => `<link rel="apple-touch-startup-image" media="(device-width: ${w}px) and (device-height: ${h}px) and (-webkit-device-pixel-ratio: ${r}) and (orientation: portrait)" href="/splash/splash-${w * r}x${h * r}.png" />`),
+  "<style>@font-face{font-family:'BH Display';src:url(/fonts/BarlowCondensed-ExtraBold.ttf) format('truetype');font-display:swap}html,body{background:#06080B}</style>",
 ].join('\n    ');
 html = html.replace('<link rel="icon" href="/favicon.ico" />', '').replace('</head>', `    ${head}\n  </head>`);
+// Full-screen launch screen while the app's code loads (React replaces it when it starts)
+html = html.replace('<div id="root"></div>', `<div id="root">${readFileSync(path.join(webDir, 'boot.html'), 'utf8').trim()}</div>`);
 const register = `<script>if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('/sw.js').catch(function(){})})}</script>`;
 html = html.replace('</body>', `  ${register}\n</body>`);
 writeFileSync(indexPath, html);

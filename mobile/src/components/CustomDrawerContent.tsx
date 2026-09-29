@@ -1,20 +1,24 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, Image, ScrollView, TouchableOpacity } from 'react-native';
-import { DrawerContentScrollView, DrawerItem } from '@react-navigation/drawer';
-import { List, Text, Divider, Avatar, useTheme as usePaperTheme, IconButton } from 'react-native-paper';
+import React from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
+import { useClub } from '../context/ClubContext';
 import { useTheme } from '../theme/useTheme';
-import { COLORS } from '../config';
+import { FONTS } from '../theme/brandFonts';
+import Backdrop from './brand/Backdrop';
+import Crest from './home/Crest';
 
-// Define the navigation groups and their items
-// This structure makes it easy to add/remove items
+// The menu: every section is open, so everything is one tap away.
+
 const MENU_GROUPS = [
     {
         id: 'match_day',
         title: 'Match Day',
         icon: 'soccer-field',
         items: [
+            { label: 'Home', screen: 'TabNavigator', icon: 'home-variant', roles: ['admin', 'manager', 'coach', 'parent', 'player'] },
+            { label: 'Match Highlights', screen: 'Highlights', icon: 'play-box-multiple', roles: ['admin', 'manager', 'coach', 'parent', 'player'] },
             { label: 'Live Match', screen: 'LiveMatch', icon: 'whistle', roles: ['admin', 'manager', 'coach', 'parent', 'player'] },
             { label: 'Man of the Match', screen: 'MOTMVoting', icon: 'star-circle', roles: ['admin', 'manager', 'coach', 'parent', 'player'] },
             { label: 'Predictions', screen: 'LastManStanding', icon: 'crystal-ball', roles: ['admin', 'manager', 'coach', 'parent', 'player'] },
@@ -71,20 +75,15 @@ const MENU_GROUPS = [
 
 export default function CustomDrawerContent(props: any) {
     const { user, logout } = useAuth();
+    const { club } = useClub();
     const { theme } = useTheme();
-    const { colors } = theme;
+    const color = theme.colors.primary;
+    const insets = useSafeAreaInsets();
     const userRole = user?.role || 'player'; // Default to player if role unknown
+    const current: string | undefined = props.state?.routes?.[props.state.index]?.name;
 
-    // State for accordion expansion
-    const [expandedId, setExpandedId] = useState<string | null>(null);
-
-    const handlePressGroup = (id: string) => {
-        setExpandedId(expandedId === id ? null : id);
-    };
-
-    const handleNavigate = (screen: string) => {
-        props.navigation.navigate(screen);
-    };
+    const hasAccess = (allowedRoles?: string[]) => !allowedRoles || allowedRoles.includes(userRole);
+    const name = user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : 'Welcome';
 
     const handleLogout = async () => {
         try {
@@ -94,152 +93,96 @@ export default function CustomDrawerContent(props: any) {
         }
     };
 
-    // Helper to check access
-    const hasAccess = (allowedRoles?: string[]) => {
-        if (!allowedRoles) return true;
-        return allowedRoles.includes(userRole);
-    };
-
     return (
-        <View style={[styles.container, { backgroundColor: colors.background }]}>
-            {/* Drawer Header with User Info */}
-            <View style={[styles.header, { borderBottomColor: colors.border }]}>
-                <View style={styles.userInfo}>
-                    <Avatar.Text
-                        size={50}
-                        label={user?.firstName ? user.firstName.charAt(0).toUpperCase() : '?'}
-                        style={[styles.avatar, { borderColor: colors.primary, backgroundColor: colors.primary }]}
-                        labelStyle={{ color: '#fff', fontWeight: 'bold' }}
-                    />
-                    <View style={styles.userDetails}>
-                        <Text style={[styles.userName, { color: colors.text }]}>
-                            {user?.firstName ? `${user.firstName} ${user.lastName || ''}` : 'Welcome Guest'}
-                        </Text>
-                        <Text style={[styles.userRole, { color: colors.primary }]}>
-                            {userRole.toUpperCase()}
-                        </Text>
+        <View style={styles.container}>
+            {/* Club banner with the signed-in person */}
+            <View style={[styles.header, { paddingTop: insets.top + 18 }]}>
+                <Backdrop color={color} width={320} height={200} glowY={0.1} />
+                <View style={styles.clubRow}>
+                    <Crest name={club?.name || 'Club'} color={color} badgeUrl={club?.badgeUrl} size={52} />
+                    <Text style={styles.clubName} numberOfLines={2}>{(club?.name || 'Your club').toUpperCase()}</Text>
+                </View>
+                <View style={styles.userRow}>
+                    <View style={[styles.avatar, { backgroundColor: color }]}>
+                        <Text style={styles.avatarText}>{user?.firstName ? user.firstName.charAt(0).toUpperCase() : '?'}</Text>
+                    </View>
+                    <Text style={styles.userName} numberOfLines={1}>{name}</Text>
+                    <View style={[styles.role, { borderColor: `${color}88` }]}>
+                        <Text style={[styles.roleText, { color }]}>{userRole.toUpperCase()}</Text>
                     </View>
                 </View>
             </View>
 
-            <DrawerContentScrollView {...props} contentContainerStyle={styles.drawerContent}>
-                <View style={styles.menuContainer}>
-                    {MENU_GROUPS.map((group) => {
-                        // Check if user has access to this entire group
-                        if (group.protected && !hasAccess(group.roles)) {
-                            return null;
-                        }
+            <ScrollView contentContainerStyle={styles.menu}>
+                {MENU_GROUPS.map((group) => {
+                    if (group.protected && !hasAccess(group.roles)) return null;
+                    const items = group.items.filter((item) => hasAccess(item.roles));
+                    if (!items.length) return null;
+                    const staffZone = group.id === 'admin_zone';
+                    return (
+                        <View key={group.id} style={[styles.section, staffZone ? [styles.staffZone, { borderColor: `${color}33` }] : null]}>
+                            <View style={styles.sectionHead}>
+                                <MaterialCommunityIcons name={group.icon as any} size={14} color={staffZone ? color : 'rgba(242,245,247,0.45)'} />
+                                <Text style={[styles.sectionTitle, staffZone ? { color } : null]}>{group.title.toUpperCase()}</Text>
+                            </View>
+                            {items.map((item) => {
+                                const active = current === item.screen;
+                                return (
+                                    <Pressable
+                                        key={item.screen}
+                                        onPress={() => props.navigation.navigate(item.screen)}
+                                        accessibilityRole="button"
+                                        accessibilityState={{ selected: active }}
+                                        style={({ pressed }) => [styles.item, active ? { backgroundColor: `${color}1A` } : null, pressed ? styles.pressed : null]}
+                                    >
+                                        {active ? <View style={[styles.activeBar, { backgroundColor: color }]} /> : null}
+                                        <View style={[styles.itemIcon, { backgroundColor: active ? color : 'rgba(255,255,255,0.05)' }]}>
+                                            <MaterialCommunityIcons name={item.icon as any} size={19} color={active ? '#06080B' : color} />
+                                        </View>
+                                        <Text style={[styles.itemLabel, active ? styles.itemLabelActive : null]}>{item.label}</Text>
+                                    </Pressable>
+                                );
+                            })}
+                        </View>
+                    );
+                })}
+            </ScrollView>
 
-                        return (
-                            <List.Accordion
-                                key={group.id}
-                                title={group.title}
-                                left={props => <MaterialCommunityIcons {...props} name={group.icon as any} size={24} color={expandedId === group.id ? colors.primary : colors.textSecondary} />}
-                                expanded={expandedId === group.id}
-                                onPress={() => handlePressGroup(group.id)}
-                                style={[styles.groupHeader, { backgroundColor: expandedId === group.id ? colors.primary + '10' : 'transparent' }]}
-                                titleStyle={{ color: expandedId === group.id ? colors.primary : colors.text, fontWeight: 'bold' }}
-                                theme={{ colors: { primary: colors.primary } }}
-                            >
-                                {group.items.map((item) => {
-                                    // Check if user has access to this specific item
-                                    if (!hasAccess(item.roles)) {
-                                        return null;
-                                    }
-
-                                    return (
-                                        <DrawerItem
-                                            key={item.screen}
-                                            label={item.label}
-                                            icon={({ color, size }) => (
-                                                <MaterialCommunityIcons name={item.icon as any} size={20} color={color} />
-                                            )}
-                                            onPress={() => handleNavigate(item.screen)}
-                                            labelStyle={{ color: colors.textSecondary, marginLeft: -16 }}
-                                            style={styles.drawerItem}
-                                            activeTintColor={colors.primary}
-                                            inactiveTintColor={colors.textSecondary}
-                                        />
-                                    );
-                                })}
-                            </List.Accordion>
-                        );
-                    })}
-                </View>
-            </DrawerContentScrollView>
-
-            {/* Footer with Logout */}
-            <View style={[styles.footer, { borderTopColor: colors.border }]}>
-                <DrawerItem
-                    label="Log Out"
-                    icon={({ color, size }) => (
-                        <MaterialCommunityIcons name="logout" size={size} color={colors.error} />
-                    )}
-                    onPress={handleLogout}
-                    labelStyle={{ color: colors.error, fontWeight: 'bold' }}
-                />
-                <Text style={[styles.version, { color: colors.textSecondary }]}>v1.0.0 Boost Huddle</Text>
+            <View style={[styles.footer, { paddingBottom: insets.bottom + 12 }]}>
+                <Pressable onPress={handleLogout} accessibilityRole="button" style={styles.logout}>
+                    <MaterialCommunityIcons name="logout" size={18} color="#FF5C6A" />
+                    <Text style={styles.logoutText}>Log out</Text>
+                </Pressable>
+                <Text style={styles.powered}>POWERED BY <Text style={{ color }}>BOOST HUDDLE</Text></Text>
             </View>
         </View>
     );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
-    header: {
-        padding: 20,
-        paddingTop: 50, // Status bar clearing
-        borderBottomWidth: 1,
-    },
-    userInfo: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
-    },
-    avatar: {
-        width: 50,
-        height: 50,
-        borderRadius: 25,
-        borderWidth: 2,
-    },
-    userDetails: {
-        flex: 1,
-    },
-    userName: {
-        fontSize: 16,
-        fontWeight: 'bold',
-    },
-    userRole: {
-        fontSize: 12,
-        fontWeight: 'bold',
-        letterSpacing: 1,
-    },
-    drawerContent: {
-        paddingTop: 10,
-    },
-    menuContainer: {
-        paddingHorizontal: 8,
-    },
-    groupHeader: {
-        borderRadius: 8,
-        marginBottom: 4,
-    },
-    drawerItem: {
-        marginLeft: 16,
-        borderRadius: 8,
-        height: 48,
-        justifyContent: 'center',
-    },
-    footer: {
-        padding: 16,
-        borderTopWidth: 1,
-    },
-    version: {
-        textAlign: 'center',
-        fontSize: 10,
-        marginTop: 8,
-        opacity: 0.5,
-    },
+    container: { flex: 1, backgroundColor: '#07090C' },
+    header: { paddingHorizontal: 18, paddingBottom: 16, overflow: 'hidden', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(255,255,255,0.1)' },
+    clubRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    clubName: { flex: 1, color: '#F2F5F7', fontFamily: FONTS.display, fontSize: 26, lineHeight: 27 },
+    userRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 16 },
+    avatar: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
+    avatarText: { color: '#06080B', fontFamily: FONTS.display, fontSize: 18 },
+    userName: { flex: 1, color: '#F2F5F7', fontWeight: '700', fontSize: 15 },
+    role: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 },
+    roleText: { fontFamily: FONTS.displaySemi, fontSize: 12, letterSpacing: 1.5 },
+    menu: { paddingVertical: 10, paddingHorizontal: 10, gap: 6 },
+    section: { paddingVertical: 4 },
+    staffZone: { borderWidth: 1, borderRadius: 16, paddingHorizontal: 4, marginTop: 6, backgroundColor: 'rgba(255,255,255,0.02)' },
+    sectionHead: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingTop: 10, paddingBottom: 4 },
+    sectionTitle: { color: 'rgba(242,245,247,0.45)', fontFamily: FONTS.displaySemi, fontSize: 13, letterSpacing: 2 },
+    item: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 7, paddingHorizontal: 10, borderRadius: 12 },
+    pressed: { backgroundColor: 'rgba(255,255,255,0.06)' },
+    activeBar: { position: 'absolute', left: 0, top: 10, bottom: 10, width: 3, borderRadius: 2 },
+    itemIcon: { width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+    itemLabel: { color: 'rgba(242,245,247,0.86)', fontSize: 15, fontWeight: '600' },
+    itemLabelActive: { color: '#FFFFFF', fontWeight: '800' },
+    footer: { paddingHorizontal: 18, paddingTop: 12, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(255,255,255,0.1)', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    logout: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 8 },
+    logoutText: { color: '#FF5C6A', fontWeight: '800' },
+    powered: { color: 'rgba(242,245,247,0.35)', fontFamily: FONTS.displaySemi, fontSize: 12, letterSpacing: 1.5 },
 });
