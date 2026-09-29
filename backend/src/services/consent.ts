@@ -25,12 +25,15 @@ export interface PlayerConsent {
   video: ConsentAnswer;
   source: "parent" | "staff" | null;
   updatedAt: number | null;
+  /** Staff only: how many accounts are linked to this player */
+  linkedParents?: number;
 }
 
 interface ConsentRow {
   id: string; name: string; number: number | null;
   photo_consent: number | null; video_consent: number | null;
   consent_source: string | null; consent_updated_at: number | null;
+  linked?: number;
 }
 
 const answer = (v: number | null): ConsentAnswer => (v === null || v === undefined ? null : v === 1);
@@ -39,6 +42,7 @@ const toRow = (r: ConsentRow): PlayerConsent => ({
   photos: answer(r.photo_consent), video: answer(r.video_consent),
   source: r.consent_source === "parent" || r.consent_source === "staff" ? r.consent_source : null,
   updatedAt: r.consent_updated_at,
+  ...(r.linked !== undefined ? { linkedParents: r.linked } : {}),
 });
 
 const isStaff = (claims: TenantClaims) => hasAnyRole(claims, STAFF_ROLES);
@@ -46,11 +50,12 @@ const isStaff = (claims: TenantClaims) => hasAnyRole(claims, STAFF_ROLES);
 /** Staff: the whole squad. Parents and players: only the players linked to their account. */
 export async function consentForViewer(env: DB, claims: TenantClaims): Promise<{ players: PlayerConsent[]; canEditAll: boolean }> {
   const { results } = await env.DB.prepare(
-    `SELECT id, name, number, photo_consent, video_consent, consent_source, consent_updated_at
-     FROM squad WHERE tenant_id = ? ORDER BY number IS NULL, number, name`,
+    `SELECT s.id, s.name, s.number, s.photo_consent, s.video_consent, s.consent_source, s.consent_updated_at,
+            (SELECT COUNT(*) FROM auth_user_players l WHERE l.tenant_id = s.tenant_id AND l.player_id = s.id) AS linked
+     FROM squad s WHERE s.tenant_id = ? ORDER BY s.number IS NULL, s.number, s.name`,
   ).bind(claims.tenantId).all<ConsentRow>();
-  const rows = (results ?? []).map(toRow);
-  if (isStaff(claims)) return { players: rows, canEditAll: true };
+  if (isStaff(claims)) return { players: (results ?? []).map(toRow), canEditAll: true };
+  const rows = (results ?? []).map(({ linked: _linked, ...r }) => toRow(r));
   const linked = await linkedPlayerIds(env, claims);
   return { players: rows.filter((r) => linked.has(r.playerId)), canEditAll: false };
 }

@@ -7,6 +7,8 @@ import { json } from "./services/util";
 import { handleGetMedia } from "./services/media";
 import { processDueJobs } from "./services/social/jobs";
 import { processDueAlerts } from "./services/matchAlerts/queue";
+import { sendConsentReminders } from "./services/consentReminders";
+import { receiveFixtureEmail } from "./services/faEmail/inbound";
 import { detectStreams } from "./services/stream/detect";
 import { corsHeaders, isPreflight } from "./middleware/cors";
 import { newRequestId, logJSON } from "./lib/log";
@@ -674,6 +676,13 @@ router.delete("/api/:v/fixtures/:id/attendance", (req, env, corsHdrs) => handleD
 router.put("/api/:v/fixtures/:id/stream", staffOnly((req, env, corsHdrs, _requestId, ctx) => handlePutStream(req, env, corsHdrs, ((req as any).params || {}).id, ctx)));
 router.delete("/api/:v/fixtures/:id/stream", staffOnly((req, env, corsHdrs) => handleDeleteStream(req, env, corsHdrs, ((req as any).params || {}).id)));
 router.put("/api/:v/fixtures/:id/venue", staffOnly((req, env, corsHdrs) => handlePutVenue(req, env, corsHdrs, ((req as any).params || {}).id)));
+
+// Linking parents to their children with an invite code (routes/parentLinks.ts)
+import { handleCreateParentInvite, handleLinkChild, handleListParents, handleUnlinkParent } from "./routes/parentLinks";
+router.post("/api/:v/players/:id/parent-invite", staffOnly((req, env, corsHdrs) => handleCreateParentInvite(req, env, corsHdrs, ((req as any).params || {}).id)));
+router.get("/api/:v/players/:id/parents", staffOnly((req, env, corsHdrs) => handleListParents(req, env, corsHdrs, ((req as any).params || {}).id)));
+router.delete("/api/:v/players/:id/parents/:userId", staffOnly((req, env, corsHdrs) => handleUnlinkParent(req, env, corsHdrs, ((req as any).params || {}).id, ((req as any).params || {}).userId)));
+router.post("/api/:v/link-child", (req, env, corsHdrs) => handleLinkChild(req, env, corsHdrs));
 
 // Parents' photo and video consent for their children (routes/consent.ts)
 import { handleGetConsent, handleSetConsent } from "./routes/consent";
@@ -1343,8 +1352,9 @@ router.put("/api/:v/club/league", staffOnly((req, env, corsHdrs) => handleSetLea
 router.post("/api/:v/club/league/paste", staffOnly((req, env, corsHdrs) => handlePasteLeague(req, env, corsHdrs)));
 router.delete("/api/:v/club/league/results", staffOnly((req, env, corsHdrs) => handleClearLeagueResults(req, env, corsHdrs)));
 // Fixtures from FA Full-Time emails, pasted by staff (routes/faEmail.ts)
-import { handleFaEmailImport } from "./routes/faEmail";
+import { handleFaEmailImport, handleGetFixtureEmail } from "./routes/faEmail";
 router.post("/api/:v/club/fixtures/fa-email", staffOnly((req, env, corsHdrs) => handleFaEmailImport(req, env, corsHdrs)));
+router.get("/api/:v/club/fixture-email", staffOnly((req, env, corsHdrs) => handleGetFixtureEmail(req, env, corsHdrs)));
 // FA Full-Time code snippets shown on the club's league pages (routes/faFullTime.ts)
 router.get("/api/:v/club/fa-full-time", (req, env, corsHdrs) => handleGetFaFullTime(req, env, corsHdrs));
 router.put("/api/:v/club/fa-full-time", staffOnly((req, env, corsHdrs) => handleSetFaFullTime(req, env, corsHdrs)));
@@ -1468,6 +1478,14 @@ export default {
         await postQueueConsumer.queue(batch, env);
     },
 
+    // Email handler (Cloudflare Email Routing): FA Full-Time emails forwarded to a
+    // club's fixtures-<token>@EMAIL_DOMAIN address add or update its fixtures.
+    async email(message: ForwardableEmailMessage, env: any): Promise<void> {
+        const raw = await new Response(message.raw).text();
+        const { outcome } = await receiveFixtureEmail(env, message.to, raw);
+        if (outcome === "unknown_address") message.setReject("Unknown address");
+    },
+
     // Scheduled handler for cron jobs
     async scheduled(event: ScheduledEvent, env: any, ctx: ExecutionContext): Promise<void> {
         const scheduledTime = new Date(event.scheduledTime);
@@ -1499,6 +1517,9 @@ export default {
 
             // Every 5 minutes: scheduled club posts (fixtures, results, birthdays...); each is posted once
             ctx.waitUntil(runScheduledPosts(env).catch((error) => logJSON({ level: 'error', msg: 'Scheduled posts failed', error: error instanceof Error ? error.message : String(error) })));
+
+            // Every 5 minutes (daytime only): remind parents who haven't answered photo/video consent
+            ctx.waitUntil(sendConsentReminders(env).catch((error) => logJSON({ level: 'error', msg: 'Consent reminders failed', error: error instanceof Error ? error.message : String(error) })));
 
             // 06:00 UTC: event reminders
             if (hour === 6 && minute < 5) {

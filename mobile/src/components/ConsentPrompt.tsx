@@ -4,24 +4,43 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS } from '../config';
 import { consentApi } from '../services/api';
 import { awaitingAnswer, nameList } from '../utils/consent';
+import { pendingInvite } from '../services/inviteLink';
+import { useAuth } from '../context/AuthContext';
 
 /**
- * Home screen, parents: asks for photo and video consent until they've
- * answered for each of their children. Hidden for staff and once answered.
+ * Home screen, parents: asks them to link their account to their child (when
+ * they have an invite code or aren't linked yet), then for photo and video
+ * consent until they've answered. Hidden for staff and once answered.
  */
 export default function ConsentPrompt({ onOpen }: { onOpen: () => void }) {
+  const { user } = useAuth();
   const [waiting, setWaiting] = useState<string[]>([]);
+  const [needsLink, setNeedsLink] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    consentApi.get()
-      .then((res) => {
-        if (!cancelled && !res.data.canEditAll) setWaiting(awaitingAnswer(res.data.players));
+    Promise.all([consentApi.get(), pendingInvite()])
+      .then(([res, code]) => {
+        if (cancelled || res.data.canEditAll) return;
+        setWaiting(awaitingAnswer(res.data.players));
+        setNeedsLink(!!code || (user?.role === 'parent' && !res.data.players.length));
       })
       .catch(() => undefined); // Optional: never blocks the home screen
     return () => { cancelled = true; };
-  }, []);
+  }, [user?.role]);
 
+  if (needsLink) {
+    return (
+      <Pressable onPress={onOpen} accessibilityRole="button" style={styles.card}>
+        <MaterialCommunityIcons name="account-child" size={28} color={COLORS.primary} />
+        <View style={styles.text}>
+          <Text style={styles.title}>Link your child</Text>
+          <Text style={styles.body}>Enter the code from the manager to see your child's details and answer photo and video consent.</Text>
+          <Text style={styles.link}>Link now →</Text>
+        </View>
+      </Pressable>
+    );
+  }
   if (!waiting.length) return null;
   const names = nameList(waiting.map((n) => n.split(' ')[0]));
   return (

@@ -195,8 +195,15 @@ with personal data.
   postponed or cancelled ones, matched by `fixtures.fa_fixture_id` (from the
   email's link), else date + opponent, else the one unplayed match against
   that opponent at the same end. Our side is the League Table's team or the
-  name closest to the club's. Receiving the emails automatically needs a
-  domain (Cloudflare Email Routing); until then it's paste.
+  name closest to the club's.
+- Automatic: each club has a private address `fixtures-<token>@EMAIL_DOMAIN`
+  (`tenants.fixture_email_token`, `GET /api/v1/club/fixture-email`) and sets
+  its inbox to forward FA Full-Time emails there. The Worker's `email()`
+  handler (`services/faEmail/inbound.ts`, `mime.ts`) imports them, shows
+  Gmail's forwarding confirmation code to staff and logs each email in
+  `fixture_email_log` (90 days). Switching it on needs a domain on
+  Cloudflare: set the `EMAIL_DOMAIN` var and an Email Routing catch-all rule
+  that sends to the `app-production` Worker. Until then clubs paste.
 
 ## Our league table (sorted by goal difference)
 
@@ -222,6 +229,15 @@ with personal data.
   prompt until answered) or by staff from a paper form
   (`GET /api/v1/consent`, `PUT /api/v1/players/:id/consent`,
   `services/consent.ts`).
+- Parents link their account to their child with a code from staff
+  (`POST /api/v1/players/:id/parent-invite`, `POST /api/v1/link-child`,
+  `services/parentLinks.ts`): 8 characters, stored hashed, 30 days, 4 uses,
+  a new code replaces the old; the shared link `?club=<slug>&link=<code>`
+  prefills it. Staff see and remove links (`/players/:id/parents`). The old
+  `auth/link-player` (short player codes) is rate limited.
+- Parents with an unanswered child get one push reminder, then one more a
+  week later (`services/consentReminders.ts`, 5-minute cron, 9am-7pm UK,
+  claimed in `consent_reminders`); the tap opens the consent screen.
 - Anything public reads photos through `publicPhotoSql()`: club page squad,
   MOTM, and every social graphic, on top of the club's `public_photos`.
 - Staff are warned about video: line-up editor and `GET .../lineup`

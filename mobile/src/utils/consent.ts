@@ -7,12 +7,25 @@ export interface ConsentAnswers {
 }
 
 /** Counts for the staff overview. */
-export function consentSummary(players: ConsentAnswers[]): { photosYes: number; videoYes: number; notAnswered: number } {
+export function consentSummary(players: Array<ConsentAnswers & { linkedParents?: number }>): { photosYes: number; videoYes: number; notAnswered: number; noParent: number } {
   return {
     photosYes: players.filter((p) => p.photos === true).length,
     videoYes: players.filter((p) => p.video === true).length,
     notAnswered: players.filter((p) => p.photos === null || p.video === null).length,
+    noParent: players.filter((p) => !p.linkedParents).length,
   };
+}
+
+export type ConsentFilter = 'all' | 'unanswered' | 'noVideo' | 'noParent';
+
+/** Staff filters on the consent page. */
+export function filterConsent<T extends ConsentAnswers & { linkedParents?: number }>(players: T[], filter: ConsentFilter): T[] {
+  switch (filter) {
+    case 'unanswered': return players.filter((p) => p.photos === null || p.video === null);
+    case 'noVideo': return players.filter((p) => p.video !== true);
+    case 'noParent': return players.filter((p) => !p.linkedParents);
+    default: return players;
+  }
 }
 
 /** Names of the players still waiting for an answer (for the parent's reminder). */

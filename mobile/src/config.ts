@@ -12,6 +12,8 @@ export const API_BASE_URL = envOr(process.env.EXPO_PUBLIC_API_BASE, 'https://app
 export const TENANT_ID = envOr(process.env.EXPO_PUBLIC_TENANT_ID, '');
 
 // Public website (club sign-up lives here, not in the app)
+/** The installable web app (links shared with parents open here) */
+export const APP_WEB_URL = envOr(process.env.EXPO_PUBLIC_APP_WEB_URL, 'https://boost-huddle-app.team-platform-2025.workers.dev');
 export const WEBSITE_URL = envOr(process.env.EXPO_PUBLIC_WEBSITE_URL, 'https://boost-huddle.team-platform-2025.workers.dev');
 
 // Legal pages (App Store / Play Store require these to be reachable in the app)

@@ -87,6 +87,10 @@ import ForgotPasswordScreen from './src/screens/ForgotPasswordScreen';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import FindClubScreen from './src/screens/FindClubScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
+import { captureInviteFromLink } from './src/services/inviteLink';
+
+// A parent opened the manager's invite link: keep the code until they're signed in
+captureInviteFromLink();
 
 const Drawer = createDrawerNavigator();
 const Tab = createBottomTabNavigator();

@@ -7,6 +7,7 @@ import { API_BASE, errorMessage, getSessionToken } from '@/lib/session';
 import { FaFullTimeEmbed, type FaSnippetKind, type FaSnippets } from '@/components/FaFullTimeEmbed';
 import { LeagueTableSettings } from '@/components/LeagueTableSettings';
 import { FaEmailImport } from '@/components/FaEmailImport';
+import { FixtureEmailForwarding } from '@/components/FixtureEmailForwarding';
 
 const BOXES: Array<{ kind: FaSnippetKind; type: string; label: string; shows: string }> = [
     { kind: 'table', type: 'Division - Table', label: 'League table', shows: 'the League Table page' },
@@ -79,6 +80,8 @@ export default function FaFullTimeSettingsPage() {
             </div>
 
             <LeagueTableSettings />
+
+            <FixtureEmailForwarding />
 
             <FaEmailImport />
 

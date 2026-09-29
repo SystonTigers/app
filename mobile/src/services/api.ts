@@ -1250,7 +1250,33 @@ export interface PlayerConsent {
   video: boolean | null;
   source: 'parent' | 'staff' | null;
   updatedAt: number | null;
+  /** Staff only: accounts linked to this player */
+  linkedParents?: number;
 }
+
+export interface LinkedParent { userId: string; email: string; linkedAt: number | null }
+
+/** Linking parents to their children with a code from the manager */
+export const parentLinkApi = {
+  /** Staff: a new code for this player's family (the old one stops working) */
+  invite: async (playerId: string): Promise<{ success: boolean; data: { code: string; expiresAt: number; playerName: string } }> => {
+    const response = await api.post(`/api/v1/players/${encodeURIComponent(playerId)}/parent-invite`, {});
+    return response.data;
+  },
+  parents: async (playerId: string): Promise<{ success: boolean; data: LinkedParent[] }> => {
+    const response = await api.get(`/api/v1/players/${encodeURIComponent(playerId)}/parents`);
+    return response.data;
+  },
+  unlink: async (playerId: string, userId: string): Promise<{ success: boolean; data: LinkedParent[] }> => {
+    const response = await api.delete(`/api/v1/players/${encodeURIComponent(playerId)}/parents/${encodeURIComponent(userId)}`);
+    return response.data;
+  },
+  /** Parent: enter the code */
+  link: async (code: string): Promise<{ success: boolean; data: { playerId: string; name: string; alreadyLinked: boolean } }> => {
+    const response = await api.post('/api/v1/link-child', { code });
+    return response.data;
+  },
+};
 
 export const consentApi = {
   /** Parents: their children. Staff: the whole squad (canEditAll). */

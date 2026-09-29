@@ -542,6 +542,11 @@ export async function handleGetMyTenants(req: Request, env: any, corsHdrs: Heade
 // OR create a new user record in that tenant if needed
 export async function handleLinkPlayer(req: Request, env: any, corsHdrs: Headers) {
   try {
+    // Player codes are short: slow down anyone trying to guess one
+    const limited = await rateLimit(req, env, { scope: "auth:link-player", limit: 10, windowSeconds: 900, path: "/api/v1/auth/link-player" });
+    if (!limited.ok) {
+      return json({ success: false, error: { code: "RATE_LIMITED", message: "Too many tries. Please wait a few minutes and try again." } }, 429, corsHdrs);
+    }
     const claims = await verifyJWT(env, (req.headers.get('Authorization') || '').substring(7));
     if (!claims) {return json({ success: false, error: "Unauthorized" }, 401, corsHdrs);}
 

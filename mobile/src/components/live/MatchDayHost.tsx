@@ -17,7 +17,7 @@ const DISMISSED_KEY = '@matchday_dismissed_streams';
 const PROMPT_KEY = '@matchday_prompt_dismissed';
 const RECHECK_MS = 5 * 60_000;
 /** Screens a notification tap may open */
-const OPENABLE = ['LiveMatch', 'MOTMVoting'];
+const OPENABLE = ['LiveMatch', 'MOTMVoting', 'MediaConsent'];
 
 /**
  * Runs in the background of the signed-in app on match days:
