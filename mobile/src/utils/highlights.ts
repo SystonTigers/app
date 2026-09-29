@@ -17,6 +17,23 @@ export interface HighlightMoment {
   hidden: boolean;
   /** Staff tweaks already applied (seconds) */
   shift: { start: number; end: number };
+  /** Seconds into the video when the button was tapped */
+  tapAt: number;
+  /** How long the clip runs before and after the tap (seconds) */
+  before: number;
+  after: number;
+  /** The score (us, them) just before and just after this moment */
+  scoreBefore: { us: number; them: number };
+  scoreAfter: { us: number; them: number };
+}
+
+/** Longest either side of a clip can be (matches the server) */
+export const MAX_CLIP_SIDE = 120;
+
+/** The before/after after a nudge, kept within 0..MAX_CLIP_SIDE (null when it wouldn't change). */
+export function nudgeSide(value: number, by: number): number | null {
+  const next = Math.max(0, Math.min(MAX_CLIP_SIDE, Math.round(value + by)));
+  return next === value ? null : next;
 }
 
 export interface HighlightsView {
@@ -30,6 +47,8 @@ export interface HighlightsView {
   momentsFromKickOff: HighlightMoment[];
   momentsTapped: number;
   canEdit: boolean;
+  /** Staff only: the club's name and colours, for the scoreboard drawn on videos */
+  brand: { clubName: string; primaryColor: string; secondaryColor: string } | null;
 }
 
 export interface HighlightsMatch {
@@ -107,4 +126,30 @@ export function matchDate(iso: string): string {
   if (!m) return iso;
   const d = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])));
   return d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
+}
+
+/** What the "Make a video to post" box needs (web app makes the file; the store app shows a note). */
+export interface MakeHighlightsVideoProps {
+  /** Clip times as seconds from kick-off */
+  moments: HighlightMoment[];
+  fileName: string;
+  fixture: HighlightsView['fixture'];
+  clubName: string;
+  clubColor: string;
+  busy: boolean;
+  /** Save how long a clip runs before and after its moment */
+  onTiming: (id: string, timing: { before: number; after: number }) => void;
+}
+
+/** How long the clips last once overlapping ones are joined (seconds). */
+export function clipsLength(clips: Array<{ start: number; end: number }>): number {
+  const sorted = [...clips].filter((c) => c.end > c.start).sort((a, b) => a.start - b.start);
+  let total = 0;
+  let reach = -Infinity;
+  for (const c of sorted) {
+    const from = Math.max(c.start, reach);
+    if (c.end > from) total += c.end - from;
+    reach = Math.max(reach, c.end);
+  }
+  return total;
 }

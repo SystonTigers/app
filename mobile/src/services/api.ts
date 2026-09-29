@@ -1249,8 +1249,8 @@ export const highlightsApi = {
     return response.data;
   },
 
-  /** Staff: where kick-off is in the video (seconds), or tweak one clip */
-  update: async (fixtureId: string, body: { kickoffSec?: number | null; moment?: { id: string; start?: number; end?: number; hidden?: boolean } }): Promise<{ success: boolean; data: HighlightsView }> => {
+  /** Staff: where kick-off is in the video (seconds), or change one clip (seconds before/after the tap, or hide it) */
+  update: async (fixtureId: string, body: { kickoffSec?: number | null; moment?: { id: string; start?: number; end?: number; before?: number; after?: number; hidden?: boolean } }): Promise<{ success: boolean; data: HighlightsView }> => {
     const response = await api.put(`/api/v1/fixtures/${fixtureId}/highlights`, body);
     return response.data;
   },

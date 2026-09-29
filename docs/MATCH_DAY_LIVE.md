@@ -118,16 +118,30 @@ Both stream from the XbotGo app to YouTube or any RTMP address for free.
   If the stream was found on the club's connected channel, the clips line up
   on their own. If the link was pasted, a manager lines the video up once:
   play it, pause on the kick-off whistle and tap "Kick-off is at…".
-- Managers can start a clip earlier, end it later or hide it.
+- Managers set how long each clip runs before and after its moment (**Timing**:
+  −5/−1/+1/+5 seconds, up to 2 minutes either side, saved when they stop
+  tapping) or hide it. The same timing is used for YouTube clips and for the
+  video to post.
 
 ## A highlights video to post (Facebook, Instagram, TikTok)
 
-- Copy the camera's recording of the match to your laptop or phone (the XbotGo
-  app saves it). Open the club app in a web browser, go to the match's
-  highlights and use **Make a video to post**: choose the recording, pause on
-  kick-off (or type the time), untick any moments you don't want, then
-  **Make the video** and **Save or share**.
-- It's made on your device: nothing is uploaded, so it's free. A laptop is
-  quickest; a long match on an older phone can run out of memory.
-- Clips start at the nearest "key frame" just before each moment (usually a
-  second or two earlier) so the video isn't re-encoded and keeps its quality.
+- No laptop needed: the XbotGo app saves the recording to the phone's Photos
+  (XbotGo album). On that phone, open the club app in the browser, go to the
+  match's highlights and use **Make a video to post**: choose the recording
+  from Photos, pause on kick-off (or type the time), untick any moments you
+  don't want (and change their **Timing** if needed), then **Make the video**
+  and **Save or share** (the share sheet posts straight to TikTok, Instagram
+  or WhatsApp, or saves back to Photos). On a laptop, choose the video file.
+- **Add the scoreboard and captions** (on by default): a 3-second title card
+  with the result, a scoreboard (club colour, opponent, score at that moment,
+  minute) in the top corner and a caption (e.g. "GOAL · SAM 23'", assist) as
+  each moment happens. Every frame is redrawn and re-encoded on the device
+  (WebCodecs, H.264 when the browser has it), so it takes roughly as long as
+  the video lasts. Browsers that can't encode video (older Safari) make it
+  without the scoreboard and say so.
+- With the scoreboard off, clips are copied without re-encoding: quick, full
+  camera quality, starting at the nearest key frame (a second or two early).
+- Either way it's made on the device: nothing is uploaded, so it's free.
+- The YouTube live stream itself can only show XbotGo's own scoreboard (set up
+  and updated in the XbotGo app). The app's live score and alerts come from
+  Match Centre; our scoreboard is drawn on the highlights video.

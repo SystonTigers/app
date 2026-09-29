@@ -6,6 +6,7 @@ import { COLORS } from '../config';
 import { useClubName } from '../context/ClubContext';
 import { apiErrorMessage, highlightsApi } from '../services/api';
 import ClipPlayer from '../components/highlights/ClipPlayer';
+import ClipTiming from '../components/highlights/ClipTiming';
 import MakeHighlightsVideo from '../components/highlights/MakeHighlightsVideo';
 import { formatClock, matchDate, nextClip, parseClock, type HighlightMoment, type HighlightsView } from '../utils/highlights';
 import { fixtureTitle } from '../utils/matchDay';
@@ -17,7 +18,8 @@ const ICONS: Record<HighlightMoment['type'], string> = {
 /**
  * Match highlights: each moment tapped in Match Centre, played one after
  * another from the match's YouTube video. Staff line the video up once
- * (where kick-off is) and can start a clip earlier, end it later or hide it.
+ * (where kick-off is) and set how long each clip runs before and after the
+ * moment, or hide it.
  */
 export default function MatchHighlightsScreen() {
   const route = useRoute<any>();
@@ -29,6 +31,7 @@ export default function MatchHighlightsScreen() {
   const [playing, setPlaying] = useState(-1);
   const [busy, setBusy] = useState(false);
   const [lineUpOpen, setLineUpOpen] = useState(false);
+  const [timingOpen, setTimingOpen] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!fixtureId) return;
@@ -125,11 +128,18 @@ export default function MatchHighlightsScreen() {
                 <Text style={styles.momentTime}>{formatClock(m.end - m.start)}</Text>
               </Pressable>
               {view.canEdit ? (
-                <View style={styles.tweaks}>
-                  <Tweak label="Start 5s earlier" onPress={() => save({ moment: { id: m.id, start: m.shift.start - 5 } })} disabled={busy} />
-                  <Tweak label="End 5s later" onPress={() => save({ moment: { id: m.id, end: m.shift.end + 5 } })} disabled={busy} />
-                  <Tweak label={m.hidden ? 'Show' : 'Hide'} onPress={() => save({ moment: { id: m.id, hidden: !m.hidden } })} disabled={busy} />
-                </View>
+                <>
+                  {timingOpen === m.id ? (
+                    <ClipTiming before={m.before} after={m.after} disabled={busy} onChange={(t) => save({ moment: { id: m.id, ...t } })} />
+                  ) : null}
+                  <View style={styles.tweaks}>
+                    <Tweak
+                      label={timingOpen === m.id ? 'Done' : `Timing: ${m.before}s before, ${m.after}s after`}
+                      onPress={() => setTimingOpen((id) => (id === m.id ? null : m.id))}
+                    />
+                    <Tweak label={m.hidden ? 'Show this clip' : 'Hide this clip'} onPress={() => save({ moment: { id: m.id, hidden: !m.hidden } })} disabled={busy} />
+                  </View>
+                </>
               ) : null}
             </View>
           ))}
@@ -146,6 +156,11 @@ export default function MatchHighlightsScreen() {
         <MakeHighlightsVideo
           moments={view.momentsFromKickOff}
           fileName={`${title} highlights`.replace(/[^\w\s-]/g, '').trim()}
+          fixture={view.fixture}
+          clubName={view.brand?.clubName || clubName}
+          clubColor={view.brand?.primaryColor || COLORS.primary}
+          busy={busy}
+          onTiming={(id, t) => save({ moment: { id, ...t } })}
         />
       ) : null}
 

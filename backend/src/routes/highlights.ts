@@ -11,7 +11,8 @@ import { json } from "../services/util";
 import { hasAnyRole, requireTenantJWT, STAFF_ROLES, type TenantClaims } from "../services/auth";
 import { loadEvents, loadFixture } from "../services/liveMatch";
 import { streamView } from "../services/matchDay";
-import { buildHighlights, HIGHLIGHT_TYPES, kickoffFromStreamStart, parseEdits, type HighlightEdits } from "../services/highlights";
+import { buildHighlights, HIGHLIGHT_TYPES, kickoffFromStreamStart, MAX_SIDE, parseEdits, shiftFor, type HighlightEdits } from "../services/highlights";
+import { loadClubSocial } from "../services/social/club";
 
 type Env = { DB: D1Database; [key: string]: unknown };
 
@@ -66,10 +67,13 @@ async function highlightsView(env: Env, claims: TenantClaims, fixtureId: string)
   // Staff making a video from the camera's own recording: clip times from kick-off (can be negative)
   const OFFSET = 100_000;
   const fromKickOff = staff
-    ? buildHighlights(events, OFFSET, fixture.opponent, parseEdits(row.highlight_edits)).map((m) => ({ ...m, start: m.start - OFFSET, end: m.end - OFFSET }))
+    ? buildHighlights(events, OFFSET, fixture.opponent, parseEdits(row.highlight_edits)).map((m) => ({ ...m, start: m.start - OFFSET, end: m.end - OFFSET, tapAt: m.tapAt - OFFSET }))
     : [];
+  const club = staff ? await loadClubSocial(env as never, claims.tenantId) : null;
   return {
     fixture: { ...fixture, homeScore: row.home_score, awayScore: row.away_score },
+    // For the scoreboard drawn on videos made from the camera's recording
+    brand: club ? { clubName: club.brand.clubName, primaryColor: club.brand.primaryColor, secondaryColor: club.brand.secondaryColor } : null,
     momentsFromKickOff: fromKickOff,
     video,
     kickoffSec,
@@ -154,6 +158,20 @@ export async function handlePutHighlights(req: Request, env: Env, corsHdrs: Head
       if (!events.some((e) => e.id === m.id)) return fail(corsHdrs, 404, "NOT_FOUND", "That moment isn't in this match.");
       const edits: HighlightEdits = parseEdits(row.highlight_edits);
       const next = { ...(edits[m.id] ?? {}) };
+      // "Start 12 seconds before the tap, end 5 after"
+      if (m.before !== undefined || m.after !== undefined) {
+        const event = events.find((e) => e.id === m.id)!;
+        const current = buildHighlights(events, 100_000, "", edits).find((c) => c.id === m.id);
+        const before = m.before === undefined ? current?.before : m.before;
+        const after = m.after === undefined ? current?.after : m.after;
+        if (typeof before !== "number" || typeof after !== "number" || !Number.isFinite(before) || !Number.isFinite(after) || before < 0 || after < 0 || before > MAX_SIDE || after > MAX_SIDE) {
+          return fail(corsHdrs, 400, "VALIDATION", `Clips can start and end up to ${MAX_SIDE} seconds either side of the moment.`);
+        }
+        const shift = shiftFor(event.type, before, after);
+        if (!shift) return fail(corsHdrs, 400, "VALIDATION", "That moment isn't a highlight.");
+        next.start = shift.start;
+        next.end = shift.end;
+      }
       for (const key of ["start", "end"] as const) {
         if (m[key] === undefined) continue;
         if (typeof m[key] !== "number" || !Number.isFinite(m[key])) return fail(corsHdrs, 400, "VALIDATION", "Clip changes need to be in seconds.");

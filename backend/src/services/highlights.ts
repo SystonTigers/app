@@ -42,9 +42,19 @@ export interface HighlightMoment {
   hidden: boolean;
   /** Staff tweaks already applied, in seconds (so the app can add to them) */
   shift: { start: number; end: number };
+  /** When the button was tapped (seconds into the video) */
+  tapAt: number;
+  /** Seconds the clip starts before the tap, and runs on after it */
+  before: number;
+  after: number;
+  /** The score (us, them) just before and just after this moment, for scoreboards */
+  scoreBefore: { us: number; them: number };
+  scoreAfter: { us: number; them: number };
 }
 
-const LIMIT = 60; // no edit moves a clip edge more than a minute
+const LIMIT = 120; // no edit moves a clip edge more than two minutes
+/** Longest the manager can make either side of a clip (seconds) */
+export const MAX_SIDE = 120;
 
 const clamp = (n: unknown): number => {
   const v = typeof n === "number" && Number.isFinite(n) ? n : 0;
@@ -103,17 +113,36 @@ export function buildHighlights(events: LiveEvent[], kickoffSec: number, opponen
   const ko = events.find((e) => e.type === "kick_off");
   if (!ko) return [];
   const moments: HighlightMoment[] = [];
+  const score = { us: 0, them: 0 };
   for (const e of events) {
+    const scoreBefore = { ...score };
+    if (e.type === "goal") score.us++;
+    if (e.type === "opp_goal") score.them++;
     const w = CLIP_WINDOWS[e.type];
     if (!w) continue;
     const at = kickoffSec + (e.createdAt - ko.createdAt) / 1000;
     const edit = edits[e.id] ?? {};
     const start = Math.max(0, Math.round(at - w.before + (edit.start ?? 0)));
     const end = Math.max(start + 3, Math.round(at + w.after + (edit.end ?? 0)));
+    const tapAt = Math.round(at);
     moments.push({
       id: e.id, type: e.type, minute: e.minute, ...describe(e, opponent), start, end, hidden: edit.hidden === true,
       shift: { start: edit.start ?? 0, end: edit.end ?? 0 },
+      tapAt, before: Math.max(0, tapAt - start), after: Math.max(0, end - tapAt),
+      scoreBefore, scoreAfter: { ...score },
     });
   }
   return moments;
+}
+
+/**
+ * The saved tweak for "start `before` seconds before the tap and end `after`
+ * seconds after it", for a moment of this type.
+ */
+export function shiftFor(type: LiveEventType, before: number, after: number): { start: number; end: number } | null {
+  const w = CLIP_WINDOWS[type];
+  if (!w) return null;
+  const b = Math.max(0, Math.min(MAX_SIDE, Math.round(before)));
+  const a = Math.max(0, Math.min(MAX_SIDE, Math.round(after)));
+  return { start: w.before - b, end: a - w.after };
 }

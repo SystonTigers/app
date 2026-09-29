@@ -121,8 +121,10 @@ with personal data.
   Nothing is downloaded or re-encoded, so it's free.
 - The video is lined up by where kick-off is in it (`fixtures.video_kickoff_sec`):
   worked out from the stream's real start time when YouTube detection found
-  it, otherwise staff pause on kick-off in the app. Staff can start clips
-  earlier, end them later or hide them (`fixtures.highlight_edits`).
+  it, otherwise staff pause on kick-off in the app. Staff set how many
+  seconds each clip runs before and after its moment (0–120, `ClipTiming.tsx`,
+  `PUT .../highlights {moment:{id,before,after}}`, stored as a shift from the
+  type's default in `fixtures.highlight_edits`) or hide it.
 - App: Highlights screen list, Live Match after full time, Match Centre after
   full time → `MatchHighlightsScreen`; clips play one after another
   (`components/highlights/ClipPlayer`, YouTube's player messages say when a
@@ -133,6 +135,13 @@ with personal data.
   the video is cut on their device by `services/highlightsVideo.ts`
   (mediabunny: reads the file in pieces, copies packets from each clip's key
   frame without re-encoding, joins them into an MP4). Nothing is uploaded.
+  On a phone the recording is picked straight from Photos (the XbotGo app
+  saves it there). With "Add the scoreboard and captions" (default) frames
+  are decoded, drawn with `services/highlightsOverlay.ts` (title card,
+  scoreboard with the score at each moment from `scoreBefore`/`scoreAfter`,
+  captions near `tapAt`) and re-encoded with WebCodecs
+  (`makeHighlightsVideoWithOverlays`); browsers without a video encoder get
+  the plain cut. `node test/highlightsOverlay.test.js` checks the drawing.
   Clip times come from `momentsFromKickOff` (staff only, seconds from
   kick-off). mediabunny is only loaded when making a video (its own chunk).
   `node test/highlightsVideo.test.js some.mp4` cuts a real file.

@@ -6,11 +6,18 @@
  * no re-encoding, so it's quick and keeps the camera's quality. Each clip
  * starts at the key frame just before its start (a second or so earlier),
  * which is where a video can be cut without re-encoding.
+ *
+ * With the scoreboard and captions on, every frame is drawn again with the
+ * overlay and re-encoded on the device (WebCodecs), which takes longer.
  */
 import {
-  ALL_FORMATS, BlobSource, BufferTarget, EncodedAudioPacketSource, EncodedPacketSink, EncodedVideoPacketSource, Input, Mp4OutputFormat, Output,
-  type EncodedPacket, type Source,
+  ALL_FORMATS, BlobSource, BufferTarget, CanvasSource, canEncodeVideo, EncodedAudioPacketSource, EncodedPacketSink, EncodedVideoPacketSource, Input,
+  Mp4OutputFormat, Output, QUALITY_HIGH, VideoSampleSink,
+  type EncodedPacket, type InputAudioTrack, type Source, type VideoCodec,
 } from 'mediabunny';
+import { drawOverlay, drawTitleCard, TITLE_SECONDS, type OverlayMatch, type OverlaySpan } from './highlightsOverlay';
+
+export { overlaySpans } from './highlightsOverlay';
 
 export interface Span {
   /** Seconds into the recording */
@@ -117,4 +124,144 @@ export async function makeHighlightsVideo(source: Source, spans: Span[], onProgr
 
 function shift(packet: EncodedPacket, by: number): EncodedPacket {
   return packet.clone({ timestamp: Math.max(0, packet.timestamp + by) });
+}
+
+/** True when this browser can draw the scoreboard onto a video (it needs to encode video itself). */
+export async function canAddOverlays(): Promise<boolean> {
+  if (typeof VideoEncoder === 'undefined') return false;
+  return (await pickCodec(1280, 720)) !== null;
+}
+
+async function pickCodec(width: number, height: number): Promise<VideoCodec | null> {
+  // H.264 plays everywhere (Instagram, TikTok, WhatsApp, iPhones); VP9 only if that's all the browser has
+  for (const codec of ['avc', 'vp9'] as VideoCodec[]) {
+    try {
+      if (await canEncodeVideo(codec, { width, height, bitrate: QUALITY_HIGH })) return codec;
+    } catch {
+      // Not supported: try the next one
+    }
+  }
+  return null;
+}
+
+const even = (n: number) => Math.max(2, Math.round(n / 2) * 2);
+const TITLE_FPS = 30;
+
+/**
+ * Like makeHighlightsVideo, but draws a title card with the result, a
+ * scoreboard with the score at each moment, and a caption as each moment
+ * starts. Every frame is re-encoded on this device, so it's slower.
+ */
+export async function makeHighlightsVideoWithOverlays(
+  source: Source,
+  spans: OverlaySpan[],
+  match: OverlayMatch,
+  onProgress?: (done: number) => void,
+  signal?: { cancelled: boolean },
+): Promise<Uint8Array> {
+  const input = new Input({ source, formats: ALL_FORMATS });
+  const video = await input.getPrimaryVideoTrack();
+  if (!video) throw new HighlightsVideoError("That file doesn't have any video in it.");
+  if (!(await video.canDecode())) throw new HighlightsVideoError("This browser can't read this video. Try Chrome, or turn off the scoreboard.");
+  const audio = await input.getPrimaryAudioTrack();
+
+  // Same shape as the recording (upright), no bigger than 1080p
+  const srcW = await video.getDisplayWidth();
+  const srcH = await video.getDisplayHeight();
+  const scale = Math.min(1, 1920 / Math.max(srcW, srcH), 1080 / Math.min(srcW, srcH));
+  const width = even(srcW * scale);
+  const height = even(srcH * scale);
+  const codec = await pickCodec(width, height);
+  if (!codec) throw new HighlightsVideoError("This browser can't add a scoreboard. Try Chrome on a laptop, or turn off the scoreboard.");
+
+  const canvas: OffscreenCanvas | HTMLCanvasElement = typeof OffscreenCanvas !== 'undefined'
+    ? new OffscreenCanvas(width, height)
+    : Object.assign(document.createElement('canvas'), { width, height });
+  const ctx = canvas.getContext('2d') as CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D | null;
+  if (!ctx) throw new HighlightsVideoError("This browser can't draw the scoreboard. Turn it off and try again.");
+
+  const output = new Output({ format: new Mp4OutputFormat({ fastStart: 'in-memory' }), target: new BufferTarget() });
+  const videoOut = new CanvasSource(canvas, { codec, bitrate: QUALITY_HIGH });
+  output.addVideoTrack(videoOut);
+  const audioCodec = audio ? await audio.getCodec() : null;
+  const audioOut = audio && audioCodec ? new EncodedAudioPacketSource(audioCodec) : null;
+  if (audioOut) output.addAudioTrack(audioOut);
+  await output.start();
+
+  const total = TITLE_SECONDS + spans.reduce((sum, s) => sum + (s.end - s.start), 0);
+  let done = 0;
+  const report = () => onProgress?.(Math.min(0.99, done / total));
+
+  // Title card
+  drawTitleCard(ctx, width, height, match);
+  for (let i = 0; i < TITLE_SECONDS * TITLE_FPS; i++) {
+    await videoOut.add(i / TITLE_FPS, 1 / TITLE_FPS);
+    done = i / TITLE_FPS;
+    report();
+  }
+
+  const frames = new VideoSampleSink(video);
+  const audioCopy = audio && audioOut ? audioCopier(audio, audioOut) : null;
+  let outTime = TITLE_SECONDS;
+  let drewAny = false;
+
+  for (const span of spans) {
+    if (signal?.cancelled) throw new HighlightsVideoError('Cancelled.');
+    let first: number | null = null;
+    let last = span.start;
+    for await (const sample of frames.samples(span.start, span.end)) {
+      try {
+        if (signal?.cancelled) throw new HighlightsVideoError('Cancelled.');
+        const t = sample.timestamp;
+        if (first === null) first = t;
+        sample.draw(ctx, 0, 0, width, height);
+        drawOverlay(ctx, width, height, match, span, t);
+        const duration = sample.duration > 0 ? sample.duration : 1 / 30;
+        await videoOut.add(outTime + (t - first), duration);
+        last = t + duration;
+        drewAny = true;
+        done = TITLE_SECONDS + spansBefore(spans, span) + (t - span.start);
+        report();
+      } finally {
+        sample.close();
+      }
+    }
+    if (first === null) continue;
+    if (audioCopy) await audioCopy(first, last, outTime - first);
+    outTime += last - first;
+  }
+
+  if (!drewAny) throw new HighlightsVideoError("None of the moments are inside this recording. Check where kick-off is.");
+  await output.finalize();
+  onProgress?.(1);
+  const buffer = (output.target as BufferTarget).buffer;
+  if (!buffer) throw new HighlightsVideoError('Making the video failed. Please try again.');
+  return new Uint8Array(buffer);
+}
+
+function spansBefore(spans: OverlaySpan[], span: OverlaySpan): number {
+  let sum = 0;
+  for (const s of spans) {
+    if (s === span) break;
+    sum += s.end - s.start;
+  }
+  return sum;
+}
+
+/** Copies the recording's own sound (no re-encoding) for [from, to), moved by `by` seconds. */
+function audioCopier(audio: InputAudioTrack, out: EncodedAudioPacketSource) {
+  const sink = new EncodedPacketSink(audio);
+  let config: AudioDecoderConfig | null | undefined;
+  let first = true;
+  return async (from: number, to: number, by: number) => {
+    if (config === undefined) config = await audio.getDecoderConfig();
+    const start = (await sink.getPacket(from)) ?? (await sink.getFirstPacket());
+    if (!start) return;
+    for await (const packet of sink.packets(start)) {
+      if (packet.timestamp >= to) break;
+      if (packet.timestamp < from) continue;
+      await out.add(shift(packet, by), first && config ? { decoderConfig: config } : undefined);
+      first = false;
+    }
+  };
 }

@@ -35,8 +35,8 @@ describe("Match highlights", () => {
 
     // Staff can make a video from the camera's recording without YouTube: clip times from kick-off
     const staffView = (await call(`/api/v1/fixtures/${fixtureId}/highlights`, { token: coach.token })).data.data;
-    expect(staffView.momentsFromKickOff.map((m: any) => [m.type, m.start, m.end])).toEqual([
-      ["goal", 150 - 20, 150 + 6], ["chance", 330 - 15, 330 + 4], ["save", 450 - 12, 450 + 4], ["chance", 500 - 15, 500 + 4],
+    expect(staffView.momentsFromKickOff.map((m: any) => [m.type, m.start, m.end, m.tapAt])).toEqual([
+      ["goal", 150 - 20, 150 + 6, 150], ["chance", 330 - 15, 330 + 4, 330], ["save", 450 - 12, 450 + 4, 450], ["chance", 500 - 15, 500 + 4, 500],
     ]);
 
     // The manager adds the match video (a pasted link, so the video isn't lined up yet)
@@ -64,7 +64,16 @@ describe("Match highlights", () => {
     expect(view.moments[0].start).toBe(60 + 150 - 25);
     expect(view.moments.find((m: any) => m.id === chance.id).hidden).toBe(true);
 
+    // Fully adjustable: start the save 30 seconds before the tap and end 10 after
+    const save = view.moments.find((m: any) => m.type === "save");
+    view = (await call(`/api/v1/fixtures/${fixtureId}/highlights`, { method: "PUT", token: coach.token, body: { moment: { id: save.id, before: 30, after: 10 } } })).data.data;
+    expect(view.moments.find((m: any) => m.id === save.id)).toMatchObject({ before: 30, after: 10, start: 60 + 450 - 30, end: 60 + 450 + 10 });
+    expect((await call(`/api/v1/fixtures/${fixtureId}/highlights`, { method: "PUT", token: coach.token, body: { moment: { id: save.id, before: 500 } } })).status).toBe(400);
+    expect(view.brand).toMatchObject({ clubName: expect.any(String) });
+    expect(view.moments[0]).toMatchObject({ scoreBefore: { us: 0, them: 0 }, scoreAfter: { us: 1, them: 0 } });
+
     const parentView = (await call(`/api/v1/fixtures/${fixtureId}/highlights`, { token: parent.token })).data.data;
+    expect(parentView.brand).toBeNull();
     expect(parentView.moments).toHaveLength(3);
     expect(parentView.moments.some((m: any) => m.id === chance.id)).toBe(false);
 

@@ -1,10 +1,10 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { COLORS } from '../../config';
-import type { HighlightMoment } from '../../utils/highlights';
+import type { MakeHighlightsVideoProps } from '../../utils/highlights';
 
 /** iOS/Android store app: making the video file happens in the web app. */
-export default function MakeHighlightsVideo(_: { moments: HighlightMoment[]; fileName: string }) {
+export default function MakeHighlightsVideo(_: MakeHighlightsVideoProps) {
   return (
     <View style={styles.box}>
       <Text style={styles.text}>To make a video to post, open the club app in your phone or laptop's web browser and go to these highlights.</Text>
