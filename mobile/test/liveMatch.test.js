@@ -52,3 +52,17 @@ assert.equal(postStatusText({ ...basePost, status: 'done', results: { feed: { ok
 assert.equal(postStatusText({ ...basePost, status: 'failed', results: { feed: { ok: true }, facebook: { ok: false, error: 'Reconnect Facebook and Instagram in Settings.' } } }, 0),
   "Couldn't post. Facebook: Reconnect Facebook and Instagram in Settings.");
 console.log('postStatusText tests passed');
+
+// Two-column timeline: each update under its team
+const { eventSide, describeEventOnSide } = require('../src/utils/liveMatch.ts');
+const ev = (type, extra = {}) => ({ id: type, type, minute: 10, playerId: null, playerName: 'Sam', player2Id: null, player2Name: null, text: null, createdAt: 0, ...extra });
+assert.equal(eventSide(ev('goal')), 'us');
+assert.equal(eventSide(ev('yellow')), 'us');
+assert.equal(eventSide(ev('save')), 'us');
+assert.equal(eventSide(ev('opp_goal')), 'them');
+assert.equal(eventSide(ev('half_time')), 'middle');
+assert.equal(eventSide(ev('note')), 'middle');
+assert.equal(describeEventOnSide(ev('opp_goal'), 'Rival FC'), 'GOAL!');
+assert.equal(describeEventOnSide(ev('opp_goal', { text: 'penalty' }), 'Rival FC'), 'GOAL! penalty');
+assert.equal(describeEventOnSide(ev('goal'), 'Rival FC'), 'GOAL! Sam');
+console.log('eventSide tests passed');

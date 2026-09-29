@@ -109,6 +109,21 @@ export function describeEvent(e: LiveEvent, opponent: string): string {
   }
 }
 
+/** Which side of a two-column timeline an update belongs to: our team's, the opponent's, or the middle (whistles, notes). */
+export function eventSide(e: LiveEvent): 'us' | 'them' | 'middle' {
+  switch (e.type) {
+    case 'opp_goal': return 'them';
+    case 'kick_off': case 'half_time': case 'second_half': case 'full_time': case 'note': return 'middle';
+    default: return 'us';
+  }
+}
+
+/** The text for an update shown under its team's name (the team is already clear from the side). */
+export function describeEventOnSide(e: LiveEvent, opponent: string): string {
+  if (e.type === 'opp_goal') return `GOAL!${e.text ? ` ${e.text}` : ''}`;
+  return describeEvent(e, opponent);
+}
+
 export function newClientEventId(): string {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }

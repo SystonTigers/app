@@ -85,7 +85,7 @@ export default function LiveMatchWatchScreen() {
           <Card key={m.fixture.id} inset style={styles.card}>
             {today ? <MatchDayPanel fixture={today} /> : null}
             <ScoreHeader match={m} clubName={clubName} />
-            <LiveTimeline events={m.events} opponent={m.fixture.opponent} />
+            <LiveTimeline events={m.events} opponent={m.fixture.opponent} usIsHome={m.fixture.homeAway !== 'away'} />
           </Card>
         );
       })}
