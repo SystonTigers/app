@@ -144,6 +144,11 @@ async function pickCodec(width: number, height: number): Promise<VideoCodec | nu
   return null;
 }
 
+/** Bits per second for the re-encoded video: ~5 Mbit/s at 1080p, ~2.2 Mbit/s at 720p. */
+export function overlayBitrate(width: number, height: number): number {
+  return Math.max(1_000_000, Math.round(width * height * 30 * 0.08));
+}
+
 const even = (n: number) => Math.max(2, Math.round(n / 2) * 2);
 const TITLE_FPS = 30;
 
@@ -181,7 +186,8 @@ export async function makeHighlightsVideoWithOverlays(
   if (!ctx) throw new HighlightsVideoError("This browser can't draw the scoreboard. Turn it off and try again.");
 
   const output = new Output({ format: new Mp4OutputFormat({ fastStart: 'in-memory' }), target: new BufferTarget() });
-  const videoOut = new CanvasSource(canvas, { codec, bitrate: QUALITY_HIGH });
+  // About 5 Mbit/s at 1080p: sharp enough for social media (which re-compresses anyway) and small enough for a phone's memory
+  const videoOut = new CanvasSource(canvas, { codec, bitrate: overlayBitrate(width, height) });
   output.addVideoTrack(videoOut);
   const audioCodec = audio ? await audio.getCodec() : null;
   const audioOut = audio && audioCodec ? new EncodedAudioPacketSource(audioCodec) : null;

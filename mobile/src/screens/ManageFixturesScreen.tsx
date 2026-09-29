@@ -16,6 +16,7 @@ import {
 import { COLORS } from '../config';
 import { fixturesApi } from '../services/api';
 import { useClubName } from '../context/ClubContext';
+import FaEmailPaste from '../components/FaEmailPaste';
 
 interface Fixture {
   id: string;
@@ -171,6 +172,8 @@ export default function ManageFixturesScreen() {
             Add upcoming matches and update results
           </Paragraph>
         </View>
+
+        <FaEmailPaste onImported={loadFixtures} />
 
         <View style={styles.fixturesContainer}>
           {fixtures.length === 0 ? (

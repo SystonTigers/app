@@ -231,7 +231,7 @@ export function SocialSettings() {
                 <label className="mt-4 flex items-start gap-3 cursor-pointer">
                     <input id="public-photos" type="checkbox" className="mt-1 h-5 w-5 accent-brand" checked={settings.photos} disabled={busy}
                         onChange={(e) => savePhotos(e.target.checked)} />
-                    <span className="text-sm text-gray-900 dark:text-white">Show players&apos; photos (on goal graphics and the club page)</span>
+                    <span className="text-sm text-gray-900 dark:text-white">Show players&apos; photos (on goal graphics and the club page). Only players whose parents said yes in the app (Photo &amp; Video Consent) are shown.</span>
                 </label>
             </section>
 

@@ -1,5 +1,6 @@
 /** A club's posting setup: branding, design pack, connections and choices. */
 import { DEFAULT_PACK, getPack, type Pack } from "../graphics/packs";
+import { publicPhotoSql } from "../consent";
 import { safeColor } from "../graphics/text";
 import type { Brand } from "../graphics/types";
 import { parseEventSettings, type EventSettings } from "./content";
@@ -81,7 +82,7 @@ export async function loadClubSocial(env: SocialEnv, tenantId: string): Promise<
 /** Squad name and photo for a player (the photo is only used if the club allows photos). */
 export async function postPerson(env: SocialEnv, tenantId: string, playerId: string | null, fallbackName: string | null): Promise<{ name: string; photoUrl: string | null } | null> {
   if (!playerId) return fallbackName ? { name: fallbackName, photoUrl: null } : null;
-  const row = await env.DB.prepare(`SELECT name, COALESCE(headshot_url, photo_url) AS photo FROM squad WHERE tenant_id = ? AND id = ?`)
+  const row = await env.DB.prepare(`SELECT name, ${publicPhotoSql()} AS photo FROM squad WHERE tenant_id = ? AND id = ?`)
     .bind(tenantId, playerId).first<{ name: string; photo: string | null }>();
   if (!row) return fallbackName ? { name: fallbackName, photoUrl: null } : null;
   return { name: row.name, photoUrl: row.photo };

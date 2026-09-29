@@ -92,9 +92,12 @@ describe("Public club page names", () => {
     const saved2 = (await call("/api/v1/tenants/me", { token: owner.token })).data.tenant;
     expect([saved2.public_name_style, saved2.public_photos]).toEqual(["full", 1]);
 
+    // Full names now; the photo also needs his parent's yes
     const full = await findHarry();
     expect(full.name).toBe("Harry Public");
-    expect(full.photo).toBe("https://example.com/harry.jpg");
+    expect(full.photo).toBeUndefined();
+    await call(`/api/v1/players/${added.data.playerId}/consent`, { method: "PUT", token: owner.token, body: { photos: true } });
+    expect((await findHarry()).photo).toBe("https://example.com/harry.jpg");
 
     // Back to the default
     await call("/api/v1/tenants/me", { method: "PATCH", token: owner.token, body: { publicFullNames: false } });

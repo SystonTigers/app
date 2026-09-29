@@ -124,6 +124,7 @@ export default function MatchHighlightsScreen() {
                 <View style={styles.momentText}>
                   <Text style={styles.momentTitle}>{m.title}{m.hidden ? ' (hidden)' : ''}</Text>
                   {m.detail ? <Text style={styles.momentDetail}>{m.detail}</Text> : null}
+                  {m.noVideoConsent?.length ? <Text style={styles.consent}>No video consent: {m.noVideoConsent.join(', ')}</Text> : null}
                 </View>
                 <Text style={styles.momentTime}>{formatClock(m.end - m.start)}</Text>
               </Pressable>
@@ -253,6 +254,7 @@ const styles = StyleSheet.create({
   momentText: { flex: 1 },
   momentTitle: { color: COLORS.text, fontWeight: '800' },
   momentDetail: { color: COLORS.textLight, fontSize: 13 },
+  consent: { color: '#F5C400', fontSize: 12, fontWeight: '700' },
   momentTime: { color: COLORS.textLight, fontVariant: ['tabular-nums'] },
   tweaks: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 },
   tweak: { borderWidth: 1, borderColor: COLORS.textLight, borderRadius: 8, paddingVertical: 6, paddingHorizontal: 10 },

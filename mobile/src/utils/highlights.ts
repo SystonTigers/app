@@ -25,6 +25,8 @@ export interface HighlightMoment {
   /** The score (us, them) just before and just after this moment */
   scoreBefore: { us: number; them: number };
   scoreAfter: { us: number; them: number };
+  /** Staff only: players in this clip whose parents haven't said yes to video */
+  noVideoConsent?: string[];
 }
 
 /** Longest either side of a clip can be (matches the server) */

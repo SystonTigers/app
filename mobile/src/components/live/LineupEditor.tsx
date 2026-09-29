@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Checkbox, Chip, Modal, Portal } from 'react-native-paper';
 import { COLORS } from '../../config';
-import { apiErrorMessage, lineupApi, type Lineup } from '../../services/api';
+import { apiErrorMessage, consentApi, lineupApi, type Lineup } from '../../services/api';
 import type { PickablePlayer } from './PlayerPicker';
 
 const TEAM_SIZES = [5, 7, 9, 11];
@@ -29,6 +29,8 @@ export default function LineupEditor({ visible, fixtureId, opponent, players, on
   const [rememberSize, setRememberSize] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  // Players whose parents haven't said yes to video (they'd be on the live stream)
+  const [noVideo, setNoVideo] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!visible || !fixtureId) return;
@@ -46,7 +48,12 @@ export default function LineupEditor({ visible, fixtureId, opponent, players, on
       })
       .catch((err) => setError(apiErrorMessage(err, "We couldn't load the team.")))
       .finally(() => setLoading(false));
+    consentApi.get()
+      .then((res) => setNoVideo(new Set(res.data.players.filter((p) => p.video !== true).map((p) => p.playerId))))
+      .catch(() => setNoVideo(new Set()));
   }, [visible, fixtureId]);
+
+  const pickedWithoutVideo = order.filter((id) => roles[id] && noVideo.has(id));
 
   const starters = order.filter((id) => roles[id] === 'starter');
   const subs = order.filter((id) => roles[id] === 'sub');
@@ -112,13 +119,18 @@ export default function LineupEditor({ visible, fixtureId, opponent, players, on
 
             <Text style={styles.label}>Starting ({starters.length}/{teamSize}) · Subs ({subs.length})</Text>
             <Text style={styles.help}>Tap a player: starting → sub → not playing.</Text>
+            {pickedWithoutVideo.length ? (
+              <Text style={styles.warning}>
+                No video consent yet: {pickedWithoutVideo.map(label).join(', ')}. They'll be on the live stream, so ask their parents to answer in the app (Photo & Video Consent) or keep the camera off them.
+              </Text>
+            ) : null}
             {players.map((p) => {
               const role = roles[p.id];
               return (
                 <Pressable key={p.id} onPress={() => cycle(p.id)} accessibilityRole="button" accessibilityLabel={`${p.name}: ${role === 'starter' ? 'starting' : role === 'sub' ? 'sub' : 'not playing'}`}
                   style={({ pressed }) => [styles.row, pressed ? styles.pressed : null]}>
                   <Text style={styles.number}>{p.number ?? ''}</Text>
-                  <Text style={[styles.name, !role ? styles.dim : null]}>{p.name}</Text>
+                  <Text style={[styles.name, !role ? styles.dim : null]}>{p.name}{noVideo.has(p.id) ? <Text style={styles.noVideo}>  · no video consent</Text> : null}</Text>
                   <Text style={[styles.badge, role === 'starter' ? styles.badgeStart : role === 'sub' ? styles.badgeSub : styles.badgeOut]}>
                     {role === 'starter' ? 'Starting' : role === 'sub' ? 'Sub' : '–'}
                   </Text>
@@ -156,6 +168,8 @@ const styles = StyleSheet.create({
   number: { width: 36, color: COLORS.textLight, fontWeight: '800' },
   name: { flex: 1, color: COLORS.text, fontSize: 16, fontWeight: '600' },
   dim: { color: COLORS.textLight },
+  noVideo: { color: '#F5C400', fontSize: 12, fontWeight: '700' },
+  warning: { color: '#F5C400', fontSize: 13, marginBottom: 6 },
   badge: { minWidth: 72, textAlign: 'center', borderRadius: 999, paddingVertical: 4, paddingHorizontal: 10, fontWeight: '800', fontSize: 12, overflow: 'hidden' },
   badgeStart: { backgroundColor: COLORS.primary, color: COLORS.background },
   badgeSub: { borderWidth: 1, borderColor: COLORS.primary, color: COLORS.primary },

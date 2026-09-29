@@ -10,6 +10,7 @@
  * (3 days before) · 19:00 milestones · postponements whenever they happen.
  */
 import { opponentBadgeUrl, normalizeTeamName } from "../opponentBadges";
+import { publicPhotoSql } from "../consent";
 import { guessOurTeam } from "../league/table";
 import type { SocialEnv } from "./club";
 import {
@@ -66,7 +67,7 @@ async function fixturesBetween(env: SocialEnv, tenantId: string, from: string, t
 }
 
 async function person(env: SocialEnv, tenantId: string, playerId: string): Promise<{ name: string; photoUrl: string | null } | null> {
-  const row = await env.DB.prepare(`SELECT name, COALESCE(headshot_url, photo_url) AS photo FROM squad WHERE tenant_id = ? AND id = ?`)
+  const row = await env.DB.prepare(`SELECT name, ${publicPhotoSql()} AS photo FROM squad WHERE tenant_id = ? AND id = ?`)
     .bind(tenantId, playerId).first<{ name: string; photo: string | null }>();
   return row ? { name: row.name, photoUrl: row.photo } : null;
 }
@@ -109,7 +110,7 @@ export async function scheduleClub(env: SocialEnv, tenantId: string, now: Date):
     }
     // Birthdays (no age shown)
     const { results: birthdays } = await env.DB.prepare(
-      `SELECT id, name, COALESCE(headshot_url, photo_url) AS photo FROM squad WHERE tenant_id = ? AND dob IS NOT NULL AND substr(dob, 6, 5) = ?`,
+      `SELECT id, name, ${publicPhotoSql()} AS photo FROM squad WHERE tenant_id = ? AND dob IS NOT NULL AND substr(dob, 6, 5) = ?`,
     ).bind(tenantId, t.date.slice(5)).all<{ id: string; name: string; photo: string | null }>();
     for (const b of birthdays || []) {
       await queue("birthday", `birthday:${b.id}:${t.date.slice(0, 4)}`, (club, policy) => birthdayPost(club.brand, policy, { name: b.name, photoUrl: b.photo }));

@@ -22,12 +22,15 @@ export default function MakeHighlightsVideo({ moments, fileName, fixture, clubNa
   const [duration, setDuration] = useState(0);
   const [kickoff, setKickoff] = useState<number | null>(null);
   const [typed, setTyped] = useState('');
-  const [chosen, setChosen] = useState<Record<string, boolean>>(() => Object.fromEntries(moments.map((m) => [m.id, !m.hidden])));
+  // Clips showing a player without video consent start unticked
+  const [chosen, setChosen] = useState<Record<string, boolean>>(() => Object.fromEntries(moments.map((m) => [m.id, !m.hidden && !m.noVideoConsent?.length])));
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState('');
   const [result, setResult] = useState<{ url: string; blob: Blob; size: number; plain: boolean } | null>(null);
   const [overlays, setOverlays] = useState(true);
   const [timingOpen, setTimingOpen] = useState<string | null>(null);
+  // Whether this phone/browser can draw the scoreboard (null while checking)
+  const [canOverlay, setCanOverlay] = useState<boolean | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const cancel = useRef({ cancelled: false });
 
@@ -50,6 +53,16 @@ export default function MakeHighlightsVideo({ moments, fileName, fixture, clubNa
     };
     input.click();
   };
+
+  useEffect(() => {
+    if (stage !== 'choose' || canOverlay !== null) return;
+    let cancelled = false;
+    import('../../services/highlightsVideo')
+      .then((video) => video.canAddOverlays())
+      .then((ok) => { if (!cancelled) setCanOverlay(ok); })
+      .catch(() => { if (!cancelled) setCanOverlay(false); });
+    return () => { cancelled = true; };
+  }, [stage, canOverlay]);
 
   const setKick = (sec: number) => {
     setKickoff(sec);
@@ -178,6 +191,9 @@ export default function MakeHighlightsVideo({ moments, fileName, fixture, clubNa
                   <Text style={styles.checkTime}>{m.before}s + {m.after}s <Text style={styles.link}>Timing</Text></Text>
                 </Pressable>
               </View>
+              {m.noVideoConsent?.length ? (
+                <Text style={styles.consent}>No video consent: {m.noVideoConsent.join(', ')}. Only post this clip once their parents say yes.</Text>
+              ) : null}
               {timingOpen === m.id ? (
                 <ClipTiming before={m.before} after={m.after} disabled={busy || stage === 'making'} onChange={(t) => onTiming(m.id, t)} />
               ) : null}
@@ -188,6 +204,9 @@ export default function MakeHighlightsVideo({ moments, fileName, fixture, clubNa
             <View style={styles.optionText}>
               <Text style={styles.optionTitle}>Add the scoreboard and captions</Text>
               <Text style={styles.help}>A title card with the result, the score and minute in the corner, and who scored as each moment starts. Takes longer to make (roughly as long as the video).</Text>
+              {canOverlay === false ? (
+                <Text style={styles.consent}>This browser can't add the scoreboard, so the video will be made without it. Chrome (on Android or a laptop) or an up-to-date iPhone can add it.</Text>
+              ) : null}
             </View>
           </Pressable>
           {stage === 'making' ? (
@@ -244,6 +263,7 @@ const styles = StyleSheet.create({
   checkMain: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 },
   optionTitle: { color: COLORS.text, fontWeight: '800' },
   optionText: { flex: 1 },
+  consent: { color: '#F5C400', fontSize: 12, fontWeight: '700', marginLeft: 30 },
   checkBox: { color: COLORS.primary, fontSize: 20 },
   checkText: { flex: 1, color: COLORS.text },
   checkTime: { color: COLORS.textLight },

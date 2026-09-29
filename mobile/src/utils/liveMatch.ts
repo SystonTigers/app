@@ -7,7 +7,9 @@ export type LiveEventType =
   | 'kick_off' | 'half_time' | 'second_half' | 'full_time'
   | 'goal' | 'opp_goal' | 'yellow' | 'red' | 'sub' | 'note'
   /** Moments for the highlights: no score change, no posts or alerts */
-  | 'chance' | 'save' | 'skill';
+  | 'chance' | 'save' | 'skill'
+  /** The other team's cards: timeline only (no stats, posts or alerts) */
+  | 'opp_yellow' | 'opp_red';
 
 export type LiveStatus = 'scheduled' | 'live' | 'half_time' | 'full_time';
 
@@ -106,13 +108,15 @@ export function describeEvent(e: LiveEvent, opponent: string): string {
     case 'chance': return `Chance${e.playerName ? `: ${e.playerName}` : ''}`;
     case 'save': return `Save${e.playerName ? `: ${e.playerName}` : ''}`;
     case 'skill': return `Great play${e.playerName ? `: ${e.playerName}` : ''}`;
+    case 'opp_yellow': return `Yellow card: ${opponent}${e.text ? ` (${e.text})` : ''}`;
+    case 'opp_red': return `Red card: ${opponent}${e.text ? ` (${e.text})` : ''}`;
   }
 }
 
 /** Which side of a two-column timeline an update belongs to: our team's, the opponent's, or the middle (whistles, notes). */
 export function eventSide(e: LiveEvent): 'us' | 'them' | 'middle' {
   switch (e.type) {
-    case 'opp_goal': return 'them';
+    case 'opp_goal': case 'opp_yellow': case 'opp_red': return 'them';
     case 'kick_off': case 'half_time': case 'second_half': case 'full_time': case 'note': return 'middle';
     default: return 'us';
   }
@@ -121,6 +125,8 @@ export function eventSide(e: LiveEvent): 'us' | 'them' | 'middle' {
 /** The text for an update shown under its team's name (the team is already clear from the side). */
 export function describeEventOnSide(e: LiveEvent, opponent: string): string {
   if (e.type === 'opp_goal') return `GOAL!${e.text ? ` ${e.text}` : ''}`;
+  if (e.type === 'opp_yellow') return `Yellow card${e.text ? ` ${e.text}` : ''}`;
+  if (e.type === 'opp_red') return `Red card${e.text ? ` ${e.text}` : ''}`;
   return describeEvent(e, opponent);
 }
 

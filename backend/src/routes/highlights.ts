@@ -13,6 +13,7 @@ import { loadEvents, loadFixture } from "../services/liveMatch";
 import { streamView } from "../services/matchDay";
 import { buildHighlights, HIGHLIGHT_TYPES, kickoffFromStreamStart, MAX_SIDE, parseEdits, shiftFor, type HighlightEdits } from "../services/highlights";
 import { loadClubSocial } from "../services/social/club";
+import { withoutVideoConsent } from "../services/consent";
 
 type Env = { DB: D1Database; [key: string]: unknown };
 
@@ -70,15 +71,19 @@ async function highlightsView(env: Env, claims: TenantClaims, fixtureId: string)
     ? buildHighlights(events, OFFSET, fixture.opponent, parseEdits(row.highlight_edits)).map((m) => ({ ...m, start: m.start - OFFSET, end: m.end - OFFSET, tapAt: m.tapAt - OFFSET }))
     : [];
   const club = staff ? await loadClubSocial(env as never, claims.tenantId) : null;
+  // Staff: players in each clip whose parents haven't said yes to video
+  const missing = staff ? await withoutVideoConsent(env, claims.tenantId, events.flatMap((e) => [e.playerId ?? "", e.player2Id ?? ""])) : new Map<string, string>();
+  const byEvent = new Map(events.map((e) => [e.id, [e.playerId, e.player2Id].filter((id): id is string => !!id && missing.has(id)).map((id) => missing.get(id)!)]));
+  const withConsent = <T extends { id: string }>(list: T[]) => (staff ? list.map((m) => ({ ...m, noVideoConsent: byEvent.get(m.id) ?? [] })) : list);
   return {
     fixture: { ...fixture, homeScore: row.home_score, awayScore: row.away_score },
     // For the scoreboard drawn on videos made from the camera's recording
     brand: club ? { clubName: club.brand.clubName, primaryColor: club.brand.primaryColor, secondaryColor: club.brand.secondaryColor } : null,
-    momentsFromKickOff: fromKickOff,
+    momentsFromKickOff: withConsent(fromKickOff),
     video,
     kickoffSec,
     lineUp: row.video_kickoff_sec !== null ? "manual" : auto !== null ? "automatic" : null,
-    moments: staff ? all : all.filter((m) => !m.hidden),
+    moments: staff ? withConsent(all) : all.filter((m) => !m.hidden),
     momentsTapped: events.filter((e) => (HIGHLIGHT_TYPES as string[]).includes(e.type)).length,
     canEdit: staff,
   };

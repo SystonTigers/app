@@ -1,4 +1,5 @@
 import { json } from "../services/util";
+import { publicPhotoSql } from "../services/consent";
 import { loadFaSnippets } from "../services/faFullTime";
 import { logJSON } from "../lib/log";
 import { closeExpiredSessions, findMatch, parseWinnerIds, playerNames } from "../services/motm";
@@ -645,7 +646,7 @@ export async function handlePublicTenantRequest(
             const winners = ids.map((id) => names.get(id)).filter(Boolean).map((p) => ({
                 name: publicName(policy, p!.name),
                 number: p!.number,
-                photoUrl: publicPhoto(policy, p!.photoUrl) ?? null,
+                photoUrl: publicPhoto(policy, p!.photoConsent ? p!.photoUrl : null) ?? null,
             }));
             if (!winners.length) { return json({ success: true, data: null }, 200, corsHdrs); }
             return json({
@@ -661,7 +662,7 @@ export async function handlePublicTenantRequest(
         if (resource === "squad") {
             // The squad table is the source of truth (players added one at a time never reach the old KV list)
             const { results: squadRows } = await env.DB.prepare(
-                `SELECT id, name, number, position, COALESCE(headshot_url, photo_url) AS photo
+                `SELECT id, name, number, position, ${publicPhotoSql()} AS photo
                  FROM squad WHERE tenant_id = ? ORDER BY number IS NULL, number, name`
             ).bind(tenant.id).all();
             const raw = (squadRows || []) as any[];

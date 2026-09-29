@@ -4,8 +4,11 @@
  */
 
 export const PHASE_TYPES = ["kick_off", "half_time", "second_half", "full_time"] as const;
-/** chance / save / skill: moments for the highlights (no score change, no posts or alerts) */
-export const PLAY_TYPES = ["goal", "opp_goal", "yellow", "red", "sub", "note", "chance", "save", "skill"] as const;
+/**
+ * chance / save / skill: moments for the highlights (no score change, no posts or alerts).
+ * opp_yellow / opp_red: the other team's cards, shown on the timeline only (no stats, posts or alerts).
+ */
+export const PLAY_TYPES = ["goal", "opp_goal", "yellow", "red", "sub", "note", "chance", "save", "skill", "opp_yellow", "opp_red"] as const;
 export type PhaseType = (typeof PHASE_TYPES)[number];
 export type PlayType = (typeof PLAY_TYPES)[number];
 export type LiveEventType = PhaseType | PlayType;

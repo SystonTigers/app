@@ -927,7 +927,11 @@ export const motmApi = {
 };
 
 export interface LineupPlayer { playerId: string; name: string; number: number | null; position: string | null }
-export interface Lineup { teamSize: number; clubDefaultTeamSize: number; starters: LineupPlayer[]; subs: LineupPlayer[] }
+export interface Lineup {
+  teamSize: number; clubDefaultTeamSize: number; starters: LineupPlayer[]; subs: LineupPlayer[];
+  /** Staff only: players in the team whose parents haven't said yes to video */
+  noVideoConsent?: string[];
+}
 
 /** Starting line-ups (see backend routes/lineup.ts). */
 export const lineupApi = {
@@ -1236,6 +1240,47 @@ export default api;
 // Export convenience function for account deletion
 export const deleteAccount = authApi.deleteAccount;
 
+
+/** Parents' photo and video consent (true yes, false no, null not asked yet) */
+export interface PlayerConsent {
+  playerId: string;
+  name: string;
+  number: number | null;
+  photos: boolean | null;
+  video: boolean | null;
+  source: 'parent' | 'staff' | null;
+  updatedAt: number | null;
+}
+
+export const consentApi = {
+  /** Parents: their children. Staff: the whole squad (canEditAll). */
+  get: async (): Promise<{ success: boolean; data: { players: PlayerConsent[]; canEditAll: boolean } }> => {
+    const response = await api.get('/api/v1/consent');
+    return response.data;
+  },
+  set: async (playerId: string, change: { photos?: boolean | null; video?: boolean | null }): Promise<{ success: boolean; data: PlayerConsent }> => {
+    const response = await api.put(`/api/v1/players/${encodeURIComponent(playerId)}/consent`, change);
+    return response.data;
+  },
+};
+
+export interface FaImportLine {
+  date: string;
+  time: string | null;
+  opponent: string;
+  homeAway: 'home' | 'away';
+  status: 'scheduled' | 'postponed' | 'cancelled';
+  action: 'added' | 'updated' | 'unchanged' | 'not_ours' | 'skipped';
+  changes: string[];
+}
+
+/** Staff: fixtures from a pasted FA Full-Time email (contact details are never saved) */
+export const faEmailApi = {
+  import: async (text: string): Promise<{ success: boolean; data: { found: number; added: number; updated: number; unchanged: number; notOurs: number; lines: FaImportLine[] } }> => {
+    const response = await api.post('/api/v1/club/fixtures/fa-email', { text });
+    return response.data;
+  },
+};
 
 export const highlightsApi = {
   /** Recent matches with a video and moments tapped in Match Centre */

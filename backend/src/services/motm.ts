@@ -25,6 +25,8 @@ export interface MotmNominee {
   name: string;
   number: number | null;
   photoUrl: string | null;
+  /** A parent said yes to the photo being used publicly */
+  photoConsent?: boolean;
 }
 
 export interface MotmTallyRow {
@@ -230,9 +232,9 @@ export async function playerNames(env: DB, tenantId: string, ids: string[]): Pro
   const map = new Map<string, MotmNominee>();
   if (!ids.length) return map;
   const { results } = await env.DB.prepare(
-    `SELECT id, name, number, COALESCE(headshot_url, photo_url) AS photo_url FROM squad
+    `SELECT id, name, number, COALESCE(headshot_url, photo_url) AS photo_url, photo_consent FROM squad
      WHERE tenant_id = ? AND id IN (${ids.map(() => "?").join(",")})`,
-  ).bind(tenantId, ...ids).all<{ id: string; name: string; number: number | null; photo_url: string | null }>();
-  for (const r of results || []) map.set(r.id, { playerId: r.id, name: r.name, number: r.number, photoUrl: r.photo_url });
+  ).bind(tenantId, ...ids).all<{ id: string; name: string; number: number | null; photo_url: string | null; photo_consent: number | null }>();
+  for (const r of results || []) map.set(r.id, { playerId: r.id, name: r.name, number: r.number, photoUrl: r.photo_url, photoConsent: r.photo_consent === 1 });
   return map;
 }

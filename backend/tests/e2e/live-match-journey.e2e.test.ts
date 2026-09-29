@@ -51,6 +51,13 @@ describe("Live match journey", () => {
 
     await post({ type: "opp_goal", text: "Their number 10", minute: 20 });
     await post({ type: "yellow", playerId: winger, minute: 25 });
+    // Their cards: on the timeline only (no score, stats, posts or alerts)
+    const theirCard = await post({ type: "opp_yellow", text: "No. 4", minute: 27 });
+    expect(theirCard.status).toBe(201);
+    expect(theirCard.data.data).toMatchObject({ ourScore: 1, theirScore: 1 });
+    const cardEvent = theirCard.data.data.events[0];
+    expect(cardEvent).toMatchObject({ type: "opp_yellow", text: "No. 4", playerId: null });
+    expect(await env.DB.prepare(`SELECT COUNT(*) AS c FROM social_jobs WHERE source_id = ?`).bind(cardEvent.id).first<any>()).toEqual({ c: 0 });
     expect((await post({ type: "second_half" })).status).toBe(409);
     await post({ type: "half_time" });
     await post({ type: "sub", playerId: sub, player2Id: winger });

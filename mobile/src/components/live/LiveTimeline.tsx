@@ -18,6 +18,8 @@ const ICONS: Record<LiveEvent['type'], { name: string; color: string }> = {
   chance: { name: 'target', color: COLORS.textLight },
   save: { name: 'hand-back-left', color: COLORS.textLight },
   skill: { name: 'star-outline', color: COLORS.primary },
+  opp_yellow: { name: 'card', color: '#F5C400' },
+  opp_red: { name: 'card', color: COLORS.error },
 };
 
 /**

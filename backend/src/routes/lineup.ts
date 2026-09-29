@@ -7,7 +7,9 @@
  */
 import { json } from "../services/util";
 import { requireStaff, requireTenantJWT, type TenantClaims } from "../services/auth";
-import { getLineup, lineupProblem, saveLineup } from "../services/lineup";
+import { getLineup, lineupProblem, saveLineup, type Lineup } from "../services/lineup";
+import { withoutVideoConsent } from "../services/consent";
+import { hasAnyRole, STAFF_ROLES } from "../services/auth";
 import { loadFixture } from "../services/liveMatch";
 import { drawAndPostSoon, queuePost } from "../services/social/jobs";
 
@@ -28,6 +30,14 @@ async function authenticate(req: Request, env: Env, corsHdrs: Headers, staff: bo
   }
 }
 
+/** Staff also see who in the team hasn't got video consent (they'll be on the live stream). */
+async function lineupView(env: Env, claims: TenantClaims, fixtureId: string): Promise<Lineup & { noVideoConsent?: string[] }> {
+  const lineup = await getLineup(env, claims.tenantId, fixtureId);
+  if (!hasAnyRole(claims, STAFF_ROLES)) return lineup;
+  const missing = await withoutVideoConsent(env, claims.tenantId, [...lineup.starters, ...lineup.subs].map((p) => p.playerId));
+  return { ...lineup, noVideoConsent: [...missing.values()] };
+}
+
 function ids(value: unknown): string[] | null {
   return Array.isArray(value) && value.every((v) => typeof v === "string") ? (value as string[]) : null;
 }
@@ -36,7 +46,7 @@ export async function handleGetLineup(req: Request, env: Env, corsHdrs: Headers,
   const claims = await authenticate(req, env, corsHdrs, false);
   if (claims instanceof Response) return claims;
   if (!(await loadFixture(env, claims.tenantId, fixtureId))) return fail(corsHdrs, 404, "NOT_FOUND", "Match not found.");
-  return json({ success: true, data: await getLineup(env, claims.tenantId, fixtureId) }, 200, corsHdrs);
+  return json({ success: true, data: await lineupView(env, claims, fixtureId) }, 200, corsHdrs);
 }
 
 export async function handleSaveLineup(req: Request, env: Env, corsHdrs: Headers, fixtureId: string): Promise<Response> {
@@ -57,7 +67,7 @@ export async function handleSaveLineup(req: Request, env: Env, corsHdrs: Headers
   if ((results || []).length !== all.length) return fail(corsHdrs, 400, "VALIDATION", "Some of those players aren't in your squad.");
 
   await saveLineup(env, claims.tenantId, fixtureId, body.teamSize as number, starters, subs, body.makeClubDefault === true);
-  return json({ success: true, data: await getLineup(env, claims.tenantId, fixtureId) }, 200, corsHdrs);
+  return json({ success: true, data: await lineupView(env, claims, fixtureId) }, 200, corsHdrs);
 }
 
 export async function handlePublishLineup(req: Request, env: Env, corsHdrs: Headers, fixtureId: string, ctx?: ExecutionContext): Promise<Response> {

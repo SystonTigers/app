@@ -675,6 +675,11 @@ router.put("/api/:v/fixtures/:id/stream", staffOnly((req, env, corsHdrs, _reques
 router.delete("/api/:v/fixtures/:id/stream", staffOnly((req, env, corsHdrs) => handleDeleteStream(req, env, corsHdrs, ((req as any).params || {}).id)));
 router.put("/api/:v/fixtures/:id/venue", staffOnly((req, env, corsHdrs) => handlePutVenue(req, env, corsHdrs, ((req as any).params || {}).id)));
 
+// Parents' photo and video consent for their children (routes/consent.ts)
+import { handleGetConsent, handleSetConsent } from "./routes/consent";
+router.get("/api/:v/consent", (req, env, corsHdrs) => handleGetConsent(req, env, corsHdrs));
+router.put("/api/:v/players/:id/consent", (req, env, corsHdrs) => handleSetConsent(req, env, corsHdrs, ((req as any).params || {}).id));
+
 // Match highlights from the match's YouTube video and the Match Centre taps (routes/highlights.ts)
 import { handleGetHighlights, handleListHighlights, handlePutHighlights } from "./routes/highlights";
 router.get("/api/:v/highlights", (req, env, corsHdrs) => handleListHighlights(req, env, corsHdrs));
@@ -1337,6 +1342,9 @@ router.get("/api/:v/club/league", (req, env, corsHdrs) => handleGetLeague(req, e
 router.put("/api/:v/club/league", staffOnly((req, env, corsHdrs) => handleSetLeague(req, env, corsHdrs)));
 router.post("/api/:v/club/league/paste", staffOnly((req, env, corsHdrs) => handlePasteLeague(req, env, corsHdrs)));
 router.delete("/api/:v/club/league/results", staffOnly((req, env, corsHdrs) => handleClearLeagueResults(req, env, corsHdrs)));
+// Fixtures from FA Full-Time emails, pasted by staff (routes/faEmail.ts)
+import { handleFaEmailImport } from "./routes/faEmail";
+router.post("/api/:v/club/fixtures/fa-email", staffOnly((req, env, corsHdrs) => handleFaEmailImport(req, env, corsHdrs)));
 // FA Full-Time code snippets shown on the club's league pages (routes/faFullTime.ts)
 router.get("/api/:v/club/fa-full-time", (req, env, corsHdrs) => handleGetFaFullTime(req, env, corsHdrs));
 router.put("/api/:v/club/fa-full-time", staffOnly((req, env, corsHdrs) => handleSetFaFullTime(req, env, corsHdrs)));

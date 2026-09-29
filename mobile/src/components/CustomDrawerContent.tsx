@@ -63,6 +63,7 @@ const MENU_GROUPS = [
         icon: 'cog',
         items: [
             { label: 'My Profile', screen: 'Profile', icon: 'account-circle', roles: ['admin', 'manager', 'coach', 'parent', 'player'] },
+            { label: 'Photo & Video Consent', screen: 'MediaConsent', icon: 'camera-lock', roles: ['admin', 'manager', 'coach', 'parent', 'player'] },
             { label: 'App Settings', screen: 'Settings', icon: 'tune', roles: ['admin', 'manager', 'coach', 'parent', 'player'] },
         ]
     }

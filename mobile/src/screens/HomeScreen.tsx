@@ -16,6 +16,7 @@ import ResultCard from '../components/ResultCard';
 import FeedCard from '../components/FeedCard';
 import { SkeletonCard } from '../components/LoadingSkeleton';
 import InstallPrompt from '../components/InstallPrompt';
+import ConsentPrompt from '../components/ConsentPrompt';
 
 interface QuickStats {
   position: string;
@@ -117,6 +118,7 @@ export default function HomeScreen({ navigation }: any) {
 
       <View style={{ paddingHorizontal: 16 }}>
         <InstallPrompt />
+        <ConsentPrompt onOpen={() => navigation.navigate('MediaConsent')} />
       </View>
 
       {/* Live video that's on before kick-off has been tapped in Match Centre */}

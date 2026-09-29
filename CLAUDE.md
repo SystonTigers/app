@@ -185,6 +185,18 @@ with personal data.
   unreachable, `cs1.html` blocked by the FA's security check, or loaded) so
   the card says why when it can't show the table.
 - Our own results, scorers and points still come from Match Centre.
+- FA fixture emails (new fixture, change, referee appointment, weekly
+  reminder): staff paste the email on the website (Settings → League Table)
+  or in the app (Manage Fixtures); `POST /api/v1/club/fixtures/fa-email`
+  (`services/faEmail/`). `parse.ts` reads only the fixture lines
+  ("Sun 20 Sept 2026 14:00, Home -v- Away Status: Normal", venue, the
+  competition line above); referee and contact details are never stored.
+  `apply.ts` adds new fixtures (`source = 'fa_email'`) and updates moved,
+  postponed or cancelled ones, matched by `fixtures.fa_fixture_id` (from the
+  email's link), else date + opponent, else the one unplayed match against
+  that opponent at the same end. Our side is the League Table's team or the
+  name closest to the club's. Receiving the emails automatically needs a
+  domain (Cloudflare Email Routing); until then it's paste.
 
 ## Our league table (sorted by goal difference)
 
@@ -202,6 +214,21 @@ with personal data.
   (`mode = 'table'`) and isn't touched by later results until the next paste.
 - The website, app and weekly table graphic all read `league_standings`;
   `/public/:club/table` returns `meta.source` so pages can say how it's sorted.
+
+## Photo and video consent
+
+- `squad.photo_consent` / `video_consent` (1 yes, 0 no, NULL not asked =
+  no), set by a linked parent in the app (Photo & Video Consent screen, home
+  prompt until answered) or by staff from a paper form
+  (`GET /api/v1/consent`, `PUT /api/v1/players/:id/consent`,
+  `services/consent.ts`).
+- Anything public reads photos through `publicPhotoSql()`: club page squad,
+  MOTM, and every social graphic, on top of the club's `public_photos`.
+- Staff are warned about video: line-up editor and `GET .../lineup`
+  (`noVideoConsent`), highlight clips (`noVideoConsent` per moment; the video
+  maker leaves those clips unticked).
+- Match Centre also has Their yellow / Their red (`opp_yellow`, `opp_red`):
+  timeline only, no stats, posts or alerts.
 
 ## Access rules worth knowing
 

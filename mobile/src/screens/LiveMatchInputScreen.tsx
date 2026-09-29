@@ -285,10 +285,16 @@ export default function LiveMatchInputScreen() {
                 <View style={styles.grid}>
                   <Action icon="soccer" label="We scored" primary onPress={() => setPick({ kind: 'goal' })} disabled={sending || match.status === 'half_time'} />
                   <Action icon="soccer" label="They scored" onPress={() => record('opp_goal')} disabled={sending || match.status === 'half_time'} />
-                  <Action icon="card" label="Yellow" onPress={() => setPick({ kind: 'yellow' })} disabled={sending} color="#F5C400" />
-                  <Action icon="card" label="Red" onPress={() => setPick({ kind: 'red' })} disabled={sending} color={COLORS.error} />
+                  <Action icon="card" label="Our yellow" onPress={() => setPick({ kind: 'yellow' })} disabled={sending} color="#F5C400" />
+                  <Action icon="card" label="Our red" onPress={() => setPick({ kind: 'red' })} disabled={sending} color={COLORS.error} />
                   <Action icon="swap-horizontal" label="Sub" onPress={() => setPick({ kind: 'sub_on' })} disabled={sending} />
                   <Action icon="message-text-outline" label="Update" onPress={() => setNoteOpen(true)} disabled={sending} />
+                </View>
+                {/* Shown on their side of the timeline; no stats, posts or alerts */}
+                <Text style={styles.label}>Their cards</Text>
+                <View style={styles.grid}>
+                  <Action icon="card" label="Their yellow" onPress={() => record('opp_yellow')} disabled={sending} color="#F5C400" />
+                  <Action icon="card" label="Their red" onPress={() => record('opp_red')} disabled={sending} color={COLORS.error} />
                 </View>
                 {/* One tap marks the moment for the highlights video; nothing is posted */}
                 <Text style={styles.label}>Mark for highlights</Text>

@@ -57,6 +57,7 @@ import LiveMatchInputScreen from './src/screens/LiveMatchInputScreen';
 import GalleryScreen from './src/screens/GalleryScreen';
 import HighlightsScreen from './src/screens/HighlightsScreen';
 import MatchHighlightsScreen from './src/screens/MatchHighlightsScreen';
+import MediaConsentScreen from './src/screens/MediaConsentScreen';
 import TrainingScreen from './src/screens/TrainingScreen';
 import DrillLibraryScreen from './src/screens/DrillLibraryScreen';
 import StatsScreen from './src/screens/StatsScreen';
@@ -265,6 +266,7 @@ function MainDrawer() {
 
       {/* Settings Group */}
       <Drawer.Screen name="Profile" component={ProfileScreen} options={{ title: 'My Profile' }} />
+      <Drawer.Screen name="MediaConsent" component={MediaConsentScreen} options={{ title: 'Photo & Video Consent' }} />
       <Drawer.Screen name="Settings" component={SettingsScreen} options={{ title: 'Settings' }} />
 
       {/* Other/Hidden Screens */}
