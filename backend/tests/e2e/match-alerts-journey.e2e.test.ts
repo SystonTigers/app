@@ -205,9 +205,9 @@ describe("Match day journey", () => {
     let today = (await call("/api/v1/matchday", { token: away.token })).data.data.fixtures.find((f: any) => f.id === fixtureId);
     expect(today.stream).toMatchObject({ videoId: "abcdefghijk", source: "youtube", status: "live" });
 
-    // The stream stops: the video stays for watching back
+    // The stream stops: the video stays for watching back (checked every 5 minutes while it's on)
     live = false;
-    await detectStreams(env as any);
+    await detectStreams(env as any, Math.ceil((Date.now() + 1) / 300_000) * 300_000);
     today = (await call("/api/v1/matchday", { token: away.token })).data.data.fixtures.find((f: any) => f.id === fixtureId);
     expect(today.stream).toMatchObject({ videoId: "abcdefghijk", status: "ended" });
 

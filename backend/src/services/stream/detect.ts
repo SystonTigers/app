@@ -3,8 +3,11 @@
  * club's connected YouTube channel by the once-a-minute cron. The first time a
  * match gets a stream, members who aren't at the ground get "Live now".
  *
- * The YouTube API is only called around kick-off (45 minutes before until 3
- * hours after), about 1 quota unit per call, far inside the free 10,000/day.
+ * YouTube's free daily allowance is shared by every club, so each channel is
+ * only checked when it matters (`checkEvery`): every minute from 15 minutes
+ * before kick-off to 30 minutes after, then every 3 minutes for a late start
+ * up to 2 hours after, and every 5 minutes while a stream is on to notice it
+ * ending. Roughly 40 calls a match instead of 225.
  */
 import { decryptToken, encryptToken } from "../social/tokenCrypto";
 import { loadEvents, loadFixture } from "../liveMatch";
@@ -71,6 +74,35 @@ export function inWindow(row: FixtureRow, now: number): boolean {
   return ko === null || (now >= ko - BEFORE_MS && now <= ko + AFTER_MS);
 }
 
+const MINUTE = 60_000;
+
+/**
+ * How often (in minutes) to check the club's channel now, or null when there's
+ * nothing to look for. Fixtures that already have a pasted link don't need it.
+ */
+export function checkEvery(rows: FixtureRow[], now: number): number | null {
+  let every: number | null = null;
+  const use = (n: number) => { every = every === null ? n : Math.min(every, n); };
+  for (const r of rows) {
+    if (r.youtube_live_id && r.youtube_status === "live") {
+      if (r.stream_source === "youtube") use(5); // notice when it ends
+      continue;
+    }
+    if (r.match_status === "full_time" || r.youtube_live_id) continue;
+    const ko = kickOffAt(r.fixture_date, r.kick_off_time);
+    if (ko === null) { use(5); continue; }
+    if (now < ko - 15 * MINUTE) continue;
+    if (now <= ko + 30 * MINUTE) use(1);
+    else if (now <= ko + 120 * MINUTE) use(3);
+  }
+  return every;
+}
+
+/** Whether this minute is one to check on, for a check every `every` minutes. */
+export function isCheckMinute(every: number, now: number): boolean {
+  return Math.floor(now / MINUTE) % every === 0;
+}
+
 /** Which fixture a new broadcast belongs to: the one kicking off nearest now that has no live stream yet. */
 export function pickFixture(rows: FixtureRow[], now: number): FixtureRow | null {
   const free = rows.filter((r) => r.match_status !== "full_time" && !(r.youtube_status === "live" && r.youtube_live_id));
@@ -82,6 +114,8 @@ export function pickFixture(rows: FixtureRow[], now: number): FixtureRow | null 
 export async function detectClubStreams(env: StreamEnv, tenantId: string, storedToken: string, now = Date.now()): Promise<number> {
   const rows = (await todaysFixtureRows(env, tenantId, new Date(now))).filter((r) => inWindow(r, now));
   if (!rows.length) return 0;
+  const every = checkEvery(rows, now);
+  if (every === null || !isCheckMinute(every, now)) return 0;
 
   let live: Broadcast[];
   try {

@@ -34,8 +34,11 @@ the free Web Push and Expo push services.
   is here" in Match Centre. With no ground location, everyone gets alerts.
 - **Live video**: a manager pastes the YouTube link in Match Centre, or the
   club connects its YouTube channel on the website (Settings → Live match
-  video) and anything live on it from 45 minutes before kick-off is picked up
-  within a minute. People away from the ground get "🔴 Live now" once per match
+  video) and a stream started from 15 minutes before kick-off is picked up
+  within a minute (a late start, up to 2 hours after kick-off, within 3
+  minutes). To save YouTube's daily allowance, which every club shares, the
+  channel isn't checked at other times (`checkEvery` in
+  `services/stream/detect.ts`). People away from the ground get "🔴 Live now" once per match
   and the video pops up in the app. After the stream ends it stays on Live Match
   to watch back.
 

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { buildAlert, scoreText, type AlertInput } from "../matchAlerts/content";
 import { parseYouTubeVideoId } from "../stream/youtube";
 import { kickOffAt, streamView, ukPostcode, validCoords, type FixtureRow } from "../matchDay";
-import { inWindow, pickFixture } from "../stream/detect";
+import { checkEvery, inWindow, isCheckMinute, pickFixture } from "../stream/detect";
 
 const base: AlertInput = { kind: "goal", clubName: "Syston Tigers", opponent: "Rovers", homeAway: "home", ourScore: 1, theirScore: 0 };
 
@@ -99,6 +99,23 @@ describe("matching a live stream to a fixture", () => {
     expect(inWindow(row("d", null), now)).toBe(true);
     expect(inWindow(row("e", "10:30", { match_status: "full_time" }), now)).toBe(false);
     expect(inWindow(row("f", "06:00", { stream_source: "youtube", youtube_status: "live", youtube_live_id: "abcdefghijk" }), now)).toBe(true);
+  });
+
+  it("checks YouTube only as often as needed, to save the shared allowance", () => {
+    const ko = "10:30"; // now is 10:20 UK
+    expect(checkEvery([row("a", ko)], now)).toBe(1);                                   // 10 minutes before kick-off
+    expect(checkEvery([row("b", "10:40")], now)).toBeNull();                            // more than 15 minutes away
+    expect(checkEvery([row("c", "09:30")], now)).toBe(3);                               // 50 minutes after: a late start
+    expect(checkEvery([row("d", "08:00")], now)).toBeNull();                            // over 2 hours after: give up
+    expect(checkEvery([row("e", null)], now)).toBe(5);                                  // no kick-off time
+    const live = { youtube_live_id: "abcdefghijk", youtube_status: "live" as const };
+    expect(checkEvery([row("f", ko, { ...live, stream_source: "youtube" })], now)).toBe(5); // on: just watch for the end
+    expect(checkEvery([row("g", ko, { ...live, stream_source: "link" })], now)).toBeNull(); // pasted link: nothing to find
+    expect(checkEvery([row("h", ko, { match_status: "full_time" })], now)).toBeNull();
+    expect(checkEvery([row("i", ko, { ...live, stream_source: "youtube" }), row("j", "10:25")], now)).toBe(1);
+    expect(isCheckMinute(5, Date.UTC(2026, 9, 4, 9, 20))).toBe(true);
+    expect(isCheckMinute(5, Date.UTC(2026, 9, 4, 9, 21))).toBe(false);
+    expect(isCheckMinute(1, Date.UTC(2026, 9, 4, 9, 21))).toBe(true);
   });
 
   it("picks the match kicking off nearest now that doesn't have a stream", () => {
