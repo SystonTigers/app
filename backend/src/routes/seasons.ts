@@ -971,15 +971,12 @@ async function calculateSeasonStats(env: any, seasonId: string, tenantId: string
 
 export async function handleGetSeasonStats(req: Request, env: any, corsHdrs: Headers, seasonId: string) {
     try {
-        const url = new URL(req.url);
-        let tenantId = url.searchParams.get('tenant');
-        if (!tenantId) {
-            try {
-                const claims = await requireJWT(req, env);
-                tenantId = claims.tenantId ?? null;
-            } catch (e) {
-                return json({ success: false, error: "Missing tenant" }, 401, corsHdrs);
-            }
+        // The club comes from the login, never from the URL
+        let tenantId: string | null;
+        try {
+            tenantId = (await requireJWT(req, env)).tenantId ?? null;
+        } catch {
+            return json({ success: false, error: "Please log in." }, 401, corsHdrs);
         }
 
         const season = await env.DB.prepare("SELECT * FROM seasons WHERE id = ? AND tenant_id = ?").bind(seasonId, tenantId).first();

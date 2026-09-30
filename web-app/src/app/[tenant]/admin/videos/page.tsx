@@ -17,7 +17,7 @@ export default function VideosAdminPage({ params }: PageProps) {
                 Upload match videos, create highlight clips, and use AI to analyze for coaching opportunities
             </p>
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                <VideoEditor tenant={tenant} />
+                <VideoEditor tenant={tenant} canEdit />
             </div>
         </div>
     );

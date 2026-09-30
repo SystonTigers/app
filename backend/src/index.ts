@@ -538,7 +538,7 @@ router.get("/api/:v/training/sessions/:id/drills", (req, env, corsHdrs) => {
 // Videos Routes - Using logic from line 852+
 import {
     handleVideoList, handleVideoGet, handleVideoUpload, handleVideoDelete,
-    handleVideoStatus, handleVideoProcess, handleVideoClips, handleVideoStream
+    handleVideoStatus, handleVideoClips, handleCreateVideoClip, handleDeleteVideoClip, handleVideoStream
 } from "./routes/videos";
 
 // Note: Additional video routes are defined at line 852
@@ -893,10 +893,6 @@ router.get("/api/:v/videos/:id/status", (req, env, corsHdrs, requestId) => {
     const params = (req as any).params || {};
     return handleVideoStatus(req, env, corsHdrs, params.id);
 });
-router.post("/api/:v/videos/:id/process", (req, env, corsHdrs, requestId) => {
-    const params = (req as any).params || {};
-    return handleVideoProcess(req, env, corsHdrs, params.id);
-});
 router.delete("/api/:v/videos/:id", staffOnly((req, env, corsHdrs, requestId) => {
     const params = (req as any).params || {};
     return handleVideoDelete(req, env, corsHdrs, params.id);
@@ -905,6 +901,11 @@ router.get("/api/:v/videos/:id/clips", (req, env, corsHdrs, requestId) => {
     const params = (req as any).params || {};
     return handleVideoClips(req, env, corsHdrs, params.id);
 });
+router.post("/api/:v/videos/:id/clips", staffOnly((req, env, corsHdrs) => handleCreateVideoClip(req, env, corsHdrs, ((req as any).params || {}).id)));
+router.delete("/api/:v/videos/:id/clips/:clipId", staffOnly((req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleDeleteVideoClip(req, env, corsHdrs, params.id, params.clipId);
+}));
 router.get("/api/:v/videos/:id/stream", (req, env, corsHdrs) => {
     const params = (req as any).params || {};
     return handleVideoStream(req, env, corsHdrs, params.id);
@@ -993,10 +994,10 @@ import {
     handleClaimTransfer,
     handleGetCareerStats as handleGetTransferCareerStats
 } from "./routes/transfers";
-router.post("/api/:v/squad/:playerId/generate-transfer", (req, env, corsHdrs) => {
+router.post("/api/:v/squad/:playerId/generate-transfer", staffOnly((req, env, corsHdrs) => {
     const params = (req as any).params || {};
     return handleGenerateTransferCode(req, env, corsHdrs, params.playerId);
-});
+}));
 router.get("/api/:v/transfers/:code", (req, env, corsHdrs) => {
     const params = (req as any).params || {};
     return handleVerifyTransferCode(req, env, corsHdrs, params.code);
@@ -1178,30 +1179,6 @@ router.get("/api/:v/seasons/:id/roster", (req, env, corsHdrs) => {
 router.post("/api/:v/seasons/start-new", staffOnly((req, env, corsHdrs) => handleStartNewSeason(req, env, corsHdrs)));
 router.get("/api/:v/seasons/available-players", (req, env, corsHdrs) => handleGetAvailablePlayers(req, env, corsHdrs));
 router.post("/api/:v/seasons/player-departed", staffOnly((req, env, corsHdrs) => handleMarkPlayerDeparted(req, env, corsHdrs)));
-router.get("/api/:v/seasons/:id/end-preview", (req, env, corsHdrs) => {
-    const params = (req as any).params || {};
-    return handleEndSeasonPreview(req, env, corsHdrs, params.id);
-});
-router.post("/api/:v/seasons/:id/end", staffOnly((req, env, corsHdrs) => {
-    const params = (req as any).params || {};
-    return handleEndSeason(req, env, corsHdrs, params.id);
-}));
-router.post("/api/:v/seasons/:id/reopen", staffOnly((req, env, corsHdrs) => {
-    const params = (req as any).params || {};
-    return handleReopenSeason(req, env, corsHdrs, params.id);
-}));
-router.get("/api/:v/seasons/:id/awards", (req, env, corsHdrs) => {
-    const params = (req as any).params || {};
-    return handleGetSeasonAwards(req, env, corsHdrs, params.id);
-});
-router.post("/api/:v/seasons/:id/awards", staffOnly((req, env, corsHdrs) => {
-    const params = (req as any).params || {};
-    return handleAddSeasonAward(req, env, corsHdrs, params.id);
-}));
-router.delete("/api/:v/seasons/:seasonId/awards/:awardId", staffOnly((req, env, corsHdrs) => {
-    const params = (req as any).params || {};
-    return handleDeleteSeasonAward(req, env, corsHdrs, params.seasonId, params.awardId);
-}));
 router.get("/api/:v/seasons/:id/snapshots", (req, env, corsHdrs) => {
     const params = (req as any).params || {};
     return handleGetSeasonSnapshots(req, env, corsHdrs, params.id);
@@ -1315,6 +1292,22 @@ router.get("/api/:v/wearables/pitches", (req, env, corsHdrs) => handleListPitche
 router.post("/api/:v/wearables/pitches", staffOnly((req, env, corsHdrs) => handleCreatePitch(req, env, corsHdrs)));
 
 // Default 404
+// Device Management Routes
+router.get("/api/:v/wearables/devices", (req, env, corsHdrs) => handleListDevices(req, env, corsHdrs));
+router.post("/api/:v/wearables/devices", staffOnly((req, env, corsHdrs) => handleCreateDevice(req, env, corsHdrs)));
+router.get("/api/:v/wearables/devices/:id", (req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleGetDevice(req, env, corsHdrs, params.id);
+});
+router.put("/api/:v/wearables/devices/:id", staffOnly((req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleUpdateDevice(req, env, corsHdrs, params.id);
+}));
+router.delete("/api/:v/wearables/devices/:id", staffOnly((req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleDeleteDevice(req, env, corsHdrs, params.id);
+}));
+
 router.all("*", () => new Response("Not Found", { status: 404 }));
 
 function mergeHeaders(base: Headers, extra?: HeadersInit) {
@@ -1331,21 +1324,6 @@ function respondWithCors(res: Response, base: Headers) {
     return new Response(res.body, withSecurity({ status: res.status, headers }));
 }
 
-// Device Management Routes
-router.get("/api/:v/wearables/devices", (req, env, corsHdrs) => handleListDevices(req, env, corsHdrs));
-router.post("/api/:v/wearables/devices", staffOnly((req, env, corsHdrs) => handleCreateDevice(req, env, corsHdrs)));
-router.get("/api/:v/wearables/devices/:id", (req, env, corsHdrs) => {
-    const params = (req as any).params || {};
-    return handleGetDevice(req, env, corsHdrs, params.id);
-});
-router.put("/api/:v/wearables/devices/:id", staffOnly((req, env, corsHdrs) => {
-    const params = (req as any).params || {};
-    return handleUpdateDevice(req, env, corsHdrs, params.id);
-}));
-router.delete("/api/:v/wearables/devices/:id", staffOnly((req, env, corsHdrs) => {
-    const params = (req as any).params || {};
-    return handleDeleteDevice(req, env, corsHdrs, params.id);
-}));
 
 export default {
     async fetch(req: Request, env: any, ctx: ExecutionContext): Promise<Response> {

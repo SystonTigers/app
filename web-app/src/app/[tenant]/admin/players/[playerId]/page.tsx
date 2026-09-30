@@ -3,7 +3,7 @@
 import { useState, useEffect, use } from 'react';
 import { createClientSDK } from '@/lib/sdk';
 import Link from 'next/link';
-import { apiFetch } from '@/lib/session';
+import { apiFetch, API_BASE } from '@/lib/session';
 
 const CONTACT_RELATIONSHIPS = [
     { value: 'mum', label: 'Mum' },
@@ -54,8 +54,6 @@ export default function PlayerDetailsPage({ params }: PageProps) {
     const [saving, setSaving] = useState(false);
     const [codeCopied, setCodeCopied] = useState(false);
     const [regenerating, setRegenerating] = useState(false);
-
-    const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8787';
 
     useEffect(() => {
         loadPlayer();

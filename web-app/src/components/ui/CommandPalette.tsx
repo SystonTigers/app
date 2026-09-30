@@ -43,7 +43,6 @@ export function CommandPalette({ tenant }: CommandPaletteProps) {
 
         // Admin
         { id: 'admin', title: 'Admin Dashboard', icon: '⚙️', category: 'Admin', action: () => router.push(`/${tenant}/admin`) },
-        { id: 'coaching', title: 'AI Coaching', icon: '🤖', category: 'Admin', action: () => router.push(`/${tenant}/admin/coaching`) },
     ];
 
     const filteredCommands = query === ''

@@ -28,7 +28,7 @@ export default function PlayerPhotosPage({ params }: PageProps) {
     const loadPlayers = async () => {
         try {
             const token = localStorage.getItem('token');
-            const res = await apiFetch(`/api/v1/squad?tenantId=${tenant}`, {
+            const res = await apiFetch(`/api/v1/squad`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             const data = await res.json();
@@ -94,7 +94,7 @@ export default function PlayerPhotosPage({ params }: PageProps) {
                         <div className="flex flex-col items-center">
                             {player.photo_url ? (
                                 <img
-                                    src={`/api/v1/gallery/photos/${player.photo_url}`}
+                                    src={player.photo_url}
                                     alt={player.name}
                                     className="w-32 h-32 rounded-full object-cover mb-4"
                                 />

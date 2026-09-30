@@ -15,11 +15,37 @@ interface Video {
     streamUrl?: string;
 }
 
-interface VideoEditorProps {
-    tenant: string;
+interface ApiVideo {
+    id: string;
+    title?: string | null;
+    video_url?: string | null;
+    youtube_url?: string | null;
+    duration?: number | null;
+    uploaded_at?: string | null;
 }
 
-export function VideoEditor({ tenant }: VideoEditorProps) {
+/** A row from GET /api/v1/videos, in the shape this page shows. */
+function toVideo(v: ApiVideo): Video {
+    const uploaded = v.uploaded_at ? Date.parse(v.uploaded_at.includes('T') ? v.uploaded_at : `${v.uploaded_at.replace(' ', 'T')}Z`) : NaN;
+    return {
+        id: v.id,
+        filename: v.title || 'Match video',
+        uploadTimestamp: Number.isFinite(uploaded) ? uploaded : Date.now(),
+        size: 0,
+        status: 'ready',
+        duration: v.duration ?? undefined,
+        r2Key: '',
+        streamUrl: v.video_url || undefined,
+    };
+}
+
+interface VideoEditorProps {
+    tenant: string;
+    /** Staff can upload videos and mark clips; everyone else can watch. */
+    canEdit?: boolean;
+}
+
+export function VideoEditor({ tenant, canEdit = false }: VideoEditorProps) {
     const [videos, setVideos] = useState<Video[]>([]);
     const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
     const [uploading, setUploading] = useState(false);
@@ -32,10 +58,10 @@ export function VideoEditor({ tenant }: VideoEditorProps) {
 
     const loadVideos = async () => {
         try {
-            const response = await apiFetch(`/api/v1/videos?tenant=${tenant}`);
+            const response = await apiFetch('/api/v1/videos');
             const data = await response.json();
-            if (data.success) {
-                setVideos(data.data.videos || []);
+            if (data.success && Array.isArray(data.data)) {
+                setVideos(data.data.map(toVideo));
             }
         } catch (error) {
             console.error('Failed to load videos:', error);
@@ -71,6 +97,7 @@ export function VideoEditor({ tenant }: VideoEditorProps) {
         try {
             const formData = new FormData();
             formData.append('video', file);
+            formData.append('title', file.name.replace(/\.[^.]+$/, '').slice(0, 80) || 'Match video');
 
             const response = await apiFetch('/api/v1/videos/upload', {
                 method: 'POST',
@@ -125,8 +152,8 @@ export function VideoEditor({ tenant }: VideoEditorProps) {
         <div className="min-h-screen bg-background">
             <div className="border-b border-border bg-surface">
                 <div className="container py-6">
-                    <h1 className="text-4xl font-bold mb-2">Video Editor</h1>
-                    <p className="text-muted">Create highlight clips from your match videos</p>
+                    <h1 className="text-4xl font-bold mb-2">{canEdit ? 'Video Editor' : 'Videos'}</h1>
+                    <p className="text-muted">{canEdit ? 'Upload match videos and mark the moments worth watching' : 'Match videos and their best moments'}</p>
                 </div>
             </div>
 
@@ -136,12 +163,14 @@ export function VideoEditor({ tenant }: VideoEditorProps) {
                         <div className="card">
                             <div className="flex items-center justify-between mb-4">
                                 <h2 className="text-xl font-bold">Video Library</h2>
+                                {canEdit ? (
                                 <button
                                     onClick={() => fileInputRef.current?.click()}
                                     className="btn btn-primary text-sm px-4 py-2"
                                 >
                                     Upload
                                 </button>
+                                ) : null}
                                 <input
                                     ref={fileInputRef}
                                     type="file"
@@ -191,7 +220,7 @@ export function VideoEditor({ tenant }: VideoEditorProps) {
                                             <div className={`w-2 h-2 rounded-full ${getStatusColor(video.status)} ml-2`} />
                                         </div>
                                         <div className="text-xs text-muted space-y-1">
-                                            <div>{formatFileSize(video.size)}</div>
+                                            {video.size ? <div>{formatFileSize(video.size)}</div> : null}
                                             <div>{formatDate(video.uploadTimestamp)}</div>
                                             {video.status === 'processing' && video.processingProgress && (
                                                 <div className="text-yellow-600 dark:text-yellow-400">
@@ -210,6 +239,7 @@ export function VideoEditor({ tenant }: VideoEditorProps) {
                             <VideoEditorCanvas
                                 video={selectedVideo}
                                 tenant={tenant}
+                                canEdit={canEdit}
                                 localUrl={selectedVideo.id.startsWith('local-') ? (selectedVideo as any).localUrl : undefined}
                             />
                         ) : (
@@ -231,7 +261,7 @@ export function VideoEditor({ tenant }: VideoEditorProps) {
     );
 }
 
-function VideoEditorCanvas({ video, tenant, localUrl }: { video: Video; tenant: string; localUrl?: string }) {
+function VideoEditorCanvas({ video, localUrl, canEdit }: { video: Video; tenant: string; localUrl?: string; canEdit: boolean }) {
     const videoRef = useRef<HTMLVideoElement>(null);
     const [playing, setPlaying] = useState(false);
     const [currentTime, setCurrentTime] = useState(0);
@@ -240,7 +270,8 @@ function VideoEditorCanvas({ video, tenant, localUrl }: { video: Video; tenant: 
     const [outPoint, setOutPoint] = useState<number | null>(null);
     const [clips, setClips] = useState<any[]>([]);
     const [creatingClip, setCreatingClip] = useState(false);
-    const [analyzingCoaching, setAnalyzingCoaching] = useState(false);
+    const [clipError, setClipError] = useState('');
+    const [playingClip, setPlayingClip] = useState<{ id: string; endTime: number } | null>(null);
     useEffect(() => {
         loadClips();
     }, [video.id]);
@@ -271,6 +302,12 @@ function VideoEditorCanvas({ video, tenant, localUrl }: { video: Video; tenant: 
     const handleTimeUpdate = () => {
         if (videoRef.current) {
             setCurrentTime(videoRef.current.currentTime);
+            // A clip plays from its start to its end, then stops
+            if (playingClip && videoRef.current.currentTime >= playingClip.endTime) {
+                videoRef.current.pause();
+                setPlaying(false);
+                setPlayingClip(null);
+            }
         }
     };
 
@@ -296,72 +333,48 @@ function VideoEditorCanvas({ video, tenant, localUrl }: { video: Video; tenant: 
     };
 
     const createClip = async () => {
-        if (inPoint === null || outPoint === null) {
-            alert('Please set both in and out points');
+        if (inPoint === null || outPoint === null) return;
+        const [start, end] = inPoint <= outPoint ? [inPoint, outPoint] : [outPoint, inPoint];
+        if (end - start < 1) {
+            setClipError('Make the clip at least a second long.');
             return;
         }
-
         setCreatingClip(true);
+        setClipError('');
         try {
-            const response = await apiFetch(`/api/v1/videos/${video.id}/process`, {
+            const response = await apiFetch(`/api/v1/videos/${video.id}/clips`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    startTime: inPoint,
-                    endTime: outPoint,
-                }),
+                body: JSON.stringify({ startTime: start, endTime: end }),
             });
-
-            const data = await response.json();
-            if (data.success) {
-                await loadClips();
-                setInPoint(null);
-                setOutPoint(null);
-            }
+            const data = await response.json().catch(() => null);
+            if (!response.ok || !data?.success) throw new Error(data?.error || "That clip didn't save. Please try again.");
+            await loadClips();
+            setInPoint(null);
+            setOutPoint(null);
         } catch (error) {
-            console.error('Failed to create clip:', error);
+            setClipError(error instanceof Error ? error.message : "That clip didn't save. Please try again.");
         } finally {
             setCreatingClip(false);
         }
     };
 
-    const analyzeForCoaching = async () => {
-        const teamName = prompt('Enter your team name:');
-        if (!teamName) return;
+    const playClip = (clip: { id: string; startTime: number; endTime: number }) => {
+        if (!videoRef.current) return;
+        videoRef.current.currentTime = clip.startTime;
+        setPlayingClip({ id: clip.id, endTime: clip.endTime });
+        void videoRef.current.play();
+        setPlaying(true);
+    };
 
-        const opponentName = prompt('Enter opponent name:');
-        if (!opponentName) return;
-
-        const goalsText = prompt('How many goals did you concede? (optional)');
-        const goalsConceeded = goalsText ? parseInt(goalsText) : undefined;
-
-        const finalScore = prompt('Final score? (e.g., 2-3) (optional)') || undefined;
-
-        setAnalyzingCoaching(true);
-        try {
-            const response = await apiFetch(`/api/v1/videos/${video.id}/analyze-mistakes`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    team_name: teamName,
-                    opponent_name: opponentName,
-                    goals_conceded: goalsConceeded,
-                    final_score: finalScore,
-                }),
-            });
-
-            const data = await response.json();
-            if (data.success) {
-                alert(`AI Coaching Analysis Started!\n\nJob ID: ${data.data.job_id}\n\nThe AI will analyze your match for coaching opportunities. Check the Coaching tab to view results in a few moments.`);
-            } else {
-                alert(`Failed to start analysis: ${data.error?.message || 'Unknown error'}`);
-            }
-        } catch (error) {
-            console.error('Failed to analyze for coaching:', error);
-            alert('Failed to start coaching analysis');
-        } finally {
-            setAnalyzingCoaching(false);
+    const deleteClip = async (clipId: string) => {
+        setClipError('');
+        const response = await apiFetch(`/api/v1/videos/${video.id}/clips/${clipId}`, { method: 'DELETE' }).catch(() => null);
+        if (!response?.ok) {
+            setClipError("That clip wasn't removed. Please try again.");
+            return;
         }
+        setClips((list) => list.filter((c) => c.id !== clipId));
     };
 
     const formatTime = (seconds: number) => {
@@ -370,7 +383,7 @@ function VideoEditorCanvas({ video, tenant, localUrl }: { video: Video; tenant: 
         return `${mins}:${secs.toString().padStart(2, '0')}`;
     };
 
-    const videoUrl = localUrl || video.streamUrl || `/api/v1/videos/${video.id}/stream`;
+    const videoUrl = localUrl || video.streamUrl;
 
     return (
         <div className="card space-y-6">
@@ -431,7 +444,8 @@ function VideoEditorCanvas({ video, tenant, localUrl }: { video: Video; tenant: 
                     </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                {canEdit ? (
+                <div className="flex flex-wrap items-center gap-2">
                     <button onClick={setIn} className="btn btn-secondary text-sm px-4 py-2">
                         Set In [{inPoint !== null ? formatTime(inPoint) : '--:--'}]
                     </button>
@@ -443,17 +457,11 @@ function VideoEditorCanvas({ video, tenant, localUrl }: { video: Video; tenant: 
                         disabled={creatingClip || inPoint === null || outPoint === null}
                         className="btn btn-primary text-sm px-6 py-2 disabled:opacity-50"
                     >
-                        {creatingClip ? 'Creating...' : 'Create Clip'}
-                    </button>
-                    <button
-                        onClick={analyzeForCoaching}
-                        disabled={analyzingCoaching}
-                        className="btn btn-secondary text-sm px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white disabled:opacity-50"
-                        title="AI will analyze this video for coaching opportunities and suggest training drills"
-                    >
-                        {analyzingCoaching ? '🤖 Analyzing...' : '🤖 Analyze for Coaching'}
+                        {creatingClip ? 'Saving...' : 'Save clip'}
                     </button>
                 </div>
+                ) : null}
+                {clipError ? <p role="alert" className="text-sm text-red-500">{clipError}</p> : null}
 
                 {(inPoint !== null || outPoint !== null) && duration > 0 && (
                     <div className="relative h-8 bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden">
@@ -487,18 +495,18 @@ function VideoEditorCanvas({ video, tenant, localUrl }: { video: Video; tenant: 
                     <h3 className="font-bold mb-4">Clips ({clips.length})</h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {clips.map((clip: any) => (
-                            <div key={clip.id} className="p-3 border border-border rounded-lg">
-                                <div className="text-sm font-medium mb-1">
-                                    {formatTime(clip.startTime)} → {formatTime(clip.endTime)}
-                                </div>
-                                <div className="text-xs text-muted">
-                                    Duration: {formatTime(clip.endTime - clip.startTime)}
-                                </div>
-                                <div className="text-xs text-muted mt-1">
-                                    Status: <span className={`font-medium ${clip.status === 'ready' ? 'text-green-600' : 'text-yellow-600'}`}>
-                                        {clip.status}
-                                    </span>
-                                </div>
+                            <div key={clip.id} className={`p-3 border rounded-lg flex items-center justify-between gap-3 ${playingClip?.id === clip.id ? 'border-brand' : 'border-border'}`}>
+                                <button type="button" onClick={() => playClip(clip)} className="text-left flex-1">
+                                    <div className="text-sm font-medium mb-1">
+                                        ▶ {clip.title ? `${clip.title} · ` : ''}{formatTime(clip.startTime)} → {formatTime(clip.endTime)}
+                                    </div>
+                                    <div className="text-xs text-muted">{formatTime(clip.endTime - clip.startTime)} long</div>
+                                </button>
+                                {canEdit ? (
+                                    <button type="button" onClick={() => deleteClip(clip.id)} className="text-xs text-muted hover:text-red-500" aria-label="Remove clip">
+                                        Remove
+                                    </button>
+                                ) : null}
                             </div>
                         ))}
                     </div>

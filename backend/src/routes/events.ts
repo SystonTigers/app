@@ -197,23 +197,11 @@ export async function getEvent(req: Request, env: any, requestId: string, corsHd
 // GET /api/v1/events
 export async function listEvents(req: Request, env: any, requestId: string, corsHdrs: Headers) {
     try {
-        const url = new URL(req.url);
-        const tenantId = url.searchParams.get("tenantId"); // Optional, for public access if needed, or rely on auth?
-        // For public calendar, we might need tenantId. For admin, we use claims.
-        // Let's support both: if auth header present, use claims. If not, check query param (public).
-
-        let targetTenantId = tenantId;
-
-        // Try to get auth claims if present
-        try {
-            const claims = await requireJWT(req, env);
-            targetTenantId = claims.tenantId ?? null;
-        } catch (e) {
-            // Not authenticated, rely on query param
-        }
-
+        // Club members only: the club comes from the login, never from the URL
+        const claims = await requireJWT(req, env);
+        const targetTenantId = claims.tenantId ?? null;
         if (!targetTenantId) {
-            return json({ success: false, error: { code: "UNAUTHORIZED", message: "Tenant ID required" } }, 401, corsHdrs);
+            return json({ success: false, error: { code: "UNAUTHORIZED", message: "Please log in." } }, 401, corsHdrs);
         }
 
         const events = await env.DB.prepare(

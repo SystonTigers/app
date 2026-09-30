@@ -6,7 +6,9 @@ import { apiFetch } from '@/lib/session';
 
 interface Photo {
     id: string;
-    photo_key: string;
+    /** The image's address (GET /api/v1/gallery/photos returns it as uri) */
+    uri: string;
+    photo_key?: string;
     caption: string;
     uploaded_at: number;
     uploaded_by: string;
@@ -138,7 +140,7 @@ export function PhotoGallery({ tenant }: PhotoGalleryProps) {
                 </button>
                 <div className="max-w-4xl w-full">
                     <img
-                        src={`/api/v1/gallery/photos/${selectedPhoto.id}`}
+                        src={selectedPhoto.uri}
                         alt={selectedPhoto.caption}
                         className="w-full h-auto max-h-[80vh] object-contain rounded-lg"
                     />
@@ -180,7 +182,7 @@ export function PhotoGallery({ tenant }: PhotoGalleryProps) {
                                 className="aspect-square relative overflow-hidden rounded-lg shadow hover:shadow-lg transition-shadow"
                             >
                                 <img
-                                    src={`/api/v1/gallery/photos/${photo.id}`}
+                                    src={photo.uri}
                                     alt={photo.caption}
                                     className="w-full h-full object-cover"
                                 />

@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { API_BASE } from '@/lib/session';
 
 function ResetPasswordForm() {
     const router = useRouter();
@@ -13,8 +14,6 @@ function ResetPasswordForm() {
     const [error, setError] = useState('');
     const [success, setSuccess] = useState(false);
     const [token, setToken] = useState<string | null>(null);
-
-    const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8787';
 
     useEffect(() => {
         const tokenParam = searchParams.get('token');

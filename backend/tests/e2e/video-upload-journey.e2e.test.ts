@@ -36,6 +36,18 @@ describe("E2E: Video Upload Journey", () => {
     expect(ranged.res.headers.get("content-range")).toBe("bytes 0-99/4096");
     expect((await ranged.res.arrayBuffer()).byteLength).toBe(100);
 
+    // Staff mark clips; everyone at the club can see them; parents can't add or remove them
+    expect((await call(`/api/v1/videos/${id}/clips`, { token: member.token, body: { startTime: 30, endTime: 12 } })).status).toBe(400);
+    const clip = await call(`/api/v1/videos/${id}/clips`, { token: member.token, body: { startTime: 12.34, endTime: 30, title: "Top corner" } });
+    expect(clip.status).toBe(201);
+    expect(clip.data.data.clip).toMatchObject({ startTime: 12.3, endTime: 30, title: "Top corner", status: "ready" });
+    expect((await call(`/api/v1/videos/${id}/clips`, { token: parent.token, body: { startTime: 1, endTime: 5 } })).status).toBe(403);
+    const clips = await call(`/api/v1/videos/${id}/clips`, { token: parent.token });
+    expect(clips.data.data.clips.map((c: any) => c.id)).toEqual([clip.data.data.clip.id]);
+    expect((await call(`/api/v1/videos/${id}/clips/${clip.data.data.clip.id}`, { token: parent.token, method: "DELETE" })).status).toBe(403);
+    await call(`/api/v1/videos/${id}/clips/${clip.data.data.clip.id}`, { token: member.token, method: "DELETE" });
+    expect((await call(`/api/v1/videos/${id}/clips`, { token: member.token })).data.data.clips).toEqual([]);
+
     const del = await call(`/api/v1/videos/${id}`, { token: member.token, method: "DELETE" });
     expect(del.status).toBe(200);
     expect((await call(path)).status).toBe(404);

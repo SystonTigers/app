@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { API_BASE } from '@/lib/session';
 
 export default function ForgotPasswordPage() {
     const router = useRouter();
@@ -10,8 +11,6 @@ export default function ForgotPasswordPage() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState(false);
-
-    const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8787';
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();

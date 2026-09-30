@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
+import { API_BASE } from '@/lib/session';
 
 interface User {
     id: string;
@@ -35,7 +36,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [loading, setLoading] = useState(true);
     const [myTenants, setMyTenants] = useState<Tenant[]>([]);
     const router = useRouter();
-    const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8787';
 
     useEffect(() => {
         // Hydrate from localStorage

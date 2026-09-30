@@ -78,7 +78,19 @@ export default function ImportPage({ params }: { params: { tenant: string } }) {
 
     // Download template
     const downloadTemplate = async (type: ImportType) => {
-        window.open(`/api/v1/import/template/${type}`, '_blank');
+        // Fetched from the backend and saved as a file (a plain link would hit this website instead)
+        try {
+            const res = await apiFetch(`/api/v1/import/template/${type}`);
+            if (!res.ok) throw new Error();
+            const url = URL.createObjectURL(await res.blob());
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${type}-template.csv`;
+            a.click();
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+        } catch {
+            alert("The template didn't download. Please try again.");
+        }
     };
 
     // Perform import

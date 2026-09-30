@@ -2,6 +2,7 @@ import { json } from "../services/util";
 import { logJSON } from "../lib/log";
 import { getSessionFromRequest } from "../middleware/permissions";
 import { MediaError, deleteMedia, keyFromMediaUrl, mediaUrl, putMedia, validateVideo } from "../services/media";
+import { requireTenantJWT } from "../services/auth";
 
 async function requireJWT(req: Request, env: any) {
   const session = await getSessionFromRequest(req, env);
@@ -159,9 +160,10 @@ export async function handleVideoDelete(req: Request, env: any, corsHdrs: Header
       return json({ success: false, error: "Video not found" }, 404, corsHdrs);
     }
 
-    await env.DB.prepare(
-      "DELETE FROM videos WHERE id = ? AND tenant_id = ?"
-    ).bind(id, claims.tenantId).run();
+    await env.DB.batch([
+      env.DB.prepare("DELETE FROM videos WHERE id = ? AND tenant_id = ?").bind(id, claims.tenantId),
+      env.DB.prepare("DELETE FROM video_clips WHERE video_id = ? AND tenant_id = ?").bind(id, claims.tenantId),
+    ]);
 
     // Remove the uploaded file too (links to YouTube etc. aren't ours to delete)
     const key = video.video_url ? keyFromMediaUrl(env, video.video_url) : null;
@@ -182,12 +184,54 @@ export async function handleVideoStatus(req: Request, env: any, corsHdrs: Header
   return json({ success: true, status: 'ready' }, 200, corsHdrs);
 }
 
-export async function handleVideoProcess(req: Request, env: any, corsHdrs: Headers, id: string) {
-  return json({ success: true, message: 'Processing started' }, 200, corsHdrs);
+interface ClipRow { id: string; start_sec: number; end_sec: number; title: string | null; created_at: number }
+const MAX_CLIPS_PER_VIDEO = 200;
+
+function clipView(r: ClipRow) {
+  return { id: r.id, startTime: r.start_sec, endTime: r.end_sec, title: r.title, status: 'ready' as const, createdAt: r.created_at };
 }
 
+async function videoForClub(env: any, tenantId: string, id: string): Promise<{ id: string; duration: number | null } | null> {
+  return env.DB.prepare("SELECT id, duration FROM videos WHERE id = ? AND tenant_id = ?").bind(id, tenantId).first();
+}
+
+/** GET /api/v1/videos/:id/clips — the clips marked on a club video (members). */
 export async function handleVideoClips(req: Request, env: any, corsHdrs: Headers, id: string) {
-  return json({ success: true, clips: [] }, 200, corsHdrs);
+  const claims = await requireTenantJWT(req, env);
+  if (!(await videoForClub(env, claims.tenantId, id))) return json({ success: false, error: "Video not found" }, 404, corsHdrs);
+  const { results } = await env.DB.prepare(
+    "SELECT id, start_sec, end_sec, title, created_at FROM video_clips WHERE tenant_id = ? AND video_id = ? ORDER BY start_sec"
+  ).bind(claims.tenantId, id).all();
+  return json({ success: true, data: { clips: ((results ?? []) as ClipRow[]).map(clipView) } }, 200, corsHdrs);
+}
+
+/** POST /api/v1/videos/:id/clips { startTime, endTime, title? } (staff) */
+export async function handleCreateVideoClip(req: Request, env: any, corsHdrs: Headers, id: string) {
+  const claims = await requireTenantJWT(req, env);
+  const video = await videoForClub(env, claims.tenantId, id);
+  if (!video) return json({ success: false, error: "Video not found" }, 404, corsHdrs);
+  const body = (await req.json().catch(() => null)) as { startTime?: unknown; endTime?: unknown; title?: unknown } | null;
+  const start = Number(body?.startTime);
+  const end = Number(body?.endTime);
+  if (!Number.isFinite(start) || !Number.isFinite(end) || start < 0 || end <= start) {
+    return json({ success: false, error: "The clip must end after it starts." }, 400, corsHdrs);
+  }
+  if (end - start > 600) return json({ success: false, error: "Clips can be up to 10 minutes long." }, 400, corsHdrs);
+  const count = await env.DB.prepare("SELECT COUNT(*) AS c FROM video_clips WHERE tenant_id = ? AND video_id = ?").bind(claims.tenantId, id).first() as { c: number } | null;
+  if ((count?.c ?? 0) >= MAX_CLIPS_PER_VIDEO) return json({ success: false, error: "This video already has the most clips allowed." }, 400, corsHdrs);
+  const title = typeof body?.title === "string" ? body.title.trim().slice(0, 80) || null : null;
+  const row: ClipRow = { id: crypto.randomUUID(), start_sec: Math.round(start * 10) / 10, end_sec: Math.round(end * 10) / 10, title, created_at: Date.now() };
+  await env.DB.prepare(
+    "INSERT INTO video_clips (id, tenant_id, video_id, start_sec, end_sec, title, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+  ).bind(row.id, claims.tenantId, id, row.start_sec, row.end_sec, row.title, claims.sub ?? null, row.created_at).run();
+  return json({ success: true, data: { clip: clipView(row) } }, 201, corsHdrs);
+}
+
+/** DELETE /api/v1/videos/:id/clips/:clipId (staff) */
+export async function handleDeleteVideoClip(req: Request, env: any, corsHdrs: Headers, id: string, clipId: string) {
+  const claims = await requireTenantJWT(req, env);
+  await env.DB.prepare("DELETE FROM video_clips WHERE id = ? AND video_id = ? AND tenant_id = ?").bind(clipId, id, claims.tenantId).run();
+  return json({ success: true }, 200, corsHdrs);
 }
 
 // Redirect to the playable file (R2 media URL or external link)

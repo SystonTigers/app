@@ -20,6 +20,7 @@ const PLAN_LIMITS: Record<string, number> = {
 export async function handleGetOrganization(req: Request, env: any, corsHdrs: Headers) {
     try {
         const claims = await requireJWT(req, env);
+        // Membership is by email, but only for the organisation the signed-in club belongs to
         const userEmail = claims.email;
 
         // Find organization where user is a member
@@ -28,8 +29,8 @@ export async function handleGetOrganization(req: Request, env: any, corsHdrs: He
                    (SELECT COUNT(*) FROM tenants WHERE organization_id = o.id) as team_count
             FROM organizations o
             JOIN organization_members om ON o.id = om.organization_id
-            WHERE om.user_email = ?
-        `).bind(userEmail).first();
+            WHERE om.user_email = ? AND o.id = (SELECT organization_id FROM tenants WHERE id = ?)
+        `).bind(userEmail, claims.tenantId).first();
 
         if (!membership) {
             return json({ success: false, error: { message: 'No organization found' } }, 404, corsHdrs);
@@ -67,6 +68,7 @@ export async function handleGetOrganization(req: Request, env: any, corsHdrs: He
 export async function handleAddTeam(req: Request, env: any, corsHdrs: Headers) {
     try {
         const claims = await requireJWT(req, env);
+        // Membership is by email, but only for the organisation the signed-in club belongs to
         const userEmail = claims.email;
 
         // Check user is admin/owner of an organization
@@ -74,8 +76,8 @@ export async function handleAddTeam(req: Request, env: any, corsHdrs: Headers) {
             SELECT o.*, om.role
             FROM organizations o
             JOIN organization_members om ON o.id = om.organization_id
-            WHERE om.user_email = ? AND om.role IN ('owner', 'admin')
-        `).bind(userEmail).first();
+            WHERE om.user_email = ? AND o.id = (SELECT organization_id FROM tenants WHERE id = ?) AND om.role IN ('owner', 'admin')
+        `).bind(userEmail, claims.tenantId).first();
 
         if (!membership) {
             return json({
@@ -165,6 +167,7 @@ export async function handleAddTeam(req: Request, env: any, corsHdrs: Headers) {
 export async function handleRemoveTeam(req: Request, env: any, corsHdrs: Headers) {
     try {
         const claims = await requireJWT(req, env);
+        // Membership is by email, but only for the organisation the signed-in club belongs to
         const userEmail = claims.email;
 
         const url = new URL(req.url);
@@ -175,8 +178,8 @@ export async function handleRemoveTeam(req: Request, env: any, corsHdrs: Headers
             SELECT o.id as org_id, om.role
             FROM organizations o
             JOIN organization_members om ON o.id = om.organization_id
-            WHERE om.user_email = ? AND om.role = 'owner'
-        `).bind(userEmail).first();
+            WHERE om.user_email = ? AND o.id = (SELECT organization_id FROM tenants WHERE id = ?) AND om.role = 'owner'
+        `).bind(userEmail, claims.tenantId).first();
 
         if (!membership) {
             return json({
@@ -296,6 +299,7 @@ export async function handleGetPlans(req: Request, env: any, corsHdrs: Headers) 
 export async function handleInviteTeam(req: Request, env: any, corsHdrs: Headers) {
     try {
         const claims = await requireJWT(req, env);
+        // Membership is by email, but only for the organisation the signed-in club belongs to
         const userEmail = claims.email;
 
         // Verify user is admin/owner of a Club/Club Pro org
@@ -303,9 +307,9 @@ export async function handleInviteTeam(req: Request, env: any, corsHdrs: Headers
             SELECT o.*, om.role
             FROM organizations o
             JOIN organization_members om ON o.id = om.organization_id
-            WHERE om.user_email = ? AND om.role IN ('owner', 'admin')
+            WHERE om.user_email = ? AND o.id = (SELECT organization_id FROM tenants WHERE id = ?) AND om.role IN ('owner', 'admin')
             AND o.plan IN ('club', 'club_pro')
-        `).bind(userEmail).first();
+        `).bind(userEmail, claims.tenantId).first();
 
         if (!membership) {
             return json({

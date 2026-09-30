@@ -1,4 +1,5 @@
 import { ok, badRequest, notFound } from '../utils/response';
+import { requireTenantJWT } from '../services/auth';
 import type { Env } from '../env';
 
 /**
@@ -94,7 +95,8 @@ async function getPlayerStats(env: Env, tenantId: string, playerId: string) {
  * Generate a transfer code for a departing player
  */
 export async function handleGenerateTransferCode(req: any, env: Env, corsHdrs: Headers, playerId: string) {
-    const tenantId = req.tenant;
+    // The club always comes from the login
+    const { tenantId } = await requireTenantJWT(req, env);
 
     // 1. Check player exists in squad
     const player = await env.DB.prepare(`
@@ -229,7 +231,8 @@ export async function handleVerifyTransferCode(req: any, env: Env, corsHdrs: Hea
 export async function handleClaimTransfer(req: any, env: Env, corsHdrs: Headers) {
     const body = await req.json();
     const { transferCode, newPlayerId } = body;
-    const tenantId = req.tenant;
+    // The club always comes from the login
+    const { tenantId } = await requireTenantJWT(req, env);
 
     if (!transferCode || !newPlayerId) {
         return badRequest('Transfer code and new player ID are required');
@@ -293,7 +296,8 @@ export async function handleClaimTransfer(req: any, env: Env, corsHdrs: Headers)
  * Get combined career stats across all clubs
  */
 export async function handleGetCareerStats(req: any, env: Env, corsHdrs: Headers, playerId: string) {
-    const tenantId = req.tenant;
+    // The club always comes from the login
+    const { tenantId } = await requireTenantJWT(req, env);
 
     // 1. Get player and their global profile
     const player = await env.DB.prepare(`

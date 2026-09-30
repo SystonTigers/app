@@ -2,7 +2,7 @@
 import { z } from "zod";
 import { json } from "../services/util";
 import { parse, isValidationError } from "../lib/validate";
-import { requireJWT, hasRole } from "../services/auth";
+import { requireJWT, hasRole, hasAnyRole, STAFF_ROLES } from "../services/auth";
 import { logJSON } from "../lib/log";
 import { NAME_STYLES } from "../services/publicNames";
 
@@ -143,6 +143,21 @@ export async function updateTenantMe(req: Request, env: any, corsHdrs: Headers):
     }
 }
 
+/** Never sent: the private fixtures address, payment ids and internal set-up state. */
+const HIDDEN_TENANT_FIELDS = ['fixture_email_token', 'stripe_customer_id', 'stripe_subscription_id', 'stripe_connected_account_id', 'provision_state', 'provision_reason'];
+/** Staff also see the club's contact email, sign-up codes and plan details. */
+const STAFF_TENANT_FIELDS = ['email', 'fan_code', 'promo_code_used', 'usage_cap', 'owner_email_sent_at'];
+
+export function visibleTenant(tenant: Record<string, unknown>, staff: boolean): Record<string, unknown> {
+    const out: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(tenant)) {
+        if (HIDDEN_TENANT_FIELDS.includes(key)) continue;
+        if (!staff && STAFF_TENANT_FIELDS.includes(key)) continue;
+        out[key] = value;
+    }
+    return out;
+}
+
 // GET /api/v1/tenants/me
 export async function getTenantMe(req: Request, env: any, corsHdrs: Headers): Promise<Response> {
     try {
@@ -164,7 +179,7 @@ export async function getTenantMe(req: Request, env: any, corsHdrs: Headers): Pr
             return json({ success: false, error: { code: "NOT_FOUND", message: "Tenant not found" } }, 404, corsHdrs);
         }
 
-        return json({ success: true, tenant }, 200, corsHdrs);
+        return json({ success: true, tenant: visibleTenant(tenant as Record<string, unknown>, hasAnyRole(claims, STAFF_ROLES)) }, 200, corsHdrs);
 
     } catch (err: any) {
         if (err instanceof Response) {return err;}
