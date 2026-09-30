@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { COLORS } from '../../config';
+import { Pressable, Text, TextInput, View } from 'react-native';
+import { themedStyles, useBrandColors } from '../../theme/brand';
 import { clipsLength, formatClock, matchDate, parseClock, type MakeHighlightsVideoProps } from '../../utils/highlights';
 import type { OverlayMatch } from '../../services/highlightsOverlay';
 import ClipTiming from './ClipTiming';
@@ -16,6 +16,8 @@ const OPPONENT_COLOR = '#9AA3AB';
  * the moments and their timing, then save or share the video.
  */
 export default function MakeHighlightsVideo({ moments, fileName, fixture, clubName, clubColor, busy, onTiming }: MakeHighlightsVideoProps) {
+  const COLORS = useBrandColors();
+  const styles = useStyles();
   const [stage, setStage] = useState<Stage>('pick');
   const [file, setFile] = useState<File | null>(null);
   const [url, setUrl] = useState<string | null>(null);
@@ -235,6 +237,7 @@ export default function MakeHighlightsVideo({ moments, fileName, fixture, clubNa
 }
 
 function Button({ label, onPress, disabled, small }: { label: string; onPress: () => void; disabled?: boolean; small?: boolean }) {
+  const styles = useStyles();
   return (
     <Pressable onPress={onPress} disabled={disabled} accessibilityRole="button" style={[small ? styles.smallButton : styles.button, disabled ? styles.disabled : null]}>
       <Text style={styles.buttonText}>{label}</Text>
@@ -243,17 +246,18 @@ function Button({ label, onPress, disabled, small }: { label: string; onPress: (
 }
 
 function Link({ label, onPress }: { label: string; onPress: () => void }) {
+  const styles = useStyles();
   return <Pressable onPress={onPress} accessibilityRole="button"><Text style={styles.link}>{label}</Text></Pressable>;
 }
 
-const styles = StyleSheet.create({
-  box: { gap: 10, padding: 14, borderRadius: 12, backgroundColor: '#14181C' },
+const useStyles = themedStyles((COLORS) => ({
+  box: { gap: 10, padding: 14, borderRadius: 18, backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border },
   heading: { color: COLORS.text, fontWeight: '900', fontSize: 16 },
   help: { color: COLORS.textLight },
   error: { color: COLORS.error },
   button: { backgroundColor: COLORS.primary, borderRadius: 10, paddingVertical: 14, alignItems: 'center' },
   smallButton: { backgroundColor: COLORS.primary, borderRadius: 8, paddingVertical: 10, paddingHorizontal: 16 },
-  buttonText: { color: COLORS.background, fontWeight: '900' },
+  buttonText: { color: COLORS.onPrimary, fontWeight: '900' },
   disabled: { opacity: 0.5 },
   link: { color: COLORS.primary, fontWeight: '700' },
   row: { flexDirection: 'row', gap: 8, alignItems: 'center' },
@@ -263,10 +267,10 @@ const styles = StyleSheet.create({
   checkMain: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 },
   optionTitle: { color: COLORS.text, fontWeight: '800' },
   optionText: { flex: 1 },
-  consent: { color: '#F5C400', fontSize: 12, fontWeight: '700', marginLeft: 30 },
+  consent: { color: COLORS.warning, fontSize: 12, fontWeight: '700', marginLeft: 30 },
   checkBox: { color: COLORS.primary, fontSize: 20 },
   checkText: { flex: 1, color: COLORS.text },
   checkTime: { color: COLORS.textLight },
-  bar: { height: 8, borderRadius: 4, backgroundColor: '#2F3439', overflow: 'hidden' },
+  bar: { height: 8, borderRadius: 4, backgroundColor: COLORS.surfaceRaised, overflow: 'hidden' },
   barFill: { height: 8, backgroundColor: COLORS.primary },
-});
+}));

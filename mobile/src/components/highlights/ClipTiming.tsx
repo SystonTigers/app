@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { COLORS } from '../../config';
+import { Pressable, Text, View } from 'react-native';
+import { themedStyles } from '../../theme/brand';
 import { nudgeSide } from '../../utils/highlights';
 
 interface Props {
@@ -19,6 +19,7 @@ const SAVE_AFTER_MS = 700;
  * Taps show straight away and save once the manager stops tapping.
  */
 export default function ClipTiming({ before, after, disabled, onChange }: Props) {
+  const styles = useStyles();
   const [value, setValue] = useState({ before, after });
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pending = useRef(false);
@@ -54,6 +55,7 @@ export default function ClipTiming({ before, after, disabled, onChange }: Props)
 }
 
 function Side({ label, seconds, disabled, onNudge }: { label: string; seconds: number; disabled?: boolean; onNudge: (by: number) => void }) {
+  const styles = useStyles();
   return (
     <View style={styles.side}>
       <Text style={styles.label}>{label}</Text>
@@ -67,6 +69,7 @@ function Side({ label, seconds, disabled, onNudge }: { label: string; seconds: n
 }
 
 function Step({ by, disabled, onPress }: { by: number; disabled?: boolean; onPress: () => void }) {
+  const styles = useStyles();
   const text = by > 0 ? `+${by}` : String(by);
   return (
     <Pressable onPress={onPress} disabled={disabled} accessibilityRole="button" accessibilityLabel={`${by > 0 ? 'Add' : 'Take off'} ${Math.abs(by)} seconds`} style={[styles.step, disabled ? styles.disabled : null]}>
@@ -75,7 +78,7 @@ function Step({ by, disabled, onPress }: { by: number; disabled?: boolean; onPre
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themedStyles((COLORS) => ({
   box: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 10 },
   side: { flexGrow: 1, minWidth: 200, gap: 6 },
   label: { color: COLORS.textLight, fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
@@ -84,4 +87,4 @@ const styles = StyleSheet.create({
   step: { borderWidth: 1, borderColor: COLORS.textLight, borderRadius: 8, paddingVertical: 6, paddingHorizontal: 10, minWidth: 40, alignItems: 'center' },
   stepText: { color: COLORS.text, fontSize: 13, fontWeight: '800' },
   disabled: { opacity: 0.5 },
-});
+}));

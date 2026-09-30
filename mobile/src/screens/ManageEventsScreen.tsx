@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, StyleSheet, ActivityIndicator, Alert } from 'react-native';
+import { View, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import {
   Card,
   Title,
@@ -12,7 +12,8 @@ import {
   Chip,
   Divider,
 } from 'react-native-paper';
-import { COLORS } from '../config';
+import { themedStyles, useBrandColors } from '../theme/brand';
+import { FONTS } from '../theme/brandFonts';
 import { eventsApi } from '../services/api';
 
 interface Event {
@@ -29,12 +30,14 @@ interface Event {
 
 
 const eventTypes = [
-  { value: 'match', label: '⚽ Match', color: '#F44336' },
-  { value: 'training', label: '🏃 Training', color: '#4CAF50' },
-  { value: 'social', label: '🎉 Social', color: '#FF9800' },
+  { value: 'match', label: 'Match', icon: 'soccer' },
+  { value: 'training', label: 'Training', icon: 'run' },
+  { value: 'social', label: 'Social', icon: 'party-popper' },
 ];
 
 export default function ManageEventsScreen() {
+  const COLORS = useBrandColors();
+  const styles = useStyles();
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -159,12 +162,9 @@ export default function ManageEventsScreen() {
   return (
     <View style={styles.container}>
       <ScrollView style={styles.scrollView}>
-        <View style={styles.header}>
-          <Title style={styles.headerTitle}>Event Management</Title>
-          <Paragraph style={styles.headerSubtitle}>
-            Create and manage team events, training, and social gatherings
-          </Paragraph>
-        </View>
+        <Paragraph style={styles.intro}>
+          Create and manage team events, training, and social gatherings
+        </Paragraph>
 
         <View style={styles.eventsContainer}>
           {events.length === 0 ? (
@@ -184,16 +184,14 @@ export default function ManageEventsScreen() {
                   <Card.Content>
                     <View style={styles.eventHeader}>
                       <Chip
-                        style={[
-                          styles.typeChip,
-                          { backgroundColor: typeInfo.color },
-                        ]}
+                        icon={typeInfo.icon}
+                        style={styles.typeChip}
                         textStyle={styles.chipText}
                       >
                         {typeInfo.label}
                       </Chip>
-                      <Chip style={styles.rsvpChip}>
-                        ✓ {event.rsvp_yes_count} going
+                      <Chip icon="check" style={styles.rsvpChip} textStyle={styles.rsvpChipText}>
+                        {event.rsvp_yes_count} going
                       </Chip>
                     </View>
 
@@ -248,7 +246,8 @@ export default function ManageEventsScreen() {
         icon="plus"
         style={styles.fab}
         onPress={openAddModal}
-        color={COLORS.secondary}
+        color={COLORS.onPrimary}
+        accessibilityLabel="Add event"
       />
 
       <Portal>
@@ -283,8 +282,9 @@ export default function ManageEventsScreen() {
                         type: type.value as any,
                       })
                     }
-                    style={styles.selectChip}
-                    selectedColor={type.color}
+                    icon={formData.type === type.value ? undefined : type.icon}
+                    style={[styles.selectChip, formData.type === type.value && styles.selectChipActive]}
+                    selectedColor={COLORS.primary}
                   >
                     {type.label}
                   </Chip>
@@ -343,11 +343,7 @@ export default function ManageEventsScreen() {
               <Button
                 mode="contained"
                 onPress={handleSave}
-                style={[
-                  styles.modalButton,
-                  { backgroundColor: COLORS.primary },
-                ]}
-                textColor={COLORS.secondary}
+                style={styles.modalButton}
               >
                 Save
               </Button>
@@ -359,7 +355,7 @@ export default function ManageEventsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themedStyles((COLORS) => ({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
@@ -374,12 +370,17 @@ const styles = StyleSheet.create({
   },
   emptyCard: {
     margin: 16,
-    borderRadius: 12,
-    elevation: 2,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surface,
   },
   emptyTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
+    fontSize: 22,
+    fontFamily: FONTS.display,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    color: COLORS.text,
     textAlign: 'center',
     marginBottom: 8,
   },
@@ -390,29 +391,20 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
-  header: {
-    padding: 20,
-    backgroundColor: COLORS.primary,
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: COLORS.secondary,
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: COLORS.secondary,
-    opacity: 0.8,
+  intro: {
+    color: COLORS.textLight,
+    marginHorizontal: 16,
+    marginTop: 12,
   },
   eventsContainer: {
     padding: 16,
   },
   eventCard: {
     marginBottom: 16,
-    borderRadius: 12,
-    elevation: 2,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surface,
   },
   eventHeader: {
     flexDirection: 'row',
@@ -420,17 +412,23 @@ const styles = StyleSheet.create({
   },
   typeChip: {
     marginRight: 8,
+    backgroundColor: COLORS.primarySoft,
   },
   rsvpChip: {
-    backgroundColor: COLORS.success,
+    backgroundColor: 'rgba(43,213,118,0.14)',
+  },
+  rsvpChipText: {
+    color: COLORS.success,
+    fontWeight: 'bold',
   },
   chipText: {
-    color: '#fff',
+    color: COLORS.primary,
     fontWeight: 'bold',
   },
   eventTitle: {
     fontSize: 20,
     fontWeight: 'bold',
+    color: COLORS.text,
     marginBottom: 12,
   },
   divider: {
@@ -465,15 +463,20 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary,
   },
   modal: {
-    backgroundColor: 'white',
     padding: 20,
     margin: 20,
-    borderRadius: 12,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surface,
     maxHeight: '90%',
   },
   modalTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
+    fontSize: 24,
+    fontFamily: FONTS.display,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    color: COLORS.text,
     marginBottom: 16,
   },
   input: {
@@ -485,6 +488,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: 'bold',
+    color: COLORS.text,
     marginBottom: 8,
   },
   chips: {
@@ -495,6 +499,9 @@ const styles = StyleSheet.create({
     marginRight: 8,
     marginBottom: 8,
   },
+  selectChipActive: {
+    backgroundColor: COLORS.primarySoft,
+  },
   modalActions: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -504,4 +511,4 @@ const styles = StyleSheet.create({
     flex: 1,
     marginHorizontal: 4,
   },
-});
+}));

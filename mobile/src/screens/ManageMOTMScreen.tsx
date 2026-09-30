@@ -1,8 +1,9 @@
 import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, Alert, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Alert, RefreshControl, ScrollView, View } from 'react-native';
 import { Button, Card, Chip, FAB, Modal, Paragraph, Portal, Text, Title } from 'react-native-paper';
 import { useFocusEffect } from '@react-navigation/native';
-import { COLORS } from '../config';
+import { themedStyles, useBrandColors } from '../theme/brand';
+import { FONTS } from '../theme/brandFonts';
 import {
   apiErrorMessage,
   fixturesApi,
@@ -52,6 +53,8 @@ function formatDateTime(value: string | null | undefined): string {
  * the winner (shown in the app and on the club's web page).
  */
 export default function ManageMOTMScreen() {
+  const COLORS = useBrandColors();
+  const styles = useStyles();
   const [sessions, setSessions] = useState<MotmSessionSummary[]>([]);
   const [matches, setMatches] = useState<MatchOption[]>([]);
   const [players, setPlayers] = useState<SquadPlayer[]>([]);
@@ -230,7 +233,7 @@ export default function ManageMOTMScreen() {
     <View style={styles.container}>
       <ScrollView
         contentContainerStyle={styles.content}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} />}
+        refreshControl={<RefreshControl tintColor={COLORS.primary} colors={[COLORS.primary]} refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} />}
       >
         {loadError ? <Text style={styles.errorText}>{loadError}</Text> : null}
 
@@ -259,7 +262,7 @@ export default function ManageMOTMScreen() {
         ) : null}
       </ScrollView>
 
-      <FAB icon="star-plus" label="New vote" style={styles.fab} color={COLORS.background} onPress={startCreate} />
+      <FAB icon="star-plus" label="New vote" style={styles.fab} color={COLORS.onPrimary} onPress={startCreate} />
 
       <Portal>
         <Modal visible={creating} onDismiss={() => setCreating(false)} contentContainerStyle={styles.modal}>
@@ -305,7 +308,7 @@ export default function ManageMOTMScreen() {
 
             <View style={styles.buttons}>
               <Button mode="outlined" onPress={() => setCreating(false)} style={styles.button}>Cancel</Button>
-              <Button mode="contained" onPress={openVote} loading={saving} disabled={saving} buttonColor={COLORS.primary} textColor={COLORS.background} style={styles.button}>
+              <Button mode="contained" onPress={openVote} loading={saving} disabled={saving} style={styles.button}>
                 Open vote
               </Button>
             </View>
@@ -329,7 +332,7 @@ export default function ManageMOTMScreen() {
                     return (
                       <View key={n.playerId} style={styles.tallyRow}>
                         <View style={styles.tallyText}>
-                          <Text>{n.number != null ? `${n.number}  ` : ''}{n.name}</Text>
+                          <Text style={styles.tallyName}>{n.number != null ? `${n.number}  ` : ''}{n.name}</Text>
                           <Text style={styles.tallyCount}>{count}</Text>
                         </View>
                         <View style={styles.bar}>
@@ -364,23 +367,23 @@ export default function ManageMOTMScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themedStyles((COLORS) => ({
   container: { flex: 1, backgroundColor: COLORS.background },
   center: { justifyContent: 'center', alignItems: 'center' },
   content: { padding: 16, paddingBottom: 100 },
-  sectionTitle: { color: COLORS.text, fontSize: 18, fontWeight: 'bold', marginVertical: 10 },
-  card: { marginBottom: 10, borderRadius: 8 },
-  cardTitle: { fontSize: 16, fontWeight: 'bold' },
-  meta: { fontSize: 13, opacity: 0.7 },
-  status: { fontSize: 14, marginTop: 4 },
+  sectionTitle: { color: COLORS.text, fontFamily: FONTS.display, fontSize: 20, letterSpacing: 1, textTransform: 'uppercase', marginVertical: 10 },
+  card: { marginBottom: 10, borderRadius: 18, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.surface },
+  cardTitle: { fontSize: 16, fontWeight: 'bold', color: COLORS.text },
+  meta: { fontSize: 13, color: COLORS.textLight },
+  status: { fontSize: 14, marginTop: 4, color: COLORS.text },
   empty: { alignItems: 'center', marginTop: 60, paddingHorizontal: 24 },
-  emptyTitle: { fontSize: 18, fontWeight: 'bold', color: COLORS.text, textAlign: 'center', marginBottom: 8 },
+  emptyTitle: { fontFamily: FONTS.display, fontSize: 22, letterSpacing: 1, textTransform: 'uppercase', color: COLORS.text, textAlign: 'center', marginBottom: 8 },
   emptyText: { color: COLORS.textLight, textAlign: 'center' },
   fab: { position: 'absolute', margin: 16, right: 0, bottom: 0, backgroundColor: COLORS.primary },
-  modal: { backgroundColor: 'white', padding: 20, margin: 20, borderRadius: 8, maxHeight: '85%' },
-  modalTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: 8 },
-  label: { fontWeight: 'bold', marginTop: 16, marginBottom: 6 },
-  help: { opacity: 0.7 },
+  modal: { backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border, padding: 20, margin: 20, borderRadius: 18, maxHeight: '85%' },
+  modalTitle: { fontFamily: FONTS.display, fontSize: 24, letterSpacing: 1, textTransform: 'uppercase', color: COLORS.text, marginBottom: 8 },
+  label: { fontWeight: 'bold', color: COLORS.text, marginTop: 16, marginBottom: 6 },
+  help: { color: COLORS.textLight },
   chips: { flexDirection: 'row', flexWrap: 'wrap' },
   chip: { margin: 4 },
   buttons: { flexDirection: 'row', justifyContent: 'flex-end', flexWrap: 'wrap', marginTop: 20 },
@@ -389,7 +392,8 @@ const styles = StyleSheet.create({
   spinner: { marginVertical: 20 },
   tallyRow: { marginVertical: 6 },
   tallyText: { flexDirection: 'row', justifyContent: 'space-between' },
-  tallyCount: { fontWeight: 'bold' },
-  bar: { height: 6, backgroundColor: '#eee', borderRadius: 3, marginTop: 4, overflow: 'hidden' },
+  tallyName: { color: COLORS.text },
+  tallyCount: { fontWeight: 'bold', color: COLORS.primary },
+  bar: { height: 6, backgroundColor: COLORS.surfaceRaised, borderRadius: 3, marginTop: 4, overflow: 'hidden' },
   barFill: { height: 6, backgroundColor: COLORS.primary },
-});
+}));

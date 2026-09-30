@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, StyleSheet, TouchableOpacity, Dimensions, Linking, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Dimensions, Linking, Alert, ActivityIndicator } from 'react-native';
 import { Card, Title, Paragraph, Button, Chip, List, IconButton, ProgressBar } from 'react-native-paper';
 import { Video, ResizeMode } from 'expo-av';
-import { COLORS } from '../config';
+import { themedStyles, useBrandColors } from '../theme/brand';
+import { FONTS } from '../theme/brandFonts';
 import { fixturesApi, videosApi, gotmApi, squadApi } from '../services/api';
 import MatchHighlightsList from '../components/highlights/MatchHighlightsList';
 
@@ -55,6 +56,8 @@ interface GOTMWinner {
 }
 
 export default function HighlightsScreen() {
+  const COLORS = useBrandColors();
+  const styles = useStyles();
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [playingClip, setPlayingClip] = useState<Clip | null>(null);
   const [selectedTab, setSelectedTab] = useState<'recent' | 'gotm' | 'archive'>('recent');
@@ -217,7 +220,7 @@ export default function HighlightsScreen() {
         <View style={styles.matchHeader}>
           <IconButton
             icon="arrow-left"
-            iconColor={COLORS.secondary}
+            iconColor={COLORS.text}
             size={24}
             onPress={() => {
               setSelectedMatch(null);
@@ -266,7 +269,7 @@ export default function HighlightsScreen() {
                 <TouchableOpacity onPress={() => setPlayingClip(clip)}>
                   <Card.Cover source={{ uri: clip.thumbnailUrl }} style={styles.clipThumbnail} />
                   <View style={styles.clipOverlay}>
-                    <IconButton icon="play-circle" iconColor={COLORS.secondary} size={48} />
+                    <IconButton icon="play-circle" iconColor="#FFFFFF" size={48} />
                     <Chip
                       style={[styles.durationChip, { backgroundColor: 'rgba(0, 0, 0, 0.7)' }]}
                       textStyle={styles.durationText}
@@ -278,8 +281,8 @@ export default function HighlightsScreen() {
                 <Card.Content style={styles.clipContent}>
                   <View style={styles.clipHeader}>
                     <Chip
-                      style={[styles.typeChip, { backgroundColor: getClipTypeColor(clip.type) }]}
-                      textStyle={styles.typeText}
+                      style={[styles.typeChip, { backgroundColor: COLORS.surfaceRaised, borderColor: getClipTypeColor(clip.type) }]}
+                      textStyle={[styles.typeText, { color: getClipTypeColor(clip.type) }]}
                     >
                       {getClipTypeIcon(clip.type)} {clip.type}
                     </Chip>
@@ -305,10 +308,7 @@ export default function HighlightsScreen() {
         </View>
       ) : (
         <>
-          <View style={styles.header}>
-            <Title style={styles.headerTitle}>Highlights</Title>
-            <Paragraph style={styles.headerSubtitle}>Match clips & Goal of the Month</Paragraph>
-          </View>
+          <Text style={styles.headerSubtitle}>Match clips & Goal of the Month</Text>
 
           {/* Tab selector */}
           <View style={styles.tabContainer}>
@@ -316,8 +316,6 @@ export default function HighlightsScreen() {
               mode={selectedTab === 'recent' ? 'contained' : 'outlined'}
               onPress={() => setSelectedTab('recent')}
               style={styles.tabButton}
-              buttonColor={selectedTab === 'recent' ? COLORS.primary : 'transparent'}
-              textColor={selectedTab === 'recent' ? COLORS.secondary : COLORS.primary}
             >
               Recent Clips
             </Button>
@@ -325,8 +323,6 @@ export default function HighlightsScreen() {
               mode={selectedTab === 'gotm' ? 'contained' : 'outlined'}
               onPress={() => setSelectedTab('gotm')}
               style={styles.tabButton}
-              buttonColor={selectedTab === 'gotm' ? COLORS.primary : 'transparent'}
-              textColor={selectedTab === 'gotm' ? COLORS.secondary : COLORS.primary}
             >
               Goal of Month
             </Button>
@@ -334,8 +330,6 @@ export default function HighlightsScreen() {
               mode={selectedTab === 'archive' ? 'contained' : 'outlined'}
               onPress={() => setSelectedTab('archive')}
               style={styles.tabButton}
-              buttonColor={selectedTab === 'archive' ? COLORS.primary : 'transparent'}
-              textColor={selectedTab === 'archive' ? COLORS.secondary : COLORS.primary}
             >
               Archive
             </Button>
@@ -370,7 +364,7 @@ export default function HighlightsScreen() {
                   <>
                     <Card style={styles.votingCard}>
                       <Card.Content>
-                        <Title style={styles.votingTitle}>🏆 Vote for Goal of the Month</Title>
+                        <Title style={styles.votingTitle}>Vote for Goal of the Month</Title>
                         <Paragraph style={styles.votingSubtitle}>Cast your vote below!</Paragraph>
                         <Paragraph style={styles.votingStats}>{gotmNominees.reduce((acc, curr) => acc + curr.votes, 0)} votes cast</Paragraph>
                       </Card.Content>
@@ -392,8 +386,6 @@ export default function HighlightsScreen() {
                               mode="contained"
                               onPress={() => handleVote(nominee.id)}
                               disabled={nominee.hasVoted}
-                              buttonColor={nominee.hasVoted ? '#CCCCCC' : COLORS.primary}
-                              textColor={COLORS.secondary}
                               style={styles.voteButton}
                             >
                               {nominee.hasVoted ? 'Voted ✓' : 'Vote'}
@@ -404,7 +396,7 @@ export default function HighlightsScreen() {
                     ))}
                   </>
                 ) : (
-                  <Paragraph style={{ padding: 20, textAlign: 'center' }}>No active voting currently.</Paragraph>
+                  <Paragraph style={{ padding: 20, textAlign: 'center', color: COLORS.textLight }}>No active voting currently.</Paragraph>
                 )}
               </View>
             )}
@@ -413,7 +405,7 @@ export default function HighlightsScreen() {
             {selectedTab === 'archive' && (
               <View style={styles.archiveContainer}>
                 <Title style={styles.archiveTitle}>Past Winners</Title>
-                <Paragraph>No existing past winners data available.</Paragraph>
+                <Paragraph style={{ color: COLORS.textLight }}>No existing past winners data available.</Paragraph>
               </View>
             )}
           </ScrollView>
@@ -423,27 +415,16 @@ export default function HighlightsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themedStyles((COLORS) => ({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
   },
-  header: {
-    padding: 20,
-    backgroundColor: COLORS.primary,
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: COLORS.secondary,
-    marginBottom: 4,
-  },
   headerSubtitle: {
     fontSize: 14,
-    color: COLORS.secondary,
-    opacity: 0.8,
+    color: COLORS.textLight,
+    marginHorizontal: 16,
+    marginTop: 12,
   },
   tabContainer: {
     flexDirection: 'row',
@@ -461,8 +442,10 @@ const styles = StyleSheet.create({
   },
   matchCard: {
     marginBottom: 12,
-    borderRadius: 12,
-    elevation: 2,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surface,
   },
   matchListItem: {
     paddingVertical: 8,
@@ -470,7 +453,9 @@ const styles = StyleSheet.create({
   matchHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.primary,
+    backgroundColor: COLORS.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
     paddingRight: 20,
     paddingVertical: 8,
   },
@@ -478,14 +463,15 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   matchTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: COLORS.secondary,
+    fontFamily: FONTS.display,
+    fontSize: 24,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    color: COLORS.text,
   },
   matchSubtitle: {
     fontSize: 12,
-    color: COLORS.secondary,
-    opacity: 0.8,
+    color: COLORS.textLight,
   },
   clipsContainer: {
     flex: 1,
@@ -504,6 +490,7 @@ const styles = StyleSheet.create({
   videoTitle: {
     fontSize: 18,
     fontWeight: 'bold',
+    color: COLORS.text,
     marginBottom: 4,
   },
   videoDescription: {
@@ -519,8 +506,10 @@ const styles = StyleSheet.create({
   },
   clipCard: {
     marginBottom: 16,
-    borderRadius: 12,
-    elevation: 2,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surface,
     overflow: 'hidden',
   },
   clipThumbnail: {
@@ -541,7 +530,7 @@ const styles = StyleSheet.create({
     right: 8,
   },
   durationText: {
-    color: COLORS.secondary,
+    color: '#FFFFFF',
     fontSize: 12,
     fontWeight: 'bold',
   },
@@ -556,9 +545,9 @@ const styles = StyleSheet.create({
   },
   typeChip: {
     height: 28,
+    borderWidth: 1,
   },
   typeText: {
-    color: COLORS.secondary,
     fontSize: 11,
     fontWeight: 'bold',
   },
@@ -580,12 +569,19 @@ const styles = StyleSheet.create({
   },
   votingCard: {
     marginBottom: 16,
-    borderRadius: 12,
-    elevation: 2,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surface,
+    borderLeftWidth: 4,
+    borderLeftColor: COLORS.primary,
   },
   votingTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontFamily: FONTS.display,
+    fontSize: 22,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    color: COLORS.text,
     marginBottom: 4,
   },
   votingSubtitle: {
@@ -604,8 +600,11 @@ const styles = StyleSheet.create({
   },
   nomineeCard: {
     marginBottom: 16,
-    borderRadius: 12,
-    elevation: 2,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surface,
+    overflow: 'hidden',
   },
   nomineeThumbnail: {
     height: 200,
@@ -645,14 +644,19 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   archiveTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
+    fontFamily: FONTS.display,
+    fontSize: 22,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    color: COLORS.text,
     marginBottom: 16,
   },
   winnerCard: {
     marginBottom: 16,
-    borderRadius: 12,
-    elevation: 3,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surface,
     overflow: 'hidden',
   },
   winnerThumbnail: {
@@ -668,12 +672,12 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   winnerBadgeText: {
-    color: COLORS.secondary,
+    color: COLORS.onPrimary,
     fontSize: 12,
     fontWeight: 'bold',
   },
   winnerMonth: {
-    backgroundColor: COLORS.background,
+    backgroundColor: COLORS.surfaceRaised,
     alignSelf: 'flex-start',
     marginBottom: 8,
   },
@@ -696,4 +700,4 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: COLORS.textLight,
   },
-});
+}));

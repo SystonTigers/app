@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
-import { View, ScrollView, StyleSheet, KeyboardAvoidingView, Platform, Linking } from 'react-native';
+import { View, ScrollView, KeyboardAvoidingView, Platform, Linking } from 'react-native';
 import { Text, TextInput, Button, Card, RadioButton, Chip, Checkbox } from 'react-native-paper';
-import { COLORS, PRIVACY_URL, TERMS_URL } from '../config';
+import { PRIVACY_URL, TERMS_URL } from '../config';
+import { themedStyles, useBrandColors } from '../theme/brand';
 import type { AuthResult } from '../services/api';
 import { useClubName } from '../context/ClubContext';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { submitRegistration } from './authController';
+import { FONTS } from '../theme/brandFonts';
+import AuthBrandHeader, { AuthBackdrop } from '../components/auth/AuthBrand';
 
 interface RegisterScreenProps {
   onRegister: (result: AuthResult) => void;
@@ -13,6 +16,8 @@ interface RegisterScreenProps {
 }
 
 export default function RegisterScreen({ onRegister, onNavigateToLogin }: RegisterScreenProps) {
+  const COLORS = useBrandColors();
+  const styles = useStyles();
   const clubName = useClubName();
   const [formData, setFormData] = useState({
     firstName: '',
@@ -136,13 +141,9 @@ export default function RegisterScreen({ onRegister, onNavigateToLogin }: Regist
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
+      <AuthBackdrop />
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Header */}
-        <View style={styles.header}>
-          <MaterialCommunityIcons name="account-plus" size={64} color={COLORS.primary} />
-          <Text style={styles.title}>Create Account</Text>
-          <Text style={styles.subtitle}>Join {clubName}</Text>
-        </View>
+        <AuthBrandHeader title="Create Account" subtitle={`Join ${clubName}`} />
 
         {/* Registration Card */}
         <Card style={styles.card}>
@@ -339,8 +340,6 @@ export default function RegisterScreen({ onRegister, onNavigateToLogin }: Regist
               loading={loading}
               disabled={loading}
               style={styles.registerButton}
-              buttonColor={COLORS.primary}
-              textColor="#000"
             >
               {loading ? 'Creating Account...' : 'Create Account'}
             </Button>
@@ -376,42 +375,33 @@ export default function RegisterScreen({ onRegister, onNavigateToLogin }: Regist
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themedStyles((COLORS) => ({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
+    overflow: 'hidden',
   },
   scrollContent: {
     flexGrow: 1,
     padding: 20,
     paddingTop: 40,
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: COLORS.text,
-    marginTop: 12,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: COLORS.textLight,
-    marginTop: 4,
+    width: '100%',
+    maxWidth: 520,
+    alignSelf: 'center',
   },
   card: {
     backgroundColor: COLORS.surface,
-    elevation: 4,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: COLORS.border,
     marginBottom: 16,
   },
   errorContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: `${COLORS.error}15`,
+    backgroundColor: 'rgba(255,0,85,0.14)',
     padding: 12,
-    borderRadius: 8,
+    borderRadius: 12,
     marginBottom: 16,
   },
   errorText: {
@@ -421,8 +411,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontFamily: FONTS.display,
+    fontSize: 20,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
     color: COLORS.text,
     marginBottom: 12,
   },
@@ -432,13 +424,13 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   roleChip: {
-    backgroundColor: COLORS.background,
+    backgroundColor: COLORS.surfaceRaised,
   },
   roleChipSelected: {
     backgroundColor: COLORS.primary,
   },
   roleChipTextSelected: {
-    color: '#000',
+    color: COLORS.onPrimary,
   },
   input: {
     marginBottom: 8,
@@ -466,6 +458,7 @@ const styles = StyleSheet.create({
   ageLabel: {
     textAlign: 'left',
     fontSize: 14,
+    color: COLORS.text,
   },
   ageHint: {
     fontSize: 12,
@@ -494,4 +487,4 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
     fontWeight: '600',
   },
-});
+}));

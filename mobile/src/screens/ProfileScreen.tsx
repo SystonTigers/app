@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, StyleSheet, Alert, Image } from 'react-native';
+import { View, ScrollView, Alert, Image } from 'react-native';
 import { Text, Card, TextInput, Button, Avatar, Divider } from 'react-native-paper';
-import { COLORS } from '../config';
+import { themedStyles, useBrandColors } from '../theme/brand';
+import { FONTS } from '../theme/brandFonts';
 import { useAuth } from '../context/AuthContext';
 import { usersApi } from '../services/api';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 export default function ProfileScreen() {
+  const COLORS = useBrandColors();
+  const styles = useStyles();
   const { user, logout } = useAuth();
 
   const [isEditing, setIsEditing] = useState(false);
@@ -154,7 +157,7 @@ export default function ProfileScreen() {
               size={100}
               label={`${profileData.firstName.charAt(0)}${profileData.lastName.charAt(0)}`}
               style={styles.avatar}
-              color="#000"
+              color={COLORS.primary}
             />
           )}
         </View>
@@ -167,7 +170,7 @@ export default function ProfileScreen() {
           <MaterialCommunityIcons
             name={user?.role === 'admin' ? 'shield-crown' : user?.role === 'coach' ? 'whistle' : user?.role === 'player' ? 'soccer' : 'account-child'}
             size={16}
-            color="#fff"
+            color={COLORS.primary}
           />
           <Text style={styles.roleText}>{user?.role?.toUpperCase()}</Text>
         </View>
@@ -202,8 +205,6 @@ export default function ProfileScreen() {
                   loading={loading}
                   disabled={loading}
                   labelStyle={{ fontSize: 14 }}
-                  buttonColor={COLORS.primary}
-                  textColor="#000"
                 >
                   Save
                 </Button>
@@ -328,8 +329,6 @@ export default function ProfileScreen() {
                   onPress={handleChangePassword}
                   loading={loading}
                   disabled={loading}
-                  buttonColor={COLORS.primary}
-                  textColor="#000"
                   style={styles.passwordButton}
                 >
                   Update Password
@@ -372,23 +371,31 @@ export default function ProfileScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themedStyles((COLORS) => ({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
   },
   header: {
-    backgroundColor: COLORS.primary,
     alignItems: 'center',
-    paddingVertical: 32,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
+    marginHorizontal: 16,
+    marginTop: 16,
+    paddingVertical: 28,
+    paddingHorizontal: 16,
+    backgroundColor: COLORS.surface,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   avatarContainer: {
     position: 'relative',
+    padding: 4,
+    borderRadius: 60,
+    borderWidth: 2,
+    borderColor: COLORS.primary,
   },
   avatar: {
-    backgroundColor: COLORS.secondary,
+    backgroundColor: COLORS.primarySoft,
   },
   avatarImage: {
     width: 100,
@@ -396,15 +403,18 @@ const styles = StyleSheet.create({
     borderRadius: 50,
   },
   name: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#000',
+    fontFamily: FONTS.display,
+    fontSize: 30,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    color: COLORS.text,
     marginTop: 16,
+    textAlign: 'center',
   },
   roleBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#000',
+    backgroundColor: COLORS.primarySoft,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
@@ -413,14 +423,17 @@ const styles = StyleSheet.create({
   },
   roleText: {
     fontSize: 12,
-    fontWeight: '600',
-    color: '#fff',
+    fontWeight: '700',
+    letterSpacing: 1,
+    color: COLORS.primary,
   },
   card: {
     margin: 16,
     marginBottom: 0,
     backgroundColor: COLORS.surface,
-    elevation: 2,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -428,13 +441,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   cardTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontFamily: FONTS.display,
+    fontSize: 20,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
     color: COLORS.text,
   },
   divider: {
     marginVertical: 12,
-    backgroundColor: COLORS.background,
+    backgroundColor: COLORS.border,
   },
   input: {
     marginBottom: 12,
@@ -470,8 +485,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   statValue: {
-    fontSize: 24,
-    fontWeight: 'bold',
+    fontFamily: FONTS.display,
+    fontSize: 30,
     color: COLORS.text,
     marginTop: 8,
   },
@@ -481,4 +496,4 @@ const styles = StyleSheet.create({
     marginTop: 4,
     textAlign: 'center',
   },
-});
+}));

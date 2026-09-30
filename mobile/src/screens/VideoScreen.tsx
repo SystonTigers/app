@@ -1,10 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, ScrollView, StyleSheet, Alert } from 'react-native';
+import { View, ScrollView, Alert } from 'react-native';
 import { Card, Title, Paragraph, Button, List, IconButton } from 'react-native-paper';
 import * as ImagePicker from 'expo-image-picker';
 import * as MediaLibrary from 'expo-media-library';
 import { Video, ResizeMode } from 'expo-av';
-import { COLORS } from '../config';
+import { themedStyles, useBrandColors } from '../theme/brand';
+import { FONTS } from '../theme/brandFonts';
+import ScreenIntro from '../components/brand/ScreenIntro';
+import SectionTitle from '../components/home/SectionTitle';
 import { apiClient, videosApi } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
@@ -20,6 +23,8 @@ interface VideoItem {
 }
 
 export default function VideoScreen() {
+  const COLORS = useBrandColors();
+  const styles = useStyles();
   const { user } = useAuth();
   // Club staff upload match footage; parents and players watch highlights
   const canUpload = !!user && user.role !== 'parent' && user.role !== 'player';
@@ -154,12 +159,10 @@ export default function VideoScreen() {
   return (
     <ScrollView style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
-        <Title>🎬 Videos & Highlights</Title>
-        <Paragraph style={styles.subtitle}>
-          {canUpload ? 'Record, upload, or view match highlights' : 'Watch match highlights from your club'}
-        </Paragraph>
-      </View>
+      <ScreenIntro
+        title="Videos"
+        subtitle={canUpload ? 'Record, upload, or view match highlights' : 'Watch match highlights from your club'}
+      />
 
       {/* Action Buttons (staff only) */}
       {canUpload && (
@@ -176,8 +179,6 @@ export default function VideoScreen() {
                 icon="video"
                 onPress={recordVideo}
                 style={styles.actionButton}
-                buttonColor={COLORS.primary}
-                textColor={COLORS.secondary}
               >
                 Record Video
               </Button>
@@ -231,6 +232,7 @@ export default function VideoScreen() {
                 onPress={uploadVideo}
                 style={styles.editButton}
                 buttonColor={COLORS.success}
+                textColor={COLORS.background}
               >
                 Upload
               </Button>
@@ -254,7 +256,7 @@ export default function VideoScreen() {
       {/* How It Works */}
       <Card style={styles.infoCard}>
         <Card.Content>
-          <Title style={styles.sectionTitle}>🤖 AI-Powered Processing</Title>
+          <Title style={styles.sectionTitle}>AI-Powered Processing</Title>
           <List.Item
             title="1. Upload Video"
             description="Record or select match footage"
@@ -279,8 +281,8 @@ export default function VideoScreen() {
       </Card>
 
       {/* Recent Videos */}
+      <SectionTitle title="RECENT HIGHLIGHTS" color={COLORS.primary} />
       <View style={styles.recentSection}>
-        <Title style={styles.sectionTitle}>Recent Highlights</Title>
         {recentVideos.map((video) => (
           <Card key={video.id} style={styles.videoCard}>
             <Card.Content>
@@ -311,7 +313,7 @@ export default function VideoScreen() {
       {/* Info Box */}
       <Card style={styles.infoBox}>
         <Card.Content>
-          <Title style={styles.infoTitle}>💡 Pro Tips</Title>
+          <Title style={styles.infoTitle}>Pro Tips</Title>
           <Paragraph style={styles.infoParagraph}>
             • Hold phone horizontally for best quality
           </Paragraph>
@@ -330,24 +332,25 @@ export default function VideoScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themedStyles((COLORS) => ({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
-  },
-  header: {
-    padding: 16,
-  },
-  subtitle: {
-    color: COLORS.textLight,
   },
   actionCard: {
     marginHorizontal: 16,
     marginBottom: 16,
     backgroundColor: COLORS.surface,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontFamily: FONTS.display,
+    fontSize: 20,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    color: COLORS.text,
     marginBottom: 4,
   },
   sectionSubtitle: {
@@ -365,6 +368,9 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginBottom: 16,
     backgroundColor: COLORS.surface,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   videoContainer: {
     width: '100%',
@@ -397,13 +403,20 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginBottom: 16,
     backgroundColor: COLORS.surface,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   recentSection: {
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
   },
   videoCard: {
     marginBottom: 12,
     backgroundColor: COLORS.surface,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   videoItem: {
     flexDirection: 'row',
@@ -413,7 +426,7 @@ const styles = StyleSheet.create({
   thumbnailPlaceholder: {
     width: 80,
     height: 60,
-    backgroundColor: COLORS.background,
+    backgroundColor: COLORS.surfaceRaised,
     borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
@@ -437,10 +450,19 @@ const styles = StyleSheet.create({
   infoBox: {
     marginHorizontal: 16,
     marginBottom: 16,
-    backgroundColor: '#FFF9E6',
+    backgroundColor: COLORS.surface,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderLeftWidth: 4,
+    borderLeftColor: COLORS.primary,
   },
   infoTitle: {
-    fontSize: 16,
+    fontFamily: FONTS.display,
+    fontSize: 18,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    color: COLORS.text,
     marginBottom: 8,
   },
   infoParagraph: {
@@ -448,4 +470,4 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     color: COLORS.text,
   },
-});
+}));

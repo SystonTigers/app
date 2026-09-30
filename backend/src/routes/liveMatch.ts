@@ -188,9 +188,9 @@ export async function handleRecordLiveEvent(req: Request, env: Env, corsHdrs: He
     const player = await squadName(env, claims.tenantId, body.playerId);
     const player2 = await squadName(env, claims.tenantId, body.player2Id);
     if (player === "invalid" || player2 === "invalid") return fail(corsHdrs, 400, "VALIDATION", "That player isn't in your squad.");
-    if ((type === "goal" || type === "yellow" || type === "red") && !player) {
-      return fail(corsHdrs, 400, "VALIDATION", type === "goal" ? "Choose who scored." : "Choose which player was booked.");
-    }
+    // A goal can be saved without a scorer (own goal, or nobody saw who); a card can't
+    if ((type === "yellow" || type === "red") && !player) return fail(corsHdrs, 400, "VALIDATION", "Choose which player was booked.");
+    if (type === "goal" && !player && player2) return fail(corsHdrs, 400, "VALIDATION", "Choose who scored before the assist.");
     if (type === "sub" && (!player || !player2)) return fail(corsHdrs, 400, "VALIDATION", "Choose who came on and who went off.");
 
     let text = typeof body.text === "string" ? body.text.trim().slice(0, 280) : "";

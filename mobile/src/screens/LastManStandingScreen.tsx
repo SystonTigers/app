@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
     View,
     Text,
-    StyleSheet,
     ScrollView,
     TouchableOpacity,
     RefreshControl,
@@ -11,7 +10,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useTheme } from '../theme/useTheme';
+import { themedStyles, useBrandColors } from '../theme/brand';
+import { withOpacity } from '../theme/utils';
+import { FONTS } from '../theme/brandFonts';
 import { apiClient } from '../services/api';
 
 interface LMSGame {
@@ -54,8 +55,8 @@ interface LMSRound {
 }
 
 export default function LastManStandingScreen() {
-    const { theme } = useTheme();
-    const colors = theme.colors;
+    const colors = useBrandColors();
+    const styles = useStyles();
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [games, setGames] = useState<LMSGame[]>([]);
@@ -170,196 +171,6 @@ export default function LastManStandingScreen() {
         return Date.now() > currentRound.deadline;
     };
 
-    const styles = StyleSheet.create({
-        container: {
-            flex: 1,
-            backgroundColor: colors.background,
-        },
-        header: {
-            padding: 20,
-            paddingBottom: 10,
-        },
-        title: {
-            fontSize: 28,
-            fontWeight: 'bold',
-            color: colors.text,
-        },
-        subtitle: {
-            fontSize: 14,
-            color: colors.textSecondary,
-            marginTop: 4,
-        },
-        section: {
-            backgroundColor: colors.surface,
-            marginHorizontal: 16,
-            marginBottom: 16,
-            borderRadius: 12,
-            padding: 16,
-        },
-        sectionTitle: {
-            fontSize: 18,
-            fontWeight: '600',
-            color: colors.text,
-            marginBottom: 12,
-        },
-        gameCard: {
-            backgroundColor: colors.background,
-            borderRadius: 8,
-            padding: 12,
-            marginBottom: 8,
-            borderWidth: 2,
-            borderColor: 'transparent',
-        },
-        gameCardSelected: {
-            borderColor: colors.primary,
-        },
-        gameName: {
-            fontSize: 16,
-            fontWeight: '600',
-            color: colors.text,
-        },
-        gameInfo: {
-            fontSize: 12,
-            color: colors.textSecondary,
-            marginTop: 4,
-        },
-        statusBadge: {
-            paddingHorizontal: 8,
-            paddingVertical: 2,
-            borderRadius: 4,
-            alignSelf: 'flex-start',
-            marginTop: 6,
-        },
-        statusText: {
-            fontSize: 11,
-            fontWeight: '600',
-        },
-        joinButton: {
-            backgroundColor: colors.primary,
-            paddingVertical: 8,
-            paddingHorizontal: 16,
-            borderRadius: 6,
-            marginTop: 8,
-        },
-        joinButtonText: {
-            color: 'white',
-            fontWeight: '600',
-            textAlign: 'center',
-        },
-        fixtureRow: {
-            flexDirection: 'row',
-            alignItems: 'center',
-            paddingVertical: 10,
-            borderBottomWidth: 1,
-            borderBottomColor: colors.border,
-        },
-        teamButton: {
-            flex: 1,
-            padding: 10,
-            borderRadius: 8,
-            backgroundColor: colors.background,
-            alignItems: 'center',
-        },
-        teamButtonSelected: {
-            backgroundColor: colors.primary,
-        },
-        teamButtonDisabled: {
-            opacity: 0.4,
-        },
-        teamText: {
-            fontSize: 14,
-            fontWeight: '500',
-            color: colors.text,
-        },
-        teamTextSelected: {
-            color: 'white',
-        },
-        teamTextUsed: {
-            textDecorationLine: 'line-through',
-            color: colors.textSecondary,
-        },
-        vsText: {
-            marginHorizontal: 10,
-            color: colors.textSecondary,
-            fontWeight: '600',
-        },
-        submitButton: {
-            backgroundColor: colors.primary,
-            padding: 16,
-            borderRadius: 10,
-            alignItems: 'center',
-            marginTop: 12,
-        },
-        submitButtonDisabled: {
-            backgroundColor: colors.textSecondary,
-        },
-        submitButtonText: {
-            color: 'white',
-            fontSize: 16,
-            fontWeight: 'bold',
-        },
-        standingRow: {
-            flexDirection: 'row',
-            alignItems: 'center',
-            paddingVertical: 10,
-            borderBottomWidth: 1,
-            borderBottomColor: colors.border,
-        },
-        standingRank: {
-            width: 30,
-            fontSize: 16,
-            fontWeight: 'bold',
-            color: colors.textSecondary,
-        },
-        standingName: {
-            flex: 1,
-            fontSize: 15,
-            color: colors.text,
-        },
-        standingStreak: {
-            fontSize: 14,
-            color: colors.primary,
-            fontWeight: '600',
-            marginRight: 10,
-        },
-        userStatus: {
-            flexDirection: 'row',
-            alignItems: 'center',
-            padding: 16,
-            backgroundColor: colors.background,
-            borderRadius: 8,
-            marginBottom: 12,
-        },
-        userStatusIcon: {
-            marginRight: 12,
-        },
-        userStatusText: {
-            fontSize: 16,
-            fontWeight: '600',
-            color: colors.text,
-        },
-        userStatusSub: {
-            fontSize: 13,
-            color: colors.textSecondary,
-        },
-        emptyText: {
-            textAlign: 'center',
-            color: colors.textSecondary,
-            padding: 20,
-        },
-        deadlineText: {
-            fontSize: 12,
-            color: colors.textSecondary,
-            marginBottom: 12,
-        },
-        scoreText: {
-            fontSize: 14,
-            fontWeight: 'bold',
-            color: colors.text,
-            marginLeft: 8,
-        },
-    });
-
     if (loading) {
         return (
             <SafeAreaView style={styles.container}>
@@ -377,10 +188,7 @@ export default function LastManStandingScreen() {
                     <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
                 }
             >
-                <View style={styles.header}>
-                    <Text style={styles.title}>🏆 Last Man Standing</Text>
-                    <Text style={styles.subtitle}>Pick winners. Stay alive. Be the last one standing!</Text>
-                </View>
+                <Text style={styles.subtitle}>Last Man Standing: pick winners, stay alive, be the last one standing!</Text>
 
                 {/* Games List */}
                 {games.length === 0 ? (
@@ -406,13 +214,13 @@ export default function LastManStandingScreen() {
                                 <View
                                     style={[
                                         styles.statusBadge,
-                                        { backgroundColor: game.status === 'active' ? '#dcfce7' : '#f3f4f6' },
+                                        { backgroundColor: game.status === 'active' ? withOpacity(colors.success, 0.14) : colors.surface },
                                     ]}
                                 >
                                     <Text
                                         style={[
                                             styles.statusText,
-                                            { color: game.status === 'active' ? '#166534' : '#6b7280' },
+                                            { color: game.status === 'active' ? colors.success : colors.textLight },
                                         ]}
                                     >
                                         {game.status.toUpperCase()}
@@ -437,15 +245,15 @@ export default function LastManStandingScreen() {
                                         }
                                         size={32}
                                         color={
-                                            userEntry.status === 'alive' ? '#22c55e' :
-                                                userEntry.status === 'winner' ? '#eab308' : '#ef4444'
+                                            userEntry.status === 'alive' ? colors.success :
+                                                userEntry.status === 'winner' ? colors.warning : colors.error
                                         }
                                         style={styles.userStatusIcon}
                                     />
                                     <View>
                                         <Text style={styles.userStatusText}>
                                             {userEntry.status === 'alive' ? "You're Still In!" :
-                                                userEntry.status === 'winner' ? "🎉 You Won!" : "Eliminated"}
+                                                userEntry.status === 'winner' ? "You Won!" : "Eliminated"}
                                         </Text>
                                         <Text style={styles.userStatusSub}>
                                             Streak: {userEntry.streak} correct picks
@@ -453,7 +261,7 @@ export default function LastManStandingScreen() {
                                     </View>
                                 </View>
                                 {userEntry.teams_used.length > 0 && (
-                                    <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
+                                    <Text style={{ color: colors.textLight, fontSize: 12 }}>
                                         Teams used: {userEntry.teams_used.join(', ')}
                                     </Text>
                                 )}
@@ -461,7 +269,7 @@ export default function LastManStandingScreen() {
                         ) : selectedGame.status === 'active' ? (
                             <View style={styles.section}>
                                 <Text style={styles.sectionTitle}>Join This Game</Text>
-                                <Text style={{ color: colors.textSecondary, marginBottom: 12 }}>
+                                <Text style={{ color: colors.textLight, marginBottom: 12 }}>
                                     You haven't joined this game yet. Join now to start making predictions!
                                 </Text>
                                 <TouchableOpacity
@@ -489,7 +297,7 @@ export default function LastManStandingScreen() {
                                         <MaterialCommunityIcons
                                             name="check"
                                             size={24}
-                                            color="#22c55e"
+                                            color={colors.success}
                                             style={styles.userStatusIcon}
                                         />
                                         <View>
@@ -505,7 +313,7 @@ export default function LastManStandingScreen() {
 
                                 {!isDeadlinePassed() && (
                                     <>
-                                        <Text style={{ color: colors.textSecondary, marginBottom: 8 }}>
+                                        <Text style={{ color: colors.textLight, marginBottom: 8 }}>
                                             Pick a team to win (strikethrough = already used):
                                         </Text>
                                         {currentRound.fixtures.map((fixture) => (
@@ -603,8 +411,11 @@ export default function LastManStandingScreen() {
                                                 styles.statusBadge,
                                                 {
                                                     backgroundColor:
-                                                        entry.status === 'alive' ? '#dcfce7' :
-                                                            entry.status === 'winner' ? '#fef3c7' : '#fee2e2',
+                                                        withOpacity(
+                                                            entry.status === 'alive' ? colors.success :
+                                                                entry.status === 'winner' ? colors.warning : colors.error,
+                                                            0.14,
+                                                        ),
                                                 },
                                             ]}
                                         >
@@ -613,8 +424,8 @@ export default function LastManStandingScreen() {
                                                     styles.statusText,
                                                     {
                                                         color:
-                                                            entry.status === 'alive' ? '#166534' :
-                                                                entry.status === 'winner' ? '#92400e' : '#991b1b',
+                                                            entry.status === 'alive' ? colors.success :
+                                                                entry.status === 'winner' ? colors.warning : colors.error,
                                                     },
                                                 ]}
                                             >
@@ -631,3 +442,192 @@ export default function LastManStandingScreen() {
         </SafeAreaView>
     );
 }
+
+const useStyles = themedStyles((colors) => ({
+    container: {
+        flex: 1,
+        backgroundColor: colors.background,
+    },
+    subtitle: {
+        fontSize: 14,
+        color: colors.textLight,
+        marginHorizontal: 16,
+        marginTop: 12,
+        marginBottom: 12,
+    },
+    section: {
+        backgroundColor: colors.surface,
+        marginHorizontal: 16,
+        marginBottom: 16,
+        borderRadius: 18,
+        borderWidth: 1,
+        borderColor: colors.border,
+        padding: 16,
+    },
+    sectionTitle: {
+        fontFamily: FONTS.display,
+        fontSize: 20,
+        letterSpacing: 1,
+        textTransform: 'uppercase',
+        color: colors.text,
+        marginBottom: 12,
+    },
+    gameCard: {
+        backgroundColor: colors.surfaceRaised,
+        borderRadius: 14,
+        padding: 12,
+        marginBottom: 8,
+        borderWidth: 2,
+        borderColor: 'transparent',
+    },
+    gameCardSelected: {
+        borderColor: colors.primary,
+        backgroundColor: colors.primarySoft,
+    },
+    gameName: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: colors.text,
+    },
+    gameInfo: {
+        fontSize: 12,
+        color: colors.textLight,
+        marginTop: 4,
+    },
+    statusBadge: {
+        paddingHorizontal: 8,
+        paddingVertical: 2,
+        borderRadius: 4,
+        alignSelf: 'flex-start',
+        marginTop: 6,
+    },
+    statusText: {
+        fontSize: 11,
+        fontWeight: '600',
+    },
+    joinButton: {
+        backgroundColor: colors.primary,
+        paddingVertical: 8,
+        paddingHorizontal: 16,
+        borderRadius: 6,
+        marginTop: 8,
+    },
+    joinButtonText: {
+        color: colors.onPrimary,
+        fontWeight: '600',
+        textAlign: 'center',
+    },
+    fixtureRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 10,
+        borderBottomWidth: 1,
+        borderBottomColor: colors.border,
+    },
+    teamButton: {
+        flex: 1,
+        padding: 10,
+        borderRadius: 10,
+        backgroundColor: colors.surfaceRaised,
+        alignItems: 'center',
+    },
+    teamButtonSelected: {
+        backgroundColor: colors.primary,
+    },
+    teamButtonDisabled: {
+        opacity: 0.4,
+    },
+    teamText: {
+        fontSize: 14,
+        fontWeight: '500',
+        color: colors.text,
+    },
+    teamTextSelected: {
+        color: colors.onPrimary,
+        fontWeight: '700',
+    },
+    teamTextUsed: {
+        textDecorationLine: 'line-through',
+        color: colors.textLight,
+    },
+    vsText: {
+        marginHorizontal: 10,
+        color: colors.textLight,
+        fontWeight: '600',
+    },
+    submitButton: {
+        backgroundColor: colors.primary,
+        padding: 16,
+        borderRadius: 10,
+        alignItems: 'center',
+        marginTop: 12,
+    },
+    submitButtonDisabled: {
+        opacity: 0.4,
+    },
+    submitButtonText: {
+        color: colors.onPrimary,
+        fontSize: 16,
+        fontWeight: 'bold',
+    },
+    standingRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 10,
+        borderBottomWidth: 1,
+        borderBottomColor: colors.border,
+    },
+    standingRank: {
+        width: 30,
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: colors.textLight,
+    },
+    standingName: {
+        flex: 1,
+        fontSize: 15,
+        color: colors.text,
+    },
+    standingStreak: {
+        fontSize: 14,
+        color: colors.primary,
+        fontWeight: '600',
+        marginRight: 10,
+    },
+    userStatus: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 16,
+        backgroundColor: colors.surfaceRaised,
+        borderRadius: 14,
+        marginBottom: 12,
+    },
+    userStatusIcon: {
+        marginRight: 12,
+    },
+    userStatusText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: colors.text,
+    },
+    userStatusSub: {
+        fontSize: 13,
+        color: colors.textLight,
+    },
+    emptyText: {
+        textAlign: 'center',
+        color: colors.textLight,
+        padding: 20,
+    },
+    deadlineText: {
+        fontSize: 12,
+        color: colors.textLight,
+        marginBottom: 12,
+    },
+    scoreText: {
+        fontSize: 14,
+        fontWeight: 'bold',
+        color: colors.text,
+        marginLeft: 8,
+    },
+}));

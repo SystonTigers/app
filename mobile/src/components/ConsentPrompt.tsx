@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { COLORS } from '../config';
+import { themedStyles, useBrandColors } from '../theme/brand';
 import { consentApi } from '../services/api';
 import { awaitingAnswer, nameList } from '../utils/consent';
 import { pendingInvite } from '../services/inviteLink';
@@ -13,6 +13,8 @@ import { useAuth } from '../context/AuthContext';
  * consent until they've answered. Hidden for staff and once answered.
  */
 export default function ConsentPrompt({ onOpen }: { onOpen: () => void }) {
+  const COLORS = useBrandColors();
+  const styles = useStyles();
   const { user } = useAuth();
   const [waiting, setWaiting] = useState<string[]>([]);
   const [needsLink, setNeedsLink] = useState(false);
@@ -55,10 +57,10 @@ export default function ConsentPrompt({ onOpen }: { onOpen: () => void }) {
   );
 }
 
-const styles = StyleSheet.create({
-  card: { flexDirection: 'row', gap: 12, marginTop: 12, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: COLORS.primary, backgroundColor: '#14181C' },
+const useStyles = themedStyles((COLORS) => ({
+  card: { flexDirection: 'row', gap: 12, marginTop: 12, padding: 14, borderRadius: 18, borderWidth: 1, borderColor: COLORS.primary, backgroundColor: COLORS.surface },
   text: { flex: 1, gap: 4 },
   title: { color: COLORS.text, fontWeight: '900', fontSize: 15 },
   body: { color: COLORS.textLight },
   link: { color: COLORS.primary, fontWeight: '800', marginTop: 4 },
-});
+}));

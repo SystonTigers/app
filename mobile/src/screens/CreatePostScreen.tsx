@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, ScrollView, StyleSheet, Image, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, ScrollView, Image, TouchableOpacity, Alert } from 'react-native';
 import {
   Card,
   Title,
@@ -10,7 +10,8 @@ import {
   IconButton,
   Divider,
 } from 'react-native-paper';
-import { COLORS } from '../config';
+import { themedStyles, useBrandColors } from '../theme/brand';
+import { FONTS } from '../theme/brandFonts';
 import { feedApi } from '../services/api';
 import { useClubName } from '../context/ClubContext';
 import * as ImagePicker from 'expo-image-picker';
@@ -23,6 +24,8 @@ const socialChannels = [
 ];
 
 export default function CreatePostScreen({ navigation }: any) {
+  const COLORS = useBrandColors();
+  const styles = useStyles();
   const clubName = useClubName();
   const [content, setContent] = useState('');
   const [selectedChannels, setSelectedChannels] = useState<string[]>(['feed']);
@@ -94,17 +97,19 @@ export default function CreatePostScreen({ navigation }: any) {
     return 1000;
   };
 
+  // The app feed is the club's own channel, so it wears the club colour; X's black would vanish on the dark card
+  const channelFill = (id: string, color: string) =>
+    id === 'feed' ? COLORS.primary : id === 'x' ? COLORS.surfaceRaised : color;
+  const channelInk = (id: string) => (id === 'feed' ? COLORS.onPrimary : '#FFFFFF');
+
   const charLimit = getChannelLimit();
   const isOverLimit = charCount > charLimit;
 
   return (
     <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <Title style={styles.headerTitle}>Create Post</Title>
-        <Paragraph style={styles.headerSubtitle}>
-          Share updates with your team and fans
-        </Paragraph>
-      </View>
+      <Text style={styles.headerSubtitle}>
+        Share updates with your team and fans
+      </Text>
 
       <Card style={styles.card}>
         <Card.Content>
@@ -118,11 +123,12 @@ export default function CreatePostScreen({ navigation }: any) {
                 style={[
                   styles.channelChip,
                   selectedChannels.includes(channel.id) && {
-                    backgroundColor: channel.color,
+                    backgroundColor: channelFill(channel.id, channel.color),
                   },
                 ]}
                 textStyle={[
                   selectedChannels.includes(channel.id) && styles.selectedChannelText,
+                  selectedChannels.includes(channel.id) && { color: channelInk(channel.id) },
                 ]}
                 icon={() => (
                   <Title style={styles.channelIcon}>{channel.icon}</Title>
@@ -209,9 +215,9 @@ export default function CreatePostScreen({ navigation }: any) {
                           compact
                           style={[
                             styles.previewChannelChip,
-                            { backgroundColor: channel?.color },
+                            { backgroundColor: channelFill(id, channel?.color ?? COLORS.surfaceRaised) },
                           ]}
-                          textStyle={styles.previewChannelText}
+                          textStyle={[styles.previewChannelText, { color: channelInk(id) }]}
                         >
                           {channel?.icon}
                         </Chip>
@@ -234,11 +240,7 @@ export default function CreatePostScreen({ navigation }: any) {
             <Button
               mode="contained"
               onPress={handlePost}
-              style={[
-                styles.actionButton,
-                { backgroundColor: COLORS.primary },
-              ]}
-              textColor={COLORS.secondary}
+              style={styles.actionButton}
               disabled={isOverLimit || !content.trim()}
             >
               Post Now
@@ -250,35 +252,29 @@ export default function CreatePostScreen({ navigation }: any) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themedStyles((COLORS) => ({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
   },
-  header: {
-    padding: 20,
-    backgroundColor: COLORS.primary,
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: COLORS.secondary,
-  },
   headerSubtitle: {
     fontSize: 14,
-    color: COLORS.secondary,
-    opacity: 0.8,
+    color: COLORS.textLight,
+    marginHorizontal: 16,
+    marginTop: 12,
   },
   card: {
     margin: 16,
-    borderRadius: 12,
-    elevation: 2,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surface,
   },
   label: {
-    fontSize: 14,
-    fontWeight: 'bold',
+    fontFamily: FONTS.display,
+    fontSize: 18,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
     marginBottom: 8,
     color: COLORS.text,
   },
@@ -292,7 +288,6 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   selectedChannelText: {
-    color: '#fff',
     fontWeight: 'bold',
   },
   channelIcon: {
@@ -349,13 +344,13 @@ const styles = StyleSheet.create({
   addMediaButton: {
     width: 100,
     height: 100,
-    borderRadius: 8,
+    borderRadius: 12,
     borderWidth: 2,
-    borderColor: COLORS.textLight,
+    borderColor: COLORS.border,
     borderStyle: 'dashed',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: COLORS.background,
+    backgroundColor: COLORS.surfaceRaised,
   },
   addMediaText: {
     fontSize: 11,
@@ -366,8 +361,10 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   previewCard: {
-    backgroundColor: COLORS.background,
-    elevation: 1,
+    backgroundColor: COLORS.surfaceRaised,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   previewHeader: {
     flexDirection: 'row',
@@ -377,6 +374,7 @@ const styles = StyleSheet.create({
   previewTeam: {
     fontSize: 16,
     fontWeight: 'bold',
+    color: COLORS.text,
   },
   previewTime: {
     fontSize: 12,
@@ -397,7 +395,6 @@ const styles = StyleSheet.create({
   },
   previewChannelText: {
     fontSize: 12,
-    color: '#fff',
   },
   actions: {
     flexDirection: 'row',
@@ -408,4 +405,4 @@ const styles = StyleSheet.create({
     flex: 1,
     marginHorizontal: 4,
   },
-});
+}));

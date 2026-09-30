@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { COLORS } from '../config';
+import { themedStyles, useBrandColors } from '../theme/brand';
 
 /**
  * Web app only: invites people to put the app on their home screen.
@@ -31,6 +31,8 @@ function isIos(): boolean {
 }
 
 export default function InstallPrompt() {
+  const COLORS = useBrandColors();
+  const styles = useStyles();
   const [installEvent, setInstallEvent] = useState<BeforeInstallPromptEvent | null>(null);
   const [visible, setVisible] = useState(false);
   const [ios, setIos] = useState(false);
@@ -108,17 +110,17 @@ export default function InstallPrompt() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themedStyles((COLORS) => ({
   banner: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
     padding: 14,
     marginBottom: 16,
-    borderRadius: 12,
+    borderRadius: 18,
     borderWidth: 1,
     borderColor: `${COLORS.primary}60`,
-    backgroundColor: `${COLORS.primary}12`,
+    backgroundColor: COLORS.primarySoft,
   },
   textBlock: {
     flex: 1,
@@ -142,14 +144,14 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary,
     paddingHorizontal: 14,
     paddingVertical: 8,
-    borderRadius: 8,
+    borderRadius: 10,
   },
   installText: {
-    color: '#000',
+    color: COLORS.onPrimary,
     fontWeight: '700',
   },
   dismiss: {
     color: COLORS.textLight,
     fontSize: 13,
   },
-});
+}));

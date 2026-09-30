@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, ScrollView, TouchableOpacity } from 'react-native';
 import { Text, Button, Chip } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useTheme } from '../theme/useTheme';
+import { themedStyles, useBrandColors } from '../theme/brand';
+import SectionTitle from '../components/home/SectionTitle';
+import { FONTS } from '../theme/brandFonts';
 import FeedCard from '../components/FeedCard';
 import { trainingApi } from '../services/api';
 
@@ -16,8 +18,8 @@ const DRILL_OF_WEEK = {
 };
 
 export default function TrainingScreen({ navigation }: any) {
-  const { theme } = useTheme();
-  const { colors } = theme;
+  const colors = useBrandColors();
+  const styles = useStyles();
 
   // Data state (replaces mock data)
   const [nextSession, setNextSession] = useState<any>(null);
@@ -75,7 +77,7 @@ export default function TrainingScreen({ navigation }: any) {
               <MaterialCommunityIcons name="map-marker" size={20} color={colors.primary} />
               <Text style={[styles.heroText, { color: colors.text }]}>{nextSession.location}</Text>
             </View>
-            <View style={[styles.focusBadge, { backgroundColor: colors.primary + '20', borderColor: colors.primary }]}>
+            <View style={[styles.focusBadge, { backgroundColor: colors.primarySoft, borderColor: colors.primary }]}>
               <Text style={[styles.focusText, { color: colors.primary }]}>FOCUS: {nextSession.focus.toUpperCase()}</Text>
             </View>
             <Button
@@ -90,10 +92,10 @@ export default function TrainingScreen({ navigation }: any) {
       ) : null}
 
       {/* Quick Actions Grid */}
-      <Text style={[styles.sectionTitle, { color: colors.text }]}>QUICK ACTIONS</Text>
+      <SectionTitle title="QUICK ACTIONS" color={colors.primary} />
       <View style={styles.actionsGrid}>
         <TouchableOpacity
-          style={[styles.actionCard, { backgroundColor: colors.surface, borderColor: colors.primary + '40' }]}
+          style={[styles.actionCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
           onPress={() => navigation.navigate('DrillLibrary')}
         >
           <MaterialCommunityIcons name="book-open-variant" size={32} color={colors.primary} />
@@ -101,7 +103,7 @@ export default function TrainingScreen({ navigation }: any) {
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.actionCard, { backgroundColor: colors.surface, borderColor: colors.primary + '40' }]}
+          style={[styles.actionCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
           onPress={() => console.log('Plan Session')}
         >
           <MaterialCommunityIcons name="clipboard-edit" size={32} color={colors.primary} />
@@ -109,7 +111,7 @@ export default function TrainingScreen({ navigation }: any) {
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.actionCard, { backgroundColor: colors.surface, borderColor: colors.primary + '40' }]}
+          style={[styles.actionCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
           onPress={() => console.log('Attendance')}
         >
           <MaterialCommunityIcons name="account-check" size={32} color={colors.primary} />
@@ -125,10 +127,10 @@ export default function TrainingScreen({ navigation }: any) {
       >
         <View style={styles.drillContent}>
           <Text style={[styles.drillName, { color: colors.text }]}>{DRILL_OF_WEEK.name}</Text>
-          <Text style={[styles.drillCategory, { color: colors.textSecondary }]}>{DRILL_OF_WEEK.category}</Text>
+          <Text style={[styles.drillCategory, { color: colors.textLight }]}>{DRILL_OF_WEEK.category}</Text>
           <View style={styles.drillMeta}>
-            <Chip style={{ backgroundColor: colors.warning }}>{DRILL_OF_WEEK.difficulty.toUpperCase()}</Chip>
-            <Text style={[styles.drillDuration, { color: colors.textSecondary }]}>{DRILL_OF_WEEK.duration}</Text>
+            <Chip style={{ backgroundColor: colors.primarySoft }} textStyle={{ color: colors.primary, fontWeight: '700' }}>{DRILL_OF_WEEK.difficulty.toUpperCase()}</Chip>
+            <Text style={[styles.drillDuration, { color: colors.textLight }]}>{DRILL_OF_WEEK.duration}</Text>
           </View>
         </View>
       </FeedCard>
@@ -139,7 +141,7 @@ export default function TrainingScreen({ navigation }: any) {
           <View key={session.id} style={[styles.sessionRow, { borderBottomColor: colors.border }]}>
             <View>
               <Text style={[styles.sessionFocus, { color: colors.text }]}>{session.focus}</Text>
-              <Text style={[styles.sessionDate, { color: colors.textSecondary }]}>{session.date}</Text>
+              <Text style={[styles.sessionDate, { color: colors.textLight }]}>{session.date}</Text>
             </View>
             <View style={styles.attendeeBadge}>
               <MaterialCommunityIcons name="account-group" size={16} color={colors.primary} />
@@ -154,7 +156,7 @@ export default function TrainingScreen({ navigation }: any) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themedStyles(() => ({
   container: {
     flex: 1,
   },
@@ -191,15 +193,6 @@ const styles = StyleSheet.create({
   heroButton: {
     marginTop: 8,
   },
-  sectionTitle: {
-    fontSize: 12,
-    fontWeight: '900',
-    letterSpacing: 1.5,
-    marginLeft: 16,
-    marginTop: 24,
-    marginBottom: 12,
-    opacity: 0.7,
-  },
   actionsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -209,7 +202,7 @@ const styles = StyleSheet.create({
   actionCard: {
     width: '48%',
     aspectRatio: 1.3,
-    borderRadius: 12,
+    borderRadius: 18,
     borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
@@ -225,8 +218,9 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   drillName: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontFamily: FONTS.display,
+    fontSize: 22,
+    letterSpacing: 0.5,
     marginBottom: 4,
   },
   drillCategory: {
@@ -266,4 +260,4 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: 'bold',
   },
-});
+}));

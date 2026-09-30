@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, StyleSheet, Image, TouchableOpacity, Linking, Dimensions, Alert } from 'react-native';
-import { Card, Title, Paragraph, Button, Chip, IconButton, Searchbar, Modal, Portal, TextInput, Text, ActivityIndicator, FAB } from 'react-native-paper';
+import { View, ScrollView, Image, TouchableOpacity, Linking, Dimensions, Alert } from 'react-native';
+import { Title, Paragraph, Button, Chip, IconButton, Searchbar, Modal, Portal, TextInput, Text, ActivityIndicator, FAB } from 'react-native-paper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { COLORS } from '../config';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { themedStyles, useBrandColors } from '../theme/brand';
+import { FONTS } from '../theme/brandFonts';
 import { shopApi } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
@@ -33,6 +35,8 @@ interface Product {
 }
 
 export default function ShopScreen() {
+  const COLORS = useBrandColors();
+  const styles = useStyles();
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
 
@@ -53,10 +57,10 @@ export default function ShopScreen() {
   const [addingToCart, setAddingToCart] = useState(false);
 
   const categories = [
-    { id: 'all', label: 'All', icon: '🛍️' },
-    { id: 'clothing', label: 'Clothing', icon: '👕' },
-    { id: 'accessories', label: 'Accessories', icon: '🧢' },
-    { id: 'custom', label: 'Custom', icon: '🎨' },
+    { id: 'all', label: 'All', icon: 'shopping' },
+    { id: 'clothing', label: 'Clothing', icon: 'tshirt-crew' },
+    { id: 'accessories', label: 'Accessories', icon: 'hat-fedora' },
+    { id: 'custom', label: 'Custom', icon: 'palette' },
   ];
 
   useEffect(() => {
@@ -208,10 +212,7 @@ export default function ShopScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Title style={styles.headerTitle}>Team Shop</Title>
-        <Paragraph style={styles.headerSubtitle}>Official Merchandise</Paragraph>
-      </View>
+      <Text style={styles.headerSubtitle}>Official Merchandise</Text>
 
       <View style={styles.searchContainer}>
         <Searchbar
@@ -219,6 +220,7 @@ export default function ShopScreen() {
           onChangeText={setSearchQuery}
           value={searchQuery}
           style={styles.searchBar}
+          iconColor={COLORS.primary}
         />
       </View>
 
@@ -230,9 +232,16 @@ export default function ShopScreen() {
             onPress={() => setSelectedCategory(cat.id)}
             style={[styles.categoryChip, selectedCategory === cat.id && styles.categoryChipSelected]}
             textStyle={[styles.categoryChipText, selectedCategory === cat.id && styles.categoryChipTextSelected]}
-            selectedColor={COLORS.primary}
+            icon={({ size }) => (
+              <MaterialCommunityIcons
+                name={cat.icon as keyof typeof MaterialCommunityIcons.glyphMap}
+                size={size}
+                color={selectedCategory === cat.id ? COLORS.onPrimary : COLORS.primary}
+              />
+            )}
+            showSelectedCheck={false}
           >
-            {cat.icon} {cat.label}
+            {cat.label}
           </Chip>
         ))}
       </ScrollView>
@@ -249,7 +258,7 @@ export default function ShopScreen() {
                 <Image source={{ uri: product.imageUrl }} style={styles.productImage} />
               ) : (
                 <View style={[styles.productImage, styles.placeholderImage]}>
-                  <Text style={{ fontSize: 40 }}>👕</Text>
+                  <MaterialCommunityIcons name="tshirt-crew" size={44} color={COLORS.textLight} />
                 </View>
               )}
               {!product.inStock && (
@@ -278,6 +287,7 @@ export default function ShopScreen() {
           icon="cart"
           label={`Checkout (${cartCount})`}
           style={[styles.fab, { bottom: insets.bottom + 20 }]}
+          color={COLORS.onPrimary}
           onPress={handleCheckout}
           loading={checkingOut}
           disabled={checkingOut}
@@ -356,51 +366,49 @@ export default function ShopScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themedStyles((COLORS) => ({
   container: { flex: 1, backgroundColor: COLORS.background },
   center: { justifyContent: 'center', alignItems: 'center' },
-  header: { padding: 20, backgroundColor: COLORS.primary },
-  headerTitle: { fontSize: 24, fontWeight: 'bold', color: COLORS.secondary },
-  headerSubtitle: { fontSize: 14, color: COLORS.secondary, opacity: 0.8 },
+  headerSubtitle: { fontSize: 14, color: COLORS.textLight, marginHorizontal: 16, marginTop: 12 },
 
   searchContainer: { padding: 16, paddingBottom: 8 },
-  searchBar: { elevation: 2 },
+  searchBar: { backgroundColor: COLORS.surface, borderRadius: 18, borderWidth: 1, borderColor: COLORS.border },
 
   categoryScroll: { paddingHorizontal: 16, maxHeight: 60 },
-  categoryChip: { marginRight: 8, backgroundColor: '#FFF', borderWidth: 1, borderColor: COLORS.primary },
-  categoryChipSelected: { backgroundColor: COLORS.primary },
-  categoryChipText: { color: COLORS.primary },
-  categoryChipTextSelected: { color: COLORS.secondary, fontWeight: 'bold' },
+  categoryChip: { marginRight: 8, backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border },
+  categoryChipSelected: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
+  categoryChipText: { color: COLORS.text },
+  categoryChipTextSelected: { color: COLORS.onPrimary, fontWeight: 'bold' },
 
   scrollContainer: { flex: 1 },
   productsGrid: { flexDirection: 'row', flexWrap: 'wrap', padding: 8 },
-  productCard: { width: (width - 48) / 2, margin: 8, borderRadius: 12, backgroundColor: COLORS.surface, elevation: 2, overflow: 'hidden' },
+  productCard: { width: (width - 48) / 2, margin: 8, borderRadius: 18, backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border, overflow: 'hidden' },
   productImage: { width: '100%', height: 150, resizeMode: 'cover' },
-  placeholderImage: { backgroundColor: '#EEE', justifyContent: 'center', alignItems: 'center' },
+  placeholderImage: { backgroundColor: COLORS.surfaceRaised, justifyContent: 'center', alignItems: 'center' },
 
   outOfStockOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center' },
-  outOfStockOverlayText: { color: 'white', fontWeight: 'bold' },
+  outOfStockOverlayText: { color: COLORS.text, fontWeight: 'bold' },
 
   productInfo: { padding: 12 },
   productName: { fontSize: 13, fontWeight: '500', color: COLORS.text, marginBottom: 4, height: 36 },
   productPrice: { fontSize: 16, fontWeight: 'bold', color: COLORS.primary },
-  customBadge: { marginTop: 4, backgroundColor: COLORS.secondary, padding: 2, borderRadius: 4, alignSelf: 'flex-start' },
+  customBadge: { marginTop: 4, backgroundColor: COLORS.primarySoft, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, alignSelf: 'flex-start' },
   customBadgeText: { fontSize: 10, color: COLORS.primary, fontWeight: 'bold' },
 
   fab: { position: 'absolute', right: 20, backgroundColor: COLORS.primary },
 
   // Modal
-  modalContent: { backgroundColor: 'white', margin: 20, borderRadius: 12, maxHeight: '80%' },
+  modalContent: { backgroundColor: COLORS.surface, margin: 20, borderRadius: 18, borderWidth: 1, borderColor: COLORS.border, maxHeight: '80%', overflow: 'hidden' },
   modalImage: { width: '100%', height: 200, resizeMode: 'cover' },
   modalBody: { padding: 20 },
-  modalTitle: { fontSize: 22, fontWeight: 'bold', marginBottom: 8 },
+  modalTitle: { fontFamily: FONTS.display, fontSize: 26, letterSpacing: 0.5, lineHeight: 30, color: COLORS.text, marginBottom: 8 },
   modalPrice: { fontSize: 20, color: COLORS.primary, fontWeight: 'bold', marginBottom: 12 },
   modalDesc: { color: COLORS.textLight, marginBottom: 20 },
 
   section: { marginBottom: 16 },
-  label: { fontWeight: 'bold', marginBottom: 8 },
+  label: { fontWeight: 'bold', color: COLORS.text, marginBottom: 8 },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: { marginRight: 4, marginBottom: 4 },
-  input: { marginBottom: 12, backgroundColor: 'white' },
-  addButton: { paddingVertical: 6, backgroundColor: COLORS.primary },
-});
+  input: { marginBottom: 12, backgroundColor: COLORS.surfaceRaised },
+  addButton: { paddingVertical: 6 },
+}));

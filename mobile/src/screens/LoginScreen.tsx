@@ -3,15 +3,16 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  StyleSheet,
   Text,
   View,
-  Image,
 } from 'react-native';
-import { TextInput, IconButton } from 'react-native-paper';
+import { TextInput } from 'react-native-paper';
 import { Button } from '../components/Button';
 import Card from '../components/ui/Card';
-import { COLORS, APP_VERSION } from '../config';
+import { APP_VERSION } from '../config';
+import { themedStyles, useBrandColors } from '../theme/brand';
+import { FONTS } from '../theme/brandFonts';
+import AuthBrandHeader, { AuthBackdrop } from '../components/auth/AuthBrand';
 import { submitLogin } from './authController';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import type { AuthResult } from '../services/api';
@@ -31,6 +32,8 @@ export default function LoginScreen({
   onForgotPassword,
   onSwitchClub,
 }: LoginScreenProps) {
+  const COLORS = useBrandColors();
+  const styles = useStyles();
   const { club, isLocked } = useClub();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -81,20 +84,12 @@ export default function LoginScreen({
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
+      <AuthBackdrop />
       <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-        <View style={styles.header}>
-          <View style={styles.iconBadge}>
-            <MaterialCommunityIcons
-              name="shield-account"
-              size={36}
-              color={COLORS.primary}
-            />
-          </View>
-          <Text style={styles.title}>{brandTitle}</Text>
-          <Text style={styles.subtitle}>
-            Fixtures, results, team news and match videos in one place.
-          </Text>
-        </View>
+        <AuthBrandHeader
+          title={brandTitle}
+          subtitle="Fixtures, results, team news and match videos in one place."
+        />
 
         <Card inset style={styles.card}>
           <View style={styles.cardHeader}>
@@ -225,57 +220,37 @@ export default function LoginScreen({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themedStyles((COLORS) => ({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
+    overflow: 'hidden',
   },
   scrollContent: {
     flexGrow: 1,
     justifyContent: 'center',
     paddingHorizontal: 20,
     paddingVertical: 40,
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  iconBadge: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: `${COLORS.primary}15`,
-    marginBottom: 12,
-  },
-  title: {
-    fontSize: 28,
-    lineHeight: 36,
-    fontWeight: 'bold',
-    color: COLORS.text,
-    textAlign: 'center',
-  },
-  subtitle: {
-    marginTop: 8,
-    fontSize: 16,
-    lineHeight: 24,
-    color: COLORS.textLight,
-    textAlign: 'center',
+    width: '100%',
+    maxWidth: 480,
+    alignSelf: 'center',
   },
   card: {
     marginBottom: 16,
-  },
-  cardContent: {
-    padding: 16,
+    backgroundColor: COLORS.surface,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   cardHeader: {
     marginBottom: 12,
   },
   cardTitle: {
-    fontSize: 20,
-    lineHeight: 28,
-    fontWeight: '600',
+    fontFamily: FONTS.display,
+    fontSize: 22,
+    lineHeight: 26,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
     color: COLORS.text,
   },
   cardSubtitle: {
@@ -302,10 +277,10 @@ const styles = StyleSheet.create({
   errorContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: `${COLORS.error}15`,
+    backgroundColor: 'rgba(255,0,85,0.14)',
     borderWidth: 1,
     borderColor: `${COLORS.error}50`,
-    borderRadius: 8,
+    borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 8,
     marginBottom: 12,
@@ -345,4 +320,4 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 16,
   },
-});
+}));

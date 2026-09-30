@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, ScrollView, StyleSheet, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import { View, ScrollView, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { Text, Card, TextInput, IconButton, Avatar, Chip, List, Portal, Modal } from 'react-native-paper';
-import { COLORS } from '../config';
+import { themedStyles, useBrandColors } from '../theme/brand';
+import { FONTS } from '../theme/brandFonts';
 import { useAuth } from '../context/AuthContext';
 import { apiClient, chatApi } from '../services/api';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -30,6 +31,8 @@ interface ChatRoom {
 }
 
 export default function ChatScreen() {
+  const COLORS = useBrandColors();
+  const styles = useStyles();
   const [rooms, setRooms] = useState<ChatRoom[]>([]);
   const [selectedRoom, setSelectedRoom] = useState<ChatRoom | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -175,9 +178,10 @@ export default function ChatScreen() {
             <Avatar.Icon
               size={50}
               icon={getRoomIcon()}
+              color={room.type === 'team' ? COLORS.onPrimary : COLORS.text}
               style={[
                 styles.roomAvatar,
-                { backgroundColor: room.type === 'team' ? COLORS.primary : COLORS.textLight },
+                { backgroundColor: room.type === 'team' ? COLORS.primary : COLORS.surfaceRaised },
               ]}
             />
             {room.unreadCount > 0 && (
@@ -220,6 +224,7 @@ export default function ChatScreen() {
           <Avatar.Text
             size={32}
             label={message.userName.charAt(0)}
+            color={COLORS.text}
             style={styles.messageAvatar}
           />
         )}
@@ -253,7 +258,7 @@ export default function ChatScreen() {
         <View style={styles.chatHeader}>
           <IconButton
             icon="arrow-left"
-            iconColor="#000"
+            iconColor={COLORS.text}
             size={24}
             onPress={() => setSelectedRoom(null)}
           />
@@ -263,7 +268,7 @@ export default function ChatScreen() {
               {selectedRoom.participants.length === 1 ? 'All members' : `${selectedRoom.participants.length} participants`}
             </Text>
           </View>
-          <IconButton icon="dots-vertical" iconColor="#000" size={24} onPress={() => { }} />
+          <IconButton icon="dots-vertical" iconColor={COLORS.text} size={24} onPress={() => { }} />
         </View>
 
         {/* Messages */}
@@ -303,10 +308,7 @@ export default function ChatScreen() {
   return (
     <View style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Messages</Text>
-        <Text style={styles.headerSubtitle}>Team communication</Text>
-      </View>
+      <Text style={styles.headerSubtitle}>Team communication</Text>
 
       {/* Rooms */}
       <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent}>
@@ -342,27 +344,16 @@ export default function ChatScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themedStyles((COLORS) => ({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
   },
-  header: {
-    padding: 20,
-    backgroundColor: COLORS.primary,
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
-  },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#000',
-  },
   headerSubtitle: {
     fontSize: 14,
-    color: '#000',
-    marginTop: 4,
-    opacity: 0.8,
+    color: COLORS.textLight,
+    marginHorizontal: 16,
+    marginTop: 12,
   },
   scrollContainer: {
     flex: 1,
@@ -373,7 +364,9 @@ const styles = StyleSheet.create({
   roomCard: {
     marginBottom: 12,
     backgroundColor: COLORS.surface,
-    elevation: 2,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   roomContent: {
     flexDirection: 'row',
@@ -398,7 +391,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   unreadText: {
-    color: '#fff',
+    color: '#FFFFFF',
     fontSize: 11,
     fontWeight: 'bold',
   },
@@ -427,7 +420,10 @@ const styles = StyleSheet.create({
   infoCard: {
     marginTop: 8,
     marginBottom: 12,
-    backgroundColor: `${COLORS.primary}15`,
+    backgroundColor: COLORS.primarySoft,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: COLORS.border,
     elevation: 0,
   },
   infoRow: {
@@ -447,11 +443,15 @@ const styles = StyleSheet.create({
   guidelinesCard: {
     marginBottom: 16,
     backgroundColor: COLORS.surface,
-    elevation: 1,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   guidelinesTitle: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontFamily: FONTS.display,
+    fontSize: 20,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
     color: COLORS.text,
     marginBottom: 12,
   },
@@ -464,7 +464,9 @@ const styles = StyleSheet.create({
   chatHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.primary,
+    backgroundColor: COLORS.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
     paddingRight: 8,
     paddingVertical: 4,
   },
@@ -472,18 +474,19 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   chatHeaderTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#000',
+    fontFamily: FONTS.display,
+    fontSize: 22,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    color: COLORS.text,
   },
   chatHeaderSubtitle: {
     fontSize: 12,
-    color: '#000',
-    opacity: 0.7,
+    color: COLORS.textLight,
   },
   messagesContainer: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: COLORS.background,
   },
   messagesContent: {
     padding: 16,
@@ -497,18 +500,20 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   messageAvatar: {
-    backgroundColor: COLORS.textLight,
+    backgroundColor: COLORS.surfaceRaised,
   },
   messageBubble: {
     maxWidth: '70%',
-    backgroundColor: '#fff',
+    backgroundColor: COLORS.surfaceRaised,
+    borderWidth: 1,
+    borderColor: COLORS.border,
     borderRadius: 16,
     padding: 12,
     marginLeft: 8,
-    elevation: 1,
   },
   ownMessageBubble: {
     backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
     marginLeft: 0,
     marginRight: 8,
   },
@@ -524,7 +529,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   ownMessageText: {
-    color: '#000',
+    color: COLORS.onPrimary,
   },
   messageTime: {
     fontSize: 10,
@@ -532,7 +537,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   ownMessageTime: {
-    color: '#000',
+    color: COLORS.onPrimary,
     opacity: 0.7,
   },
   inputContainer: {
@@ -541,7 +546,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surface,
     padding: 8,
     borderTopWidth: 1,
-    borderTopColor: COLORS.background,
+    borderTopColor: COLORS.border,
   },
   messageInput: {
     flex: 1,
@@ -549,4 +554,4 @@ const styles = StyleSheet.create({
     maxHeight: 100,
     backgroundColor: COLORS.background,
   },
-});
+}));

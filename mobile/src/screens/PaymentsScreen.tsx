@@ -1,13 +1,15 @@
 // src/screens/PaymentsScreen.tsx - Premium redesign
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, FlatList, ScrollView, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Card } from 'react-native-paper';
 
-import { COLORS } from '../config';
+import { themedStyles, useBrandColors } from '../theme/brand';
+import { FONTS } from '../theme/brandFonts';
 import { duesApi } from '../services/api';
 
 export default function PaymentsScreen() {
+  const styles = useStyles();
   const [paymentData, setPaymentData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
@@ -52,7 +54,6 @@ export default function PaymentsScreen() {
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.container}>
-        <Text style={styles.header}>Payments</Text>
         <Text style={styles.subtitle}>Season fees</Text>
 
         {/* Summary Card */}
@@ -108,6 +109,8 @@ function Metric({
   value: string;
   tone?: 'good' | 'warn' | 'bad';
 }) {
+  const COLORS = useBrandColors();
+  const styles = useStyles();
   const color =
     tone === 'good'
       ? COLORS.success
@@ -132,6 +135,8 @@ function PersonRow({
   amount: number;
   status: 'paid' | 'due';
 }) {
+  const COLORS = useBrandColors();
+  const styles = useStyles();
   const chipColor = status === 'paid' ? COLORS.success : COLORS.warning;
   const chipText = status === 'paid' ? 'Paid' : 'Due';
 
@@ -150,17 +155,11 @@ function PersonRow({
 }
 
 /* ==== Styles ==== */
-const styles = StyleSheet.create({
+const useStyles = themedStyles((COLORS) => ({
   screen: { flex: 1, backgroundColor: COLORS.background },
   scrollView: { flex: 1 },
   container: { padding: 16 },
 
-  header: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: COLORS.text,
-    marginBottom: 4,
-  },
   subtitle: {
     fontSize: 14,
     color: COLORS.textLight,
@@ -170,17 +169,24 @@ const styles = StyleSheet.create({
   card: {
     marginBottom: 16,
     backgroundColor: COLORS.surface,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   cardTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontFamily: FONTS.display,
+    fontSize: 20,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
     color: COLORS.text,
     marginBottom: 12,
   },
 
   sectionHeader: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontFamily: FONTS.display,
+    fontSize: 20,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
     color: COLORS.text,
     marginBottom: 4,
   },
@@ -202,11 +208,11 @@ const styles = StyleSheet.create({
 
   progressTrack: {
     height: 10,
-    backgroundColor: '#252931',
+    backgroundColor: COLORS.surfaceRaised,
     borderRadius: 999,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: COLORS.border,
   },
   progressFill: {
     height: '100%',
@@ -221,7 +227,7 @@ const styles = StyleSheet.create({
 
   separator: {
     height: 1,
-    backgroundColor: '#333',
+    backgroundColor: COLORS.border,
     marginVertical: 8,
   },
 
@@ -255,4 +261,4 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingVertical: 16,
   },
-});
+}));

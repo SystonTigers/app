@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { Modal, Portal, Text, Button } from 'react-native-paper';
-import { View, StyleSheet, Alert } from 'react-native';
-import { COLORS } from '../config';
+import { View, Alert } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { themedStyles, useBrandColors } from '../theme/brand';
+import { FONTS } from '../theme/brandFonts';
 import { Picker } from '@react-native-picker/picker';
 
 interface ReportContentModalProps {
@@ -29,6 +31,8 @@ export function ReportContentModal({
     contentId,
     onReportSuccess,
 }: ReportContentModalProps) {
+    const COLORS = useBrandColors();
+    const styles = useStyles();
     const [reason, setReason] = useState('spam');
     const [submitting, setSubmitting] = useState(false);
 
@@ -87,7 +91,7 @@ export function ReportContentModal({
                 <View style={styles.container}>
                     {/* Header */}
                     <View style={styles.header}>
-                        <Text style={styles.icon}>🚩</Text>
+                        <MaterialCommunityIcons name="flag" size={48} color={COLORS.error} style={styles.icon} />
                         <Text style={styles.title}>Report Content</Text>
                     </View>
 
@@ -129,6 +133,7 @@ export function ReportContentModal({
                             loading={submitting}
                             disabled={submitting}
                             buttonColor={COLORS.error}
+                            textColor="#FFFFFF"
                             style={styles.submitButton}
                         >
                             {submitting ? 'Submitting...' : 'Submit Report'}
@@ -140,13 +145,15 @@ export function ReportContentModal({
     );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themedStyles((COLORS) => ({
     modal: {
         padding: 20,
     },
     container: {
-        backgroundColor: 'white',
-        borderRadius: 16,
+        backgroundColor: COLORS.surface,
+        borderWidth: 1,
+        borderColor: COLORS.border,
+        borderRadius: 18,
         padding: 24,
         maxWidth: 500,
         alignSelf: 'center',
@@ -157,12 +164,13 @@ const styles = StyleSheet.create({
         marginBottom: 16,
     },
     icon: {
-        fontSize: 48,
         marginBottom: 8,
     },
     title: {
-        fontSize: 20,
-        fontWeight: 'bold',
+        fontFamily: FONTS.display,
+        fontSize: 26,
+        letterSpacing: 1,
+        textTransform: 'uppercase',
         color: COLORS.text,
     },
     description: {
@@ -182,12 +190,15 @@ const styles = StyleSheet.create({
     },
     pickerWrapper: {
         borderWidth: 1,
-        borderColor: COLORS.textLight,
-        borderRadius: 8,
+        borderColor: COLORS.border,
+        borderRadius: 12,
         overflow: 'hidden',
+        backgroundColor: COLORS.surfaceRaised,
     },
     picker: {
         height: 50,
+        color: COLORS.text,
+        backgroundColor: COLORS.surfaceRaised,
     },
     actions: {
         flexDirection: 'row',
@@ -199,4 +210,4 @@ const styles = StyleSheet.create({
     submitButton: {
         flex: 1,
     },
-});
+}));

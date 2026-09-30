@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
-import { Platform, Pressable, Share, StyleSheet, Text, View } from 'react-native';
-import { COLORS } from '../../config';
+import { Platform, Pressable, Share, Text, View } from 'react-native';
+import { themedStyles } from '../../theme/brand';
 import { apiErrorMessage, consentApi, parentLinkApi, type LinkedParent, type PlayerConsent } from '../../services/api';
 import { inviteMessage } from '../../services/inviteLink';
 import ConsentQuestion from './ConsentQuestion';
 
 const mark = (v: boolean | null) => (v === true ? '✓' : v === false ? '✗' : '?');
-const markStyle = (v: boolean | null) => (v === true ? styles.yes : v === false ? styles.no : styles.unknown);
 
 /** Share the invite: the phone's share sheet (WhatsApp, text), else show it to copy. */
 async function shareInvite(message: string): Promise<boolean> {
@@ -34,6 +33,8 @@ async function shareInvite(message: string): Promise<boolean> {
 export default function StaffConsentRow({ player, clubName, clubSlug, onChanged }: {
   player: PlayerConsent; clubName: string; clubSlug: string | null; onChanged: (p: PlayerConsent) => void;
 }) {
+  const styles = useStyles();
+  const markStyle = (v: boolean | null) => (v === true ? styles.yes : v === false ? styles.no : styles.unknown);
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState('');
@@ -128,24 +129,24 @@ export default function StaffConsentRow({ player, clubName, clubSlug, onChanged 
   );
 }
 
-const styles = StyleSheet.create({
-  wrap: { backgroundColor: '#14181C', borderRadius: 10 },
+const useStyles = themedStyles((COLORS) => ({
+  wrap: { backgroundColor: COLORS.surface, borderRadius: 18, borderWidth: 1, borderColor: COLORS.border },
   row: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 12, paddingHorizontal: 12 },
   name: { flex: 1, color: COLORS.text, fontWeight: '700' },
   badge: { fontSize: 13, fontWeight: '800', minWidth: 40, textAlign: 'center' },
   yes: { color: COLORS.primary },
   no: { color: COLORS.error },
-  unknown: { color: '#F5C400' },
+  unknown: { color: COLORS.warning },
   plain: { color: COLORS.textLight },
   panel: { padding: 12, paddingTop: 0, gap: 10 },
   heading: { color: COLORS.text, fontWeight: '800', marginTop: 6 },
   parent: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   parentEmail: { flex: 1, color: COLORS.textLight },
   remove: { color: COLORS.error, fontWeight: '700' },
-  invite: { borderWidth: 1, borderColor: COLORS.primary, borderRadius: 10, paddingVertical: 12, alignItems: 'center' },
+  invite: { borderWidth: 1, borderColor: COLORS.primary, backgroundColor: COLORS.primarySoft, borderRadius: 12, paddingVertical: 12, alignItems: 'center' },
   inviteText: { color: COLORS.primary, fontWeight: '800' },
   code: { gap: 4 },
   codeText: { color: COLORS.text, fontSize: 22, fontWeight: '900', letterSpacing: 3 },
   small: { color: COLORS.textLight, fontSize: 12 },
   error: { color: COLORS.error },
-});
+}));

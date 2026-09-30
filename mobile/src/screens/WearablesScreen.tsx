@@ -27,7 +27,10 @@ import {
 } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Svg, { Path, Rect, Circle, Line, Text as SvgText, G, Defs, LinearGradient, Stop } from 'react-native-svg';
-import { COLORS, API_BASE_URL } from '../config';
+import { API_BASE_URL } from '../config';
+import { themedStyles, useBrandColors } from '../theme/brand';
+import { withOpacity } from '../theme/utils';
+import { FONTS } from '../theme/brandFonts';
 import { useAuth } from '../context/AuthContext';
 import api, { wearablesApi, squadApi } from '../services/api';
 
@@ -149,6 +152,8 @@ function generateMockGPSTrack(): GPSPoint[] {
 
 // GPS Track Map Component
 function GPSTrackMap({ track, width = MAP_WIDTH, height = MAP_HEIGHT }: { track: GPSPoint[]; width?: number; height?: number }) {
+  const COLORS = useBrandColors();
+  const styles = useStyles();
   if (!track || track.length < 2) {
     return (
       <View style={[styles.mapContainer, { width, height }]}>
@@ -195,9 +200,9 @@ function GPSTrackMap({ track, width = MAP_WIDTH, height = MAP_HEIGHT }: { track:
         <Path d={pathData} stroke={COLORS.primary} strokeWidth={2.5} fill="none" strokeLinecap="round" strokeLinejoin="round" />
 
         {/* Start point */}
-        <Circle cx={scaleX(track[0].lon)} cy={scaleY(track[0].lat)} r={6} fill="#4CAF50" />
+        <Circle cx={scaleX(track[0].lon)} cy={scaleY(track[0].lat)} r={6} fill={COLORS.success} />
         {/* End point */}
-        <Circle cx={scaleX(track[track.length - 1].lon)} cy={scaleY(track[track.length - 1].lat)} r={6} fill="#F44336" />
+        <Circle cx={scaleX(track[track.length - 1].lon)} cy={scaleY(track[track.length - 1].lat)} r={6} fill={COLORS.error} />
 
         {/* Speed indicators (show high speed points) */}
         {track.filter(p => p.speed && p.speed > maxSpeed * 0.8).map((p, i) => (
@@ -206,22 +211,22 @@ function GPSTrackMap({ track, width = MAP_WIDTH, height = MAP_HEIGHT }: { track:
             cx={scaleX(p.lon)}
             cy={scaleY(p.lat)}
             r={4}
-            fill="#FF9800"
+            fill={COLORS.warning}
             opacity={0.8}
           />
         ))}
       </Svg>
       <View style={styles.mapLegend}>
         <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: '#4CAF50' }]} />
+          <View style={[styles.legendDot, { backgroundColor: COLORS.success }]} />
           <Paragraph style={styles.legendText}>Start</Paragraph>
         </View>
         <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: '#F44336' }]} />
+          <View style={[styles.legendDot, { backgroundColor: COLORS.error }]} />
           <Paragraph style={styles.legendText}>End</Paragraph>
         </View>
         <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: '#FF9800' }]} />
+          <View style={[styles.legendDot, { backgroundColor: COLORS.warning }]} />
           <Paragraph style={styles.legendText}>High Speed</Paragraph>
         </View>
       </View>
@@ -231,6 +236,7 @@ function GPSTrackMap({ track, width = MAP_WIDTH, height = MAP_HEIGHT }: { track:
 
 // Heatmap Component
 function HeatmapView({ heatmap, width = MAP_WIDTH, height = MAP_HEIGHT }: { heatmap: HeatmapData; width?: number; height?: number }) {
+  const styles = useStyles();
   if (!heatmap || heatmap.cells.length === 0) {
     return (
       <View style={[styles.mapContainer, { width, height }]}>
@@ -297,6 +303,8 @@ function HeatmapView({ heatmap, width = MAP_WIDTH, height = MAP_HEIGHT }: { heat
 
 // Metrics Card Component
 function MetricsCard({ metrics, sessionType }: { metrics: FitnessMetrics; sessionType: string }) {
+  const COLORS = useBrandColors();
+  const styles = useStyles();
   const distanceKm = metrics.totalDistanceM ? (metrics.totalDistanceM / 1000).toFixed(2) : '-';
 
   return (
@@ -322,7 +330,7 @@ function MetricsCard({ metrics, sessionType }: { metrics: FitnessMetrics; sessio
           </View>
 
           <View style={styles.metricItem}>
-            <MaterialCommunityIcons name="heart-pulse" size={24} color="#F44336" />
+            <MaterialCommunityIcons name="heart-pulse" size={24} color={COLORS.error} />
             <Title style={styles.metricValue}>{metrics.maxHeartRate || '-'}</Title>
             <Paragraph style={styles.metricLabel}>Max HR</Paragraph>
           </View>
@@ -334,14 +342,14 @@ function MetricsCard({ metrics, sessionType }: { metrics: FitnessMetrics; sessio
           </View>
 
           <View style={styles.metricItem}>
-            <MaterialCommunityIcons name="arrow-up-bold" size={24} color="#4CAF50" />
+            <MaterialCommunityIcons name="arrow-up-bold" size={24} color={COLORS.success} />
             <Title style={styles.metricValue}>{metrics.accelerationCount || '-'}</Title>
             <Paragraph style={styles.metricLabel}>Accels</Paragraph>
           </View>
 
           {metrics.playerLoad && (
             <View style={styles.metricItem}>
-              <MaterialCommunityIcons name="weight-lifter" size={24} color={COLORS.secondary} />
+              <MaterialCommunityIcons name="weight-lifter" size={24} color={COLORS.primary} />
               <Title style={styles.metricValue}>{metrics.playerLoad}</Title>
               <Paragraph style={styles.metricLabel}>Load</Paragraph>
             </View>
@@ -349,7 +357,7 @@ function MetricsCard({ metrics, sessionType }: { metrics: FitnessMetrics; sessio
 
           {metrics.perceivedExertion && (
             <View style={styles.metricItem}>
-              <MaterialCommunityIcons name="emoticon-sad" size={24} color="#FF9800" />
+              <MaterialCommunityIcons name="emoticon-sad" size={24} color={COLORS.warning} />
               <Title style={styles.metricValue}>{metrics.perceivedExertion}/10</Title>
               <Paragraph style={styles.metricLabel}>RPE</Paragraph>
             </View>
@@ -372,6 +380,7 @@ function ManualEntryModal({
   onSubmit: (data: any) => void;
   selectedPlayer: Player | null;
 }) {
+  const styles = useStyles();
   const [sessionType, setSessionType] = useState<string>('match');
   const [sessionName, setSessionName] = useState('');
   const [distance, setDistance] = useState('');
@@ -543,6 +552,8 @@ function ManualEntryModal({
 
 // Main Screen
 export default function WearablesScreen() {
+  const COLORS = useBrandColors();
+  const styles = useStyles();
   const [players, setPlayers] = useState<Player[]>([]);
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
@@ -635,9 +646,9 @@ export default function WearablesScreen() {
 
   const getRiskColor = (level: string) => {
     switch (level) {
-      case 'low': return '#4CAF50';
-      case 'medium': return '#FF9800';
-      case 'high': return '#F44336';
+      case 'low': return COLORS.success;
+      case 'medium': return COLORS.warning;
+      case 'high': return COLORS.error;
       default: return COLORS.textLight;
     }
   };
@@ -656,10 +667,7 @@ export default function WearablesScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
       >
         {/* Header */}
-        <View style={styles.header}>
-          <Title>GPS & Fitness</Title>
-          <Paragraph style={styles.subtitle}>Track performance data</Paragraph>
-        </View>
+        <Paragraph style={styles.subtitle}>GPS & fitness: track performance data</Paragraph>
 
         {/* Player Selector */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.playerScroll}>
@@ -675,6 +683,7 @@ export default function WearablesScreen() {
               <Avatar.Text
                 size={36}
                 label={player.name.split(' ').map(n => n[0]).join('')}
+                color={selectedPlayer?.id === player.id ? COLORS.onPrimary : COLORS.text}
                 style={[
                   styles.playerAvatar,
                   selectedPlayer?.id === player.id && styles.playerAvatarSelected
@@ -700,8 +709,8 @@ export default function WearablesScreen() {
               <View style={styles.summaryHeader}>
                 <Title style={styles.summaryTitle}>Season Summary</Title>
                 <Chip
-                  style={{ backgroundColor: getRiskColor(playerSummary.injuryRiskLevel) }}
-                  textStyle={{ color: '#fff' }}
+                  style={{ backgroundColor: withOpacity(getRiskColor(playerSummary.injuryRiskLevel), 0.16) }}
+                  textStyle={{ color: getRiskColor(playerSummary.injuryRiskLevel), fontWeight: '700' }}
                 >
                   {playerSummary.injuryRiskLevel.toUpperCase()} Risk
                 </Chip>
@@ -854,17 +863,16 @@ export default function WearablesScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themedStyles((COLORS) => ({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
   },
-  header: {
-    padding: 16,
-    paddingBottom: 8,
-  },
   subtitle: {
     color: COLORS.textLight,
+    marginHorizontal: 16,
+    marginTop: 12,
+    marginBottom: 12,
   },
   playerScroll: {
     paddingHorizontal: 16,
@@ -878,14 +886,14 @@ const styles = StyleSheet.create({
     paddingRight: 16,
     marginRight: 12,
     borderWidth: 2,
-    borderColor: 'transparent',
+    borderColor: COLORS.border,
   },
   playerChipSelected: {
     borderColor: COLORS.primary,
-    backgroundColor: `${COLORS.primary}10`,
+    backgroundColor: COLORS.primarySoft,
   },
   playerAvatar: {
-    backgroundColor: COLORS.textLight,
+    backgroundColor: COLORS.surfaceRaised,
     marginRight: 8,
   },
   playerAvatarSelected: {
@@ -894,6 +902,7 @@ const styles = StyleSheet.create({
   playerChipName: {
     fontWeight: '600',
     fontSize: 14,
+    color: COLORS.text,
   },
   playerChipNameSelected: {
     color: COLORS.primary,
@@ -906,6 +915,9 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginBottom: 16,
     backgroundColor: COLORS.surface,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   summaryHeader: {
     flexDirection: 'row',
@@ -914,7 +926,11 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   summaryTitle: {
-    fontSize: 16,
+    fontFamily: FONTS.display,
+    fontSize: 20,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    color: COLORS.text,
   },
   summaryStats: {
     flexDirection: 'row',
@@ -924,7 +940,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   summaryValue: {
-    fontSize: 20,
+    fontFamily: FONTS.display,
+    fontSize: 26,
     color: COLORS.primary,
   },
   summaryLabel: {
@@ -939,14 +956,20 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontFamily: FONTS.display,
+    fontSize: 20,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    color: COLORS.text,
+    flexShrink: 1,
   },
   sessionCard: {
     marginHorizontal: 16,
     marginBottom: 8,
     backgroundColor: COLORS.surface,
+    borderRadius: 18,
     borderWidth: 2,
-    borderColor: 'transparent',
+    borderColor: COLORS.border,
   },
   sessionCardSelected: {
     borderColor: COLORS.primary,
@@ -967,6 +990,7 @@ const styles = StyleSheet.create({
   },
   sessionName: {
     fontWeight: '600',
+    color: COLORS.text,
   },
   sessionDate: {
     fontSize: 12,
@@ -980,7 +1004,7 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
   },
   entryMethodChip: {
-    backgroundColor: COLORS.background,
+    backgroundColor: COLORS.surfaceRaised,
     marginTop: 4,
   },
   entryMethodText: {
@@ -996,10 +1020,13 @@ const styles = StyleSheet.create({
   mapCard: {
     marginBottom: 16,
     backgroundColor: COLORS.surface,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   mapContainer: {
-    backgroundColor: '#1a1a2e',
-    borderRadius: 8,
+    backgroundColor: COLORS.surfaceRaised,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
@@ -1026,7 +1053,7 @@ const styles = StyleSheet.create({
   },
   legendText: {
     fontSize: 10,
-    color: '#fff',
+    color: COLORS.text,
   },
   heatLegend: {
     position: 'absolute',
@@ -1062,6 +1089,9 @@ const styles = StyleSheet.create({
   metricsCard: {
     backgroundColor: COLORS.surface,
     marginBottom: 16,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   metricsGrid: {
     flexDirection: 'row',
@@ -1074,7 +1104,9 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   metricValue: {
-    fontSize: 20,
+    fontFamily: FONTS.display,
+    fontSize: 24,
+    color: COLORS.text,
     marginTop: 4,
   },
   metricLabel: {
@@ -1085,11 +1117,17 @@ const styles = StyleSheet.create({
   modalContainer: {
     backgroundColor: COLORS.surface,
     margin: 20,
-    borderRadius: 12,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: COLORS.border,
     padding: 20,
     maxHeight: '85%',
   },
   modalTitle: {
+    fontFamily: FONTS.display,
+    fontSize: 26,
+    letterSpacing: 0.5,
+    color: COLORS.text,
     textAlign: 'center',
     marginBottom: 4,
   },
@@ -1130,8 +1168,8 @@ const styles = StyleSheet.create({
   },
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(255,255,255,0.8)',
+    backgroundColor: 'rgba(7,9,12,0.7)',
     justifyContent: 'center',
     alignItems: 'center',
   },
-});
+}));

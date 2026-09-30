@@ -1,7 +1,8 @@
 // components/ui/Pills.tsx
 import React from 'react';
 import { Pressable, Text, View, StyleSheet } from 'react-native';
-import { colors, radii, spacing, fonts } from '../../theme/';
+import { radii, spacing, fonts } from '../../theme/';
+import { themedStyles } from '../../theme/brand';
 
 interface PillsProps {
   items: string[];
@@ -10,6 +11,7 @@ interface PillsProps {
 }
 
 export function Pills({ items, value, onChange }: PillsProps) {
+  const styles = useStyles();
   return (
     <View style={styles.container}>
       {items.map((item) => (
@@ -31,7 +33,7 @@ export function Pills({ items, value, onChange }: PillsProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themedStyles((colors) => ({
   container: {
     flexDirection: 'row',
     gap: spacing.sm,
@@ -58,7 +60,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   textActive: {
-    color: '#111',
+    color: colors.onPrimary,
     fontWeight: '700',
   },
-});
+}));

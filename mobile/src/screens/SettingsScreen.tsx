@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, StyleSheet, Alert } from 'react-native';
+import { View, ScrollView, Alert } from 'react-native';
 import { Card, Title, Paragraph, Switch, List, TextInput, Button, Divider } from 'react-native-paper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { COLORS } from '../config';
+import { themedStyles, useBrandColors } from '../theme/brand';
+import { FONTS } from '../theme/brandFonts';
 import { DeleteAccountModal } from '../components/DeleteAccountModal';
 import { useAuth } from '../context/AuthContext';
 import { usersApi } from '../services/api';
@@ -49,6 +50,8 @@ interface UserProfile {
 }
 
 export default function SettingsScreen() {
+  const COLORS = useBrandColors();
+  const styles = useStyles();
   const { user, logout } = useAuth();
 
   const [profile, setProfile] = useState<UserProfile>({
@@ -183,15 +186,10 @@ export default function SettingsScreen() {
 
   return (
     <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <Title style={styles.headerTitle}>Settings</Title>
-        <Paragraph style={styles.headerSubtitle}>Manage your preferences</Paragraph>
-      </View>
-
       {/* Profile Section */}
-      <Card style={styles.card}>
+      <Card style={[styles.card, styles.firstCard]}>
         <Card.Content>
-          <Title style={styles.cardTitle}>👤 Profile</Title>
+          <Title style={styles.cardTitle}>Profile</Title>
           <TextInput
             label="Name"
             value={profile.name}
@@ -241,7 +239,7 @@ export default function SettingsScreen() {
           {/* Match Alerts */}
           <Card style={styles.card}>
             <Card.Content>
-              <Title style={styles.cardTitle}>🔔 Match Alerts</Title>
+              <Title style={styles.cardTitle}>Match Alerts</Title>
               <Paragraph style={styles.cardDescription}>
                 Choose which match events trigger notifications
               </Paragraph>
@@ -362,7 +360,7 @@ export default function SettingsScreen() {
           {/* Notification Channels */}
           <Card style={styles.card}>
             <Card.Content>
-              <Title style={styles.cardTitle}>📱 Notification Channels</Title>
+              <Title style={styles.cardTitle}>Notification Channels</Title>
               <Paragraph style={styles.cardDescription}>
                 Choose how you want to receive notifications
               </Paragraph>
@@ -408,7 +406,7 @@ export default function SettingsScreen() {
           {/* Quiet Hours */}
           <Card style={styles.card}>
             <Card.Content>
-              <Title style={styles.cardTitle}>🌙 Quiet Hours</Title>
+              <Title style={styles.cardTitle}>Quiet Hours</Title>
               <Paragraph style={styles.cardDescription}>
                 Mute notifications during specific hours
               </Paragraph>
@@ -474,8 +472,6 @@ export default function SettingsScreen() {
           mode="contained"
           onPress={handleSave}
           style={styles.saveButton}
-          buttonColor={COLORS.primary}
-          textColor={COLORS.secondary}
           icon="content-save"
         >
           Save Settings
@@ -485,7 +481,7 @@ export default function SettingsScreen() {
       {/* Account Section */}
       <Card style={styles.card}>
         <Card.Content>
-          <Title style={styles.cardTitle}>🔐 Account</Title>
+          <Title style={styles.cardTitle}>Account</Title>
           <Paragraph style={styles.cardDescription}>
             {user ? `Logged in as: ${user.role}` : 'Manage your account settings'}
           </Paragraph>
@@ -533,38 +529,28 @@ export default function SettingsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themedStyles((COLORS) => ({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
   },
-  header: {
-    padding: 20,
-    backgroundColor: COLORS.primary,
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
-    marginBottom: 16,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: COLORS.secondary,
-    marginBottom: 4,
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: COLORS.secondary,
-    opacity: 0.8,
+  firstCard: {
+    marginTop: 16,
   },
   card: {
     marginHorizontal: 16,
     marginBottom: 16,
-    borderRadius: 12,
-    elevation: 2,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surface,
   },
   cardTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontFamily: FONTS.display,
+    fontSize: 20,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    color: COLORS.text,
     marginBottom: 8,
   },
   cardDescription: {
@@ -574,7 +560,7 @@ const styles = StyleSheet.create({
   },
   divider: {
     marginVertical: 12,
-    backgroundColor: COLORS.background,
+    backgroundColor: COLORS.border,
   },
   input: {
     marginBottom: 12,
@@ -620,4 +606,4 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontStyle: 'italic',
   },
-});
+}));

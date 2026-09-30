@@ -1,11 +1,15 @@
 import React, { useState, useMemo } from 'react';
-import { View, ScrollView, StyleSheet, TouchableOpacity, Share, Image } from 'react-native';
+import { View, ScrollView, TouchableOpacity, Share, Image } from 'react-native';
 import { Text, Card, Searchbar, Chip, Portal, Modal, IconButton, Button } from 'react-native-paper';
-import { COLORS } from '../config';
+import { themedStyles, useBrandColors } from '../theme/brand';
+import { withOpacity } from '../theme/utils';
+import { FONTS } from '../theme/brandFonts';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { DRILLS_LIBRARY, DRILL_CATEGORIES, Drill } from '../data/drillsData';
 
 export default function DrillLibraryScreen() {
+  const COLORS = useBrandColors();
+  const styles = useStyles();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>('All');
@@ -74,8 +78,8 @@ export default function DrillLibraryScreen() {
 
         <View style={styles.drillMeta}>
           <Chip
-            style={[styles.difficultyChip, { backgroundColor: getDifficultyColor(drill.difficulty) }]}
-            textStyle={{ color: '#fff', fontSize: 11 }}
+            style={[styles.difficultyChip, { backgroundColor: withOpacity(getDifficultyColor(drill.difficulty), 0.16) }]}
+            textStyle={{ color: getDifficultyColor(drill.difficulty), fontSize: 11, fontWeight: '700' }}
           >
             {drill.difficulty}
           </Chip>
@@ -127,9 +131,9 @@ export default function DrillLibraryScreen() {
               <Chip
                 style={[
                   styles.difficultyChip,
-                  { backgroundColor: getDifficultyColor(selectedDrill.difficulty) },
+                  { backgroundColor: withOpacity(getDifficultyColor(selectedDrill.difficulty), 0.16) },
                 ]}
-                textStyle={{ color: '#fff' }}
+                textStyle={{ color: getDifficultyColor(selectedDrill.difficulty), fontWeight: '700' }}
               >
                 {selectedDrill.difficulty.toUpperCase()}
               </Chip>
@@ -206,10 +210,7 @@ export default function DrillLibraryScreen() {
   return (
     <View style={styles.container}>
       {/* Header */}
-      <View style={styles.headerContainer}>
-        <Text style={styles.header}>Drill Library</Text>
-        <Text style={styles.subtitle}>{DRILLS_LIBRARY.length} drills available</Text>
-      </View>
+      <Text style={styles.subtitle}>{DRILLS_LIBRARY.length} drills available</Text>
 
       {/* Search */}
       <Searchbar
@@ -295,44 +296,44 @@ export default function DrillLibraryScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themedStyles((COLORS) => ({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
   },
-  headerContainer: {
-    padding: 16,
-    paddingTop: 24,
-  },
-  header: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: COLORS.text,
-  },
   subtitle: {
     fontSize: 14,
     color: COLORS.textLight,
-    marginTop: 4,
+    marginHorizontal: 16,
+    marginTop: 12,
+    marginBottom: 12,
   },
   searchBar: {
     marginHorizontal: 16,
     marginBottom: 12,
     backgroundColor: COLORS.surface,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   filterContainer: {
+    flexGrow: 0,
     marginBottom: 8,
   },
   filterChip: {
     marginLeft: 8,
     backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   selectedFilterChip: {
     backgroundColor: COLORS.primary,
   },
   selectedFilterText: {
-    color: '#000',
+    color: COLORS.onPrimary,
   },
   difficultyFilter: {
+    flexGrow: 0,
     marginBottom: 12,
     paddingLeft: 8,
   },
@@ -359,7 +360,9 @@ const styles = StyleSheet.create({
   drillCard: {
     marginBottom: 12,
     backgroundColor: COLORS.surface,
-    elevation: 2,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   drillHeader: {
     flexDirection: 'row',
@@ -367,8 +370,9 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   drillName: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontFamily: FONTS.display,
+    fontSize: 20,
+    letterSpacing: 0.5,
     color: COLORS.text,
   },
   drillCategory: {
@@ -407,11 +411,11 @@ const styles = StyleSheet.create({
   },
   focusChip: {
     height: 24,
-    backgroundColor: `${COLORS.primary}20`,
+    backgroundColor: COLORS.primarySoft,
   },
   focusChipLarge: {
     height: 28,
-    backgroundColor: `${COLORS.primary}20`,
+    backgroundColor: COLORS.primarySoft,
   },
   focusChipText: {
     fontSize: 11,
@@ -420,7 +424,9 @@ const styles = StyleSheet.create({
   modalContainer: {
     backgroundColor: COLORS.surface,
     margin: 20,
-    borderRadius: 12,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: COLORS.border,
     maxHeight: '90%',
   },
   modalHeader: {
@@ -428,11 +434,12 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.background,
+    borderBottomColor: COLORS.border,
   },
   modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
+    fontFamily: FONTS.display,
+    fontSize: 26,
+    letterSpacing: 0.5,
     color: COLORS.text,
   },
   modalCategory: {
@@ -453,8 +460,10 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontFamily: FONTS.display,
+    fontSize: 20,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
     color: COLORS.text,
     padding: 16,
     paddingBottom: 8,
@@ -491,6 +500,9 @@ const styles = StyleSheet.create({
   },
   emptyCard: {
     backgroundColor: COLORS.surface,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: COLORS.border,
     padding: 32,
   },
   emptyText: {
@@ -506,4 +518,4 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 8,
   },
-});
+}));

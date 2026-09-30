@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
-import { View, ScrollView, StyleSheet, TouchableOpacity, Modal, Dimensions } from 'react-native';
+import { View, ScrollView, TouchableOpacity, Modal, Dimensions } from 'react-native';
 import { Text, IconButton } from 'react-native-paper';
 import { useTheme } from '../theme/useTheme';
+import { themedStyles, useBrandColors } from '../theme/brand';
+import { FONTS } from '../theme/brandFonts';
 import { useClub } from '../context/ClubContext';
 import { isOurTeam } from '../utils/clubMatch';
 import { getTenantId } from '../services/club';
@@ -12,7 +14,8 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export default function LeagueTableScreen() {
   const { theme } = useTheme();
-  const { colors } = theme;
+  const c = useBrandColors();
+  const styles = useStyles();
   const { club } = useClub();
   const [modalVisible, setModalVisible] = useState(false);
   const [leagueTable, setLeagueTable] = useState<any[]>([]);
@@ -34,12 +37,12 @@ export default function LeagueTableScreen() {
     };
   }, [clubKey]);
   const palette = React.useMemo(() => ({
-    text: colors.text,
-    muted: colors.textSecondary,
-    line: colors.border,
-    head: colors.backgroundSecondary,
-    brand: colors.primary,
-  }), [colors]);
+    text: c.text,
+    muted: c.textLight,
+    line: c.border,
+    head: c.surfaceRaised,
+    brand: c.primary,
+  }), [c]);
 
   const loadTable = async () => {
     try {
@@ -77,8 +80,8 @@ export default function LeagueTableScreen() {
         key={row.position}
         style={[
           styles.tableRow,
-          { borderBottomColor: colors.border },
-          isUs && { backgroundColor: colors.primary + '15' },
+          { borderBottomColor: c.border },
+          isUs && { backgroundColor: c.primarySoft },
         ]}
       >
         {/* Position Badge */}
@@ -86,11 +89,11 @@ export default function LeagueTableScreen() {
           <View
             style={[
               styles.posBadge,
-              { backgroundColor: colors.backgroundSecondary },
-              isTopTwo && { borderColor: colors.primary, borderWidth: 1 },
+              { backgroundColor: c.surfaceRaised },
+              isTopTwo && { borderColor: c.primary, borderWidth: 1 },
             ]}
           >
-            <Text style={[styles.posText, { color: isTopTwo ? colors.primary : colors.textSecondary }]}>
+            <Text style={[styles.posText, { color: isTopTwo ? c.primary : c.textLight }]}>
               {row.position}
             </Text>
           </View>
@@ -99,7 +102,7 @@ export default function LeagueTableScreen() {
         {/* Team Name */}
         <View style={styles.teamCol}>
           <Text
-            style={[styles.teamText, { color: colors.text }, isUs && { fontWeight: 'bold', color: colors.primary }]}
+            style={[styles.teamText, { color: c.text }, isUs && { fontWeight: 'bold', color: c.primary }]}
             numberOfLines={1}
           >
             {row.team.toUpperCase()}
@@ -107,11 +110,11 @@ export default function LeagueTableScreen() {
         </View>
 
         {/* Stats */}
-        <Text style={[styles.statCell, styles.statCol, { color: colors.textSecondary }]}>{row.played}</Text>
-        <Text style={[styles.statCell, styles.statCol, { color: colors.textSecondary }]}>{row.won}</Text>
-        <Text style={[styles.statCell, styles.statCol, { color: colors.textSecondary }]}>{row.drawn}</Text>
-        <Text style={[styles.statCell, styles.statCol, { color: colors.textSecondary }]}>{row.lost}</Text>
-        <Text style={[styles.ptsCell, styles.ptsCol, { color: colors.primary }]}>{row.points}</Text>
+        <Text style={[styles.statCell, styles.statCol, { color: c.textLight }]}>{row.played}</Text>
+        <Text style={[styles.statCell, styles.statCol, { color: c.textLight }]}>{row.won}</Text>
+        <Text style={[styles.statCell, styles.statCol, { color: c.textLight }]}>{row.drawn}</Text>
+        <Text style={[styles.statCell, styles.statCol, { color: c.textLight }]}>{row.lost}</Text>
+        <Text style={[styles.ptsCell, styles.ptsCol, { color: c.primary }]}>{row.points}</Text>
       </View>
     );
   };
@@ -125,8 +128,8 @@ export default function LeagueTableScreen() {
         key={row.position}
         style={[
           styles.fullTableRow,
-          { borderBottomColor: colors.border },
-          isUs && { backgroundColor: colors.primary + '15' },
+          { borderBottomColor: c.border },
+          isUs && { backgroundColor: c.primarySoft },
         ]}
       >
         {/* Position */}
@@ -134,11 +137,11 @@ export default function LeagueTableScreen() {
           <View
             style={[
               styles.posBadge,
-              { backgroundColor: colors.backgroundSecondary },
-              isTopTwo && { borderColor: colors.primary, borderWidth: 1 },
+              { backgroundColor: c.surfaceRaised },
+              isTopTwo && { borderColor: c.primary, borderWidth: 1 },
             ]}
           >
-            <Text style={[styles.posText, { color: isTopTwo ? colors.primary : colors.textSecondary }]}>
+            <Text style={[styles.posText, { color: isTopTwo ? c.primary : c.textLight }]}>
               {row.position}
             </Text>
           </View>
@@ -147,7 +150,7 @@ export default function LeagueTableScreen() {
         {/* Team */}
         <View style={styles.fullTeamCol}>
           <Text
-            style={[styles.teamText, { color: colors.text }, isUs && { fontWeight: 'bold', color: colors.primary }]}
+            style={[styles.teamText, { color: c.text }, isUs && { fontWeight: 'bold', color: c.primary }]}
             numberOfLines={1}
           >
             {row.team.toUpperCase()}
@@ -155,16 +158,16 @@ export default function LeagueTableScreen() {
         </View>
 
         {/* Full Stats */}
-        <Text style={[styles.fullStatCell, { color: colors.textSecondary }]}>{row.played}</Text>
-        <Text style={[styles.fullStatCell, { color: colors.textSecondary }]}>{row.won}</Text>
-        <Text style={[styles.fullStatCell, { color: colors.textSecondary }]}>{row.drawn}</Text>
-        <Text style={[styles.fullStatCell, { color: colors.textSecondary }]}>{row.lost}</Text>
-        <Text style={[styles.fullStatCell, { color: colors.success || colors.primary }]}>{row.gf}</Text>
-        <Text style={[styles.fullStatCell, { color: colors.error }]}>{row.ga}</Text>
-        <Text style={[styles.fullStatCell, { color: row.gd >= 0 ? colors.primary : colors.error }]}>
+        <Text style={[styles.fullStatCell, { color: c.textLight }]}>{row.played}</Text>
+        <Text style={[styles.fullStatCell, { color: c.textLight }]}>{row.won}</Text>
+        <Text style={[styles.fullStatCell, { color: c.textLight }]}>{row.drawn}</Text>
+        <Text style={[styles.fullStatCell, { color: c.textLight }]}>{row.lost}</Text>
+        <Text style={[styles.fullStatCell, { color: c.success }]}>{row.gf}</Text>
+        <Text style={[styles.fullStatCell, { color: c.error }]}>{row.ga}</Text>
+        <Text style={[styles.fullStatCell, { color: row.gd >= 0 ? c.primary : c.error }]}>
           {row.gd > 0 ? `+${row.gd}` : row.gd}
         </Text>
-        <Text style={[styles.fullPtsCell, { color: colors.primary }]}>{row.points}</Text>
+        <Text style={[styles.fullPtsCell, { color: c.primary }]}>{row.points}</Text>
       </View>
     );
   };
@@ -172,12 +175,9 @@ export default function LeagueTableScreen() {
   // Our own table (sorted by goal difference) comes first; the FA's is the fallback
   if (faSnippets?.table && !loading && leagueTable.length === 0) {
     return (
-      <ScrollView style={{ backgroundColor: colors.background }} contentContainerStyle={styles.container}>
-        <View style={styles.header}>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>LEAGUE STANDINGS</Text>
-          <Text style={{ color: colors.textSecondary, fontSize: 12, marginTop: 4 }}>From FA Full-Time</Text>
-        </View>
-        <View style={[styles.tableCard, { backgroundColor: colors.surface, borderColor: colors.primary + '40' }]}>
+      <ScrollView style={{ backgroundColor: c.background }} contentContainerStyle={styles.container}>
+        <Text style={styles.sourceLine}>From FA Full-Time</Text>
+        <View style={[styles.tableCard, { backgroundColor: c.surface, borderColor: c.border }]}>
           <FaFullTimeView code={faSnippets.table} palette={palette} highlight={(club?.name || '').split(' ')[0]} />
         </View>
       </ScrollView>
@@ -185,23 +185,18 @@ export default function LeagueTableScreen() {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>LEAGUE STANDINGS</Text>
-      </View>
-
+    <View style={[styles.container, { backgroundColor: c.background }]}>
       {/* Compact Table Card */}
-      <View style={[styles.tableCard, { backgroundColor: colors.surface, borderColor: colors.primary + '40' }]}>
+      <View style={[styles.tableCard, { backgroundColor: c.surface, borderColor: c.border }]}>
         {/* Table Header */}
-        <View style={[styles.tableHeader, { borderBottomColor: colors.border }]}>
-          <Text style={[styles.headerCell, styles.posCol, { color: colors.textSecondary }]}>POS</Text>
-          <Text style={[styles.headerCell, styles.teamCol, { color: colors.textSecondary }]}>TEAM</Text>
-          <Text style={[styles.headerCell, styles.statCol, { color: colors.textSecondary }]}>P</Text>
-          <Text style={[styles.headerCell, styles.statCol, { color: colors.textSecondary }]}>W</Text>
-          <Text style={[styles.headerCell, styles.statCol, { color: colors.textSecondary }]}>D</Text>
-          <Text style={[styles.headerCell, styles.statCol, { color: colors.textSecondary }]}>L</Text>
-          <Text style={[styles.headerCell, styles.ptsCol, { color: colors.primary }]}>PTS</Text>
+        <View style={[styles.tableHeader, { borderBottomColor: c.border }]}>
+          <Text style={[styles.headerCell, styles.posCol, { color: c.textLight }]}>POS</Text>
+          <Text style={[styles.headerCell, styles.teamCol, { color: c.textLight }]}>TEAM</Text>
+          <Text style={[styles.headerCell, styles.statCol, { color: c.textLight }]}>P</Text>
+          <Text style={[styles.headerCell, styles.statCol, { color: c.textLight }]}>W</Text>
+          <Text style={[styles.headerCell, styles.statCol, { color: c.textLight }]}>D</Text>
+          <Text style={[styles.headerCell, styles.statCol, { color: c.textLight }]}>L</Text>
+          <Text style={[styles.headerCell, styles.ptsCol, { color: c.primary }]}>PTS</Text>
         </View>
 
         {/* Table Rows */}
@@ -211,10 +206,10 @@ export default function LeagueTableScreen() {
 
         {/* Full Standings Button */}
         <TouchableOpacity
-          style={[styles.fullStandingsBtn, { borderColor: colors.primary }]}
+          style={[styles.fullStandingsBtn, { borderColor: c.primary }]}
           onPress={() => setModalVisible(true)}
         >
-          <Text style={[styles.fullStandingsText, { color: colors.primary }]}>FULL STANDINGS</Text>
+          <Text style={[styles.fullStandingsText, { color: c.primary }]}>FULL STANDINGS</Text>
         </TouchableOpacity>
       </View>
 
@@ -225,31 +220,31 @@ export default function LeagueTableScreen() {
         transparent={true}
         onRequestClose={() => setModalVisible(false)}
       >
-        <View style={[styles.modalOverlay, { backgroundColor: colors.overlay }]}>
-          <View style={[styles.modalContent, { backgroundColor: colors.surface, borderColor: colors.primary + '60' }]}>
+        <View style={[styles.modalOverlay, { backgroundColor: theme.colors.overlay }]}>
+          <View style={[styles.modalContent, { backgroundColor: c.surface, borderColor: c.border }]}>
             {/* Modal Header */}
-            <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
-              <Text style={[styles.modalTitle, { color: colors.text }]}>FULL STANDINGS</Text>
+            <View style={[styles.modalHeader, { borderBottomColor: c.border }]}>
+              <Text style={[styles.modalTitle, { color: c.text }]}>FULL STANDINGS</Text>
               <IconButton
                 icon="close"
-                iconColor={colors.textSecondary}
+                iconColor={c.textLight}
                 size={24}
                 onPress={() => setModalVisible(false)}
               />
             </View>
 
             {/* Full Table Header */}
-            <View style={[styles.fullTableHeader, { borderBottomColor: colors.border }]}>
-              <Text style={[styles.fullHeaderCell, styles.fullPosCol, { color: colors.textSecondary }]}>#</Text>
-              <Text style={[styles.fullHeaderCell, styles.fullTeamCol, { color: colors.textSecondary }]}>TEAM</Text>
-              <Text style={[styles.fullHeaderCell, { color: colors.textSecondary }]}>P</Text>
-              <Text style={[styles.fullHeaderCell, { color: colors.textSecondary }]}>W</Text>
-              <Text style={[styles.fullHeaderCell, { color: colors.textSecondary }]}>D</Text>
-              <Text style={[styles.fullHeaderCell, { color: colors.textSecondary }]}>L</Text>
-              <Text style={[styles.fullHeaderCell, { color: colors.success || colors.primary }]}>GF</Text>
-              <Text style={[styles.fullHeaderCell, { color: colors.error }]}>GA</Text>
-              <Text style={[styles.fullHeaderCell, { color: colors.textSecondary }]}>GD</Text>
-              <Text style={[styles.fullHeaderCell, { color: colors.primary }]}>PTS</Text>
+            <View style={[styles.fullTableHeader, { borderBottomColor: c.border }]}>
+              <Text style={[styles.fullHeaderCell, styles.fullPosCol, { color: c.textLight }]}>#</Text>
+              <Text style={[styles.fullHeaderCell, styles.fullTeamCol, { color: c.textLight }]}>TEAM</Text>
+              <Text style={[styles.fullHeaderCell, { color: c.textLight }]}>P</Text>
+              <Text style={[styles.fullHeaderCell, { color: c.textLight }]}>W</Text>
+              <Text style={[styles.fullHeaderCell, { color: c.textLight }]}>D</Text>
+              <Text style={[styles.fullHeaderCell, { color: c.textLight }]}>L</Text>
+              <Text style={[styles.fullHeaderCell, { color: c.success }]}>GF</Text>
+              <Text style={[styles.fullHeaderCell, { color: c.error }]}>GA</Text>
+              <Text style={[styles.fullHeaderCell, { color: c.textLight }]}>GD</Text>
+              <Text style={[styles.fullHeaderCell, { color: c.primary }]}>PTS</Text>
             </View>
 
             {/* Full Table Body */}
@@ -263,22 +258,17 @@ export default function LeagueTableScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themedStyles((COLORS) => ({
   container: {
     flex: 1,
     padding: 16,
   },
-  header: {
-    marginBottom: 16,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '900',
-    letterSpacing: 2,
-    textTransform: 'uppercase',
+  sourceLine: {
+    color: COLORS.textLight,
+    marginBottom: 12,
   },
   tableCard: {
-    borderRadius: 8,
+    borderRadius: 18,
     borderWidth: 1,
     overflow: 'hidden',
   },
@@ -373,8 +363,8 @@ const styles = StyleSheet.create({
   modalContent: {
     width: SCREEN_WIDTH - 32,
     maxHeight: '85%',
-    borderRadius: 12,
-    borderWidth: 2,
+    borderRadius: 18,
+    borderWidth: 1,
     overflow: 'hidden',
   },
   modalHeader: {
@@ -387,9 +377,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   modalTitle: {
-    fontSize: 16,
-    fontWeight: '900',
-    letterSpacing: 2,
+    fontFamily: FONTS.display,
+    fontSize: 20,
+    letterSpacing: 1,
   },
   fullTableHeader: {
     flexDirection: 'row',
@@ -434,4 +424,4 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     width: 28,
   },
-});
+}));

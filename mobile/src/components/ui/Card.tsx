@@ -1,7 +1,7 @@
 // components/ui/Card.tsx
 import React from 'react';
 import { View, StyleSheet, ViewStyle } from 'react-native';
-import { colors, radii } from '../../theme/';
+import { themedStyles } from '../../theme/brand';
 
 interface CardProps {
   children: React.ReactNode;
@@ -10,17 +10,18 @@ interface CardProps {
 }
 
 export default function Card({ children, inset = false, style }: CardProps) {
+  const styles = useStyles();
   return <View style={[styles.card, inset && styles.inset, style]}>{children}</View>;
 }
 
-const styles = StyleSheet.create({
+const useStyles = themedStyles((colors) => ({
   card: {
     backgroundColor: colors.surface,
-    borderRadius: radii.lg,
+    borderRadius: 18,
     borderWidth: 1,
     borderColor: colors.border,
   },
   inset: {
     padding: 16,
   },
-});
+}));

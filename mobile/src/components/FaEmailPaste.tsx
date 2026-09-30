@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { COLORS } from '../config';
+import { Pressable, Text, TextInput, View } from 'react-native';
+import { themedStyles, useBrandColors } from '../theme/brand';
+import { FONTS } from '../theme/brandFonts';
 import { apiErrorMessage, faEmailApi, type FaImportLine } from '../services/api';
 import { matchDate } from '../utils/highlights';
 
@@ -17,6 +18,8 @@ const ACTION_TEXT: Record<FaImportLine['action'], string> = {
  * updated. Handy on the phone, where the FA's emails arrive.
  */
 export default function FaEmailPaste({ onImported }: { onImported: () => void }) {
+  const COLORS = useBrandColors();
+  const styles = useStyles();
   const [open, setOpen] = useState(false);
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
@@ -76,17 +79,17 @@ export default function FaEmailPaste({ onImported }: { onImported: () => void })
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themedStyles((COLORS) => ({
   openButton: { paddingHorizontal: 16, paddingVertical: 8 },
-  box: { margin: 16, marginTop: 4, padding: 14, borderRadius: 12, backgroundColor: '#14181C', gap: 10 },
-  title: { color: COLORS.text, fontWeight: '900', fontSize: 16 },
+  box: { margin: 16, marginTop: 4, padding: 14, borderRadius: 18, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.surface, gap: 10 },
+  title: { color: COLORS.text, fontFamily: FONTS.display, fontSize: 20, letterSpacing: 1, textTransform: 'uppercase' },
   help: { color: COLORS.textLight, fontSize: 13 },
-  input: { minHeight: 120, textAlignVertical: 'top', borderWidth: 1, borderColor: COLORS.textLight, borderRadius: 8, padding: 10, color: COLORS.text, fontSize: 13 },
+  input: { minHeight: 120, textAlignVertical: 'top', borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.surfaceRaised, borderRadius: 12, padding: 10, color: COLORS.text, fontSize: 13 },
   error: { color: COLORS.error },
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  button: { backgroundColor: COLORS.primary, borderRadius: 8, paddingVertical: 10, paddingHorizontal: 16 },
-  buttonText: { color: COLORS.background, fontWeight: '900' },
+  button: { backgroundColor: COLORS.primary, borderRadius: 12, paddingVertical: 10, paddingHorizontal: 16 },
+  buttonText: { color: COLORS.onPrimary, fontWeight: '900' },
   disabled: { opacity: 0.5 },
   link: { color: COLORS.primary, fontWeight: '700' },
   result: { color: COLORS.text, fontSize: 13 },
-});
+}));

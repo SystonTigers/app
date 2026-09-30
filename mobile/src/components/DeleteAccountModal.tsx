@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
 import { Modal, Portal, Text, Button, TextInput } from 'react-native-paper';
-import { View, StyleSheet, Alert } from 'react-native';
-import { COLORS, SUPPORT_EMAIL } from '../config';
+import { View, Alert } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { SUPPORT_EMAIL } from '../config';
+import { themedStyles, useBrandColors } from '../theme/brand';
+import { FONTS } from '../theme/brandFonts';
 
 interface DeleteAccountModalProps {
     visible: boolean;
@@ -14,6 +17,8 @@ export function DeleteAccountModal({
     onDismiss,
     onDeleteSuccess
 }: DeleteAccountModalProps) {
+    const COLORS = useBrandColors();
+    const styles = useStyles();
     const [confirmText, setConfirmText] = useState('');
     const [deleting, setDeleting] = useState(false);
 
@@ -87,7 +92,7 @@ export function DeleteAccountModal({
                 <View style={styles.container}>
                     {/* Header */}
                     <View style={styles.header}>
-                        <Text style={styles.icon}>⚠️</Text>
+                        <MaterialCommunityIcons name="alert" size={48} color={COLORS.error} style={styles.icon} />
                         <Text style={styles.title}>Delete Account</Text>
                     </View>
 
@@ -142,6 +147,7 @@ export function DeleteAccountModal({
                             loading={deleting}
                             disabled={deleting || confirmText.trim().toUpperCase() !== 'DELETE'}
                             buttonColor={COLORS.error}
+                            textColor="#FFFFFF"
                             style={styles.deleteButton}
                         >
                             {deleting ? 'Deleting...' : 'Delete Forever'}
@@ -158,13 +164,15 @@ export function DeleteAccountModal({
     );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themedStyles((COLORS) => ({
     modal: {
         padding: 20,
     },
     container: {
-        backgroundColor: 'white',
-        borderRadius: 16,
+        backgroundColor: COLORS.surface,
+        borderWidth: 1,
+        borderColor: COLORS.border,
+        borderRadius: 18,
         padding: 24,
         maxWidth: 500,
         alignSelf: 'center',
@@ -175,36 +183,37 @@ const styles = StyleSheet.create({
         marginBottom: 20,
     },
     icon: {
-        fontSize: 48,
         marginBottom: 8,
     },
     title: {
-        fontSize: 24,
-        fontWeight: 'bold',
+        fontFamily: FONTS.display,
+        fontSize: 28,
+        letterSpacing: 1,
+        textTransform: 'uppercase',
         color: COLORS.error,
     },
     warningBox: {
-        backgroundColor: '#fff3cd',
+        backgroundColor: 'rgba(255,0,85,0.14)',
         borderLeftWidth: 4,
-        borderLeftColor: '#ffc107',
+        borderLeftColor: COLORS.error,
         padding: 16,
-        borderRadius: 8,
+        borderRadius: 12,
         marginBottom: 24,
     },
     warningTitle: {
         fontSize: 16,
         fontWeight: 'bold',
-        color: '#856404',
+        color: COLORS.text,
         marginBottom: 8,
     },
     warningText: {
         fontSize: 14,
-        color: '#856404',
+        color: COLORS.text,
         marginBottom: 4,
     },
     bulletPoint: {
         fontSize: 14,
-        color: '#856404',
+        color: COLORS.textLight,
         marginLeft: 8,
         marginBottom: 4,
     },
@@ -222,7 +231,7 @@ const styles = StyleSheet.create({
         fontFamily: 'monospace',
     },
     input: {
-        backgroundColor: 'white',
+        backgroundColor: COLORS.surfaceRaised,
     },
     actions: {
         flexDirection: 'row',
@@ -240,4 +249,4 @@ const styles = StyleSheet.create({
         fontSize: 12,
         color: COLORS.textLight,
     },
-});
+}));

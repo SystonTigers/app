@@ -1,139 +1,129 @@
 import React from 'react';
-import { View, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
-import { Card, Title, Paragraph, Avatar, Divider } from 'react-native-paper';
-import { COLORS } from '../config';
+import { View, ScrollView, TouchableOpacity, Text } from 'react-native';
+import { Card } from 'react-native-paper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { themedStyles, useBrandColors } from '../theme/brand';
+import { FONTS } from '../theme/brandFonts';
+import SectionTitle from '../components/home/SectionTitle';
 
 interface ManagementCard {
   title: string;
   description: string;
-  icon: string;
+  icon: React.ComponentProps<typeof MaterialCommunityIcons>['name'];
   screen: string;
-  color: string;
 }
 
 const managementCards: ManagementCard[] = [
   {
     title: 'Match Centre',
     description: 'Post live score, goals, cards and subs from the touchline',
-    icon: '📣',
+    icon: 'bullhorn-outline',
     screen: 'MatchCentre',
-    color: '#00B8B8',
   },
   {
     title: 'Fixtures & Results',
     description: 'Add matches, update scores, manage competitions',
-    icon: '⚽',
+    icon: 'soccer',
     screen: 'ManageFixtures',
-    color: '#4CAF50',
   },
   {
     title: 'Squad Management',
     description: 'Add players, update stats, manage positions',
-    icon: '👥',
+    icon: 'account-group-outline',
     screen: 'ManageSquad',
-    color: '#2196F3',
   },
   {
     title: 'Import Data',
     description: 'Bulk upload players, fixtures from CSV/Excel',
-    icon: '📊',
+    icon: 'file-upload-outline',
     screen: 'ImportData',
-    color: '#03A9F4',
   },
   {
     title: 'Events & Calendar',
     description: 'Create events, training sessions, social gatherings',
-    icon: '📅',
+    icon: 'calendar-month-outline',
     screen: 'ManageEvents',
-    color: '#FF9800',
   },
   {
     title: 'Create Post',
     description: 'Post updates, news, photos to team feed',
-    icon: '📝',
+    icon: 'pencil-outline',
     screen: 'CreatePost',
-    color: '#9C27B0',
   },
   {
     title: 'Player Images',
     description: 'Upload headshots & action photos, manage gallery',
-    icon: '📸',
+    icon: 'camera-outline',
     screen: 'ManagePlayerImages',
-    color: '#E91E63',
   },
   {
     title: 'MOTM Voting',
     description: 'Create votes, manage results, auto-post winners',
-    icon: '🏆',
+    icon: 'trophy-outline',
     screen: 'ManageMOTM',
-    color: '#FFC107',
   },
   {
     title: 'User Management',
     description: 'View all registered users, roles, and permissions',
-    icon: '👤',
+    icon: 'account-cog-outline',
     screen: 'ManageUsers',
-    color: '#673AB7',
   },
 ];
 
 export default function ManageScreen({ navigation }: any) {
+  const COLORS = useBrandColors();
+  const styles = useStyles();
   return (
     <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <Title style={styles.headerTitle}>Team Management</Title>
-        <Paragraph style={styles.headerSubtitle}>
-          Manage your team's fixtures, squad, events, and content
-        </Paragraph>
-      </View>
+      <Text style={styles.intro}>
+        Manage your team's fixtures, squad, events, and content
+      </Text>
 
       <View style={styles.cardsContainer}>
-        {managementCards.map((card, index) => (
+        {managementCards.map((card) => (
           <TouchableOpacity
-            key={index}
+            key={card.screen}
             onPress={() => navigation.navigate(card.screen)}
             activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={card.title}
           >
             <Card style={styles.card}>
               <Card.Content style={styles.cardContent}>
-                <View style={styles.cardLeft}>
-                  <View style={[styles.iconContainer, { backgroundColor: card.color }]}>
-                    <Title style={styles.icon}>{card.icon}</Title>
-                  </View>
+                <View style={styles.iconContainer}>
+                  <MaterialCommunityIcons name={card.icon} size={26} color={COLORS.primary} />
                 </View>
                 <View style={styles.cardRight}>
-                  <Title style={styles.cardTitle}>{card.title}</Title>
-                  <Paragraph style={styles.cardDescription}>
-                    {card.description}
-                  </Paragraph>
+                  <Text style={styles.cardTitle}>{card.title}</Text>
+                  <Text style={styles.cardDescription}>{card.description}</Text>
                 </View>
+                <MaterialCommunityIcons name="chevron-right" size={22} color={COLORS.textLight} />
               </Card.Content>
             </Card>
           </TouchableOpacity>
         ))}
       </View>
 
+      <SectionTitle title="QUICK STATS" color={COLORS.primary} />
       <View style={styles.stats}>
-        <Card style={styles.statsCard}>
+        <Card style={styles.card}>
           <Card.Content>
-            <Title style={styles.statsTitle}>Quick Stats</Title>
-            <Divider style={styles.divider} />
             <View style={styles.statsRow}>
               <View style={styles.statItem}>
-                <Title style={styles.statValue}>12</Title>
-                <Paragraph style={styles.statLabel}>Fixtures</Paragraph>
+                <Text style={styles.statValue}>12</Text>
+                <Text style={styles.statLabel}>Fixtures</Text>
               </View>
               <View style={styles.statItem}>
-                <Title style={styles.statValue}>23</Title>
-                <Paragraph style={styles.statLabel}>Players</Paragraph>
+                <Text style={styles.statValue}>23</Text>
+                <Text style={styles.statLabel}>Players</Text>
               </View>
               <View style={styles.statItem}>
-                <Title style={styles.statValue}>8</Title>
-                <Paragraph style={styles.statLabel}>Events</Paragraph>
+                <Text style={styles.statValue}>8</Text>
+                <Text style={styles.statLabel}>Events</Text>
               </View>
               <View style={styles.statItem}>
-                <Title style={styles.statValue}>45</Title>
-                <Paragraph style={styles.statLabel}>Posts</Paragraph>
+                <Text style={styles.statValue}>45</Text>
+                <Text style={styles.statLabel}>Posts</Text>
               </View>
             </View>
           </Card.Content>
@@ -143,86 +133,60 @@ export default function ManageScreen({ navigation }: any) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themedStyles((COLORS) => ({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
   },
-  header: {
-    padding: 20,
-    backgroundColor: COLORS.primary,
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
-  },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: COLORS.secondary,
-    marginBottom: 8,
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: COLORS.secondary,
-    opacity: 0.8,
+  intro: {
+    color: COLORS.textLight,
+    marginHorizontal: 16,
+    marginTop: 12,
   },
   cardsContainer: {
     padding: 16,
+    paddingBottom: 0,
   },
   card: {
-    marginBottom: 16,
-    borderRadius: 12,
-    elevation: 3,
+    marginBottom: 12,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: COLORS.border,
     backgroundColor: COLORS.surface,
   },
   cardContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
-  },
-  cardLeft: {
-    marginRight: 16,
+    gap: 14,
   },
   iconContainer: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 54,
+    height: 54,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: `${COLORS.primary}55`,
+    backgroundColor: `${COLORS.primary}1F`,
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 2,
-  },
-  icon: {
-    fontSize: 32,
-    margin: 0,
   },
   cardRight: {
     flex: 1,
   },
   cardTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 4,
+    fontFamily: FONTS.display,
+    fontSize: 20,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
     color: COLORS.text,
+    marginBottom: 2,
   },
   cardDescription: {
     fontSize: 13,
     color: COLORS.textLight,
   },
   stats: {
-    padding: 16,
-    paddingTop: 0,
-  },
-  statsCard: {
-    borderRadius: 12,
-    elevation: 2,
-  },
-  statsTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 8,
-    color: COLORS.text,
-  },
-  divider: {
-    marginBottom: 16,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
   },
   statsRow: {
     flexDirection: 'row',
@@ -232,8 +196,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   statValue: {
-    fontSize: 28,
-    fontWeight: 'bold',
+    fontFamily: FONTS.display,
+    fontSize: 32,
     color: COLORS.primary,
   },
   statLabel: {
@@ -241,4 +205,4 @@ const styles = StyleSheet.create({
     color: COLORS.textLight,
     marginTop: 4,
   },
-});
+}));

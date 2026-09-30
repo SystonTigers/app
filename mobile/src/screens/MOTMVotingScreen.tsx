@@ -1,9 +1,10 @@
 import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import Card from '../components/ui/Card';
-import { COLORS } from '../config';
+import { themedStyles, useBrandColors } from '../theme/brand';
+import { FONTS } from '../theme/brandFonts';
 import { apiErrorMessage, motmApi, type MotmVote } from '../services/api';
 
 /** "Sat 27 Sep" */
@@ -33,6 +34,8 @@ function scoreLine(vote: MotmVote): string {
  * latest winners. Managers open votes from "Manage MOTM".
  */
 export default function MOTMVotingScreen() {
+  const COLORS = useBrandColors();
+  const styles = useStyles();
   const [open, setOpen] = useState<MotmVote[]>([]);
   const [recent, setRecent] = useState<MotmVote[]>([]);
   const [loading, setLoading] = useState(true);
@@ -88,7 +91,7 @@ export default function MOTMVotingScreen() {
     <ScrollView
       style={styles.container}
       contentContainerStyle={styles.content}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={COLORS.primary} />}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={COLORS.primary} colors={[COLORS.primary]} />}
     >
       {loadError ? <Text style={styles.errorText} accessibilityRole="alert">{loadError}</Text> : null}
 
@@ -168,13 +171,13 @@ export default function MOTMVotingScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themedStyles((COLORS) => ({
   container: { flex: 1, backgroundColor: COLORS.background },
   content: { padding: 16, paddingBottom: 40 },
   center: { justifyContent: 'center', alignItems: 'center' },
-  card: { marginBottom: 16 },
+  card: { marginBottom: 16, backgroundColor: COLORS.surface, borderRadius: 18, borderColor: COLORS.border },
   kicker: { color: COLORS.primary, fontWeight: '900', fontSize: 12, letterSpacing: 1, marginBottom: 4 },
-  title: { color: COLORS.text, fontSize: 20, fontWeight: '900', fontStyle: 'italic', textTransform: 'uppercase' },
+  title: { color: COLORS.text, fontFamily: FONTS.display, fontSize: 24, letterSpacing: 0.5, textTransform: 'uppercase' },
   meta: { color: COLORS.textLight, fontSize: 13, marginTop: 4 },
   nominee: {
     flexDirection: 'row',
@@ -182,11 +185,12 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 12,
     marginTop: 10,
-    borderRadius: 10,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(192,192,192,0.25)',
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surfaceRaised,
   },
-  nomineeChosen: { borderColor: COLORS.primary, backgroundColor: 'rgba(0,255,255,0.08)' },
+  nomineeChosen: { borderColor: COLORS.primary, backgroundColor: COLORS.primarySoft },
   nomineePressed: { opacity: 0.7 },
   number: { color: COLORS.textLight, width: 32, fontWeight: '700', fontSize: 16 },
   nomineeName: { flex: 1, color: COLORS.text, fontSize: 16, fontWeight: '600' },
@@ -197,8 +201,8 @@ const styles = StyleSheet.create({
   empty: { alignItems: 'center', paddingVertical: 48, paddingHorizontal: 24 },
   emptyTitle: { color: COLORS.text, fontSize: 17, fontWeight: 'bold', marginTop: 16, marginBottom: 8, textAlign: 'center' },
   emptyText: { color: COLORS.textLight, fontSize: 14, textAlign: 'center' },
-  sectionTitle: { color: COLORS.text, fontSize: 16, fontWeight: '900', textTransform: 'uppercase', marginTop: 8, marginBottom: 12 },
+  sectionTitle: { color: COLORS.text, fontFamily: FONTS.display, fontSize: 20, letterSpacing: 1, textTransform: 'uppercase', marginTop: 8, marginBottom: 12 },
   winnerRow: { flexDirection: 'row', alignItems: 'center' },
   winnerText: { marginLeft: 12, flex: 1 },
   winnerName: { color: COLORS.text, fontSize: 17, fontWeight: '800' },
-});
+}));

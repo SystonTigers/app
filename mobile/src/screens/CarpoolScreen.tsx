@@ -1,7 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, ScrollView, StyleSheet, Alert, RefreshControl } from 'react-native';
+import { View, ScrollView, Alert, RefreshControl } from 'react-native';
 import { Text, Button, Card, Chip, IconButton, TextInput, List, Divider, ActivityIndicator, FAB, Portal, Modal } from 'react-native-paper';
-import { COLORS, API_BASE_URL } from '../config';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { API_BASE_URL } from '../config';
+import { themedStyles, useBrandColors } from '../theme/brand';
+import { withOpacity } from '../theme/utils';
+import { FONTS } from '../theme/brandFonts';
 import { authStorage, AUTH_STORAGE_KEYS } from '../services/authStorage';
 
 interface CarpoolOffer {
@@ -49,6 +53,8 @@ interface ContentProps extends CarpoolParams {
 type TabType = 'offers' | 'my-offers' | 'my-requests';
 
 function CarpoolContent({ fixtureId, opponent, fixtureDate, navigation }: ContentProps) {
+    const COLORS = useBrandColors();
+    const styles = useStyles();
 
     const [activeTab, setActiveTab] = useState<TabType>('offers');
     const [loading, setLoading] = useState(true);
@@ -237,9 +243,9 @@ function CarpoolContent({ fixtureId, opponent, fixtureDate, navigation }: Conten
 
     const getStatusColor = (status: string) => {
         switch (status) {
-            case 'accepted': return '#22c55e';
-            case 'declined': return '#ef4444';
-            case 'pending': return '#f59e0b';
+            case 'accepted': return COLORS.success;
+            case 'declined': return COLORS.error;
+            case 'pending': return COLORS.warning;
             default: return COLORS.textLight;
         }
     };
@@ -257,7 +263,6 @@ function CarpoolContent({ fixtureId, opponent, fixtureDate, navigation }: Conten
         <View style={styles.container}>
             {/* Header */}
             <View style={styles.header}>
-                <Text style={styles.title}>Carpool</Text>
                 <Text style={styles.subtitle}>vs {opponent} • {fixtureDate}</Text>
             </View>
 
@@ -267,6 +272,7 @@ function CarpoolContent({ fixtureId, opponent, fixtureDate, navigation }: Conten
                     selected={activeTab === 'offers'}
                     onPress={() => setActiveTab('offers')}
                     style={[styles.tab, activeTab === 'offers' && styles.tabActive]}
+                    textStyle={activeTab === 'offers' ? styles.tabActiveText : undefined}
                 >
                     Available Lifts
                 </Chip>
@@ -274,6 +280,7 @@ function CarpoolContent({ fixtureId, opponent, fixtureDate, navigation }: Conten
                     selected={activeTab === 'my-offers'}
                     onPress={() => setActiveTab('my-offers')}
                     style={[styles.tab, activeTab === 'my-offers' && styles.tabActive]}
+                    textStyle={activeTab === 'my-offers' ? styles.tabActiveText : undefined}
                 >
                     My Offers
                 </Chip>
@@ -281,6 +288,7 @@ function CarpoolContent({ fixtureId, opponent, fixtureDate, navigation }: Conten
                     selected={activeTab === 'my-requests'}
                     onPress={() => setActiveTab('my-requests')}
                     style={[styles.tab, activeTab === 'my-requests' && styles.tabActive]}
+                    textStyle={activeTab === 'my-requests' ? styles.tabActiveText : undefined}
                 >
                     My Requests
                 </Chip>
@@ -297,7 +305,7 @@ function CarpoolContent({ fixtureId, opponent, fixtureDate, navigation }: Conten
                     <>
                         {offers.length === 0 ? (
                             <View style={styles.emptyState}>
-                                <Text style={styles.emptyIcon}>🚗</Text>
+                                <MaterialCommunityIcons name="car-outline" size={48} color={COLORS.textLight} style={styles.emptyIcon} />
                                 <Text style={styles.emptyTitle}>No lifts available yet</Text>
                                 <Text style={styles.emptySubtitle}>Be the first to offer a lift!</Text>
                             </View>
@@ -306,8 +314,11 @@ function CarpoolContent({ fixtureId, opponent, fixtureDate, navigation }: Conten
                                 <Card key={offer.id} style={styles.offerCard}>
                                     <Card.Content>
                                         <View style={styles.offerHeader}>
-                                            <Text style={styles.driverName}>🚗 {offer.driver_name}'s Car</Text>
-                                            <Chip mode="outlined" style={styles.seatsBadge}>
+                                            <View style={styles.driverRow}>
+                                                <MaterialCommunityIcons name="car" size={20} color={COLORS.primary} />
+                                                <Text style={styles.driverName}>{offer.driver_name}'s Car</Text>
+                                            </View>
+                                            <Chip mode="outlined" style={styles.seatsBadge} textStyle={styles.seatsBadgeText}>
                                                 {offer.seats_remaining || (offer.seats_available - offer.seats_taken)} seats left
                                             </Chip>
                                         </View>
@@ -345,7 +356,7 @@ function CarpoolContent({ fixtureId, opponent, fixtureDate, navigation }: Conten
                     <>
                         {myOffers.filter(o => o.fixture_id === fixtureId).length === 0 ? (
                             <View style={styles.emptyState}>
-                                <Text style={styles.emptyIcon}>🙋‍♂️</Text>
+                                <MaterialCommunityIcons name="hand-wave-outline" size={48} color={COLORS.textLight} style={styles.emptyIcon} />
                                 <Text style={styles.emptyTitle}>No offers yet</Text>
                                 <Text style={styles.emptySubtitle}>Tap + to offer a lift</Text>
                             </View>
@@ -371,17 +382,20 @@ function CarpoolContent({ fixtureId, opponent, fixtureDate, navigation }: Conten
                                                             <View style={styles.requestActions}>
                                                                 <IconButton
                                                                     icon="check"
-                                                                    iconColor="#22c55e"
+                                                                    iconColor={COLORS.success}
                                                                     onPress={() => handleRespondToRequest(req.id, 'accepted')}
                                                                 />
                                                                 <IconButton
                                                                     icon="close"
-                                                                    iconColor="#ef4444"
+                                                                    iconColor={COLORS.error}
                                                                     onPress={() => handleRespondToRequest(req.id, 'declined')}
                                                                 />
                                                             </View>
                                                         ) : (
-                                                            <Chip style={{ backgroundColor: getStatusColor(req.status) }}>
+                                                            <Chip
+                                                                style={{ backgroundColor: withOpacity(getStatusColor(req.status), 0.16) }}
+                                                                textStyle={{ color: getStatusColor(req.status), fontWeight: '700' }}
+                                                            >
                                                                 {req.status}
                                                             </Chip>
                                                         )}
@@ -401,7 +415,7 @@ function CarpoolContent({ fixtureId, opponent, fixtureDate, navigation }: Conten
                     <>
                         {myRequests.length === 0 ? (
                             <View style={styles.emptyState}>
-                                <Text style={styles.emptyIcon}>📋</Text>
+                                <MaterialCommunityIcons name="clipboard-text-outline" size={48} color={COLORS.textLight} style={styles.emptyIcon} />
                                 <Text style={styles.emptyTitle}>No requests yet</Text>
                                 <Text style={styles.emptySubtitle}>Request a seat from available lifts</Text>
                             </View>
@@ -411,7 +425,10 @@ function CarpoolContent({ fixtureId, opponent, fixtureDate, navigation }: Conten
                                     <Card.Content>
                                         <View style={styles.offerHeader}>
                                             <Text style={styles.driverName}>Lift with {req.driver_name}</Text>
-                                            <Chip style={{ backgroundColor: getStatusColor(req.status) }}>
+                                            <Chip
+                                                style={{ backgroundColor: withOpacity(getStatusColor(req.status), 0.16) }}
+                                                textStyle={{ color: getStatusColor(req.status), fontWeight: '700' }}
+                                            >
                                                 {req.status}
                                             </Chip>
                                         </View>
@@ -429,6 +446,7 @@ function CarpoolContent({ fixtureId, opponent, fixtureDate, navigation }: Conten
             <FAB
                 icon="plus"
                 style={styles.fab}
+                color={COLORS.onPrimary}
                 onPress={() => setShowOfferModal(true)}
                 label="Offer Lift"
             />
@@ -540,7 +558,7 @@ function CarpoolContent({ fixtureId, opponent, fixtureDate, navigation }: Conten
     );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themedStyles((COLORS) => ({
     container: {
         flex: 1,
         backgroundColor: COLORS.background,
@@ -559,15 +577,9 @@ const styles = StyleSheet.create({
         padding: 16,
         paddingBottom: 8,
     },
-    title: {
-        fontSize: 28,
-        fontWeight: 'bold',
-        color: COLORS.text,
-    },
     subtitle: {
         fontSize: 14,
         color: COLORS.textLight,
-        marginTop: 4,
     },
     tabs: {
         flexDirection: 'row',
@@ -577,9 +589,16 @@ const styles = StyleSheet.create({
     },
     tab: {
         backgroundColor: COLORS.surface,
+        borderWidth: 1,
+        borderColor: COLORS.border,
     },
     tabActive: {
         backgroundColor: COLORS.primary,
+        borderColor: COLORS.primary,
+    },
+    tabActiveText: {
+        color: COLORS.onPrimary,
+        fontWeight: '700',
     },
     content: {
         padding: 16,
@@ -588,6 +607,15 @@ const styles = StyleSheet.create({
     offerCard: {
         marginBottom: 12,
         backgroundColor: COLORS.surface,
+        borderRadius: 18,
+        borderWidth: 1,
+        borderColor: COLORS.border,
+    },
+    driverRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        flexShrink: 1,
     },
     offerHeader: {
         flexDirection: 'row',
@@ -596,12 +624,18 @@ const styles = StyleSheet.create({
         marginBottom: 8,
     },
     driverName: {
-        fontSize: 18,
-        fontWeight: '600',
+        fontFamily: FONTS.display,
+        fontSize: 20,
+        letterSpacing: 0.5,
         color: COLORS.text,
     },
     seatsBadge: {
-        backgroundColor: '#22c55e20',
+        backgroundColor: 'rgba(43,213,118,0.14)',
+        borderColor: COLORS.success,
+    },
+    seatsBadgeText: {
+        color: COLORS.success,
+        fontWeight: '700',
     },
     offerDetails: {
         marginTop: 8,
@@ -613,7 +647,7 @@ const styles = StyleSheet.create({
     },
     returnBadge: {
         fontSize: 14,
-        color: '#22c55e',
+        color: COLORS.success,
         marginTop: 4,
     },
     notesText: {
@@ -626,7 +660,7 @@ const styles = StyleSheet.create({
         marginTop: 16,
         paddingTop: 16,
         borderTopWidth: 1,
-        borderTopColor: COLORS.surface,
+        borderTopColor: COLORS.border,
     },
     requestsTitle: {
         fontSize: 14,
@@ -657,12 +691,12 @@ const styles = StyleSheet.create({
         paddingVertical: 60,
     },
     emptyIcon: {
-        fontSize: 48,
         marginBottom: 16,
     },
     emptyTitle: {
-        fontSize: 18,
-        fontWeight: '600',
+        fontFamily: FONTS.display,
+        fontSize: 22,
+        letterSpacing: 0.5,
         color: COLORS.text,
     },
     emptySubtitle: {
@@ -677,14 +711,17 @@ const styles = StyleSheet.create({
         backgroundColor: COLORS.primary,
     },
     modal: {
-        backgroundColor: COLORS.background,
+        backgroundColor: COLORS.surface,
         margin: 20,
         padding: 20,
-        borderRadius: 12,
+        borderRadius: 18,
+        borderWidth: 1,
+        borderColor: COLORS.border,
     },
     modalTitle: {
-        fontSize: 20,
-        fontWeight: 'bold',
+        fontFamily: FONTS.display,
+        fontSize: 26,
+        letterSpacing: 0.5,
         color: COLORS.text,
         marginBottom: 8,
     },
@@ -702,10 +739,11 @@ const styles = StyleSheet.create({
         gap: 8,
         marginTop: 16,
     },
-});
+}));
 
 /** Guards against being opened without a fixture (e.g. from the drawer). */
 export default function CarpoolScreen({ route, navigation }: Props) {
+    const COLORS = useBrandColors();
     const params = route?.params;
     if (!params?.fixtureId) {
         return (

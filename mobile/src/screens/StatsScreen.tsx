@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, ScrollView, Text } from 'react-native';
 import { Card, Title, Paragraph, Avatar, DataTable, Chip, Button, List } from 'react-native-paper';
-import { COLORS } from '../config';
+import { themedStyles, useBrandColors, BrandColors } from '../theme/brand';
+import { FONTS } from '../theme/brandFonts';
 import { statsApi } from '../services/api';
 
 interface PlayerStats {
@@ -39,6 +40,8 @@ function currentSeasonLabel(now: Date = new Date()): string {
 }
 
 export default function StatsScreen() {
+  const COLORS = useBrandColors();
+  const styles = useStyles();
   const [selectedLeaderboard, setSelectedLeaderboard] = useState<LeaderboardType>('scorers');
   const [selectedPlayer, setSelectedPlayer] = useState<PlayerStats | null>(null);
   const [playerStats, setPlayerStats] = useState<PlayerStats[]>([]);
@@ -98,19 +101,19 @@ export default function StatsScreen() {
   const getPositionColor = (position: string) => {
     const colors: { [key: string]: string } = {
       Goalkeeper: '#FFD700',
-      Defender: '#2196F3',
-      Midfielder: '#4CAF50',
-      Forward: '#F44336',
+      Defender: '#4FA3FF',
+      Midfielder: '#2BD576',
+      Forward: '#FF5A6E',
     };
-    return colors[position] || '#999999';
+    return colors[position] || '#8A94A0';
   };
 
   const getFormColor = (result: string) => {
     switch (result) {
-      case 'W': return '#4CAF50';
+      case 'W': return COLORS.success;
       case 'D': return '#FFA726';
-      case 'L': return '#F44336';
-      default: return '#CCCCCC';
+      case 'L': return '#FF5A6E';
+      default: return '#8A94A0';
     }
   };
 
@@ -135,12 +138,12 @@ export default function StatsScreen() {
   };
 
   const leaderboardButtons = [
-    { type: 'scorers' as LeaderboardType, label: 'Top Scorers', icon: '⚽' },
-    { type: 'assisters' as LeaderboardType, label: 'Assisters', icon: '🅰️' },
-    { type: 'combined' as LeaderboardType, label: 'G+A', icon: '🎯' },
-    { type: 'cleansheets' as LeaderboardType, label: 'Clean Sheets', icon: '🧤' },
-    { type: 'cards' as LeaderboardType, label: 'Most Cards', icon: '🟨' },
-    { type: 'motm' as LeaderboardType, label: 'MOTM', icon: '⭐' },
+    { type: 'scorers' as LeaderboardType, label: 'Top Scorers', icon: 'soccer' },
+    { type: 'assisters' as LeaderboardType, label: 'Assisters', icon: 'shoe-cleat' },
+    { type: 'combined' as LeaderboardType, label: 'G+A', icon: 'target' },
+    { type: 'cleansheets' as LeaderboardType, label: 'Clean Sheets', icon: 'hand-back-left' },
+    { type: 'cards' as LeaderboardType, label: 'Most Cards', icon: 'cards' },
+    { type: 'motm' as LeaderboardType, label: 'MOTM', icon: 'star' },
   ];
 
   const getStatValue = (player: PlayerStats) => {
@@ -158,11 +161,11 @@ export default function StatsScreen() {
   if (selectedPlayer) {
     return (
       <ScrollView style={styles.container}>
-        <View style={styles.header}>
+        <View style={styles.backRow}>
           <Button
             mode="text"
             onPress={() => setSelectedPlayer(null)}
-            textColor={COLORS.secondary}
+            textColor={COLORS.primary}
             icon="arrow-left"
           >
             Back to Stats
@@ -175,6 +178,7 @@ export default function StatsScreen() {
               <Avatar.Text
                 size={80}
                 label={getInitials(selectedPlayer.name)}
+                color="#06080B"
                 style={{ backgroundColor: getPositionColor(selectedPlayer.position) }}
               />
               <View style={styles.playerInfo}>
@@ -198,7 +202,7 @@ export default function StatsScreen() {
 
             <View style={styles.statsDivider} />
 
-            <Title style={styles.sectionTitle}>Season Statistics</Title>
+            <Text style={styles.sectionTitle}>Season Statistics</Text>
             <View style={styles.statsGrid}>
               <View style={styles.statBox}>
                 <Paragraph style={styles.statValue}>{selectedPlayer.appearances}</Paragraph>
@@ -238,7 +242,7 @@ export default function StatsScreen() {
 
             <View style={styles.statsDivider} />
 
-            <Title style={styles.sectionTitle}>Recent Form (Last 5 Matches)</Title>
+            <Text style={styles.sectionTitle}>Recent Form (Last 5 Matches)</Text>
             <View style={styles.formContainer}>
               {selectedPlayer.recentForm.map((result, index) => (
                 <View
@@ -252,7 +256,7 @@ export default function StatsScreen() {
 
             <View style={styles.statsDivider} />
 
-            <Title style={styles.sectionTitle}>Averages</Title>
+            <Text style={styles.sectionTitle}>Averages</Text>
             <View style={styles.averagesContainer}>
               <View style={styles.averageRow}>
                 <Paragraph style={styles.averageLabel}>Goals per game:</Paragraph>
@@ -289,10 +293,7 @@ export default function StatsScreen() {
 
   return (
     <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <Title style={styles.headerTitle}>Team Statistics</Title>
-        <Paragraph style={styles.headerSubtitle}>{currentSeasonLabel()} Season</Paragraph>
-      </View>
+      <Text style={styles.seasonLine}>{currentSeasonLabel()} Season</Text>
 
       {/* Leaderboard Selector */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.leaderboardSelector}>
@@ -309,9 +310,10 @@ export default function StatsScreen() {
               styles.leaderboardChipText,
               selectedLeaderboard === btn.type && styles.leaderboardChipTextSelected,
             ]}
-            selectedColor={COLORS.primary}
+            icon={btn.icon}
+            selectedColor={selectedLeaderboard === btn.type ? COLORS.onPrimary : COLORS.primary}
           >
-            {btn.icon} {btn.label}
+            {btn.label}
           </Chip>
         ))}
       </ScrollView>
@@ -356,6 +358,7 @@ export default function StatsScreen() {
                   <Avatar.Text
                     size={32}
                     label={getInitials(player.name)}
+                    color="#06080B"
                     style={[styles.miniAvatar, { backgroundColor: getPositionColor(player.position) }]}
                   />
                   <View style={styles.playerNameContainer}>
@@ -380,7 +383,7 @@ export default function StatsScreen() {
       {/* MOTM History */}
       <Card style={styles.motmCard}>
         <Card.Content>
-          <Title style={styles.motmTitle}>⭐ Man of the Match History</Title>
+          <Text style={styles.motmTitle}>Man of the Match History</Text>
           <List.Section>
             {motmHistory.map((winner) => (
               <List.Item
@@ -407,27 +410,20 @@ export default function StatsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themedStyles((COLORS: BrandColors) => ({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
   },
-  header: {
-    padding: 20,
-    backgroundColor: COLORS.primary,
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
+  backRow: {
+    paddingHorizontal: 8,
+    paddingTop: 8,
+    alignItems: 'flex-start',
   },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: COLORS.secondary,
-    marginBottom: 4,
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: COLORS.secondary,
-    opacity: 0.8,
+  seasonLine: {
+    color: COLORS.textLight,
+    marginHorizontal: 16,
+    marginTop: 12,
   },
   leaderboardSelector: {
     padding: 16,
@@ -435,32 +431,35 @@ const styles = StyleSheet.create({
   },
   leaderboardChip: {
     marginRight: 8,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.surface,
     borderWidth: 1,
-    borderColor: COLORS.primary,
+    borderColor: COLORS.border,
   },
   leaderboardChipSelected: {
     backgroundColor: COLORS.primary,
   },
   leaderboardChipText: {
-    color: COLORS.primary,
+    color: COLORS.text,
   },
   leaderboardChipTextSelected: {
-    color: COLORS.secondary,
+    color: COLORS.onPrimary,
     fontWeight: 'bold',
   },
   tableCard: {
     margin: 16,
     marginTop: 8,
-    borderRadius: 12,
-    elevation: 2,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surface,
+    overflow: 'hidden',
   },
   tableHeader: {
-    backgroundColor: COLORS.background,
+    backgroundColor: COLORS.surfaceRaised,
   },
   tableRow: {
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.background,
+    borderBottomColor: COLORS.border,
   },
   rankCol: {
     flex: 0.5,
@@ -519,12 +518,17 @@ const styles = StyleSheet.create({
   motmCard: {
     margin: 16,
     marginTop: 8,
-    borderRadius: 12,
-    elevation: 2,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surface,
   },
   motmTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontFamily: FONTS.display,
+    fontSize: 20,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    color: COLORS.text,
     marginBottom: 8,
   },
   motmItem: {
@@ -547,8 +551,10 @@ const styles = StyleSheet.create({
   // Player Detail Styles
   playerCard: {
     margin: 16,
-    borderRadius: 12,
-    elevation: 2,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surface,
   },
   playerHeader: {
     flexDirection: 'row',
@@ -565,8 +571,10 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   playerName: {
-    fontSize: 20,
-    fontWeight: 'bold',
+    fontFamily: FONTS.display,
+    fontSize: 24,
+    letterSpacing: 0.5,
+    color: COLORS.text,
     marginRight: 8,
     flex: 1,
   },
@@ -576,7 +584,7 @@ const styles = StyleSheet.create({
   numberText: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: COLORS.secondary,
+    color: COLORS.onPrimary,
   },
   positionBadge: {
     alignSelf: 'flex-start',
@@ -584,16 +592,19 @@ const styles = StyleSheet.create({
   positionText: {
     fontSize: 12,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: '#06080B',
   },
   statsDivider: {
     height: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: COLORS.border,
     marginVertical: 16,
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontFamily: FONTS.display,
+    fontSize: 20,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    color: COLORS.text,
     marginBottom: 12,
   },
   statsGrid: {
@@ -628,7 +639,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   formText: {
-    color: '#FFFFFF',
+    color: '#06080B',
     fontWeight: 'bold',
     fontSize: 16,
   },
@@ -640,7 +651,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.background,
+    borderBottomColor: COLORS.border,
   },
   averageLabel: {
     fontSize: 14,
@@ -651,4 +662,4 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: COLORS.primary,
   },
-});
+}));

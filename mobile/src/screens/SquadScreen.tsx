@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, ScrollView, StyleSheet, TouchableOpacity, RefreshControl, ActivityIndicator, Alert } from 'react-native';
+import { View, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator, Alert } from 'react-native';
 import { Card, Title, Paragraph, Avatar, Chip, Button } from 'react-native-paper';
-import { COLORS } from '../config';
+import { themedStyles, useBrandColors } from '../theme/brand';
+import { FONTS } from '../theme/brandFonts';
+import ScreenIntro from '../components/brand/ScreenIntro';
 import { squadApi } from '../services/api';
 
 interface PhysicalStats {
@@ -31,6 +33,8 @@ interface Player {
 }
 
 export default function SquadScreen() {
+  const COLORS = useBrandColors();
+  const styles = useStyles();
   const [squad, setSquad] = useState<Player[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -96,11 +100,11 @@ export default function SquadScreen() {
       case 'goalkeeper':
         return '#FFC107';
       case 'defender':
-        return '#2196F3';
+        return '#4FA3FF';
       case 'midfielder':
-        return '#4CAF50';
+        return '#2BD576';
       case 'forward':
-        return '#F44336';
+        return '#FF5A6E';
       default:
         return COLORS.textLight;
     }
@@ -119,9 +123,11 @@ export default function SquadScreen() {
     <ScrollView
       style={styles.container}
       refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primary} colors={[COLORS.primary]} />
       }
     >
+      <ScreenIntro title="Squad" subtitle="Team Players" />
+
       {/* Error Message */}
       {error && (
         <Card style={styles.errorCard}>
@@ -133,11 +139,6 @@ export default function SquadScreen() {
           </Card.Content>
         </Card>
       )}
-
-      <View style={styles.header}>
-        <Title>👥 Squad</Title>
-        <Paragraph style={styles.subtitle}>Team Players</Paragraph>
-      </View>
 
       {squad.length === 0 ? (
         <View style={styles.emptyContainer}>
@@ -154,7 +155,7 @@ export default function SquadScreen() {
                       size={50}
                       label={getInitials(player.name)}
                       style={[styles.avatar, { backgroundColor: COLORS.primary }]}
-                      labelStyle={{ color: COLORS.secondary }}
+                      labelStyle={{ color: COLORS.onPrimary }}
                     />
                     <View style={styles.playerDetails}>
                       <Title style={styles.playerName}>
@@ -239,7 +240,7 @@ export default function SquadScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themedStyles((COLORS) => ({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
@@ -255,8 +256,10 @@ const styles = StyleSheet.create({
   },
   errorCard: {
     margin: 16,
+    borderRadius: 18,
     borderWidth: 1,
     borderColor: COLORS.error,
+    backgroundColor: 'rgba(255,0,85,0.14)',
   },
   errorText: {
     color: COLORS.error,
@@ -274,16 +277,13 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     textAlign: 'center',
   },
-  header: {
-    padding: 16,
-  },
-  subtitle: {
-    color: COLORS.textLight,
-  },
   playerCard: {
     marginHorizontal: 16,
     marginBottom: 16,
     backgroundColor: COLORS.surface,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   playerHeader: {
     marginBottom: 16,
@@ -300,14 +300,17 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   playerName: {
-    fontSize: 18,
+    fontFamily: FONTS.display,
+    fontSize: 22,
+    letterSpacing: 0.5,
+    color: COLORS.text,
     marginBottom: 4,
   },
   positionChip: {
     alignSelf: 'flex-start',
   },
   positionText: {
-    color: COLORS.surface,
+    color: '#06080B',
     fontSize: 12,
     fontWeight: 'bold',
   },
@@ -316,7 +319,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
     paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: COLORS.background,
+    borderTopColor: COLORS.border,
   },
   statItem: {
     alignItems: 'center',
@@ -345,7 +348,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
     paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: COLORS.background,
+    borderTopColor: COLORS.border,
   },
   physicalTitle: {
     fontSize: 10,
@@ -365,7 +368,7 @@ const styles = StyleSheet.create({
   physicalValue: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: COLORS.secondary,
+    color: COLORS.text,
   },
   physicalLabel: {
     fontSize: 10,
@@ -377,4 +380,4 @@ const styles = StyleSheet.create({
     color: COLORS.textLight,
     opacity: 0.7,
   },
-});
+}));

@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, StyleSheet, Image, TouchableOpacity, Dimensions, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, Image, TouchableOpacity, Dimensions, Alert, ActivityIndicator } from 'react-native';
 import { Card, Title, Paragraph, Button, Chip, FAB, Portal, Modal, TextInput, Checkbox, IconButton } from 'react-native-paper';
 import * as ImagePicker from 'expo-image-picker';
-import { COLORS } from '../config';
+import { themedStyles, useBrandColors } from '../theme/brand';
+import { FONTS } from '../theme/brandFonts';
 import { galleryApi } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
@@ -31,6 +32,8 @@ interface Album {
 // Mocks removed
 
 export default function GalleryScreen() {
+  const COLORS = useBrandColors();
+  const styles = useStyles();
   const { user } = useAuth();
   // Club staff add photos; parents and players view them
   const canUpload = !!user && user.role !== 'parent' && user.role !== 'player';
@@ -208,7 +211,7 @@ export default function GalleryScreen() {
         <View style={styles.albumHeader}>
           <IconButton
             icon="arrow-left"
-            iconColor={COLORS.secondary}
+            iconColor={COLORS.text}
             size={24}
             onPress={() => setSelectedAlbum(null)}
           />
@@ -239,7 +242,7 @@ export default function GalleryScreen() {
             icon="camera"
             label="Upload"
             style={styles.fab}
-            color={COLORS.secondary}
+            color={COLORS.onPrimary}
             onPress={showUploadOptions}
           />
         )}
@@ -275,7 +278,7 @@ export default function GalleryScreen() {
                   size={24}
                   onPress={() => setSelectedPhoto(null)}
                   style={styles.closeButton}
-                  iconColor={COLORS.secondary}
+                  iconColor="#FFFFFF"
                 />
               </>
             )}
@@ -288,10 +291,7 @@ export default function GalleryScreen() {
   // Albums Grid View
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Title style={styles.headerTitle}>Gallery</Title>
-        <Paragraph style={styles.headerSubtitle}>Team photos & memories</Paragraph>
-      </View>
+      <Text style={styles.headerSubtitle}>Team photos & memories</Text>
 
       <ScrollView style={styles.scrollContainer}>
         <View style={styles.albumsGrid}>
@@ -322,7 +322,7 @@ export default function GalleryScreen() {
         {/* GDPR Notice */}
         <Card style={styles.gdprCard}>
           <Card.Content>
-            <Title style={styles.gdprTitle}>📋 Privacy & Consent</Title>
+            <Title style={styles.gdprTitle}>Privacy & Consent</Title>
             <Paragraph style={styles.gdprText}>
               Before uploading photos, please ensure:
             </Paragraph>
@@ -349,7 +349,7 @@ export default function GalleryScreen() {
           icon="camera"
           label="Upload Photo"
           style={styles.fab}
-          color={COLORS.secondary}
+          color={COLORS.onPrimary}
           onPress={showUploadOptions}
         />
       )}
@@ -412,8 +412,6 @@ export default function GalleryScreen() {
               mode="contained"
               onPress={handleUpload}
               style={styles.modalButton}
-              buttonColor={COLORS.primary}
-              textColor={COLORS.secondary}
               disabled={!uploadData.consentGiven}
             >
               Upload
@@ -425,27 +423,16 @@ export default function GalleryScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themedStyles((COLORS) => ({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
   },
-  header: {
-    padding: 20,
-    backgroundColor: COLORS.primary,
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: COLORS.secondary,
-    marginBottom: 4,
-  },
   headerSubtitle: {
     fontSize: 14,
-    color: COLORS.secondary,
-    opacity: 0.8,
+    color: COLORS.textLight,
+    marginHorizontal: 16,
+    marginTop: 12,
   },
   scrollContainer: {
     flex: 1,
@@ -455,10 +442,12 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   albumCard: {
-    borderRadius: 12,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surface,
     overflow: 'hidden',
     marginBottom: 16,
-    elevation: 3,
   },
   albumCover: {
     width: '100%',
@@ -484,7 +473,7 @@ const styles = StyleSheet.create({
   },
   albumTypeIcon: {
     fontSize: 20,
-    color: COLORS.secondary,
+    color: '#FFFFFF',
   },
   albumInfo: {
     gap: 4,
@@ -492,22 +481,27 @@ const styles = StyleSheet.create({
   albumCardTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: COLORS.secondary,
+    color: '#FFFFFF',
   },
   albumCardSubtitle: {
     fontSize: 12,
-    color: COLORS.secondary,
+    color: '#FFFFFF',
     opacity: 0.9,
   },
   gdprCard: {
     margin: 16,
     marginTop: 0,
-    borderRadius: 12,
-    elevation: 2,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surface,
   },
   gdprTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontFamily: FONTS.display,
+    fontSize: 20,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    color: COLORS.text,
     marginBottom: 8,
   },
   gdprText: {
@@ -533,7 +527,9 @@ const styles = StyleSheet.create({
   albumHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.primary,
+    backgroundColor: COLORS.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
     paddingRight: 20,
     paddingVertical: 8,
   },
@@ -541,14 +537,15 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   albumTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: COLORS.secondary,
+    fontFamily: FONTS.display,
+    fontSize: 24,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    color: COLORS.text,
   },
   albumSubtitle: {
     fontSize: 12,
-    color: COLORS.secondary,
-    opacity: 0.8,
+    color: COLORS.textLight,
   },
   photosContainer: {
     flex: 1,
@@ -571,7 +568,8 @@ const styles = StyleSheet.create({
   photoModal: {
     backgroundColor: 'rgba(0, 0, 0, 0.95)',
     margin: 20,
-    borderRadius: 12,
+    borderRadius: 18,
+    overflow: 'hidden',
     padding: 0,
     maxHeight: '90%',
   },
@@ -585,12 +583,12 @@ const styles = StyleSheet.create({
   },
   photoCaption: {
     fontSize: 16,
-    color: COLORS.secondary,
+    color: '#FFFFFF',
     marginBottom: 8,
   },
   photoMeta: {
     fontSize: 12,
-    color: COLORS.secondary,
+    color: '#FFFFFF',
     opacity: 0.7,
     marginBottom: 16,
   },
@@ -606,14 +604,19 @@ const styles = StyleSheet.create({
   // Upload modal styles
   uploadModal: {
     backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.border,
     margin: 20,
-    borderRadius: 12,
+    borderRadius: 18,
     padding: 20,
     maxHeight: '90%',
   },
   modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
+    fontFamily: FONTS.display,
+    fontSize: 24,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    color: COLORS.text,
     marginBottom: 16,
   },
   uploadPreview: {
@@ -636,9 +639,9 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   consentSection: {
-    backgroundColor: COLORS.background,
+    backgroundColor: COLORS.surfaceRaised,
     padding: 12,
-    borderRadius: 8,
+    borderRadius: 12,
     marginTop: 8,
     marginBottom: 16,
   },
@@ -656,4 +659,4 @@ const styles = StyleSheet.create({
   modalButton: {
     flex: 1,
   },
-});
+}));

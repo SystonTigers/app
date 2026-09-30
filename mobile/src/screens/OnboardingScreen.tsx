@@ -1,9 +1,11 @@
 import React, { useState, useRef, useMemo } from 'react';
-import { View, FlatList, StyleSheet, Dimensions, Image, Animated } from 'react-native';
+import { View, FlatList, Dimensions, Animated } from 'react-native';
 import { Text, Button } from 'react-native-paper';
-import { COLORS } from '../config';
+import { themedStyles, useBrandColors } from '../theme/brand';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useClub } from '../context/ClubContext';
+import { FONTS } from '../theme/brandFonts';
+import { AuthBackdrop } from '../components/auth/AuthBrand';
 
 const { width, height } = Dimensions.get('window');
 
@@ -16,7 +18,6 @@ interface Slide {
   icon: string;
   title: string;
   description: string;
-  color: string;
 }
 
 const SLIDES: Slide[] = [
@@ -25,53 +26,48 @@ const SLIDES: Slide[] = [
     icon: 'home-heart',
     title: 'Welcome',
     description: 'Your complete team management platform. Stay connected with fixtures, events, news, and more - all in one place.',
-    color: COLORS.primary,
   },
   {
     id: '2',
     icon: 'calendar-check',
     title: 'Never Miss an Event',
     description: 'Track all matches, training sessions, and team events. RSVP directly in the app and get reminders before events.',
-    color: '#FF6B6B',
   },
   {
     id: '3',
     icon: 'soccer',
     title: 'Live Match Updates',
     description: 'Follow matches in real-time with live scores, goal notifications, and team lineups. Even when you can\'t be there.',
-    color: '#4ECDC4',
   },
   {
     id: '4',
     icon: 'video',
     title: 'Record & Share Highlights',
     description: 'Capture match moments right from the app. Upload videos, create highlights, and share with the team.',
-    color: '#95E1D3',
   },
   {
     id: '5',
     icon: 'account-group',
     title: 'Team Stats & Squad',
     description: 'View player profiles, track statistics, and see who\'s playing. Monitor your team\'s progress throughout the season.',
-    color: '#F38181',
   },
   {
     id: '6',
     icon: 'bell-ring',
     title: 'Smart Notifications',
     description: 'Get notified about goals, events, and team news. Smart geo-fencing only sends match updates when you\'re away from the venue.',
-    color: '#AA96DA',
   },
   {
     id: '7',
     icon: 'trophy-variant',
     title: 'Vote for Man of the Match',
     description: 'Have your say! Vote for your player of the match after every game and see the results live.',
-    color: COLORS.primary,
   },
 ];
 
 export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
+  const COLORS = useBrandColors();
+  const styles = useStyles();
   const { club } = useClub();
   const slides = useMemo(
     () => SLIDES.map((slide) => (slide.id === '1' && club?.name ? { ...slide, title: `Welcome to ${club.name}` } : slide)),
@@ -106,8 +102,8 @@ export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) 
 
   const renderItem = ({ item }: { item: Slide }) => (
     <View style={styles.slide}>
-      <View style={[styles.iconContainer, { backgroundColor: `${item.color}20` }]}>
-        <MaterialCommunityIcons name={item.icon as any} size={120} color={item.color} />
+      <View style={styles.iconContainer}>
+        <MaterialCommunityIcons name={item.icon as any} size={120} color={COLORS.primary} />
       </View>
 
       <View style={styles.textContainer}>
@@ -119,6 +115,7 @@ export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) 
 
   return (
     <View style={styles.container}>
+      <AuthBackdrop />
       {/* Skip Button */}
       <View style={styles.topBar}>
         {currentIndex < slides.length - 1 && (
@@ -190,8 +187,6 @@ export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) 
           mode="contained"
           onPress={scrollTo}
           style={styles.nextButton}
-          buttonColor={COLORS.primary}
-          textColor="#000"
           icon={currentIndex === slides.length - 1 ? 'check' : 'arrow-right'}
         >
           {currentIndex === slides.length - 1 ? 'Get Started' : 'Next'}
@@ -201,10 +196,11 @@ export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) 
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themedStyles((COLORS) => ({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
+    overflow: 'hidden',
   },
   topBar: {
     flexDirection: 'row',
@@ -234,14 +230,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 40,
+    backgroundColor: COLORS.primarySoft,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   textContainer: {
     alignItems: 'center',
     paddingHorizontal: 20,
   },
   title: {
-    fontSize: 28,
-    fontWeight: 'bold',
+    fontFamily: FONTS.display,
+    fontSize: 34,
+    lineHeight: 38,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
     color: COLORS.text,
     textAlign: 'center',
     marginBottom: 16,
@@ -271,4 +273,4 @@ const styles = StyleSheet.create({
   nextButton: {
     paddingVertical: 6,
   },
-});
+}));

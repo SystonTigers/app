@@ -1,8 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, StyleSheet, Alert, ActivityIndicator } from 'react-native';
-import { Card, Title, Paragraph, Switch, List, Chip, Button, Divider, TextInput, IconButton } from 'react-native-paper';
-import { COLORS } from '../config';
+import { View, ScrollView, Alert, ActivityIndicator, Text } from 'react-native';
+import { Card, Paragraph, Switch, List, Chip, Button, Divider, TextInput, IconButton } from 'react-native-paper';
+import { themedStyles, useBrandColors } from '../theme/brand';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { autoPostsMatrixApi } from '../services/api';
+import { FONTS } from '../theme/brandFonts';
+
+type IconName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];
 
 type ChannelKey = 'app' | 'x' | 'instagram' | 'facebook' | 'tiktok';
 type PostType =
@@ -30,33 +34,35 @@ interface AutoPostConfig {
 
 type AutoPostsMatrix = Record<PostType, AutoPostConfig>;
 
-const POST_TYPE_INFO: Record<PostType, { label: string; description: string; icon: string }> = {
-  COUNTDOWN_T3: { label: 'T-3 Days', description: 'Match countdown 3 days before', icon: '📅' },
-  COUNTDOWN_T2: { label: 'T-2 Days', description: 'Match countdown 2 days before', icon: '📅' },
-  COUNTDOWN_T1: { label: 'T-1 Day', description: 'Match countdown 1 day before', icon: '📅' },
-  MATCHDAY: { label: 'Match Day', description: 'Morning of match day', icon: '⚽' },
-  LIVE_UPDATE: { label: 'Live Updates', description: 'Goals, cards during match', icon: '🔴' },
-  HALFTIME: { label: 'Half-Time', description: 'Score at half-time', icon: '⏸️' },
-  FULLTIME: { label: 'Full-Time', description: 'Final score', icon: '🏁' },
-  LEAGUE_FIXTURES: { label: 'League Fixtures', description: 'Batch of upcoming fixtures', icon: '📋' },
-  RESULTS_SUMMARY: { label: 'Results Summary', description: 'Weekend results recap', icon: '📊' },
-  TABLE_UPDATE: { label: 'Table Update', description: 'League standings changed', icon: '📈' },
-  POSTPONEMENT: { label: 'Postponements', description: 'Match cancelled/moved', icon: '⚠️' },
-  BIRTHDAY: { label: 'Birthdays', description: 'Player birthdays', icon: '🎂' },
-  QUOTE: { label: 'Quotes', description: 'Motivational quotes', icon: '💬' },
-  MOTM_RESULT: { label: 'MOTM Result', description: 'Man of the Match announced', icon: '🏆' },
-  HIGHLIGHTS: { label: 'Highlights', description: 'Video clips posted', icon: '🎬' },
+const POST_TYPE_INFO: Record<PostType, { label: string; description: string; icon: IconName }> = {
+  COUNTDOWN_T3: { label: 'T-3 Days', description: 'Match countdown 3 days before', icon: 'calendar-clock' },
+  COUNTDOWN_T2: { label: 'T-2 Days', description: 'Match countdown 2 days before', icon: 'calendar-clock' },
+  COUNTDOWN_T1: { label: 'T-1 Day', description: 'Match countdown 1 day before', icon: 'calendar-clock' },
+  MATCHDAY: { label: 'Match Day', description: 'Morning of match day', icon: 'soccer' },
+  LIVE_UPDATE: { label: 'Live Updates', description: 'Goals, cards during match', icon: 'record-circle' },
+  HALFTIME: { label: 'Half-Time', description: 'Score at half-time', icon: 'pause-circle' },
+  FULLTIME: { label: 'Full-Time', description: 'Final score', icon: 'flag-checkered' },
+  LEAGUE_FIXTURES: { label: 'League Fixtures', description: 'Batch of upcoming fixtures', icon: 'clipboard-list' },
+  RESULTS_SUMMARY: { label: 'Results Summary', description: 'Weekend results recap', icon: 'chart-bar' },
+  TABLE_UPDATE: { label: 'Table Update', description: 'League standings changed', icon: 'chart-line' },
+  POSTPONEMENT: { label: 'Postponements', description: 'Match cancelled/moved', icon: 'alert' },
+  BIRTHDAY: { label: 'Birthdays', description: 'Player birthdays', icon: 'cake-variant' },
+  QUOTE: { label: 'Quotes', description: 'Motivational quotes', icon: 'format-quote-close' },
+  MOTM_RESULT: { label: 'MOTM Result', description: 'Man of the Match announced', icon: 'trophy' },
+  HIGHLIGHTS: { label: 'Highlights', description: 'Video clips posted', icon: 'movie-open' },
 };
 
-const CHANNEL_INFO: Record<ChannelKey, { label: string; color: string; icon: string }> = {
-  app: { label: 'App Feed', color: COLORS.primary, icon: '📱' },
-  x: { label: 'X (Twitter)', color: '#000000', icon: '𝕏' },
-  instagram: { label: 'Instagram', color: '#E1306C', icon: '📷' },
-  facebook: { label: 'Facebook', color: '#1877F2', icon: 'f' },
-  tiktok: { label: 'TikTok', color: '#000000', icon: '🎵' },
+const CHANNEL_INFO: Record<ChannelKey, { label: string; icon: IconName }> = {
+  app: { label: 'App Feed', icon: 'cellphone' },
+  x: { label: 'X (Twitter)', icon: 'alpha-x' },
+  instagram: { label: 'Instagram', icon: 'instagram' },
+  facebook: { label: 'Facebook', icon: 'facebook' },
+  tiktok: { label: 'TikTok', icon: 'music-note' },
 };
 
 export default function AutoPostsMatrixScreen() {
+  const COLORS = useBrandColors();
+  const styles = useStyles();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [matrix, setMatrix] = useState<AutoPostsMatrix>({
@@ -254,23 +260,20 @@ export default function AutoPostsMatrixScreen() {
     return (
       <View style={[styles.container, styles.centerContent]}>
         <ActivityIndicator size="large" color={COLORS.primary} />
-        <Paragraph style={{ marginTop: 16 }}>Loading configuration...</Paragraph>
+        <Paragraph style={{ marginTop: 16, color: COLORS.textLight }}>Loading configuration...</Paragraph>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Title style={styles.headerTitle}>Auto-Posts Matrix</Title>
-        <Paragraph style={styles.headerSubtitle}>Control automated social media posts</Paragraph>
-      </View>
+      <Text style={styles.intro}>Control automated social media posts</Text>
 
       <ScrollView style={styles.scrollContainer}>
         {/* Info Card */}
         <Card style={styles.infoCard}>
           <Card.Content>
-            <Title style={styles.infoTitle}>🤖 Automation Control</Title>
+            <Text style={styles.cardTitle}>Automation Control</Text>
             <Paragraph style={styles.infoText}>
               Configure which post types are automatically published to each social media channel. Settings apply club-wide with team overrides available.
             </Paragraph>
@@ -280,7 +283,7 @@ export default function AutoPostsMatrixScreen() {
         {/* Inheritance Info */}
         <Card style={styles.inheritanceCard}>
           <Card.Content>
-            <Title style={styles.inheritanceTitle}>📊 Inheritance Hierarchy</Title>
+            <Text style={styles.cardTitle}>Inheritance Hierarchy</Text>
             <View style={styles.inheritanceFlow}>
               <Chip style={styles.inheritanceChip}>1. Global Defaults</Chip>
               <Paragraph style={styles.inheritanceArrow}>↓</Paragraph>
@@ -295,7 +298,7 @@ export default function AutoPostsMatrixScreen() {
         </Card>
 
         {/* Post Types List */}
-        <Title style={styles.sectionTitle}>Post Types</Title>
+        <Text style={styles.sectionTitle}>Post Types</Text>
         {postTypes.map(postType => {
           const config = matrix[postType];
           const info = POST_TYPE_INFO[postType];
@@ -304,8 +307,11 @@ export default function AutoPostsMatrixScreen() {
           return (
             <Card key={postType} style={styles.postTypeCard}>
               <List.Item
-                title={`${info.icon} ${info.label}`}
+                title={info.label}
                 description={info.description}
+                titleStyle={styles.postTypeTitle}
+                descriptionStyle={styles.postTypeDescription}
+                left={(props) => <List.Icon {...props} icon={info.icon} color={COLORS.primary} />}
                 right={() => (
                   <View style={styles.postTypeRight}>
                     <Chip style={styles.channelsChip} textStyle={styles.channelsChipText}>
@@ -332,13 +338,13 @@ export default function AutoPostsMatrixScreen() {
                     return (
                       <View key={channel} style={styles.channelRow}>
                         <View style={styles.channelInfo}>
-                          <Paragraph style={styles.channelIcon}>{channelInfo.icon}</Paragraph>
+                          <MaterialCommunityIcons name={channelInfo.icon} size={22} color={COLORS.textLight} style={styles.channelIcon} />
                           <Paragraph style={styles.channelLabel}>{channelInfo.label}</Paragraph>
                         </View>
                         <Switch
                           value={config.channels[channel]}
                           onValueChange={() => toggleChannel(postType, channel)}
-                          color={channelInfo.color}
+                          color={COLORS.primary}
                         />
                       </View>
                     );
@@ -376,7 +382,7 @@ export default function AutoPostsMatrixScreen() {
         {/* Quick Toggles */}
         <Card style={styles.quickCard}>
           <Card.Content>
-            <Title style={styles.quickTitle}>⚡ Quick Toggles</Title>
+            <Text style={styles.cardTitle}>Quick Toggles</Text>
             <Button
               mode="outlined"
               onPress={() => {
@@ -435,8 +441,6 @@ export default function AutoPostsMatrixScreen() {
             icon="content-save"
             onPress={saveMatrix}
             style={styles.saveButton}
-            buttonColor={COLORS.primary}
-            textColor={COLORS.secondary}
             disabled={saving}
             loading={saving}
           >
@@ -448,7 +452,7 @@ export default function AutoPostsMatrixScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themedStyles((COLORS) => ({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
@@ -457,22 +461,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  header: {
-    padding: 20,
-    backgroundColor: COLORS.primary,
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: COLORS.secondary,
-    marginBottom: 4,
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: COLORS.secondary,
-    opacity: 0.8,
+  intro: {
+    color: COLORS.textLight,
+    marginHorizontal: 16,
+    marginTop: 12,
   },
   scrollContainer: {
     flex: 1,
@@ -480,13 +472,18 @@ const styles = StyleSheet.create({
   infoCard: {
     margin: 16,
     marginBottom: 12,
-    borderRadius: 12,
-    elevation: 2,
+    backgroundColor: COLORS.surface,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
-  infoTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 8,
+  cardTitle: {
+    fontFamily: FONTS.display,
+    fontSize: 20,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    color: COLORS.text,
+    marginBottom: 10,
   },
   infoText: {
     fontSize: 13,
@@ -496,20 +493,17 @@ const styles = StyleSheet.create({
   inheritanceCard: {
     marginHorizontal: 16,
     marginBottom: 12,
-    borderRadius: 12,
-    elevation: 2,
-  },
-  inheritanceTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 12,
+    backgroundColor: COLORS.surface,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   inheritanceFlow: {
     alignItems: 'center',
     marginBottom: 12,
   },
   inheritanceChip: {
-    backgroundColor: COLORS.background,
+    backgroundColor: COLORS.surfaceRaised,
     marginVertical: 4,
   },
   inheritanceArrow: {
@@ -523,8 +517,11 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontFamily: FONTS.display,
+    fontSize: 20,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    color: COLORS.text,
     marginHorizontal: 16,
     marginTop: 8,
     marginBottom: 12,
@@ -532,8 +529,17 @@ const styles = StyleSheet.create({
   postTypeCard: {
     marginHorizontal: 16,
     marginBottom: 8,
-    borderRadius: 12,
-    elevation: 2,
+    backgroundColor: COLORS.surface,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  postTypeTitle: {
+    color: COLORS.text,
+    fontWeight: '600',
+  },
+  postTypeDescription: {
+    color: COLORS.textLight,
   },
   postTypeRight: {
     flexDirection: 'row',
@@ -545,7 +551,7 @@ const styles = StyleSheet.create({
   },
   channelsChipText: {
     fontSize: 11,
-    color: COLORS.secondary,
+    color: COLORS.onPrimary,
     fontWeight: 'bold',
   },
   expandedContent: {
@@ -553,11 +559,13 @@ const styles = StyleSheet.create({
   },
   divider: {
     marginBottom: 16,
-    backgroundColor: COLORS.background,
+    backgroundColor: COLORS.border,
   },
   subsectionLabel: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontFamily: FONTS.display,
+    fontSize: 16,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
     color: COLORS.text,
     marginBottom: 12,
   },
@@ -572,7 +580,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   channelIcon: {
-    fontSize: 20,
     marginRight: 12,
     width: 28,
   },
@@ -596,13 +603,10 @@ const styles = StyleSheet.create({
   quickCard: {
     margin: 16,
     marginTop: 8,
-    borderRadius: 12,
-    elevation: 2,
-  },
-  quickTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 12,
+    backgroundColor: COLORS.surface,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   quickButton: {
     marginBottom: 8,
@@ -611,9 +615,9 @@ const styles = StyleSheet.create({
     padding: 16,
     backgroundColor: COLORS.surface,
     borderTopWidth: 1,
-    borderTopColor: COLORS.background,
+    borderTopColor: COLORS.border,
   },
   saveButton: {
     paddingVertical: 8,
   },
-});
+}));

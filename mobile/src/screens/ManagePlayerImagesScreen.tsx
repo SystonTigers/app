@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, StyleSheet, Image, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import { View, ScrollView, Image, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { Card, Title, Paragraph, Button, FAB, Portal, Modal, TextInput, Chip, IconButton } from 'react-native-paper';
 import * as ImagePicker from 'expo-image-picker';
-import { COLORS } from '../config';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { themedStyles, useBrandColors } from '../theme/brand';
+import { FONTS } from '../theme/brandFonts';
 import { playerImagesApi, squadApi } from '../services/api';
 
 interface PlayerImage {
@@ -16,6 +18,8 @@ interface PlayerImage {
 }
 
 export default function ManagePlayerImagesScreen() {
+  const COLORS = useBrandColors();
+  const styles = useStyles();
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [images, setImages] = useState<PlayerImage[]>([]);
@@ -203,10 +207,7 @@ export default function ManagePlayerImagesScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Title style={styles.headerTitle}>Manage Player Images</Title>
-        <Paragraph style={styles.headerSubtitle}>Upload headshots & action photos</Paragraph>
-      </View>
+      <Paragraph style={styles.intro}>Upload headshots & action photos</Paragraph>
 
       {/* Filter Chips */}
       <View style={styles.filterContainer}>
@@ -240,7 +241,7 @@ export default function ManagePlayerImagesScreen() {
         {/* Info Card */}
         <Card style={styles.infoCard}>
           <Card.Content>
-            <Title style={styles.infoTitle}>📸 Image Guidelines</Title>
+            <Title style={styles.infoTitle}>Image Guidelines</Title>
             <Paragraph style={styles.infoText}>
               • Headshots: Square (1:1), clear face, plain background{'\n'}
               • Action shots: Match photos, training, celebrations{'\n'}
@@ -264,15 +265,16 @@ export default function ManagePlayerImagesScreen() {
                     onPress={() => setSelectedImage(image)}
                   >
                     <Image source={{ uri: image.imageUrl }} style={styles.imageThumb} />
-                    <Chip
-                      style={[
-                        styles.typeChip,
-                        { backgroundColor: image.type === 'headshot' ? '#2196F3' : '#4CAF50' }
-                      ]}
-                      textStyle={styles.typeChipText}
+                    <View
+                      style={styles.typeBadge}
+                      accessibilityLabel={image.type === 'headshot' ? 'Headshot' : 'Action shot'}
                     >
-                      {image.type === 'headshot' ? '👤' : '⚽'}
-                    </Chip>
+                      <MaterialCommunityIcons
+                        name={image.type === 'headshot' ? 'account' : 'soccer'}
+                        size={14}
+                        color={COLORS.primary}
+                      />
+                    </View>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -290,7 +292,7 @@ export default function ManagePlayerImagesScreen() {
         {/* Bulk Import Info */}
         <Card style={styles.bulkCard}>
           <Card.Content>
-            <Title style={styles.bulkTitle}>📁 Bulk Import</Title>
+            <Title style={styles.bulkTitle}>Bulk Import</Title>
             <Paragraph style={styles.bulkText}>
               Need to upload multiple images at once? Contact admin to set up bulk import from Google Drive or folder.
             </Paragraph>
@@ -310,7 +312,7 @@ export default function ManagePlayerImagesScreen() {
         icon="camera-plus"
         label="Upload"
         style={styles.fab}
-        color={COLORS.secondary}
+        color={COLORS.onPrimary}
         onPress={() => setUploadModalVisible(true)}
       />
 
@@ -352,6 +354,7 @@ export default function ManagePlayerImagesScreen() {
           <Paragraph style={styles.modalLabel}>Image Type</Paragraph>
           <View style={styles.typeSelector}>
             <Chip
+              icon="account"
               selected={uploadData.type === 'headshot'}
               onPress={() => setUploadData({ ...uploadData, type: 'headshot' })}
               style={[
@@ -363,9 +366,10 @@ export default function ManagePlayerImagesScreen() {
                 uploadData.type === 'headshot' && styles.typeSelectChipTextSelected
               ]}
             >
-              👤 Headshot
+              Headshot
             </Chip>
             <Chip
+              icon="soccer"
               selected={uploadData.type === 'action'}
               onPress={() => setUploadData({ ...uploadData, type: 'action' })}
               style={[
@@ -377,7 +381,7 @@ export default function ManagePlayerImagesScreen() {
                 uploadData.type === 'action' && styles.typeSelectChipTextSelected
               ]}
             >
-              ⚽ Action Shot
+              Action Shot
             </Chip>
           </View>
 
@@ -420,8 +424,6 @@ export default function ManagePlayerImagesScreen() {
               mode="contained"
               onPress={handleUpload}
               style={styles.modalButton}
-              buttonColor={COLORS.primary}
-              textColor={COLORS.secondary}
               disabled={!uploadData.playerId || !uploadData.imageUri}
             >
               Upload
@@ -444,13 +446,11 @@ export default function ManagePlayerImagesScreen() {
                 <Title style={styles.detailTitle}>{selectedImage.playerName}</Title>
                 <View style={styles.detailMeta}>
                   <Chip
-                    style={[
-                      styles.detailTypeChip,
-                      { backgroundColor: selectedImage.type === 'headshot' ? '#2196F3' : '#4CAF50' }
-                    ]}
+                    icon={selectedImage.type === 'headshot' ? 'account' : 'soccer'}
+                    style={styles.detailTypeChip}
                     textStyle={styles.detailTypeChipText}
                   >
-                    {selectedImage.type === 'headshot' ? '👤 Headshot' : '⚽ Action Shot'}
+                    {selectedImage.type === 'headshot' ? 'Headshot' : 'Action Shot'}
                   </Chip>
                 </View>
                 <Paragraph style={styles.detailInfo}>
@@ -483,7 +483,8 @@ export default function ManagePlayerImagesScreen() {
                 size={24}
                 onPress={() => setSelectedImage(null)}
                 style={styles.closeButton}
-                iconColor={COLORS.secondary}
+                iconColor={COLORS.text}
+                accessibilityLabel="Close"
               />
             </>
           )}
@@ -493,27 +494,15 @@ export default function ManagePlayerImagesScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themedStyles((COLORS) => ({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
   },
-  header: {
-    padding: 20,
-    backgroundColor: COLORS.primary,
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: COLORS.secondary,
-    marginBottom: 4,
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: COLORS.secondary,
-    opacity: 0.8,
+  intro: {
+    color: COLORS.textLight,
+    marginHorizontal: 16,
+    marginTop: 12,
   },
   filterContainer: {
     flexDirection: 'row',
@@ -521,18 +510,19 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   filterChip: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.surfaceRaised,
     borderWidth: 1,
-    borderColor: COLORS.primary,
+    borderColor: COLORS.border,
   },
   filterChipSelected: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: COLORS.primarySoft,
+    borderColor: COLORS.primary,
   },
   filterChipText: {
-    color: COLORS.primary,
+    color: COLORS.text,
   },
   filterChipTextSelected: {
-    color: COLORS.secondary,
+    color: COLORS.primary,
     fontWeight: 'bold',
   },
   scrollContainer: {
@@ -541,12 +531,17 @@ const styles = StyleSheet.create({
   infoCard: {
     margin: 16,
     marginBottom: 12,
-    borderRadius: 12,
-    elevation: 2,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surface,
   },
   infoTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontSize: 20,
+    fontFamily: FONTS.display,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    color: COLORS.text,
     marginBottom: 8,
   },
   infoText: {
@@ -557,12 +552,17 @@ const styles = StyleSheet.create({
   playerCard: {
     marginHorizontal: 16,
     marginBottom: 12,
-    borderRadius: 12,
-    elevation: 2,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surface,
   },
   playerName: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: 20,
+    fontFamily: FONTS.display,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    color: COLORS.text,
     marginBottom: 12,
   },
   imagesGrid: {
@@ -578,17 +578,20 @@ const styles = StyleSheet.create({
   imageThumb: {
     width: '100%',
     height: '100%',
-    borderRadius: 8,
+    borderRadius: 12,
   },
-  typeChip: {
+  typeBadge: {
     position: 'absolute',
     top: 4,
     right: 4,
+    width: 24,
     height: 24,
-  },
-  typeChipText: {
-    fontSize: 12,
-    color: COLORS.secondary,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(7,9,12,0.8)',
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   emptyState: {
     padding: 40,
@@ -607,12 +610,17 @@ const styles = StyleSheet.create({
   bulkCard: {
     margin: 16,
     marginTop: 8,
-    borderRadius: 12,
-    elevation: 2,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surface,
   },
   bulkTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontSize: 20,
+    fontFamily: FONTS.display,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    color: COLORS.text,
     marginBottom: 8,
   },
   bulkText: {
@@ -631,15 +639,20 @@ const styles = StyleSheet.create({
   },
   // Upload Modal
   uploadModal: {
-    backgroundColor: COLORS.surface,
     margin: 20,
-    borderRadius: 12,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surface,
     padding: 20,
     maxHeight: '90%',
   },
   modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
+    fontSize: 24,
+    fontFamily: FONTS.display,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    color: COLORS.text,
     marginBottom: 16,
   },
   modalLabel: {
@@ -654,18 +667,19 @@ const styles = StyleSheet.create({
   },
   playerChip: {
     marginRight: 8,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.surfaceRaised,
     borderWidth: 1,
-    borderColor: COLORS.primary,
+    borderColor: COLORS.border,
   },
   playerChipSelected: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: COLORS.primarySoft,
+    borderColor: COLORS.primary,
   },
   playerChipText: {
-    color: COLORS.primary,
+    color: COLORS.text,
   },
   playerChipTextSelected: {
-    color: COLORS.secondary,
+    color: COLORS.primary,
     fontWeight: 'bold',
   },
   typeSelector: {
@@ -675,18 +689,19 @@ const styles = StyleSheet.create({
   },
   typeSelectChip: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.surfaceRaised,
     borderWidth: 1,
-    borderColor: COLORS.primary,
+    borderColor: COLORS.border,
   },
   typeSelectChipSelected: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: COLORS.primarySoft,
+    borderColor: COLORS.primary,
   },
   typeSelectChipText: {
-    color: COLORS.primary,
+    color: COLORS.text,
   },
   typeSelectChipTextSelected: {
-    color: COLORS.secondary,
+    color: COLORS.primary,
     fontWeight: 'bold',
   },
   imagePreviewContainer: {
@@ -696,7 +711,7 @@ const styles = StyleSheet.create({
   imagePreview: {
     width: '100%',
     height: 200,
-    borderRadius: 8,
+    borderRadius: 12,
   },
   removeImageButton: {
     position: 'absolute',
@@ -718,24 +733,30 @@ const styles = StyleSheet.create({
   },
   // Detail Modal
   detailModal: {
-    backgroundColor: 'rgba(0, 0, 0, 0.95)',
     margin: 20,
-    borderRadius: 12,
+    overflow: 'hidden',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surface,
     padding: 0,
     maxHeight: '90%',
   },
   detailImage: {
     width: '100%',
     height: 300,
+    backgroundColor: COLORS.background,
     resizeMode: 'contain',
   },
   detailContent: {
     padding: 20,
   },
   detailTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: COLORS.secondary,
+    fontSize: 24,
+    fontFamily: FONTS.display,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    color: COLORS.text,
     marginBottom: 8,
   },
   detailMeta: {
@@ -743,17 +764,16 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   detailTypeChip: {
-    height: 28,
+    backgroundColor: COLORS.primarySoft,
   },
   detailTypeChipText: {
-    color: COLORS.secondary,
+    color: COLORS.primary,
     fontSize: 12,
     fontWeight: 'bold',
   },
   detailInfo: {
     fontSize: 13,
-    color: COLORS.secondary,
-    opacity: 0.8,
+    color: COLORS.textLight,
     marginBottom: 4,
   },
   detailButtons: {
@@ -768,6 +788,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 10,
     right: 10,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(7,9,12,0.7)',
   },
-});
+}));

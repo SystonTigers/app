@@ -258,6 +258,16 @@ with personal data.
   launch images (`web/splash`, regenerate with `node scripts/make-splash.mjs`
   after changing `boot.html`). Android always shows its own small icon first;
   the manifest's "any" icons are the cut-out emblem so there's no square box.
+- Every screen takes its colours from `theme/brand.ts`: `useBrandColors()`
+  (the club colour as `primary`, `onPrimary` for text on it, ink/card/border
+  tokens) and `themedStyles((c) => ({...}))` for stylesheets that follow the
+  club. react-native-paper's theme is built from the same colours
+  (`theme/paperTheme.ts`, titles in Barlow Condensed), so Paper buttons, chips
+  and switches match. Don't import `COLORS` from `config.ts` for accents: it
+  is the fixed Boost Huddle cyan. Screens without a navigation bar start with
+  `components/brand/ScreenIntro`; sections use `components/home/SectionTitle`.
+- Web builds made with `EXPO_PUBLIC_E2E=1` expose `window.__openScreen(name)`
+  so screenshot scripts can open any screen.
 - Home (`screens/HomeScreen.tsx`, `components/home/`): header with crest,
   live cards, next match, league snapshot, quick links, latest feed. The menu
   (`CustomDrawerContent.tsx`) shows every section open, staff zone boxed.

@@ -1,7 +1,9 @@
 // components/ui/SectionHeader.tsx
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { colors, fonts, spacing } from '../../theme/';
+import { fonts, spacing } from '../../theme/';
+import { TEXT, TEXT_MUTED } from '../../theme/brand';
+import { FONTS } from '../../theme/brandFonts';
 
 interface SectionHeaderProps {
   title: string;
@@ -19,14 +21,14 @@ export function SectionHeader({ title, subtitle }: SectionHeaderProps) {
 
 const styles = StyleSheet.create({
   title: {
-    color: colors.text,
-    fontSize: fonts.fontSize.lg,
-    fontFamily: fonts.fontFamily.regular,
-    fontWeight: '700',
-    letterSpacing: 0.2,
+    color: TEXT,
+    fontSize: 22,
+    fontFamily: FONTS.display,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
   },
   sub: {
-    color: colors.textTertiary,
+    color: TEXT_MUTED,
     marginTop: 4,
     fontSize: fonts.fontSize.sm,
   },

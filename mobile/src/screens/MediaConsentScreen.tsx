@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { COLORS } from '../config';
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
+import { themedStyles, useBrandColors } from '../theme/brand';
+import { FONTS } from '../theme/brandFonts';
 import { useClub } from '../context/ClubContext';
 import { apiErrorMessage, consentApi, type PlayerConsent } from '../services/api';
 import { consentSummary, filterConsent, type ConsentFilter } from '../utils/consent';
@@ -23,6 +24,8 @@ const FILTERS: Array<{ id: ConsentFilter; label: string }> = [
  * player, record answers from paper forms and send families a code.
  */
 export default function MediaConsentScreen() {
+  const COLORS = useBrandColors();
+  const styles = useStyles();
   const { club } = useClub();
   const clubName = club?.name || 'the club';
   const [players, setPlayers] = useState<PlayerConsent[]>([]);
@@ -119,6 +122,7 @@ export default function MediaConsentScreen() {
 }
 
 function SummaryItem({ label, value, warn }: { label: string; value: string; warn?: boolean }) {
+  const styles = useStyles();
   return (
     <View style={styles.summaryItem}>
       <Text style={[styles.summaryValue, warn ? styles.warn : null]}>{value}</Text>
@@ -127,23 +131,23 @@ function SummaryItem({ label, value, warn }: { label: string; value: string; war
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themedStyles((COLORS) => ({
   container: { flex: 1, backgroundColor: COLORS.background },
   center: { justifyContent: 'center', alignItems: 'center' },
   content: { padding: 16, paddingBottom: 40, gap: 10 },
   intro: { color: COLORS.text, fontSize: 15, lineHeight: 21 },
   small: { color: COLORS.textLight, fontSize: 12 },
-  error: { color: COLORS.error },
+  error: { color: COLORS.error, backgroundColor: 'rgba(255,0,85,0.14)', borderRadius: 12, padding: 12 },
   summary: { flexDirection: 'row', gap: 8 },
-  summaryItem: { flex: 1, backgroundColor: '#14181C', borderRadius: 12, padding: 12, alignItems: 'center' },
-  summaryValue: { color: COLORS.text, fontSize: 20, fontWeight: '900', fontVariant: ['tabular-nums'] },
-  warn: { color: '#F5C400' },
+  summaryItem: { flex: 1, backgroundColor: COLORS.surface, borderRadius: 18, borderWidth: 1, borderColor: COLORS.border, padding: 12, alignItems: 'center' },
+  summaryValue: { color: COLORS.text, fontSize: 26, fontFamily: FONTS.display, fontVariant: ['tabular-nums'] },
+  warn: { color: COLORS.warning },
   filters: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  filter: { borderWidth: 1, borderColor: COLORS.textLight, borderRadius: 999, paddingVertical: 6, paddingHorizontal: 12 },
+  filter: { borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.surface, borderRadius: 999, paddingVertical: 6, paddingHorizontal: 12 },
   filterOn: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
   filterText: { color: COLORS.text, fontWeight: '700', fontSize: 13 },
-  filterTextOn: { color: COLORS.background },
+  filterTextOn: { color: COLORS.onPrimary },
   empty: { color: COLORS.textLight, textAlign: 'center', paddingVertical: 24 },
-  card: { backgroundColor: '#14181C', borderRadius: 12, padding: 14, gap: 10 },
-  name: { color: COLORS.text, fontWeight: '800', fontSize: 16 },
-});
+  card: { backgroundColor: COLORS.surface, borderRadius: 18, borderWidth: 1, borderColor: COLORS.border, padding: 14, gap: 10 },
+  name: { color: COLORS.text, fontFamily: FONTS.display, fontSize: 20, letterSpacing: 1, textTransform: 'uppercase' },
+}));

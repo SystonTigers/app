@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
-import { COLORS } from '../../config';
+import { Pressable, Switch, Text, View } from 'react-native';
+import { themedStyles, useBrandColors } from '../../theme/brand';
 import { useMatchDay } from '../../context/MatchDayContext';
 import type { MatchDayFixture } from '../../utils/matchDay';
 import LiveStreamPlayer from './LiveStreamPlayer';
@@ -11,6 +11,8 @@ import { useNavigation } from '@react-navigation/native';
  * match", which pauses match alerts for this match.
  */
 export default function MatchDayPanel({ fixture }: { fixture: MatchDayFixture }) {
+  const COLORS = useBrandColors();
+  const styles = useStyles();
   const { setAttendance, clearAttendance } = useMatchDay();
   const navigation = useNavigation<any>();
   const [saving, setSaving] = useState(false);
@@ -72,7 +74,7 @@ export default function MatchDayPanel({ fixture }: { fixture: MatchDayFixture })
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themedStyles((COLORS) => ({
   wrap: { marginBottom: 12 },
   video: { marginBottom: 12 },
   label: { color: COLORS.primary, fontWeight: '900', letterSpacing: 0.5, marginBottom: 8 },
@@ -82,4 +84,4 @@ const styles = StyleSheet.create({
   help: { color: COLORS.textLight, fontSize: 13, marginTop: 2 },
   link: { color: COLORS.primary, fontWeight: '700', marginTop: 6 },
   error: { color: COLORS.error, marginTop: 8 },
-});
+}));

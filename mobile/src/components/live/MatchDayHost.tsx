@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { AppState, Pressable, StyleSheet, Text, View } from 'react-native';
+import { AppState, Pressable, Text, View } from 'react-native';
 import { Modal, Portal } from 'react-native-paper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { COLORS } from '../../config';
+import { themedStyles, useBrandColors } from '../../theme/brand';
+import { FONTS } from '../../theme/brandFonts';
 import { useClubName } from '../../context/ClubContext';
 import { useMatchDay } from '../../context/MatchDayContext';
 import { askLocation, currentPosition, locationPermission, type LocationPermission } from '../../services/location';
@@ -27,6 +28,8 @@ const OPENABLE = ['LiveMatch', 'MOTMVoting', 'MediaConsent'];
  * - opens Live Match when a match alert is tapped.
  */
 export default function MatchDayHost() {
+  const COLORS = useBrandColors();
+  const styles = useStyles();
   const clubName = useClubName();
   const { day, setAttendance } = useMatchDay();
   const [dismissed, setDismissed] = useState<string[]>([]);
@@ -151,14 +154,14 @@ export default function MatchDayHost() {
   );
 }
 
-const styles = StyleSheet.create({
-  sheet: { margin: 12, padding: 16, borderRadius: 16, backgroundColor: COLORS.background, borderWidth: 1, borderColor: COLORS.primary, maxWidth: 720, alignSelf: 'center', width: '94%' },
+const useStyles = themedStyles((COLORS) => ({
+  sheet: { margin: 12, padding: 16, borderRadius: 18, backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.primary, maxWidth: 720, alignSelf: 'center', width: '94%' },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
   liveTag: { color: '#FF3B3B', fontWeight: '900', letterSpacing: 1, fontSize: 13 },
-  title: { color: COLORS.text, fontSize: 18, fontWeight: '900', textTransform: 'uppercase', marginBottom: 12 },
+  title: { color: COLORS.text, fontFamily: FONTS.display, fontSize: 22, letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 12 },
   primary: { marginTop: 14, backgroundColor: COLORS.primary, borderRadius: 10, paddingVertical: 12, alignItems: 'center' },
-  primaryText: { color: COLORS.background, fontWeight: '800' },
-  prompt: { position: 'absolute', left: 12, right: 12, bottom: 24, padding: 16, borderRadius: 14, backgroundColor: '#15191D', borderWidth: 1, borderColor: COLORS.primary },
+  primaryText: { color: COLORS.onPrimary, fontWeight: '800' },
+  prompt: { position: 'absolute', left: 12, right: 12, bottom: 24, padding: 16, borderRadius: 18, backgroundColor: COLORS.surfaceRaised, borderWidth: 1, borderColor: COLORS.primary },
   promptTitle: { color: COLORS.text, fontWeight: '900', fontSize: 15, marginBottom: 6 },
   promptText: { color: COLORS.textLight, fontSize: 14, lineHeight: 20 },
   promptError: { color: COLORS.warning, marginTop: 8 },
@@ -166,4 +169,4 @@ const styles = StyleSheet.create({
   smallPrimary: { backgroundColor: COLORS.primary, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 9 },
   smallSecondary: { borderWidth: 1, borderColor: COLORS.textLight, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 9 },
   secondaryText: { color: COLORS.text, fontWeight: '700' },
-});
+}));

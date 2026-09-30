@@ -1,8 +1,9 @@
 import React, { useCallback, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import { COLORS } from '../../config';
+import { themedStyles, useBrandColors } from '../../theme/brand';
+import { FONTS } from '../../theme/brandFonts';
 import { useClubName } from '../../context/ClubContext';
 import { highlightsApi } from '../../services/api';
 import { matchDate, type HighlightsMatch } from '../../utils/highlights';
@@ -10,6 +11,8 @@ import { fixtureTitle } from '../../utils/matchDay';
 
 /** Recent matches with highlights from their video (top of the Highlights screen). */
 export default function MatchHighlightsList() {
+  const COLORS = useBrandColors();
+  const styles = useStyles();
   const navigation = useNavigation<any>();
   const clubName = useClubName();
   const [matches, setMatches] = useState<HighlightsMatch[] | null>(null);
@@ -39,11 +42,11 @@ export default function MatchHighlightsList() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themedStyles((COLORS) => ({
   wrap: { gap: 8, marginBottom: 16 },
-  label: { color: COLORS.text, fontWeight: '800', textTransform: 'uppercase', fontSize: 13, letterSpacing: 1 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#14181C', borderRadius: 12, padding: 12 },
+  label: { color: COLORS.text, fontFamily: FONTS.display, textTransform: 'uppercase', fontSize: 20, letterSpacing: 1 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: COLORS.surface, borderRadius: 18, borderWidth: 1, borderColor: COLORS.border, padding: 12 },
   text: { flex: 1 },
   title: { color: COLORS.text, fontWeight: '800' },
   sub: { color: COLORS.textLight, fontSize: 13 },
-});
+}));

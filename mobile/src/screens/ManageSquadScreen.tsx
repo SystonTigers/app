@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, StyleSheet, Image, ActivityIndicator, Alert } from 'react-native';
+import { View, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import {
   Card,
   Title,
@@ -13,7 +13,8 @@ import {
   Avatar,
   IconButton,
 } from 'react-native-paper';
-import { COLORS } from '../config';
+import { themedStyles, useBrandColors } from '../theme/brand';
+import { FONTS } from '../theme/brandFonts';
 import { squadApi } from '../services/api';
 
 interface Player {
@@ -32,14 +33,10 @@ interface Player {
 // (mock data removed)
 
 const positions = ['Goalkeeper', 'Defender', 'Midfielder', 'Forward'];
-const positionColors: { [key: string]: string } = {
-  Goalkeeper: '#FFD700',
-  Defender: '#2196F3',
-  Midfielder: '#4CAF50',
-  Forward: '#F44336',
-};
 
 export default function ManageSquadScreen() {
+  const COLORS = useBrandColors();
+  const styles = useStyles();
   const [players, setPlayers] = useState<Player[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -188,12 +185,9 @@ export default function ManageSquadScreen() {
   return (
     <View style={styles.container}>
       <ScrollView style={styles.scrollView}>
-        <View style={styles.header}>
-          <Title style={styles.headerTitle}>Squad Management</Title>
-          <Paragraph style={styles.headerSubtitle}>
-            Manage players, update stats, and track performance
-          </Paragraph>
-        </View>
+        <Paragraph style={styles.intro}>
+          Manage players, update stats, and track performance
+        </Paragraph>
 
         <View style={styles.playersContainer}>
           {players.length === 0 ? (
@@ -214,10 +208,8 @@ export default function ManageSquadScreen() {
                       <Avatar.Text
                         size={60}
                         label={getInitials(player.name)}
-                        style={[
-                          styles.avatar,
-                          { backgroundColor: positionColors[player.position] || '#999' },
-                        ]}
+                        style={styles.avatar}
+                        color={COLORS.primary}
                       />
                       <View style={styles.playerInfo}>
                         <View style={styles.nameRow}>
@@ -227,10 +219,7 @@ export default function ManageSquadScreen() {
                           </View>
                         </View>
                         <Chip
-                          style={[
-                            styles.positionChip,
-                            { backgroundColor: positionColors[player.position] },
-                          ]}
+                          style={styles.positionChip}
                           textStyle={styles.chipText}
                         >
                           {player.position}
@@ -247,15 +236,15 @@ export default function ManageSquadScreen() {
                   <View style={styles.statsGrid}>
                     <View style={styles.statBox}>
                       <Title style={styles.statValue}>{player.goals}</Title>
-                      <Paragraph style={styles.statLabel}>⚽ Goals</Paragraph>
+                      <Paragraph style={styles.statLabel}>Goals</Paragraph>
                     </View>
                     <View style={styles.statBox}>
                       <Title style={styles.statValue}>{player.assists}</Title>
-                      <Paragraph style={styles.statLabel}>🎯 Assists</Paragraph>
+                      <Paragraph style={styles.statLabel}>Assists</Paragraph>
                     </View>
                     <View style={styles.statBox}>
                       <Title style={styles.statValue}>{player.appearances}</Title>
-                      <Paragraph style={styles.statLabel}>👕 Apps</Paragraph>
+                      <Paragraph style={styles.statLabel}>Apps</Paragraph>
                     </View>
                     <View style={styles.statBox}>
                       <Title style={styles.statValue}>
@@ -286,7 +275,8 @@ export default function ManageSquadScreen() {
         icon="plus"
         style={styles.fab}
         onPress={openAddModal}
-        color={COLORS.secondary}
+        color={COLORS.onPrimary}
+        accessibilityLabel="Add player"
       />
 
       <Portal>
@@ -325,8 +315,8 @@ export default function ManageSquadScreen() {
                       key={pos}
                       selected={formData.position === pos}
                       onPress={() => setFormData({ ...formData, position: pos })}
-                      style={styles.selectChip}
-                      selectedColor={positionColors[pos]}
+                      style={[styles.selectChip, formData.position === pos && styles.selectChipActive]}
+                      selectedColor={COLORS.primary}
                     >
                       {pos}
                     </Chip>
@@ -394,8 +384,7 @@ export default function ManageSquadScreen() {
               <Button
                 mode="contained"
                 onPress={handleSave}
-                style={[styles.modalButton, { backgroundColor: COLORS.primary }]}
-                textColor={COLORS.secondary}
+                style={styles.modalButton}
               >
                 Save
               </Button>
@@ -407,7 +396,7 @@ export default function ManageSquadScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themedStyles((COLORS) => ({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
@@ -422,12 +411,17 @@ const styles = StyleSheet.create({
   },
   emptyCard: {
     margin: 16,
-    borderRadius: 12,
-    elevation: 2,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surface,
   },
   emptyTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
+    fontFamily: FONTS.display,
+    fontSize: 22,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    color: COLORS.text,
     textAlign: 'center',
     marginBottom: 8,
   },
@@ -438,29 +432,20 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
-  header: {
-    padding: 20,
-    backgroundColor: COLORS.primary,
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: COLORS.secondary,
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: COLORS.secondary,
-    opacity: 0.8,
+  intro: {
+    color: COLORS.textLight,
+    marginHorizontal: 16,
+    marginTop: 12,
   },
   playersContainer: {
     padding: 16,
   },
   playerCard: {
     marginBottom: 16,
-    borderRadius: 12,
-    elevation: 2,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surface,
   },
   playerHeader: {
     flexDirection: 'row',
@@ -474,6 +459,7 @@ const styles = StyleSheet.create({
   },
   avatar: {
     marginRight: 12,
+    backgroundColor: COLORS.primarySoft,
   },
   playerInfo: {
     flex: 1,
@@ -486,6 +472,7 @@ const styles = StyleSheet.create({
   playerName: {
     fontSize: 18,
     fontWeight: 'bold',
+    color: COLORS.text,
     flex: 1,
   },
   numberBadge: {
@@ -497,13 +484,14 @@ const styles = StyleSheet.create({
   numberText: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: COLORS.secondary,
+    color: COLORS.onPrimary,
   },
   positionChip: {
     alignSelf: 'flex-start',
+    backgroundColor: COLORS.primarySoft,
   },
   chipText: {
-    color: '#fff',
+    color: COLORS.primary,
     fontWeight: 'bold',
     fontSize: 12,
   },
@@ -511,16 +499,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-around',
     marginBottom: 16,
-    backgroundColor: COLORS.background,
+    backgroundColor: COLORS.surfaceRaised,
     padding: 12,
-    borderRadius: 8,
+    borderRadius: 14,
   },
   statBox: {
     alignItems: 'center',
   },
   statValue: {
-    fontSize: 20,
-    fontWeight: 'bold',
+    fontFamily: FONTS.display,
+    fontSize: 24,
     color: COLORS.primary,
   },
   statLabel: {
@@ -538,15 +526,20 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary,
   },
   modal: {
-    backgroundColor: 'white',
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.border,
     padding: 20,
     margin: 20,
-    borderRadius: 12,
+    borderRadius: 18,
     maxHeight: '90%',
   },
   modalTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
+    fontFamily: FONTS.display,
+    fontSize: 24,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    color: COLORS.text,
     marginBottom: 16,
   },
   input: {
@@ -570,6 +563,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: 'bold',
+    color: COLORS.text,
     marginBottom: 8,
   },
   chips: {
@@ -580,9 +574,14 @@ const styles = StyleSheet.create({
     marginRight: 8,
     marginBottom: 8,
   },
+  selectChipActive: {
+    backgroundColor: COLORS.primarySoft,
+  },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontFamily: FONTS.display,
+    fontSize: 20,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
     marginTop: 8,
     marginBottom: 12,
     color: COLORS.text,
@@ -600,4 +599,4 @@ const styles = StyleSheet.create({
     flex: 1,
     marginHorizontal: 4,
   },
-});
+}));

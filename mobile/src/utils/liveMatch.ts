@@ -99,7 +99,7 @@ export function describeEvent(e: LiveEvent, opponent: string): string {
     case 'half_time': return 'Half time';
     case 'second_half': return 'Second half under way';
     case 'full_time': return 'Full time';
-    case 'goal': return `GOAL! ${e.playerName ?? 'Unknown'}${e.player2Name ? ` (assist ${e.player2Name})` : ''}`;
+    case 'goal': return e.playerName ? `GOAL! ${e.playerName}${e.player2Name ? ` (assist ${e.player2Name})` : ''}` : 'GOAL!';
     case 'opp_goal': return `${opponent} score${e.text ? ` (${e.text})` : ''}`;
     case 'yellow': return `Yellow card: ${e.playerName ?? 'Unknown'}`;
     case 'red': return `Red card: ${e.playerName ?? 'Unknown'}`;

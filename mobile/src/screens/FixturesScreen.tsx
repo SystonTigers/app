@@ -1,8 +1,13 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { View, ScrollView, StyleSheet, RefreshControl, ActivityIndicator } from 'react-native';
-import { Card, Title, Paragraph, Chip, Divider, Button } from 'react-native-paper';
+import { View, ScrollView, RefreshControl, ActivityIndicator } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Card, Title, Paragraph, Chip, Button } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
-import { COLORS, DEFAULT_CLUB_NAME, DEFAULT_CLUB_SHORT_NAME } from '../config';
+import { DEFAULT_CLUB_NAME, DEFAULT_CLUB_SHORT_NAME } from '../config';
+import { themedStyles, useBrandColors } from '../theme/brand';
+import { FONTS } from '../theme/brandFonts';
+import ScreenIntro from '../components/brand/ScreenIntro';
+import SectionTitle from '../components/home/SectionTitle';
 import {
   getUpcomingFixtures,
   getRecentResults,
@@ -29,6 +34,8 @@ const pickDisplayName = (
 };
 
 export default function FixturesScreen() {
+  const COLORS = useBrandColors();
+  const styles = useStyles();
   const navigation = useNavigation<any>();
   const [fixtures, setFixtures] = useState<Fixture[]>([]);
   const [results, setResults] = useState<Result[]>([]);
@@ -135,8 +142,10 @@ export default function FixturesScreen() {
   return (
     <ScrollView
       style={styles.container}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primary} colors={[COLORS.primary]} />}
     >
+      <ScreenIntro title="Fixtures" subtitle="Upcoming matches and recent results" />
+
       {error && (
         <Card style={[styles.card, styles.errorCard]}>
           <Card.Content>
@@ -150,7 +159,7 @@ export default function FixturesScreen() {
 
       {/* Upcoming Fixtures */}
       <View style={styles.section}>
-        <Title style={styles.sectionTitle}>⚽ Upcoming Fixtures</Title>
+        <SectionTitle title="UPCOMING FIXTURES" color={COLORS.primary} />
         {fixtures.length === 0 ? (
           <Card style={styles.card}>
             <Card.Content>
@@ -161,7 +170,7 @@ export default function FixturesScreen() {
           fixtures.map((fixture) => (
             <Card key={fixture.id} style={styles.card}>
               <Card.Content>
-                <Chip style={styles.competitionChip}>{fixture.competition}</Chip>
+                <Chip style={styles.competitionChip} textStyle={styles.competitionChipText}>{fixture.competition}</Chip>
                 <View style={styles.matchInfo}>
                   <Title style={styles.teamName}>
                     {fixture.venue === 'Home'
@@ -195,18 +204,24 @@ export default function FixturesScreen() {
                       ) ?? clubName}
                   </Title>
                 </View>
-                <Paragraph style={styles.detail}>
-                  📅 {formatFixtureDate(fixture.date)} • {formatKickOffTime(fixture.kickOffTime)}
-                </Paragraph>
-                <Paragraph style={styles.detail}>
-                  📍
-                  {fixture.venue === 'Home'
-                    ? pickDisplayName(fixture.location, clubShortName, clubName) ?? 'Home'
-                    : pickDisplayName(fixture.location, fixture.venue, 'Away') ?? 'Away'}
-                </Paragraph>
+                <View style={styles.detailRow}>
+                  <MaterialCommunityIcons name="calendar" size={16} color={COLORS.textLight} />
+                  <Paragraph style={styles.detail}>
+                    {formatFixtureDate(fixture.date)} • {formatKickOffTime(fixture.kickOffTime)}
+                  </Paragraph>
+                </View>
+                <View style={styles.detailRow}>
+                  <MaterialCommunityIcons name="map-marker" size={16} color={COLORS.textLight} />
+                  <Paragraph style={styles.detail}>
+                    {fixture.venue === 'Home'
+                      ? pickDisplayName(fixture.location, clubShortName, clubName) ?? 'Home'
+                      : pickDisplayName(fixture.location, fixture.venue, 'Away') ?? 'Away'}
+                  </Paragraph>
+                </View>
                 {fixture.status !== 'scheduled' && (
                   <Chip
                     style={[styles.statusChip, { backgroundColor: getStatusColor(fixture.status) }]}
+                    textStyle={styles.statusChipText}
                   >
                     {fixture.status.toUpperCase()}
                   </Chip>
@@ -245,11 +260,9 @@ export default function FixturesScreen() {
 
       </View>
 
-      <Divider style={styles.divider} />
-
       {/* Recent Results */}
       <View style={styles.section}>
-        <Title style={styles.sectionTitle}>📊 Recent Results</Title>
+        <SectionTitle title="RECENT RESULTS" color={COLORS.primary} />
         {results.length === 0 ? (
           <Card style={styles.card}>
             <Card.Content>
@@ -276,7 +289,7 @@ export default function FixturesScreen() {
             return (
               <Card key={result.id} style={styles.card}>
                 <Card.Content>
-                  <Chip style={styles.competitionChip}>{result.competition}</Chip>
+                  <Chip style={styles.competitionChip} textStyle={styles.competitionChipText}>{result.competition}</Chip>
                   <View style={styles.matchInfo}>
                     <View style={styles.team}>
                       <Title style={styles.teamName}>{homeTeamLabel}</Title>
@@ -288,10 +301,13 @@ export default function FixturesScreen() {
                       <Title style={styles.teamName}>{awayTeamLabel}</Title>
                     </View>
                   </View>
-                  <Paragraph style={styles.detail}>📅 {formatFixtureDate(result.date)}</Paragraph>
+                  <View style={styles.detailRow}>
+                    <MaterialCommunityIcons name="calendar" size={16} color={COLORS.textLight} />
+                    <Paragraph style={styles.detail}>{formatFixtureDate(result.date)}</Paragraph>
+                  </View>
                   {scorers.length > 0 && (
                     <View style={styles.scorers}>
-                      <Paragraph style={styles.scorersTitle}>⚽ Scorers:</Paragraph>
+                      <Paragraph style={styles.scorersTitle}>Scorers:</Paragraph>
                       {scorers.map((scorer, index) => (
                         <Paragraph key={index} style={styles.scorer}>
                           • {scorer.trim()}
@@ -309,7 +325,7 @@ export default function FixturesScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themedStyles((COLORS) => ({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
@@ -324,18 +340,20 @@ const styles = StyleSheet.create({
     color: COLORS.textLight,
   },
   section: {
-    padding: 16,
-  },
-  sectionTitle: {
-    marginBottom: 12,
+    paddingBottom: 8,
   },
   card: {
+    marginHorizontal: 16,
     marginBottom: 16,
     backgroundColor: COLORS.surface,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   errorCard: {
-    borderWidth: 1,
+    marginTop: 8,
     borderColor: COLORS.error,
+    backgroundColor: 'rgba(255,0,85,0.14)',
   },
   errorText: {
     color: COLORS.error,
@@ -346,9 +364,17 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     backgroundColor: COLORS.primary,
   },
+  competitionChipText: {
+    color: COLORS.onPrimary,
+    fontWeight: '700',
+  },
   statusChip: {
     alignSelf: 'flex-start',
     marginTop: 8,
+  },
+  statusChipText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
   },
   matchInfo: {
     alignItems: 'center',
@@ -360,12 +386,16 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   teamName: {
-    fontSize: 18,
+    fontFamily: FONTS.display,
+    fontSize: 22,
+    letterSpacing: 0.5,
+    color: COLORS.text,
     textAlign: 'center',
   },
   score: {
-    fontSize: 32,
-    fontWeight: 'bold',
+    fontFamily: FONTS.display,
+    fontSize: 36,
+    lineHeight: 40,
     color: COLORS.primary,
   },
   vs: {
@@ -373,30 +403,35 @@ const styles = StyleSheet.create({
     color: COLORS.textLight,
     marginVertical: 4,
   },
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 4,
+  },
   detail: {
     fontSize: 14,
     color: COLORS.textLight,
-    marginTop: 4,
+    marginVertical: 0,
   },
   scorers: {
     marginTop: 12,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: COLORS.background,
+    borderTopColor: COLORS.border,
   },
   scorersTitle: {
     fontWeight: 'bold',
+    color: COLORS.text,
     marginBottom: 4,
   },
   scorer: {
     fontSize: 13,
+    color: COLORS.text,
     marginLeft: 8,
-  },
-  divider: {
-    marginVertical: 8,
   },
   cardActions: {
     justifyContent: 'flex-end',
     paddingTop: 0,
   },
-});
+}));

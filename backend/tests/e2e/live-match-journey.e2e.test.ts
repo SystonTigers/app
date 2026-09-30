@@ -39,8 +39,8 @@ describe("Live match journey", () => {
     expect(kickOff.status).toBe(201);
     expect(kickOff.data.data).toMatchObject({ status: "live", period: 1, halfLength: 30, ourScore: 0 });
 
-    // A goal needs a scorer from our squad
-    expect((await post({ type: "goal" })).status).toBe(400);
+    // A scorer must be from our squad, and an assist needs a scorer
+    expect((await post({ type: "goal", player2Id: winger })).status).toBe(400);
     expect((await post({ type: "goal", playerId: "not-ours" })).status).toBe(400);
 
     // A retried tap is only counted once
@@ -124,5 +124,20 @@ describe("Live match journey", () => {
     expect((await call(`/api/v1/fixtures/${fixtureId}/live`, { token: otherOwner })).status).toBe(404);
     expect((await call(`/api/v1/fixtures/${fixtureId}/live/events`, { token: otherOwner, body: { type: "kick_off", clientEventId: tap() } })).status).toBe(404);
     expect((await call(`/api/v1/fixtures/${fixtureId}/live`, { token: parent.token })).data.data.status).toBe("scheduled");
+  });
+
+  it("counts a goal with no scorer (own goal or nobody saw) without crediting anyone", async () => {
+    const { coach, fixtureId } = await setup("Own Goal Albion");
+    const post = (body: Record<string, unknown>) =>
+      call(`/api/v1/fixtures/${fixtureId}/live/events`, { token: coach.token, body: { clientEventId: tap(), ...body } });
+    await post({ type: "kick_off", halfLength: 30 });
+    const goal = await post({ type: "goal" });
+    expect(goal.status).toBe(201);
+    expect(goal.data.data.ourScore).toBe(1);
+    await post({ type: "full_time" });
+    const result = await env.DB.prepare(`SELECT our_score, their_score, result FROM team_results WHERE fixture_id = ?`).bind(fixtureId).first<any>();
+    expect(result).toMatchObject({ our_score: 1, their_score: 0, result: "win" });
+    const stats = await env.DB.prepare(`SELECT COUNT(*) AS c FROM match_events WHERE fixture_id = ? AND id LIKE 'live-%'`).bind(fixtureId).first<any>();
+    expect(stats.c).toBe(0);
   });
 });

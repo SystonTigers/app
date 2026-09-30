@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, ScrollView, StyleSheet, Alert, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, ScrollView, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { Text, TextInput, Button, Chip, IconButton, List, Divider, ActivityIndicator } from 'react-native-paper';
-import { COLORS, API_BASE_URL } from '../config';
+import { API_BASE_URL } from '../config';
+import { themedStyles, useBrandColors } from '../theme/brand';
+import { FONTS } from '../theme/brandFonts';
 import { authStorage } from '../services/authStorage';
 
 interface KeyPlayer {
@@ -67,6 +69,8 @@ interface ContentProps extends ScoutNotesParams {
 }
 
 function ScoutNotesContent({ fixtureId, opponent, navigation }: ContentProps) {
+    const COLORS = useBrandColors();
+    const styles = useStyles();
 
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -190,7 +194,6 @@ function ScoutNotesContent({ fixtureId, opponent, navigation }: ContentProps) {
             <ScrollView contentContainerStyle={styles.scrollContent}>
                 {/* Header */}
                 <View style={styles.header}>
-                    <Text style={styles.title}>Scout Report</Text>
                     <Text style={styles.subtitle}>vs {opponent}</Text>
                 </View>
 
@@ -301,7 +304,7 @@ function ScoutNotesContent({ fixtureId, opponent, navigation }: ContentProps) {
                                     styles.optionChip,
                                     scoutNote.strengths.includes(item) && styles.strengthChipSelected,
                                 ]}
-                                textStyle={scoutNote.strengths.includes(item) ? styles.chipTextSelected : undefined}
+                                textStyle={scoutNote.strengths.includes(item) ? styles.strengthTextSelected : undefined}
                             >
                                 {item}
                             </Chip>
@@ -324,7 +327,7 @@ function ScoutNotesContent({ fixtureId, opponent, navigation }: ContentProps) {
                                     styles.optionChip,
                                     scoutNote.weaknesses.includes(item) && styles.weaknessChipSelected,
                                 ]}
-                                textStyle={scoutNote.weaknesses.includes(item) ? styles.chipTextSelected : undefined}
+                                textStyle={scoutNote.weaknesses.includes(item) ? styles.weaknessTextSelected : undefined}
                             >
                                 {item}
                             </Chip>
@@ -396,7 +399,7 @@ function ScoutNotesContent({ fixtureId, opponent, navigation }: ContentProps) {
     );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themedStyles((COLORS) => ({
     container: {
         flex: 1,
         backgroundColor: COLORS.background,
@@ -416,17 +419,11 @@ const styles = StyleSheet.create({
         paddingBottom: 40,
     },
     header: {
-        marginBottom: 24,
-    },
-    title: {
-        fontSize: 28,
-        fontWeight: 'bold',
-        color: COLORS.text,
+        marginBottom: 16,
     },
     subtitle: {
-        fontSize: 18,
+        fontSize: 16,
         color: COLORS.textLight,
-        marginTop: 4,
     },
     section: {
         marginBottom: 16,
@@ -437,8 +434,10 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     sectionTitle: {
-        fontSize: 16,
-        fontWeight: '600',
+        fontFamily: FONTS.display,
+        fontSize: 20,
+        letterSpacing: 1,
+        textTransform: 'uppercase',
         color: COLORS.text,
         marginBottom: 12,
     },
@@ -449,12 +448,16 @@ const styles = StyleSheet.create({
     chip: {
         marginRight: 8,
         backgroundColor: COLORS.surface,
+        borderWidth: 1,
+        borderColor: COLORS.border,
     },
     chipSelected: {
         backgroundColor: COLORS.primary,
+        borderColor: COLORS.primary,
     },
     chipTextSelected: {
-        color: '#fff',
+        color: COLORS.onPrimary,
+        fontWeight: '700',
     },
     chipGrid: {
         flexDirection: 'row',
@@ -464,12 +467,24 @@ const styles = StyleSheet.create({
     optionChip: {
         marginBottom: 8,
         backgroundColor: COLORS.surface,
+        borderWidth: 1,
+        borderColor: COLORS.border,
     },
     strengthChipSelected: {
-        backgroundColor: '#22c55e',
+        backgroundColor: 'rgba(43,213,118,0.14)',
+        borderColor: COLORS.success,
+    },
+    strengthTextSelected: {
+        color: COLORS.success,
+        fontWeight: '700',
     },
     weaknessChipSelected: {
-        backgroundColor: '#ef4444',
+        backgroundColor: 'rgba(255,0,85,0.14)',
+        borderColor: COLORS.error,
+    },
+    weaknessTextSelected: {
+        color: COLORS.error,
+        fontWeight: '700',
     },
     divider: {
         marginVertical: 16,
@@ -479,7 +494,9 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'space-between',
         backgroundColor: COLORS.surface,
-        borderRadius: 8,
+        borderRadius: 18,
+        borderWidth: 1,
+        borderColor: COLORS.border,
         padding: 12,
         marginBottom: 8,
     },
@@ -489,8 +506,8 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     playerNumber: {
-        fontSize: 18,
-        fontWeight: 'bold',
+        fontFamily: FONTS.display,
+        fontSize: 22,
         color: COLORS.primary,
         marginRight: 12,
         minWidth: 40,
@@ -507,7 +524,9 @@ const styles = StyleSheet.create({
     addPlayerForm: {
         backgroundColor: COLORS.surface,
         padding: 16,
-        borderRadius: 8,
+        borderRadius: 18,
+        borderWidth: 1,
+        borderColor: COLORS.border,
         marginTop: 8,
     },
     playerInput: {
@@ -533,10 +552,11 @@ const styles = StyleSheet.create({
     saveButtonContent: {
         paddingVertical: 8,
     },
-});
+}));
 
 /** Guards against being opened without a fixture (e.g. from the drawer). */
 export default function ScoutNotesScreen({ route, navigation }: Props) {
+    const COLORS = useBrandColors();
     const params = route?.params;
     if (!params?.fixtureId) {
         return (

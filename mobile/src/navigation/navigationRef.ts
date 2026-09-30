@@ -14,3 +14,8 @@ export function openScreen(name: string, attempt = 0): void {
   }
   if (attempt < 20) setTimeout(() => openScreen(name, attempt + 1), 250);
 }
+
+// Screenshot and journey tests (web builds made with EXPO_PUBLIC_E2E=1 only)
+if (process.env.EXPO_PUBLIC_E2E === '1' && typeof window !== 'undefined') {
+  (window as unknown as { __openScreen?: typeof openScreen }).__openScreen = openScreen;
+}

@@ -5,7 +5,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createDrawerNavigator } from '@react-navigation/drawer';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { Provider as PaperProvider, MD3DarkTheme } from 'react-native-paper';
+import { Provider as PaperProvider } from 'react-native-paper';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
@@ -25,21 +25,6 @@ import { initCrashReporting } from './src/services/crashReporting';
 // Start crash reporting before anything renders (no-op without EXPO_PUBLIC_SENTRY_DSN)
 initCrashReporting();
 
-// Build a react-native-paper theme from our design tokens
-const paperTheme = {
-  ...MD3DarkTheme,
-  colors: {
-    ...MD3DarkTheme.colors,
-    primary: COLORS.primary,
-    background: COLORS.background,
-    surface: COLORS.surface,
-    onSurface: COLORS.text,
-    onBackground: COLORS.text,
-    border: '#2F3439',
-    text: COLORS.text,
-    textSecondary: COLORS.textLight,
-  },
-};
 
 import CustomDrawerContent from './src/components/CustomDrawerContent';
 
@@ -91,6 +76,9 @@ import { captureInviteFromLink } from './src/services/inviteLink';
 import BrandSplash from './src/components/brand/BrandSplash';
 import { useBrandFonts } from './src/theme/brandFonts';
 import { useTheme } from './src/theme/useTheme';
+import { INK, TEXT, TEXT_MUTED, useBrandColors } from './src/theme/brand';
+import { buildPaperTheme } from './src/theme/paperTheme';
+import { FONTS } from './src/theme/brandFonts';
 
 // A parent opened the manager's invite link: keep the code until they're signed in
 captureInviteFromLink();
@@ -199,27 +187,31 @@ function AuthNavigator() {
 
 /** The signed-in app. */
 function MainDrawer() {
+  const accent = useBrandColors().primary;
   return (
     <Drawer.Navigator
       initialRouteName="TabNavigator"
       drawerContent={(props) => <CustomDrawerContent {...props} />}
       screenOptions={{
         headerStyle: {
-          backgroundColor: paperTheme.colors.background,
-          borderBottomColor: paperTheme.colors.border,
+          backgroundColor: INK,
+          borderBottomColor: 'rgba(255,255,255,0.08)',
           borderBottomWidth: 1,
           shadowColor: 'transparent',
         },
-        headerTintColor: paperTheme.colors.text,
+        headerTintColor: TEXT,
         headerTitleStyle: {
-          fontWeight: 'bold',
+          fontFamily: FONTS.display,
+          fontSize: 22,
+          letterSpacing: 1,
+          textTransform: 'uppercase',
         },
         drawerStyle: {
           backgroundColor: '#07090C',
           width: '80%',
         },
-        drawerActiveTintColor: paperTheme.colors.primary,
-        drawerInactiveTintColor: paperTheme.colors.textSecondary,
+        drawerActiveTintColor: accent,
+        drawerInactiveTintColor: TEXT_MUTED,
       }}
     >
       {/* Main Tab App */}
@@ -277,14 +269,14 @@ function MainDrawer() {
       <Drawer.Screen name="Settings" component={SettingsScreen} options={{ title: 'Settings' }} />
 
       {/* Other/Hidden Screens */}
-      <Drawer.Screen name="Chat" component={ChatScreen} />
-      <Drawer.Screen name="CreatePost" component={CreatePostScreen} />
+      <Drawer.Screen name="Chat" component={ChatScreen} options={{ title: 'Team Chat' }} />
+      <Drawer.Screen name="CreatePost" component={CreatePostScreen} options={{ title: 'Create Post' }} />
       <Drawer.Screen name="Gallery" component={GalleryScreen} />
       <Drawer.Screen name="Highlights" component={HighlightsScreen} />
       <Drawer.Screen name="MatchHighlights" component={MatchHighlightsScreen} options={{ title: 'Match Highlights' }} />
-      <Drawer.Screen name="Manage" component={ManageScreen} />
-      <Drawer.Screen name="ManageUsers" component={ManageUsersScreen} />
-      <Drawer.Screen name="ImportData" component={ImportDataScreen} />
+      <Drawer.Screen name="Manage" component={ManageScreen} options={{ title: 'Team Admin' }} />
+      <Drawer.Screen name="ManageUsers" component={ManageUsersScreen} options={{ title: 'Manage Users' }} />
+      <Drawer.Screen name="ImportData" component={ImportDataScreen} options={{ title: 'Import Data' }} />
       <Drawer.Screen name="ScoutNotes" component={ScoutNotesScreen} options={{ title: 'Scout Report' }} />
       <Drawer.Screen name="Carpool" component={CarpoolScreen} options={{ title: 'Carpool' }} />
 
@@ -356,6 +348,13 @@ function RootNavigator() {
   );
 }
 
+/** Paper components in the club's colour (inside ThemeProvider, which knows the club). */
+function BrandPaper({ children }: { children: React.ReactNode }) {
+  const c = useBrandColors();
+  const theme = React.useMemo(() => buildPaperTheme(c), [c]);
+  return <PaperProvider theme={theme}>{children}</PaperProvider>;
+}
+
 export default function App() {
   return (
     <ErrorBoundary>
@@ -363,12 +362,12 @@ export default function App() {
     <ThemeProvider>
       <AuthProvider>
         <SafeAreaProvider>
-          <PaperProvider theme={paperTheme}>
+          <BrandPaper>
             <NavigationContainer ref={navigationRef}>
-              <StatusBar style="auto" />
+              <StatusBar style="light" />
               <RootNavigator />
             </NavigationContainer>
-          </PaperProvider>
+          </BrandPaper>
         </SafeAreaProvider>
       </AuthProvider>
     </ThemeProvider>

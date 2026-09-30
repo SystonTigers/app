@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, StyleSheet, ActivityIndicator, Alert, RefreshControl } from 'react-native';
+import { View, ScrollView, ActivityIndicator, Alert, RefreshControl } from 'react-native';
 import {
   Card,
-  Title,
   Paragraph,
   Chip,
   Avatar,
@@ -11,7 +10,7 @@ import {
   Divider,
   Text,
 } from 'react-native-paper';
-import { COLORS } from '../config';
+import { themedStyles, useBrandColors } from '../theme/brand';
 import { apiClient } from '../services/api';
 import { getTenantId } from '../services/club';
 
@@ -45,6 +44,8 @@ const roleIcons: { [key: string]: string } = {
 };
 
 export default function ManageUsersScreen() {
+  const COLORS = useBrandColors();
+  const styles = useStyles();
   const [users, setUsers] = useState<User[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -151,13 +152,9 @@ export default function ManageUsersScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Title style={styles.headerTitle}>User Management</Title>
-        <Paragraph style={styles.headerSubtitle}>
-          {users.length} total user{users.length !== 1 ? 's' : ''}
-        </Paragraph>
-      </View>
+      <Text style={styles.count}>
+        {users.length} total user{users.length !== 1 ? 's' : ''}
+      </Text>
 
       {/* Search Bar */}
       <Searchbar
@@ -165,6 +162,9 @@ export default function ManageUsersScreen() {
         onChangeText={setSearchQuery}
         value={searchQuery}
         style={styles.searchBar}
+        inputStyle={{ color: COLORS.text }}
+        iconColor={COLORS.textLight}
+        placeholderTextColor={COLORS.textLight}
       />
 
       {/* Role Filters */}
@@ -204,7 +204,7 @@ export default function ManageUsersScreen() {
       <ScrollView
         style={styles.scrollView}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />
         }
       >
         {filteredUsers.length === 0 ? (
@@ -225,9 +225,11 @@ export default function ManageUsersScreen() {
                   <Avatar.Text
                     size={50}
                     label={getInitials(user.email, user.profile?.name)}
+                    color={roleColors[user.roles[0]] || COLORS.primary}
                     style={{
-                      backgroundColor:
-                        roleColors[user.roles[0]] || COLORS.primary,
+                      backgroundColor: `${roleColors[user.roles[0]] || COLORS.primary}24`,
+                      borderWidth: 1,
+                      borderColor: roleColors[user.roles[0]] || COLORS.primary,
                     }}
                   />
                   <View style={styles.userDetails}>
@@ -257,42 +259,33 @@ export default function ManageUsersScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themedStyles((COLORS) => ({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: COLORS.background,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f5f5f5',
+    backgroundColor: COLORS.background,
   },
   loadingText: {
     marginTop: 12,
     fontSize: 16,
-    color: '#666',
+    color: COLORS.textLight,
   },
-  header: {
-    backgroundColor: COLORS.primary,
-    padding: 20,
-    paddingTop: 40,
-  },
-  headerTitle: {
-    color: '#fff',
-    fontSize: 24,
-    fontWeight: 'bold',
-  },
-  headerSubtitle: {
-    color: '#fff',
-    fontSize: 14,
-    marginTop: 4,
-    opacity: 0.9,
+  count: {
+    color: COLORS.textLight,
+    marginHorizontal: 16,
+    marginTop: 12,
   },
   searchBar: {
     margin: 16,
+    marginTop: 12,
     marginBottom: 8,
-    elevation: 2,
+    backgroundColor: COLORS.surface, borderRadius: 18, borderWidth: 1, borderColor: COLORS.border,
+    elevation: 0,
   },
   filterContainer: {
     maxHeight: 50,
@@ -311,16 +304,17 @@ const styles = StyleSheet.create({
   emptyCard: {
     margin: 16,
     marginTop: 32,
+    backgroundColor: COLORS.surface, borderRadius: 18, borderWidth: 1, borderColor: COLORS.border,
   },
   emptyText: {
     textAlign: 'center',
-    color: '#666',
+    color: COLORS.textLight,
     fontSize: 16,
   },
   userCard: {
     marginHorizontal: 16,
     marginVertical: 8,
-    elevation: 2,
+    backgroundColor: COLORS.surface, borderRadius: 18, borderWidth: 1, borderColor: COLORS.border,
   },
   userCardContent: {
     padding: 16,
@@ -336,16 +330,16 @@ const styles = StyleSheet.create({
   userName: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
+    color: COLORS.text,
   },
   userEmail: {
     fontSize: 14,
-    color: '#666',
+    color: COLORS.textLight,
     marginTop: 2,
   },
   userPhone: {
     fontSize: 14,
-    color: '#666',
+    color: COLORS.textLight,
     marginTop: 2,
   },
   rolesContainer: {
@@ -357,15 +351,16 @@ const styles = StyleSheet.create({
   roleChip: {
     height: 28,
     marginRight: 4,
+    backgroundColor: 'transparent',
   },
   userMeta: {
     marginTop: 12,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#eee',
+    borderTopColor: COLORS.border,
   },
   metaText: {
     fontSize: 12,
-    color: '#999',
+    color: COLORS.textLight,
   },
-});
+}));

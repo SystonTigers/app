@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, StyleSheet, Alert, TextInput as RNTextInput, TouchableOpacity } from 'react-native';
+import { View, Text, ScrollView, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Picker } from '@react-native-picker/picker';
-import { useTheme } from '../theme/';
-import { Card, SectionHeader, Button, Badge, Divider, EmptyState, LoadingSpinner } from '../components';
+import { themedStyles, useBrandColors } from '../theme/brand';
+import { FONTS } from '../theme/brandFonts';
+import SectionTitle from '../components/home/SectionTitle';
+import { Card, Button, Badge, Divider, EmptyState, LoadingSpinner } from '../components';
 import { useAuth } from '../context/AuthContext';
 import { squadApi } from '../services/api';
 
@@ -45,7 +47,8 @@ const ROLE_OPTIONS = [
 ];
 
 export default function TeamMembersScreen() {
-  const { theme } = useTheme();
+  const COLORS = useBrandColors();
+  const styles = useStyles();
   const { user } = useAuth();
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [roleHistory, setRoleHistory] = useState<RoleChangeHistory[]>([]);
@@ -146,28 +149,27 @@ export default function TeamMembersScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      <SafeAreaView style={styles.container}>
         <LoadingSpinner message="Loading team members..." />
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
+    <SafeAreaView style={styles.container}>
       <ScrollView>
-        <SectionHeader
-          title="Team Members"
-          subtitle={`${members.length} member${members.length !== 1 ? 's' : ''}`}
-        />
+        <Text style={styles.count}>
+          {`${members.length} member${members.length !== 1 ? 's' : ''}`}
+        </Text>
 
         {/* Role Legend */}
-        <Card variant="default" style={styles.legendCard}>
-          <Text style={[styles.legendTitle, { color: theme.colors.text }]}>Roles</Text>
+        <Card variant="outlined" style={styles.legendCard}>
+          <Text style={[styles.legendTitle, { color: COLORS.text }]}>Roles</Text>
           <View style={styles.legendGrid}>
             {ROLE_OPTIONS.map(role => (
               <View key={role.value} style={styles.legendItem}>
                 <View style={[styles.legendDot, { backgroundColor: role.color }]} />
-                <Text style={[styles.legendLabel, { color: theme.colors.text }]}>
+                <Text style={[styles.legendLabel, { color: COLORS.text }]}>
                   {role.label}
                 </Text>
               </View>
@@ -185,13 +187,13 @@ export default function TeamMembersScreen() {
         ) : (
           <View style={styles.membersList}>
             {members.map(member => (
-              <Card key={member.id} variant="elevated" elevation={1} style={styles.memberCard}>
+              <Card key={member.id} variant="outlined" style={styles.memberCard}>
                 <View style={styles.memberHeader}>
                   <View style={styles.memberInfo}>
-                    <Text style={[styles.memberName, { color: theme.colors.text }]}>
+                    <Text style={[styles.memberName, { color: COLORS.text }]}>
                       {member.name}
                     </Text>
-                    <Text style={[styles.memberEmail, { color: theme.colors.textSecondary }]}>
+                    <Text style={[styles.memberEmail, { color: COLORS.textLight }]}>
                       {member.email}
                     </Text>
                   </View>
@@ -201,11 +203,13 @@ export default function TeamMembersScreen() {
                 </View>
 
                 <View style={styles.memberMeta}>
-                  <Text style={[styles.memberMetaText, { color: theme.colors.textSecondary }]}>
-                    Joined: {new Date(member.joinedAt).toLocaleDateString()}
-                  </Text>
+                  {member.joinedAt && !Number.isNaN(new Date(member.joinedAt).getTime()) ? (
+                    <Text style={[styles.memberMetaText, { color: COLORS.textLight }]}>
+                      Joined {new Date(member.joinedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    </Text>
+                  ) : null}
                   {member.lastActive && (
-                    <Text style={[styles.memberMetaText, { color: theme.colors.textSecondary }]}>
+                    <Text style={[styles.memberMetaText, { color: COLORS.textLight }]}>
                       Last active: {new Date(member.lastActive).toLocaleDateString()}
                     </Text>
                   )}
@@ -234,31 +238,29 @@ export default function TeamMembersScreen() {
         {isAdmin && roleHistory.length > 0 && (
           <>
             <Divider style={styles.divider} />
-            <SectionHeader
-              title="Role Change History"
-              subtitle="Recent role changes"
-              action={{
-                label: showHistory ? 'Hide' : 'Show',
-                onPress: () => setShowHistory(!showHistory)
-              }}
+            <SectionTitle
+              title="ROLE CHANGE HISTORY"
+              color={COLORS.primary}
+              action={showHistory ? 'Hide' : 'Show'}
+              onAction={() => setShowHistory(!showHistory)}
             />
 
             {showHistory && (
               <View style={styles.historyList}>
                 {roleHistory.map(change => (
-                  <Card key={change.id} variant="default" style={styles.historyCard}>
-                    <Text style={[styles.historyUser, { color: theme.colors.text }]}>
+                  <Card key={change.id} variant="outlined" style={styles.historyCard}>
+                    <Text style={[styles.historyUser, { color: COLORS.text }]}>
                       {change.userName}
                     </Text>
-                    <Text style={[styles.historyChange, { color: theme.colors.textSecondary }]}>
+                    <Text style={[styles.historyChange, { color: COLORS.textLight }]}>
                       {change.oldRole} → {change.newRole}
                     </Text>
-                    <Text style={[styles.historyMeta, { color: theme.colors.textSecondary }]}>
+                    <Text style={[styles.historyMeta, { color: COLORS.textLight }]}>
                       Changed by {change.changedBy} on{' '}
                       {new Date(change.changedAt).toLocaleDateString()}
                     </Text>
                     {change.reason && (
-                      <Text style={[styles.historyReason, { color: theme.colors.textSecondary }]}>
+                      <Text style={[styles.historyReason, { color: COLORS.textLight }]}>
                         Reason: {change.reason}
                       </Text>
                     )}
@@ -272,20 +274,20 @@ export default function TeamMembersScreen() {
 
       {/* Role Changer Modal */}
       {showRoleChanger && selectedMember && (
-        <View style={[styles.modal, { backgroundColor: theme.colors.overlay }]}>
-          <View style={[styles.modalContent, { backgroundColor: theme.colors.surface }]}>
-            <Text style={[styles.modalTitle, { color: theme.colors.text }]}>
+        <View style={styles.modal}>
+          <View style={styles.modalContent}>
+            <Text style={[styles.modalTitle, { color: COLORS.text }]}>
               Change Role for {selectedMember.name}
             </Text>
 
             <View style={styles.rolePickerContainer}>
-              <Text style={[styles.rolePickerLabel, { color: theme.colors.text }]}>
+              <Text style={[styles.rolePickerLabel, { color: COLORS.text }]}>
                 Select new role:
               </Text>
               <Picker
                 selectedValue={selectedMember.role}
                 onValueChange={(value) => setSelectedMember({ ...selectedMember, role: value as any })}
-                style={[styles.rolePicker, { color: theme.colors.text }]}
+                style={[styles.rolePicker, { color: COLORS.text }]}
               >
                 {ROLE_OPTIONS.map(role => (
                   <Picker.Item
@@ -324,17 +326,30 @@ export default function TeamMembersScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themedStyles((COLORS) => ({
   container: {
     flex: 1,
+    backgroundColor: COLORS.background,
+  },
+  count: {
+    color: COLORS.textLight,
+    marginHorizontal: 16,
+    marginTop: 12,
+    marginBottom: 12,
   },
   legendCard: {
     marginHorizontal: 16,
     marginBottom: 16,
+    backgroundColor: COLORS.surface,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   legendTitle: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontFamily: FONTS.display,
+    fontSize: 20,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
     marginBottom: 12,
   },
   legendGrid: {
@@ -360,6 +375,10 @@ const styles = StyleSheet.create({
   },
   memberCard: {
     marginBottom: 12,
+    backgroundColor: COLORS.surface,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   memberHeader: {
     flexDirection: 'row',
@@ -392,12 +411,17 @@ const styles = StyleSheet.create({
   },
   divider: {
     marginVertical: 16,
+    backgroundColor: COLORS.border,
   },
   historyList: {
     paddingHorizontal: 16,
   },
   historyCard: {
     marginBottom: 8,
+    backgroundColor: COLORS.surface,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   historyUser: {
     fontSize: 16,
@@ -423,18 +447,24 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
+    backgroundColor: 'rgba(7,9,12,0.8)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   modalContent: {
     width: '90%',
     maxWidth: 400,
-    borderRadius: 12,
+    backgroundColor: COLORS.surfaceRaised,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: COLORS.border,
     padding: 24,
   },
   modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
+    fontFamily: FONTS.display,
+    fontSize: 24,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
     marginBottom: 16,
   },
   rolePickerContainer: {
@@ -453,4 +483,4 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     gap: 12,
   },
-});
+}));

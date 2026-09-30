@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, StyleSheet, Alert, Linking } from 'react-native';
+import { View, ScrollView, Alert, Linking } from 'react-native';
 import {
     Card,
     Title,
@@ -10,7 +10,9 @@ import {
     ActivityIndicator,
 } from 'react-native-paper';
 import * as DocumentPicker from 'expo-document-picker';
-import { COLORS } from '../config';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { themedStyles, useBrandColors } from '../theme/brand';
+import { FONTS } from '../theme/brandFonts';
 import { parseCSV, validateHeaders } from '../utils/csvParser';
 import {
     importPlayers,
@@ -29,7 +31,7 @@ type ImportType = 'players' | 'fixtures' | 'results' | 'match-events';
 interface ImportOption {
     value: ImportType;
     label: string;
-    icon: string;
+    icon: React.ComponentProps<typeof MaterialCommunityIcons>['name'];
     description: string;
 }
 
@@ -37,30 +39,32 @@ const importOptions: ImportOption[] = [
     {
         value: 'players',
         label: 'Players/Squad',
-        icon: '👥',
+        icon: 'account-group-outline',
         description: 'Import player roster with positions, numbers, DOB',
     },
     {
         value: 'fixtures',
         label: 'Fixtures',
-        icon: '📅',
+        icon: 'calendar-month-outline',
         description: 'Import upcoming matches and schedule',
     },
     {
         value: 'results',
         label: 'Match Results',
-        icon: '📊',
+        icon: 'scoreboard-outline',
         description: 'Import historical match results with scores',
     },
     {
         value: 'match-events',
         label: 'Goals/Assists/Cards',
-        icon: '⚽',
+        icon: 'soccer',
         description: 'Import match events and player stats',
     },
 ];
 
 export default function ImportDataScreen() {
+    const COLORS = useBrandColors();
+    const styles = useStyles();
     const [importType, setImportType] = useState<ImportType>('players');
     const [csvContent, setCsvContent] = useState('');
     const [fileName, setFileName] = useState('');
@@ -194,12 +198,9 @@ export default function ImportDataScreen() {
 
     return (
         <ScrollView style={styles.container}>
-            <View style={styles.header}>
-                <Title style={styles.headerTitle}>Import Data</Title>
-                <Paragraph style={styles.headerSubtitle}>
-                    Upload CSV files to bulk import data
-                </Paragraph>
-            </View>
+            <Paragraph style={styles.intro}>
+                Upload CSV files to bulk import data
+            </Paragraph>
 
             {/* Current Data Counts */}
             {counts && (
@@ -236,9 +237,9 @@ export default function ImportDataScreen() {
                 <Card.Content>
                     {/* Season Selection */}
                     {seasons.length > 0 && (
-                        <View style={{ marginBottom: 24 }}>
+                        <View style={styles.seasonSection}>
                             <Title style={styles.sectionTitle}>Select Season (Optional)</Title>
-                            <View style={{ borderWidth: 1, borderColor: '#ddd', borderRadius: 8, overflow: 'hidden' }}>
+                            <View style={styles.seasonBox}>
                                 <RadioButton.Group
                                     onValueChange={(value) => setSelectedSeasonId(value)}
                                     value={selectedSeasonId}
@@ -253,8 +254,8 @@ export default function ImportDataScreen() {
                                     ))}
                                 </RadioButton.Group>
                             </View>
-                            <Paragraph style={{ fontSize: 12, color: '#666', marginTop: 8 }}>
-                                💡 Select a historical season to import data for that specific season
+                            <Paragraph style={styles.seasonHint}>
+                                Select a historical season to import data for that specific season
                             </Paragraph>
                         </View>
                     )}
@@ -275,7 +276,9 @@ export default function ImportDataScreen() {
                                 onPress={() => setImportType(option.value)}
                             >
                                 <Card.Content style={styles.optionContent}>
-                                    <Title style={styles.optionIcon}>{option.icon}</Title>
+                                    <View style={styles.optionIcon}>
+                                        <MaterialCommunityIcons name={option.icon} size={24} color={COLORS.primary} />
+                                    </View>
                                     <View style={styles.optionInfo}>
                                         <Title style={styles.optionLabel}>{option.label}</Title>
                                         <Paragraph style={styles.optionDescription}>
@@ -307,7 +310,7 @@ export default function ImportDataScreen() {
                         <Card.Content style={styles.uploadContent}>
                             {fileName ? (
                                 <View style={styles.fileInfo}>
-                                    <Title style={styles.fileIcon}>📄</Title>
+                                    <MaterialCommunityIcons name="file-delimited-outline" size={36} color={COLORS.primary} style={styles.fileIcon} />
                                     <View>
                                         <Title style={styles.fileName}>{fileName}</Title>
                                         <Paragraph style={styles.fileDetails}>
@@ -317,7 +320,7 @@ export default function ImportDataScreen() {
                                 </View>
                             ) : (
                                 <View style={styles.uploadPlaceholder}>
-                                    <Title style={styles.uploadIcon}>📁</Title>
+                                    <MaterialCommunityIcons name="folder-upload-outline" size={44} color={COLORS.primary} style={styles.uploadIcon} />
                                     <Title style={styles.uploadLabel}>
                                         Tap to select a CSV file
                                     </Title>
@@ -369,7 +372,10 @@ export default function ImportDataScreen() {
                             <Card.Content>
                                 {result.success ? (
                                     <View>
-                                        <Title style={styles.resultTitle}>✅ Import Successful</Title>
+                                        <View style={styles.resultRow}>
+                                            <MaterialCommunityIcons name="check-circle" size={20} color={COLORS.success} />
+                                            <Title style={styles.resultTitle}>Import Successful</Title>
+                                        </View>
                                         <Paragraph style={styles.resultText}>
                                             Imported {result.imported} of {result.total} rows
                                         </Paragraph>
@@ -385,9 +391,12 @@ export default function ImportDataScreen() {
                                         )}
                                     </View>
                                 ) : (
-                                    <Title style={styles.resultTitle}>
-                                        ❌ {result.error || 'Import failed'}
-                                    </Title>
+                                    <View style={styles.resultRow}>
+                                        <MaterialCommunityIcons name="alert-circle" size={20} color={COLORS.error} />
+                                        <Title style={styles.resultTitle}>
+                                            {result.error || 'Import failed'}
+                                        </Title>
+                                    </View>
                                 )}
                             </Card.Content>
                         </Card>
@@ -400,8 +409,7 @@ export default function ImportDataScreen() {
                             onPress={handleImport}
                             disabled={!csvContent || importing}
                             loading={importing}
-                            style={[styles.button, styles.importButton]}
-                            labelStyle={styles.buttonLabel}
+                            style={styles.button}
                         >
                             {importing ? 'Importing...' : `Import ${importType}`}
                         </Button>
@@ -420,26 +428,15 @@ export default function ImportDataScreen() {
     );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themedStyles((COLORS) => ({
     container: {
         flex: 1,
         backgroundColor: COLORS.background,
     },
-    header: {
-        padding: 20,
-        backgroundColor: COLORS.primary,
-        borderBottomLeftRadius: 20,
-        borderBottomRightRadius: 20,
-    },
-    headerTitle: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        color: COLORS.secondary,
-    },
-    headerSubtitle: {
-        fontSize: 14,
-        color: COLORS.secondary,
-        opacity: 0.8,
+    intro: {
+        color: COLORS.textLight,
+        marginHorizontal: 16,
+        marginTop: 12,
     },
     countsContainer: {
         flexDirection: 'row',
@@ -448,16 +445,19 @@ const styles = StyleSheet.create({
     },
     countCard: {
         flex: 1,
-        borderRadius: 8,
-        elevation: 1,
+        borderRadius: 18,
+        borderWidth: 1,
+        borderColor: COLORS.border,
+        backgroundColor: COLORS.surface,
     },
     countContent: {
         alignItems: 'center',
         paddingVertical: 8,
     },
     countValue: {
-        fontSize: 20,
-        fontWeight: 'bold',
+        fontFamily: FONTS.display,
+        fontSize: 26,
+        lineHeight: 30,
         color: COLORS.primary,
     },
     countLabel: {
@@ -467,24 +467,45 @@ const styles = StyleSheet.create({
     },
     formCard: {
         margin: 16,
-        borderRadius: 12,
-        elevation: 2,
+        borderRadius: 18,
+        borderWidth: 1,
+        borderColor: COLORS.border,
+        backgroundColor: COLORS.surface,
+    },
+    seasonSection: {
+        marginBottom: 24,
+    },
+    seasonBox: {
+        borderWidth: 1,
+        borderColor: COLORS.border,
+        borderRadius: 14,
+        overflow: 'hidden',
+        backgroundColor: COLORS.surfaceRaised,
+    },
+    seasonHint: {
+        fontSize: 12,
+        color: COLORS.textLight,
+        marginTop: 8,
     },
     sectionTitle: {
-        fontSize: 16,
-        fontWeight: 'bold',
+        fontSize: 20,
+        fontFamily: FONTS.display,
+        letterSpacing: 1,
+        textTransform: 'uppercase',
+        color: COLORS.text,
         marginTop: 16,
         marginBottom: 12,
     },
     optionCard: {
         marginBottom: 8,
-        borderRadius: 8,
-        borderWidth: 2,
-        borderColor: COLORS.background,
+        borderRadius: 18,
+        borderWidth: 1,
+        borderColor: COLORS.border,
+        backgroundColor: COLORS.surfaceRaised,
     },
     optionCardSelected: {
         borderColor: COLORS.primary,
-        backgroundColor: COLORS.primary + '10',
+        backgroundColor: COLORS.primarySoft,
     },
     optionContent: {
         flexDirection: 'row',
@@ -492,7 +513,14 @@ const styles = StyleSheet.create({
         padding: 8,
     },
     optionIcon: {
-        fontSize: 28,
+        width: 46,
+        height: 46,
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: `${COLORS.primary}55`,
+        backgroundColor: `${COLORS.primary}1F`,
+        alignItems: 'center',
+        justifyContent: 'center',
         marginRight: 12,
     },
     optionInfo: {
@@ -501,6 +529,7 @@ const styles = StyleSheet.create({
     optionLabel: {
         fontSize: 14,
         fontWeight: 'bold',
+        color: COLORS.text,
     },
     optionDescription: {
         fontSize: 11,
@@ -511,10 +540,11 @@ const styles = StyleSheet.create({
         marginTop: 8,
     },
     uploadCard: {
-        borderRadius: 8,
+        borderRadius: 18,
         borderWidth: 2,
         borderStyle: 'dashed',
-        borderColor: COLORS.textLight,
+        borderColor: COLORS.border,
+        backgroundColor: COLORS.surfaceRaised,
         marginBottom: 16,
     },
     uploadContent: {
@@ -524,12 +554,12 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     uploadIcon: {
-        fontSize: 48,
         marginBottom: 8,
     },
     uploadLabel: {
         fontSize: 16,
         fontWeight: 'bold',
+        color: COLORS.text,
     },
     uploadHint: {
         fontSize: 12,
@@ -541,12 +571,12 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     fileIcon: {
-        fontSize: 36,
         marginRight: 12,
     },
     fileName: {
         fontSize: 14,
         fontWeight: 'bold',
+        color: COLORS.text,
     },
     fileDetails: {
         fontSize: 12,
@@ -566,25 +596,33 @@ const styles = StyleSheet.create({
     },
     resultCard: {
         marginTop: 16,
-        borderRadius: 8,
+        borderRadius: 18,
     },
     resultSuccess: {
-        backgroundColor: '#E8F5E9',
+        backgroundColor: 'rgba(43,213,118,0.14)',
         borderWidth: 1,
-        borderColor: '#4CAF50',
+        borderColor: COLORS.success,
     },
     resultError: {
-        backgroundColor: '#FFEBEE',
+        backgroundColor: 'rgba(255,0,85,0.14)',
         borderWidth: 1,
-        borderColor: '#F44336',
+        borderColor: COLORS.error,
+    },
+    resultRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
     },
     resultTitle: {
+        flexShrink: 1,
         fontSize: 14,
         fontWeight: 'bold',
+        color: COLORS.text,
     },
     resultText: {
         fontSize: 12,
         marginTop: 4,
+        color: COLORS.text,
     },
     warnings: {
         marginTop: 8,
@@ -592,7 +630,7 @@ const styles = StyleSheet.create({
     warningTitle: {
         fontSize: 12,
         fontWeight: 'bold',
-        color: '#FF9800',
+        color: COLORS.warning,
     },
     warningText: {
         fontSize: 11,
@@ -604,12 +642,6 @@ const styles = StyleSheet.create({
         gap: 8,
     },
     button: {
-        borderRadius: 8,
+        borderRadius: 12,
     },
-    importButton: {
-        backgroundColor: COLORS.primary,
-    },
-    buttonLabel: {
-        color: COLORS.secondary,
-    },
-});
+}));

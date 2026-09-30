@@ -6,7 +6,6 @@ import {
   Platform,
   Pressable,
   ScrollView,
-  StyleSheet,
   Text,
   View,
 } from 'react-native';
@@ -15,8 +14,12 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Button } from '../components/Button';
 import Card from '../components/ui/Card';
 import InstallPrompt from '../components/InstallPrompt';
-import { COLORS, WEBSITE_URL } from '../config';
+import Crest from '../components/home/Crest';
+import AuthBrandHeader, { AuthBackdrop } from '../components/auth/AuthBrand';
+import { WEBSITE_URL } from '../config';
+import { themedStyles, useBrandColors } from '../theme/brand';
 import { useClub } from '../context/ClubContext';
+import { FONTS } from '../theme/brandFonts';
 import { ClubSummary, fetchClubInfo, searchClubs } from '../services/club';
 
 interface FindClubScreenProps {
@@ -29,6 +32,8 @@ interface FindClubScreenProps {
 const SEARCH_DELAY_MS = 300;
 
 export default function FindClubScreen({ onClubChosen, onLogIn }: FindClubScreenProps) {
+  const COLORS = useBrandColors();
+  const styles = useStyles();
   const { chooseClub } = useClub();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<ClubSummary[]>([]);
@@ -85,14 +90,12 @@ export default function FindClubScreen({ onClubChosen, onLogIn }: FindClubScreen
 
   return (
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <AuthBackdrop />
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <View style={styles.header}>
-          <View style={styles.iconBadge}>
-            <MaterialCommunityIcons name="shield-search" size={36} color={COLORS.primary} />
-          </View>
-          <Text style={styles.title}>Find your club</Text>
-          <Text style={styles.subtitle}>Search for your club to see fixtures, results, news and match videos.</Text>
-        </View>
+        <AuthBrandHeader
+          title="Find your club"
+          subtitle="Search for your club to see fixtures, results, news and match videos."
+        />
 
         <InstallPrompt />
 
@@ -126,7 +129,9 @@ export default function FindClubScreen({ onClubChosen, onLogIn }: FindClubScreen
             accessibilityLabel={`Choose ${club.name}`}
           >
             <Card inset style={styles.result}>
-              <View style={[styles.swatch, { backgroundColor: club.primaryColor || COLORS.primary }]} />
+              <View style={styles.crest}>
+                <Crest name={club.name} color={club.primaryColor || COLORS.primary} badgeUrl={club.badgeUrl} size={40} />
+              </View>
               <View style={styles.resultText}>
                 <Text style={styles.resultName}>{club.name}</Text>
                 <Text style={styles.resultSlug}>{club.slug}</Text>
@@ -159,43 +164,20 @@ export default function FindClubScreen({ onClubChosen, onLogIn }: FindClubScreen
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themedStyles((COLORS) => ({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
+    overflow: 'hidden',
   },
   content: {
     flexGrow: 1,
+    width: '100%',
+    maxWidth: 520,
+    alignSelf: 'center',
     paddingHorizontal: 20,
     paddingTop: 72,
     paddingBottom: 40,
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  iconBadge: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: `${COLORS.primary}15`,
-    marginBottom: 12,
-  },
-  title: {
-    fontSize: 28,
-    lineHeight: 36,
-    fontWeight: 'bold',
-    color: COLORS.text,
-    textAlign: 'center',
-  },
-  subtitle: {
-    marginTop: 8,
-    fontSize: 16,
-    lineHeight: 24,
-    color: COLORS.textLight,
-    textAlign: 'center',
   },
   input: {
     marginBottom: 12,
@@ -211,11 +193,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 10,
+    backgroundColor: COLORS.surface,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
-  swatch: {
-    width: 12,
-    height: 40,
-    borderRadius: 3,
+  crest: {
     marginRight: 12,
   },
   resultText: {
@@ -223,9 +206,11 @@ const styles = StyleSheet.create({
   },
   resultName: {
     color: COLORS.text,
-    fontSize: 17,
+    fontFamily: FONTS.display,
+    fontSize: 20,
     lineHeight: 24,
-    fontWeight: '600',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
   },
   resultSlug: {
     color: COLORS.textLight,
@@ -243,4 +228,4 @@ const styles = StyleSheet.create({
     marginTop: 32,
     alignItems: 'center',
   },
-});
+}));

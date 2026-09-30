@@ -1,7 +1,8 @@
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Modal, Portal } from 'react-native-paper';
-import { COLORS } from '../../config';
+import { themedStyles, useBrandColors } from '../../theme/brand';
+import { FONTS } from '../../theme/brandFonts';
 
 export interface PickablePlayer {
   id: string;
@@ -25,6 +26,8 @@ export default function PlayerPicker({ visible, title, players, onPick, onSkip, 
   onDismiss?: () => void;
   excludeId?: string | null;
 }) {
+  const COLORS = useBrandColors();
+  const styles = useStyles();
   return (
     <Portal>
       <Modal visible={visible} onDismiss={onDismiss ?? onCancel} contentContainerStyle={styles.modal}>
@@ -49,16 +52,16 @@ export default function PlayerPicker({ visible, title, players, onPick, onSkip, 
   );
 }
 
-const styles = StyleSheet.create({
-  modal: { backgroundColor: '#14181C', margin: 16, borderRadius: 12, padding: 16, maxHeight: '85%' },
-  title: { color: COLORS.text, fontSize: 18, fontWeight: '800', marginBottom: 8 },
+const useStyles = themedStyles((COLORS) => ({
+  modal: { backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border, margin: 16, borderRadius: 18, padding: 16, maxHeight: '85%' },
+  title: { color: COLORS.text, fontFamily: FONTS.display, fontSize: 22, letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 8 },
   list: { flexGrow: 0 },
-  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(192,192,192,0.25)' },
-  pressed: { backgroundColor: 'rgba(0,255,255,0.08)' },
+  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: COLORS.border },
+  pressed: { backgroundColor: COLORS.primarySoft },
   number: { width: 40, color: COLORS.textLight, fontWeight: '800', fontSize: 16 },
   name: { color: COLORS.text, fontSize: 17, fontWeight: '600' },
   empty: { color: COLORS.textLight, paddingVertical: 16 },
   actions: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-end', marginTop: 12 },
   action: { paddingHorizontal: 14, paddingVertical: 10 },
   actionText: { color: COLORS.primary, fontWeight: '700', fontSize: 16 },
-});
+}));

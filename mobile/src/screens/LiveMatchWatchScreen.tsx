@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
-import { COLORS } from '../config';
+import { themedStyles, useBrandColors } from '../theme/brand';
+import { FONTS } from '../theme/brandFonts';
 import { useClubName } from '../context/ClubContext';
 import { useMatchDay } from '../context/MatchDayContext';
 import { apiErrorMessage, liveApi } from '../services/api';
@@ -19,6 +20,8 @@ import { fixtureTitle } from '../utils/matchDay';
  * and "I'm at the match" (pauses match alerts).
  */
 export default function LiveMatchWatchScreen() {
+  const COLORS = useBrandColors();
+  const styles = useStyles();
   const clubName = useClubName();
   const { day, refresh: refreshDay } = useMatchDay();
   const [matches, setMatches] = useState<LiveMatchView[]>([]);
@@ -66,7 +69,7 @@ export default function LiveMatchWatchScreen() {
     <ScrollView
       style={styles.container}
       contentContainerStyle={styles.content}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={COLORS.primary} />}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={COLORS.primary} colors={[COLORS.primary]} />}
     >
       {error ? <Text style={styles.error} accessibilityRole="alert">{error}</Text> : null}
 
@@ -101,15 +104,15 @@ export default function LiveMatchWatchScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themedStyles((COLORS) => ({
   container: { flex: 1, backgroundColor: COLORS.background },
   center: { justifyContent: 'center', alignItems: 'center' },
   content: { padding: 16, paddingBottom: 40 },
-  card: { marginBottom: 16 },
+  card: { marginBottom: 16, backgroundColor: COLORS.surface, borderRadius: 18, borderColor: COLORS.border },
   error: { color: COLORS.error, marginBottom: 12 },
   empty: { alignItems: 'center', paddingVertical: 48, paddingHorizontal: 24 },
   emptyTitle: { color: COLORS.text, fontSize: 17, fontWeight: 'bold', marginTop: 16, marginBottom: 8, textAlign: 'center' },
   emptyText: { color: COLORS.textLight, fontSize: 14, textAlign: 'center' },
-  upcomingTitle: { color: COLORS.text, fontSize: 17, fontWeight: '900', textTransform: 'uppercase', textAlign: 'center', marginBottom: 4 },
+  upcomingTitle: { color: COLORS.text, fontFamily: FONTS.display, fontSize: 22, letterSpacing: 0.5, textTransform: 'uppercase', textAlign: 'center', marginBottom: 4 },
   panel: { marginTop: 16 },
-});
+}));

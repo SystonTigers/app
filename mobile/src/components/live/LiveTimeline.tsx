@@ -1,27 +1,37 @@
 import React, { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { COLORS } from '../../config';
-import { useTheme } from '../../theme/useTheme';
+import { themedStyles, useBrandColors, type BrandColors } from '../../theme/brand';
 import { canUndo, describeEvent, describeEventOnSide, eventSide, postStatusText, type LiveEvent, type SocialPost } from '../../utils/liveMatch';
 
-const ICONS: Record<LiveEvent['type'], { name: string; color: string }> = {
-  kick_off: { name: 'whistle', color: COLORS.textLight },
-  half_time: { name: 'whistle', color: COLORS.textLight },
-  second_half: { name: 'whistle', color: COLORS.textLight },
-  full_time: { name: 'flag-checkered', color: COLORS.textLight },
-  goal: { name: 'soccer', color: COLORS.primary },
-  opp_goal: { name: 'soccer', color: COLORS.textLight },
-  yellow: { name: 'card', color: '#F5C400' },
-  red: { name: 'card', color: COLORS.error },
-  sub: { name: 'swap-horizontal', color: COLORS.textLight },
-  note: { name: 'message-text-outline', color: COLORS.textLight },
-  chance: { name: 'target', color: COLORS.textLight },
-  save: { name: 'hand-back-left', color: COLORS.textLight },
-  skill: { name: 'star-outline', color: COLORS.primary },
-  opp_yellow: { name: 'card', color: '#F5C400' },
-  opp_red: { name: 'card', color: COLORS.error },
+type Tone = 'muted' | 'accent' | 'yellow' | 'red';
+
+const ICONS: Record<LiveEvent['type'], { name: string; tone: Tone }> = {
+  kick_off: { name: 'whistle', tone: 'muted' },
+  half_time: { name: 'whistle', tone: 'muted' },
+  second_half: { name: 'whistle', tone: 'muted' },
+  full_time: { name: 'flag-checkered', tone: 'muted' },
+  goal: { name: 'soccer', tone: 'accent' },
+  opp_goal: { name: 'soccer', tone: 'muted' },
+  yellow: { name: 'card', tone: 'yellow' },
+  red: { name: 'card', tone: 'red' },
+  sub: { name: 'swap-horizontal', tone: 'muted' },
+  note: { name: 'message-text-outline', tone: 'muted' },
+  chance: { name: 'target', tone: 'muted' },
+  save: { name: 'hand-back-left', tone: 'muted' },
+  skill: { name: 'star-outline', tone: 'accent' },
+  opp_yellow: { name: 'card', tone: 'yellow' },
+  opp_red: { name: 'card', tone: 'red' },
 };
+
+function toneColor(tone: Tone, c: BrandColors): string {
+  switch (tone) {
+    case 'accent': return c.primary;
+    case 'yellow': return '#F5C400';
+    case 'red': return c.error;
+    default: return c.textLight;
+  }
+}
 
 /**
  * Newest first. Staff views pass onUndo (Undo button), posts (what's been
@@ -38,7 +48,9 @@ export default function LiveTimeline({ events, opponent, onUndo, busyId, posts, 
   posts?: SocialPost[];
   onShare?: (post: SocialPost) => void;
 }) {
-  const accent = useTheme().theme.colors.primary;
+  const c = useBrandColors();
+  const accent = c.primary;
+  const styles = useStyles();
   const [now, setNow] = useState(Date.now());
   const counting = !!posts?.some((p) => p.status === 'pending' || p.status === 'posting');
   useEffect(() => {
@@ -59,7 +71,7 @@ export default function LiveTimeline({ events, opponent, onUndo, busyId, posts, 
           <View key={e.id}>
           <View style={styles.row}>
             <Text style={styles.minute}>{e.minute !== null ? `${e.minute}'` : ''}</Text>
-            <MaterialCommunityIcons name={icon.name as any} size={20} color={icon.color === COLORS.primary ? accent : icon.color} style={styles.icon} />
+            <MaterialCommunityIcons name={icon.name as any} size={20} color={toneColor(icon.tone, c)} style={styles.icon} />
             <Text style={[styles.text, e.type === 'goal' ? [styles.goal, { color: accent }] : null]}>{describeEvent(e, opponent)}</Text>
             {onUndo && canUndo(events, e) ? (
               <Pressable
@@ -94,7 +106,9 @@ export default function LiveTimeline({ events, opponent, onUndo, busyId, posts, 
 const SHOWN_AT_FIRST = 5;
 
 function SideBySide({ events, opponent, usIsHome }: { events: LiveEvent[]; opponent: string; usIsHome: boolean }) {
-  const accent = useTheme().theme.colors.primary;
+  const c = useBrandColors();
+  const accent = c.primary;
+  const styles = useStyles();
   // Only the latest few until asked, so a high-scoring match doesn't push the live video off the screen
   const [all, setAll] = useState(false);
   const hidden = events.length - SHOWN_AT_FIRST;
@@ -108,7 +122,7 @@ function SideBySide({ events, opponent, usIsHome }: { events: LiveEvent[]; oppon
         if (side === 'middle') {
           return (
             <View key={e.id} style={[styles.row, styles.middleRow]}>
-              <MaterialCommunityIcons name={icon.name as any} size={16} color={icon.color === COLORS.primary ? accent : icon.color} />
+              <MaterialCommunityIcons name={icon.name as any} size={16} color={toneColor(icon.tone, c)} />
               <Text style={styles.middleText}>{minute ? `${minute} ` : ''}{describeEvent(e, opponent)}</Text>
             </View>
           );
@@ -116,7 +130,7 @@ function SideBySide({ events, opponent, usIsHome }: { events: LiveEvent[]; oppon
         const left = (side === 'us') === usIsHome;
         const content = (
           <View style={[styles.sideContent, left ? styles.sideLeft : styles.sideRight]}>
-            <MaterialCommunityIcons name={icon.name as any} size={18} color={icon.color === COLORS.primary ? accent : icon.color} />
+            <MaterialCommunityIcons name={icon.name as any} size={18} color={toneColor(icon.tone, c)} />
             <Text style={[styles.sideText, left ? styles.textRight : null, e.type === 'goal' ? [styles.goal, { color: accent }] : e.type === 'opp_goal' ? styles.oppGoal : null]}>
               {describeEventOnSide(e, opponent)}
             </Text>
@@ -139,9 +153,9 @@ function SideBySide({ events, opponent, usIsHome }: { events: LiveEvent[]; oppon
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themedStyles((COLORS) => ({
   empty: { color: COLORS.textLight, textAlign: 'center', paddingVertical: 16 },
-  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(192,192,192,0.25)' },
+  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: COLORS.border },
   minute: { width: 36, color: COLORS.textLight, fontWeight: '700', fontVariant: ['tabular-nums'] },
   icon: { marginRight: 10 },
   text: { flex: 1, color: COLORS.text, fontSize: 15 },
@@ -164,4 +178,4 @@ const styles = StyleSheet.create({
   oppGoal: { fontWeight: '800' },
   more: { alignItems: 'center', paddingVertical: 12 },
   moreText: { color: COLORS.primary, fontWeight: '800' },
-});
+}));

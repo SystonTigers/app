@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { COLORS } from '../../config';
+import { Pressable, Text, TextInput, View } from 'react-native';
+import { themedStyles, useBrandColors } from '../../theme/brand';
+import { FONTS } from '../../theme/brandFonts';
 import { apiErrorMessage, parentLinkApi } from '../../services/api';
 import { clearPendingInvite, pendingInvite } from '../../services/inviteLink';
 
@@ -9,6 +10,8 @@ import { clearPendingInvite, pendingInvite } from '../../services/inviteLink';
  * A code from an invite link is filled in already.
  */
 export default function LinkChildCard({ prominent, onLinked }: { prominent: boolean; onLinked: (name: string) => void }) {
+  const COLORS = useBrandColors();
+  const styles = useStyles();
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -79,18 +82,18 @@ export default function LinkChildCard({ prominent, onLinked }: { prominent: bool
   );
 }
 
-const styles = StyleSheet.create({
-  card: { backgroundColor: '#14181C', borderRadius: 12, padding: 14, gap: 8 },
-  prominent: { borderWidth: 1, borderColor: COLORS.primary },
-  title: { color: COLORS.text, fontWeight: '900', fontSize: 16 },
+const useStyles = themedStyles((COLORS) => ({
+  card: { backgroundColor: COLORS.surface, borderRadius: 18, borderWidth: 1, borderColor: COLORS.border, padding: 14, gap: 8 },
+  prominent: { borderColor: COLORS.primary },
+  title: { color: COLORS.text, fontFamily: FONTS.display, fontSize: 20, letterSpacing: 1, textTransform: 'uppercase' },
   help: { color: COLORS.textLight },
   row: { flexDirection: 'row', gap: 8, alignItems: 'center' },
-  input: { flex: 1, borderWidth: 1, borderColor: COLORS.textLight, borderRadius: 8, padding: 10, color: COLORS.text, fontSize: 18, letterSpacing: 2, fontWeight: '800' },
-  button: { backgroundColor: COLORS.primary, borderRadius: 8, paddingVertical: 12, paddingHorizontal: 18 },
-  buttonText: { color: COLORS.background, fontWeight: '900' },
+  input: { flex: 1, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.background, borderRadius: 12, padding: 10, color: COLORS.text, fontSize: 18, letterSpacing: 2, fontWeight: '800' },
+  button: { backgroundColor: COLORS.primary, borderRadius: 12, paddingVertical: 12, paddingHorizontal: 18 },
+  buttonText: { color: COLORS.onPrimary, fontWeight: '900' },
   disabled: { opacity: 0.5 },
   error: { color: COLORS.error },
   done: { color: COLORS.primary, fontWeight: '800' },
   small: { color: COLORS.textLight, fontSize: 12 },
   link: { color: COLORS.primary, fontWeight: '700' },
-});
+}));

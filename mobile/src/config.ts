@@ -47,8 +47,8 @@ export const COLORS = {
   primary: '#00FFFF',      // Electric Cyan
   secondary: '#C0C0C0',    // Brushed Chrome
   accent: '#00FFFF',       // Cyan
-  background: '#0B0D0F',   // Obsidian
-  surface: 'rgba(11, 13, 15, 0.7)', // Glass/Obsidian
+  background: '#07090C',   // Ink (matches theme/brand.ts)
+  surface: '#12161B',      // Card
   text: '#FFFFFF',
   textLight: '#C0C0C0',    // Chrome
   error: '#FF0055',

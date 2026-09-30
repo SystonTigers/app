@@ -1,7 +1,8 @@
 // components/ui/CTA.tsx
 import React from 'react';
 import { Pressable, Text, StyleSheet } from 'react-native';
-import { colors, radii, shadow, spacing, fonts } from '../../theme/';
+import { radii, shadow, spacing, fonts } from '../../theme/';
+import { themedStyles } from '../../theme/brand';
 
 interface CTAProps {
   label: string;
@@ -11,6 +12,7 @@ interface CTAProps {
 }
 
 export function CTA({ label, onPress, variant = 'primary', disabled = false }: CTAProps) {
+  const styles = useStyles();
   return (
     <Pressable
       onPress={onPress}
@@ -29,7 +31,7 @@ export function CTA({ label, onPress, variant = 'primary', disabled = false }: C
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themedStyles((colors) => ({
   button: {
     borderRadius: radii.xl,
     paddingVertical: 14,
@@ -53,9 +55,9 @@ const styles = StyleSheet.create({
   text: {
     fontWeight: '700',
     fontSize: fonts.fontSize.base,
-    color: '#111',
+    color: colors.onPrimary,
   },
   textSecondary: {
     color: colors.text,
   },
-});
+}));

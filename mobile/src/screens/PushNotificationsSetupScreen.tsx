@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, StyleSheet, Alert, Platform, Linking } from 'react-native';
+import { View, ScrollView, Alert, Platform, Linking } from 'react-native';
 import { Text, Card, Button, Divider } from 'react-native-paper';
-import { COLORS } from '../config';
+import { themedStyles, useBrandColors } from '../theme/brand';
+import { FONTS } from '../theme/brandFonts';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Notifications from 'expo-notifications';
 import { useAuth } from '../context/AuthContext';
@@ -25,6 +26,8 @@ Notifications.setNotificationHandler({
 });
 
 export default function PushNotificationsSetupScreen({ onComplete, onSkip }: PushNotificationsSetupScreenProps) {
+  const COLORS = useBrandColors();
+  const styles = useStyles();
   const { user } = useAuth();
   const clubName = useClubName();
   const [loading, setLoading] = useState(false);
@@ -232,8 +235,6 @@ export default function PushNotificationsSetupScreen({ onComplete, onSkip }: Pus
               loading={loading}
               disabled={loading}
               style={styles.button}
-              buttonColor={COLORS.primary}
-              textColor="#000"
               icon="bell-ring"
             >
               Enable Notifications
@@ -267,8 +268,6 @@ export default function PushNotificationsSetupScreen({ onComplete, onSkip }: Pus
               mode="contained"
               onPress={handleSendTestNotification}
               style={styles.button}
-              buttonColor={COLORS.primary}
-              textColor="#000"
               icon="send"
             >
               Send Test Notification
@@ -303,7 +302,7 @@ export default function PushNotificationsSetupScreen({ onComplete, onSkip }: Pus
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themedStyles((COLORS) => ({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
@@ -318,8 +317,10 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   title: {
-    fontSize: 28,
-    fontWeight: 'bold',
+    fontFamily: FONTS.display,
+    fontSize: 32,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
     color: COLORS.text,
     marginTop: 16,
     textAlign: 'center',
@@ -334,28 +335,32 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: COLORS.surface,
-    elevation: 2,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: COLORS.border,
     marginBottom: 16,
   },
   successCard: {
-    backgroundColor: `${COLORS.success}15`,
+    backgroundColor: 'rgba(43,213,118,0.14)',
     borderLeftWidth: 4,
     borderLeftColor: COLORS.success,
   },
   warningCard: {
-    backgroundColor: `${COLORS.warning}15`,
+    backgroundColor: 'rgba(245,158,11,0.14)',
     borderLeftWidth: 4,
     borderLeftColor: COLORS.warning,
   },
   cardTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontFamily: FONTS.display,
+    fontSize: 20,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
     color: COLORS.text,
     marginBottom: 8,
   },
   divider: {
     marginVertical: 12,
-    backgroundColor: COLORS.background,
+    backgroundColor: COLORS.border,
   },
   benefitRow: {
     flexDirection: 'row',
@@ -366,7 +371,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: `${COLORS.primary}15`,
+    backgroundColor: COLORS.primarySoft,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -414,7 +419,10 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   infoCard: {
-    backgroundColor: `${COLORS.textLight}10`,
+    backgroundColor: COLORS.surface,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: COLORS.border,
     elevation: 0,
   },
   infoRow: {
@@ -428,4 +436,4 @@ const styles = StyleSheet.create({
     color: COLORS.textLight,
     lineHeight: 18,
   },
-});
+}));

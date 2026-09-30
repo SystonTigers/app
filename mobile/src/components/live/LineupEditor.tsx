@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Checkbox, Chip, Modal, Portal } from 'react-native-paper';
-import { COLORS } from '../../config';
+import { themedStyles, useBrandColors } from '../../theme/brand';
+import { FONTS } from '../../theme/brandFonts';
 import { apiErrorMessage, consentApi, lineupApi, type Lineup } from '../../services/api';
 import type { PickablePlayer } from './PlayerPicker';
 
@@ -21,6 +22,8 @@ export default function LineupEditor({ visible, fixtureId, opponent, players, on
   onClose: () => void;
   onSaved: (lineup: Lineup, publish: boolean) => void;
 }) {
+  const COLORS = useBrandColors();
+  const styles = useStyles();
   const [loading, setLoading] = useState(true);
   const [teamSize, setTeamSize] = useState(11);
   const [clubDefault, setClubDefault] = useState(11);
@@ -153,9 +156,9 @@ export default function LineupEditor({ visible, fixtureId, opponent, players, on
   );
 }
 
-const styles = StyleSheet.create({
-  modal: { backgroundColor: '#14181C', margin: 12, borderRadius: 12, padding: 16, maxHeight: '92%' },
-  title: { color: COLORS.text, fontSize: 20, fontWeight: '900', fontStyle: 'italic', textTransform: 'uppercase' },
+const useStyles = themedStyles((COLORS) => ({
+  modal: { backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border, margin: 12, borderRadius: 18, padding: 16, maxHeight: '92%' },
+  title: { color: COLORS.text, fontFamily: FONTS.display, fontSize: 24, letterSpacing: 0.5, textTransform: 'uppercase' },
   spinner: { marginVertical: 24 },
   scroll: { flexGrow: 0 },
   label: { color: COLORS.text, fontWeight: '800', marginTop: 16, marginBottom: 6, textTransform: 'uppercase', fontSize: 12, letterSpacing: 1 },
@@ -163,15 +166,15 @@ const styles = StyleSheet.create({
   chips: { flexDirection: 'row', flexWrap: 'wrap' },
   chip: { margin: 4 },
   remember: { flexDirection: 'row', alignItems: 'center' },
-  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(192,192,192,0.25)' },
-  pressed: { backgroundColor: 'rgba(0,255,255,0.08)' },
+  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: COLORS.border },
+  pressed: { backgroundColor: COLORS.primarySoft },
   number: { width: 36, color: COLORS.textLight, fontWeight: '800' },
   name: { flex: 1, color: COLORS.text, fontSize: 16, fontWeight: '600' },
   dim: { color: COLORS.textLight },
   noVideo: { color: '#F5C400', fontSize: 12, fontWeight: '700' },
   warning: { color: '#F5C400', fontSize: 13, marginBottom: 6 },
   badge: { minWidth: 72, textAlign: 'center', borderRadius: 999, paddingVertical: 4, paddingHorizontal: 10, fontWeight: '800', fontSize: 12, overflow: 'hidden' },
-  badgeStart: { backgroundColor: COLORS.primary, color: COLORS.background },
+  badgeStart: { backgroundColor: COLORS.primary, color: COLORS.onPrimary },
   badgeSub: { borderWidth: 1, borderColor: COLORS.primary, color: COLORS.primary },
   badgeOut: { color: COLORS.textLight },
   error: { color: COLORS.error, marginTop: 10 },
@@ -181,5 +184,5 @@ const styles = StyleSheet.create({
   secondary: { borderWidth: 1, borderColor: COLORS.primary, borderRadius: 10, paddingVertical: 10, paddingHorizontal: 14 },
   secondaryText: { color: COLORS.primary, fontWeight: '800' },
   primary: { backgroundColor: COLORS.primary, borderRadius: 10, paddingVertical: 10, paddingHorizontal: 14 },
-  primaryText: { color: COLORS.background, fontWeight: '900' },
-});
+  primaryText: { color: COLORS.onPrimary, fontWeight: '900' },
+}));

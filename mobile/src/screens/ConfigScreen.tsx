@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, StyleSheet, Alert, Image, ActivityIndicator } from 'react-native';
-import { Card, Title, Paragraph, TextInput, Switch, List, Button, Chip, Divider } from 'react-native-paper';
+import { View, ScrollView, Alert, Image, ActivityIndicator, Text } from 'react-native';
+import { Card, Paragraph, TextInput, Switch, List, Button, Chip, Divider } from 'react-native-paper';
 import * as ImagePicker from 'expo-image-picker';
-import { COLORS } from '../config';
+import { themedStyles, useBrandColors } from '../theme/brand';
 import { clubConfigApi } from '../services/api';
+import { FONTS } from '../theme/brandFonts';
 
 interface ClubConfig {
   clubDetails: {
@@ -52,6 +53,8 @@ interface ClubConfig {
 }
 
 export default function ConfigScreen() {
+  const COLORS = useBrandColors();
+  const styles = useStyles();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [config, setConfig] = useState<ClubConfig>({
@@ -240,19 +243,16 @@ export default function ConfigScreen() {
     return (
       <View style={[styles.container, styles.centerContent]}>
         <ActivityIndicator size="large" color={COLORS.primary} />
-        <Paragraph style={{ marginTop: 16 }}>Loading configuration...</Paragraph>
+        <Paragraph style={{ marginTop: 16, color: COLORS.textLight }}>Loading configuration...</Paragraph>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Title style={styles.headerTitle}>Club Configuration</Title>
-        <Paragraph style={styles.headerSubtitle}>Manage club settings & branding</Paragraph>
-      </View>
+      <Text style={styles.intro}>Manage club settings & branding</Text>
 
-      <ScrollView style={styles.scrollContainer}>
+      <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent}>
         {/* Club Details */}
         <Card style={styles.sectionCard}>
           <List.Item
@@ -582,8 +582,6 @@ export default function ConfigScreen() {
             icon="content-save"
             onPress={saveConfig}
             style={styles.saveButton}
-            buttonColor={COLORS.primary}
-            textColor={COLORS.secondary}
             disabled={saving}
             loading={saving}
           >
@@ -595,7 +593,7 @@ export default function ConfigScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themedStyles((COLORS) => ({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
@@ -604,35 +602,31 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  header: {
-    padding: 20,
-    backgroundColor: COLORS.primary,
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: COLORS.secondary,
+  intro: {
+    color: COLORS.textLight,
+    marginHorizontal: 16,
+    marginTop: 12,
     marginBottom: 4,
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: COLORS.secondary,
-    opacity: 0.8,
   },
   scrollContainer: {
     flex: 1,
   },
+  scrollContent: {
+    paddingBottom: 16,
+  },
   sectionCard: {
     marginHorizontal: 16,
     marginTop: 12,
-    borderRadius: 12,
-    elevation: 2,
+    backgroundColor: COLORS.surface,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   subsectionLabel: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontFamily: FONTS.display,
+    fontSize: 18,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
     color: COLORS.text,
     marginTop: 12,
     marginBottom: 8,
@@ -675,9 +669,9 @@ const styles = StyleSheet.create({
     padding: 16,
     backgroundColor: COLORS.surface,
     borderTopWidth: 1,
-    borderTopColor: COLORS.background,
+    borderTopColor: COLORS.border,
   },
   saveButton: {
     paddingVertical: 8,
   },
-});
+}));

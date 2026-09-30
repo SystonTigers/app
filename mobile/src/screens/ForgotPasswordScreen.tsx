@@ -1,15 +1,18 @@
 import React, { useState } from 'react';
-import { View, ScrollView, StyleSheet } from 'react-native';
+import { View, ScrollView } from 'react-native';
 import { Text, TextInput, Button, Card } from 'react-native-paper';
-import { COLORS } from '../config';
+import { themedStyles, useBrandColors } from '../theme/brand';
 import { authApi } from '../services/api';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import AuthBrandHeader, { AuthBackdrop } from '../components/auth/AuthBrand';
 
 interface ForgotPasswordScreenProps {
   onBack: () => void;
 }
 
 export default function ForgotPasswordScreen({ onBack }: ForgotPasswordScreenProps) {
+  const COLORS = useBrandColors();
+  const styles = useStyles();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -41,17 +44,15 @@ export default function ForgotPasswordScreen({ onBack }: ForgotPasswordScreenPro
   };
 
   return (
+    <View style={styles.root}>
+    <AuthBackdrop />
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      {/* Header */}
-      <View style={styles.header}>
-        <MaterialCommunityIcons name="lock-reset" size={80} color={COLORS.primary} />
-        <Text style={styles.title}>Reset Password</Text>
-        <Text style={styles.subtitle}>
-          {sent
-            ? `If there's an account for ${email.trim()}, we've emailed it a link to set a new password.`
-            : "Enter your email address and we'll send you a link to reset your password."}
-        </Text>
-      </View>
+      <AuthBrandHeader
+        title="Reset Password"
+        subtitle={sent
+          ? `If there's an account for ${email.trim()}, we've emailed it a link to set a new password.`
+          : "Enter your email address and we'll send you a link to reset your password."}
+      />
 
       {/* Form Card */}
       <Card style={styles.card}>
@@ -87,8 +88,6 @@ export default function ForgotPasswordScreen({ onBack }: ForgotPasswordScreenPro
             loading={loading}
             disabled={loading}
             style={styles.button}
-            buttonColor={COLORS.primary}
-            textColor="#000"
           >
             {loading ? 'Sending…' : sent ? 'Send it again' : 'Send reset link'}
           </Button>
@@ -116,47 +115,40 @@ export default function ForgotPasswordScreen({ onBack }: ForgotPasswordScreenPro
         </Card.Content>
       </Card>
     </ScrollView>
+    </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
+const useStyles = themedStyles((COLORS) => ({
+  root: {
     flex: 1,
     backgroundColor: COLORS.background,
+    overflow: 'hidden',
+  },
+  container: {
+    flex: 1,
   },
   content: {
     flexGrow: 1,
     justifyContent: 'center',
     padding: 20,
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: 32,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: COLORS.text,
-    marginTop: 16,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: COLORS.textLight,
-    marginTop: 8,
-    textAlign: 'center',
-    paddingHorizontal: 20,
+    width: '100%',
+    maxWidth: 480,
+    alignSelf: 'center',
   },
   card: {
     backgroundColor: COLORS.surface,
-    elevation: 4,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: COLORS.border,
     marginBottom: 16,
   },
   errorContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: `${COLORS.error}15`,
+    backgroundColor: 'rgba(255,0,85,0.14)',
     padding: 12,
-    borderRadius: 8,
+    borderRadius: 12,
     marginBottom: 16,
   },
   errorText: {
@@ -177,7 +169,8 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   infoCard: {
-    backgroundColor: `${COLORS.primary}15`,
+    backgroundColor: COLORS.primarySoft,
+    borderRadius: 18,
     elevation: 0,
   },
   infoRow: {
@@ -191,4 +184,4 @@ const styles = StyleSheet.create({
     color: COLORS.textLight,
     lineHeight: 20,
   },
-});
+}));
