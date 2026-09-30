@@ -1,437 +1,172 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { View, ScrollView, RefreshControl, ActivityIndicator } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Card, Title, Paragraph, Chip, Button } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
-import { DEFAULT_CLUB_NAME, DEFAULT_CLUB_SHORT_NAME } from '../config';
 import { themedStyles, useBrandColors } from '../theme/brand';
-import { FONTS } from '../theme/brandFonts';
 import ScreenIntro from '../components/brand/ScreenIntro';
 import SectionTitle from '../components/home/SectionTitle';
+import MatchRow, { opponentSide, type Side } from '../components/fixtures/MatchRow';
+import { useClub } from '../context/ClubContext';
+import { useAuth } from '../context/AuthContext';
 import {
-  getUpcomingFixtures,
-  getRecentResults,
+  FixturesApiError,
   formatFixtureDate,
   formatKickOffTime,
-  getStatusColor,
+  getRecentResults,
+  getUpcomingFixtures,
   type Fixture,
   type Result,
-  FixturesApiError,
 } from '../services/fixturesApi';
 
-const pickDisplayName = (
-  ...candidates: Array<string | undefined | null>
-): string | undefined => {
-  for (const candidate of candidates) {
-    if (typeof candidate === 'string') {
-      const trimmed = candidate.trim();
-      if (trimmed.length > 0) {
-        return trimmed;
-      }
-    }
-  }
-  return undefined;
-};
+const OUTCOME = { win: 'Won', draw: 'Drew', loss: 'Lost' } as const;
 
+function outcome(r: Result): 'win' | 'draw' | 'loss' {
+  if (r.homeScore > r.awayScore) return 'win';
+  if (r.homeScore < r.awayScore) return 'loss';
+  return 'draw';
+}
+
+/** Order two sides by who was at home. Unknown ends show us first. */
+function bySide<T>(us: T, them: T, homeAway: 'home' | 'away' | null | undefined): [T, T] {
+  return homeAway === 'away' ? [them, us] : [us, them];
+}
+
+/** Upcoming fixtures and recent results (bottom tab "Matches"). */
 export default function FixturesScreen() {
-  const COLORS = useBrandColors();
+  const c = useBrandColors();
   const styles = useStyles();
   const navigation = useNavigation<any>();
+  const { club } = useClub();
+  const { user } = useAuth();
+  const staff = user?.role === 'admin' || user?.role === 'coach';
   const [fixtures, setFixtures] = useState<Fixture[]>([]);
   const [results, setResults] = useState<Result[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState('');
 
+  const load = useCallback(async () => {
+    setError('');
+    try {
+      const [f, r] = await Promise.all([getUpcomingFixtures(), getRecentResults()]);
+      setFixtures(f);
+      setResults(r);
+    } catch (err) {
+      setError(err instanceof FixturesApiError || err instanceof Error ? err.message : "We couldn't load the fixtures.");
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
 
-  const loadData = useCallback(
-    async ({ showSpinner = false }: { showSpinner?: boolean } = {}) => {
-      if (showSpinner) {
-        setLoading(true);
-      }
-      setError(null);
+  useEffect(() => { load(); }, [load]);
 
-      try {
-        const [fixturesData, resultsData] = await Promise.all([
-          getUpcomingFixtures(),
-          getRecentResults(),
-        ]);
-
-        setFixtures(fixturesData);
-        setResults(resultsData);
-      } catch (err) {
-        console.error('Failed to load fixtures data:', err);
-        const message =
-          err instanceof FixturesApiError
-            ? err.message
-            : err instanceof Error
-              ? err.message
-              : 'Unable to load fixtures right now.';
-        setError(message);
-      } finally {
-        if (showSpinner) {
-          setLoading(false);
-        }
-      }
-    },
-    []
-  );
-
-  useEffect(() => {
-    loadData({ showSpinner: true });
-  }, [loadData]);
-
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    await loadData();
-    setRefreshing(false);
-  }, [loadData]);
-
-  const clubName = useMemo(() => {
-    const candidates: Array<string | undefined> = [];
-
-    fixtures.forEach((fixture) => {
-      candidates.push(
-        fixture.teamName,
-        fixture.homeTeamName,
-        fixture.homeScoreLabel,
-        fixture.teamShortName
-      );
-    });
-
-    results.forEach((result) => {
-      candidates.push(
-        result.teamName,
-        result.homeTeamName,
-        result.homeScoreLabel,
-        result.teamShortName
-      );
-    });
-
-    return pickDisplayName(...candidates) ?? DEFAULT_CLUB_NAME;
-  }, [fixtures, results]);
-
-  const clubShortName = useMemo(() => {
-    const candidates: Array<string | undefined> = [];
-
-    fixtures.forEach((fixture) => {
-      candidates.push(fixture.teamShortName, fixture.teamName, fixture.homeTeamName);
-    });
-
-    results.forEach((result) => {
-      candidates.push(
-        result.teamShortName,
-        result.teamName,
-        result.homeTeamName,
-        result.homeScoreLabel
-      );
-    });
-
-    return pickDisplayName(...candidates) ?? (DEFAULT_CLUB_SHORT_NAME || clubName);
-  }, [fixtures, results, clubName]);
+  const us = (score?: number | null): Side => ({ name: club?.name || 'Us', color: c.primary, badgeUrl: club?.badgeUrl ?? null, score });
 
   if (loading) {
-    return (
-      <View style={[styles.container, styles.centerContent]}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
-        <Paragraph style={styles.loadingText}>Loading fixtures...</Paragraph>
-      </View>
-    );
+    return <View style={[styles.container, styles.center]}><ActivityIndicator size="large" color={c.primary} /></View>;
   }
 
   return (
     <ScrollView
       style={styles.container}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primary} colors={[COLORS.primary]} />}
+      contentContainerStyle={styles.content}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={c.primary} />}
     >
       <ScreenIntro title="Fixtures" subtitle="Upcoming matches and recent results" />
 
-      {error && (
-        <Card style={[styles.card, styles.errorCard]}>
-          <Card.Content>
-            <Paragraph style={styles.errorText}>{error}</Paragraph>
-            <Button mode="outlined" onPress={() => loadData({ showSpinner: true })}>
-              Retry
-            </Button>
-          </Card.Content>
-        </Card>
-      )}
+      {error ? (
+        <View style={styles.errorCard}>
+          <Text style={styles.errorText} accessibilityRole="alert">{error}</Text>
+          <Pressable onPress={() => { setLoading(true); load(); }} accessibilityRole="button"><Text style={[styles.link, { color: c.primary }]}>Try again</Text></Pressable>
+        </View>
+      ) : null}
 
-      {/* Upcoming Fixtures */}
-      <View style={styles.section}>
-        <SectionTitle title="UPCOMING FIXTURES" color={COLORS.primary} />
-        {fixtures.length === 0 ? (
-          <Card style={styles.card}>
-            <Card.Content>
-              <Paragraph>No upcoming fixtures at the moment.</Paragraph>
-            </Card.Content>
-          </Card>
-        ) : (
-          fixtures.map((fixture) => (
-            <Card key={fixture.id} style={styles.card}>
-              <Card.Content>
-                <Chip style={styles.competitionChip} textStyle={styles.competitionChipText}>{fixture.competition}</Chip>
-                <View style={styles.matchInfo}>
-                  <Title style={styles.teamName}>
-                    {fixture.venue === 'Home'
-                      ? pickDisplayName(
-                        fixture.homeScoreLabel,
-                        fixture.homeTeamName,
-                        fixture.teamName,
-                        fixture.teamShortName,
-                        clubName
-                      ) ?? clubName
-                      : pickDisplayName(
-                        fixture.awayTeamName,
-                        fixture.awayScoreLabel,
-                        fixture.opponent
-                      ) || fixture.opponent}
-                  </Title>
-                  <Paragraph style={styles.vs}>vs</Paragraph>
-                  <Title style={styles.teamName}>
-                    {fixture.venue === 'Home'
-                      ? pickDisplayName(
-                        fixture.awayTeamName,
-                        fixture.awayScoreLabel,
-                        fixture.opponent
-                      ) || fixture.opponent
-                      : pickDisplayName(
-                        fixture.homeScoreLabel,
-                        fixture.homeTeamName,
-                        fixture.teamName,
-                        fixture.teamShortName,
-                        clubName
-                      ) ?? clubName}
-                  </Title>
-                </View>
-                <View style={styles.detailRow}>
-                  <MaterialCommunityIcons name="calendar" size={16} color={COLORS.textLight} />
-                  <Paragraph style={styles.detail}>
-                    {formatFixtureDate(fixture.date)} • {formatKickOffTime(fixture.kickOffTime)}
-                  </Paragraph>
-                </View>
-                <View style={styles.detailRow}>
-                  <MaterialCommunityIcons name="map-marker" size={16} color={COLORS.textLight} />
-                  <Paragraph style={styles.detail}>
-                    {fixture.venue === 'Home'
-                      ? pickDisplayName(fixture.location, clubShortName, clubName) ?? 'Home'
-                      : pickDisplayName(fixture.location, fixture.venue, 'Away') ?? 'Away'}
-                  </Paragraph>
-                </View>
-                {fixture.status !== 'scheduled' && (
-                  <Chip
-                    style={[styles.statusChip, { backgroundColor: getStatusColor(fixture.status) }]}
-                    textStyle={styles.statusChipText}
-                  >
-                    {fixture.status.toUpperCase()}
-                  </Chip>
-                )}
-              </Card.Content>
-              <Card.Actions style={styles.cardActions}>
-                <Button
-                  mode="outlined"
-                  compact
-                  icon="clipboard-text"
-                  onPress={() => navigation.navigate('ScoutNotes', {
-                    fixtureId: fixture.id,
-                    opponent: fixture.opponent,
-                  })}
-                >
-                  Scout
-                </Button>
-                {fixture.venue === 'Away' && (
-                  <Button
-                    mode="outlined"
-                    compact
-                    icon="car"
-                    onPress={() => navigation.navigate('Carpool', {
-                      fixtureId: fixture.id,
-                      opponent: fixture.opponent,
-                      fixtureDate: formatFixtureDate(fixture.date),
-                    })}
-                  >
-                    Carpool
-                  </Button>
-                )}
-              </Card.Actions>
-            </Card>
-          ))
-        )}
+      <SectionTitle title="UPCOMING" color={c.primary} />
+      {fixtures.length ? fixtures.map((f) => {
+        const [home, away] = bySide(us(), opponentSide(f.opponent), f.homeAway);
+        const date = formatFixtureDate(f.date);
+        const away_ = f.homeAway === 'away';
+        return (
+          <MatchRow
+            key={String(f.id)}
+            home={home}
+            away={away}
+            middle={formatKickOffTime(f.kickOffTime)}
+            middleSub="KICK-OFF"
+            label={f.status && f.status !== 'scheduled' ? f.status : f.competition || undefined}
+            labelTone={f.status === 'postponed' || f.status === 'cancelled' ? 'loss' : 'accent'}
+            details={[
+              { icon: 'calendar-blank', text: date },
+              { icon: 'map-marker', text: f.venue || (away_ ? 'Away' : 'Home') },
+            ]}
+            accessibilityLabel={`${home.name} v ${away.name}, ${date} ${formatKickOffTime(f.kickOffTime)}`}
+            actions={(staff || away_) ? (
+              <>
+                {away_ ? (
+                  <ActionButton icon="car" label="Lift sharing" onPress={() => navigation.navigate('Carpool', { fixtureId: f.id, opponent: f.opponent, fixtureDate: date })} />
+                ) : null}
+                {staff ? (
+                  <ActionButton icon="clipboard-text-outline" label="Scout report" onPress={() => navigation.navigate('ScoutNotes', { fixtureId: f.id, opponent: f.opponent })} />
+                ) : null}
+              </>
+            ) : undefined}
+          />
+        );
+      }) : <Empty text="No fixtures coming up yet." />}
 
-      </View>
-
-      {/* Recent Results */}
-      <View style={styles.section}>
-        <SectionTitle title="RECENT RESULTS" color={COLORS.primary} />
-        {results.length === 0 ? (
-          <Card style={styles.card}>
-            <Card.Content>
-              <Paragraph>No recent results available.</Paragraph>
-            </Card.Content>
-          </Card>
-        ) : (
-          results.map((result) => {
-            const isHome = result.venue === 'Home';
-            const scorers = result.scorers ? result.scorers.split(',') : [];
-            const homeTeamLabel =
-              pickDisplayName(
-                result.homeScoreLabel,
-                result.homeTeamName,
-                isHome ? clubName : result.opponent
-              ) ?? (isHome ? clubName : result.opponent);
-            const awayTeamLabel =
-              pickDisplayName(
-                result.awayScoreLabel,
-                result.awayTeamName,
-                isHome ? result.opponent : clubName
-              ) ?? (isHome ? result.opponent : clubName);
-
-            return (
-              <Card key={result.id} style={styles.card}>
-                <Card.Content>
-                  <Chip style={styles.competitionChip} textStyle={styles.competitionChipText}>{result.competition}</Chip>
-                  <View style={styles.matchInfo}>
-                    <View style={styles.team}>
-                      <Title style={styles.teamName}>{homeTeamLabel}</Title>
-                      <Title style={styles.score}>{isHome ? result.homeScore : result.awayScore}</Title>
-                    </View>
-                    <Paragraph style={styles.vs}>-</Paragraph>
-                    <View style={styles.team}>
-                      <Title style={styles.score}>{isHome ? result.awayScore : result.homeScore}</Title>
-                      <Title style={styles.teamName}>{awayTeamLabel}</Title>
-                    </View>
-                  </View>
-                  <View style={styles.detailRow}>
-                    <MaterialCommunityIcons name="calendar" size={16} color={COLORS.textLight} />
-                    <Paragraph style={styles.detail}>{formatFixtureDate(result.date)}</Paragraph>
-                  </View>
-                  {scorers.length > 0 && (
-                    <View style={styles.scorers}>
-                      <Paragraph style={styles.scorersTitle}>Scorers:</Paragraph>
-                      {scorers.map((scorer, index) => (
-                        <Paragraph key={index} style={styles.scorer}>
-                          • {scorer.trim()}
-                        </Paragraph>
-                      ))}
-                    </View>
-                  )}
-                </Card.Content>
-              </Card>
-            );
-          })
-        )}
-      </View>
+      <SectionTitle title="RESULTS" color={c.primary} />
+      {results.length ? results.map((r) => {
+        const o = outcome(r);
+        const [home, away] = bySide(us(r.homeScore), opponentSide(r.opponent, r.awayScore), r.homeAway);
+        const date = formatFixtureDate(r.date);
+        return (
+          <MatchRow
+            key={String(r.id)}
+            home={home}
+            away={away}
+            middle={`${home.score ?? 0} – ${away.score ?? 0}`}
+            middleSub="FULL TIME"
+            label={`${OUTCOME[o]}${r.competition ? ` · ${r.competition}` : ''}`}
+            labelTone={o}
+            details={[
+              { icon: 'calendar-blank', text: date },
+              ...(r.scorers ? [{ icon: 'soccer', text: r.scorers }] : []),
+            ]}
+            onPress={r.fixtureId ? () => navigation.navigate('MatchHighlights', { fixtureId: r.fixtureId }) : undefined}
+            accessibilityLabel={`${OUTCOME[o]} ${home.name} ${home.score} ${away.name} ${away.score}, ${date}${r.fixtureId ? '. Open highlights' : ''}`}
+          />
+        );
+      }) : <Empty text="No results yet. Scores from Match Centre appear here after full time." />}
     </ScrollView>
   );
 }
 
-const useStyles = themedStyles((COLORS) => ({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
-  centerContent: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  loadingText: {
-    marginTop: 12,
-    color: COLORS.textLight,
-  },
-  section: {
-    paddingBottom: 8,
-  },
-  card: {
-    marginHorizontal: 16,
-    marginBottom: 16,
-    backgroundColor: COLORS.surface,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  errorCard: {
-    marginTop: 8,
-    borderColor: COLORS.error,
-    backgroundColor: 'rgba(255,0,85,0.14)',
-  },
-  errorText: {
-    color: COLORS.error,
-    marginBottom: 8,
-  },
-  competitionChip: {
-    alignSelf: 'flex-start',
-    marginBottom: 12,
-    backgroundColor: COLORS.primary,
-  },
-  competitionChipText: {
-    color: COLORS.onPrimary,
-    fontWeight: '700',
-  },
-  statusChip: {
-    alignSelf: 'flex-start',
-    marginTop: 8,
-  },
-  statusChipText: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-  },
-  matchInfo: {
-    alignItems: 'center',
-    marginVertical: 8,
-  },
-  team: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  teamName: {
-    fontFamily: FONTS.display,
-    fontSize: 22,
-    letterSpacing: 0.5,
-    color: COLORS.text,
-    textAlign: 'center',
-  },
-  score: {
-    fontFamily: FONTS.display,
-    fontSize: 36,
-    lineHeight: 40,
-    color: COLORS.primary,
-  },
-  vs: {
-    fontSize: 14,
-    color: COLORS.textLight,
-    marginVertical: 4,
-  },
-  detailRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 4,
-  },
-  detail: {
-    fontSize: 14,
-    color: COLORS.textLight,
-    marginVertical: 0,
-  },
-  scorers: {
-    marginTop: 12,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.border,
-  },
-  scorersTitle: {
-    fontWeight: 'bold',
-    color: COLORS.text,
-    marginBottom: 4,
-  },
-  scorer: {
-    fontSize: 13,
-    color: COLORS.text,
-    marginLeft: 8,
-  },
-  cardActions: {
-    justifyContent: 'flex-end',
-    paddingTop: 0,
-  },
+function ActionButton({ icon, label, onPress }: { icon: string; label: string; onPress: () => void }) {
+  const c = useBrandColors();
+  const styles = useStyles();
+  return (
+    <Pressable onPress={onPress} accessibilityRole="button" style={({ pressed }) => [styles.action, { borderColor: c.primary }, pressed ? { backgroundColor: c.primarySoft } : null]}>
+      <MaterialCommunityIcons name={icon as never} size={16} color={c.primary} />
+      <Text style={[styles.actionText, { color: c.primary }]}>{label}</Text>
+    </Pressable>
+  );
+}
+
+function Empty({ text }: { text: string }) {
+  const styles = useStyles();
+  return <View style={styles.empty}><Text style={styles.emptyText}>{text}</Text></View>;
+}
+
+const useStyles = themedStyles((c) => ({
+  container: { flex: 1, backgroundColor: c.background },
+  center: { justifyContent: 'center', alignItems: 'center' },
+  content: { paddingBottom: 32 },
+  errorCard: { marginHorizontal: 16, marginTop: 8, padding: 14, borderRadius: 18, borderWidth: 1, borderColor: c.error, gap: 6 },
+  errorText: { color: c.text },
+  link: { fontWeight: '800' },
+  action: { flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 7 },
+  actionText: { fontWeight: '800', fontSize: 13 },
+  empty: { marginHorizontal: 16, marginBottom: 12, padding: 20, borderRadius: 18, borderWidth: 1, borderStyle: 'dashed', borderColor: 'rgba(255,255,255,0.15)' },
+  emptyText: { color: c.textLight, textAlign: 'center' },
 }));

@@ -4,6 +4,7 @@ import { useState, useEffect, use } from 'react';
 import Link from 'next/link';
 import { StartSeasonModal } from '@/components/admin/seasons/StartSeasonModal';
 import { EndSeasonModal } from '@/components/admin/seasons/EndSeasonModal';
+import { apiFetch } from '@/lib/session';
 
 interface PageProps {
     params: Promise<{ tenant: string }>;
@@ -37,7 +38,7 @@ export default function SeasonsAdminPage({ params }: PageProps) {
     async function loadSeasons() {
         try {
             const token = localStorage.getItem('token');
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE || ''}/api/v1/seasons`, {
+            const res = await apiFetch(`/api/v1/seasons`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             const data = await res.json();
@@ -54,7 +55,7 @@ export default function SeasonsAdminPage({ params }: PageProps) {
     async function handleSetCurrent(seasonId: string) {
         try {
             const token = localStorage.getItem('token');
-            await fetch(`${process.env.NEXT_PUBLIC_API_BASE || ''}/api/v1/seasons/set-current`, {
+            await apiFetch(`/api/v1/seasons/set-current`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -72,7 +73,7 @@ export default function SeasonsAdminPage({ params }: PageProps) {
         if (!confirm('Are you sure you want to reopen this season? It will become active again.')) return;
         try {
             const token = localStorage.getItem('token');
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE || ''}/api/v1/seasons/${seasonId}/reopen`, {
+            const res = await apiFetch(`/api/v1/seasons/${seasonId}/reopen`, {
                 method: 'POST',
                 headers: { Authorization: `Bearer ${token}` }
             });

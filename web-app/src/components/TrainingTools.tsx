@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { apiFetch } from '@/lib/session';
 
 interface TrainingSession {
     id: string;
@@ -116,7 +117,7 @@ export function TrainingTools({ tenant }: TrainingToolsProps) {
     const loadTactics = async () => {
         try {
             const token = localStorage.getItem('token');
-            const res = await fetch('/api/v1/tactics', {
+            const res = await apiFetch('/api/v1/tactics', {
                 headers: { Authorization: `Bearer ${token}` },
             });
             const data = await res.json();
@@ -131,7 +132,7 @@ export function TrainingTools({ tenant }: TrainingToolsProps) {
     const saveTactics = async () => {
         try {
             const token = localStorage.getItem('token');
-            const res = await fetch('/api/v1/tactics', {
+            const res = await apiFetch('/api/v1/tactics', {
                 method: 'POST',
                 headers: {
                     Authorization: `Bearer ${token}`,
@@ -154,7 +155,7 @@ export function TrainingTools({ tenant }: TrainingToolsProps) {
     const createDrill = async () => {
         try {
             const token = localStorage.getItem('token');
-            const res = await fetch('/api/v1/training/drills', {
+            const res = await apiFetch('/api/v1/training/drills', {
                 method: 'POST',
                 headers: {
                     Authorization: `Bearer ${token}`,
@@ -182,7 +183,7 @@ export function TrainingTools({ tenant }: TrainingToolsProps) {
     const createSession = async () => {
         try {
             const token = localStorage.getItem('token');
-            const res = await fetch('/api/v1/training/sessions', {
+            const res = await apiFetch('/api/v1/training/sessions', {
                 method: 'POST',
                 headers: {
                     Authorization: `Bearer ${token}`,
@@ -204,7 +205,7 @@ export function TrainingTools({ tenant }: TrainingToolsProps) {
     const startDiscussion = async (type: 'drill' | 'plan', item: any) => {
         try {
             const token = localStorage.getItem('token');
-            const res = await fetch('/api/v1/discussions', {
+            const res = await apiFetch('/api/v1/discussions', {
                 method: 'POST',
                 headers: {
                     Authorization: `Bearer ${token}`,
@@ -230,7 +231,7 @@ export function TrainingTools({ tenant }: TrainingToolsProps) {
     const loadSessions = async () => {
         try {
             const token = localStorage.getItem('token');
-            const res = await fetch('/api/v1/training/sessions', {
+            const res = await apiFetch('/api/v1/training/sessions', {
                 headers: { Authorization: `Bearer ${token}` },
             });
             const data = await res.json();
@@ -247,7 +248,7 @@ export function TrainingTools({ tenant }: TrainingToolsProps) {
     const loadDrills = async () => {
         try {
             const token = localStorage.getItem('token');
-            const res = await fetch('/api/v1/training/drills', {
+            const res = await apiFetch('/api/v1/training/drills', {
                 headers: { Authorization: `Bearer ${token}` },
             });
             const data = await res.json();

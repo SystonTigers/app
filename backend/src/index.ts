@@ -35,13 +35,6 @@ import {
     handleDeleteAccount
 } from "./routes/auth";
 import {
-    signupStart,
-    signupBrand,
-    signupStarterMake,
-    signupProConfirm,
-    signupVerifyPromo
-} from "./routes/signup";
-import {
     handleListOpponents,
     handleCreateOpponent,
     handleConfirmBadge,
@@ -281,16 +274,12 @@ router.patch("/api/:v/tenants/me", (req, env, corsHdrs) => updateTenantMe(req, e
 router.get("/api/:v/tenants/me", (req, env, corsHdrs) => getTenantMe(req, env, corsHdrs));
 router.get("/api/:v/clubs/search", (req, env, corsHdrs) => handleSearchClubs(req, env, corsHdrs));
 router.get("/api/:v/users/me", (req, env, corsHdrs) => handleGetMe(req, env, corsHdrs));
+router.get("/api/:v/users/me/alerts", (req, env, corsHdrs) => handleGetAlertPrefs(req, env, corsHdrs));
+router.put("/api/:v/users/me/alerts", (req, env, corsHdrs) => handleSetAlertPrefs(req, env, corsHdrs));
 router.put("/api/:v/users/profile", (req, env, corsHdrs) => handleUpdateMyProfile(req, env, corsHdrs));
 router.post("/api/:v/users/change-password", (req, env, corsHdrs) => handleChangePassword(req, env, corsHdrs));
 router.post("/api/:v/auth/logout", (req, env, corsHdrs) => handleLogout(req, env, corsHdrs));
 
-// Signup Routes
-router.post("/public/signup/start", (req, env, corsHdrs, requestId) => signupStart(req, env, requestId, corsHdrs));
-router.post("/public/signup/brand", (req, env, corsHdrs, requestId) => signupBrand(req, env, requestId, corsHdrs));
-router.post("/public/signup/starter/make", (req, env, corsHdrs, requestId) => signupStarterMake(req, env, requestId, corsHdrs));
-router.post("/public/signup/pro/confirm", (req, env, corsHdrs, requestId) => signupProConfirm(req, env, requestId, corsHdrs));
-router.post("/public/signup/verify-promo", (req, env, corsHdrs, requestId) => signupVerifyPromo(req, env, requestId, corsHdrs));
 
 // Opponent Badge Management Routes
 router.get("/api/:v/opponents", (req, env, corsHdrs) => handleListOpponents(req, env, corsHdrs));
@@ -371,24 +360,24 @@ router.delete("/api/:v/upload/headshot/:playerId", staffOnly((req, env, corsHdrs
 router.post("/api/:v/upload/document", staffOnly((req, env, corsHdrs) => handleUploadDocument(req, env, corsHdrs)));
 router.post("/api/:v/upload/product-image", staffOnly((req, env, corsHdrs) => handleUploadProductImage(req, env, corsHdrs)));
 
-// Printify Integration Routes
-router.get("/api/:v/printify/shops", (req, env, corsHdrs) => handleListPrintifyShops(req, env, corsHdrs));
-router.get("/api/:v/printify/catalog", (req, env, corsHdrs) => handleGetPrintifyCatalog(req, env, corsHdrs));
-router.get("/api/:v/printify/catalog/:blueprintId/providers", (req, env, corsHdrs) => handleGetPrintProviders(req, env, corsHdrs));
-router.get("/api/:v/printify/catalog/:blueprintId/providers/:providerId/variants", (req, env, corsHdrs) => handleGetVariants(req, env, corsHdrs));
+// Printify (staff only: every call spends or reveals the platform Printify account) Integration Routes
+router.get("/api/:v/printify/shops", staffOnly((req, env, corsHdrs) => handleListPrintifyShops(req, env, corsHdrs)));
+router.get("/api/:v/printify/catalog", staffOnly((req, env, corsHdrs) => handleGetPrintifyCatalog(req, env, corsHdrs)));
+router.get("/api/:v/printify/catalog/:blueprintId/providers", staffOnly((req, env, corsHdrs) => handleGetPrintProviders(req, env, corsHdrs)));
+router.get("/api/:v/printify/catalog/:blueprintId/providers/:providerId/variants", staffOnly((req, env, corsHdrs) => handleGetVariants(req, env, corsHdrs)));
 router.post("/api/:v/printify/products", staffOnly((req, env, corsHdrs) => handleCreatePrintifyProduct(req, env, corsHdrs)));
-router.get("/api/:v/printify/products/:shopId", (req, env, corsHdrs) => handleListPrintifyProducts(req, env, corsHdrs));
+router.get("/api/:v/printify/products/:shopId", staffOnly((req, env, corsHdrs) => handleListPrintifyProducts(req, env, corsHdrs)));
 router.post("/api/:v/printify/uploads", staffOnly((req, env, corsHdrs) => handleUploadToPrintify(req, env, corsHdrs)));
-router.post("/api/:v/printify/orders", (req, env, corsHdrs) => handleCreatePrintifyOrder(req, env, corsHdrs));
+router.post("/api/:v/printify/orders", staffOnly((req, env, corsHdrs) => handleCreatePrintifyOrder(req, env, corsHdrs)));
 router.post("/api/:v/printify/orders/:orderId/send", staffOnly((req, env, corsHdrs) => handleSendOrderToProduction(req, env, corsHdrs)));
-router.get("/api/:v/printify/orders/:shopId/:orderId", (req, env, corsHdrs) => handleGetPrintifyOrder(req, env, corsHdrs));
+router.get("/api/:v/printify/orders/:shopId/:orderId", staffOnly((req, env, corsHdrs) => handleGetPrintifyOrder(req, env, corsHdrs)));
 router.post("/webhooks/printify", (req, env) => handlePrintifyWebhook(req, env));
 
 // Personalization Routes (Dynamic merchandise generation)
-router.post("/api/:v/personalization/generate", (req, env, corsHdrs) => handleGenerateDesign(req, env, corsHdrs));
-router.post("/api/:v/personalization/upload-to-printify", (req, env, corsHdrs) => handleUploadDesignToPrintify(req, env, corsHdrs));
-router.post("/api/:v/personalization/order", (req, env, corsHdrs) => handleCreatePersonalizedOrder(req, env, corsHdrs));
-router.get("/api/:v/personalization/preview/:playerId", (req, env, corsHdrs) => handleGetPlayerPreview(req, env, corsHdrs));
+router.post("/api/:v/personalization/generate", staffOnly((req, env, corsHdrs) => handleGenerateDesign(req, env, corsHdrs)));
+router.post("/api/:v/personalization/upload-to-printify", staffOnly((req, env, corsHdrs) => handleUploadDesignToPrintify(req, env, corsHdrs)));
+router.post("/api/:v/personalization/order", staffOnly((req, env, corsHdrs) => handleCreatePersonalizedOrder(req, env, corsHdrs)));
+router.get("/api/:v/personalization/preview/:playerId", staffOnly((req, env, corsHdrs) => handleGetPlayerPreview(req, env, corsHdrs)));
 
 // Provisioning Routes
 router.post("/internal/provision/queue", (req, env, corsHdrs, requestId) => handleProvisionQueue(req, env));
@@ -406,7 +395,7 @@ router.post("/internal/provision/retry", (req, env, corsHdrs, requestId) => {
 
 // Usage Routes
 router.get("/api/:v/usage", (req, env, corsHdrs, requestId) => getUsage(req, env, requestId, corsHdrs));
-router.post("/api/:v/usage/increment", (req, env, corsHdrs, requestId) => incrementUsage(req, env, requestId, corsHdrs));
+router.post("/api/:v/usage/increment", staffOnly((req, env, corsHdrs, requestId) => incrementUsage(req, env, requestId, corsHdrs)));
 
 // Security Dashboard Routes
 router.get("/api/:v/security/summary", (req, env, corsHdrs, requestId) => handleSecuritySummary(req, env, corsHdrs));
@@ -431,14 +420,14 @@ router.get("/api/:v/events/:id", (req, env, corsHdrs, requestId) => {
     const params = (req as any).params || {};
     return getEvent(req, env, requestId, corsHdrs, params.id);
 });
-router.put("/api/:v/events/:id", (req, env, corsHdrs, requestId) => {
+router.put("/api/:v/events/:id", staffOnly((req, env, corsHdrs, requestId) => {
     const params = (req as any).params || {};
     return updateEvent(req, env, requestId, corsHdrs, params.id);
-});
-router.delete("/api/:v/events/:id", (req, env, corsHdrs, requestId) => {
+}));
+router.delete("/api/:v/events/:id", staffOnly((req, env, corsHdrs, requestId) => {
     const params = (req as any).params || {};
     return deleteEvent(req, env, requestId, corsHdrs, params.id);
-});
+}));
 router.post("/api/:v/events/:id/rsvp", (req, env, corsHdrs, requestId) => {
     const params = (req as any).params || {};
     return rsvpEvent(req, env, requestId, corsHdrs, params.id);
@@ -527,16 +516,16 @@ import {
 } from "./routes/training";
 router.post("/api/:v/training/sessions", staffOnly((req, env, corsHdrs) => handleCreateSession(req, env, corsHdrs)));
 router.get("/api/:v/training/sessions", (req, env, corsHdrs) => handleListSessions(req, env, corsHdrs));
-router.delete("/api/:v/training/sessions/:id", (req, env, corsHdrs) => {
+router.delete("/api/:v/training/sessions/:id", staffOnly((req, env, corsHdrs) => {
     const params = (req as any).params || {};
     return handleDeleteSession(req, env, corsHdrs, params.id);
-});
+}));
 router.post("/api/:v/training/drills", staffOnly((req, env, corsHdrs) => handleCreateDrill(req, env, corsHdrs)));
 router.get("/api/:v/training/drills", (req, env, corsHdrs) => handleListDrills(req, env, corsHdrs));
-router.delete("/api/:v/training/drills/:id", (req, env, corsHdrs) => {
+router.delete("/api/:v/training/drills/:id", staffOnly((req, env, corsHdrs) => {
     const params = (req as any).params || {};
     return handleDeleteDrill(req, env, corsHdrs, params.id);
-});
+}));
 router.post("/api/:v/training/session-drills", staffOnly((req, env, corsHdrs) => handleAddDrillToSession(req, env, corsHdrs)));
 router.get("/api/:v/training/sessions/:id/drills", (req, env, corsHdrs) => {
     const params = (req as any).params || {};
@@ -560,12 +549,12 @@ import {
 
 // Content Moderation Routes
 router.post("/api/:v/content/report", (req, env, corsHdrs) => handleReportContent(req, env, corsHdrs));
-router.get("/api/:v/content/reports", (req, env, corsHdrs) => handleGetReports(req, env, corsHdrs));
-router.put("/api/:v/content/reports/:reportId", (req, env, corsHdrs) => {
+router.get("/api/:v/content/reports", staffOnly((req, env, corsHdrs) => handleGetReports(req, env, corsHdrs)));
+router.put("/api/:v/content/reports/:reportId", staffOnly((req, env, corsHdrs) => {
     const url = new URL(req.url);
     const reportId = url.pathname.split('/').pop() || '';
     return handleUpdateReport(req, env, corsHdrs, reportId);
-});
+}));
 
 // Live match updates from the touchline (see routes/liveMatch.ts)
 import { handleListLive, handleGetLive, handleRecordLiveEvent, handleUndoLiveEvent } from "./routes/liveMatch";
@@ -588,6 +577,7 @@ router.put("/api/:v/fixtures/:id/venue", staffOnly((req, env, corsHdrs) => handl
 
 // Platform owner panel (routes/owner.ts); the website's /owner pages call these through their own server
 import { handleOwnerAction, handleOwnerGet, handleOwnerLogin, handleOwnerLogout } from "./routes/owner";
+import { handleGetAlertPrefs, handleSetAlertPrefs } from "./routes/alertPrefs";
 router.post("/api/:v/owner/login", (req, env, corsHdrs) => handleOwnerLogin(req, env, corsHdrs));
 router.post("/api/:v/owner/logout", (req, env, corsHdrs) => handleOwnerLogout(req, env, corsHdrs));
 router.get("/api/:v/owner/overview", (req, env, corsHdrs) => handleOwnerGet(req, env, corsHdrs, "overview"));
@@ -597,6 +587,11 @@ router.get("/api/:v/owner/members", (req, env, corsHdrs) => handleOwnerGet(req, 
 router.get("/api/:v/owner/clubs", (req, env, corsHdrs) => handleOwnerGet(req, env, corsHdrs, "clubs"));
 router.get("/api/:v/owner/clubs/:id", (req, env, corsHdrs) => handleOwnerGet(req, env, corsHdrs, "clubs", ((req as any).params || {}).id));
 router.post("/api/:v/owner/clubs/:id/actions", (req, env, corsHdrs) => handleOwnerAction(req, env, corsHdrs, ((req as any).params || {}).id));
+
+// The club's people and their roles (routes/clubMembers.ts)
+import { handleListClubMembers, handleSetMemberRole } from "./routes/clubMembers";
+router.get("/api/:v/club/members", staffOnly((req, env, corsHdrs) => handleListClubMembers(req, env, corsHdrs)));
+router.put("/api/:v/club/members/:id/role", staffOnly((req, env, corsHdrs) => handleSetMemberRole(req, env, corsHdrs, ((req as any).params || {}).id)));
 
 // Linking parents to their children with an invite code (routes/parentLinks.ts)
 import { handleCreateParentInvite, handleLinkChild, handleListParents, handleUnlinkParent } from "./routes/parentLinks";
@@ -704,10 +699,10 @@ router.delete("/api/:v/admin/tenants/:id/graphics/:pack", (req, env, corsHdrs) =
 
 router.post("/api/:v/social/posts", staffOnly((req, env, corsHdrs) => handleCreateSocialPost(req, env, corsHdrs)));
 router.get("/api/:v/social/posts", (req, env, corsHdrs) => handleListSocialPosts(req, env, corsHdrs));
-router.delete("/api/:v/social/posts/:id", (req, env, corsHdrs) => {
+router.delete("/api/:v/social/posts/:id", staffOnly((req, env, corsHdrs) => {
     const params = (req as any).params || {};
     return handleDeleteSocialPost(req, env, corsHdrs, params.id);
-});
+}));
 router.put("/api/:v/social/config", staffOnly((req, env, corsHdrs) => handleUpdateSocialConfig(req, env, corsHdrs)));
 router.get("/api/:v/social/config", (req, env, corsHdrs) => handleGetSocialConfig(req, env, corsHdrs));
 
@@ -743,10 +738,10 @@ import {
 
 router.get("/api/:v/admin/player-images", (req, env, corsHdrs) => handleListImages(req, env, corsHdrs));
 router.post("/api/:v/admin/player-images", staffOnly((req, env, corsHdrs) => handleUploadImage(req, env, corsHdrs)));
-router.delete("/api/:v/admin/player-images/:id", (req, env, corsHdrs) => {
+router.delete("/api/:v/admin/player-images/:id", staffOnly((req, env, corsHdrs) => {
     const params = (req as any).params || {};
     return handleDeleteImage(req, env, corsHdrs, params.id);
-});
+}));
 
 // Player details with contacts and login code
 router.get("/api/:v/players/:id", (req, env, corsHdrs) => {
@@ -844,14 +839,14 @@ router.get("/api/:v/fixtures/:fixtureId/scout", (req, env, corsHdrs) => {
     const params = (req as any).params || {};
     return handleGetScoutNotes(req, env, corsHdrs, params.fixtureId);
 });
-router.post("/api/:v/fixtures/:fixtureId/scout", (req, env, corsHdrs) => {
+router.post("/api/:v/fixtures/:fixtureId/scout", staffOnly((req, env, corsHdrs) => {
     const params = (req as any).params || {};
     return handleSaveScoutNotes(req, env, corsHdrs, params.fixtureId);
-});
-router.delete("/api/:v/fixtures/:fixtureId/scout", (req, env, corsHdrs) => {
+}));
+router.delete("/api/:v/fixtures/:fixtureId/scout", staffOnly((req, env, corsHdrs) => {
     const params = (req as any).params || {};
     return handleDeleteScoutNotes(req, env, corsHdrs, params.fixtureId);
-});
+}));
 
 // Carpool Routes (Ride Sharing for Away Fixtures)
 import {
@@ -902,10 +897,10 @@ router.post("/api/:v/videos/:id/process", (req, env, corsHdrs, requestId) => {
     const params = (req as any).params || {};
     return handleVideoProcess(req, env, corsHdrs, params.id);
 });
-router.delete("/api/:v/videos/:id", (req, env, corsHdrs, requestId) => {
+router.delete("/api/:v/videos/:id", staffOnly((req, env, corsHdrs, requestId) => {
     const params = (req as any).params || {};
     return handleVideoDelete(req, env, corsHdrs, params.id);
-});
+}));
 router.get("/api/:v/videos/:id/clips", (req, env, corsHdrs, requestId) => {
     const params = (req as any).params || {};
     return handleVideoClips(req, env, corsHdrs, params.id);
@@ -918,10 +913,10 @@ router.get("/api/:v/videos/:id/stream", (req, env, corsHdrs) => {
 // ===== AI ASSISTANT COACH ROUTES =====
 
 // Analyze video for coaching opportunities
-router.post("/api/:v/videos/:id/analyze-mistakes", (req, env, corsHdrs, requestId) => {
+router.post("/api/:v/videos/:id/analyze-mistakes", staffOnly((req, env, corsHdrs, requestId) => {
     const params = (req as any).params || {};
     return handleAnalyzeMistakes(req, env, corsHdrs, params.id);
-});
+}));
 
 // Get detected mistakes for a video
 router.get("/api/:v/videos/:id/mistakes", (req, env, corsHdrs, requestId) => {
@@ -930,19 +925,19 @@ router.get("/api/:v/videos/:id/mistakes", (req, env, corsHdrs, requestId) => {
 });
 
 // Generate training drills from mistakes
-router.post("/api/:v/coaching/generate-drills", (req, env, corsHdrs, requestId) =>
+router.post("/api/:v/coaching/generate-drills", staffOnly((req, env, corsHdrs, requestId) =>
     handleGenerateDrills(req, env, corsHdrs)
-);
+));
 
 // Generate complete training session
-router.post("/api/:v/coaching/generate-session", (req, env, corsHdrs, requestId) =>
+router.post("/api/:v/coaching/generate-session", staffOnly((req, env, corsHdrs, requestId) =>
     handleGenerateSession(req, env, corsHdrs)
-);
+));
 
 // Save training session plan
-router.post("/api/:v/coaching/sessions", (req, env, corsHdrs, requestId) =>
+router.post("/api/:v/coaching/sessions", staffOnly((req, env, corsHdrs, requestId) =>
     handleSaveTrainingSession(req, env, corsHdrs)
-);
+));
 
 // Get all training sessions
 router.get("/api/:v/coaching/sessions", (req, env, corsHdrs, requestId) =>
@@ -956,10 +951,10 @@ router.get("/api/:v/coaching/sessions/:id", (req, env, corsHdrs, requestId) => {
 });
 
 // Delete training session
-router.delete("/api/:v/coaching/sessions/:id", (req, env, corsHdrs, requestId) => {
+router.delete("/api/:v/coaching/sessions/:id", staffOnly((req, env, corsHdrs, requestId) => {
     const params = (req as any).params || {};
     return handleDeleteTrainingSession(req, env, corsHdrs, params.id);
-});
+}));
 
 
 // Get coaching job status (for polling)
@@ -1035,10 +1030,10 @@ import { handleUpdateFixtureSettings, handleGetFixtureSettings } from "./routes/
 
 import { handleSaveMatchReport, handleGetMatchReport, handleGetPlayerStats } from "./routes/match-report";
 
-router.post("/api/:v/matches/:id/report", (req, env, corsHdrs) => {
+router.post("/api/:v/matches/:id/report", staffOnly((req, env, corsHdrs) => {
     const params = (req as any).params || {};
     return handleSaveMatchReport(req, env, params.id);
-});
+}));
 router.get("/api/:v/matches/:id/report", (req, env, corsHdrs) => {
     const params = (req as any).params || {};
     return handleGetMatchReport(req, env, params.id);
@@ -1149,28 +1144,28 @@ router.get("/api/:v/seasons/:id/end-preview", (req, env, corsHdrs) => {
     const params = (req as any).params || {};
     return handleEndSeasonPreview(req, env, corsHdrs, params.id);
 });
-router.post("/api/:v/seasons/:id/end", (req, env, corsHdrs) => {
+router.post("/api/:v/seasons/:id/end", staffOnly((req, env, corsHdrs) => {
     const params = (req as any).params || {};
     return handleEndSeason(req, env, corsHdrs, params.id);
-});
-router.post("/api/:v/seasons/:id/reopen", (req, env, corsHdrs) => {
+}));
+router.post("/api/:v/seasons/:id/reopen", staffOnly((req, env, corsHdrs) => {
     const params = (req as any).params || {};
     return handleReopenSeason(req, env, corsHdrs, params.id);
-});
+}));
 
 // Season Awards
 router.get("/api/:v/seasons/:id/awards", (req, env, corsHdrs) => {
     const params = (req as any).params || {};
     return handleGetSeasonAwards(req, env, corsHdrs, params.id);
 });
-router.post("/api/:v/seasons/:id/awards", (req, env, corsHdrs) => {
+router.post("/api/:v/seasons/:id/awards", staffOnly((req, env, corsHdrs) => {
     const params = (req as any).params || {};
     return handleAddSeasonAward(req, env, corsHdrs, params.id);
-});
-router.delete("/api/:v/seasons/:id/awards/:awardId", (req, env, corsHdrs) => {
+}));
+router.delete("/api/:v/seasons/:id/awards/:awardId", staffOnly((req, env, corsHdrs) => {
     const params = (req as any).params || {};
     return handleDeleteSeasonAward(req, env, corsHdrs, params.id, params.awardId);
-});
+}));
 
 // Roster
 router.post("/api/:v/seasons/:id/roster", staffOnly((req, env, corsHdrs) => handleAddPlayerToSeason(req, env, corsHdrs)));
@@ -1187,26 +1182,26 @@ router.get("/api/:v/seasons/:id/end-preview", (req, env, corsHdrs) => {
     const params = (req as any).params || {};
     return handleEndSeasonPreview(req, env, corsHdrs, params.id);
 });
-router.post("/api/:v/seasons/:id/end", (req, env, corsHdrs) => {
+router.post("/api/:v/seasons/:id/end", staffOnly((req, env, corsHdrs) => {
     const params = (req as any).params || {};
     return handleEndSeason(req, env, corsHdrs, params.id);
-});
-router.post("/api/:v/seasons/:id/reopen", (req, env, corsHdrs) => {
+}));
+router.post("/api/:v/seasons/:id/reopen", staffOnly((req, env, corsHdrs) => {
     const params = (req as any).params || {};
     return handleReopenSeason(req, env, corsHdrs, params.id);
-});
+}));
 router.get("/api/:v/seasons/:id/awards", (req, env, corsHdrs) => {
     const params = (req as any).params || {};
     return handleGetSeasonAwards(req, env, corsHdrs, params.id);
 });
-router.post("/api/:v/seasons/:id/awards", (req, env, corsHdrs) => {
+router.post("/api/:v/seasons/:id/awards", staffOnly((req, env, corsHdrs) => {
     const params = (req as any).params || {};
     return handleAddSeasonAward(req, env, corsHdrs, params.id);
-});
-router.delete("/api/:v/seasons/:seasonId/awards/:awardId", (req, env, corsHdrs) => {
+}));
+router.delete("/api/:v/seasons/:seasonId/awards/:awardId", staffOnly((req, env, corsHdrs) => {
     const params = (req as any).params || {};
     return handleDeleteSeasonAward(req, env, corsHdrs, params.seasonId, params.awardId);
-});
+}));
 router.get("/api/:v/seasons/:id/snapshots", (req, env, corsHdrs) => {
     const params = (req as any).params || {};
     return handleGetSeasonSnapshots(req, env, corsHdrs, params.id);
@@ -1287,14 +1282,14 @@ router.put("/api/:v/club/fa-full-time", staffOnly((req, env, corsHdrs) => handle
 
 
 router.post("/api/:v/wearables/sessions", staffOnly((req, env, corsHdrs) => handleCreateWearableSession(req, env, corsHdrs)));
-router.get("/api/:v/wearables/sessions/:id", (req, env, corsHdrs) => {
+router.get("/api/:v/wearables/sessions/:id", staffOnly((req, env, corsHdrs) => {
     const params = (req as any).params || {};
     return handleGetWearableSession(req, env, corsHdrs, params.id);
-});
-router.get("/api/:v/wearables/sessions/:id/gps-track", (req, env, corsHdrs) => {
+}));
+router.get("/api/:v/wearables/sessions/:id/gps-track", staffOnly((req, env, corsHdrs) => {
     const params = (req as any).params || {};
     return handleGetGPSTrack(req, env, corsHdrs, params.id);
-});
+}));
 
 // Data Sync & Manual Entry
 router.post("/api/:v/wearables/sync", staffOnly((req, env, corsHdrs) => handleSyncData(req, env, corsHdrs)));
@@ -1302,18 +1297,18 @@ router.post("/api/:v/wearables/manual", staffOnly((req, env, corsHdrs) => handle
 router.post("/api/:v/wearables/import", staffOnly((req, env, corsHdrs) => handleImportData(req, env, corsHdrs)));
 
 // Metrics & Analytics
-router.get("/api/:v/wearables/metrics/:playerId", (req, env, corsHdrs) => {
+router.get("/api/:v/wearables/metrics/:playerId", staffOnly((req, env, corsHdrs) => {
     const params = (req as any).params || {};
     return handleGetPlayerMetrics(req, env, corsHdrs, params.playerId);
-});
-router.get("/api/:v/wearables/summary/:playerId", (req, env, corsHdrs) => {
+}));
+router.get("/api/:v/wearables/summary/:playerId", staffOnly((req, env, corsHdrs) => {
     const params = (req as any).params || {};
     return handleGetPlayerSummary(req, env, corsHdrs, params.playerId);
-});
-router.get("/api/:v/wearables/fatigue/:playerId", (req, env, corsHdrs) => {
+}));
+router.get("/api/:v/wearables/fatigue/:playerId", staffOnly((req, env, corsHdrs) => {
     const params = (req as any).params || {};
     return handleGetFatigueAssessment(req, env, corsHdrs, params.playerId);
-});
+}));
 
 // Pitch Definitions
 router.get("/api/:v/wearables/pitches", (req, env, corsHdrs) => handleListPitches(req, env, corsHdrs));
@@ -1343,14 +1338,14 @@ router.get("/api/:v/wearables/devices/:id", (req, env, corsHdrs) => {
     const params = (req as any).params || {};
     return handleGetDevice(req, env, corsHdrs, params.id);
 });
-router.put("/api/:v/wearables/devices/:id", (req, env, corsHdrs) => {
+router.put("/api/:v/wearables/devices/:id", staffOnly((req, env, corsHdrs) => {
     const params = (req as any).params || {};
     return handleUpdateDevice(req, env, corsHdrs, params.id);
-});
-router.delete("/api/:v/wearables/devices/:id", (req, env, corsHdrs) => {
+}));
+router.delete("/api/:v/wearables/devices/:id", staffOnly((req, env, corsHdrs) => {
     const params = (req as any).params || {};
     return handleDeleteDevice(req, env, corsHdrs, params.id);
-});
+}));
 
 export default {
     async fetch(req: Request, env: any, ctx: ExecutionContext): Promise<Response> {

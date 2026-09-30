@@ -8,6 +8,7 @@
  * an undone mistake never reaches anyone. One row per source, so queuing twice
  * is harmless; each row is claimed before sending, so it's sent at most once.
  */
+import { groupForKind, groupToken, wantsGroupSql } from "../alertPrefs";
 import { buildAlert, EVENT_ALERT_KINDS, type AlertInput, type AlertKind } from "./content";
 import { computeState, type LiveEvent } from "../liveMatchState";
 import { scorersText, type LiveFixture } from "../liveMatch";
@@ -100,14 +101,16 @@ export async function cancelEventAlert(env: AlertsEnv, tenantId: string, fixture
 interface DueRow { id: string; tenant_id: string; fixture_id: string; kind: string; title: string; body: string; skip_user_id: string | null; send_after: number }
 
 /** Device tokens for the club, minus people at this match and the person who recorded the update. */
-export async function recipientTokens(env: AlertsEnv, tenantId: string, fixtureId: string, skipUserId: string | null): Promise<string[]> {
+export async function recipientTokens(env: AlertsEnv, tenantId: string, fixtureId: string, skipUserId: string | null, kind = "match"): Promise<string[]> {
   const { results } = await env.DB.prepare(
     `SELECT d.token FROM devices d
+     LEFT JOIN auth_users u ON u.id = d.user_id
      WHERE d.tenant_id = ?
        AND (? IS NULL OR d.user_id != ?)
+       AND ${wantsGroupSql("u")}
        AND NOT EXISTS (SELECT 1 FROM match_attendance a
                        WHERE a.tenant_id = d.tenant_id AND a.fixture_id = ? AND a.user_id = d.user_id AND a.at_venue = 1)`,
-  ).bind(tenantId, skipUserId, skipUserId, fixtureId).all<{ token: string }>();
+  ).bind(tenantId, skipUserId, skipUserId, groupToken(groupForKind(kind)), fixtureId).all<{ token: string }>();
   return (results || []).map((r) => r.token);
 }
 
@@ -126,7 +129,7 @@ export async function processDueAlerts(env: AlertsEnv, now = Date.now()): Promis
     const claim = await env.DB.prepare(`UPDATE match_alerts SET status = 'sending', updated_at = ? WHERE id = ? AND status = 'pending'`).bind(now, alert.id).run();
     if ((claim.meta?.changes ?? 0) === 0) continue; // another run took it
     try {
-      const tokens = await recipientTokens(env, alert.tenant_id, alert.fixture_id, alert.skip_user_id);
+      const tokens = await recipientTokens(env, alert.tenant_id, alert.fixture_id, alert.skip_user_id, alert.kind);
       const result = tokens.length
         ? await deliver(env, tokens, {
           title: alert.title,

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
+import { apiFetch } from '@/lib/session';
 
 interface Phrase {
     id: string;
@@ -43,8 +44,8 @@ export default function ShopSettingsPage() {
     const fetchData = async () => {
         try {
             const [phrasesRes, productsRes] = await Promise.all([
-                fetch(`${API_BASE}/api/v1/shop/phrases`, { credentials: 'include' }),
-                fetch(`${API_BASE}/api/v1/shop/club-products`, { credentials: 'include' }),
+                apiFetch(`/api/v1/shop/phrases`, { }),
+                apiFetch(`/api/v1/shop/club-products`, { }),
             ]);
 
             const [phrasesData, productsData] = await Promise.all([
@@ -64,9 +65,8 @@ export default function ShopSettingsPage() {
     const handleAddPhrase = async () => {
         if (!newPhrase.phrase) return;
         try {
-            const res = await fetch(`${API_BASE}/api/v1/shop/phrases`, {
+            const res = await apiFetch(`/api/v1/shop/phrases`, {
                 method: 'POST',
-                credentials: 'include',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(newPhrase),
             });
@@ -82,9 +82,8 @@ export default function ShopSettingsPage() {
 
     const handleDeletePhrase = async (id: string) => {
         try {
-            await fetch(`${API_BASE}/api/v1/shop/phrases/${id}`, {
+            await apiFetch(`/api/v1/shop/phrases/${id}`, {
                 method: 'DELETE',
-                credentials: 'include',
             });
             fetchData();
         } catch (error) {
@@ -95,9 +94,8 @@ export default function ShopSettingsPage() {
     const handleAddProduct = async () => {
         if (!newProduct.name || !newProduct.price) return;
         try {
-            const res = await fetch(`${API_BASE}/api/v1/shop/club-products`, {
+            const res = await apiFetch(`/api/v1/shop/club-products`, {
                 method: 'POST',
-                credentials: 'include',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     name: newProduct.name,

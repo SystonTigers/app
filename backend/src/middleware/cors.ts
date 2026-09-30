@@ -1,9 +1,7 @@
-// Always-allowed origins (our own consoles). The website and app are added
+// Always-allowed origins. The website and app are added
 // through CORS_ALLOWED. Never add wildcards or domains we don't own: an
 // allowed origin can call the API from a visitor's browser.
-const DEFAULT_ALLOWED = new Set<string>([
-  "https://setup-console.team-platform-2025.workers.dev",
-]);
+const DEFAULT_ALLOWED = new Set<string>([]);
 
 // Development origins (localhost)
 const DEV_ORIGINS = new Set<string>([

@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { createClientSDK } from '@/lib/sdk';
+import { apiFetch } from '@/lib/session';
 
 type ImportType = 'fixtures' | 'results' | 'players' | 'match-events';
 
@@ -35,7 +36,7 @@ export default function ImportPage({ params }: { params: { tenant: string } }) {
     // Load seasons
     const loadSeasons = async () => {
         try {
-            const res = await fetch(`/api/v1/seasons`, {
+            const res = await apiFetch(`/api/v1/seasons`, {
                 headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
             });
             const data = await res.json();
@@ -50,7 +51,7 @@ export default function ImportPage({ params }: { params: { tenant: string } }) {
     // Load current data counts
     const loadCounts = async () => {
         try {
-            const res = await fetch(`/api/v1/import/status`, {
+            const res = await apiFetch(`/api/v1/import/status`, {
                 headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
             });
             const data = await res.json();

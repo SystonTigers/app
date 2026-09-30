@@ -1,15 +1,22 @@
+# Checks every push and pull request. Nothing here deploys: production is
+# deployed by hand (see START_HERE.md), so a push can never ship by accident.
 name: CI
 on:
   pull_request:
   push:
     branches: [main]
 
-defaults:
-  run:
-    working-directory: backend
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  verify:
+  backend:
+    name: Backend (types, unit, Workers and end-to-end tests)
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -17,23 +24,39 @@ jobs:
           node-version: '22'
           cache: 'npm'
           cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npm test
 
-      - name: Install
-        run: npm ci
+  app:
+    name: App (types and tests)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: mobile/package-lock.json
+      - run: npm ci --legacy-peer-deps
+      - run: npx tsc --noEmit
+      - run: npm test
 
-      - name: Lint
-        run: npm run lint || echo "no lint script"
-
-      - name: Typecheck
-        run: npm run typecheck || echo "no typecheck script"
-
-      - name: Unit tests
-        run: npm test -- --run || echo "no tests"
-
-      - name: Build
-        run: npm run build
-      - run: npm ci --workspaces
-      - run: npm run -ws lint || echo "no lint script"
-      - run: npm run -ws typecheck || echo "no typecheck script"
-      - run: npm test --workspaces -- --run || echo "no tests"
-      - run: npm run -ws build
+  website:
+    name: Website (types and tests)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+      - run: npm ci --workspace web-app --include-workspace-root
+      - run: npx tsc --noEmit
+        working-directory: web-app
+      - run: npx vitest run
+        working-directory: web-app

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
+import { apiFetch } from '@/lib/session';
 
 interface HeadshotUploadProps {
     playerId: string;
@@ -49,9 +50,8 @@ export function HeadshotUpload({ playerId, currentHeadshot, playerName, onUpload
             formData.append('file', file);
             formData.append('playerId', playerId);
 
-            const res = await fetch(`${API_BASE}/api/v1/upload/headshot`, {
+            const res = await apiFetch(`/api/v1/upload/headshot`, {
                 method: 'POST',
-                credentials: 'include',
                 body: formData,
             });
 
@@ -76,9 +76,8 @@ export function HeadshotUpload({ playerId, currentHeadshot, playerName, onUpload
 
         setUploading(true);
         try {
-            await fetch(`${API_BASE}/api/v1/upload/headshot/${playerId}`, {
+            await apiFetch(`/api/v1/upload/headshot/${playerId}`, {
                 method: 'DELETE',
-                credentials: 'include',
             });
             setPreview(null);
             onUploadComplete?.('');

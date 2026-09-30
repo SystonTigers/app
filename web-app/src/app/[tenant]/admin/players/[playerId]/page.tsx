@@ -3,6 +3,7 @@
 import { useState, useEffect, use } from 'react';
 import { createClientSDK } from '@/lib/sdk';
 import Link from 'next/link';
+import { apiFetch } from '@/lib/session';
 
 const CONTACT_RELATIONSHIPS = [
     { value: 'mum', label: 'Mum' },
@@ -84,7 +85,7 @@ export default function PlayerDetailsPage({ params }: PageProps) {
         setSaving(true);
         try {
             const token = localStorage.getItem('admin_token');
-            const response = await fetch(`${API_BASE}/api/v1/players/${playerId}`, {
+            const response = await apiFetch(`/api/v1/players/${playerId}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -106,7 +107,7 @@ export default function PlayerDetailsPage({ params }: PageProps) {
         setRegenerating(true);
         try {
             const token = localStorage.getItem('admin_token');
-            const response = await fetch(`${API_BASE}/api/v1/players/${playerId}/regenerate-code`, {
+            const response = await apiFetch(`/api/v1/players/${playerId}/regenerate-code`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`

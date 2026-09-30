@@ -6,6 +6,7 @@ import { themedStyles, useBrandColors } from '../theme/brand';
 import { FONTS } from '../theme/brandFonts';
 import { fixturesApi, videosApi, gotmApi, squadApi } from '../services/api';
 import MatchHighlightsList from '../components/highlights/MatchHighlightsList';
+import ScreenIntro from '../components/brand/ScreenIntro';
 
 const { width } = Dimensions.get('window');
 
@@ -55,7 +56,7 @@ interface GOTMWinner {
   videoUrl: string;
 }
 
-export default function HighlightsScreen() {
+export default function HighlightsScreen({ inTab = false }: { inTab?: boolean } = {}) {
   const COLORS = useBrandColors();
   const styles = useStyles();
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
@@ -308,7 +309,9 @@ export default function HighlightsScreen() {
         </View>
       ) : (
         <>
-          <Text style={styles.headerSubtitle}>Match clips & Goal of the Month</Text>
+          {inTab
+            ? <ScreenIntro title="Highlights" subtitle="Match clips and Goal of the Month" />
+            : <Text style={styles.headerSubtitle}>Match clips & Goal of the Month</Text>}
 
           {/* Tab selector */}
           <View style={styles.tabContainer}>

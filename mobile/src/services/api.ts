@@ -673,85 +673,6 @@ export const playerImagesApi = {
   },
 };
 
-export const autoPostsMatrixApi = {
-  // Get auto-posts matrix
-  getMatrix: async () => {
-    const response = await api.get('/api/v1/admin/auto-posts-matrix', {
-      params: { tenant: getTenantId() },
-    });
-    return response.data;
-  },
-
-  // Update auto-posts matrix
-  updateMatrix: async (matrix: any) => {
-    const response = await api.put('/api/v1/admin/auto-posts-matrix', {
-      tenant: getTenantId(),
-      matrix,
-    });
-    return response.data;
-  },
-
-  // Reset matrix to defaults
-  resetMatrix: async () => {
-    const response = await api.post('/api/v1/admin/auto-posts-matrix/reset', {
-      tenant: getTenantId(),
-    });
-    return response.data;
-  },
-};
-
-export const clubConfigApi = {
-  // Get club config
-  getConfig: async () => {
-    const response = await api.get('/api/v1/admin/club-config', {
-      params: { tenant: getTenantId() },
-    });
-    return response.data;
-  },
-
-  // Update entire config
-  updateConfig: async (config: any) => {
-    const response = await api.put('/api/v1/admin/club-config', {
-      tenant: getTenantId(),
-      config,
-    });
-    return response.data;
-  },
-
-  // Update specific section
-  updateSection: async (section: string, data: any) => {
-    const response = await api.patch(`/api/v1/admin/club-config/${section}`, {
-      tenant: getTenantId(),
-      data,
-    });
-    return response.data;
-  },
-
-  // Upload club badge
-  uploadBadge: async (file: any) => {
-    const formData = new FormData();
-    formData.append('file', file);
-    const response = await api.post(`/api/v1/admin/club-config/upload-badge?tenant=${getTenantId()}`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
-    return response.data;
-  },
-
-  // Upload sponsor logo
-  uploadSponsor: async (file: any) => {
-    const formData = new FormData();
-    formData.append('file', file);
-    const response = await api.post(`/api/v1/admin/club-config/upload-sponsor?tenant=${getTenantId()}`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
-    return response.data;
-  },
-};
-
 export interface GotmVotingResponse {
   success: boolean;
   data?: {
@@ -1274,6 +1195,45 @@ export const parentLinkApi = {
   /** Parent: enter the code */
   link: async (code: string): Promise<{ success: boolean; data: { playerId: string; name: string; alreadyLinked: boolean } }> => {
     const response = await api.post('/api/v1/link-child', { code });
+    return response.data;
+  },
+};
+
+export type ClubRole = 'admin' | 'manager' | 'coach' | 'player' | 'parent';
+
+export interface ClubMember {
+  id: string;
+  name: string;
+  email: string;
+  role: ClubRole | 'owner';
+  roles: string[];
+  joinedAt: number | null;
+  lastLoginAt: number | null;
+  linkedPlayers: number;
+}
+
+/** Everyone with an account at the club (staff), and changing roles (club admins). */
+export const clubMembersApi = {
+  list: async (): Promise<{ success: boolean; data: { members: ClubMember[]; canChangeRoles: boolean; me: string } }> => {
+    const response = await api.get('/api/v1/club/members');
+    return response.data;
+  },
+  setRole: async (memberId: string, role: ClubRole): Promise<{ success: boolean; data: ClubMember }> => {
+    const response = await api.put(`/api/v1/club/members/${encodeURIComponent(memberId)}/role`, { role });
+    return response.data;
+  },
+};
+
+export type AlertGroup = 'match' | 'goals' | 'cards' | 'video' | 'reminders';
+
+/** What the signed-in person wants to be told about on their phone. */
+export const alertPrefsApi = {
+  get: async (): Promise<{ success: boolean; data: { off: AlertGroup[] } }> => {
+    const response = await api.get('/api/v1/users/me/alerts');
+    return response.data;
+  },
+  set: async (off: AlertGroup[]): Promise<{ success: boolean; data: { off: AlertGroup[] } }> => {
+    const response = await api.put('/api/v1/users/me/alerts', { off });
     return response.data;
   },
 };

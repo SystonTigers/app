@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { createClientSDK } from '@/lib/sdk';
+import { apiFetch } from '@/lib/session';
 
 interface EndSeasonModalProps {
     isOpen: boolean;
@@ -44,7 +45,7 @@ export function EndSeasonModal({ isOpen, onClose, onSuccess, season, tenantId }:
         setLoading(true);
         try {
             const token = localStorage.getItem('token');
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE || ''}/api/v1/seasons/${season.id}/end-preview`, {
+            const res = await apiFetch(`/api/v1/seasons/${season.id}/end-preview`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             const data = await res.json();
@@ -87,7 +88,7 @@ export function EndSeasonModal({ isOpen, onClose, onSuccess, season, tenantId }:
         setLoading(true);
         try {
             const token = localStorage.getItem('token');
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE || ''}/api/v1/seasons/${season.id}/end`, {
+            const res = await apiFetch(`/api/v1/seasons/${season.id}/end`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

@@ -35,6 +35,11 @@ function userRevocationKey(tenantId: string, userId: string): string {
   return `jwt:revoked:user:${tenantId}:${userId}`;
 }
 
+/** KV key: the user's tokens issued before this time (seconds) are no longer valid */
+function userIssuedBeforeKey(tenantId: string, userId: string): string {
+  return `jwt:revoked:user-before:${tenantId}:${userId}`;
+}
+
 /**
  * Generate KV key for tenant-level revocation (revokes ALL tenant tokens)
  */
@@ -203,6 +208,7 @@ export async function isTokenRevoked(
     jti?: string;
     sub: string;
     tenantId?: string;
+    iat?: number;
   }
 ): Promise<boolean> {
   const kv = env.KV_IDEMP;
@@ -240,6 +246,15 @@ export async function isTokenRevoked(
           tenantId: claims.tenantId,
           reason: entry.reason,
         });
+        return true;
+      }
+    }
+
+    // Check 2b: tokens issued before the user's roles last changed (they sign in again)
+    if (claims.tenantId) {
+      const before = await kv.get(userIssuedBeforeKey(claims.tenantId, claims.sub));
+      if (before && (claims.iat ?? 0) <= Number(before)) {
+        logJSON({ level: "info", msg: "stale_user_token_used", sub: claims.sub, tenantId: claims.tenantId });
         return true;
       }
     }
@@ -316,4 +331,18 @@ export async function listRevokedTokens(
 export async function unrevokeTenantTokens(env: Env, tenantId: string): Promise<void> {
   await env.KV_IDEMP?.delete(tenantRevocationKey(tenantId));
   logJSON({ level: "info", msg: "jwt_tenant_revocation_lifted", tenantId });
+}
+
+/**
+ * End the user's current sessions (tokens issued up to now) without blocking
+ * new sign-ins, e.g. after their role changes so the new role applies.
+ * Kept for as long as a session can last (30 days).
+ */
+export async function revokeUserTokensIssuedBefore(env: Env, tenantId: string, userId: string, nowSeconds = Math.floor(Date.now() / 1000)): Promise<void> {
+  const kv = env.KV_IDEMP;
+  if (!kv) {
+    logJSON({ level: "warn", msg: "jwt_revocation_kv_missing", tenantId, userId });
+    return;
+  }
+  await kv.put(userIssuedBeforeKey(tenantId, userId), String(nowSeconds), { expirationTtl: 31 * 86400 });
 }

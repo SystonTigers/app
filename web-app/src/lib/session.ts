@@ -52,6 +52,19 @@ export function getSessionToken(): string | null {
   return null;
 }
 
+/**
+ * Call the backend as the signed-in user: `apiFetch('/api/v1/...')` adds the
+ * API address and the login token (and JSON content type for string bodies).
+ */
+export function apiFetch(path: string, init: RequestInit = {}): Promise<Response> {
+  const headers = new Headers(init.headers);
+  const token = getSessionToken();
+  if (token && !headers.has('Authorization')) headers.set('Authorization', `Bearer ${token}`);
+  if (typeof init.body === 'string' && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
+  const url = /^https?:\/\//.test(path) ? path : `${API_BASE}${path}`;
+  return fetch(url, { ...init, headers, credentials: 'omit' });
+}
+
 export function clearSession(): void {
   try {
     [...TOKEN_KEYS, 'user_data', 'user_role', 'tenant_id', 'player_id', 'admin_token'].forEach((k) =>

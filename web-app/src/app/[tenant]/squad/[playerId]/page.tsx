@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { PlayerDiscussButton } from '@/components/PlayerDiscussButton';
 import { CareerHistory } from '@/components/CareerHistory';
+import { apiFetch } from '@/lib/session';
 
 export default async function PlayerBioPage({ params }: { params: Promise<{ tenant: string; playerId: string }> }) {
     const { tenant, playerId } = await params;
@@ -15,7 +16,7 @@ export default async function PlayerBioPage({ params }: { params: Promise<{ tena
     try {
         [player, playerGoals] = await Promise.all([
             sdk.getPlayer(playerId),
-            fetch(`${process.env.NEXT_PUBLIC_API_BASE || ''}/api/v1/players/${playerId}/goals`, {
+            apiFetch(`/api/v1/players/${playerId}/goals`, {
                 headers: { Authorization: `Bearer ${process.env.API_TOKEN || ''}` }
             }).then(r => r.json()).then(d => d.success ? d.data : null).catch(() => null)
         ]);

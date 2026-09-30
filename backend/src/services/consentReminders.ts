@@ -44,6 +44,8 @@ export async function sendConsentReminders(env: PushEnv, now = new Date()): Prom
      JOIN tenants t ON t.id = l.tenant_id
      WHERE (s.photo_consent IS NULL OR s.video_consent IS NULL)
        AND EXISTS (SELECT 1 FROM devices d WHERE d.user_id = l.user_id AND d.tenant_id = l.tenant_id)
+       -- Not for parents who switched reminders off
+       AND NOT EXISTS (SELECT 1 FROM auth_users u WHERE u.id = l.user_id AND u.alert_prefs IS NOT NULL AND instr(u.alert_prefs, '"reminders"') > 0)
        -- Not finished (two reminders) and not reminded in the last week
        AND NOT EXISTS (SELECT 1 FROM consent_reminders r WHERE r.tenant_id = l.tenant_id AND r.user_id = l.user_id AND (r.round = 2 OR r.sent_at > ?))
      GROUP BY l.tenant_id, l.user_id

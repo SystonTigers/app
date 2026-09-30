@@ -87,7 +87,13 @@ describe("Match day journey", () => {
   });
 
   it("tells people away from the ground, not the ones who are there", async () => {
-    const { coach, atGround, away, devices, fixtureId, striker } = await setup("Alert Rovers");
+    const { coach, atGround, away, onWeb, devices, fixtureId, striker } = await setup("Alert Rovers");
+
+    // The web app user only wants kick-off and full time, not every goal
+    expect((await call("/api/v1/users/me/alerts", { method: "PUT", token: onWeb.token, body: { off: "goals" } })).status).toBe(400);
+    const prefs = await call("/api/v1/users/me/alerts", { method: "PUT", token: onWeb.token, body: { off: ["goals", "nonsense"] } });
+    expect(prefs.data.data.off).toEqual(["goals"]);
+    expect((await call("/api/v1/users/me/alerts", { token: onWeb.token })).data.data.off).toEqual(["goals"]);
 
     // Match day: where the ground is comes from the venue's postcode
     const postcodes = mockPushServices((url) => url.startsWith("https://api.postcodes.io/")
@@ -123,7 +129,7 @@ describe("Match day journey", () => {
     expect(told).toContain(devices.away);
     expect(told).not.toContain(devices.atGround); // at the ground
     expect(told).not.toContain(devices.coach);    // recorded it
-    expect(push.web).toHaveLength(2);              // the web app user, kick-off and goal
+    expect(push.web).toHaveLength(1);              // the web app user: kick-off only (goals switched off)
     const goal = push.expo.find((m) => m.to === devices.away && m.title.startsWith("⚽"));
     expect(goal?.title).toBe("⚽ GOAL! Syston Tigers (test) 1-0 Alert Rovers");
 

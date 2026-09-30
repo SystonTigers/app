@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { apiFetch } from '@/lib/session';
 
 interface NotificationItem {
     id: string;
@@ -27,7 +28,7 @@ export function NotificationCenter({ tenant }: { tenant?: string }) {
 
         try {
             setLoading(true);
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE || ''}/api/v1/notifications?limit=20`, {
+            const res = await apiFetch(`/api/v1/notifications?limit=20`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const data = await res.json();
@@ -60,7 +61,7 @@ export function NotificationCenter({ tenant }: { tenant?: string }) {
         if (!token) return;
 
         try {
-            await fetch(`${process.env.NEXT_PUBLIC_API_BASE || ''}/api/v1/notifications/read-all`, {
+            await apiFetch(`/api/v1/notifications/read-all`, {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -76,7 +77,7 @@ export function NotificationCenter({ tenant }: { tenant?: string }) {
         // Mark as read
         if (!notification.read && token) {
             try {
-                await fetch(`${process.env.NEXT_PUBLIC_API_BASE || ''}/api/v1/notifications/${notification.id}/read`, {
+                await apiFetch(`/api/v1/notifications/${notification.id}/read`, {
                     method: 'POST',
                     headers: { 'Authorization': `Bearer ${token}` }
                 });

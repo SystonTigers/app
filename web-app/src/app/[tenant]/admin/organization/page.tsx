@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
+import { apiFetch } from '@/lib/session';
 
 interface Team {
     id: string;
@@ -42,7 +43,7 @@ export default function OrganizationPage() {
 
     const fetchOrganization = async () => {
         try {
-            const res = await fetch(`${API_BASE}/api/v1/organization`, { credentials: 'include' });
+            const res = await apiFetch(`/api/v1/organization`, { });
             const data = await res.json();
             if (data.success) {
                 setOrg(data.data);
@@ -58,9 +59,8 @@ export default function OrganizationPage() {
         if (!newTeam.name || !newTeam.slug) return;
         setAddingTeam(true);
         try {
-            const res = await fetch(`${API_BASE}/api/v1/organization/teams`, {
+            const res = await apiFetch(`/api/v1/organization/teams`, {
                 method: 'POST',
-                credentials: 'include',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ teamName: newTeam.name, teamSlug: newTeam.slug }),
             });

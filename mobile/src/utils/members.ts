@@ -1,0 +1,55 @@
+/** Club members list helpers. No react-native imports (tested in Node). */
+
+export type MemberRole = 'owner' | 'admin' | 'manager' | 'coach' | 'player' | 'parent';
+
+export interface MemberLike {
+  name: string;
+  email: string;
+  role: MemberRole;
+}
+
+export const ROLE_INFO: Record<MemberRole, { label: string; description: string }> = {
+  owner: { label: 'Owner', description: 'Set up the club. Can do everything.' },
+  admin: { label: 'Admin', description: 'Everything, including who does what.' },
+  manager: { label: 'Manager', description: 'Match Centre, squad, fixtures, posts and settings.' },
+  coach: { label: 'Coach', description: 'Match Centre, squad, fixtures and training.' },
+  player: { label: 'Player', description: 'Sees the club, fixtures and their own stats.' },
+  parent: { label: 'Parent', description: 'Sees the club and answers for their children.' },
+};
+
+/** Roles a club admin can give (the owner stays the owner). */
+export const ASSIGNABLE_ROLES: Exclude<MemberRole, 'owner'>[] = ['admin', 'manager', 'coach', 'player', 'parent'];
+
+export type MemberFilter = 'all' | 'staff' | 'player' | 'parent';
+
+const STAFF: MemberRole[] = ['owner', 'admin', 'manager', 'coach'];
+
+export function filterMembers<T extends MemberLike>(members: T[], filter: MemberFilter, query: string): T[] {
+  const q = query.trim().toLowerCase();
+  return members.filter((m) => {
+    if (filter === 'staff' && !STAFF.includes(m.role)) return false;
+    if (filter === 'player' && m.role !== 'player') return false;
+    if (filter === 'parent' && m.role !== 'parent') return false;
+    return !q || m.name.toLowerCase().includes(q) || m.email.toLowerCase().includes(q);
+  });
+}
+
+/** Staff first (owner, admin, manager, coach), then everyone else, by name. */
+export function sortMembers<T extends MemberLike>(members: T[]): T[] {
+  const order: MemberRole[] = ['owner', 'admin', 'manager', 'coach', 'player', 'parent'];
+  return [...members].sort((a, b) => order.indexOf(a.role) - order.indexOf(b.role) || a.name.localeCompare(b.name));
+}
+
+/** "Signed in 3 days ago" / "Never signed in" */
+export function lastSeen(ms: number | null, now = Date.now()): string {
+  if (!ms) return 'Never signed in';
+  const days = Math.floor((now - ms) / 86_400_000);
+  if (days <= 0) return 'Signed in today';
+  if (days === 1) return 'Signed in yesterday';
+  if (days < 31) return `Signed in ${days} days ago`;
+  return `Signed in ${new Date(ms).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`;
+}
+
+export function initialsOf(name: string): string {
+  return name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? '').join('') || '?';
+}

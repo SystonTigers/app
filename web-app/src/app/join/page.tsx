@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { apiFetch } from '@/lib/session';
 
 export default function JoinPage() {
     const router = useRouter();
@@ -45,7 +46,7 @@ export default function JoinPage() {
 
         try {
             // Try code-login endpoint (handles both player and fan codes)
-            const response = await fetch('/api/v1/auth/code-login', {
+            const response = await apiFetch('/api/v1/auth/code-login', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

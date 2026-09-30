@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { apiFetch } from '@/lib/session';
 
 interface PlayerDiscussButtonProps {
     tenant: string;
@@ -23,7 +24,7 @@ export function PlayerDiscussButton({ tenant, playerId, playerName }: PlayerDisc
                 return;
             }
 
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE || ''}/api/v1/discussions`, {
+            const res = await apiFetch(`/api/v1/discussions`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

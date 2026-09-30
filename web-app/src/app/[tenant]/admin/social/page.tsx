@@ -2,6 +2,7 @@
 
 import { use, useState, useEffect } from 'react';
 import { SocialPostComposer } from '@/components/SocialPostComposer';
+import { apiFetch } from '@/lib/session';
 
 interface PageProps {
     params: Promise<{ tenant: string }>;
@@ -29,7 +30,7 @@ export default function SocialAdminPage({ params }: PageProps) {
     const loadPosts = async () => {
         try {
             const token = localStorage.getItem('token');
-            const res = await fetch('/api/v1/social/posts', {
+            const res = await apiFetch('/api/v1/social/posts', {
                 headers: { Authorization: `Bearer ${token}` },
             });
             const data = await res.json();
@@ -45,7 +46,7 @@ export default function SocialAdminPage({ params }: PageProps) {
 
     const handlePost = async (content: string, platforms: string[], mediaUrls: string[], scheduledFor?: number) => {
         const token = localStorage.getItem('token');
-        await fetch('/api/v1/social/posts', {
+        await apiFetch('/api/v1/social/posts', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

@@ -63,10 +63,10 @@ const managementCards: ManagementCard[] = [
     screen: 'ManageMOTM',
   },
   {
-    title: 'User Management',
-    description: 'View all registered users, roles, and permissions',
+    title: 'People & Roles',
+    description: 'Everyone at the club, and who can manage it',
     icon: 'account-cog-outline',
-    screen: 'ManageUsers',
+    screen: 'TeamMembers',
   },
 ];
 

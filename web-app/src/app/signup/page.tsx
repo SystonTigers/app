@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { apiFetch } from '@/lib/session';
 
 export default function SignupPage() {
   const [name, setName] = useState('');
@@ -17,7 +18,7 @@ export default function SignupPage() {
     setLoading(true);
 
     try {
-      const response = await fetch('/api/v1/auth/signup', {
+      const response = await apiFetch('/api/v1/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, email, password })

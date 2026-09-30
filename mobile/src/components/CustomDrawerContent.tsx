@@ -40,7 +40,7 @@ const MENU_GROUPS = [
         title: 'My Club',
         icon: 'shield-account',
         items: [
-            { label: 'Team Members', screen: 'TeamMembers', icon: 'account-group', roles: ['admin', 'manager', 'coach', 'parent', 'player'] },
+            { label: 'People & Roles', screen: 'TeamMembers', icon: 'account-group', roles: ['admin', 'manager', 'coach'] },
             { label: 'Club Shop', screen: 'Shop', icon: 'shopping', roles: ['admin', 'manager', 'coach', 'parent', 'player'] },
             // Documents screen is planned but not yet implemented — add back when screen is registered in App.tsx
         ]

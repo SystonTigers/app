@@ -47,9 +47,10 @@ const nextConfig = {
     ];
   },
 
-  // Some pages call the backend with relative /api/v1 paths; forward them.
-  // /api/admin and /api/auth/admin-login are this app's own route handlers
-  // and are matched before these rewrites.
+  // Old links and any relative /api/v1 calls still reach the backend. Pages
+  // should call it directly with apiFetch (lib/session.ts): through this
+  // rewrite every visitor shares the website's address, which trips the
+  // backend's per-address rate limits. /api/owner/* are this app's own routes.
   async rewrites() {
     return [
       { source: '/public/:path*', destination: `${API_BASE}/public/:path*` },

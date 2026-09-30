@@ -1,6 +1,7 @@
 'use client';
 
 import { use, useState, useEffect } from 'react';
+import { apiFetch } from '@/lib/session';
 
 interface Player {
     id: string;
@@ -27,7 +28,7 @@ export default function PlayerPhotosPage({ params }: PageProps) {
     const loadPlayers = async () => {
         try {
             const token = localStorage.getItem('token');
-            const res = await fetch(`/api/v1/squad?tenantId=${tenant}`, {
+            const res = await apiFetch(`/api/v1/squad?tenantId=${tenant}`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             const data = await res.json();
@@ -49,7 +50,7 @@ export default function PlayerPhotosPage({ params }: PageProps) {
             formData.append('photo', file);
             formData.append('playerId', playerId);
 
-            await fetch(`/api/v1/players/${playerId}/photo`, {
+            await apiFetch(`/api/v1/players/${playerId}/photo`, {
                 method: 'POST',
                 headers: { Authorization: `Bearer ${token}` },
                 body: formData,
@@ -66,7 +67,7 @@ export default function PlayerPhotosPage({ params }: PageProps) {
     const handlePhotoDelete = async (playerId: string) => {
         try {
             const token = localStorage.getItem('token');
-            await fetch(`/api/v1/players/${playerId}/photo`, {
+            await apiFetch(`/api/v1/players/${playerId}/photo`, {
                 method: 'DELETE',
                 headers: { Authorization: `Bearer ${token}` },
             });

@@ -33,7 +33,6 @@ import HomeScreen from './src/screens/HomeScreen';
 import CalendarScreen from './src/screens/CalendarScreen';
 import FixturesScreen from './src/screens/FixturesScreen';
 import SquadScreen from './src/screens/SquadScreen';
-import VideoScreen from './src/screens/VideoScreen';
 import ChatScreen from './src/screens/ChatScreen';
 import CreatePostScreen from './src/screens/CreatePostScreen';
 import MOTMVotingScreen from './src/screens/MOTMVotingScreen';
@@ -53,7 +52,6 @@ import PaymentsScreen from './src/screens/PaymentsScreen';
 import LastManStandingScreen from './src/screens/LastManStandingScreen';
 import TeamMembersScreen from './src/screens/TeamMembersScreen';
 import ManageScreen from './src/screens/ManageScreen';
-import ManageUsersScreen from './src/screens/ManageUsersScreen';
 import ManageSquadScreen from './src/screens/ManageSquadScreen';
 import ManageFixturesScreen from './src/screens/ManageFixturesScreen';
 import ManageEventsScreen from './src/screens/ManageEventsScreen';
@@ -132,10 +130,11 @@ function TabNavigator() {
       />
       <Tab.Screen
         name="Videos"
-        component={VideoScreen}
+        children={() => <HighlightsScreen inTab />}
         options={{
+          tabBarLabel: 'Highlights',
           tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="video" size={size} color={color} />
+            <MaterialCommunityIcons name="play-box-multiple" size={size} color={color} />
           ),
         }}
       />
@@ -240,7 +239,7 @@ function MainDrawer() {
       <Drawer.Screen name="Wearables" component={WearablesScreen} options={{ title: 'Wearables' }} />
 
       {/* My Club Group */}
-      <Drawer.Screen name="TeamMembers" component={TeamMembersScreen} options={{ title: 'Team Members' }} />
+      <Drawer.Screen name="TeamMembers" component={TeamMembersScreen} options={{ title: 'People & Roles' }} />
       <Drawer.Screen name="Shop" component={ShopScreen} options={{ title: 'Club Shop' }} />
       <Drawer.Screen name="Payments" component={PaymentsScreen} options={{ title: 'Payments' }} />
       {/* <Drawer.Screen name="Documents" component={DocumentsScreen} /> */}
@@ -275,7 +274,6 @@ function MainDrawer() {
       <Drawer.Screen name="Highlights" component={HighlightsScreen} />
       <Drawer.Screen name="MatchHighlights" component={MatchHighlightsScreen} options={{ title: 'Match Highlights' }} />
       <Drawer.Screen name="Manage" component={ManageScreen} options={{ title: 'Team Admin' }} />
-      <Drawer.Screen name="ManageUsers" component={ManageUsersScreen} options={{ title: 'Manage Users' }} />
       <Drawer.Screen name="ImportData" component={ImportDataScreen} options={{ title: 'Import Data' }} />
       <Drawer.Screen name="ScoutNotes" component={ScoutNotesScreen} options={{ title: 'Scout Report' }} />
       <Drawer.Screen name="Carpool" component={CarpoolScreen} options={{ title: 'Carpool' }} />

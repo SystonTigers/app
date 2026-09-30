@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { apiFetch } from '@/lib/session';
 
 interface Season {
     id: string;
@@ -33,7 +34,7 @@ export function SeasonTabs({ tenant, currentSeasonId, onSeasonChange, seasons: i
     async function loadSeasons() {
         try {
             const token = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE || ''}/api/v1/seasons`, {
+            const res = await apiFetch(`/api/v1/seasons`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             const data = await res.json();

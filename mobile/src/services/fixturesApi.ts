@@ -52,6 +52,10 @@ export interface Result {
   venue: string;
   competition: string;
   scorers?: string;
+  /** The fixture this result came from (Match Centre), if any */
+  fixtureId?: string | null;
+  /** Which end we were at, when known */
+  homeAway?: 'home' | 'away' | null;
   teamName?: string;
   teamShortName?: string;
   homeTeamName?: string;

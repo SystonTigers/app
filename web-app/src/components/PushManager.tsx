@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { apiFetch } from '@/lib/session';
 
 export function PushManager() {
     const [permission, setPermission] = useState<NotificationPermission>('default');
@@ -35,7 +36,7 @@ export function PushManager() {
             // const token = await getToken(messaging, { vapidKey: '...' });
             const mockToken = `mock-token-${Date.now()}`;
 
-            await fetch('/api/v1/push/register', {
+            await apiFetch('/api/v1/push/register', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

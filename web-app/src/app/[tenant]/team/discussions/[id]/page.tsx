@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { DiscussionVideoPlayer, getTimestampAtCurrentTime } from '@/components/DiscussionVideoPlayer';
 import { MentionInput } from '@/components/MentionInput';
+import { apiFetch } from '@/lib/session';
 
 interface Comment {
     id: string;
@@ -252,7 +253,7 @@ export default function DiscussionDetailPage({
     async function loadDiscussion() {
         try {
             setLoading(true);
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE || ''}/api/v1/discussions/${discussionId}`, {
+            const res = await apiFetch(`/api/v1/discussions/${discussionId}`, {
                 headers: {
                     'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
                 }
@@ -274,7 +275,7 @@ export default function DiscussionDetailPage({
 
         try {
             setSubmitting(true);
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE || ''}/api/v1/discussions/${discussionId}/comments`, {
+            const res = await apiFetch(`/api/v1/discussions/${discussionId}/comments`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -303,7 +304,7 @@ export default function DiscussionDetailPage({
     async function togglePin() {
         if (!discussion) return;
         try {
-            await fetch(`${process.env.NEXT_PUBLIC_API_BASE || ''}/api/v1/discussions/${discussionId}`, {
+            await apiFetch(`/api/v1/discussions/${discussionId}`, {
                 method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json',
@@ -320,7 +321,7 @@ export default function DiscussionDetailPage({
     async function toggleLock() {
         if (!discussion) return;
         try {
-            await fetch(`${process.env.NEXT_PUBLIC_API_BASE || ''}/api/v1/discussions/${discussionId}`, {
+            await apiFetch(`/api/v1/discussions/${discussionId}`, {
                 method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json',

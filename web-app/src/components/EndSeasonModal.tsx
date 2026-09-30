@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { apiFetch } from '@/lib/session';
 
 interface EndSeasonPreview {
     season: {
@@ -87,8 +88,7 @@ export default function EndSeasonModal({ seasonId, seasonName, isOpen, onClose, 
         setLoading(true);
         try {
             const token = localStorage.getItem('token');
-            const res = await fetch(
-                `${process.env.NEXT_PUBLIC_API_BASE || ''}/api/v1/seasons/${seasonId}/end-preview`,
+            const res = await apiFetch(`/api/v1/seasons/${seasonId}/end-preview`,
                 { headers: { Authorization: `Bearer ${token}` } }
             );
             const data = await res.json();
@@ -107,8 +107,7 @@ export default function EndSeasonModal({ seasonId, seasonName, isOpen, onClose, 
     async function loadPlayers() {
         try {
             const token = localStorage.getItem('token');
-            const res = await fetch(
-                `${process.env.NEXT_PUBLIC_API_BASE || ''}/api/v1/seasons/available-players`,
+            const res = await apiFetch(`/api/v1/seasons/available-players`,
                 { headers: { Authorization: `Bearer ${token}` } }
             );
             const data = await res.json();
@@ -149,8 +148,7 @@ export default function EndSeasonModal({ seasonId, seasonName, isOpen, onClose, 
 
         try {
             const token = localStorage.getItem('token');
-            const res = await fetch(
-                `${process.env.NEXT_PUBLIC_API_BASE || ''}/api/v1/seasons/${seasonId}/end`,
+            const res = await apiFetch(`/api/v1/seasons/${seasonId}/end`,
                 {
                     method: 'POST',
                     headers: {

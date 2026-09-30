@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
+import { apiFetch } from '@/lib/session';
 
 interface CalendarEvent {
     id: string;
@@ -43,7 +44,7 @@ export function TeamCalendar() {
             // Ideally we should have a public route for this like /public/:tenant/calendar
             // But for now let's try to hit the API with the tenant param.
 
-            const res = await fetch(`/api/v1/events?tenantId=${tenant}`);
+            const res = await apiFetch(`/api/v1/events?tenantId=${tenant}`);
             if (res.ok) {
                 const data = await res.json();
                 if (data.success) {
@@ -67,7 +68,7 @@ export function TeamCalendar() {
         }));
 
         try {
-            await fetch(`/api/v1/events/${eventId}/rsvp`, {
+            await apiFetch(`/api/v1/events/${eventId}/rsvp`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ status })

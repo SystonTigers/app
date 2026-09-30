@@ -1,11 +1,11 @@
 
 import { json } from "../services/util";
-import { requireJWT } from "../services/auth";
+import { hasAnyRole, requireTenantJWT, STAFF_ROLES } from "../services/auth";
 
 // GET /api/v1/members/search?q=...
 export async function handleSearchMembers(req: Request, env: any, corsHdrs: Headers) {
     try {
-        const claims = await requireJWT(req, env);
+        const claims = await requireTenantJWT(req, env);
         const url = new URL(req.url);
         const query = url.searchParams.get('q') || '';
 
@@ -18,30 +18,30 @@ export async function handleSearchMembers(req: Request, env: any, corsHdrs: Head
         // or use simple LIKE on the text column if valid.
         // For 'profile', it's a text column containing JSON. 
 
-        const sql = `
-            SELECT id, email, profile 
-            FROM auth_users 
-            WHERE tenant_id = ? 
-            AND (email LIKE ? OR profile LIKE ?)
+        // Everyone can find people by name (for @mentions); only staff can search
+        // by email or see addresses, so families' emails stay private.
+        const staff = hasAnyRole(claims, STAFF_ROLES);
+        const searchPattern = `%${query.replace(/[%_]/g, '')}%`;
+        const result = await env.DB.prepare(`
+            SELECT id, email, profile
+            FROM auth_users
+            WHERE tenant_id = ?
+            AND (${staff ? 'email LIKE ? OR ' : ''}json_extract(profile, '$.name') LIKE ?)
             LIMIT 10
-        `;
-
-        const searchPattern = `%${query}%`;
-        const result = await env.DB.prepare(sql)
-            .bind(claims.tenantId, searchPattern, searchPattern)
+        `).bind(...(staff ? [claims.tenantId, searchPattern, searchPattern] : [claims.tenantId, searchPattern]))
             .all();
 
         const members = (result.results || []).map((row: any) => {
-            let profile = {};
+            let profile: Record<string, unknown> = {};
             try {
                 profile = JSON.parse(row.profile || '{}');
-            } catch (e) { }
-
+            } catch { /* keep empty */ }
+            const name = typeof profile.name === 'string' && profile.name.trim() ? profile.name.trim() : null;
             return {
                 id: row.id,
-                email: row.email,
-                name: (profile as any).name || row.email.split('@')[0],
-                avatar: (profile as any).avatar || null
+                ...(staff ? { email: row.email } : {}),
+                name: name ?? (staff ? row.email.split('@')[0] : 'Club member'),
+                avatar: typeof profile.avatar === 'string' ? profile.avatar : null
             };
         });
 

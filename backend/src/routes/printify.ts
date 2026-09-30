@@ -4,6 +4,13 @@
  */
 
 import { requireJWT } from '../services/auth';
+
+/** Printify isn't connected yet (no PRINTIFY_API_TOKEN). Shown to staff as "not set up". */
+export class PrintifyNotSetUp extends Error {
+    constructor() {
+        super('Merchandise printing is not set up yet.');
+    }
+}
 import { json } from '../services/util';
 
 const PRINTIFY_API_BASE = 'https://api.printify.com/v1';
@@ -15,7 +22,7 @@ const PRINTIFY_API_BASE = 'https://api.printify.com/v1';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Printify payloads are untyped upstream
 async function printifyFetch<T = any>(env: any, endpoint: string, options: RequestInit = {}): Promise<T> {
     if (!env.PRINTIFY_API_TOKEN) {
-        throw new Error('PRINTIFY_API_TOKEN is not configured');
+        throw new PrintifyNotSetUp();
     }
     const response = await fetch(`${PRINTIFY_API_BASE}${endpoint}`, {
         ...options,
@@ -45,7 +52,7 @@ export async function handleListPrintifyShops(req: Request, env: any, corsHdrs: 
         const data = await printifyFetch(env, '/shops.json');
         return json({ success: true, data }, 200, corsHdrs);
     } catch (error: any) {
-        return json({ success: false, error: { message: error.message } }, 500, corsHdrs);
+        return json({ success: false, error: { code: error instanceof PrintifyNotSetUp ? 'NOT_SET_UP' : 'PRINTIFY_ERROR', message: error.message } }, error instanceof PrintifyNotSetUp ? 503 : 500, corsHdrs);
     }
 }
 
@@ -83,7 +90,7 @@ export async function handleGetPrintifyCatalog(req: Request, env: any, corsHdrs:
             }))
         }, 200, corsHdrs);
     } catch (error: any) {
-        return json({ success: false, error: { message: error.message } }, 500, corsHdrs);
+        return json({ success: false, error: { code: error instanceof PrintifyNotSetUp ? 'NOT_SET_UP' : 'PRINTIFY_ERROR', message: error.message } }, error instanceof PrintifyNotSetUp ? 503 : 500, corsHdrs);
     }
 }
 
@@ -107,7 +114,7 @@ export async function handleGetPrintProviders(req: Request, env: any, corsHdrs: 
             }))
         }, 200, corsHdrs);
     } catch (error: any) {
-        return json({ success: false, error: { message: error.message } }, 500, corsHdrs);
+        return json({ success: false, error: { code: error instanceof PrintifyNotSetUp ? 'NOT_SET_UP' : 'PRINTIFY_ERROR', message: error.message } }, error instanceof PrintifyNotSetUp ? 503 : 500, corsHdrs);
     }
 }
 
@@ -138,7 +145,7 @@ export async function handleGetVariants(req: Request, env: any, corsHdrs: Header
             })) || []
         }, 200, corsHdrs);
     } catch (error: any) {
-        return json({ success: false, error: { message: error.message } }, 500, corsHdrs);
+        return json({ success: false, error: { code: error instanceof PrintifyNotSetUp ? 'NOT_SET_UP' : 'PRINTIFY_ERROR', message: error.message } }, error instanceof PrintifyNotSetUp ? 503 : 500, corsHdrs);
     }
 }
 
@@ -220,7 +227,7 @@ export async function handleCreatePrintifyProduct(req: Request, env: any, corsHd
 
         return json({ success: true, data: product }, 201, corsHdrs);
     } catch (error: any) {
-        return json({ success: false, error: { message: error.message } }, 500, corsHdrs);
+        return json({ success: false, error: { code: error instanceof PrintifyNotSetUp ? 'NOT_SET_UP' : 'PRINTIFY_ERROR', message: error.message } }, error instanceof PrintifyNotSetUp ? 503 : 500, corsHdrs);
     }
 }
 
@@ -247,7 +254,7 @@ export async function handleListPrintifyProducts(req: Request, env: any, corsHdr
             })) || []
         }, 200, corsHdrs);
     } catch (error: any) {
-        return json({ success: false, error: { message: error.message } }, 500, corsHdrs);
+        return json({ success: false, error: { code: error instanceof PrintifyNotSetUp ? 'NOT_SET_UP' : 'PRINTIFY_ERROR', message: error.message } }, error instanceof PrintifyNotSetUp ? 503 : 500, corsHdrs);
     }
 }
 
@@ -282,7 +289,7 @@ export async function handleUploadToPrintify(req: Request, env: any, corsHdrs: H
 
         return json({ success: true, data: upload }, 201, corsHdrs);
     } catch (error: any) {
-        return json({ success: false, error: { message: error.message } }, 500, corsHdrs);
+        return json({ success: false, error: { code: error instanceof PrintifyNotSetUp ? 'NOT_SET_UP' : 'PRINTIFY_ERROR', message: error.message } }, error instanceof PrintifyNotSetUp ? 503 : 500, corsHdrs);
     }
 }
 
@@ -296,6 +303,7 @@ export async function handleUploadToPrintify(req: Request, env: any, corsHdrs: H
  */
 export async function handleCreatePrintifyOrder(req: Request, env: any, corsHdrs: Headers) {
     try {
+        const claims = await requireJWT(req, env);
         const body = await req.json() as {
             shopId: string;
             externalId: string;  // Our order ID
@@ -343,16 +351,16 @@ export async function handleCreatePrintifyOrder(req: Request, env: any, corsHdrs
             }),
         });
 
-        // Update our order with Printify order ID
+        // Update our order with Printify order ID (only this club's orders)
         if (order.id && body.externalId) {
             await env.DB.prepare(
-                'UPDATE shop_orders SET printify_order_id = ?, status = ? WHERE id = ?'
-            ).bind(order.id, 'processing', body.externalId).run();
+                'UPDATE shop_orders SET printify_order_id = ?, status = ? WHERE id = ? AND tenant_id = ?'
+            ).bind(order.id, 'processing', body.externalId, claims.tenantId).run();
         }
 
         return json({ success: true, data: order }, 201, corsHdrs);
     } catch (error: any) {
-        return json({ success: false, error: { message: error.message } }, 500, corsHdrs);
+        return json({ success: false, error: { code: error instanceof PrintifyNotSetUp ? 'NOT_SET_UP' : 'PRINTIFY_ERROR', message: error.message } }, error instanceof PrintifyNotSetUp ? 503 : 500, corsHdrs);
     }
 }
 
@@ -372,7 +380,7 @@ export async function handleSendOrderToProduction(req: Request, env: any, corsHd
 
         return json({ success: true, message: 'Order sent to production' }, 200, corsHdrs);
     } catch (error: any) {
-        return json({ success: false, error: { message: error.message } }, 500, corsHdrs);
+        return json({ success: false, error: { code: error instanceof PrintifyNotSetUp ? 'NOT_SET_UP' : 'PRINTIFY_ERROR', message: error.message } }, error instanceof PrintifyNotSetUp ? 503 : 500, corsHdrs);
     }
 }
 
@@ -391,7 +399,7 @@ export async function handleGetPrintifyOrder(req: Request, env: any, corsHdrs: H
 
         return json({ success: true, data: order }, 200, corsHdrs);
     } catch (error: any) {
-        return json({ success: false, error: { message: error.message } }, 500, corsHdrs);
+        return json({ success: false, error: { code: error instanceof PrintifyNotSetUp ? 'NOT_SET_UP' : 'PRINTIFY_ERROR', message: error.message } }, error instanceof PrintifyNotSetUp ? 503 : 500, corsHdrs);
     }
 }
 
@@ -405,12 +413,19 @@ export async function handleGetPrintifyOrder(req: Request, env: any, corsHdrs: H
  */
 export async function handlePrintifyWebhook(req: Request, env: any) {
     try {
-        const body = await req.json() as {
+        // Only Printify can tell us an order changed: the body is signed with our webhook secret
+        const raw = await req.text();
+        if (!env.PRINTIFY_WEBHOOK_SECRET) return json({ error: 'Printify webhooks are not set up' }, 503);
+        if (!(await validPrintifySignature(raw, req.headers.get('x-pf-signature'), env.PRINTIFY_WEBHOOK_SECRET))) {
+            return json({ error: 'Invalid signature' }, 401);
+        }
+        const body = JSON.parse(raw) as {
             type: string;
             resource: any;
         };
 
-        console.log('[Printify Webhook]', body.type, JSON.stringify(body.resource));
+        // Never log the resource: it holds customers' names and addresses
+        console.log(JSON.stringify({ level: 'info', msg: 'printify_webhook', type: body.type, id: body.resource?.id ?? null }));
 
         switch (body.type) {
             case 'order:created':
@@ -440,4 +455,17 @@ export async function handlePrintifyWebhook(req: Request, env: any) {
         console.error('[Printify Webhook] Error:', error);
         return json({ error: error.message }, 500);
     }
+}
+
+/** Printify signs webhook bodies: X-Pf-Signature = "sha256=" + hex HMAC-SHA256(secret, body). */
+export async function validPrintifySignature(raw: string, header: string | null, secret: string): Promise<boolean> {
+    if (!header) return false;
+    const given = header.replace(/^sha256=/, '').trim().toLowerCase();
+    const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+    const mac = new Uint8Array(await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(raw)));
+    const expected = Array.from(mac, (b) => b.toString(16).padStart(2, '0')).join('');
+    if (given.length !== expected.length) return false;
+    let diff = 0;
+    for (let i = 0; i < expected.length; i++) diff |= given.charCodeAt(i) ^ expected.charCodeAt(i);
+    return diff === 0;
 }

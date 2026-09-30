@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { apiFetch } from '@/lib/session';
 
 interface Message {
     id: string;
@@ -57,7 +58,7 @@ export function TeamChat({ tenant }: TeamChatProps) {
     const loadRooms = async () => {
         try {
             const token = localStorage.getItem('token');
-            const res = await fetch('/api/v1/chat/rooms', {
+            const res = await apiFetch('/api/v1/chat/rooms', {
                 headers: {
                     Authorization: `Bearer ${token}`,
                 },
@@ -76,7 +77,7 @@ export function TeamChat({ tenant }: TeamChatProps) {
     const loadMessages = async (roomId: string) => {
         try {
             const token = localStorage.getItem('token');
-            const res = await fetch(`/api/v1/chat/${roomId}/history?limit=100`, {
+            const res = await apiFetch(`/api/v1/chat/${roomId}/history?limit=100`, {
                 headers: {
                     Authorization: `Bearer ${token}`,
                 },
@@ -101,7 +102,7 @@ export function TeamChat({ tenant }: TeamChatProps) {
             }
             await sendTypingIndicator(false);
 
-            await fetch(`/api/v1/chat/${selectedRoom.roomId}/send`, {
+            await apiFetch(`/api/v1/chat/${selectedRoom.roomId}/send`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -125,7 +126,7 @@ export function TeamChat({ tenant }: TeamChatProps) {
 
         const token = localStorage.getItem('token');
         try {
-            await fetch(`/api/v1/chat/${selectedRoom.roomId}/typing`, {
+            await apiFetch(`/api/v1/chat/${selectedRoom.roomId}/typing`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

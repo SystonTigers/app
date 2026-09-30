@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { SeasonTabs } from '@/components/SeasonTabs';
 import { FunStats } from '@/components/FunStats';
 import { createClientSDK } from '@/lib/sdk';
+import { apiFetch } from '@/lib/session';
 
 interface PageProps {
     params: Promise<{ tenant: string }>;
@@ -67,7 +68,7 @@ export default function HistoryPage({ params }: PageProps) {
     async function loadSeasons() {
         try {
             // Using tenant query param for public access if needed, or token
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE || ''}/api/v1/seasons?tenant=${tenant}`);
+            const res = await apiFetch(`/api/v1/seasons?tenant=${tenant}`);
             const data = await res.json();
             if (data.success && data.data) {
                 setSeasons(data.data);
@@ -88,14 +89,14 @@ export default function HistoryPage({ params }: PageProps) {
         setAwards([]);
         try {
             // Fetch Stats
-            const resStats = await fetch(`${process.env.NEXT_PUBLIC_API_BASE || ''}/api/v1/seasons/${seasonId}/stats?tenant=${tenant}`);
+            const resStats = await apiFetch(`/api/v1/seasons/${seasonId}/stats?tenant=${tenant}`);
             const dataStats = await resStats.json();
             if (dataStats.success) {
                 setStats(dataStats);
             }
 
             // Fetch Awards
-            const resAwards = await fetch(`${process.env.NEXT_PUBLIC_API_BASE || ''}/api/v1/seasons/${seasonId}/awards?tenant=${tenant}`);
+            const resAwards = await apiFetch(`/api/v1/seasons/${seasonId}/awards?tenant=${tenant}`);
             const dataAwards = await resAwards.json();
             if (dataAwards.success) {
                 setAwards(dataAwards.data);

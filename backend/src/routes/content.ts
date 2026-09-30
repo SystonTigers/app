@@ -829,9 +829,17 @@ export async function handleListResults(req: Request, env: any, corsHdrs: Header
         const claims = await requireJWT(req, env);
         const { limit } = pageParams(new URL(req.url), 50);
         const { results } = await env.DB.prepare(
-            `SELECT id, match_date, opponent, venue, competition, our_score, their_score, result, points, scorers
-             FROM team_results WHERE tenant_id = ?
-             ORDER BY match_date DESC LIMIT ?`
+            `SELECT r.id, r.match_date, r.opponent, r.venue, r.competition, r.our_score, r.their_score, r.result, r.points, r.scorers, r.fixture_id,
+                    CASE
+                      WHEN f.id IS NOT NULL AND f.home_team = r.opponent AND IFNULL(f.away_team, '') != r.opponent THEN 'away'
+                      WHEN f.id IS NOT NULL THEN 'home'
+                      WHEN lower(r.venue) = 'away' THEN 'away'
+                      WHEN lower(r.venue) = 'home' THEN 'home'
+                      ELSE NULL
+                    END AS home_away
+             FROM team_results r LEFT JOIN fixtures f ON f.id = r.fixture_id AND f.tenant_id = r.tenant_id
+             WHERE r.tenant_id = ?
+             ORDER BY r.match_date DESC LIMIT ?`
         ).bind(claims.tenantId, limit).all();
 
         const rows = (results || []).map((r: any) => ({
@@ -846,6 +854,9 @@ export async function handleListResults(req: Request, env: any, corsHdrs: Header
             result: r.result,
             points: r.points,
             scorers: r.scorers,
+            fixtureId: r.fixture_id ?? null,
+            // Which end we were at, when known (from the fixture, or a venue of "home"/"away")
+            homeAway: r.home_away ?? null,
         }));
         return json({ success: true, data: rows }, 200, corsHdrs);
     } catch (err) {

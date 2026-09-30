@@ -7,6 +7,23 @@ import { registerUser, authenticateUser } from "../services/users";
 import { issueTenantAdminJWT, issueTenantMemberJWT } from "../services/jwt";
 import { sendVerificationEmail, sendPasswordResetEmail } from "../lib/email";
 import { rateLimit } from "../middleware/rateLimit";
+import { requireJWT } from "../services/auth";
+
+/**
+ * The signed-in account, looked up by the token's user id and club. Emails
+ * are never taken from a token: only an account's own row says who it is.
+ */
+async function signedInAccount(req: Request, env: any): Promise<{ id: string; email: string; tenant_id: string; password_hash: string | null } | null> {
+  let claims;
+  try {
+    claims = await requireJWT(req, env);
+  } catch {
+    return null;
+  }
+  if (!claims.sub || !claims.tenantId) return null;
+  return env.DB.prepare(`SELECT id, email, tenant_id, password_hash FROM auth_users WHERE id = ? AND tenant_id = ?`)
+    .bind(claims.sub, claims.tenantId).first();
+}
 
 // App sessions last 30 days (there is no refresh-token flow). Logout and
 // account deletion revoke tokens server-side, so a long TTL is safe.
@@ -467,13 +484,11 @@ export async function handleAuthLogin(req: Request, env: any, corsHdrs: Headers)
 // POST /api/v1/auth/switch-tenant
 export async function handleSwitchTenant(req: Request, env: any, corsHdrs: Headers) {
   try {
-    const claims = await verifyJWT(env, (req.headers.get('Authorization') || '').substring(7));
-    if (!claims || !claims.email && !claims.sub) { // .sub might be email for legacy tokens
-      // For new tokens email is in claims.email
-      // If not found, cant switch safely
-      return json({ success: false, error: { code: "UNAUTHORIZED", message: "Invalid token" } }, 401, corsHdrs);
+    const account = await signedInAccount(req, env);
+    if (!account) {
+      return json({ success: false, error: { code: "UNAUTHORIZED", message: "Please log in again." } }, 401, corsHdrs);
     }
-    const email = claims.email || claims.sub; // Fallback
+    const email = account.email;
 
     const body = await req.json().catch(() => ({})) as any;
     if (!body.targetTenantId) {
@@ -525,10 +540,10 @@ export async function handleSwitchTenant(req: Request, env: any, corsHdrs: Heade
 // GET /api/v1/auth/me/tenants
 export async function handleGetMyTenants(req: Request, env: any, corsHdrs: Headers) {
   try {
-    const claims = await verifyJWT(env, (req.headers.get('Authorization') || '').substring(7));
-    if (!claims) {return json({ success: false, error: "Unauthorized" }, 401, corsHdrs);}
+    const account = await signedInAccount(req, env);
+    if (!account) {return json({ success: false, error: "Unauthorized" }, 401, corsHdrs);}
 
-    const email = claims.email || claims.sub;
+    const email = account.email;
 
     const tenants = await env.DB.prepare(
       `SELECT t.id, t.name, t.slug, u.roles 
@@ -554,10 +569,10 @@ export async function handleLinkPlayer(req: Request, env: any, corsHdrs: Headers
     if (!limited.ok) {
       return json({ success: false, error: { code: "RATE_LIMITED", message: "Too many tries. Please wait a few minutes and try again." } }, 429, corsHdrs);
     }
-    const claims = await verifyJWT(env, (req.headers.get('Authorization') || '').substring(7));
-    if (!claims) {return json({ success: false, error: "Unauthorized" }, 401, corsHdrs);}
+    const account = await signedInAccount(req, env);
+    if (!account) {return json({ success: false, error: "Unauthorized" }, 401, corsHdrs);}
 
-    const email = claims.email || claims.sub;
+    const email = account.email;
     const body = await req.json().catch(() => ({})) as any;
 
     if (!body.code) {return json({ success: false, error: "Code required" }, 400, corsHdrs);}
@@ -613,11 +628,7 @@ export async function handleLinkPlayer(req: Request, env: any, corsHdrs: Headers
       // We need the password hash. We can't get it from JWT.
       // But we can get it from the CURRENT user record if we query it.
       // Get current user's password hash
-      const currentUser = await env.DB.prepare(
-        `SELECT password_hash FROM auth_users WHERE tenant_id = ? AND email = ?`
-      ).bind(claims.tenant_id, email).first();
-
-      if (!currentUser) {return json({ success: false, error: "Current user not found" }, 500, corsHdrs);}
+      const currentUser = account;
 
       await env.DB.prepare(`
                 INSERT INTO auth_users (id, tenant_id, email, password_hash, roles, created_at, updated_at)
@@ -1066,6 +1077,11 @@ export async function handleVerifyEmail(req: Request, env: any, corsHdrs: Header
  * Generate a session token
  */
 
+function requireSecret(env: any): string {
+  if (!env.JWT_SECRET) throw new Error("JWT_SECRET is not configured");
+  return env.JWT_SECRET;
+}
+
 async function generateSessionToken(env: any, payload: {
   sessionId: string;
   tenantId: string;
@@ -1082,25 +1098,26 @@ async function generateSessionToken(env: any, payload: {
     role: payload.role,
     player_id: payload.playerId,
     player_name: payload.playerName,
-    email: payload.email,
     iat: now,
     exp: now + (7 * 24 * 60 * 60), // 7 days
   };
 
-  const headerB64 = btoa(JSON.stringify(header));
-  const payloadB64 = btoa(JSON.stringify(claims));
+  // JWTs use base64url (no +, / or =), or verifiers reject them
+  const b64url = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  const headerB64 = b64url(new TextEncoder().encode(JSON.stringify(header)));
+  const payloadB64 = b64url(new TextEncoder().encode(JSON.stringify(claims)));
   const signatureData = `${headerB64}.${payloadB64}`;
 
   const enc = new TextEncoder();
   const key = await crypto.subtle.importKey(
     'raw',
-    enc.encode(env.JWT_SECRET || 'dev-secret'),
+    enc.encode(requireSecret(env)),
     { name: 'HMAC', hash: 'SHA-256' },
     false,
     ['sign']
   );
   const signature = await crypto.subtle.sign('HMAC', key, enc.encode(signatureData));
-  const signatureB64 = btoa(String.fromCharCode(...new Uint8Array(signature)));
+  const signatureB64 = b64url(new Uint8Array(signature));
 
   return `${headerB64}.${payloadB64}.${signatureB64}`;
 }

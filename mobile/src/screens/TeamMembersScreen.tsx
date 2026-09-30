@@ -1,486 +1,203 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, Alert } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Picker } from '@react-native-picker/picker';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, TextInput, View } from 'react-native';
+import { Modal, Portal } from 'react-native-paper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { themedStyles, useBrandColors } from '../theme/brand';
 import { FONTS } from '../theme/brandFonts';
-import SectionTitle from '../components/home/SectionTitle';
-import { Card, Button, Badge, Divider, EmptyState, LoadingSpinner } from '../components';
-import { useAuth } from '../context/AuthContext';
-import { squadApi } from '../services/api';
+import { apiErrorMessage, clubMembersApi, type ClubMember, type ClubRole } from '../services/api';
+import { ASSIGNABLE_ROLES, filterMembers, initialsOf, lastSeen, ROLE_INFO, sortMembers, type MemberFilter } from '../utils/members';
 
-/**
- * TeamMembersScreen
- *
- * Features:
- * - View all team members with their roles
- * - Change user roles (admin only)
- * - Audit log of role changes (if audit endpoint enabled)
- */
-
-interface TeamMember {
-  id: string;
-  name: string;
-  email: string;
-  role: 'admin' | 'coach' | 'player' | 'parent' | 'viewer';
-  joinedAt: string;
-  lastActive?: string;
-}
-
-interface RoleChangeHistory {
-  id: string;
-  userId: string;
-  userName: string;
-  oldRole: string;
-  newRole: string;
-  changedBy: string;
-  changedAt: string;
-  reason?: string;
-}
-
-const ROLE_OPTIONS = [
-  { value: 'admin', label: 'Admin', description: 'Full access to all features', color: '#F44336' },
-  { value: 'coach', label: 'Coach', description: 'Manage matches, training, and players', color: '#FF9800' },
-  { value: 'player', label: 'Player', description: 'View and RSVP to events, stats', color: '#4CAF50' },
-  { value: 'parent', label: 'Parent', description: 'View events, RSVP for players', color: '#2196F3' },
-  { value: 'viewer', label: 'Viewer', description: 'View-only access', color: '#9E9E9E' },
+const FILTERS: Array<{ id: MemberFilter; label: string }> = [
+  { id: 'all', label: 'Everyone' },
+  { id: 'staff', label: 'Staff' },
+  { id: 'player', label: 'Players' },
+  { id: 'parent', label: 'Parents' },
 ];
 
+/**
+ * Staff: everyone with an account at the club. Club admins tap someone to
+ * change what they can do (the change applies when that person next signs in).
+ */
 export default function TeamMembersScreen() {
-  const COLORS = useBrandColors();
+  const c = useBrandColors();
   const styles = useStyles();
-  const { user } = useAuth();
-  const [members, setMembers] = useState<TeamMember[]>([]);
-  const [roleHistory, setRoleHistory] = useState<RoleChangeHistory[]>([]);
+  const [members, setMembers] = useState<ClubMember[]>([]);
+  const [canChange, setCanChange] = useState(false);
+  const [me, setMe] = useState('');
+  const [filter, setFilter] = useState<MemberFilter>('all');
+  const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState('');
+  const [editing, setEditing] = useState<ClubMember | null>(null);
   const [saving, setSaving] = useState(false);
-  const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
-  const [showRoleChanger, setShowRoleChanger] = useState(false);
-  const [showHistory, setShowHistory] = useState(false);
+  const [message, setMessage] = useState('');
 
-  const currentUser = { id: user?.userId || '', role: user?.role || 'viewer' };
-  const isAdmin = currentUser.role === 'admin';
-
-  useEffect(() => {
-    loadMembers();
-    if (isAdmin) {
-      loadRoleHistory();
+  const load = useCallback(async () => {
+    setError('');
+    try {
+      const res = await clubMembersApi.list();
+      setMembers(res.data.members);
+      setCanChange(res.data.canChangeRoles);
+      setMe(res.data.me);
+    } catch (err) {
+      setError(apiErrorMessage(err, "We couldn't load the club's members. Check your signal and try again."));
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
   }, []);
 
-  const loadMembers = async () => {
-    setLoading(true);
-    try {
-      const result = await squadApi.getSquad();
-      const squad = result?.data || [];
-      const mapped: TeamMember[] = squad.map((p: any) => ({
-        id: p.id || p.playerId,
-        name: p.name || `${p.firstName || ''} ${p.lastName || ''}`.trim(),
-        email: p.email || '',
-        role: p.role || 'player',
-        joinedAt: p.joinedAt || p.createdAt || '',
-        lastActive: p.lastActive || '',
-      }));
-      setMembers(mapped);
-    } catch (error) {
-      console.error('Error loading members:', error);
-      Alert.alert('Error', 'Failed to load team members');
-    } finally {
-      setLoading(false);
-    }
-  };
+  useEffect(() => { load(); }, [load]);
 
-  const loadRoleHistory = async () => {
-    try {
-      // Role history is not yet backed by a dedicated endpoint; leave empty for now
-      setRoleHistory([]);
-    } catch (error) {
-      console.error('Error loading role history:', error);
-    }
-  };
+  const shown = useMemo(() => sortMembers(filterMembers(members, filter, query)), [members, filter, query]);
+  const counts = useMemo(() => Object.fromEntries(FILTERS.map((f) => [f.id, filterMembers(members, f.id, '').length])), [members]);
 
-  const handleRoleChange = async (member: TeamMember, newRole: string) => {
-    if (!isAdmin) {
-      Alert.alert('Unauthorized', 'Only admins can change roles');
-      return;
-    }
-
-    if (member.id === currentUser.id) {
-      Alert.alert('Error', 'You cannot change your own role');
-      return;
-    }
-
+  const changeRole = async (member: ClubMember, role: ClubRole) => {
+    if (member.role === role) { setEditing(null); return; }
     setSaving(true);
+    setError('');
     try {
-      await squadApi.updatePlayer(member.id, { role: newRole });
-      setMembers(members.map(m =>
-        m.id === member.id ? { ...m, role: newRole as any } : m
-      ));
-
-      setShowRoleChanger(false);
-      setSelectedMember(null);
-      Alert.alert('Success', `Role changed to ${newRole}`);
-
-      // Reload history
-      if (isAdmin) {
-        loadRoleHistory();
-      }
-    } catch (error) {
-      console.error('Error changing role:', error);
-      Alert.alert('Error', 'Failed to change role');
+      const updated = (await clubMembersApi.setRole(member.id, role)).data;
+      setMembers((list) => list.map((m) => (m.id === updated.id ? updated : m)));
+      setMessage(`${updated.name} is now ${ROLE_INFO[role].label === 'Admin' ? 'an admin' : `a ${ROLE_INFO[role].label.toLowerCase()}`}. It applies next time they sign in.`);
+      setEditing(null);
+    } catch (err) {
+      setError(apiErrorMessage(err, "That didn't save. Please try again."));
     } finally {
       setSaving(false);
     }
   };
 
-  const getRoleBadgeVariant = (role: string) => {
-    switch (role) {
-      case 'admin': return 'error';
-      case 'coach': return 'warning';
-      case 'player': return 'success';
-      case 'parent': return 'info';
-      default: return 'default';
-    }
-  };
-
-  const getRoleColor = (role: string) => {
-    return ROLE_OPTIONS.find(r => r.value === role)?.color || '#9E9E9E';
-  };
-
-  if (loading) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <LoadingSpinner message="Loading team members..." />
-      </SafeAreaView>
-    );
-  }
+  if (loading) return <View style={[styles.container, styles.center]}><ActivityIndicator size="large" color={c.primary} /></View>;
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView>
-        <Text style={styles.count}>
-          {`${members.length} member${members.length !== 1 ? 's' : ''}`}
+    <View style={styles.container}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={c.primary} />}
+      >
+        <Text style={styles.intro}>
+          {members.length} {members.length === 1 ? 'person has' : 'people have'} an account at the club.
+          {canChange ? ' Tap someone to change what they can do.' : ''}
         </Text>
 
-        {/* Role Legend */}
-        <Card variant="outlined" style={styles.legendCard}>
-          <Text style={[styles.legendTitle, { color: COLORS.text }]}>Roles</Text>
-          <View style={styles.legendGrid}>
-            {ROLE_OPTIONS.map(role => (
-              <View key={role.value} style={styles.legendItem}>
-                <View style={[styles.legendDot, { backgroundColor: role.color }]} />
-                <Text style={[styles.legendLabel, { color: COLORS.text }]}>
-                  {role.label}
+        <View style={styles.search}>
+          <MaterialCommunityIcons name="magnify" size={20} color={c.textLight} />
+          <TextInput
+            value={query}
+            onChangeText={setQuery}
+            placeholder="Search by name or email"
+            placeholderTextColor={c.textLight}
+            style={styles.searchInput}
+            autoCapitalize="none"
+            autoCorrect={false}
+            accessibilityLabel="Search members"
+          />
+        </View>
+
+        <View style={styles.filters}>
+          {FILTERS.map((f) => {
+            const on = filter === f.id;
+            return (
+              <Pressable key={f.id} onPress={() => setFilter(f.id)} accessibilityRole="button" accessibilityState={{ selected: on }}
+                style={[styles.filter, on && { backgroundColor: c.primary, borderColor: c.primary }]}>
+                <Text style={[styles.filterText, on && { color: c.onPrimary }]}>{f.label} ({counts[f.id]})</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
+        {message ? <Text style={styles.message} accessibilityRole="alert">{message}</Text> : null}
+        {error ? <Text style={styles.error} accessibilityRole="alert">{error}</Text> : null}
+
+        {shown.map((m) => {
+          const editable = canChange && m.role !== 'owner' && m.id !== me;
+          return (
+            <Pressable
+              key={m.id}
+              onPress={editable ? () => { setMessage(''); setEditing(m); } : undefined}
+              disabled={!editable}
+              accessibilityRole={editable ? 'button' : undefined}
+              accessibilityLabel={`${m.name}, ${ROLE_INFO[m.role].label}${editable ? '. Change role' : ''}`}
+              style={({ pressed }) => [styles.row, pressed && editable ? styles.pressed : null]}
+            >
+              <View style={[styles.avatar, { borderColor: m.role === 'parent' || m.role === 'player' ? c.border : c.primary }]}>
+                <Text style={styles.avatarText}>{initialsOf(m.name)}</Text>
+              </View>
+              <View style={styles.rowBody}>
+                <Text style={styles.name} numberOfLines={1}>{m.name}{m.id === me ? ' (you)' : ''}</Text>
+                <Text style={styles.small} numberOfLines={1}>{m.email}</Text>
+                <Text style={styles.small}>
+                  {lastSeen(m.lastLoginAt)}{m.linkedPlayers ? ` · ${m.linkedPlayers} ${m.linkedPlayers === 1 ? 'child' : 'children'} linked` : ''}
                 </Text>
               </View>
-            ))}
-          </View>
-        </Card>
-
-        {/* Members List */}
-        {members.length === 0 ? (
-          <EmptyState
-            icon="account-group-outline"
-            title="No Members"
-            description="Members appear here once they sign up and join your club."
-          />
-        ) : (
-          <View style={styles.membersList}>
-            {members.map(member => (
-              <Card key={member.id} variant="outlined" style={styles.memberCard}>
-                <View style={styles.memberHeader}>
-                  <View style={styles.memberInfo}>
-                    <Text style={[styles.memberName, { color: COLORS.text }]}>
-                      {member.name}
-                    </Text>
-                    <Text style={[styles.memberEmail, { color: COLORS.textLight }]}>
-                      {member.email}
-                    </Text>
-                  </View>
-                  <Badge variant={getRoleBadgeVariant(member.role)}>
-                    {member.role}
-                  </Badge>
-                </View>
-
-                <View style={styles.memberMeta}>
-                  {member.joinedAt && !Number.isNaN(new Date(member.joinedAt).getTime()) ? (
-                    <Text style={[styles.memberMetaText, { color: COLORS.textLight }]}>
-                      Joined {new Date(member.joinedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-                    </Text>
-                  ) : null}
-                  {member.lastActive && (
-                    <Text style={[styles.memberMetaText, { color: COLORS.textLight }]}>
-                      Last active: {new Date(member.lastActive).toLocaleDateString()}
-                    </Text>
-                  )}
-                </View>
-
-                {isAdmin && member.id !== currentUser.id && (
-                  <View style={styles.memberActions}>
-                    <Button
-                      variant="outline"
-                      size="small"
-                      onPress={() => {
-                        setSelectedMember(member);
-                        setShowRoleChanger(true);
-                      }}
-                    >
-                      Change Role
-                    </Button>
-                  </View>
-                )}
-              </Card>
-            ))}
-          </View>
-        )}
-
-        {/* Role Change History */}
-        {isAdmin && roleHistory.length > 0 && (
-          <>
-            <Divider style={styles.divider} />
-            <SectionTitle
-              title="ROLE CHANGE HISTORY"
-              color={COLORS.primary}
-              action={showHistory ? 'Hide' : 'Show'}
-              onAction={() => setShowHistory(!showHistory)}
-            />
-
-            {showHistory && (
-              <View style={styles.historyList}>
-                {roleHistory.map(change => (
-                  <Card key={change.id} variant="outlined" style={styles.historyCard}>
-                    <Text style={[styles.historyUser, { color: COLORS.text }]}>
-                      {change.userName}
-                    </Text>
-                    <Text style={[styles.historyChange, { color: COLORS.textLight }]}>
-                      {change.oldRole} → {change.newRole}
-                    </Text>
-                    <Text style={[styles.historyMeta, { color: COLORS.textLight }]}>
-                      Changed by {change.changedBy} on{' '}
-                      {new Date(change.changedAt).toLocaleDateString()}
-                    </Text>
-                    {change.reason && (
-                      <Text style={[styles.historyReason, { color: COLORS.textLight }]}>
-                        Reason: {change.reason}
-                      </Text>
-                    )}
-                  </Card>
-                ))}
+              <View style={[styles.rolePill, m.role !== 'parent' && m.role !== 'player' ? { backgroundColor: c.primarySoft, borderColor: c.primary } : null]}>
+                <Text style={[styles.roleText, m.role !== 'parent' && m.role !== 'player' ? { color: c.primary } : null]}>{ROLE_INFO[m.role].label}</Text>
               </View>
-            )}
-          </>
-        )}
+              {editable ? <MaterialCommunityIcons name="chevron-right" size={20} color={c.textLight} /> : null}
+            </Pressable>
+          );
+        })}
+        {!shown.length ? <Text style={styles.empty}>{members.length ? 'Nobody matches.' : 'Nobody has signed up yet. Share the club link so families can join.'}</Text> : null}
       </ScrollView>
 
-      {/* Role Changer Modal */}
-      {showRoleChanger && selectedMember && (
-        <View style={styles.modal}>
-          <View style={styles.modalContent}>
-            <Text style={[styles.modalTitle, { color: COLORS.text }]}>
-              Change Role for {selectedMember.name}
-            </Text>
-
-            <View style={styles.rolePickerContainer}>
-              <Text style={[styles.rolePickerLabel, { color: COLORS.text }]}>
-                Select new role:
-              </Text>
-              <Picker
-                selectedValue={selectedMember.role}
-                onValueChange={(value) => setSelectedMember({ ...selectedMember, role: value as any })}
-                style={[styles.rolePicker, { color: COLORS.text }]}
-              >
-                {ROLE_OPTIONS.map(role => (
-                  <Picker.Item
-                    key={role.value}
-                    label={`${role.label} - ${role.description}`}
-                    value={role.value}
-                  />
-                ))}
-              </Picker>
-            </View>
-
-            <View style={styles.modalActions}>
-              <Button
-                variant="outline"
-                onPress={() => {
-                  setShowRoleChanger(false);
-                  setSelectedMember(null);
-                }}
-                disabled={saving}
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="primary"
-                onPress={() => handleRoleChange(selectedMember, selectedMember.role)}
-                loading={saving}
-              >
-                Save
-              </Button>
-            </View>
-          </View>
-        </View>
-      )}
-
-    </SafeAreaView>
+      <Portal>
+        <Modal visible={!!editing} onDismiss={() => !saving && setEditing(null)} contentContainerStyle={styles.modal}>
+          {editing ? (
+            <>
+              <Text style={styles.modalTitle}>{editing.name}</Text>
+              <Text style={styles.small}>Choose what they can do. It applies next time they sign in.</Text>
+              {ASSIGNABLE_ROLES.map((role) => {
+                const current = editing.role === role;
+                return (
+                  <Pressable key={role} onPress={() => changeRole(editing, role)} disabled={saving} accessibilityRole="button" accessibilityState={{ selected: current }}
+                    style={[styles.option, current && { borderColor: c.primary, backgroundColor: c.primarySoft }]}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.optionTitle, current && { color: c.primary }]}>{ROLE_INFO[role].label}</Text>
+                      <Text style={styles.small}>{ROLE_INFO[role].description}</Text>
+                    </View>
+                    {current ? <MaterialCommunityIcons name="check-circle" size={22} color={c.primary} /> : null}
+                  </Pressable>
+                );
+              })}
+              <Pressable onPress={() => setEditing(null)} disabled={saving} accessibilityRole="button" style={styles.cancel}>
+                {saving ? <ActivityIndicator color={c.primary} /> : <Text style={[styles.cancelText, { color: c.primary }]}>Cancel</Text>}
+              </Pressable>
+            </>
+          ) : null}
+        </Modal>
+      </Portal>
+    </View>
   );
 }
 
-const useStyles = themedStyles((COLORS) => ({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
-  count: {
-    color: COLORS.textLight,
-    marginHorizontal: 16,
-    marginTop: 12,
-    marginBottom: 12,
-  },
-  legendCard: {
-    marginHorizontal: 16,
-    marginBottom: 16,
-    backgroundColor: COLORS.surface,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  legendTitle: {
-    fontFamily: FONTS.display,
-    fontSize: 20,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    marginBottom: 12,
-  },
-  legendGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  legendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  legendDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-  },
-  legendLabel: {
-    fontSize: 14,
-  },
-  membersList: {
-    paddingHorizontal: 16,
-  },
-  memberCard: {
-    marginBottom: 12,
-    backgroundColor: COLORS.surface,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  memberHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 8,
-  },
-  memberInfo: {
-    flex: 1,
-  },
-  memberName: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  memberEmail: {
-    fontSize: 14,
-  },
-  memberMeta: {
-    marginTop: 8,
-    gap: 4,
-  },
-  memberMetaText: {
-    fontSize: 12,
-  },
-  memberActions: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 12,
-  },
-  divider: {
-    marginVertical: 16,
-    backgroundColor: COLORS.border,
-  },
-  historyList: {
-    paddingHorizontal: 16,
-  },
-  historyCard: {
-    marginBottom: 8,
-    backgroundColor: COLORS.surface,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  historyUser: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  historyChange: {
-    fontSize: 14,
-    marginBottom: 4,
-  },
-  historyMeta: {
-    fontSize: 12,
-    marginBottom: 2,
-  },
-  historyReason: {
-    fontSize: 12,
-    fontStyle: 'italic',
-    marginTop: 4,
-  },
-  modal: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(7,9,12,0.8)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContent: {
-    width: '90%',
-    maxWidth: 400,
-    backgroundColor: COLORS.surfaceRaised,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    padding: 24,
-  },
-  modalTitle: {
-    fontFamily: FONTS.display,
-    fontSize: 24,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    marginBottom: 16,
-  },
-  rolePickerContainer: {
-    marginBottom: 24,
-  },
-  rolePickerLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 8,
-  },
-  rolePicker: {
-    height: 150,
-  },
-  modalActions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 12,
-  },
+const useStyles = themedStyles((c) => ({
+  container: { flex: 1, backgroundColor: c.background },
+  center: { justifyContent: 'center', alignItems: 'center' },
+  content: { padding: 16, paddingBottom: 40, gap: 10 },
+  intro: { color: c.textLight, fontSize: 14 },
+  search: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: c.surface, borderRadius: 14, borderWidth: 1, borderColor: c.border, paddingHorizontal: 12 },
+  searchInput: { flex: 1, color: c.text, fontSize: 15, paddingVertical: 12 },
+  filters: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  filter: { borderWidth: 1, borderColor: c.border, backgroundColor: c.surface, borderRadius: 999, paddingVertical: 7, paddingHorizontal: 12 },
+  filterText: { color: c.text, fontWeight: '700', fontSize: 13 },
+  message: { color: c.primary, fontWeight: '600' },
+  error: { color: c.error },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: c.surface, borderRadius: 18, borderWidth: 1, borderColor: c.border, padding: 12 },
+  pressed: { backgroundColor: c.surfaceRaised },
+  avatar: { width: 44, height: 44, borderRadius: 22, borderWidth: 2, alignItems: 'center', justifyContent: 'center', backgroundColor: c.surfaceRaised },
+  avatarText: { color: c.text, fontFamily: FONTS.display, fontSize: 18 },
+  rowBody: { flex: 1, minWidth: 0 },
+  name: { color: c.text, fontWeight: '800', fontSize: 15 },
+  small: { color: c.textLight, fontSize: 12, marginTop: 1 },
+  rolePill: { borderRadius: 999, borderWidth: 1, borderColor: c.border, paddingHorizontal: 10, paddingVertical: 3 },
+  roleText: { color: c.textLight, fontSize: 11, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5 },
+  empty: { color: c.textLight, textAlign: 'center', paddingVertical: 24 },
+  modal: { backgroundColor: c.surface, margin: 16, borderRadius: 18, borderWidth: 1, borderColor: c.border, padding: 16, gap: 8 },
+  modalTitle: { color: c.text, fontFamily: FONTS.display, fontSize: 24, textTransform: 'uppercase', letterSpacing: 0.5 },
+  option: { flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1, borderColor: c.border, borderRadius: 14, padding: 12 },
+  optionTitle: { color: c.text, fontWeight: '800', fontSize: 15 },
+  cancel: { alignItems: 'center', paddingVertical: 10 },
+  cancelText: { fontWeight: '800', fontSize: 15 },
 }));

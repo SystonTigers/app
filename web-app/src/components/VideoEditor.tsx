@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { apiFetch } from '@/lib/session';
 
 interface Video {
     id: string;
@@ -31,7 +32,7 @@ export function VideoEditor({ tenant }: VideoEditorProps) {
 
     const loadVideos = async () => {
         try {
-            const response = await fetch(`/api/v1/videos?tenant=${tenant}`);
+            const response = await apiFetch(`/api/v1/videos?tenant=${tenant}`);
             const data = await response.json();
             if (data.success) {
                 setVideos(data.data.videos || []);
@@ -71,7 +72,7 @@ export function VideoEditor({ tenant }: VideoEditorProps) {
             const formData = new FormData();
             formData.append('video', file);
 
-            const response = await fetch('/api/v1/videos/upload', {
+            const response = await apiFetch('/api/v1/videos/upload', {
                 method: 'POST',
                 body: formData,
             });
@@ -246,7 +247,7 @@ function VideoEditorCanvas({ video, tenant, localUrl }: { video: Video; tenant: 
 
     const loadClips = async () => {
         try {
-            const response = await fetch(`/api/v1/videos/${video.id}/clips`);
+            const response = await apiFetch(`/api/v1/videos/${video.id}/clips`);
             const data = await response.json();
             if (data.success) {
                 setClips(data.data.clips || []);
@@ -302,7 +303,7 @@ function VideoEditorCanvas({ video, tenant, localUrl }: { video: Video; tenant: 
 
         setCreatingClip(true);
         try {
-            const response = await fetch(`/api/v1/videos/${video.id}/process`, {
+            const response = await apiFetch(`/api/v1/videos/${video.id}/process`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -338,7 +339,7 @@ function VideoEditorCanvas({ video, tenant, localUrl }: { video: Video; tenant: 
 
         setAnalyzingCoaching(true);
         try {
-            const response = await fetch(`/api/v1/videos/${video.id}/analyze-mistakes`, {
+            const response = await apiFetch(`/api/v1/videos/${video.id}/analyze-mistakes`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

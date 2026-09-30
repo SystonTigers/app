@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { apiFetch } from '@/lib/session';
 
 interface Player {
     id: string;
@@ -72,8 +73,7 @@ export default function StartSeasonWizard({ isOpen, onClose, onSuccess }: Props)
         setLoadingPlayers(true);
         try {
             const token = localStorage.getItem('token');
-            const res = await fetch(
-                `${process.env.NEXT_PUBLIC_API_BASE || ''}/api/v1/seasons/available-players`,
+            const res = await apiFetch(`/api/v1/seasons/available-players`,
                 { headers: { Authorization: `Bearer ${token}` } }
             );
             const data = await res.json();
@@ -117,8 +117,7 @@ export default function StartSeasonWizard({ isOpen, onClose, onSuccess }: Props)
 
         try {
             const token = localStorage.getItem('token');
-            const res = await fetch(
-                `${process.env.NEXT_PUBLIC_API_BASE || ''}/api/v1/seasons/start-new`,
+            const res = await apiFetch(`/api/v1/seasons/start-new`,
                 {
                     method: 'POST',
                     headers: {

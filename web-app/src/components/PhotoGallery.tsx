@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
+import { apiFetch } from '@/lib/session';
 
 interface Photo {
     id: string;
@@ -44,7 +45,7 @@ export function PhotoGallery({ tenant }: PhotoGalleryProps) {
     const loadAlbums = async () => {
         try {
             const token = localStorage.getItem('token');
-            const res = await fetch('/api/v1/gallery/albums', {
+            const res = await apiFetch('/api/v1/gallery/albums', {
                 headers: { Authorization: `Bearer ${token}` },
             });
             const data = await res.json();
@@ -61,7 +62,7 @@ export function PhotoGallery({ tenant }: PhotoGalleryProps) {
     const loadPhotos = async (albumId: string) => {
         try {
             const token = localStorage.getItem('token');
-            const res = await fetch(`/api/v1/gallery/photos?albumId=${albumId}`, {
+            const res = await apiFetch(`/api/v1/gallery/photos?albumId=${albumId}`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             const data = await res.json();
@@ -84,7 +85,7 @@ export function PhotoGallery({ tenant }: PhotoGalleryProps) {
             formData.append('file', file);
             formData.append('albumId', selectedAlbum.id);
 
-            const res = await fetch('/api/v1/gallery/upload', {
+            const res = await apiFetch('/api/v1/gallery/upload', {
                 method: 'POST',
                 headers: { Authorization: `Bearer ${token}` },
                 body: formData,
@@ -107,7 +108,7 @@ export function PhotoGallery({ tenant }: PhotoGalleryProps) {
 
         try {
             const token = localStorage.getItem('token');
-            await fetch(`/api/v1/gallery/photos/${photoId}`, {
+            await apiFetch(`/api/v1/gallery/photos/${photoId}`, {
                 method: 'DELETE',
                 headers: { Authorization: `Bearer ${token}` },
             });

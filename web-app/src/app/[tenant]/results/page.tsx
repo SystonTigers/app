@@ -5,6 +5,7 @@ import { isClubTeam } from '@/lib/slug';
 import { useRouter } from 'next/navigation';
 import { PublicSeasonTabs } from '@/components/PublicSeasonTabs';
 import { FaFullTimeEmbed, useFaSnippets } from '@/components/FaFullTimeEmbed';
+import { apiFetch } from '@/lib/session';
 
 export default function ResultsPage({ params }: { params: Promise<{ tenant: string }> }) {
   const [tenant, setTenant] = useState('');
@@ -69,7 +70,7 @@ export default function ResultsPage({ params }: { params: Promise<{ tenant: stri
   async function createDiscussion(data: any) {
     try {
       setLoading(true);
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE || ''}/api/v1/discussions`, {
+      const res = await apiFetch(`/api/v1/discussions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

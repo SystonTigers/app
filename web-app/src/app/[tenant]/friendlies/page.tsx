@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
+import { apiFetch } from '@/lib/session';
 
 interface FriendlyRequest {
     id: string;
@@ -70,19 +71,19 @@ export default function FriendliesPage() {
 
         try {
             if (activeTab === 'browse') {
-                const res = await fetch('/api/v1/friendlies', { headers });
+                const res = await apiFetch('/api/v1/friendlies', { headers });
                 const data = await res.json();
                 if (data.success) setRequests(data.data);
             } else if (activeTab === 'mine') {
-                const res = await fetch('/api/v1/friendlies/mine', { headers });
+                const res = await apiFetch('/api/v1/friendlies/mine', { headers });
                 const data = await res.json();
                 if (data.success) setMyRequests(data.data);
             } else if (activeTab === 'inbox') {
-                const res = await fetch('/api/v1/friendlies/inbox', { headers });
+                const res = await apiFetch('/api/v1/friendlies/inbox', { headers });
                 const data = await res.json();
                 if (data.success) setInbox(data.data);
             } else if (activeTab === 'sent') {
-                const res = await fetch('/api/v1/friendlies/sent', { headers });
+                const res = await apiFetch('/api/v1/friendlies/sent', { headers });
                 const data = await res.json();
                 if (data.success) setSent(data.data);
             }
@@ -95,7 +96,7 @@ export default function FriendliesPage() {
     const handlePostRequest = async () => {
         const token = localStorage.getItem('session_token');
         try {
-            const res = await fetch('/api/v1/friendlies', {
+            const res = await apiFetch('/api/v1/friendlies', {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -117,7 +118,7 @@ export default function FriendliesPage() {
     const handleRequestMatch = async (requestId: string, message: string, date: string) => {
         const token = localStorage.getItem('session_token');
         try {
-            const res = await fetch(`/api/v1/friendlies/${requestId}/request`, {
+            const res = await apiFetch(`/api/v1/friendlies/${requestId}/request`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -138,7 +139,7 @@ export default function FriendliesPage() {
     const handleRespond = async (matchId: string, action: 'accept' | 'decline') => {
         const token = localStorage.getItem('session_token');
         try {
-            const res = await fetch(`/api/v1/friendlies/match/${matchId}/respond`, {
+            const res = await apiFetch(`/api/v1/friendlies/match/${matchId}/respond`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -161,7 +162,7 @@ export default function FriendliesPage() {
     const handleDeleteRequest = async (id: string) => {
         const token = localStorage.getItem('session_token');
         try {
-            await fetch(`/api/v1/friendlies/${id}`, {
+            await apiFetch(`/api/v1/friendlies/${id}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${token}` }
             });

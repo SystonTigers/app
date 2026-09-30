@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { createClientSDK } from '@/lib/sdk';
+import { apiFetch } from '@/lib/session';
 
 interface StartSeasonModalProps {
     isOpen: boolean;
@@ -52,7 +53,7 @@ export function StartSeasonModal({ isOpen, onClose, onSuccess, tenantId }: Start
         setLoading(true);
         try {
             const token = localStorage.getItem('token');
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE || ''}/api/v1/seasons/start-new`, {
+            const res = await apiFetch(`/api/v1/seasons/start-new`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

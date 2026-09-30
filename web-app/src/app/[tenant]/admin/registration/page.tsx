@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
+import { apiFetch } from '@/lib/session';
 
 interface SubscriptionPlan {
     id: string;
@@ -78,11 +79,11 @@ export default function RegistrationSettingsPage() {
     const fetchAllData = async () => {
         try {
             const [plansRes, feesRes, docsRes, discountsRes, staffRes] = await Promise.all([
-                fetch(`${API_BASE}/api/v1/registration/plans`, { credentials: 'include' }),
-                fetch(`${API_BASE}/api/v1/registration/fees`, { credentials: 'include' }),
-                fetch(`${API_BASE}/api/v1/registration/documents`, { credentials: 'include' }),
-                fetch(`${API_BASE}/api/v1/registration/discounts`, { credentials: 'include' }),
-                fetch(`${API_BASE}/api/v1/registration/staff-children`, { credentials: 'include' }),
+                apiFetch(`/api/v1/registration/plans`, { }),
+                apiFetch(`/api/v1/registration/fees`, { }),
+                apiFetch(`/api/v1/registration/documents`, { }),
+                apiFetch(`/api/v1/registration/discounts`, { }),
+                apiFetch(`/api/v1/registration/staff-children`, { }),
             ]);
 
             const [plansData, feesData, docsData, discountsData, staffData] = await Promise.all([

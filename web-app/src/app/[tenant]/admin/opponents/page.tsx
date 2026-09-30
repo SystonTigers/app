@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
-import { getSessionToken } from '@/lib/session';
+import { getSessionToken, apiFetch } from '@/lib/session';
 
 interface Opponent {
     id: string;
@@ -33,7 +33,7 @@ export default function AdminOpponentsPage() {
     const fetchOpponents = async () => {
         try {
             const token = getSessionToken();
-            const res = await fetch(`/api/v1/opponents?tenant_id=${tenantSlug}`, {
+            const res = await apiFetch(`/api/v1/opponents?tenant_id=${tenantSlug}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const data = await res.json();
@@ -52,7 +52,7 @@ export default function AdminOpponentsPage() {
 
         try {
             const token = getSessionToken();
-            const res = await fetch(`/api/v1/opponents/${selectedOpponent.id}/confirm`, {
+            const res = await apiFetch(`/api/v1/opponents/${selectedOpponent.id}/confirm`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -79,7 +79,7 @@ export default function AdminOpponentsPage() {
 
         try {
             const token = getSessionToken();
-            const res = await fetch('/api/v1/opponents', {
+            const res = await apiFetch('/api/v1/opponents', {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -104,7 +104,7 @@ export default function AdminOpponentsPage() {
         setUploading(true);
         try {
             const token = getSessionToken();
-            const res = await fetch(`/api/v1/opponents/${opponentId}/upload-badge`, {
+            const res = await apiFetch(`/api/v1/opponents/${opponentId}/upload-badge`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,

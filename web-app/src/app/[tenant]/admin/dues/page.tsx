@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
+import { apiFetch } from '@/lib/session';
 
 interface PaymentRequest {
     id: string;
@@ -32,7 +33,7 @@ export default function DuesPage() {
 
     const fetchRequests = async () => {
         try {
-            const res = await fetch(`${API_BASE}/api/v1/dues/requests`, { credentials: 'include' });
+            const res = await apiFetch(`/api/v1/dues/requests`, { });
             const data = await res.json();
             if (data.success) {
                 setRequests(data.data);
@@ -48,9 +49,8 @@ export default function DuesPage() {
         if (!newRequest.title || !newRequest.amount) return;
         setCreating(true);
         try {
-            const res = await fetch(`${API_BASE}/api/v1/dues/requests`, {
+            const res = await apiFetch(`/api/v1/dues/requests`, {
                 method: 'POST',
-                credentials: 'include',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     title: newRequest.title,
@@ -74,9 +74,8 @@ export default function DuesPage() {
 
     const handleSendReminder = async (requestId: string) => {
         try {
-            const res = await fetch(`${API_BASE}/api/v1/dues/remind`, {
+            const res = await apiFetch(`/api/v1/dues/remind`, {
                 method: 'POST',
-                credentials: 'include',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ requestId }),
             });

@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { apiFetch } from '@/lib/session';
 
 function VerifyPageContent() {
     const router = useRouter();
@@ -20,7 +21,7 @@ function VerifyPageContent() {
 
         const verify = async () => {
             try {
-                const res = await fetch('/api/v1/auth/verify-signup', {
+                const res = await apiFetch('/api/v1/auth/verify-signup', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ token })

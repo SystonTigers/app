@@ -4,7 +4,17 @@
  */
 
 import Stripe from 'stripe';
-import { requireJWT } from '../services/auth';
+import { hasAnyRole, requireJWT, requireTenantJWT, STAFF_ROLES } from '../services/auth';
+
+/** Staff, or a parent linked to this player, in the caller's club. */
+async function canActForPlayer(env: any, claims: { tenantId: string; sub?: string; roles: string[] }, playerId: string): Promise<boolean> {
+    const player = await env.DB.prepare('SELECT id FROM squad WHERE id = ? AND tenant_id = ?').bind(playerId, claims.tenantId).first();
+    if (!player) return false;
+    if (hasAnyRole(claims, STAFF_ROLES)) return true;
+    const link = await env.DB.prepare('SELECT 1 AS ok FROM auth_user_players WHERE user_id = ? AND player_id = ? AND tenant_id = ?')
+        .bind(claims.sub ?? '', playerId, claims.tenantId).first();
+    return !!link;
+}
 import { json } from '../services/util';
 
 function getStripe(env: any): Stripe {
@@ -280,6 +290,7 @@ export async function handleListDocuments(req: Request, env: any, corsHdrs: Head
  */
 export async function handleSignDocument(req: Request, env: any, corsHdrs: Headers) {
     try {
+        const claims = await requireTenantJWT(req, env);
         const body = await req.json() as {
             documentId: string;
             playerId: string;
@@ -292,6 +303,12 @@ export async function handleSignDocument(req: Request, env: any, corsHdrs: Heade
 
         if (!body.documentId || !body.playerId || !body.signedByName || !body.signedByEmail || !body.signatureData) {
             return json({ success: false, error: { message: 'Missing required fields' } }, 400, corsHdrs);
+        }
+
+        // The document must be this club's, and the signer staff or the player's linked parent
+        const doc = await env.DB.prepare('SELECT id FROM club_documents WHERE id = ? AND tenant_id = ?').bind(body.documentId, claims.tenantId).first();
+        if (!doc || !(await canActForPlayer(env, claims, body.playerId))) {
+            return json({ success: false, error: { message: 'You can only sign for your own child, in your club.' } }, 403, corsHdrs);
         }
 
         // Get client IP and user agent for audit trail
@@ -335,17 +352,20 @@ export async function handleSignDocument(req: Request, env: any, corsHdrs: Heade
  */
 export async function handleGetPlayerAgreements(req: Request, env: any, corsHdrs: Headers) {
     try {
-        const claims = await requireJWT(req, env);
+        const claims = await requireTenantJWT(req, env);
         const url = new URL(req.url);
-        const playerId = url.pathname.split('/').pop();
+        const playerId = url.pathname.split('/').pop() || '';
+        if (!(await canActForPlayer(env, claims, playerId))) {
+            return json({ success: false, error: { message: 'Not found' } }, 404, corsHdrs);
+        }
 
         const { results: agreements } = await env.DB.prepare(`
             SELECT pa.*, cd.title as document_title
             FROM player_agreements pa
             JOIN club_documents cd ON pa.document_id = cd.id
-            WHERE pa.player_id = ?
+            WHERE pa.player_id = ? AND cd.tenant_id = ?
             ORDER BY pa.signed_at DESC
-        `).bind(playerId).all();
+        `).bind(playerId, claims.tenantId).all();
 
         return json({
             success: true,

@@ -19,3 +19,7 @@ nul
 # Cloudflare build output
 .open-next/
 .wrangler/
+
+# Written by `next dev` for coding agents
+AGENTS.md
+CLAUDE.md

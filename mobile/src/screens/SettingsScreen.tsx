@@ -1,609 +1,217 @@
-import React, { useState, useEffect } from 'react';
-import { View, ScrollView, Alert } from 'react-native';
-import { Card, Title, Paragraph, Switch, List, TextInput, Button, Divider } from 'react-native-paper';
+import React, { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, Switch, Text, View } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { themedStyles, useBrandColors } from '../theme/brand';
-import { FONTS } from '../theme/brandFonts';
+import SectionTitle from '../components/home/SectionTitle';
 import { DeleteAccountModal } from '../components/DeleteAccountModal';
 import { useAuth } from '../context/AuthContext';
-import { usersApi } from '../services/api';
+import { useClub } from '../context/ClubContext';
+import { alertPrefsApi, apiErrorMessage, type AlertGroup } from '../services/api';
+import { pushPermission, registerForPush, type PushPermission } from '../services/push';
+import { APP_VERSION } from '../config';
 
-const PREFERENCES_KEY = '@notification_preferences';
+const GROUPS: Array<{ id: AlertGroup; title: string; detail: string; icon: string }> = [
+  { id: 'match', title: 'Kick-off, half time and full time', detail: 'Including the final score', icon: 'whistle' },
+  { id: 'goals', title: 'Goals', detail: 'Ours and theirs, as they happen', icon: 'soccer' },
+  { id: 'cards', title: 'Cards', detail: 'Yellow and red cards for our players', icon: 'card' },
+  { id: 'video', title: 'Live video', detail: 'When a match starts streaming in the app', icon: 'video' },
+  { id: 'reminders', title: 'Reminders', detail: 'Things the club needs from you, like photo consent', icon: 'bell-ring-outline' },
+];
 
-interface NotificationPreferences {
-  masterToggle: boolean;
-  matchAlerts: {
-    prematch24h: boolean;
-    prematch3h: boolean;
-    prematch1h: boolean;
-    kickoff: boolean;
-    halftime: boolean;
-    fulltime: boolean;
-    goals: boolean;
-    cards: boolean;
-    potm: boolean;
-    clips: boolean;
-  };
-  venuePreferences: {
-    favorites: string[];
-    muted: string[];
-  };
-  channels: {
-    inApp: boolean;
-    email: boolean;
-    sms: boolean;
-  };
-  quietHours: {
-    enabled: boolean;
-    start: string;
-    end: string;
-    allowUrgentBypass: boolean;
-  };
-}
+const PERMISSION_TEXT: Record<PushPermission, string> = {
+  granted: 'Notifications are on for this device.',
+  undetermined: "Notifications aren't on for this device yet.",
+  denied: "Notifications are blocked for this app. Turn them on in your phone or browser settings.",
+  'needs-install': 'On iPhone, add the app to your home screen first (Share → Add to Home Screen), then turn notifications on.',
+  unsupported: "This browser can't show notifications.",
+};
 
-interface UserProfile {
-  name: string;
-  email: string;
-  phone: string;
-  language: string;
-  timezone: string;
-}
-
+/** Alerts (saved to your account, so every device follows them), and account actions. */
 export default function SettingsScreen() {
-  const COLORS = useBrandColors();
+  const c = useBrandColors();
   const styles = useStyles();
+  const navigation = useNavigation<any>();
   const { user, logout } = useAuth();
+  const { club } = useClub();
+  const [off, setOff] = useState<AlertGroup[] | null>(null);
+  const [permission, setPermission] = useState<PushPermission | null>(null);
+  const [saving, setSaving] = useState<AlertGroup | 'all' | null>(null);
+  const [turningOn, setTurningOn] = useState(false);
+  const [error, setError] = useState('');
+  const [note, setNote] = useState('');
+  const [confirmLogout, setConfirmLogout] = useState(false);
+  const [showDelete, setShowDelete] = useState(false);
 
-  const [profile, setProfile] = useState<UserProfile>({
-    name: user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : '',
-    email: user?.email || '',
-    phone: '',
-    language: 'en-GB',
-    timezone: 'Europe/London',
-  });
-
-  const [preferences, setPreferences] = useState<NotificationPreferences>({
-    masterToggle: true,
-    matchAlerts: {
-      prematch24h: true,
-      prematch3h: true,
-      prematch1h: true,
-      kickoff: true,
-      halftime: false,
-      fulltime: true,
-      goals: true,
-      cards: true,
-      potm: true,
-      clips: true,
-    },
-    venuePreferences: {
-      favorites: [],
-      muted: [],
-    },
-    channels: {
-      inApp: true,
-      email: true,
-      sms: false,
-    },
-    quietHours: {
-      enabled: true,
-      start: '22:00',
-      end: '07:00',
-      allowUrgentBypass: true,
-    },
-  });
-
-  const [expandedSection, setExpandedSection] = useState<string>('');
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-
-  // Notification choices are kept on this device
-  useEffect(() => {
-    AsyncStorage.getItem(PREFERENCES_KEY)
-      .then((raw) => {
-        if (raw) setPreferences((current) => ({ ...current, ...JSON.parse(raw) }));
-      })
-      .catch(() => {
-        // Keep the defaults
-      });
+  const load = useCallback(async () => {
+    setError('');
+    pushPermission().then(setPermission).catch(() => setPermission('unsupported'));
+    try {
+      setOff((await alertPrefsApi.get()).data.off);
+    } catch (err) {
+      setOff([]);
+      setError(apiErrorMessage(err, "We couldn't load your alert choices."));
+    }
   }, []);
 
-  const updateProfile = (field: keyof UserProfile, value: string) => {
-    setProfile({ ...profile, [field]: value });
-  };
+  useEffect(() => { load(); }, [load]);
 
-  const updatePreferences = (section: keyof NotificationPreferences, value: any) => {
-    setPreferences({ ...preferences, [section]: value });
-  };
-
-  const updateMatchAlert = (alert: keyof NotificationPreferences['matchAlerts'], value: boolean) => {
-    setPreferences({
-      ...preferences,
-      matchAlerts: { ...preferences.matchAlerts, [alert]: value },
-    });
-  };
-
-  const updateChannel = (channel: keyof NotificationPreferences['channels'], value: boolean) => {
-    setPreferences({
-      ...preferences,
-      channels: { ...preferences.channels, [channel]: value },
-    });
-  };
-
-  const updateQuietHours = (setting: keyof NotificationPreferences['quietHours'], value: any) => {
-    setPreferences({
-      ...preferences,
-      quietHours: { ...preferences.quietHours, [setting]: value },
-    });
-  };
-
-  const handleSave = async () => {
+  const save = async (next: AlertGroup[], which: AlertGroup | 'all') => {
+    const before = off;
+    setOff(next);
+    setSaving(which);
+    setError('');
     try {
-      await AsyncStorage.setItem(PREFERENCES_KEY, JSON.stringify(preferences));
-      await usersApi.updateProfile({
-        firstName: profile.name.split(' ')[0],
-        lastName: profile.name.split(' ').slice(1).join(' '),
-        phone: profile.phone,
-      });
-      Alert.alert('Settings Saved', 'Your preferences have been updated successfully.', [{ text: 'OK' }]);
-    } catch (error: any) {
-      console.error('Failed to save settings:', error);
-      Alert.alert('Error', 'Failed to save settings. Please try again.');
+      setOff((await alertPrefsApi.set(next)).data.off);
+    } catch (err) {
+      setOff(before);
+      setError(apiErrorMessage(err, "That didn't save. Please try again."));
+    } finally {
+      setSaving(null);
     }
   };
 
-  const handleLogout = () => {
-    Alert.alert(
-      'Logout',
-      'Are you sure you want to logout?',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Logout',
-          style: 'destructive',
-          onPress: () => {
-            logout();
-          },
-        },
-      ]
-    );
+  const toggle = (g: AlertGroup, on: boolean) => {
+    if (!off) return;
+    save(on ? off.filter((x) => x !== g) : [...off, g], g);
   };
 
-  const handleDeleteSuccess = async () => {
-    // Clear all app data and navigate to login
-    await AsyncStorage.clear();
-    setShowDeleteModal(false);
-    // Calling logout resets the auth state, which triggers the root navigator
-    // to show the login/auth screen automatically
+  const allOn = !!off && off.length === 0;
+  const allOff = !!off && GROUPS.every((g) => off.includes(g.id));
+
+  const turnOnDevice = async () => {
+    setTurningOn(true);
+    setNote('');
+    const result = await registerForPush({ prompt: true });
+    setTurningOn(false);
+    setNote(result.ok ? 'Done. This device will get the alerts you choose below.' : result.message);
+    pushPermission().then(setPermission).catch(() => undefined);
+  };
+
+  const deleted = async () => {
+    await AsyncStorage.clear().catch(() => undefined);
+    setShowDelete(false);
     await logout();
   };
 
-  const toggleSection = (section: string) => {
-    setExpandedSection(expandedSection === section ? '' : section);
-  };
-
   return (
-    <ScrollView style={styles.container}>
-      {/* Profile Section */}
-      <Card style={[styles.card, styles.firstCard]}>
-        <Card.Content>
-          <Title style={styles.cardTitle}>Profile</Title>
-          <TextInput
-            label="Name"
-            value={profile.name}
-            onChangeText={(text) => updateProfile('name', text)}
-            mode="outlined"
-            style={styles.input}
-          />
-          <TextInput
-            label="Email"
-            value={profile.email}
-            onChangeText={(text) => updateProfile('email', text)}
-            mode="outlined"
-            keyboardType="email-address"
-            style={styles.input}
-          />
-          <TextInput
-            label="Phone"
-            value={profile.phone}
-            onChangeText={(text) => updateProfile('phone', text)}
-            mode="outlined"
-            keyboardType="phone-pad"
-            style={styles.input}
-          />
-        </Card.Content>
-      </Card>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <SectionTitle title="THIS DEVICE" color={c.primary} />
+      <View style={styles.card}>
+        <View style={styles.row}>
+          <MaterialCommunityIcons name={permission === 'granted' ? 'bell-check' : 'bell-off-outline'} size={22} color={permission === 'granted' ? c.primary : c.textLight} />
+          <Text style={[styles.body, { flex: 1 }]}>{permission ? PERMISSION_TEXT[permission] : 'Checking…'}</Text>
+        </View>
+        {permission === 'undetermined' ? (
+          <Pressable onPress={turnOnDevice} disabled={turningOn} accessibilityRole="button" style={[styles.primaryButton, { backgroundColor: c.primary }]}>
+            {turningOn ? <ActivityIndicator color={c.onPrimary} /> : <Text style={[styles.primaryButtonText, { color: c.onPrimary }]}>Turn on notifications</Text>}
+          </Pressable>
+        ) : null}
+        {note ? <Text style={styles.small}>{note}</Text> : null}
+      </View>
 
-      {/* Notifications Master Toggle */}
-      <Card style={styles.card}>
-        <Card.Content>
-          <List.Item
-            title="Enable All Notifications"
-            description="Master toggle for all notifications"
-            left={props => <List.Icon {...props} icon="bell" color={COLORS.primary} />}
-            right={() => (
+      <SectionTitle title="TELL ME ABOUT" color={c.primary} />
+      <View style={styles.card}>
+        {off === null ? <ActivityIndicator color={c.primary} /> : (
+          <>
+            <View style={[styles.row, styles.master]}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.title}>All alerts</Text>
+                <Text style={styles.small}>{allOff ? 'Everything is off.' : allOn ? 'Everything is on.' : 'Some are off.'} Saved to your account, so all your devices follow it.</Text>
+              </View>
               <Switch
-                value={preferences.masterToggle}
-                onValueChange={(value) => updatePreferences('masterToggle', value)}
-                color={COLORS.primary}
+                value={!allOff}
+                onValueChange={(v) => save(v ? [] : GROUPS.map((g) => g.id), 'all')}
+                disabled={saving !== null}
+                trackColor={{ true: c.primary, false: 'rgba(255,255,255,0.2)' }}
+                thumbColor="#FFFFFF"
+                accessibilityLabel="All alerts"
               />
-            )}
-          />
-        </Card.Content>
-      </Card>
-
-      {preferences.masterToggle && (
-        <>
-          {/* Match Alerts */}
-          <Card style={styles.card}>
-            <Card.Content>
-              <Title style={styles.cardTitle}>Match Alerts</Title>
-              <Paragraph style={styles.cardDescription}>
-                Choose which match events trigger notifications
-              </Paragraph>
-              <Divider style={styles.divider} />
-
-              <List.Section>
-                <List.Subheader>Pre-Match Reminders</List.Subheader>
-                <List.Item
-                  title="24 hours before"
-                  right={() => (
-                    <Switch
-                      value={preferences.matchAlerts.prematch24h}
-                      onValueChange={(value) => updateMatchAlert('prematch24h', value)}
-                      color={COLORS.primary}
-                    />
-                  )}
-                />
-                <List.Item
-                  title="3 hours before"
-                  right={() => (
-                    <Switch
-                      value={preferences.matchAlerts.prematch3h}
-                      onValueChange={(value) => updateMatchAlert('prematch3h', value)}
-                      color={COLORS.primary}
-                    />
-                  )}
-                />
-                <List.Item
-                  title="1 hour before"
-                  right={() => (
-                    <Switch
-                      value={preferences.matchAlerts.prematch1h}
-                      onValueChange={(value) => updateMatchAlert('prematch1h', value)}
-                      color={COLORS.primary}
-                    />
-                  )}
-                />
-
-                <Divider style={styles.divider} />
-                <List.Subheader>Match Events</List.Subheader>
-                <List.Item
-                  title="Kick-off"
-                  right={() => (
-                    <Switch
-                      value={preferences.matchAlerts.kickoff}
-                      onValueChange={(value) => updateMatchAlert('kickoff', value)}
-                      color={COLORS.primary}
-                    />
-                  )}
-                />
-                <List.Item
-                  title="Half-time"
-                  right={() => (
-                    <Switch
-                      value={preferences.matchAlerts.halftime}
-                      onValueChange={(value) => updateMatchAlert('halftime', value)}
-                      color={COLORS.primary}
-                    />
-                  )}
-                />
-                <List.Item
-                  title="Full-time"
-                  right={() => (
-                    <Switch
-                      value={preferences.matchAlerts.fulltime}
-                      onValueChange={(value) => updateMatchAlert('fulltime', value)}
-                      color={COLORS.primary}
-                    />
-                  )}
-                />
-                <List.Item
-                  title="Goals scored"
-                  right={() => (
-                    <Switch
-                      value={preferences.matchAlerts.goals}
-                      onValueChange={(value) => updateMatchAlert('goals', value)}
-                      color={COLORS.primary}
-                    />
-                  )}
-                />
-                <List.Item
-                  title="Cards issued"
-                  right={() => (
-                    <Switch
-                      value={preferences.matchAlerts.cards}
-                      onValueChange={(value) => updateMatchAlert('cards', value)}
-                      color={COLORS.primary}
-                    />
-                  )}
-                />
-
-                <Divider style={styles.divider} />
-                <List.Subheader>Post-Match</List.Subheader>
-                <List.Item
-                  title="Player of the Match result"
-                  right={() => (
-                    <Switch
-                      value={preferences.matchAlerts.potm}
-                      onValueChange={(value) => updateMatchAlert('potm', value)}
-                      color={COLORS.primary}
-                    />
-                  )}
-                />
-                <List.Item
-                  title="Highlight clips posted"
-                  right={() => (
-                    <Switch
-                      value={preferences.matchAlerts.clips}
-                      onValueChange={(value) => updateMatchAlert('clips', value)}
-                      color={COLORS.primary}
-                    />
-                  )}
-                />
-              </List.Section>
-            </Card.Content>
-          </Card>
-
-          {/* Notification Channels */}
-          <Card style={styles.card}>
-            <Card.Content>
-              <Title style={styles.cardTitle}>Notification Channels</Title>
-              <Paragraph style={styles.cardDescription}>
-                Choose how you want to receive notifications
-              </Paragraph>
-              <Divider style={styles.divider} />
-
-              <List.Item
-                title="In-App Push Notifications"
-                left={props => <List.Icon {...props} icon="bell-ring" />}
-                right={() => (
-                  <Switch
-                    value={preferences.channels.inApp}
-                    onValueChange={(value) => updateChannel('inApp', value)}
-                    color={COLORS.primary}
-                  />
-                )}
-              />
-              <List.Item
-                title="Email"
-                left={props => <List.Icon {...props} icon="email" />}
-                right={() => (
-                  <Switch
-                    value={preferences.channels.email}
-                    onValueChange={(value) => updateChannel('email', value)}
-                    color={COLORS.primary}
-                  />
-                )}
-              />
-              <List.Item
-                title="SMS"
-                description="Standard messaging rates may apply"
-                left={props => <List.Icon {...props} icon="message-text" />}
-                right={() => (
-                  <Switch
-                    value={preferences.channels.sms}
-                    onValueChange={(value) => updateChannel('sms', value)}
-                    color={COLORS.primary}
-                  />
-                )}
-              />
-            </Card.Content>
-          </Card>
-
-          {/* Quiet Hours */}
-          <Card style={styles.card}>
-            <Card.Content>
-              <Title style={styles.cardTitle}>Quiet Hours</Title>
-              <Paragraph style={styles.cardDescription}>
-                Mute notifications during specific hours
-              </Paragraph>
-              <Divider style={styles.divider} />
-
-              <List.Item
-                title="Enable Quiet Hours"
-                right={() => (
-                  <Switch
-                    value={preferences.quietHours.enabled}
-                    onValueChange={(value) => updateQuietHours('enabled', value)}
-                    color={COLORS.primary}
-                  />
-                )}
-              />
-
-              {preferences.quietHours.enabled && (
-                <>
-                  <View style={styles.timeContainer}>
-                    <View style={styles.timeInputContainer}>
-                      <Paragraph style={styles.timeLabel}>From</Paragraph>
-                      <TextInput
-                        value={preferences.quietHours.start}
-                        onChangeText={(text) => updateQuietHours('start', text)}
-                        mode="outlined"
-                        placeholder="22:00"
-                        style={styles.timeInput}
-                      />
-                    </View>
-                    <View style={styles.timeInputContainer}>
-                      <Paragraph style={styles.timeLabel}>To</Paragraph>
-                      <TextInput
-                        value={preferences.quietHours.end}
-                        onChangeText={(text) => updateQuietHours('end', text)}
-                        mode="outlined"
-                        placeholder="07:00"
-                        style={styles.timeInput}
-                      />
-                    </View>
+            </View>
+            {GROUPS.map((g) => {
+              const on = !off.includes(g.id);
+              return (
+                <View key={g.id} style={styles.row}>
+                  <MaterialCommunityIcons name={g.icon as never} size={20} color={on ? c.primary : c.textLight} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.body}>{g.title}</Text>
+                    <Text style={styles.small}>{g.detail}</Text>
                   </View>
-
-                  <List.Item
-                    title="Allow urgent notifications"
-                    description="Critical alerts (e.g., match cancellations) can bypass quiet hours"
-                    right={() => (
-                      <Switch
-                        value={preferences.quietHours.allowUrgentBypass}
-                        onValueChange={(value) => updateQuietHours('allowUrgentBypass', value)}
-                        color={COLORS.primary}
-                      />
-                    )}
+                  {saving === g.id ? <ActivityIndicator color={c.primary} /> : null}
+                  <Switch
+                    value={on}
+                    onValueChange={(v) => toggle(g.id, v)}
+                    disabled={saving !== null}
+                    trackColor={{ true: c.primary, false: 'rgba(255,255,255,0.2)' }}
+                    thumbColor="#FFFFFF"
+                    accessibilityLabel={g.title}
                   />
-                </>
-              )}
-            </Card.Content>
-          </Card>
-        </>
-      )}
-
-      {/* Save Button */}
-      <View style={styles.saveContainer}>
-        <Button
-          mode="contained"
-          onPress={handleSave}
-          style={styles.saveButton}
-          icon="content-save"
-        >
-          Save Settings
-        </Button>
+                </View>
+              );
+            })}
+            <Text style={styles.small}>You never get alerts while your phone says you're at the ground, or for updates you post yourself.</Text>
+          </>
+        )}
+        {error ? <Text style={styles.error} accessibilityRole="alert">{error}</Text> : null}
       </View>
 
-      {/* Account Section */}
-      <Card style={styles.card}>
-        <Card.Content>
-          <Title style={styles.cardTitle}>Account</Title>
-          <Paragraph style={styles.cardDescription}>
-            {user ? `Logged in as: ${user.role}` : 'Manage your account settings'}
-          </Paragraph>
-          <Divider style={styles.divider} />
-
-          <Button
-            mode="outlined"
-            onPress={handleLogout}
-            style={styles.logoutButton}
-            buttonColor="transparent"
-            textColor={COLORS.text}
-            icon="logout"
-          >
-            Logout
-          </Button>
-
-          <Divider style={styles.divider} />
-
-          <Button
-            mode="outlined"
-            onPress={() => setShowDeleteModal(true)}
-            style={styles.deleteButton}
-            buttonColor="transparent"
-            textColor={COLORS.error}
-            icon="delete-forever"
-          >
-            Delete Account
-          </Button>
-        </Card.Content>
-      </Card>
-
-      {/* Delete Account Modal */}
-      <DeleteAccountModal
-        visible={showDeleteModal}
-        onDismiss={() => setShowDeleteModal(false)}
-        onDeleteSuccess={handleDeleteSuccess}
-      />
-
-      <View style={styles.footer}>
-        <Paragraph style={styles.footerText}>
-          Your notification preferences are stored securely and can be changed at any time.
-        </Paragraph>
+      <SectionTitle title="ACCOUNT" color={c.primary} />
+      <View style={styles.card}>
+        <Text style={styles.body}>{user?.email}</Text>
+        <Text style={styles.small}>{club?.name ? `${club.name} · ` : ''}{user?.role ? user.role[0].toUpperCase() + user.role.slice(1) : ''}</Text>
+        <Pressable onPress={() => navigation.navigate('Profile')} accessibilityRole="button" style={styles.linkRow}>
+          <MaterialCommunityIcons name="account-edit-outline" size={20} color={c.primary} />
+          <Text style={[styles.link, { color: c.primary }]}>Edit your name, phone or password</Text>
+        </Pressable>
+        {confirmLogout ? (
+          <View style={styles.confirm}>
+            <Text style={styles.body}>Log out of {club?.name || 'the app'} on this device?</Text>
+            <View style={styles.buttons}>
+              <Pressable onPress={logout} accessibilityRole="button" style={[styles.primaryButton, { backgroundColor: c.primary, flex: 1 }]}>
+                <Text style={[styles.primaryButtonText, { color: c.onPrimary }]}>Log out</Text>
+              </Pressable>
+              <Pressable onPress={() => setConfirmLogout(false)} accessibilityRole="button" style={[styles.ghostButton, { flex: 1 }]}>
+                <Text style={styles.ghostText}>Cancel</Text>
+              </Pressable>
+            </View>
+          </View>
+        ) : (
+          <Pressable onPress={() => setConfirmLogout(true)} accessibilityRole="button" style={styles.linkRow}>
+            <MaterialCommunityIcons name="logout" size={20} color={c.text} />
+            <Text style={styles.link}>Log out</Text>
+          </Pressable>
+        )}
+        <Pressable onPress={() => setShowDelete(true)} accessibilityRole="button" style={styles.linkRow}>
+          <MaterialCommunityIcons name="delete-forever-outline" size={20} color={c.error} />
+          <Text style={[styles.link, { color: c.error }]}>Delete my account</Text>
+        </Pressable>
       </View>
+
+      <Text style={styles.version}>Version {APP_VERSION}</Text>
+
+      <DeleteAccountModal visible={showDelete} onDismiss={() => setShowDelete(false)} onDeleteSuccess={deleted} />
     </ScrollView>
   );
 }
 
-const useStyles = themedStyles((COLORS) => ({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
-  firstCard: {
-    marginTop: 16,
-  },
-  card: {
-    marginHorizontal: 16,
-    marginBottom: 16,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    backgroundColor: COLORS.surface,
-  },
-  cardTitle: {
-    fontFamily: FONTS.display,
-    fontSize: 20,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    color: COLORS.text,
-    marginBottom: 8,
-  },
-  cardDescription: {
-    fontSize: 13,
-    color: COLORS.textLight,
-    marginBottom: 12,
-  },
-  divider: {
-    marginVertical: 12,
-    backgroundColor: COLORS.border,
-  },
-  input: {
-    marginBottom: 12,
-  },
-  timeContainer: {
-    flexDirection: 'row',
-    gap: 16,
-    marginVertical: 12,
-    paddingHorizontal: 16,
-  },
-  timeInputContainer: {
-    flex: 1,
-  },
-  timeLabel: {
-    fontSize: 12,
-    color: COLORS.textLight,
-    marginBottom: 4,
-  },
-  timeInput: {
-    fontSize: 14,
-  },
-  saveContainer: {
-    padding: 16,
-  },
-  saveButton: {
-    paddingVertical: 8,
-  },
-  logoutButton: {
-    marginTop: 8,
-    borderColor: COLORS.textLight,
-  },
-  deleteButton: {
-    marginTop: 8,
-    borderColor: COLORS.error,
-  },
-  footer: {
-    padding: 20,
-    paddingTop: 0,
-  },
-  footerText: {
-    fontSize: 11,
-    color: COLORS.textLight,
-    textAlign: 'center',
-    fontStyle: 'italic',
-  },
+const useStyles = themedStyles((c) => ({
+  container: { flex: 1, backgroundColor: c.background },
+  content: { paddingBottom: 40 },
+  card: { marginHorizontal: 16, backgroundColor: c.surface, borderRadius: 18, borderWidth: 1, borderColor: c.border, padding: 14, gap: 12 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  master: { paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: c.border },
+  title: { color: c.text, fontWeight: '800', fontSize: 16 },
+  body: { color: c.text, fontSize: 15 },
+  small: { color: c.textLight, fontSize: 12, marginTop: 2 },
+  error: { color: c.error },
+  primaryButton: { borderRadius: 12, paddingVertical: 12, alignItems: 'center', justifyContent: 'center' },
+  primaryButtonText: { fontWeight: '900', fontSize: 15 },
+  ghostButton: { borderRadius: 12, paddingVertical: 12, alignItems: 'center', borderWidth: 1, borderColor: c.border },
+  ghostText: { color: c.text, fontWeight: '800' },
+  linkRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6 },
+  link: { color: c.text, fontWeight: '700', fontSize: 15 },
+  confirm: { gap: 10, paddingVertical: 4 },
+  buttons: { flexDirection: 'row', gap: 10 },
+  version: { color: c.textLight, textAlign: 'center', fontSize: 12, marginTop: 24 },
 }));

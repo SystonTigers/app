@@ -73,6 +73,7 @@ export async function requireJWT(req: Request, env: any): Promise<Claims> {
       jti: (claims as any).jti,
       sub: claims.sub || "",
       tenantId: claims.tenantId,
+      iat: claims.iat,
     });
 
     if (revoked) {
@@ -142,6 +143,7 @@ export async function requireAdmin(req: Request, env: any): Promise<Claims> {
       jti: (claims as any).jti,
       sub: claims.sub || "",
       tenantId: claims.tenantId,
+      iat: claims.iat,
     });
 
     if (revoked) {

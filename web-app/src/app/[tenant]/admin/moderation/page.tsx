@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
+import { apiFetch } from '@/lib/session';
 
 interface ContentReport {
     id: string;
@@ -30,11 +31,9 @@ export default function ModerationPage() {
         setError(null);
 
         try {
-            const response = await fetch(
-                `/api/v1/content/reports?status=${selectedStatus}`,
+            const response = await apiFetch(`/api/v1/content/reports?status=${selectedStatus}`,
                 {
                     headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
                         'x-tenant': tenant,
                     },
                 }
@@ -62,11 +61,10 @@ export default function ModerationPage() {
         setUpdating(reportId);
 
         try {
-            const response = await fetch(`/api/v1/content/reports/${reportId}`, {
+            const response = await apiFetch(`/api/v1/content/reports/${reportId}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
                     'x-tenant': tenant,
                 },
                 body: JSON.stringify({

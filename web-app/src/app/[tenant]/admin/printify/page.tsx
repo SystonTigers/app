@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { getSessionToken } from '@/lib/session';
+import { apiFetch } from '@/lib/session';
 
 interface PrintifyProduct {
     id: string;
@@ -71,14 +72,13 @@ export default function PrintifyAdminPage() {
         try {
             const token = getSessionToken();
             const init: RequestInit = {
-                credentials: 'include',
                 headers: token ? { Authorization: `Bearer ${token}` } : {},
             };
             const [catalogRes, playersRes, shopsRes, ordersRes] = await Promise.all([
-                fetch(`${API_BASE}/api/v1/printify/catalog?category=${query}`, init),
-                fetch(`${API_BASE}/api/v1/squad`, init),
-                fetch(`${API_BASE}/api/v1/printify/shops`, init),
-                fetch(`${API_BASE}/api/v1/shop/orders`, init),
+                apiFetch(`/api/v1/printify/catalog?category=${query}`, init),
+                apiFetch(`/api/v1/squad`, init),
+                apiFetch(`/api/v1/printify/shops`, init),
+                apiFetch(`/api/v1/shop/orders`, init),
             ]);
 
             const [catalogData, playersData, shopsData, ordersData] = await Promise.all([
@@ -112,8 +112,7 @@ export default function PrintifyAdminPage() {
         if (!selectedPlayer) return;
 
         try {
-            const res = await fetch(`${API_BASE}/api/v1/personalization/preview/${selectedPlayer}`, {
-                credentials: 'include',
+            const res = await apiFetch(`/api/v1/personalization/preview/${selectedPlayer}`, {
             });
             const data = await res.json();
             if (data.success) {
@@ -130,24 +129,23 @@ export default function PrintifyAdminPage() {
 
         try {
             // 1. Get providers
-            const providersRes = await fetch(`${API_BASE}/api/v1/printify/catalog/${addingProduct.id}/providers`, { credentials: 'include' });
+            const providersRes = await apiFetch(`/api/v1/printify/catalog/${addingProduct.id}/providers`, { });
             const providersData = await providersRes.json();
             const providerId = providersData.data?.[0]?.id; // Pick first provider for MVP
 
             if (!providerId) throw new Error('No print providers found');
 
             // 2. Get variants
-            const variantsRes = await fetch(`${API_BASE}/api/v1/printify/catalog/${addingProduct.id}/providers/${providerId}/variants`, { credentials: 'include' });
+            const variantsRes = await apiFetch(`/api/v1/printify/catalog/${addingProduct.id}/providers/${providerId}/variants`, { });
             const variantsData = await variantsRes.json();
             const variantId = variantsData.data?.[0]?.id; // Pick first variant (e.g. Small or One Size)
 
             if (!variantId) throw new Error('No variants found');
 
             // 3. Create product
-            const createRes = await fetch(`${API_BASE}/api/v1/printify/products`, {
+            const createRes = await apiFetch(`/api/v1/printify/products`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
                 body: JSON.stringify({
                     // shopId: 'your-shop-id', // Removed duplicate
                     // Checking backend: It expects shopId in body.

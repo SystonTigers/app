@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { apiFetch } from '@/lib/session';
 
 interface Discussion {
     id: string;
@@ -88,7 +89,7 @@ export default function DiscussionsPage({ params }: { params: Promise<{ tenant: 
         try {
             setLoading(true);
             const query = category ? `?category=${category}` : '';
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE || ''}/api/v1/discussions${query}`, {
+            const res = await apiFetch(`/api/v1/discussions${query}`, {
                 headers: {
                     'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
                 }
@@ -203,7 +204,7 @@ function CreateDiscussionDialog({ tenant, onClose, onCreated }: { tenant: string
 
         try {
             setSubmitting(true);
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE || ''}/api/v1/discussions`, {
+            const res = await apiFetch(`/api/v1/discussions`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
