@@ -31,7 +31,7 @@ export const PLANS = {
     pro: {
         name: 'Pro',
         monthlyPence: 2999,
-        features: ['Everything in Starter', 'Priority support', 'Advanced analytics'],
+        features: ['Everything in Starter', 'Elite match graphics with no Boost Huddle credit', 'Priority support', 'Advanced analytics'],
     },
 } as const;
 

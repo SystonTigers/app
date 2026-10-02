@@ -102,7 +102,14 @@ describe("Owner panel journey", () => {
     expect(extended.data.data.club.trialDaysLeft).toBe(17);
 
     // Move to Pro, unlock Elite graphics, give free access
-    expect((await act({ action: "set_plan", plan: "pro" })).data.data.club.plan).toBe("pro");
+    // Starter: Elite graphics are locked for the club
+    const packsFor = async () => ((await call("/api/v1/social/settings", { token: adminToken })).data.data.graphics.packs as any[]).find((p) => p.id === "elite");
+    expect((await packsFor()).unlocked).toBe(false);
+    const pro = (await act({ action: "set_plan", plan: "pro" })).data.data.club;
+    expect(pro.plan).toBe("pro");
+    // Pro includes Elite graphics without unlocking them
+    expect(pro.planPacks).toContain("elite");
+    expect((await packsFor()).unlocked).toBe(true);
     expect((await act({ action: "graphics", pack: "elite", on: true })).data.data.club.unlockedPacks).toContain("elite");
     const comped = (await act({ action: "comp", on: true })).data.data.club;
     expect(comped).toMatchObject({ comped: true, status: "active" });

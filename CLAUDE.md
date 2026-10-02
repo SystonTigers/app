@@ -153,8 +153,8 @@ with personal data.
   fonts (`fonts/`, widths in `fonts/metrics.ts` from `scripts/font-metrics.py`).
   `npm run graphics:preview -- <dir>` draws every layout in every pack.
 - Packs: Touchline and Floodlights (free, small "Made with Boost Huddle"
-  credit) and Elite (premium, unlocked per club in `graphics_unlocks` via
-  `PUT /api/v1/admin/tenants/:id/graphics/:pack`; no purchase flow until Stripe
+  credit) and Elite (premium: included with Pro, otherwise unlocked per club
+  in `graphics_unlocks` from the owner panel; no purchase flow until Stripe
   is live). Clubs pick a pack and sponsor in the website's admin settings.
 - Opponent badges come from the website's Opponents page (`opponent_teams`);
   opponents are added there automatically when a post mentions them. PNG/JPG
@@ -288,6 +288,11 @@ with personal data.
   (`comped`), premium graphics unlocks, suspend (club login refused with
   `CLUB_SUSPENDED` and every session revoked) and reactivate. Each is written
   to `owner_audit`. Only "reactivate" lifts a suspension.
+- The Pro plan includes every premium graphics pack (`packsIncludedWith` in
+  `services/graphics/packs.ts`); on Starter they're unlocked one by one.
+- The panel installs as its own phone app (`public/owner/manifest.webmanifest`,
+  icons in `public/owner/`, a network-only `public/owner-sw.js` scoped to
+  `/owner`): open /owner and "Add to Home Screen" / "Install app".
 - The old consoles (`owner-admin/`, `admin/`, the website's root `/admin`,
   `/api/v1/admin/tenants|promo-codes|stats|users`, magic links, `/dev/*`,
   `/owner-api/*`) were removed in September 2026.

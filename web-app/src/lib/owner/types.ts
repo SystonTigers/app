@@ -56,6 +56,8 @@ export interface OwnerClubDetail extends OwnerClub {
   graphicsPack: string | null;
   unlockedPacks: string[];
   premiumPacks: Array<{ id: string; name: string }>;
+  /** Premium packs the club's plan already includes (Pro) */
+  planPacks: string[];
   history: Array<{ at: number; action: string; detail: string | null; by: string | null }>;
 }
 

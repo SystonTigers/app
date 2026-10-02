@@ -57,8 +57,18 @@ export default function ClubActions({ club, onChanged }: { club: OwnerClubDetail
         </Row>
 
         {club.premiumPacks.length ? (
-          <Row label="Premium graphics" help="Unlocks the pack in the club's graphics settings.">
+          <Row
+            label="Premium graphics"
+            help={club.planPacks.length ? 'Included with the Pro plan. Moving the club to Starter takes them away again.' : "Unlocks the pack in the club's graphics settings."}
+          >
             {club.premiumPacks.map((p) => {
+              if (club.planPacks.includes(p.id)) {
+                return (
+                  <span key={p.id} className="px-4 py-2.5 border border-brand/40 bg-brand/10 text-brand font-bold uppercase tracking-wider text-xs chamfer-sm">
+                    {p.name} included with Pro
+                  </span>
+                );
+              }
               const on = club.unlockedPacks.includes(p.id);
               return (
                 <button key={p.id} type="button" disabled={busy} onClick={() => run({ action: 'graphics', pack: p.id, on: !on })} className={ghostButtonClass}>

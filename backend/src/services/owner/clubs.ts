@@ -4,7 +4,7 @@
  * Timestamps in the database are a mix of seconds and milliseconds; ms() evens them out.
  */
 import { PLANS } from "../../routes/billing";
-import { PACKS } from "../graphics/packs";
+import { PACKS, packsIncludedWith } from "../graphics/packs";
 
 type DB = { DB: D1Database };
 
@@ -103,6 +103,8 @@ export interface ClubDetail extends ClubRow {
   pushDevices: number;
   graphicsPack: string | null;
   unlockedPacks: string[];
+  /** Premium packs the club's plan already includes (Pro) */
+  planPacks: string[];
   /** Premium graphics packs the owner can unlock */
   premiumPacks: Array<{ id: string; name: string }>;
   history: Array<{ at: number; action: string; detail: string | null; by: string | null }>;
@@ -132,6 +134,7 @@ export async function clubDetail(env: DB, id: string, now = Date.now()): Promise
     pushDevices: devices?.c ?? 0,
     graphicsPack: pack?.graphics_pack ?? null,
     unlockedPacks: (unlocks.results ?? []).map((u) => u.pack),
+    planPacks: packsIncludedWith(raw.plan),
     premiumPacks: PACKS.filter((p) => p.premium).map((p) => ({ id: p.id, name: p.name })),
     history: (history.results ?? []).map((h) => ({ at: h.created_at, action: h.action, detail: h.detail, by: h.owner_email })),
   };

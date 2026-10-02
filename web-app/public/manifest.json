@@ -1,11 +1,11 @@
 {
-    "name": "Team Platform",
-    "short_name": "Team App",
-    "description": "The ultimate platform for your sports team.",
+    "name": "Boost Huddle",
+    "short_name": "Boost Huddle",
+    "description": "Your football club's app: fixtures, live scores, news and highlights.",
     "start_url": "/",
     "display": "standalone",
-    "background_color": "#ffffff",
-    "theme_color": "#0f172a",
+    "background_color": "#0B0D0F",
+    "theme_color": "#0B0D0F",
     "orientation": "portrait",
     "icons": [
         {

@@ -1,5 +1,5 @@
 /** A club's posting setup: branding, design pack, connections and choices. */
-import { DEFAULT_PACK, getPack, type Pack } from "../graphics/packs";
+import { DEFAULT_PACK, getPack, packsIncludedWith, type Pack } from "../graphics/packs";
 import { publicPhotoSql } from "../consent";
 import { safeColor } from "../graphics/text";
 import type { Brand } from "../graphics/types";
@@ -30,6 +30,7 @@ export interface ClubSocial {
 
 interface ClubRow {
   name: string;
+  plan: string | null;
   social_undo_window: number;
   social_events: string | null;
   graphics_pack: string | null;
@@ -43,7 +44,7 @@ interface ClubRow {
 export async function loadClubSocial(env: SocialEnv, tenantId: string): Promise<ClubSocial> {
   const [club, conns, unlocks] = await Promise.all([
     env.DB.prepare(
-      `SELECT t.name, t.social_undo_window, t.social_events, t.graphics_pack, t.sponsor_name, t.sponsor_logo_url,
+      `SELECT t.name, t.plan, t.social_undo_window, t.social_events, t.graphics_pack, t.sponsor_name, t.sponsor_logo_url,
               b.badge_url, b.primary_color, b.secondary_color
        FROM tenants t LEFT JOIN tenant_brand b ON b.tenant_id = t.id WHERE t.id = ?`,
     ).bind(tenantId).first<ClubRow>(),
@@ -55,7 +56,8 @@ export async function loadClubSocial(env: SocialEnv, tenantId: string): Promise<
     const c = (conns.results || []).find((r) => r.platform === p);
     return c ? { id: c.account_id, name: c.account_name } : null;
   };
-  const unlockedPacks = (unlocks.results || []).map((u) => u.pack_id);
+  // Bought or given by the owner, plus everything the club's plan includes
+  const unlockedPacks = [...new Set([...(unlocks.results || []).map((u) => u.pack_id), ...packsIncludedWith(club?.plan)])];
   const chosenPack = club?.graphics_pack || DEFAULT_PACK;
   const chosen = getPack(chosenPack);
   const pack = chosen.premium && !unlockedPacks.includes(chosen.id) ? getPack(DEFAULT_PACK) : chosen;

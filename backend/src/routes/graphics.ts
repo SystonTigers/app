@@ -11,7 +11,7 @@
 import { json } from "../services/util";
 import { hasAnyRole, requireAdmin, requireStaff, type TenantClaims } from "../services/auth";
 import { loadClubSocial, type SocialEnv } from "../services/social/club";
-import { PACKS } from "../services/graphics/packs";
+import { PACKS, packsIncludedWith } from "../services/graphics/packs";
 import { sampleGraphics } from "../services/graphics/samples";
 import { imageMime } from "../services/graphics/images";
 import { deleteMedia, keyFromMediaUrl, mediaUrl, putMedia } from "../services/media";
@@ -104,9 +104,15 @@ export async function handleGetTenantGraphics(req: Request, env: Env, corsHdrs: 
   if (admin instanceof Response) return admin;
   const { results } = await env.DB.prepare(`SELECT pack_id, source, unlocked_at FROM graphics_unlocks WHERE tenant_id = ?`).bind(tenantId).all<{ pack_id: string; source: string; unlocked_at: number }>();
   const unlocks = new Map((results || []).map((r) => [r.pack_id, r]));
+  const plan = await env.DB.prepare(`SELECT plan FROM tenants WHERE id = ?`).bind(tenantId).first<{ plan: string | null }>();
+  const included = packsIncludedWith(plan?.plan);
   return json({
     success: true,
-    data: PACKS.map((p) => ({ id: p.id, name: p.name, premium: p.premium, unlocked: !p.premium || unlocks.has(p.id), source: unlocks.get(p.id)?.source ?? null })),
+    data: PACKS.map((p) => ({
+      id: p.id, name: p.name, premium: p.premium,
+      unlocked: !p.premium || unlocks.has(p.id) || included.includes(p.id),
+      source: unlocks.get(p.id)?.source ?? (included.includes(p.id) ? "plan" : null),
+    })),
   }, 200, corsHdrs);
 }
 

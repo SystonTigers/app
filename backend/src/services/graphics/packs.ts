@@ -28,6 +28,11 @@ export const PACKS: Pack[] = [
 
 export const DEFAULT_PACK = "touchline";
 
+/** Premium packs a plan includes without buying them: Pro includes them all. */
+export function packsIncludedWith(plan: string | null | undefined): string[] {
+  return plan === "pro" ? PACKS.filter((p) => p.premium).map((p) => p.id) : [];
+}
+
 export function getPack(id: string | null | undefined): Pack {
   return PACKS.find((p) => p.id === id) ?? (PACKS.find((p) => p.id === DEFAULT_PACK) as Pack);
 }

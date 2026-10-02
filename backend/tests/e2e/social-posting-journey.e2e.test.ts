@@ -185,6 +185,8 @@ describe("Automatic social posts", () => {
 
   it("lets clubs pick a style, add a sponsor and preview it; premium styles need unlocking", async () => {
     const admin = await registerAdmin("graphics-admin");
+    // On Starter, premium styles have to be unlocked (Pro includes them)
+    await env.DB.prepare(`UPDATE tenants SET plan = 'starter' WHERE id = 'syston'`).run();
     const settings = await call("/api/v1/social/settings", { token: admin.token });
     expect(settings.data.data.graphics).toMatchObject({ pack: "touchline", activePack: "touchline", sponsorName: null });
     expect(settings.data.data.graphics.packs.map((p: any) => [p.id, p.unlocked])).toEqual([["touchline", true], ["floodlights", true], ["elite", false]]);
@@ -215,6 +217,10 @@ describe("Automatic social posts", () => {
     await env.DB.prepare(`DELETE FROM graphics_unlocks WHERE tenant_id = 'syston'`).run();
     const locked = await call("/api/v1/social/settings", { token: admin.token });
     expect(locked.data.data.graphics).toMatchObject({ pack: "elite", activePack: "touchline" });
+    // Moving to Pro brings it back without an unlock
+    await env.DB.prepare(`UPDATE tenants SET plan = 'pro' WHERE id = 'syston'`).run();
+    const pro = await call("/api/v1/social/settings", { token: admin.token });
+    expect(pro.data.data.graphics).toMatchObject({ pack: "elite", activePack: "elite" });
 
     await call("/api/v1/social/settings", { method: "PUT", token: admin.token, body: { pack: "touchline", sponsorName: null } });
     await call("/api/v1/social/sponsor-logo", { method: "DELETE", token: admin.token });
