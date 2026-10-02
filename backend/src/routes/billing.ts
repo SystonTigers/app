@@ -20,11 +20,12 @@ export const PLANS = {
         name: 'Starter',
         monthlyPence: 1499,
         features: [
-            'Club website and dashboard',
             'Club app for players and parents',
+            'Live Match Centre and match alerts',
+            'Automatic match graphics and social posts',
             'Fixtures, results and league table',
-            'Squad, team news and match videos',
-            'Your club colours and badge',
+            'Match highlights from your match video',
+            'Club website in your colours and badge',
         ],
     },
     pro: {

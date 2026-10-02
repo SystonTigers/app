@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { use, useState, useRef, useEffect } from 'react';
 import { createClientSDK } from '@/lib/sdk';
 import { apiFetch } from '@/lib/session';
 
@@ -14,7 +14,8 @@ interface ImportResult {
     error?: string;
 }
 
-export default function ImportPage({ params }: { params: { tenant: string } }) {
+export default function ImportPage({ params }: { params: Promise<{ tenant: string }> }) {
+    const { tenant } = use(params);
     const [importType, setImportType] = useState<ImportType>('players');
     const [csvContent, setCsvContent] = useState('');
     const [fileName, setFileName] = useState('');
@@ -25,7 +26,7 @@ export default function ImportPage({ params }: { params: { tenant: string } }) {
     const [selectedSeasonId, setSelectedSeasonId] = useState<string>('');
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const sdk = createClientSDK(params.tenant);
+    const sdk = createClientSDK(tenant);
 
     // Load seasons on mount
     useEffect(() => {

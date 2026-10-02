@@ -60,6 +60,7 @@ export default function PrintifyAdminPage() {
     const [addingProduct, setAddingProduct] = useState<Blueprint | null>(null);
     const [price, setPrice] = useState('20.00');
     const [isSaving, setIsSaving] = useState(false);
+    const [notConnected, setNotConnected] = useState(false);
 
     const API_BASE = process.env.NEXT_PUBLIC_API_BASE || '';
 
@@ -88,6 +89,8 @@ export default function PrintifyAdminPage() {
                 ordersRes.json(),
             ]);
 
+            // 503: Boost Huddle hasn't switched merchandise on yet (no Printify account set up)
+            setNotConnected(catalogRes.status === 503 || shopsRes.status === 503);
             if (catalogData.success) setCatalog(catalogData.data.slice(0, 20));
             if (playersData.success && Array.isArray(playersData.data)) {
                 setPlayers(playersData.data.map((p: SquadRow) => ({
@@ -208,6 +211,13 @@ export default function PrintifyAdminPage() {
                 <h1 className="text-2xl font-bold text-gray-900">Printify Integration</h1>
                 <p className="text-gray-600 mt-1">Manage print-on-demand merchandise</p>
             </div>
+
+            {notConnected ? (
+                <div role="status" className="border border-amber-400/50 bg-amber-400/10 text-amber-200 rounded-xl p-4 mb-6 text-sm">
+                    Club merchandise isn&apos;t switched on yet. Once Boost Huddle connects the print partner, the product types will
+                    appear here and you can add personalised kit to your club shop.
+                </div>
+            ) : null}
 
             {/* Info Banner */}
             <div className="bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl p-4 mb-6">

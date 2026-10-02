@@ -6,6 +6,13 @@
 import { requireJWT } from '../services/auth';
 import { json } from '../services/util';
 
+/** The signed-in account's email, from its own row (tokens don't carry one). */
+async function accountEmail(env: any, claims: { sub?: string; tenantId?: string | null }): Promise<string> {
+    if (!claims.sub || !claims.tenantId) return '';
+    const row = await env.DB.prepare('SELECT email FROM auth_users WHERE id = ? AND tenant_id = ?').bind(claims.sub, claims.tenantId).first();
+    return (row?.email as string | undefined) ?? '';
+}
+
 const PLAN_LIMITS: Record<string, number> = {
     essentials: 1,
     team: 1,
@@ -21,7 +28,7 @@ export async function handleGetOrganization(req: Request, env: any, corsHdrs: He
     try {
         const claims = await requireJWT(req, env);
         // Membership is by email, but only for the organisation the signed-in club belongs to
-        const userEmail = claims.email;
+        const userEmail = await accountEmail(env, claims);
 
         // Find organization where user is a member
         const membership = await env.DB.prepare(`
@@ -69,7 +76,7 @@ export async function handleAddTeam(req: Request, env: any, corsHdrs: Headers) {
     try {
         const claims = await requireJWT(req, env);
         // Membership is by email, but only for the organisation the signed-in club belongs to
-        const userEmail = claims.email;
+        const userEmail = await accountEmail(env, claims);
 
         // Check user is admin/owner of an organization
         const membership = await env.DB.prepare(`
@@ -168,7 +175,7 @@ export async function handleRemoveTeam(req: Request, env: any, corsHdrs: Headers
     try {
         const claims = await requireJWT(req, env);
         // Membership is by email, but only for the organisation the signed-in club belongs to
-        const userEmail = claims.email;
+        const userEmail = await accountEmail(env, claims);
 
         const url = new URL(req.url);
         const teamId = url.pathname.split('/').pop();
@@ -300,7 +307,7 @@ export async function handleInviteTeam(req: Request, env: any, corsHdrs: Headers
     try {
         const claims = await requireJWT(req, env);
         // Membership is by email, but only for the organisation the signed-in club belongs to
-        const userEmail = claims.email;
+        const userEmail = await accountEmail(env, claims);
 
         // Verify user is admin/owner of a Club/Club Pro org
         const membership = await env.DB.prepare(`

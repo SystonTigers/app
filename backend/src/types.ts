@@ -112,8 +112,6 @@ export interface Env {
   VAPID_SUBJECT?: string;
   /** Only if "enhanced push security" is on in the Expo project */
   EXPO_ACCESS_TOKEN?: string;
-  FIXTURES_REFRESH_URL?: string;
-  SETUP_URL: string;
   GALLERY_MAX_BYTES?: string;
   GALLERY_ALLOWED?: string;
   API_VERSION: string;

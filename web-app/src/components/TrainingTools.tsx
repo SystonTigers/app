@@ -276,7 +276,7 @@ export function TrainingTools({ tenant }: TrainingToolsProps) {
     return (
         <div className="flex flex-col h-full bg-white dark:bg-gray-900 rounded-3xl overflow-hidden shadow-2xl border border-gray-100 dark:border-gray-800">
             <div className="bg-gray-900 text-white p-8 relative overflow-hidden flex-shrink-0">
-                <div className="absolute inset-0 bg-[url('/assets/pattern.jpg')] opacity-20 mix-blend-overlay" />
+                <div className="absolute inset-0 bg-[url('/assets/pattern.png')] opacity-20 mix-blend-overlay" />
                 <div className="absolute inset-0 bg-gradient-to-r from-green-900 to-gray-900 opacity-90" />
 
                 <div className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-4">

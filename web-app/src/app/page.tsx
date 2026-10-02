@@ -10,11 +10,11 @@ export const metadata = {
 const LEGAL_BASE = 'https://boosthuddle-legal.pages.dev';
 
 const features = [
-  { title: 'Fixtures & results', body: 'Add fixtures in seconds, post scores after the final whistle and keep the league table up to date.' },
-  { title: 'Your squad', body: 'Keep players, parents and coaches in one place instead of scattered group chats and spreadsheets.' },
-  { title: 'Club news feed', body: 'Share match reports, training updates and announcements with everyone at the club.' },
-  { title: 'Match videos', body: 'Upload match clips and highlights so families can watch back the big moments.' },
-  { title: 'Your club website', body: 'Every club gets its own page in its own colours with fixtures, results and news.' },
+  { title: 'Live Match Centre', body: 'Tap goals, cards and subs from the touchline. Parents who can’t make it follow the score live, with alerts on their phone.' },
+  { title: 'Posts that make themselves', body: 'Goals, results and team news become match graphics in your club colours and post to your club feed, and to Facebook and Instagram once you connect them.' },
+  { title: 'Fixtures, results & table', body: 'Paste in your FA Full-Time emails and the fixtures are added for you. Results and the league table update after the final whistle.' },
+  { title: 'Match highlights', body: 'Mark the big moments during the game and every one becomes a clip of your match video, ready to watch or share.' },
+  { title: 'Safe with children’s photos', body: 'Parents say yes or no to photos and video in the app. Nobody appears publicly without a yes.' },
   { title: 'An app for every family', body: 'Players and parents add your club app to their phone in one tap. No app store, nothing to pay.' },
 ];
 
@@ -37,7 +37,7 @@ export default function HomePage() {
             Run your grassroots club <span className="text-brand">in one place</span>
           </h1>
           <p className="text-xl text-gray-300 mb-10 max-w-2xl mx-auto">
-            Fixtures, results, squad, news and match videos for your club, with no spreadsheets and no chasing group chats.
+            Live scores, fixtures, the league table, match highlights and social posts for your club, with no spreadsheets and no chasing group chats.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/create-team" className="px-8 py-4 bg-brand text-black font-black uppercase italic tracking-wider chamfer-sm hover:bg-white">
