@@ -2,24 +2,25 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { apiFetch } from '@/lib/session';
+import { apiFetch, errorMessage } from '@/lib/session';
 
+/** As GET /api/v1/gallery/photos returns it */
 interface Photo {
     id: string;
-    /** The image's address (GET /api/v1/gallery/photos returns it as uri) */
     uri: string;
-    photo_key?: string;
-    caption: string;
-    uploaded_at: number;
-    uploaded_by: string;
+    caption: string | null;
+    uploadedAt: string;
+    uploadedBy: string;
 }
 
+/** As GET /api/v1/gallery/albums returns it */
 interface Album {
     id: string;
-    name: string;
+    title: string;
     type: string;
-    album_date: string | null;
-    photo_count: number;
+    date: string | null;
+    coverPhoto: string | null;
+    photoCount: number;
 }
 
 interface PhotoGalleryProps {
@@ -33,6 +34,7 @@ export function PhotoGallery({ tenant }: PhotoGalleryProps) {
     const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
     const [loading, setLoading] = useState(true);
     const [uploading, setUploading] = useState(false);
+    const [error, setError] = useState('');
 
     useEffect(() => {
         loadAlbums();
@@ -46,10 +48,7 @@ export function PhotoGallery({ tenant }: PhotoGalleryProps) {
 
     const loadAlbums = async () => {
         try {
-            const token = localStorage.getItem('token');
-            const res = await apiFetch('/api/v1/gallery/albums', {
-                headers: { Authorization: `Bearer ${token}` },
-            });
+            const res = await apiFetch('/api/v1/gallery/albums');
             const data = await res.json();
             if (data.success) {
                 setAlbums(data.data || []);
@@ -63,10 +62,7 @@ export function PhotoGallery({ tenant }: PhotoGalleryProps) {
 
     const loadPhotos = async (albumId: string) => {
         try {
-            const token = localStorage.getItem('token');
-            const res = await apiFetch(`/api/v1/gallery/photos?albumId=${albumId}`, {
-                headers: { Authorization: `Bearer ${token}` },
-            });
+            const res = await apiFetch(`/api/v1/gallery/photos?albumId=${albumId}`);
             const data = await res.json();
             if (data.success) {
                 setPhotos(data.data || []);
@@ -81,25 +77,25 @@ export function PhotoGallery({ tenant }: PhotoGalleryProps) {
         if (!file || !selectedAlbum) return;
 
         setUploading(true);
+        setError('');
         try {
-            const token = localStorage.getItem('token');
             const formData = new FormData();
             formData.append('file', file);
             formData.append('albumId', selectedAlbum.id);
 
             const res = await apiFetch('/api/v1/gallery/upload', {
                 method: 'POST',
-                headers: { Authorization: `Bearer ${token}` },
                 body: formData,
             });
 
-            const data = await res.json();
-            if (data.success) {
-                await loadPhotos(selectedAlbum.id);
-                e.target.value = '';
+            if (!res.ok) {
+                setError(await errorMessage(res, "That photo didn't upload. Please try again."));
+                return;
             }
-        } catch (error) {
-            console.error('Upload failed:', error);
+            await loadPhotos(selectedAlbum.id);
+            e.target.value = '';
+        } catch {
+            setError("That photo didn't upload. Check your connection and try again.");
         } finally {
             setUploading(false);
         }
@@ -108,19 +104,21 @@ export function PhotoGallery({ tenant }: PhotoGalleryProps) {
     const deletePhoto = async (photoId: string) => {
         if (!confirm('Delete this photo?')) return;
 
+        setError('');
         try {
-            const token = localStorage.getItem('token');
-            await apiFetch(`/api/v1/gallery/photos/${photoId}`, {
+            const res = await apiFetch(`/api/v1/gallery/photos/${photoId}`, {
                 method: 'DELETE',
-                headers: { Authorization: `Bearer ${token}` },
             });
-
+            if (!res.ok) {
+                setError(await errorMessage(res, "That photo couldn't be removed."));
+                return;
+            }
             if (selectedAlbum) {
                 await loadPhotos(selectedAlbum.id);
             }
             setSelectedPhoto(null);
-        } catch (error) {
-            console.error('Delete failed:', error);
+        } catch {
+            setError("That photo couldn't be removed. Check your connection and try again.");
         }
     };
 
@@ -141,12 +139,13 @@ export function PhotoGallery({ tenant }: PhotoGalleryProps) {
                 <div className="max-w-4xl w-full">
                     <img
                         src={selectedPhoto.uri}
-                        alt={selectedPhoto.caption}
+                        alt={selectedPhoto.caption ?? ''}
                         className="w-full h-auto max-h-[80vh] object-contain rounded-lg"
                     />
                     {selectedPhoto.caption && (
-                        <p className="text-white text-center mt-4">{selectedPhoto.caption}</p>
+                        <p className="text-white text-center mt-4">{selectedPhoto.caption ?? ''}</p>
                     )}
+                    {error && <p className="text-red-300 text-center mt-2" role="alert">{error}</p>}
                     <button
                         onClick={() => deletePhoto(selectedPhoto.id)}
                         className="mt-4 bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
@@ -169,7 +168,7 @@ export function PhotoGallery({ tenant }: PhotoGalleryProps) {
                     >
                         ← Back to Albums
                     </button>
-                    <h2 className="text-2xl font-bold">{selectedAlbum.name}</h2>
+                    <h2 className="text-2xl font-bold">{selectedAlbum.title}</h2>
                     <p className="text-sm opacity-90">{photos.length} photos</p>
                 </div>
 
@@ -183,7 +182,7 @@ export function PhotoGallery({ tenant }: PhotoGalleryProps) {
                             >
                                 <img
                                     src={photo.uri}
-                                    alt={photo.caption}
+                                    alt={photo.caption ?? ''}
                                     className="w-full h-full object-cover"
                                 />
                             </button>
@@ -198,6 +197,7 @@ export function PhotoGallery({ tenant }: PhotoGalleryProps) {
                 </div>
 
                 <div className="border-t p-4 bg-white dark:bg-gray-800">
+                    {error && <p className="text-red-600 mb-2" role="alert">{error}</p>}
                     <label className="bg-brand text-white px-6 py-3 rounded-lg hover:bg-brand/90 cursor-pointer inline-block">
                         {uploading ? 'Uploading...' : 'Upload Photo'}
                         <input
@@ -231,18 +231,18 @@ export function PhotoGallery({ tenant }: PhotoGalleryProps) {
                         >
                             <div className="flex items-center gap-3 mb-2">
                                 <span className="text-2xl">
-                                    {album.type === 'match' ? '⚽' : album.type === 'training' ? '🏃' : '📸'}
+                                    {album.type === 'match' ? '⚽' : album.type === 'training' ? '🏃' : album.type === 'throwback' ? '⏰' : '📸'}
                                 </span>
                                 <div>
-                                    <h3 className="font-bold">{album.name}</h3>
+                                    <h3 className="font-bold">{album.title}</h3>
                                     <p className="text-sm text-gray-500">
-                                        {album.photo_count} {album.photo_count === 1 ? 'photo' : 'photos'}
+                                        {album.photoCount} {album.photoCount === 1 ? 'photo' : 'photos'}
                                     </p>
                                 </div>
                             </div>
-                            {album.album_date && (
+                            {album.date && (
                                 <p className="text-xs text-gray-400 mt-2">
-                                    {new Date(album.album_date).toLocaleDateString()}
+                                    {new Date(album.date).toLocaleDateString()}
                                 </p>
                             )}
                         </button>
@@ -251,7 +251,7 @@ export function PhotoGallery({ tenant }: PhotoGalleryProps) {
 
                 {albums.length === 0 && (
                     <div className="text-center py-12 text-gray-500">
-                        No albums yet. Create your first album from the admin panel!
+                        No albums yet. Club staff can make albums in the app's Gallery.
                     </div>
                 )}
             </div>

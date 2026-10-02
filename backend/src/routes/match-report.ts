@@ -1,4 +1,5 @@
 
+import { resolveSeason } from "../services/seasons/range";
 import { outcomeFromScores } from "../services/results";
 import { z } from 'zod';
 import { requireJWT } from '../services/auth';
@@ -169,6 +170,11 @@ export async function handleGetPlayerStats(req: Request, env: any, corsHdrs?: He
         return json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Please log in again.' } }, 401, corsHdrs);
     }
     try {
+        // ?season=<id or 2025-26> for one season; no value = all time
+        const seasonParam = new URL(req.url).searchParams.get('season');
+        const season = seasonParam ? await resolveSeason(env, tenantId, seasonParam) : null;
+        const from = season?.from ?? null;
+        const to = season?.to ?? null;
         const { results } = await (env.DB as D1Database).prepare(`
             SELECT s.id, s.name, s.number, s.position, COALESCE(s.headshot_url, s.photo_url) AS photo,
                    COALESCE(e.goals, 0) AS goals, COALESCE(e.assists, 0) AS assists, COALESCE(e.motm, 0) AS motm,
@@ -179,19 +185,26 @@ export async function handleGetPlayerStats(req: Request, env: any, corsHdrs?: He
                 SELECT player_id, SUM(event_type = 'goal') AS goals, SUM(event_type = 'assist') AS assists,
                        SUM(event_type = 'motm') AS motm, SUM(event_type = 'yellow_card') AS yellow,
                        SUM(event_type = 'red_card') AS red, COUNT(DISTINCT fixture_id) AS fixtures
-                FROM match_events WHERE tenant_id = ? AND player_id IS NOT NULL GROUP BY player_id
+                FROM match_events me
+                WHERE me.tenant_id = ? AND me.player_id IS NOT NULL
+                  AND (? IS NULL OR COALESCE(
+                    (SELECT substr(f.fixture_date, 1, 10) FROM fixtures f WHERE f.id = me.fixture_id AND f.tenant_id = me.tenant_id),
+                    (SELECT substr(r.match_date, 1, 10) FROM team_results r WHERE CAST(r.id AS TEXT) = me.fixture_id AND r.tenant_id = me.tenant_id)
+                  ) BETWEEN ? AND ?)
+                GROUP BY player_id
             ) e ON e.player_id = s.id
             LEFT JOIN (
                 SELECT ml.player_id, COUNT(DISTINCT ml.fixture_id) AS apps
                 FROM match_lineups ml JOIN fixtures f ON f.id = ml.fixture_id AND f.tenant_id = ml.tenant_id
-                WHERE ml.tenant_id = ? AND f.status = 'completed' AND (ml.role = 'starter' OR EXISTS (
+                WHERE ml.tenant_id = ? AND f.status = 'completed' AND (? IS NULL OR substr(f.fixture_date, 1, 10) BETWEEN ? AND ?)
+                  AND (ml.role = 'starter' OR EXISTS (
                     SELECT 1 FROM live_match_events le WHERE le.tenant_id = ml.tenant_id AND le.fixture_id = ml.fixture_id
                       AND le.type = 'sub' AND le.player_id = ml.player_id AND le.deleted_at IS NULL))
                 GROUP BY ml.player_id
             ) a ON a.player_id = s.id
             WHERE s.tenant_id = ?
             ORDER BY goals DESC, assists DESC, s.name
-        `).bind(tenantId, tenantId, tenantId).all<Record<string, any>>();
+        `).bind(tenantId, from, from, to, tenantId, from, from, to, tenantId).all<Record<string, any>>();
         const data = (results || []).map((r) => ({
             id: r.id,
             name: r.name,
@@ -205,7 +218,7 @@ export async function handleGetPlayerStats(req: Request, env: any, corsHdrs?: He
             redCards: Number(r.red_cards),
             appearances: Number(r.appearances),
         }));
-        return json({ success: true, data }, 200, corsHdrs);
+        return json({ success: true, data, meta: { season: season ? { id: season.id, label: season.label } : null } }, 200, corsHdrs);
     } catch (err) {
         console.error(JSON.stringify({ level: 'error', msg: 'player_stats_failed', tenantId, error: err instanceof Error ? err.message : String(err) }));
         return json({ success: false, error: { code: 'INTERNAL', message: "We couldn't load the stats. Please try again." } }, 500, corsHdrs);

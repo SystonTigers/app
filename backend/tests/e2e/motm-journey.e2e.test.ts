@@ -43,6 +43,11 @@ describe("Man of the Match journey", () => {
     expect(tooFew.data.error.message).toMatch(/at least 2/);
     const notOurs = await call(`/api/v1/admin/matches/${matchId}/motm/open`, { token: manager.token, body: { nominees: [alfie, "someone-else"] } });
     expect(notOurs.status).toBe(400);
+    // Voting can stay open for up to 3 days
+    const now = Date.now();
+    const tooLong = await call(`/api/v1/admin/matches/${matchId}/motm/open`, { token: manager.token, body: { nominees: [alfie, ben], votingWindow: { start: new Date(now).toISOString(), end: new Date(now + 73 * 3600_000).toISOString() } } });
+    expect(tooLong.status).toBe(400);
+    expect(tooLong.data.error.message).toMatch(/3 days/);
 
     const open = await call(`/api/v1/admin/matches/${matchId}/motm/open`, { token: manager.token, body: { nominees: [alfie, ben] } });
     expect(open.status).toBe(200);

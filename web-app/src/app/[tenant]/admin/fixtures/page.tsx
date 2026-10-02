@@ -3,6 +3,7 @@
 import { useState, useEffect, use } from 'react';
 import { createClientSDK, createFixture, deleteFixture } from '@/lib/sdk';
 import Link from 'next/link';
+import { FixturePhotoImport } from '@/components/FixturePhotoImport';
 
 interface PageProps {
     params: Promise<{ tenant: string }>;
@@ -10,11 +11,8 @@ interface PageProps {
 
 export default function FixturesAdminPage({ params }: PageProps) {
     const { tenant } = use(params);
-    const sdk = createClientSDK(tenant);
     const [fixtures, setFixtures] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-    const [importing, setImporting] = useState(false);
-    const [importMessage, setImportMessage] = useState('');
     const [formData, setFormData] = useState({
         date: '',
         time: '',
@@ -23,24 +21,6 @@ export default function FixturesAdminPage({ params }: PageProps) {
         competition: 'League'
     });
 
-    async function handleAutoImport() {
-        setImporting(true);
-        setImportMessage('');
-        try {
-            const result = await sdk.autoImportFixtures();
-            if (result.success) {
-                setImportMessage(`✅ Imported ${result.imported || 0} fixtures!`);
-                loadFixtures();
-            } else {
-                setImportMessage(`❌ ${(result as any).error || 'Import failed'}`);
-            }
-        } catch (err: any) {
-            setImportMessage(`❌ ${err.message || 'Import failed'}`);
-        } finally {
-            setImporting(false);
-        }
-    }
-
     useEffect(() => {
         loadFixtures();
     }, [tenant]);
@@ -48,21 +28,7 @@ export default function FixturesAdminPage({ params }: PageProps) {
         try {
             const sdk = createClientSDK(tenant);
             const data = await sdk.listFixtures();
-            // Public API returns { success: true, data: [...] } or just [...] depending on implementation.
-            // My implementation in sdk.ts uses http<any[]> which implies it expects array directly?
-            // Wait, http helper returns T.
-            // In sdk.ts I wrote: return http<any[]>(...);
-            // But public.ts returns { success: true, data: [...] }.
-            // So http<any[]> will return the whole object { success: true, data: [...] }.
-            // I need to handle that.
-            // Let's check sdk.ts http helper again.
-            // It returns data as T.
-            // So if T is any[], it expects array.
-            // But API returns object.
-            // I should update sdk.ts to unwrap data if needed, or update here.
-            // Let's assume for now I need to unwrap it here or fix sdk.ts.
-            // Actually, let's fix sdk.ts to return data.data if it exists, or just return data.
-            // But for now, let's handle it here safely.
+            // The API answers { success, data: [...] }; older builds sent the list itself
             if ((data as any).success && Array.isArray((data as any).data)) {
                 setFixtures((data as any).data);
             } else if (Array.isArray(data)) {
@@ -107,30 +73,19 @@ export default function FixturesAdminPage({ params }: PageProps) {
             <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
                 <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Fixtures Manager</h1>
                 <div className="flex items-center gap-4">
-                    {importMessage && <span className="text-sm">{importMessage}</span>}
                     <a
                         href={`${process.env.NEXT_PUBLIC_API_BASE || ''}/api/v1/calendar/export`}
                         className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center gap-2"
                     >
                         📅 Export Calendar
                     </a>
-                    <button
-                        onClick={handleAutoImport}
-                        disabled={importing}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
-                    >
-                        {importing ? (
-                            <><span className="animate-spin">⏳</span> Importing...</>
-                        ) : (
-                            <>📥 Auto-Import from FA</>
-                        )}
-                    </button>
                 </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Form */}
-                <div className="lg:col-span-1">
+                <div className="lg:col-span-1 space-y-8">
+                    <FixturePhotoImport onAdded={loadFixtures} />
                     <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
                         <h2 className="text-xl font-semibold mb-4">Add Fixture</h2>
                         <form onSubmit={handleSubmit} className="space-y-4">

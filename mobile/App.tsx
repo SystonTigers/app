@@ -14,6 +14,8 @@ import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { ClubProvider, useClub } from './src/context/ClubContext';
 import { MatchDayProvider } from './src/context/MatchDayContext';
 import MatchDayHost from './src/components/live/MatchDayHost';
+import HeaderLeft from './src/navigation/HeaderLeft';
+import { linking } from './src/navigation/linking';
 import { navigationRef } from './src/navigation/navigationRef';
 import { usersApi } from './src/services/api';
 import { fetchClubInfo } from './src/services/club';
@@ -45,6 +47,7 @@ import MediaConsentScreen from './src/screens/MediaConsentScreen';
 import TrainingScreen from './src/screens/TrainingScreen';
 import DrillLibraryScreen from './src/screens/DrillLibraryScreen';
 import StatsScreen from './src/screens/StatsScreen';
+import ResultsScreen from './src/screens/ResultsScreen';
 import LeagueTableScreen from './src/screens/LeagueTableScreen';
 import WearablesScreen from './src/screens/WearablesScreen';
 import ShopScreen from './src/screens/ShopScreen';
@@ -190,8 +193,11 @@ function MainDrawer() {
   return (
     <Drawer.Navigator
       initialRouteName="TabNavigator"
+      // Back (gesture, button or browser) returns to the previous page, not always Home
+      backBehavior="history"
       drawerContent={(props) => <CustomDrawerContent {...props} />}
-      screenOptions={{
+      screenOptions={({ navigation }) => ({
+        headerLeft: ({ tintColor }: { tintColor?: string }) => <HeaderLeft navigation={navigation} tintColor={tintColor} />,
         headerStyle: {
           backgroundColor: INK,
           borderBottomColor: 'rgba(255,255,255,0.08)',
@@ -211,7 +217,7 @@ function MainDrawer() {
         },
         drawerActiveTintColor: accent,
         drawerInactiveTintColor: TEXT_MUTED,
-      }}
+      })}
     >
       {/* Main Tab App */}
       <Drawer.Screen
@@ -234,6 +240,7 @@ function MainDrawer() {
       {/* Training Group */}
       <Drawer.Screen name="Training" component={TrainingScreen} options={{ title: 'Training Centre' }} />
       <Drawer.Screen name="DrillLibrary" component={DrillLibraryScreen} options={{ title: 'Drill Library' }} />
+      <Drawer.Screen name="Results" component={ResultsScreen} options={{ title: 'Results' }} />
       <Drawer.Screen name="Stats" component={StatsScreen} options={{ title: 'Statistics' }} />
       <Drawer.Screen name="LeagueTable" component={LeagueTableScreen} options={{ title: 'League Table' }} />
       <Drawer.Screen name="Wearables" component={WearablesScreen} options={{ title: 'Wearables' }} />
@@ -270,7 +277,7 @@ function MainDrawer() {
       {/* Other/Hidden Screens */}
       <Drawer.Screen name="Chat" component={ChatScreen} options={{ title: 'Team Chat' }} />
       <Drawer.Screen name="CreatePost" component={CreatePostScreen} options={{ title: 'Create Post' }} />
-      <Drawer.Screen name="Gallery" component={GalleryScreen} />
+      <Drawer.Screen name="Gallery" component={GalleryScreen} options={{ title: 'Gallery' }} />
       <Drawer.Screen name="Highlights" component={HighlightsScreen} />
       <Drawer.Screen name="MatchHighlights" component={MatchHighlightsScreen} options={{ title: 'Match Highlights' }} />
       <Drawer.Screen name="Manage" component={ManageScreen} options={{ title: 'Team Admin' }} />
@@ -361,7 +368,7 @@ export default function App() {
       <AuthProvider>
         <SafeAreaProvider>
           <BrandPaper>
-            <NavigationContainer ref={navigationRef}>
+            <NavigationContainer ref={navigationRef} linking={linking}>
               <StatusBar style="light" />
               <RootNavigator />
             </NavigationContainer>

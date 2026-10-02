@@ -184,11 +184,13 @@ export async function scheduleClub(env: SocialEnv, tenantId: string, now: Date):
   }
   if (t.hour >= 19) await queueMilestones(env, tenantId, t, now, queue);
   if (t.weekday === 4 && t.hour >= 18) {
+    // Only gallery photos staff ticked for Throwback Thursday, from at least six months ago
     await queue("throwback", `throwback:${t.date}`, async (club) => {
       const { results } = await env.DB.prepare(
         `SELECT p.url, p.caption, a.title, COALESCE(a.event_date, p.uploaded_at) AS taken FROM photos p
          LEFT JOIN albums a ON a.id = p.album_id AND a.tenant_id = p.tenant_id
-         WHERE p.tenant_id = ? AND substr(COALESCE(a.event_date, p.uploaded_at), 1, 10) <= ? ORDER BY p.id LIMIT 300`,
+         WHERE p.tenant_id = ? AND p.tags LIKE '%"throwback"%'
+           AND substr(COALESCE(a.event_date, p.uploaded_at), 1, 10) <= ? ORDER BY p.id LIMIT 300`,
       ).bind(tenantId, addDays(t.date, -180)).all<{ url: string; caption: string | null; title: string | null; taken: string | null }>();
       if (!results?.length) return null;
       const pick = results[Math.floor(Date.parse(t.date) / 604_800_000) % results.length];

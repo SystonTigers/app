@@ -4,6 +4,7 @@ import { Card, Title, Paragraph, Avatar, DataTable, Chip, Button, List } from 'r
 import { themedStyles, useBrandColors, BrandColors } from '../theme/brand';
 import { FONTS } from '../theme/brandFonts';
 import { statsApi } from '../services/api';
+import SeasonPicker from '../components/seasons/SeasonPicker';
 
 interface PlayerStats {
   id: string;
@@ -33,12 +34,6 @@ interface MOTMWinner {
 
 type LeaderboardType = 'scorers' | 'assisters' | 'combined' | 'cleansheets' | 'cards' | 'motm';
 
-/** Football seasons run August to May, e.g. "2026/27" from August 2026. */
-function currentSeasonLabel(now: Date = new Date()): string {
-  const startYear = now.getMonth() >= 7 ? now.getFullYear() : now.getFullYear() - 1;
-  return `${startYear}/${String((startYear + 1) % 100).padStart(2, '0')}`;
-}
-
 export default function StatsScreen() {
   const COLORS = useBrandColors();
   const styles = useStyles();
@@ -47,15 +42,17 @@ export default function StatsScreen() {
   const [playerStats, setPlayerStats] = useState<PlayerStats[]>([]);
   const [motmHistory, setMotmHistory] = useState<MOTMWinner[]>([]);
   const [loading, setLoading] = useState(true);
+  // Chosen by SeasonPicker: starts on the current season, "all" for all time
+  const [season, setSeason] = useState<string | null>(null);
 
   useEffect(() => {
-    loadStats();
-  }, []);
+    if (season) loadStats(season);
+  }, [season]);
 
-  const loadStats = async () => {
+  const loadStats = async (chosen: string) => {
     try {
       setLoading(true);
-      const result = await statsApi.getPlayerStats();
+      const result = await statsApi.getPlayerStats(chosen);
       const raw = result?.data || [];
       const mapped: PlayerStats[] = raw.map((p: any) => ({
         id: p.id || p.playerId || String(Math.random()),
@@ -293,7 +290,7 @@ export default function StatsScreen() {
 
   return (
     <ScrollView style={styles.container}>
-      <Text style={styles.seasonLine}>{currentSeasonLabel()} Season</Text>
+      <SeasonPicker value={season} onChange={(id) => setSeason(id)} />
 
       {/* Leaderboard Selector */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.leaderboardSelector}>
@@ -419,11 +416,6 @@ const useStyles = themedStyles((COLORS: BrandColors) => ({
     paddingHorizontal: 8,
     paddingTop: 8,
     alignItems: 'flex-start',
-  },
-  seasonLine: {
-    color: COLORS.textLight,
-    marginHorizontal: 16,
-    marginTop: 12,
   },
   leaderboardSelector: {
     padding: 16,

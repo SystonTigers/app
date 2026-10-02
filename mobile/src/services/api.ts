@@ -7,6 +7,7 @@ import { API_BASE_URL } from '../config';
 
 import { AUTH_STORAGE_KEYS, authStorage, type AuthStorageKey } from './authStorage';
 import { getTenantId } from './club';
+import { appendPhoto } from './photoUpload';
 
 // Re-exported for existing imports
 export { AUTH_STORAGE_KEYS };
@@ -644,21 +645,10 @@ export const playerImagesApi = {
     formData.append('playerName', data.playerName);
     formData.append('type', data.type);
 
-    // Append photo
-    const filename = data.imageUri.split('/').pop() || 'photo.jpg';
-    const match = /\.(\w+)$/.exec(filename);
-    const type = match ? `image/${match[1]}` : 'image/jpeg';
-
-    formData.append('photo', {
-      uri: data.imageUri,
-      name: filename,
-      type,
-    } as any);
+    await appendPhoto(formData, 'photo', data.imageUri);
 
     const response = await api.post('/api/v1/admin/player-images', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
+      headers: { 'Content-Type': 'multipart/form-data' },
       params: { tenant: getTenantId() },
     });
     return response.data;
@@ -1044,12 +1034,58 @@ export const wearablesApi = {
 
 // ===== Stats API =====
 export const statsApi = {
-  getPlayerStats: async () => {
+  /** Player stats; `season` is a season id from resultsApi.seasons() ("all" or nothing = all time) */
+  getPlayerStats: async (season?: string) => {
     const response = await api.get('/api/v1/stats/players', {
-      params: { tenant: getTenantId() },
+      params: { tenant: getTenantId(), ...(season && season !== 'all' ? { season } : {}) },
     });
     return response.data;
   },
+};
+
+// ===== Results and seasons =====
+export interface SeasonOption {
+  /** A club season's id, or "2025-26" for a football year (1 Aug to 31 Jul) */
+  id: string;
+  label: string;
+  from: string;
+  to: string;
+  current: boolean;
+}
+
+export interface ClubResult {
+  id: number;
+  date: string;
+  opponent: string;
+  venue: string | null;
+  competition: string | null;
+  /** Our goals (the app's cards show us as "home") */
+  homeScore: number;
+  awayScore: number;
+  result: 'win' | 'draw' | 'loss' | string;
+  points: number;
+  scorers: string | null;
+  fixtureId: string | null;
+  homeAway: 'home' | 'away' | null;
+}
+
+export interface ResultInput {
+  date: string;
+  opponent: string;
+  ourScore: number;
+  theirScore: number;
+  venue?: string | null;
+  competition?: string;
+  scorers?: string | null;
+}
+
+export const resultsApi = {
+  seasons: async (): Promise<{ success: boolean; data: SeasonOption[] }> => (await api.get('/api/v1/results/seasons')).data,
+  list: async (season: string): Promise<{ success: boolean; data: ClubResult[] }> =>
+    (await api.get('/api/v1/results', { params: { season, limit: 200 } })).data,
+  add: async (input: ResultInput): Promise<{ success: boolean }> => (await api.post('/api/v1/results', input)).data,
+  update: async (id: number, input: Partial<ResultInput>): Promise<{ success: boolean }> => (await api.put(`/api/v1/results/${id}`, input)).data,
+  remove: async (id: number): Promise<{ success: boolean }> => (await api.delete(`/api/v1/results/${id}`)).data,
 };
 
 // ===== Dues / Payments API =====
@@ -1099,60 +1135,58 @@ export const usersApi = {
   },
 };
 
+/** A gallery album (GET /api/v1/gallery/albums) */
+export interface GalleryAlbum {
+  id: string;
+  title: string;
+  /** YYYY-MM-DD */
+  date: string;
+  coverPhoto: string | null;
+  photoCount: number;
+  type: 'match' | 'training' | 'social' | 'throwback';
+}
+
+/** A gallery photo; uploadedBy is a name, never an email */
+export interface GalleryPhoto {
+  id: string;
+  uri: string;
+  albumId: string;
+  uploadedBy: string;
+  uploadedAt: string;
+  caption: string | null;
+  tags: string[];
+}
+
+export type AlbumInput = { title: string; date: string; type: GalleryAlbum['type'] };
+
 export const galleryApi = {
-  // Get all albums (unwrapped from the { success, data } envelope)
-  getAlbums: async () => {
-    const response = await api.get('/api/v1/gallery/albums', {
-      params: { tenant: getTenantId() },
-    });
+  getAlbums: async (): Promise<GalleryAlbum[]> => {
+    const response = await api.get('/api/v1/gallery/albums');
     return Array.isArray(response.data?.data) ? response.data.data : [];
   },
-
-  // Get photos in album (unwrapped from the { success, data } envelope)
-  getPhotos: async (albumId: string) => {
-    const response = await api.get('/api/v1/gallery/photos', {
-      params: { tenant: getTenantId(), albumId },
-    });
+  getPhotos: async (albumId: string): Promise<GalleryPhoto[]> => {
+    const response = await api.get('/api/v1/gallery/photos', { params: { albumId } });
     return Array.isArray(response.data?.data) ? response.data.data : [];
   },
-
-  // Upload photo
-  uploadPhoto: async (data: {
-    imageUri: string;
-    caption?: string;
-    albumId?: string;
-    tags?: string[];
-  }) => {
+  /** Staff: add one photo to an album (shrunk first in the web app) */
+  uploadPhoto: async (data: { imageUri: string; albumId: string; caption?: string; tags?: string[] }): Promise<{ success: boolean; data: { id: string; url: string } }> => {
     const formData = new FormData();
-    const filename = data.imageUri.split('/').pop() || 'photo.jpg';
-    const match = /\.(\w+)$/.exec(filename);
-    const type = match ? `image/${match[1]}` : 'image/jpeg';
-
-    formData.append('file', {
-      uri: data.imageUri,
-      name: filename,
-      type,
-    } as any);
-
+    await appendPhoto(formData, 'file', data.imageUri);
+    formData.append('albumId', data.albumId);
     if (data.caption) formData.append('caption', data.caption);
-    if (data.albumId) formData.append('albumId', data.albumId);
-    if (data.tags) formData.append('tags', JSON.stringify(data.tags));
-
-    const response = await api.post(`/api/v1/gallery/upload?tenant=${getTenantId()}`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
+    if (data.tags?.length) formData.append('tags', JSON.stringify(data.tags));
+    const response = await api.post('/api/v1/gallery/upload', formData, {
+      timeout: 60000,
+      headers: { 'Content-Type': 'multipart/form-data' },
     });
     return response.data;
   },
-
-  // Create album (helper for seeding/admin)
-  createAlbum: async (data: any) => {
-    const response = await api.post('/api/v1/gallery/albums', {
-      tenant: getTenantId(),
-      ...data,
-    });
-    return response.data;
+  createAlbum: async (input: AlbumInput): Promise<GalleryAlbum> => (await api.post('/api/v1/gallery/albums', input)).data.data,
+  updateAlbum: async (id: string, input: Partial<AlbumInput>): Promise<GalleryAlbum> => (await api.put(`/api/v1/gallery/albums/${id}`, input)).data.data,
+  /** Staff: removes the album, its photos and their files */
+  deleteAlbum: async (id: string): Promise<{ photosRemoved: number }> => (await api.delete(`/api/v1/gallery/albums/${id}`)).data.data,
+  deletePhoto: async (id: string): Promise<void> => {
+    await api.delete(`/api/v1/gallery/photos/${id}`);
   },
 };
 

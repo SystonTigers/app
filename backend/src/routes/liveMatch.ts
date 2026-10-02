@@ -10,6 +10,7 @@
  *   POST   /api/v1/fixtures/:id/live/events              record an event (staff)
  *   DELETE /api/v1/fixtures/:id/live/events/:eventId     undo an event (staff)
  */
+import { MAX_NOMINEES } from "./motm";
 import { json } from "../services/util";
 import { hasAnyRole, requireStaff, requireTenantJWT, STAFF_ROLES, type TenantClaims } from "../services/auth";
 import { computeState, isLiveEventType, matchMinute, rejectReason, undoBlockedReason, type LiveEventType } from "../services/liveMatchState";
@@ -35,7 +36,7 @@ async function openMotmAtFullTime(env: Env, tenantId: string, fixtureId: string)
   if (nominees.length < 2) return false;
   const start = new Date();
   const end = new Date(start.getTime() + MOTM_VOTING_HOURS * 3600_000);
-  return openVote(env, tenantId, fixtureId, { nominees: nominees.slice(0, 25), status: "active", start: start.toISOString(), end: end.toISOString(), autoPost: true });
+  return openVote(env, tenantId, fixtureId, { nominees: nominees.slice(0, MAX_NOMINEES), status: "active", start: start.toISOString(), end: end.toISOString(), autoPost: true });
 }
 
 type Env = { DB: D1Database; [key: string]: unknown };

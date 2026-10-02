@@ -1,13 +1,13 @@
 import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, Alert, RefreshControl, ScrollView, View } from 'react-native';
-import { Button, Card, Chip, FAB, Modal, Paragraph, Portal, Text, Title } from 'react-native-paper';
+import { Button, Card, Chip, FAB, Modal, Paragraph, Portal, Text, TextInput, Title } from 'react-native-paper';
 import { useFocusEffect } from '@react-navigation/native';
 import { themedStyles, useBrandColors } from '../theme/brand';
 import { FONTS } from '../theme/brandFonts';
+import { customHours, lengthText } from '../utils/motmVote';
 import {
   apiErrorMessage,
   fixturesApi,
-  lineupApi,
   motmApi,
   squadApi,
   type MotmSessionSummary,
@@ -27,12 +27,14 @@ interface SquadPlayer {
 }
 
 const VOTING_LENGTHS = [
-  { label: '24 hours', hours: 24 },
-  { label: '2 days', hours: 48 },
-  { label: '3 days', hours: 72 },
+  { label: '2 hours', hours: 2 },
+  { label: '3 hours', hours: 3 },
+  { label: '4 hours', hours: 4 },
 ];
+const DEFAULT_HOURS = 3;
 const MIN_NOMINEES = 2;
-const MAX_NOMINEES = 25;
+/** The whole squad can be nominated; the manager unticks anyone who didn't play */
+const MAX_NOMINEES = 40;
 const DAY_MS = 24 * 3600_000;
 
 function formatDate(value: string | null | undefined): string {
@@ -48,7 +50,8 @@ function formatDateTime(value: string | null | undefined): string {
 }
 
 /**
- * Managers run Man of the Match: pick a match and 2-15 nominees, open the
+ * Managers run Man of the Match: pick a match (the whole squad is nominated;
+ * untick anyone who didn't play), choose how long voting lasts, open the
  * vote for parents and players, watch the tally, then close it to announce
  * the winner (shown in the app and on the club's web page).
  */
@@ -66,7 +69,10 @@ export default function ManageMOTMScreen() {
   const [creating, setCreating] = useState(false);
   const [matchId, setMatchId] = useState('');
   const [nominees, setNominees] = useState<string[]>([]);
-  const [hours, setHours] = useState(48);
+  const [hours, setHours] = useState(DEFAULT_HOURS);
+  const [custom, setCustom] = useState(false);
+  const [customAmount, setCustomAmount] = useState('');
+  const [customUnit, setCustomUnit] = useState<'hours' | 'days'>('hours');
   const [createError, setCreateError] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -111,22 +117,18 @@ export default function ManageMOTMScreen() {
     }, [load]),
   );
 
-  /** Nominate everyone in the match's line-up (the manager can untick anyone). */
-  const chooseMatch = async (id: string) => {
+  /** Nominate the whole squad; the manager unticks anyone who didn't play. */
+  const chooseMatch = (id: string) => {
     setMatchId(id);
-    setNominees([]);
-    try {
-      const res = await lineupApi.get(id);
-      setNominees([...res.data.starters, ...res.data.subs].map((p) => p.playerId).slice(0, MAX_NOMINEES));
-    } catch {
-      // No line-up: the manager picks nominees by hand
-    }
+    setNominees(players.map((p) => p.id).slice(0, MAX_NOMINEES));
   };
 
   const startCreate = () => {
     if (matches[0]) chooseMatch(matches[0].id); else setMatchId('');
-    setNominees([]);
-    setHours(48);
+    setHours(DEFAULT_HOURS);
+    setCustom(false);
+    setCustomAmount('');
+    setCustomUnit('hours');
     setCreateError('');
     setCreating(true);
   };
@@ -140,11 +142,13 @@ export default function ManageMOTMScreen() {
   const openVote = async () => {
     if (!matchId) return setCreateError('Choose the match.');
     if (nominees.length < MIN_NOMINEES) return setCreateError(`Pick at least ${MIN_NOMINEES} nominees.`);
+    const length = custom ? customHours(customAmount, customUnit) : hours;
+    if (length === null) return setCreateError('Choose how long voting lasts: from 1 hour up to 3 days.');
     setSaving(true);
     setCreateError('');
     try {
       const start = new Date();
-      const end = new Date(start.getTime() + hours * 3600_000);
+      const end = new Date(start.getTime() + length * 3600_000);
       await motmApi.openVoting(matchId, {
         nominees,
         votingWindow: { start: start.toISOString(), end: end.toISOString() },
@@ -298,11 +302,37 @@ export default function ManageMOTMScreen() {
             <Text style={styles.label}>Voting closes after</Text>
             <View style={styles.chips}>
               {VOTING_LENGTHS.map((v) => (
-                <Chip key={v.hours} selected={hours === v.hours} onPress={() => setHours(v.hours)} style={styles.chip}>
+                <Chip key={v.hours} selected={!custom && hours === v.hours} onPress={() => { setCustom(false); setHours(v.hours); }} style={styles.chip}>
                   {v.label}
                 </Chip>
               ))}
+              <Chip selected={custom} onPress={() => setCustom(true)} style={styles.chip} icon="pencil">
+                Custom
+              </Chip>
             </View>
+            {custom ? (
+              <View style={styles.customRow}>
+                <TextInput
+                  mode="outlined"
+                  dense
+                  value={customAmount}
+                  onChangeText={setCustomAmount}
+                  keyboardType="numeric"
+                  placeholder={customUnit === 'days' ? '2' : '6'}
+                  style={styles.customInput}
+                  accessibilityLabel="How long voting lasts"
+                />
+                <Chip selected={customUnit === 'hours'} onPress={() => setCustomUnit('hours')} style={styles.chip}>hours</Chip>
+                <Chip selected={customUnit === 'days'} onPress={() => setCustomUnit('days')} style={styles.chip}>days</Chip>
+              </View>
+            ) : null}
+            <Paragraph style={styles.help}>
+              {(() => {
+                const length = custom ? customHours(customAmount, customUnit) : hours;
+                if (length === null) return custom && customAmount ? 'Up to 3 days (72 hours).' : 'Any length from 1 hour up to 3 days.';
+                return `Voting closes ${lengthText(length)} after you open it, at ${formatDateTime(new Date(Date.now() + length * 3600_000).toISOString())}.`;
+              })()}
+            </Paragraph>
 
             {createError ? <Text style={styles.errorText}>{createError}</Text> : null}
 
@@ -368,6 +398,8 @@ export default function ManageMOTMScreen() {
 }
 
 const useStyles = themedStyles((COLORS) => ({
+  customRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 },
+  customInput: { width: 90, backgroundColor: 'transparent' },
   container: { flex: 1, backgroundColor: COLORS.background },
   center: { justifyContent: 'center', alignItems: 'center' },
   content: { padding: 16, paddingBottom: 100 },

@@ -162,7 +162,8 @@ with personal data.
 - Scheduled club posts (`services/social/scheduler.ts`, 5-minute cron, UK time):
   countdown, match day, postponed, weekly fixtures/results, league table,
   birthdays (club app only, no age), player of the week/month, milestones,
-  throwback (public only if the club allows player photos) and quotes. Each
+  throwback (only gallery photos staff ticked "Throwback Thursday", 6+ months
+  old, and public only if the club allows player photos) and quotes. Each
   has a unique `source_id`, so running twice never posts twice.
 - End-to-end tests set `SOCIAL_BACKGROUND_DRAWING=off` and draw/post
   explicitly; the Workers test runner can't cope with WASM work left running.
@@ -204,7 +205,8 @@ with personal data.
   `POST /api/v1/club/fixtures/from-image` returns the fixtures for staff to
   check (one fills the form, several are ticked) and
   `POST .../from-image/apply` adds them through the FA email import
-  (`source = 'photo'`, no duplicates). 40 pictures per club per day. The local
+  (`source = 'photo'`, no duplicates). 40 pictures per club per day. The
+  website's Fixtures admin has the same reader (`components/FixturePhotoImport.tsx`). The local
   test runner has no AI binding, so locally it says it isn't switched on.
 - Automatic: each club has a private address `fixtures-<token>@EMAIL_DOMAIN`
   (`tenants.fixture_email_token`, `GET /api/v1/club/fixture-email`) and sets
@@ -231,6 +233,25 @@ with personal data.
   (`mode = 'table'`) and isn't touched by later results until the next paste.
 - The website, app and weekly table graphic all read `league_standings`;
   `/public/:club/table` returns `meta.source` so pages can say how it's sorted.
+
+## Results, seasons and gallery
+
+- Seasons are football years (1 Aug to 31 Jul, id `2025-26`) unless the club
+  has rows in `seasons` (`services/seasons/range.ts`). `GET /api/v1/results/seasons`
+  lists them; `?season=` filters `GET /results` and `GET /stats/players`.
+- App Results screen (menu: Results, and Manage Results for managers): season
+  chips (`components/seasons/SeasonPicker`), summary, and staff add/edit/remove
+  (`routes/results.ts`, `POST/PUT /api/v1/results`) for any past date, so old
+  seasons can be filled in. Stats has the same season chips.
+- Gallery (`routes/gallery.ts`, app `GalleryScreen`, menu: My Club → Gallery):
+  members-only albums (match / training / days out / throwback) grouped by
+  season. Staff make, rename and remove albums (removing one removes its
+  photos and R2 files) and upload several photos at once after confirming
+  consent. Photos record the uploader's account id; members see a name, never
+  an email.
+- App navigation: a back arrow sits next to the menu button, the drawer goes
+  back through history, and the web app has real URLs (`navigation/linking.ts`)
+  so the phone's back gesture returns to the last page instead of closing it.
 
 ## Photo and video consent
 

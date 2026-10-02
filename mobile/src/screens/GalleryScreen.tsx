@@ -1,662 +1,327 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, Image, TouchableOpacity, Dimensions, Alert, ActivityIndicator } from 'react-native';
-import { Card, Title, Paragraph, Button, Chip, FAB, Portal, Modal, TextInput, Checkbox, IconButton } from 'react-native-paper';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Alert, Image, Platform, Pressable, RefreshControl, ScrollView, Text, useWindowDimensions, View } from 'react-native';
+import { Button, FAB, IconButton, Modal, Portal } from 'react-native-paper';
 import * as ImagePicker from 'expo-image-picker';
 import { themedStyles, useBrandColors } from '../theme/brand';
 import { FONTS } from '../theme/brandFonts';
-import { galleryApi } from '../services/api';
+import { apiErrorMessage, galleryApi, type GalleryAlbum, type GalleryPhoto } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import AlbumFormModal from '../components/gallery/AlbumFormModal';
+import UploadPhotosModal from '../components/gallery/UploadPhotosModal';
+import { groupBySeason, kindOf, photoCount } from '../utils/gallery';
+import { resultDate } from '../utils/results';
 
-const { width } = Dimensions.get('window');
-const imageSize = (width - 48) / 3; // 3 images per row with spacing
+const MAX_PICK = 30;
 
-interface Photo {
-  id: string;
-  uri: string;
-  albumId: string;
-  uploadedBy: string;
-  uploadedAt: string;
-  caption?: string;
-  tags: string[];
-}
-
-interface Album {
-  id: string;
-  title: string;
-  date: string;
-  coverPhoto: string;
-  photoCount: number;
-  type: 'match' | 'training' | 'social' | 'throwback';
-}
-
-// Mocks removed
-
+/**
+ * Club gallery: albums of match days, training, days out and throwbacks,
+ * grouped by season so old photos are easy to find. Members look; staff
+ * make albums, add photos (several at once) and remove them.
+ */
 export default function GalleryScreen() {
   const COLORS = useBrandColors();
   const styles = useStyles();
+  const { width } = useWindowDimensions();
   const { user } = useAuth();
-  // Club staff add photos; parents and players view them
-  const canUpload = !!user && user.role !== 'parent' && user.role !== 'player';
-  const [albums, setAlbums] = useState<Album[]>([]);
-  const [photos, setPhotos] = useState<Photo[]>([]);
-  const [loading, setLoading] = useState(false);
+  const isStaff = !!user && user.role !== 'parent' && user.role !== 'player';
+  const [albums, setAlbums] = useState<GalleryAlbum[]>([]);
+  const [album, setAlbum] = useState<GalleryAlbum | null>(null);
+  const [photos, setPhotos] = useState<GalleryPhoto[]>([]);
+  const [photo, setPhoto] = useState<GalleryPhoto | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+  const [albumForm, setAlbumForm] = useState<{ open: boolean; editing: GalleryAlbum | null }>({ open: false, editing: null });
+  const [picked, setPicked] = useState<string[]>([]);
 
-  const [selectedAlbum, setSelectedAlbum] = useState<Album | null>(null);
-  const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
-  const [uploadModalVisible, setUploadModalVisible] = useState(false);
-  const [uploadData, setUploadData] = useState({
-    image: null as string | null,
-    caption: '',
-    consentGiven: false,
-    isThrowback: false,
-  });
+  const columns = width >= 900 ? 5 : width >= 600 ? 4 : 3;
+  const tile = Math.floor((Math.min(width, 1100) - 16) / columns) - 8;
 
-  useEffect(() => {
-    loadAlbums();
+  const loadAlbums = useCallback(async () => {
+    setError('');
+    try {
+      setAlbums(await galleryApi.getAlbums());
+    } catch (err) {
+      setError(apiErrorMessage(err, "The gallery couldn't load. Check your signal and pull to refresh."));
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   }, []);
 
+  const loadPhotos = useCallback(async (albumId: string) => {
+    setError('');
+    try {
+      setPhotos(await galleryApi.getPhotos(albumId));
+    } catch (err) {
+      setError(apiErrorMessage(err, "Photos couldn't load. Check your signal and pull to refresh."));
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => { loadAlbums(); }, [loadAlbums]);
   useEffect(() => {
-    if (selectedAlbum) {
-      loadPhotos(selectedAlbum.id);
-    }
-  }, [selectedAlbum]);
-
-  const loadAlbums = async () => {
+    if (!album) return;
+    setPhotos([]);
     setLoading(true);
+    loadPhotos(album.id);
+  }, [album, loadPhotos]);
+
+  const seasons = useMemo(() => groupBySeason(albums), [albums]);
+
+  const pick = async (camera: boolean) => {
+    setNotice('');
+    setError('');
     try {
-      const data = await galleryApi.getAlbums();
-      if (data && Array.isArray(data)) {
-        setAlbums(data);
+      if (Platform.OS !== 'web') {
+        const perm = camera ? await ImagePicker.requestCameraPermissionsAsync() : await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (!perm.granted) {
+          setError(camera ? 'Allow the camera for this app to take a photo.' : 'Allow photos for this app to choose pictures.');
+          return;
+        }
       }
+      const result = camera
+        ? await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 0.8 })
+        : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.8, allowsMultipleSelection: true, selectionLimit: MAX_PICK });
+      if (result.canceled) return;
+      const uris = (result.assets || []).map((a) => a.uri).filter(Boolean).slice(0, MAX_PICK);
+      if ((result.assets || []).length > MAX_PICK) setNotice(`Up to ${MAX_PICK} photos at a time; the first ${MAX_PICK} are ready to upload.`);
+      setPicked(uris);
     } catch (err) {
-      console.warn('Failed to load albums', err);
-    } finally {
-      setLoading(false);
+      setError(apiErrorMessage(err, "Those photos couldn't be opened. Please try again."));
     }
   };
 
-  const loadPhotos = async (albumId: string) => {
-    setLoading(true);
-    try {
-      const data = await galleryApi.getPhotos(albumId);
-      if (data && Array.isArray(data)) {
-        setPhotos(data);
-      } else {
-        setPhotos([]);
-      }
-    } catch (err) {
-      console.warn('Failed to load photos', err);
-      setPhotos([]);
-    } finally {
-      setLoading(false);
-    }
+  const removePhoto = (p: GalleryPhoto) => {
+    Alert.alert('Remove this photo?', 'It is removed for everyone and can\'t be brought back.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Remove',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await galleryApi.deletePhoto(p.id);
+            setPhoto(null);
+            setPhotos((list) => list.filter((x) => x.id !== p.id));
+            setNotice('Photo removed.');
+            loadAlbums();
+          } catch (err) {
+            setError(apiErrorMessage(err, "That photo couldn't be removed. Please try again."));
+          }
+        },
+      },
+    ]);
   };
 
-  const getAlbumTypeColor = (type: Album['type']) => {
-    switch (type) {
-      case 'match': return '#4CAF50';
-      case 'training': return '#2196F3';
-      case 'social': return '#FF9800';
-      case 'throwback': return '#9C27B0';
-      default: return COLORS.primary;
-    }
+  const removeAlbum = (a: GalleryAlbum) => {
+    Alert.alert(`Remove "${a.title}"?`, `The album and its ${photoCount(a.photoCount)} are removed for everyone and can't be brought back.`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Remove album',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await galleryApi.deleteAlbum(a.id);
+            setAlbum(null);
+            setNotice(`"${a.title}" removed.`);
+            loadAlbums();
+          } catch (err) {
+            setError(apiErrorMessage(err, "That album couldn't be removed. Please try again."));
+          }
+        },
+      },
+    ]);
   };
 
-  const getAlbumTypeIcon = (type: Album['type']) => {
-    switch (type) {
-      case 'match': return '⚽';
-      case 'training': return '🏃';
-      case 'social': return '🎉';
-      case 'throwback': return '⏰';
-      default: return '📸';
-    }
-  };
+  const messages = (
+    <>
+      {notice ? <Text style={styles.notice}>{notice}</Text> : null}
+      {error ? <Text style={styles.error} accessibilityRole="alert">{error}</Text> : null}
+    </>
+  );
 
-  const pickImage = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+  const modals = (
+    <>
+      <AlbumFormModal
+        visible={albumForm.open}
+        editing={albumForm.editing}
+        onClose={() => setAlbumForm({ open: false, editing: null })}
+        onSaved={(saved) => {
+          setAlbumForm({ open: false, editing: null });
+          setNotice(albumForm.editing ? 'Album updated.' : `"${saved.title}" is ready. Add some photos.`);
+          setAlbum(saved);
+          loadAlbums();
+        }}
+      />
+      {album ? (
+        <UploadPhotosModal
+          uris={picked}
+          albumId={album.id}
+          onClose={() => setPicked([])}
+          onDone={(message, failed) => {
+            setPicked([]);
+            if (failed.length) setError(message);
+            else setNotice(message);
+            loadPhotos(album.id);
+            loadAlbums();
+          }}
+        />
+      ) : null}
+    </>
+  );
 
-    if (status !== 'granted') {
-      Alert.alert('Permission Required', 'Sorry, we need camera roll permissions to upload photos.');
-      return;
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [4, 3],
-      quality: 0.8,
-    });
-
-    if (!result.canceled && result.assets[0]) {
-      setUploadData({ ...uploadData, image: result.assets[0].uri });
-      setUploadModalVisible(true);
-    }
-  };
-
-  const takePhoto = async () => {
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
-
-    if (status !== 'granted') {
-      Alert.alert('Permission Required', 'Sorry, we need camera permissions to take photos.');
-      return;
-    }
-
-    const result = await ImagePicker.launchCameraAsync({
-      allowsEditing: true,
-      aspect: [4, 3],
-      quality: 0.8,
-    });
-
-    if (!result.canceled && result.assets[0]) {
-      setUploadData({ ...uploadData, image: result.assets[0].uri });
-      setUploadModalVisible(true);
-    }
-  };
-
-  const handleUpload = async () => {
-    if (!uploadData.consentGiven) {
-      Alert.alert('Consent Required', 'Please confirm that you have consent to upload this photo.');
-      return;
-    }
-
-    if (!uploadData.image) return;
-
-    try {
-      await galleryApi.uploadPhoto({
-        imageUri: uploadData.image,
-        caption: uploadData.caption,
-        albumId: selectedAlbum?.id,
-        tags: uploadData.isThrowback ? ['throwback'] : []
-      });
-
-      Alert.alert('Success', 'Photo uploaded!');
-      setUploadModalVisible(false);
-      setUploadData({ image: null, caption: '', consentGiven: false, isThrowback: false });
-
-      // Refresh photos
-      if (selectedAlbum) loadPhotos(selectedAlbum.id);
-    } catch (err) {
-      console.error('Upload failed', err);
-      Alert.alert('Error', 'Failed to upload photo');
-    }
-  };
-
-  const requestRemoval = (_photo: Photo) => {
-    Alert.alert(
-      'Remove This Photo',
-      'Please contact a club admin and they will remove this photo from the gallery.',
-      [{ text: 'OK' }]
-    );
-    setSelectedPhoto(null);
-  };
-
-  const showUploadOptions = () => {
-    Alert.alert(
-      'Upload Photo',
-      'Choose how you want to upload',
-      [
-        { text: 'Take Photo', onPress: takePhoto },
-        { text: 'Choose from Library', onPress: pickImage },
-        { text: 'Cancel', style: 'cancel' }
-      ]
-    );
-  };
-
-  // Album View
-  if (selectedAlbum) {
-    const albumPhotos = photos; // use loaded photos
-
+  // One album
+  if (album) {
+    const kind = kindOf(album.type);
     return (
       <View style={styles.container}>
         <View style={styles.albumHeader}>
-          <IconButton
-            icon="arrow-left"
-            iconColor={COLORS.text}
-            size={24}
-            onPress={() => setSelectedAlbum(null)}
-          />
-          <View style={styles.albumHeaderContent}>
-            <Title style={styles.albumTitle}>{selectedAlbum.title}</Title>
-            <Paragraph style={styles.albumSubtitle}>
-              {new Date(selectedAlbum.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })} • {selectedAlbum.photoCount} photos
-            </Paragraph>
+          <IconButton icon="arrow-left" iconColor={COLORS.text} size={24} onPress={() => { setAlbum(null); setNotice(''); }} accessibilityLabel="Back to albums" />
+          <View style={styles.flex}>
+            <Text style={styles.albumTitle} numberOfLines={2}>{album.title}</Text>
+            <Text style={styles.sub}>{kind.icon} {kind.label} · {resultDate(album.date)} · {photoCount(photos.length || album.photoCount)}</Text>
           </View>
+          {isStaff ? (
+            <>
+              <IconButton icon="pencil" iconColor={COLORS.textLight} size={20} onPress={() => setAlbumForm({ open: true, editing: album })} accessibilityLabel="Edit album" />
+              <IconButton icon="delete-outline" iconColor={COLORS.error} size={20} onPress={() => removeAlbum(album)} accessibilityLabel="Remove album" />
+            </>
+          ) : null}
         </View>
-
-        <ScrollView style={styles.photosContainer}>
-          <View style={styles.photoGrid}>
-            {albumPhotos.map((photo) => (
-              <TouchableOpacity
-                key={photo.id}
-                style={styles.photoItem}
-                onPress={() => setSelectedPhoto(photo)}
-              >
-                <Image source={{ uri: photo.uri }} style={styles.photoImage} />
-              </TouchableOpacity>
+        {isStaff ? (
+          <View style={styles.addRow}>
+            <Button mode="contained" icon="image-multiple" onPress={() => pick(false)} style={styles.flex}>Choose photos</Button>
+            <Button mode="outlined" icon="camera" onPress={() => pick(true)} style={styles.flex}>Take a photo</Button>
+          </View>
+        ) : null}
+        <ScrollView
+          contentContainerStyle={styles.grid}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadPhotos(album.id); }} tintColor={COLORS.primary} />}
+        >
+          {messages}
+          {loading ? <ActivityIndicator color={COLORS.primary} style={styles.loading} /> : null}
+          {!loading && !photos.length && !error ? (
+            <Text style={styles.empty}>{isStaff ? 'No photos yet. Choose some from your phone to start the album.' : 'No photos in this album yet.'}</Text>
+          ) : null}
+          <View style={styles.tiles}>
+            {photos.map((p) => (
+              <Pressable key={p.id} onPress={() => setPhoto(p)} accessibilityRole="imagebutton" accessibilityLabel={p.caption || 'Photo'} style={{ width: tile, height: tile }}>
+                <Image source={{ uri: p.uri }} style={styles.tileImage} />
+              </Pressable>
             ))}
           </View>
         </ScrollView>
 
-        {canUpload && (
-          <FAB
-            icon="camera"
-            label="Upload"
-            style={styles.fab}
-            color={COLORS.onPrimary}
-            onPress={showUploadOptions}
-          />
-        )}
-
-        {/* Photo Detail Modal */}
         <Portal>
-          <Modal
-            visible={!!selectedPhoto}
-            onDismiss={() => setSelectedPhoto(null)}
-            contentContainerStyle={styles.photoModal}
-          >
-            {selectedPhoto && (
-              <>
-                <Image source={{ uri: selectedPhoto.uri }} style={styles.fullPhoto} />
-                <View style={styles.photoDetails}>
-                  {selectedPhoto.caption && (
-                    <Paragraph style={styles.photoCaption}>{selectedPhoto.caption}</Paragraph>
+          <Modal visible={!!photo} onDismiss={() => setPhoto(null)} contentContainerStyle={styles.viewer}>
+            {photo ? (
+              <View>
+                <Image source={{ uri: photo.uri }} style={styles.fullPhoto} accessibilityLabel={photo.caption || 'Photo'} />
+                <View style={styles.viewerBody}>
+                  {photo.caption ? <Text style={styles.caption}>{photo.caption}</Text> : null}
+                  <Text style={styles.viewerMeta}>Added by {photo.uploadedBy}{photo.uploadedAt ? ` · ${resultDate(photo.uploadedAt)}` : ''}</Text>
+                  {isStaff ? (
+                    <Button mode="outlined" textColor={COLORS.error} style={styles.removeButton} onPress={() => removePhoto(photo)}>Remove photo</Button>
+                  ) : (
+                    <Text style={styles.viewerMeta}>Want this photo taken down? Ask a club coach or admin and they will remove it.</Text>
                   )}
-                  <Paragraph style={styles.photoMeta}>
-                    Uploaded by {selectedPhoto.uploadedBy} • {selectedPhoto.uploadedAt}
-                  </Paragraph>
-                  <Button
-                    mode="outlined"
-                    onPress={() => requestRemoval(selectedPhoto)}
-                    style={styles.removalButton}
-                    textColor={COLORS.error}
-                  >
-                    Request Removal
-                  </Button>
                 </View>
-                <IconButton
-                  icon="close"
-                  size={24}
-                  onPress={() => setSelectedPhoto(null)}
-                  style={styles.closeButton}
-                  iconColor="#FFFFFF"
-                />
-              </>
-            )}
+                <IconButton icon="close" size={24} onPress={() => setPhoto(null)} style={styles.close} iconColor="#FFFFFF" accessibilityLabel="Close photo" />
+              </View>
+            ) : null}
           </Modal>
         </Portal>
+        {modals}
       </View>
     );
   }
 
-  // Albums Grid View
+  // Albums, newest season first
   return (
     <View style={styles.container}>
-      <Text style={styles.headerSubtitle}>Team photos & memories</Text>
-
-      <ScrollView style={styles.scrollContainer}>
-        <View style={styles.albumsGrid}>
-          {albums.map((album) => (
-            <TouchableOpacity
-              key={album.id}
-              style={styles.albumCard}
-              onPress={() => setSelectedAlbum(album)}
-            >
-              <Image source={{ uri: album.coverPhoto }} style={styles.albumCover} />
-              <View style={styles.albumOverlay}>
-                <View style={styles.albumTypeChip}>
-                  <Paragraph style={styles.albumTypeIcon}>{getAlbumTypeIcon(album.type)}</Paragraph>
-                </View>
-                <View style={styles.albumInfo}>
-                  <Paragraph style={styles.albumCardTitle} numberOfLines={1}>
-                    {album.title}
-                  </Paragraph>
-                  <Paragraph style={styles.albumCardSubtitle}>
-                    {new Date(album.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })} • {album.photoCount} photos
-                  </Paragraph>
-                </View>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* GDPR Notice */}
-        <Card style={styles.gdprCard}>
-          <Card.Content>
-            <Title style={styles.gdprTitle}>Privacy & Consent</Title>
-            <Paragraph style={styles.gdprText}>
-              Before uploading photos, please ensure:
-            </Paragraph>
-            <View style={styles.gdprList}>
-              <Paragraph style={styles.gdprItem}>• You have consent from individuals in the photo</Paragraph>
-              <Paragraph style={styles.gdprItem}>• Parents/guardians have consented for minors (U18)</Paragraph>
-              <Paragraph style={styles.gdprItem}>• Photos are appropriate for a family-friendly environment</Paragraph>
+      <ScrollView
+        contentContainerStyle={styles.list}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadAlbums(); }} tintColor={COLORS.primary} />}
+      >
+        <Text style={styles.intro}>Photos from match days, training and days out, kept season by season.</Text>
+        {messages}
+        {loading ? <ActivityIndicator color={COLORS.primary} style={styles.loading} /> : null}
+        {!loading && !albums.length && !error ? (
+          <View style={styles.emptyCard}>
+            <Text style={styles.emptyTitle}>No albums yet</Text>
+            <Text style={styles.empty}>
+              {isStaff ? 'Make an album for a match, a tournament or a day out, then add the photos. Old photos can go in with the date they were taken.' : 'Club staff add albums here. Check back after the next match or day out.'}
+            </Text>
+          </View>
+        ) : null}
+        {seasons.map((group) => (
+          <View key={group.season} style={styles.season}>
+            <Text style={styles.seasonTitle}>{group.season === 'Undated' ? 'Undated' : `${group.season} season`}</Text>
+            <View style={styles.albumGrid}>
+              {group.albums.map((a) => {
+                const kind = kindOf(a.type);
+                return (
+                  <Pressable key={a.id} onPress={() => { setNotice(''); setAlbum(a); }} accessibilityRole="button" accessibilityLabel={`${a.title}, ${photoCount(a.photoCount)}`} style={[styles.albumCard, { width: width >= 700 ? '48%' : '100%' }]}>
+                    {a.coverPhoto ? (
+                      <Image source={{ uri: a.coverPhoto }} style={styles.cover} />
+                    ) : (
+                      <View style={[styles.cover, styles.noCover]}><Text style={styles.noCoverIcon}>{kind.icon}</Text></View>
+                    )}
+                    <View style={styles.albumInfo}>
+                      <Text style={styles.albumCardTitle} numberOfLines={1}>{a.title}</Text>
+                      <Text style={styles.sub}>{kind.label} · {resultDate(a.date)} · {photoCount(a.photoCount)}</Text>
+                    </View>
+                  </Pressable>
+                );
+              })}
             </View>
-            <Paragraph style={styles.gdprText}>
-              Anyone can request photo removal at any time. Requests are reviewed by team admins within 48 hours.
-            </Paragraph>
-          </Card.Content>
-        </Card>
+          </View>
+        ))}
       </ScrollView>
-
-      {loading && (
-        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.2)' }}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
-        </View>
-      )}
-
-      {canUpload && (
-        <FAB
-          icon="camera"
-          label="Upload Photo"
-          style={styles.fab}
-          color={COLORS.onPrimary}
-          onPress={showUploadOptions}
-        />
-      )}
-
-      {/* Upload Modal */}
-      <Portal>
-        <Modal
-          visible={uploadModalVisible}
-          onDismiss={() => setUploadModalVisible(false)}
-          contentContainerStyle={styles.uploadModal}
-        >
-          <Title style={styles.modalTitle}>Upload Photo</Title>
-
-          {uploadData.image && (
-            <Image source={{ uri: uploadData.image }} style={styles.uploadPreview} />
-          )}
-
-          <TextInput
-            label="Caption (optional)"
-            value={uploadData.caption}
-            onChangeText={(text) => setUploadData({ ...uploadData, caption: text })}
-            mode="outlined"
-            style={styles.captionInput}
-            multiline
-            numberOfLines={3}
-          />
-
-          <View style={styles.checkboxRow}>
-            <Checkbox
-              status={uploadData.isThrowback ? 'checked' : 'unchecked'}
-              onPress={() => setUploadData({ ...uploadData, isThrowback: !uploadData.isThrowback })}
-              color={COLORS.primary}
-            />
-            <Paragraph style={styles.checkboxLabel}>Tag as Throwback Thursday</Paragraph>
-          </View>
-
-          <View style={styles.consentSection}>
-            <View style={styles.checkboxRow}>
-              <Checkbox
-                status={uploadData.consentGiven ? 'checked' : 'unchecked'}
-                onPress={() => setUploadData({ ...uploadData, consentGiven: !uploadData.consentGiven })}
-                color={COLORS.primary}
-              />
-              <Paragraph style={styles.checkboxLabel}>I confirm consent to upload</Paragraph>
-            </View>
-            <Paragraph style={styles.consentText}>
-              I have obtained consent from all individuals (or their parents/guardians for U18s) pictured in this photo.
-            </Paragraph>
-          </View>
-
-          <View style={styles.modalButtons}>
-            <Button
-              mode="outlined"
-              onPress={() => setUploadModalVisible(false)}
-              style={styles.modalButton}
-            >
-              Cancel
-            </Button>
-            <Button
-              mode="contained"
-              onPress={handleUpload}
-              style={styles.modalButton}
-              disabled={!uploadData.consentGiven}
-            >
-              Upload
-            </Button>
-          </View>
-        </Modal>
-      </Portal>
+      {isStaff ? (
+        <FAB icon="plus" label="New album" style={styles.fab} color={COLORS.onPrimary} onPress={() => setAlbumForm({ open: true, editing: null })} />
+      ) : null}
+      {modals}
     </View>
   );
 }
 
-const useStyles = themedStyles((COLORS) => ({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: COLORS.textLight,
-    marginHorizontal: 16,
-    marginTop: 12,
-  },
-  scrollContainer: {
-    flex: 1,
-  },
-  albumsGrid: {
-    padding: 16,
-    gap: 16,
-  },
-  albumCard: {
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    backgroundColor: COLORS.surface,
-    overflow: 'hidden',
-    marginBottom: 16,
-  },
-  albumCover: {
-    width: '100%',
-    height: 200,
-    resizeMode: 'cover',
-  },
-  albumOverlay: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    padding: 12,
-  },
-  albumTypeChip: {
-    position: 'absolute',
-    top: -170,
-    right: 12,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  albumTypeIcon: {
-    fontSize: 20,
-    color: '#FFFFFF',
-  },
-  albumInfo: {
-    gap: 4,
-  },
-  albumCardTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-  },
-  albumCardSubtitle: {
-    fontSize: 12,
-    color: '#FFFFFF',
-    opacity: 0.9,
-  },
-  gdprCard: {
-    margin: 16,
-    marginTop: 0,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    backgroundColor: COLORS.surface,
-  },
-  gdprTitle: {
-    fontFamily: FONTS.display,
-    fontSize: 20,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    color: COLORS.text,
-    marginBottom: 8,
-  },
-  gdprText: {
-    fontSize: 13,
-    color: COLORS.textLight,
-    marginBottom: 8,
-  },
-  gdprList: {
-    marginVertical: 8,
-  },
-  gdprItem: {
-    fontSize: 13,
-    color: COLORS.textLight,
-    marginBottom: 4,
-  },
-  fab: {
-    position: 'absolute',
-    right: 16,
-    bottom: 16,
-    backgroundColor: COLORS.primary,
-  },
-  // Album view styles
-  albumHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-    paddingRight: 20,
-    paddingVertical: 8,
-  },
-  albumHeaderContent: {
-    flex: 1,
-  },
-  albumTitle: {
-    fontFamily: FONTS.display,
-    fontSize: 24,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    color: COLORS.text,
-  },
-  albumSubtitle: {
-    fontSize: 12,
-    color: COLORS.textLight,
-  },
-  photosContainer: {
-    flex: 1,
-  },
-  photoGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    padding: 4,
-  },
-  photoItem: {
-    width: imageSize,
-    height: imageSize,
-    padding: 4,
-  },
-  photoImage: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 8,
-  },
-  photoModal: {
-    backgroundColor: 'rgba(0, 0, 0, 0.95)',
-    margin: 20,
-    borderRadius: 18,
-    overflow: 'hidden',
-    padding: 0,
-    maxHeight: '90%',
-  },
-  fullPhoto: {
-    width: '100%',
-    height: 400,
-    resizeMode: 'contain',
-  },
-  photoDetails: {
-    padding: 20,
-  },
-  photoCaption: {
-    fontSize: 16,
-    color: '#FFFFFF',
-    marginBottom: 8,
-  },
-  photoMeta: {
-    fontSize: 12,
-    color: '#FFFFFF',
-    opacity: 0.7,
-    marginBottom: 16,
-  },
-  removalButton: {
-    borderColor: COLORS.error,
-  },
-  closeButton: {
-    position: 'absolute',
-    top: 10,
-    right: 10,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
-  // Upload modal styles
-  uploadModal: {
-    backgroundColor: COLORS.surface,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    margin: 20,
-    borderRadius: 18,
-    padding: 20,
-    maxHeight: '90%',
-  },
-  modalTitle: {
-    fontFamily: FONTS.display,
-    fontSize: 24,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    color: COLORS.text,
-    marginBottom: 16,
-  },
-  uploadPreview: {
-    width: '100%',
-    height: 200,
-    borderRadius: 8,
-    marginBottom: 16,
-  },
-  captionInput: {
-    marginBottom: 16,
-  },
-  checkboxRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  checkboxLabel: {
-    fontSize: 14,
-    color: COLORS.text,
-    marginLeft: 8,
-  },
-  consentSection: {
-    backgroundColor: COLORS.surfaceRaised,
-    padding: 12,
-    borderRadius: 12,
-    marginTop: 8,
-    marginBottom: 16,
-  },
-  consentText: {
-    fontSize: 12,
-    color: COLORS.textLight,
-    marginLeft: 40,
-    marginTop: 4,
-  },
-  modalButtons: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 8,
-  },
-  modalButton: {
-    flex: 1,
-  },
+const useStyles = themedStyles((c) => ({
+  container: { flex: 1, backgroundColor: c.background },
+  flex: { flex: 1 },
+  list: { padding: 16, paddingBottom: 96, gap: 12 },
+  intro: { color: c.textLight, fontSize: 14 },
+  notice: { color: c.success, fontWeight: '700' },
+  error: { color: c.error },
+  loading: { marginTop: 24 },
+  emptyCard: { padding: 20, borderRadius: 18, borderWidth: 1, borderColor: c.border, backgroundColor: c.surface, gap: 6 },
+  emptyTitle: { color: c.text, fontFamily: FONTS.display, fontSize: 20, letterSpacing: 1, textTransform: 'uppercase' },
+  empty: { color: c.textLight, lineHeight: 20 },
+  season: { gap: 10 },
+  seasonTitle: { color: c.text, fontFamily: FONTS.display, fontSize: 20, letterSpacing: 1, textTransform: 'uppercase' },
+  albumGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  albumCard: { borderRadius: 18, borderWidth: 1, borderColor: c.border, backgroundColor: c.surface, overflow: 'hidden' },
+  cover: { width: '100%', height: 180, resizeMode: 'cover' },
+  noCover: { backgroundColor: c.surfaceRaised, alignItems: 'center', justifyContent: 'center' },
+  noCoverIcon: { fontSize: 44 },
+  albumInfo: { padding: 12, gap: 2 },
+  albumCardTitle: { color: c.text, fontWeight: '800', fontSize: 16 },
+  sub: { color: c.textLight, fontSize: 12 },
+  fab: { position: 'absolute', right: 16, bottom: 16, backgroundColor: c.primary },
+  albumHeader: { flexDirection: 'row', alignItems: 'center', backgroundColor: c.surface, borderBottomWidth: 1, borderBottomColor: c.border, paddingRight: 4, paddingVertical: 6 },
+  albumTitle: { fontFamily: FONTS.display, fontSize: 22, letterSpacing: 1, textTransform: 'uppercase', color: c.text },
+  addRow: { flexDirection: 'row', gap: 10, paddingHorizontal: 12, paddingTop: 12 },
+  grid: { padding: 8, paddingBottom: 40, gap: 8 },
+  tiles: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 4 },
+  tileImage: { width: '100%', height: '100%', borderRadius: 8, backgroundColor: c.surfaceRaised },
+  viewer: { backgroundColor: 'rgba(0, 0, 0, 0.95)', margin: 16, borderRadius: 18, overflow: 'hidden', maxHeight: '92%', maxWidth: 900, alignSelf: 'center', width: '94%' },
+  fullPhoto: { width: '100%', height: 420, resizeMode: 'contain' },
+  viewerBody: { padding: 16, gap: 8 },
+  caption: { fontSize: 16, color: '#FFFFFF' },
+  viewerMeta: { fontSize: 12, color: 'rgba(255,255,255,0.75)' },
+  removeButton: { borderColor: c.error, alignSelf: 'flex-start' },
+  close: { position: 'absolute', top: 8, right: 8, backgroundColor: 'rgba(0, 0, 0, 0.5)' },
 }));

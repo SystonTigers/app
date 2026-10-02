@@ -31,6 +31,7 @@ const MENU_GROUPS = [
         items: [
             { label: 'Training Centre', screen: 'Training', icon: 'run', roles: ['admin', 'manager', 'coach', 'player'] },
             { label: 'Drill Library', screen: 'DrillLibrary', icon: 'clipboard-list', roles: ['admin', 'manager', 'coach', 'player'] },
+            { label: 'Results', screen: 'Results', icon: 'scoreboard-outline', roles: ['admin', 'manager', 'coach', 'parent', 'player'] },
             { label: 'Stats Center', screen: 'Stats', icon: 'chart-bar', roles: ['admin', 'manager', 'coach', 'parent', 'player'] },
             { label: 'League Table', screen: 'LeagueTable', icon: 'format-list-numbered', roles: ['admin', 'manager', 'coach', 'parent', 'player'] },
         ]
@@ -41,6 +42,7 @@ const MENU_GROUPS = [
         icon: 'shield-account',
         items: [
             { label: 'People & Roles', screen: 'TeamMembers', icon: 'account-group', roles: ['admin', 'manager', 'coach'] },
+            { label: 'Gallery', screen: 'Gallery', icon: 'image-multiple', roles: ['admin', 'manager', 'coach', 'parent', 'player'] },
             { label: 'Club Shop', screen: 'Shop', icon: 'shopping', roles: ['admin', 'manager', 'coach', 'parent', 'player'] },
             // Documents screen is planned but not yet implemented — add back when screen is registered in App.tsx
         ]
@@ -55,6 +57,7 @@ const MENU_GROUPS = [
             { label: 'Manage Squad', screen: 'ManageSquad', icon: 'account-cog', roles: ['admin', 'manager', 'coach'] },
             { label: 'Match Centre', screen: 'MatchCentre', icon: 'scoreboard', roles: ['admin', 'manager', 'coach'] },
             { label: 'Manage Fixtures', screen: 'ManageFixtures', icon: 'calendar-edit', roles: ['admin', 'manager'] },
+            { label: 'Manage Results', screen: 'Results', icon: 'scoreboard', roles: ['admin', 'manager'] },
             { label: 'Manage Events', screen: 'ManageEvents', icon: 'calendar-clock', roles: ['admin', 'manager'] },
             { label: 'Manage MOTM', screen: 'ManageMOTM', icon: 'star-cog', roles: ['admin', 'manager'] },
             { label: 'Player Images', screen: 'ManagePlayerImages', icon: 'camera-account', roles: ['admin', 'manager'] },

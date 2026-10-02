@@ -272,7 +272,6 @@ export type AnySDK = {
   saveMatchReport: (fixtureId: string, report: any) => Promise<{ success: boolean }>;
   getMatchReport: (fixtureId: string) => Promise<{ success: boolean; events: any[] }>;
   resignTeam: (teamName: string) => Promise<{ success: boolean }>;
-  autoImportFixtures: () => Promise<{ success: boolean; imported?: number; message?: string }>;
   autoCalculateTable: () => Promise<{ success: boolean; teams?: number; message?: string }>;
   // GOTM Voting
   startGOTMVoting: (month: string, year: number, goals: any[]) => Promise<{ success: boolean; votingId?: string }>;
@@ -325,7 +324,6 @@ const compat: AnySDK = {
   saveMatchReport: async () => ({ success: true }),
   getMatchReport: async () => ({ success: true, events: [] }),
   resignTeam: async () => ({ success: true }),
-  autoImportFixtures: async () => ({ success: true, imported: 0, message: 'Mock' }),
   autoCalculateTable: async () => ({ success: true, teams: 0, message: 'Mock' }),
   // GOTM mocks
   startGOTMVoting: async () => ({ success: true, votingId: 'mock' }),
@@ -465,14 +463,6 @@ class ClientSDK implements AnySDK {
     return http<{ success: boolean }>(
       `${API_BASE}/api/v1/table/resign`,
       { method: 'POST', body: JSON.stringify({ teamName }), headers: { Authorization: `Bearer ${token}` } }
-    );
-  }
-
-  async autoImportFixtures() {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
-    return http<{ success: boolean; imported?: number; message?: string }>(
-      `${API_BASE}/api/v1/fixtures/auto-import`,
-      { method: 'POST', headers: { Authorization: `Bearer ${token}` } }
     );
   }
 

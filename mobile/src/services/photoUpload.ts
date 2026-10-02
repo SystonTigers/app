@@ -24,3 +24,20 @@ export async function photoBlob(uri: string): Promise<Blob> {
   const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.85));
   return blob ?? (await fetch(uri)).blob();
 }
+
+/**
+ * Adds a picked photo to a form for upload. The web app sends a real (shrunk)
+ * JPEG file; the phone app hands React Native the file's address, which it
+ * streams itself.
+ */
+export async function appendPhoto(form: FormData, field: string, uri: string): Promise<void> {
+  if (Platform.OS === 'web') {
+    form.append(field, await photoBlob(uri), 'photo.jpg');
+    return;
+  }
+  const name = uri.split('/').pop() || 'photo.jpg';
+  const ext = (/\.(\w+)$/.exec(name)?.[1] || 'jpg').toLowerCase();
+  const type = ext === 'jpg' ? 'image/jpeg' : `image/${ext}`;
+  // React Native's FormData takes { uri, name, type } for files
+  form.append(field, { uri, name, type } as unknown as Blob);
+}

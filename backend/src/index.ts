@@ -478,6 +478,7 @@ import {
     handleDeletePhoto,
     handleCreateAlbum,
     handleListAlbums,
+    handleUpdateAlbum,
     handleDeleteAlbum
 } from "./routes/gallery";
 router.post("/api/:v/gallery/upload", staffOnly((req, env, corsHdrs) => handlePhotoUpload(req, env, corsHdrs)));
@@ -498,6 +499,10 @@ router.delete("/api/:v/gallery/photos/:id", staffOnly((req, env, corsHdrs) => {
 }));
 router.post("/api/:v/gallery/albums", staffOnly((req, env, corsHdrs) => handleCreateAlbum(req, env, corsHdrs)));
 router.get("/api/:v/gallery/albums", (req, env, corsHdrs) => handleListAlbums(req, env, corsHdrs));
+router.put("/api/:v/gallery/albums/:id", staffOnly((req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleUpdateAlbum(req, env, corsHdrs, params.id);
+}));
 router.delete("/api/:v/gallery/albums/:id", staffOnly((req, env, corsHdrs) => {
     const params = (req as any).params || {};
     return handleDeleteAlbum(req, env, corsHdrs, params.id);
@@ -576,6 +581,7 @@ router.delete("/api/:v/fixtures/:id/stream", staffOnly((req, env, corsHdrs) => h
 router.put("/api/:v/fixtures/:id/venue", staffOnly((req, env, corsHdrs) => handlePutVenue(req, env, corsHdrs, ((req as any).params || {}).id)));
 
 // Platform owner panel (routes/owner.ts); the website's /owner pages call these through their own server
+import { handleAddResult, handleEditResult, handleResultSeasons } from "./routes/results";
 import { handleApplyFixtureImage, handleReadFixtureImage } from "./routes/fixtureImage";
 import { handleOwnerAction, handleOwnerGet, handleOwnerLogin, handleOwnerLogout } from "./routes/owner";
 import { handleGetAlertPrefs, handleSetAlertPrefs } from "./routes/alertPrefs";
@@ -1017,10 +1023,10 @@ router.get("/api/:v/tactics", (req, env, corsHdrs) => handleGetTactics(req, env,
 // Content Routes
 import {
     handleCreateFixture, handleDeleteFixture,
-    handleCreateResult, handleDeleteResult,
+    handleDeleteResult,
     handleCreatePost, handleDeletePost,
     handleUpdateTable, handleResignTeam,
-    handleAutoImportFixtures, handleAutoCalculateTable,
+    handleAutoCalculateTable,
     handleUpdateFixture, handleGetLeagueTable,
     handleListPosts, handleListFixtures, handleListResults
 } from "./routes/content";
@@ -1049,6 +1055,7 @@ router.get("/api/:v/fixtures", (req, env, corsHdrs) => handleListFixtures(req, e
 router.get("/api/:v/fixtures/upcoming", (req, env) => handleGetUpcomingFixtures(req, env));
 router.get("/api/:v/fixtures/all", (req, env) => handleGetAllFixtures(req, env));
 router.get("/api/:v/fixtures/results", (req, env, corsHdrs) => handleListResults(req, env, corsHdrs));
+router.get("/api/:v/results/seasons", (req, env, corsHdrs) => handleResultSeasons(req, env as never, corsHdrs));
 router.get("/api/:v/results", (req, env, corsHdrs) => handleListResults(req, env, corsHdrs));
 router.get("/api/:v/table", (req, env, corsHdrs) => handleGetLeagueTable(req, env, corsHdrs));
 
@@ -1066,11 +1073,12 @@ router.delete("/api/:v/fixtures/:id", (req, env, corsHdrs) => {
     return handleDeleteFixture(req, env, corsHdrs, params.id);
 });
 
-router.post("/api/:v/results", (req, env, corsHdrs) => handleCreateResult(req, env, corsHdrs));
-router.delete("/api/:v/results/:id", (req, env, corsHdrs) => {
+router.post("/api/:v/results", staffOnly((req, env, corsHdrs) => handleAddResult(req, env as never, corsHdrs)));
+router.put("/api/:v/results/:id", staffOnly((req, env, corsHdrs) => handleEditResult(req, env as never, corsHdrs, ((req as any).params || {}).id)));
+router.delete("/api/:v/results/:id", staffOnly((req, env, corsHdrs) => {
     const params = (req as any).params || {};
     return handleDeleteResult(req, env, corsHdrs, params.id);
-});
+}));
 
 router.post("/api/:v/feed", (req, env, corsHdrs) => handleCreatePost(req, env, corsHdrs));
 router.delete("/api/:v/feed/:id", (req, env, corsHdrs) => {
@@ -1081,7 +1089,6 @@ router.delete("/api/:v/feed/:id", (req, env, corsHdrs) => {
 router.post("/api/:v/table", (req, env, corsHdrs) => handleUpdateTable(req, env, corsHdrs));
 router.post("/api/:v/table/resign", (req, env, corsHdrs) => handleResignTeam(req, env, corsHdrs));
 router.post("/api/:v/table/auto-calculate", (req, env, corsHdrs) => handleAutoCalculateTable(req, env, corsHdrs));
-router.post("/api/:v/fixtures/auto-import", (req, env, corsHdrs) => handleAutoImportFixtures(req, env, corsHdrs));
 
 // GOTM Voting Routes
 import { handleStartGOTMVoting, handleGetGOTMVoting, handleCastGOTMVote, handleCloseGOTMVoting } from "./routes/gotm";

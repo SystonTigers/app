@@ -4,9 +4,7 @@ import {
     handleDeleteFixture,
     handleUpdateFixture,
     handleGetFixture,
-    handleCreateResult,
     handleDeleteResult,
-    handleUpdateResult,
     handleGetResult,
     handleCreatePost,
     handleDeletePost,
@@ -206,47 +204,6 @@ describe("Content Routes", () => {
     });
 
     describe("Results", () => {
-        describe("handleCreateResult", () => {
-            it("creates a new result", async () => {
-                const env = createMockEnv();
-                const corsHdrs = createCorsHeaders();
-
-                const req = new Request("https://api.test.com/content/results", {
-                    method: "POST",
-                    body: JSON.stringify({
-                        date: "2025-01-10",
-                        opponent: "Rival FC",
-                        ourScore: 3,
-                        theirScore: 1,
-                        venue: "Home",
-                        competition: "Cup",
-                        scorers: "Player A, Player B x2",
-                    }),
-                });
-
-                const response = await handleCreateResult(req, env, corsHdrs);
-                const body = await response.json() as any;
-
-                expect(body.success).toBe(true);
-                // Stored with the derived outcome (3-1 = win, 3 points)
-                const binds = (env.DB.prepare as any).mock.results.flatMap((r: any) => r.value.bind.mock.calls);
-                const bindArgs = binds.find((args: unknown[]) => args.includes("Rival FC"));
-                expect(bindArgs).toContain("win");
-                expect(bindArgs).toContain(3);
-            });
-
-            it("rejects a result without date or opponent", async () => {
-                const env = createMockEnv();
-                const req = new Request("https://api.test.com/content/results", {
-                    method: "POST",
-                    body: JSON.stringify({ ourScore: 1, theirScore: 0 }),
-                });
-
-                const response = await handleCreateResult(req, env, createCorsHeaders());
-                expect(response.status).toBe(400);
-            });
-        });
-
         describe("handleDeleteResult", () => {
             it("deletes result by ID", async () => {
                 const env = createMockEnv();
@@ -260,43 +217,6 @@ describe("Content Routes", () => {
                 const body = await response.json() as any;
 
                 expect(body.success).toBe(true);
-            });
-        });
-
-        describe("handleUpdateResult", () => {
-            it("updates result with new score", async () => {
-                const env = createMockEnv();
-                const corsHdrs = createCorsHeaders();
-
-                const req = new Request("https://api.test.com/content/results/xyz789", {
-                    method: "PATCH",
-                    body: JSON.stringify({
-                        ourScore: 4,
-                        theirScore: 2,
-                        scorers: "Player A x2, Player B x2",
-                    }),
-                });
-
-                const response = await handleUpdateResult(req, env, corsHdrs, "xyz789");
-                const body = await response.json() as any;
-
-                expect(body.success).toBe(true);
-            });
-
-            it("returns error when no fields provided", async () => {
-                const env = createMockEnv();
-                const corsHdrs = createCorsHeaders();
-
-                const req = new Request("https://api.test.com/content/results/xyz789", {
-                    method: "PATCH",
-                    body: JSON.stringify({}),
-                });
-
-                const response = await handleUpdateResult(req, env, corsHdrs, "xyz789");
-                const body = await response.json() as any;
-
-                expect(body.success).toBe(false);
-                expect(body.error).toBe("No fields to update");
             });
         });
 

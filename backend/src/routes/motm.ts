@@ -26,7 +26,10 @@ import {
 } from "../services/motm";
 
 const MIN_NOMINEES = 2;
-const MAX_NOMINEES = 25;
+/** A whole squad can be nominated (staff untick anyone who didn't play) */
+export const MAX_NOMINEES = 40;
+/** Voting can stay open for up to 3 days */
+const MAX_VOTING_HOURS = 72;
 const DEFAULT_VOTING_HOURS = 48;
 
 type Env = { DB: D1Database; [key: string]: unknown };
@@ -218,6 +221,9 @@ export async function handleOpenVoting(req: Request, env: Env, corsHdrs: Headers
     const end = toIso(body.votingWindow?.end) ?? new Date(Date.parse(start) + DEFAULT_VOTING_HOURS * 3600_000).toISOString();
     if (Date.parse(end) <= Date.parse(start)) {
       return fail(corsHdrs, 400, "VALIDATION", "Voting must close after it opens.");
+    }
+    if (Date.parse(end) - Date.parse(start) > MAX_VOTING_HOURS * 3600_000 + 60_000) {
+      return fail(corsHdrs, 400, "VALIDATION", "Voting can stay open for up to 3 days.");
     }
 
     let ids = nomineeIds(body.nominees);

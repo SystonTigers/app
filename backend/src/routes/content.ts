@@ -1,7 +1,7 @@
 import { json } from "../services/util";
-import { outcomeFromScores } from "../services/results";
 import { requireJWT, requireStaff } from "../services/auth";
 import { refreshLeagueTable } from "../services/league/store";
+import { resolveSeason } from "../services/seasons/range";
 
 // Fixtures
 export async function handleCreateFixture(req: Request, env: any, corsHdrs: Headers) {
@@ -166,34 +166,7 @@ export async function handleGetFixture(req: Request, env: any, corsHdrs: Headers
     }
 }
 
-// Results
-export async function handleCreateResult(req: Request, env: any, corsHdrs: Headers) {
-    try {
-        const claims = await requireStaff(req, env);
-        const body = await req.json() as any;
-        if (!body?.date || !body?.opponent) {
-            return json({ success: false, error: "date and opponent are required" }, 400, corsHdrs);
-        }
-        const ourScore = Number(body.ourScore) || 0;
-        const theirScore = Number(body.theirScore) || 0;
-        const { result, points } = outcomeFromScores(ourScore, theirScore);
-
-        // team_results.id is an autoincrement integer; let SQLite assign it
-        const inserted = await env.DB.prepare(
-            `INSERT INTO team_results (tenant_id, match_date, opponent, venue, competition, our_score, their_score, result, points, scorers)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-        ).bind(
-            claims.tenantId, body.date, body.opponent, body.venue || 'TBC', body.competition || 'League',
-            ourScore, theirScore, result, points, body.scorers ?? null
-        ).run();
-        await refreshLeagueTable(env, claims.tenantId);
-
-        return json({ success: true, id: inserted?.meta?.last_row_id ?? null }, 200, corsHdrs);
-    } catch (err) {
-        return json({ success: false, error: "Failed to create result" }, 500, corsHdrs);
-    }
-}
-
+// Results (adding and changing them: routes/results.ts)
 export async function handleDeleteResult(req: Request, env: any, corsHdrs: Headers, id: string) {
     try {
         const claims = await requireStaff(req, env);
@@ -206,64 +179,6 @@ export async function handleDeleteResult(req: Request, env: any, corsHdrs: Heade
     }
 }
 
-// Update result
-export async function handleUpdateResult(req: Request, env: any, corsHdrs: Headers, id: string) {
-    try {
-        const claims = await requireStaff(req, env);
-        const body = await req.json() as any;
-
-        // Build update query dynamically
-        const updates: string[] = [];
-        const params: any[] = [];
-
-        if (body.date !== undefined) {
-            updates.push("match_date = ?");
-            params.push(body.date);
-        }
-        if (body.opponent !== undefined) {
-            updates.push("opponent = ?");
-            params.push(body.opponent);
-        }
-        if (body.venue !== undefined) {
-            updates.push("venue = ?");
-            params.push(body.venue);
-        }
-        if (body.competition !== undefined) {
-            updates.push("competition = ?");
-            params.push(body.competition);
-        }
-        if (body.ourScore !== undefined) {
-            updates.push("our_score = ?");
-            params.push(body.ourScore);
-        }
-        if (body.theirScore !== undefined) {
-            updates.push("their_score = ?");
-            params.push(body.theirScore);
-        }
-        if (body.scorers !== undefined) {
-            updates.push("scorers = ?");
-            params.push(body.scorers);
-        }
-
-        if (updates.length === 0) {
-            return json({ success: false, error: "No fields to update" }, 400, corsHdrs);
-        }
-
-        params.push(id, claims.tenantId);
-
-        await env.DB.prepare(
-            `UPDATE team_results SET ${updates.join(", ")} WHERE id = ? AND tenant_id = ?`
-        ).bind(...params).run();
-        await refreshLeagueTable(env, claims.tenantId);
-
-        return json({ success: true }, 200, corsHdrs);
-    } catch (err) {
-        console.error('Update result error:', err);
-        return json({ success: false, error: "Failed to update result" }, 500, corsHdrs);
-    }
-}
-
-// Get single result
 export async function handleGetResult(req: Request, env: any, corsHdrs: Headers, id: string) {
     try {
         const claims = await requireJWT(req, env);
@@ -530,103 +445,6 @@ export async function handleResignTeam(req: Request, env: any, corsHdrs: Headers
     }
 }
 
-// Auto-Import Fixtures from FA (using stored faSnippet URL)
-export async function handleAutoImportFixtures(req: Request, env: any, corsHdrs: Headers) {
-    try {
-        const claims = await requireStaff(req, env);
-
-        // Get tenant settings to find FA snippet URL
-        const settings = await env.DB.prepare(
-            "SELECT fa_snippet_fixtures_url FROM fixture_settings WHERE tenant_id = ?"
-        ).bind(claims.tenantId).first();
-
-        if (!settings?.fa_snippet_fixtures_url) {
-            return json({ success: false, error: "No FA settings configured. Please set FA snippet URL in Settings." }, 400, corsHdrs);
-        }
-
-        const faSnippet = settings.fa_snippet_fixtures_url as string;
-
-        if (!faSnippet) {
-            return json({ success: false, error: "FA snippet URL not configured" }, 400, corsHdrs);
-        }
-
-        // Fetch fixtures from FA Full-Time
-        let fixtures: any[] = [];
-        try {
-            const response = await fetch(faSnippet, {
-                headers: { 'User-Agent': 'Mozilla/5.0 (compatible; FootballClubApp/1.0)' }
-            });
-
-            if (!response.ok) {
-                return json({ success: false, error: `FA fetch failed: ${response.status}` }, 500, corsHdrs);
-            }
-
-            const html = await response.text();
-
-            // Parse fixtures from HTML (simplified - matches common FA Full-Time format)
-            const fixturePattern = /<tr[^>]*>.*?<td[^>]*>([^<]+)<\/td>.*?<td[^>]*>([^<]+)<\/td>.*?<td[^>]*>([^<]+)<\/td>.*?<\/tr>/gis;
-            let match;
-
-            while ((match = fixturePattern.exec(html)) !== null) {
-                const [, date, teams, time] = match;
-                if (date && teams) {
-                    fixtures.push({
-                        date: date.trim(),
-                        teams: teams.trim(),
-                        time: time?.trim() || 'TBC'
-                    });
-                }
-            }
-
-            // Alternative: Try JSON format
-            if (fixtures.length === 0) {
-                try {
-                    const jsonData = JSON.parse(html);
-                    if (Array.isArray(jsonData)) {
-                        fixtures = jsonData.map((f: any) => ({
-                            date: f.date || f.matchDate,
-                            opponent: f.opponent || f.awayTeam || f.homeTeam,
-                            time: f.time || f.kickOff || 'TBC',
-                            venue: f.venue || (f.homeTeam ? 'Away' : 'Home'),
-                            competition: f.competition || 'League'
-                        }));
-                    }
-                } catch { /* Not JSON */ }
-            }
-        } catch (fetchErr) {
-            console.error('FA fetch error:', fetchErr);
-            return json({ success: false, error: "Failed to fetch from FA" }, 500, corsHdrs);
-        }
-
-        if (fixtures.length === 0) {
-            return json({ success: true, imported: 0, message: "No fixtures found to import" }, 200, corsHdrs);
-        }
-
-        // Import fixtures to database (upsert by date + opponent)
-        let imported = 0;
-        for (const fixture of fixtures) {
-            const id = crypto.randomUUID();
-            try {
-                await env.DB.prepare(
-                    `INSERT OR REPLACE INTO fixtures (id, tenant_id, fixture_date, kick_off_time, opponent, venue, competition, status)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, 'scheduled')`
-                ).bind(
-                    id, claims.tenantId, fixture.date, fixture.time,
-                    fixture.opponent || fixture.teams, fixture.venue || 'TBC', fixture.competition || 'League'
-                ).run();
-                imported++;
-            } catch (e) {
-                console.error('Insert fixture error:', e);
-            }
-        }
-
-        return json({ success: true, imported, total: fixtures.length }, 200, corsHdrs);
-    } catch (err) {
-        console.error('Auto-import error:', err);
-        return json({ success: false, error: "Failed to auto-import fixtures" }, 500, corsHdrs);
-    }
-}
-
 // Auto-Calculate League Table from Results
 export async function handleAutoCalculateTable(req: Request, env: any, corsHdrs: Headers) {
     try {
@@ -827,7 +645,11 @@ export async function handleListFixtures(req: Request, env: any, corsHdrs: Heade
 export async function handleListResults(req: Request, env: any, corsHdrs: Headers) {
     try {
         const claims = await requireJWT(req, env);
-        const { limit } = pageParams(new URL(req.url), 50);
+        const url = new URL(req.url);
+        const { limit } = pageParams(url, 50);
+        // ?season=<id or 2025-26> for one season (results/seasons lists them); no value = every season
+        const seasonParam = url.searchParams.get("season");
+        const season = seasonParam ? await resolveSeason(env, claims.tenantId!, seasonParam) : null;
         const { results } = await env.DB.prepare(
             `SELECT r.id, r.match_date, r.opponent, r.venue, r.competition, r.our_score, r.their_score, r.result, r.points, r.scorers, r.fixture_id,
                     CASE
@@ -838,9 +660,9 @@ export async function handleListResults(req: Request, env: any, corsHdrs: Header
                       ELSE NULL
                     END AS home_away
              FROM team_results r LEFT JOIN fixtures f ON f.id = r.fixture_id AND f.tenant_id = r.tenant_id
-             WHERE r.tenant_id = ?
+             WHERE r.tenant_id = ? AND (? IS NULL OR substr(r.match_date, 1, 10) BETWEEN ? AND ?)
              ORDER BY r.match_date DESC LIMIT ?`
-        ).bind(claims.tenantId, limit).all();
+        ).bind(claims.tenantId, season?.from ?? null, season?.from ?? null, season?.to ?? null, season ? Math.max(limit, 200) : limit).all();
 
         const rows = (results || []).map((r: any) => ({
             id: r.id,

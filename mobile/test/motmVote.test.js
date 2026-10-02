@@ -1,0 +1,22 @@
+/* Man of the Match vote length. Usage: node test/motmVote.test.js */
+const assert = require('assert');
+const fs = require('fs');
+const path = require('path');
+const ts = require('typescript');
+const js = ts.transpileModule(fs.readFileSync(path.join(__dirname, '../src/utils/motmVote.ts'), 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText;
+const mod = { exports: {} };
+new Function('module', 'exports', 'require', js)(mod, mod.exports, require);
+const { customHours, lengthText } = mod.exports;
+assert.strictEqual(customHours('6', 'hours'), 6);
+assert.strictEqual(customHours('2', 'days'), 48);
+assert.strictEqual(customHours('3', 'days'), 72);
+assert.strictEqual(customHours('4', 'days'), null);
+assert.strictEqual(customHours('73', 'hours'), null);
+assert.strictEqual(customHours('0.5', 'hours'), null);
+assert.strictEqual(customHours('1,5', 'hours'), 1.5);
+assert.strictEqual(customHours('', 'hours'), null);
+assert.strictEqual(customHours('abc', 'days'), null);
+assert.strictEqual(lengthText(3), '3 hours');
+assert.strictEqual(lengthText(24), '1 day');
+assert.strictEqual(lengthText(72), '3 days');
+console.log('motmVote tests passed');
