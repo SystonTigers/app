@@ -4,6 +4,7 @@ import { FAB, IconButton } from 'react-native-paper';
 import { themedStyles, useBrandColors } from '../theme/brand';
 import { FONTS } from '../theme/brandFonts';
 import { useAuth } from '../context/AuthContext';
+import { isStaffRole } from '../utils/roles';
 import { apiErrorMessage, resultsApi, type ClubResult } from '../services/api';
 import SeasonPicker from '../components/seasons/SeasonPicker';
 import ResultFormModal from '../components/results/ResultFormModal';
@@ -17,7 +18,7 @@ export default function ResultsScreen() {
   const COLORS = useBrandColors();
   const styles = useStyles();
   const { user } = useAuth();
-  const isStaff = !!user && user.role !== 'parent' && user.role !== 'player';
+  const isStaff = isStaffRole(user?.role);
   const [season, setSeason] = useState<string | null>(null);
   const [results, setResults] = useState<ClubResult[]>([]);
   const [loading, setLoading] = useState(true);

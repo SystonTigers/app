@@ -6,7 +6,8 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { COLORS } from '../config';
 import { useClub, useClubName } from '../context/ClubContext';
 import { useMatchDay } from '../context/MatchDayContext';
-import { apiErrorMessage, fixturesApi, lineupApi, liveApi, squadApi, type Lineup } from '../services/api';
+import { apiErrorMessage, fixturesApi, lineupApi, liveApi, motmApi, squadApi, type Lineup } from '../services/api';
+import FullTimeMotmSheet from '../components/motm/FullTimeMotmSheet';
 import { newClientEventId, type LiveEvent, type LiveEventType, type LiveMatchView, type NewLiveEvent, type SocialPost } from '../utils/liveMatch';
 import { shareGraphic } from '../utils/postGraphic';
 import LineupEditor from '../components/live/LineupEditor';
@@ -62,7 +63,9 @@ export default function LiveMatchInputScreen() {
   const [message, setMessage] = useState('');
   const [notice, setNotice] = useState('');
   const [lineupFor, setLineupFor] = useState<FixtureOption | null>(null);
-  const [motmOpened, setMotmOpened] = useState(false);
+  // Full time: the Man of the Match pop-up, and what happened with it
+  const [motmSheet, setMotmSheet] = useState(false);
+  const [motmMessage, setMotmMessage] = useState('');
   const matchRef = useRef<LiveMatchView | null>(null);
   matchRef.current = match;
 
@@ -124,6 +127,17 @@ export default function LiveMatchInputScreen() {
     }, 5000);
   };
 
+  /** At full time, pop up Man of the Match unless a vote is already set up for this match */
+  const offerMotm = async (fixtureId: string) => {
+    try {
+      const vote = await motmApi.getVote(fixtureId);
+      if (vote.data.status === 'draft') setMotmSheet(true);
+      else setMotmMessage('Man of the Match voting is already set up for this match.');
+    } catch {
+      setMotmSheet(true);
+    }
+  };
+
   const send = async (fixtureId: string, event: NewLiveEvent) => {
     setSending(true);
     setMessage('');
@@ -131,7 +145,7 @@ export default function LiveMatchInputScreen() {
       const res = await liveApi.record(fixtureId, event);
       setMatch(res.data);
       setFailed(null);
-      if (res.data.motmOpened) setMotmOpened(true);
+      if (event.type === 'full_time' && res.data.status === 'full_time') offerMotm(fixtureId);
       refreshAfterDrawing(fixtureId, res.data.newPost);
     } catch (err) {
       const status = (err as { response?: { status?: number } })?.response?.status;
@@ -152,7 +166,7 @@ export default function LiveMatchInputScreen() {
   };
 
   const kickOff = (fixture: FixtureOption) => {
-    setMotmOpened(false);
+    setMotmMessage('');
     send(fixture.id, { type: 'kick_off', clientEventId: newClientEventId(), occurredAt: Date.now(), halfLength });
   };
 
@@ -301,18 +315,20 @@ export default function LiveMatchInputScreen() {
               <View style={styles.finished}>
                 <Text style={styles.finishedTitle}>FULL TIME</Text>
                 <Text style={styles.finishedText}>Result saved to your results, league table and player stats.</Text>
-                {motmOpened ? (
-                  <Text style={styles.finishedText}>Man of the Match voting is open for parents and players, with everyone who played nominated.</Text>
-                ) : null}
-                <Pressable onPress={() => navigation.navigate('ManageMOTM')} accessibilityRole="button" style={[styles.kickOff, { backgroundColor: color }]}>
+                {motmMessage ? <Text style={styles.finishedText}>{motmMessage}</Text> : null}
+                <Pressable
+                  onPress={() => (motmMessage ? navigation.navigate('ManageMOTM') : offerMotm(match.fixture.id))}
+                  accessibilityRole="button"
+                  style={[styles.kickOff, { backgroundColor: color }]}
+                >
                   <MaterialCommunityIcons name="star-circle" size={22} color="#06080B" />
-                  <Text style={styles.kickOffText}>{motmOpened ? 'MAN OF THE MATCH VOTE' : 'START MOTM VOTE'}</Text>
+                  <Text style={styles.kickOffText}>{motmMessage ? 'MAN OF THE MATCH VOTE' : 'START MOTM VOTE'}</Text>
                 </Pressable>
                 <Pressable onPress={() => navigation.navigate('MatchHighlights', { fixtureId: match.fixture.id })} accessibilityRole="button" style={[styles.outline, { borderColor: color }]}>
                   <MaterialCommunityIcons name="play-box-multiple" size={20} color={color} />
                   <Text style={[styles.outlineText, { color }]}>Highlights: line up the video and check the clips</Text>
                 </Pressable>
-                <Pressable onPress={() => { setMatch(null); setMotmOpened(false); load(); }} accessibilityRole="button" style={styles.linkButton}>
+                <Pressable onPress={() => { setMatch(null); setMotmMessage(''); load(); }} accessibilityRole="button" style={styles.linkButton}>
                   <Text style={styles.linkText}>Back to fixtures</Text>
                 </Pressable>
               </View>
@@ -401,6 +417,14 @@ export default function LiveMatchInputScreen() {
           </View>
         </Modal>
       </Portal>
+      <FullTimeMotmSheet
+        visible={motmSheet}
+        matchId={match?.fixture.id ?? null}
+        opponent={match?.fixture.opponent ?? ''}
+        players={players}
+        onClose={() => setMotmSheet(false)}
+        onOpened={(text) => { setMotmSheet(false); setMotmMessage(text); }}
+      />
     </View>
   );
 }

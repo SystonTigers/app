@@ -7,6 +7,7 @@ import ScreenIntro from '../components/brand/ScreenIntro';
 import SectionTitle from '../components/home/SectionTitle';
 import MatchRow, { opponentSide, type Side } from '../components/fixtures/MatchRow';
 import { useClub } from '../context/ClubContext';
+import { isStaffRole } from '../utils/roles';
 import { useAuth } from '../context/AuthContext';
 import {
   FixturesApiError,
@@ -38,7 +39,7 @@ export default function FixturesScreen() {
   const navigation = useNavigation<any>();
   const { club } = useClub();
   const { user } = useAuth();
-  const staff = user?.role === 'admin' || user?.role === 'coach';
+  const staff = isStaffRole(user?.role);
   const [fixtures, setFixtures] = useState<Fixture[]>([]);
   const [results, setResults] = useState<Result[]>([]);
   const [loading, setLoading] = useState(true);

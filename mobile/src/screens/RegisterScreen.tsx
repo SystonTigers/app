@@ -25,7 +25,7 @@ export default function RegisterScreen({ onRegister, onNavigateToLogin }: Regist
     email: '',
     password: '',
     confirmPassword: '',
-    role: 'parent', // parent, player, coach
+    role: 'parent', // parent, player, supporter, coach (coach needs an admin's approval)
     phone: '',
     playerName: '', // Only if role is parent
   });
@@ -177,6 +177,15 @@ export default function RegisterScreen({ onRegister, onNavigateToLogin }: Regist
                 Player
               </Chip>
               <Chip
+                selected={formData.role === 'supporter'}
+                onPress={() => updateField('role', 'supporter')}
+                style={[styles.roleChip, formData.role === 'supporter' && styles.roleChipSelected]}
+                textStyle={formData.role === 'supporter' && styles.roleChipTextSelected}
+                icon="account-heart"
+              >
+                Supporter
+              </Chip>
+              <Chip
                 selected={formData.role === 'coach'}
                 onPress={() => updateField('role', 'coach')}
                 style={[styles.roleChip, formData.role === 'coach' && styles.roleChipSelected]}
@@ -186,6 +195,12 @@ export default function RegisterScreen({ onRegister, onNavigateToLogin }: Regist
                 Coach
               </Chip>
             </View>
+
+            {formData.role === 'coach' ? (
+              <Text style={styles.roleNote}>
+                A club admin will confirm you as a coach. Until then you&apos;ll see the app as a supporter.
+              </Text>
+            ) : null}
 
             {/* First Name */}
             <TextInput
@@ -376,6 +391,7 @@ export default function RegisterScreen({ onRegister, onNavigateToLogin }: Regist
 }
 
 const useStyles = themedStyles((COLORS) => ({
+  roleNote: { color: COLORS.textLight, fontSize: 13, lineHeight: 18, marginBottom: 12 },
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
@@ -420,6 +436,7 @@ const useStyles = themedStyles((COLORS) => ({
   },
   roleContainer: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 8,
     marginBottom: 20,
   },

@@ -6,7 +6,7 @@ import { setCrashReportingUser } from '../services/crashReporting';
 
 interface User {
   userId: string;
-  role: 'admin' | 'coach' | 'player' | 'parent';
+  role: 'admin' | 'coach' | 'player' | 'parent' | 'supporter';
   token: string;
   firstName?: string;
   lastName?: string;

@@ -9,7 +9,7 @@
  * is harmless; each row is claimed before sending, so it's sent at most once.
  */
 import { groupForKind, groupToken, wantsGroupSql } from "../alertPrefs";
-import { buildAlert, EVENT_ALERT_KINDS, type AlertInput, type AlertKind } from "./content";
+import { buildAlert, EVENT_ALERT_KINDS, motmAlert, type AlertInput, type AlertKind } from "./content";
 import { computeState, type LiveEvent } from "../liveMatchState";
 import { scorersText, type LiveFixture } from "../liveMatch";
 import { getPublicNamePolicy, publicName, type PublicNamePolicy } from "../publicNames";
@@ -100,7 +100,18 @@ export async function cancelEventAlert(env: AlertsEnv, tenantId: string, fixture
 
 interface DueRow { id: string; tenant_id: string; fixture_id: string; kind: string; title: string; body: string; skip_user_id: string | null; send_after: number }
 
-/** Device tokens for the club, minus people at this match and the person who recorded the update. */
+/**
+ * Tell everyone a Man of the Match vote has opened (people at the match too:
+ * they're the ones who saw it). One alert per opening, so re-sending the same
+ * request is harmless; re-opening with a new closing time tells people again.
+ */
+export async function queueMotmAlert(env: AlertsEnv, tenantId: string, matchId: string, opponent: string | null, closesAt: string, openedBy: string | null): Promise<void> {
+  const club = await loadClub(env, tenantId);
+  const text = motmAlert(club.name, opponent, closesAt);
+  await insertAlert(env, { tenantId, fixtureId: matchId, sourceId: `motm:${matchId}:${closesAt}`, kind: "motm", ...text, skipUserId: openedBy, sendAfter: Date.now() });
+}
+
+/** Device tokens for the club, minus people at this match (not for MOTM votes) and the person who recorded the update. */
 export async function recipientTokens(env: AlertsEnv, tenantId: string, fixtureId: string, skipUserId: string | null, kind = "match"): Promise<string[]> {
   const { results } = await env.DB.prepare(
     `SELECT d.token FROM devices d
@@ -108,9 +119,9 @@ export async function recipientTokens(env: AlertsEnv, tenantId: string, fixtureI
      WHERE d.tenant_id = ?
        AND (? IS NULL OR d.user_id != ?)
        AND ${wantsGroupSql("u")}
-       AND NOT EXISTS (SELECT 1 FROM match_attendance a
-                       WHERE a.tenant_id = d.tenant_id AND a.fixture_id = ? AND a.user_id = d.user_id AND a.at_venue = 1)`,
-  ).bind(tenantId, skipUserId, skipUserId, groupToken(groupForKind(kind)), fixtureId).all<{ token: string }>();
+       AND (? = 'motm' OR NOT EXISTS (SELECT 1 FROM match_attendance a
+                       WHERE a.tenant_id = d.tenant_id AND a.fixture_id = ? AND a.user_id = d.user_id AND a.at_venue = 1))`,
+  ).bind(tenantId, skipUserId, skipUserId, groupToken(groupForKind(kind)), kind, fixtureId).all<{ token: string }>();
   return (results || []).map((r) => r.token);
 }
 
@@ -134,8 +145,8 @@ export async function processDueAlerts(env: AlertsEnv, now = Date.now()): Promis
         ? await deliver(env, tokens, {
           title: alert.title,
           body: alert.body,
-          data: { screen: "LiveMatch", fixtureId: alert.fixture_id, kind: alert.kind },
-          topic: alert.kind === "stream" ? undefined : `m${alert.fixture_id.replace(/[^A-Za-z0-9]/g, "").slice(0, 30)}`,
+          data: { screen: alert.kind === "motm" ? "MOTMVoting" : "LiveMatch", fixtureId: alert.fixture_id, kind: alert.kind },
+          topic: alert.kind === "stream" ? undefined : `${alert.kind === "motm" ? "v" : "m"}${alert.fixture_id.replace(/[^A-Za-z0-9]/g, "").slice(0, 30)}`,
         })
         : { sent: 0, failed: 0, removed: 0, skipped: 0 };
       await env.DB.prepare(`UPDATE match_alerts SET status = 'sent', sent_count = ?, updated_at = ? WHERE id = ?`).bind(result.sent, Date.now(), alert.id).run();

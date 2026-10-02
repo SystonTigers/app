@@ -5,6 +5,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { themedStyles, useBrandColors } from '../theme/brand';
 import { FONTS } from '../theme/brandFonts';
 import { apiErrorMessage, clubMembersApi, type ClubMember, type ClubRole } from '../services/api';
+import { isStaffRole } from '../utils/roles';
 import { ASSIGNABLE_ROLES, filterMembers, initialsOf, lastSeen, ROLE_INFO, sortMembers, type MemberFilter } from '../utils/members';
 
 const FILTERS: Array<{ id: MemberFilter; label: string }> = [
@@ -12,6 +13,7 @@ const FILTERS: Array<{ id: MemberFilter; label: string }> = [
   { id: 'staff', label: 'Staff' },
   { id: 'player', label: 'Players' },
   { id: 'parent', label: 'Parents' },
+  { id: 'supporter', label: 'Supporters' },
 ];
 
 /**
@@ -54,7 +56,8 @@ export default function TeamMembersScreen() {
   const counts = useMemo(() => Object.fromEntries(FILTERS.map((f) => [f.id, filterMembers(members, f.id, '').length])), [members]);
 
   const changeRole = async (member: ClubMember, role: ClubRole) => {
-    if (member.role === role) { setEditing(null); return; }
+    // Same role and nothing to answer: nothing to do (choosing it still answers a coach request)
+    if (member.role === role && member.requestedRole !== 'coach') { setEditing(null); return; }
     setSaving(true);
     setError('');
     try {
@@ -122,18 +125,21 @@ export default function TeamMembersScreen() {
               accessibilityLabel={`${m.name}, ${ROLE_INFO[m.role].label}${editable ? '. Change role' : ''}`}
               style={({ pressed }) => [styles.row, pressed && editable ? styles.pressed : null]}
             >
-              <View style={[styles.avatar, { borderColor: m.role === 'parent' || m.role === 'player' ? c.border : c.primary }]}>
+              <View style={[styles.avatar, { borderColor: !isStaffRole(m.role) ? c.border : c.primary }]}>
                 <Text style={styles.avatarText}>{initialsOf(m.name)}</Text>
               </View>
               <View style={styles.rowBody}>
                 <Text style={styles.name} numberOfLines={1}>{m.name}{m.id === me ? ' (you)' : ''}</Text>
                 <Text style={styles.small} numberOfLines={1}>{m.email}</Text>
+                {m.requestedRole === 'coach' ? (
+                  <Text style={[styles.small, { color: c.primary, fontWeight: '800' }]}>Asked to be a coach{canChange ? ': tap to approve' : ''}</Text>
+                ) : null}
                 <Text style={styles.small}>
                   {lastSeen(m.lastLoginAt)}{m.linkedPlayers ? ` · ${m.linkedPlayers} ${m.linkedPlayers === 1 ? 'child' : 'children'} linked` : ''}
                 </Text>
               </View>
-              <View style={[styles.rolePill, m.role !== 'parent' && m.role !== 'player' ? { backgroundColor: c.primarySoft, borderColor: c.primary } : null]}>
-                <Text style={[styles.roleText, m.role !== 'parent' && m.role !== 'player' ? { color: c.primary } : null]}>{ROLE_INFO[m.role].label}</Text>
+              <View style={[styles.rolePill, isStaffRole(m.role) ? { backgroundColor: c.primarySoft, borderColor: c.primary } : null]}>
+                <Text style={[styles.roleText, isStaffRole(m.role) ? { color: c.primary } : null]}>{ROLE_INFO[m.role].label}</Text>
               </View>
               {editable ? <MaterialCommunityIcons name="chevron-right" size={20} color={c.textLight} /> : null}
             </Pressable>
@@ -147,7 +153,11 @@ export default function TeamMembersScreen() {
           {editing ? (
             <>
               <Text style={styles.modalTitle}>{editing.name}</Text>
-              <Text style={styles.small}>Choose what they can do. It applies next time they sign in.</Text>
+              <Text style={styles.small}>
+                {editing.requestedRole === 'coach'
+                  ? 'They asked to be a coach when they signed up. Choose Coach to approve, or keep them as they are. It applies next time they sign in.'
+                  : 'Choose what they can do. It applies next time they sign in.'}
+              </Text>
               {ASSIGNABLE_ROLES.map((role) => {
                 const current = editing.role === role;
                 return (

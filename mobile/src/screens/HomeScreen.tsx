@@ -22,6 +22,7 @@ import LeagueSnapshot from '../components/home/LeagueSnapshot';
 import LiveCard from '../components/home/LiveCard';
 import QuickActions, { type QuickAction } from '../components/home/QuickActions';
 import SectionTitle from '../components/home/SectionTitle';
+import { isStaffRole } from '../utils/roles';
 import { useAuth } from '../context/AuthContext';
 
 interface QuickStats {
@@ -108,7 +109,7 @@ export default function HomeScreen({ navigation }: any) {
 
   const color = colors.primary;
   const clubName = club?.name || 'Your club';
-  const staff = user?.role === 'admin' || user?.role === 'coach' || (user?.role as string) === 'manager';
+  const staff = isStaffRole(user?.role);
   const videoFirst = (day?.fixtures ?? [])
     .filter((f) => f.stream?.status === 'live' && f.matchStatus !== 'full_time' && !liveMatches.some((m) => m.fixture.id === f.id));
   const matchToday = (day?.fixtures ?? []).length > 0;

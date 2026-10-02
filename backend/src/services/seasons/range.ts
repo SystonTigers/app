@@ -3,7 +3,8 @@
  *
  * A club that has set up seasons (website Seasons page) gets those, by their
  * dates. Otherwise seasons are football years, 1 August to 31 July
- * ("2025/26"), going back to the club's first result or fixture.
+ * ("2025/26"), going back to the club's first result, fixture or hand-entered
+ * stats, and at least three seasons.
  */
 type DB = { DB: D1Database };
 
@@ -18,6 +19,8 @@ export interface SeasonOption {
 }
 
 const YEAR_ID = /^(\d{4})-(\d{2})$/;
+/** Past football years always offered, even before anything is recorded */
+const PAST_SEASONS = 3;
 
 /** The football year a date falls in: 1 August onwards is the next season. */
 export function footballYear(date: string): number {
@@ -62,10 +65,13 @@ export async function seasonOptions(env: DB, tenantId: string, now = new Date())
   const first = await env.DB.prepare(
     `SELECT MIN(d) AS d FROM (
        SELECT MIN(substr(match_date, 1, 10)) AS d FROM team_results WHERE tenant_id = ?
-       UNION ALL SELECT MIN(substr(fixture_date, 1, 10)) FROM fixtures WHERE tenant_id = ?)`,
-  ).bind(tenantId, tenantId).first<{ d: string | null }>();
+       UNION ALL SELECT MIN(substr(fixture_date, 1, 10)) FROM fixtures WHERE tenant_id = ?
+       UNION ALL SELECT MIN(season_from) FROM player_stat_entries WHERE tenant_id = ?)`,
+  ).bind(tenantId, tenantId, tenantId).first<{ d: string | null }>();
   const thisYear = footballYear(today);
-  const firstYear = first?.d && /^\d{4}-\d{2}/.test(first.d) ? Math.max(footballYear(first.d), thisYear - 15) : thisYear;
+  // Always offer a few past seasons, so clubs can fill in their history
+  const seeded = first?.d && /^\d{4}-\d{2}/.test(first.d) ? footballYear(first.d) : thisYear;
+  const firstYear = Math.max(Math.min(seeded, thisYear - PAST_SEASONS), thisYear - 15);
   const out: SeasonOption[] = [];
   for (let y = Math.max(thisYear, firstYear); y >= Math.min(firstYear, thisYear); y--) out.push(footballSeason(y, today));
   return out;

@@ -8,6 +8,7 @@ import { issueTenantAdminJWT, issueTenantMemberJWT } from "../services/jwt";
 import { sendVerificationEmail, sendPasswordResetEmail } from "../lib/email";
 import { rateLimit } from "../middleware/rateLimit";
 import { requireJWT } from "../services/auth";
+import { rolesForSignUp } from "../services/clubMembers";
 
 /**
  * The signed-in account, looked up by the token's user id and club. Emails
@@ -95,15 +96,23 @@ export async function handleAuthRegister(req: Request, env: any, corsHdrs: Heade
       return json(idem.response, 200, corsHdrs);
     }
 
-    // SECURITY: self-registration always creates a plain member. Roles sent by
-    // the client are ignored - otherwise anyone could register as tenant_admin
-    // of any club. Admins are created by signup/provisioning or promoted by an admin.
+    // SECURITY: self-registration only ever creates a member (parent, player or
+    // supporter). Roles sent by the client are ignored; asking to be a coach
+    // (profile.requestedRole) is recorded for a club admin to approve.
+    // Admins are created by signup/provisioning or promoted by an admin.
+    const { profile: given = {} } = data;
+    const signUp = rolesForSignUp(given.requestedRole);
+    const { pendingRole: _ignored, ...cleanProfile } = given as Record<string, unknown>;
     const registration = await registerUser(env, {
       tenantId: data.tenant_id,
       email: data.email,
       password: data.password,
-      roles: ["tenant_member"],
-      profile: { ...(data.profile ?? {}), ageConfirmedAt: new Date().toISOString() }
+      roles: signUp.roles,
+      profile: {
+        ...cleanProfile,
+        ...(signUp.requestedRole ? { pendingRole: signUp.requestedRole } : {}),
+        ageConfirmedAt: new Date().toISOString(),
+      }
     });
 
     if (!registration.success) {

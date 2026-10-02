@@ -4,7 +4,7 @@
  * because notifications show on lock screens.
  */
 
-export const ALERT_KINDS = ["kick_off", "goal", "opp_goal", "half_time", "yellow", "red", "full_time", "stream", "correction"] as const;
+export const ALERT_KINDS = ["kick_off", "goal", "opp_goal", "half_time", "yellow", "red", "full_time", "stream", "correction", "motm"] as const;
 export type AlertKind = (typeof ALERT_KINDS)[number];
 
 /** Live event types that notify people who aren't at the match. */
@@ -77,5 +77,20 @@ export function buildAlert(i: AlertInput): AlertText {
       return { title: `🔴 Live now: ${fixtureName(i)}`, body: "Watch the match live in the app." };
     case "correction":
       return { title: `Correction: ${scoreText(i)}`, body: "The last update was a mistake and has been removed." };
+    case "motm":
+      return motmAlert(i.clubName, i.opponent, new Date().toISOString());
   }
+}
+
+/** "Man of the Match vote is open" for everyone at the club, with when it closes (UK time). */
+export function motmAlert(clubName: string, opponent: string | null, closesAt: string, now = Date.now()): AlertText {
+  const end = new Date(closesAt);
+  const sameDay = end.toLocaleDateString("en-GB", { timeZone: "Europe/London" }) === new Date(now).toLocaleDateString("en-GB", { timeZone: "Europe/London" });
+  const time = end.toLocaleTimeString("en-GB", { timeZone: "Europe/London", hour: "2-digit", minute: "2-digit" });
+  const when = sameDay ? time : `${end.toLocaleDateString("en-GB", { timeZone: "Europe/London", weekday: "short" })} ${time}`;
+  const match = opponent ? ` v ${opponent}` : "";
+  return {
+    title: "⭐ Man of the Match vote is open",
+    body: `Who was best for ${clubName}${match}? Voting closes ${when}.`,
+  };
 }

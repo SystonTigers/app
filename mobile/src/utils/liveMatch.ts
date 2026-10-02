@@ -47,7 +47,6 @@ export interface LiveMatchView {
   /** After undoing an update that had already gone out: the "CORRECTION" post queued for it */
   correctionPost?: SocialPost | null;
   /** After full time: Man of the Match voting opened automatically */
-  motmOpened?: boolean;
 }
 
 export interface NewLiveEvent {

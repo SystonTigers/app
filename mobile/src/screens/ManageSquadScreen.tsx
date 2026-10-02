@@ -15,12 +15,13 @@ import {
 } from 'react-native-paper';
 import { themedStyles, useBrandColors } from '../theme/brand';
 import { FONTS } from '../theme/brandFonts';
-import { squadApi } from '../services/api';
+import { squadApi, statsApi } from '../services/api';
+import SeasonStatsModal from '../components/squad/SeasonStatsModal';
 
 interface Player {
   id: string;
   name: string;
-  number: number;
+  number: number | null;
   position: string;
   photo?: string;
   goals: number;
@@ -41,16 +42,9 @@ export default function ManageSquadScreen() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingPlayer, setEditingPlayer] = useState<Player | null>(null);
-  const [formData, setFormData] = useState({
-    name: '',
-    number: '',
-    position: 'Forward',
-    goals: '0',
-    assists: '0',
-    appearances: '0',
-    yellowCards: '0',
-    redCards: '0',
-  });
+  const [formData, setFormData] = useState({ name: '', number: '', position: 'Forward' });
+  // Player whose season stats are open
+  const [statsFor, setStatsFor] = useState<Player | null>(null);
 
   useEffect(() => {
     loadPlayers();
@@ -59,20 +53,26 @@ export default function ManageSquadScreen() {
   const loadPlayers = async () => {
     try {
       setLoading(true);
-      const response = await squadApi.getSquad();
+      // Squad details plus all-time totals (Match Centre and hand-entered season stats)
+      const [response, stats] = await Promise.all([squadApi.getSquad(), statsApi.getPlayerStats('all').catch(() => null)]);
+      const totals = new Map<string, any>((stats?.data || []).map((t: any) => [t.id, t]));
       const raw = response?.data || [];
-      const mapped: Player[] = raw.map((p: any) => ({
-        id: p.id || p.playerId,
-        name: p.name || `${p.firstName || ''} ${p.lastName || ''}`.trim(),
-        number: p.number || p.squadNumber || 0,
-        position: p.position || 'Forward',
-        goals: p.goals || 0,
-        assists: p.assists || 0,
-        appearances: p.appearances || 0,
-        yellowCards: p.yellowCards || 0,
-        redCards: p.redCards || 0,
-        photo: p.photo || p.headshotUrl,
-      }));
+      const mapped: Player[] = raw.map((p: any) => {
+        const t = totals.get(p.id) || {};
+        const shirt = p.number ?? p.squad_number ?? p.squadNumber;
+        return {
+          id: p.id || p.playerId,
+          name: p.name || `${p.firstName || ''} ${p.lastName || ''}`.trim(),
+          number: shirt === null || shirt === undefined || shirt === '' ? null : Number(shirt),
+          position: p.position || 'Forward',
+          goals: t.goals || 0,
+          assists: t.assists || 0,
+          appearances: t.appearances || 0,
+          yellowCards: t.yellowCards || 0,
+          redCards: t.redCards || 0,
+          photo: t.photo || p.photo || p.headshotUrl,
+        };
+      });
       setPlayers(mapped);
     } catch (error) {
       console.error('Failed to load squad:', error);
@@ -84,46 +84,29 @@ export default function ManageSquadScreen() {
 
   const openAddModal = () => {
     setEditingPlayer(null);
-    setFormData({
-      name: '',
-      number: '',
-      position: 'Forward',
-      goals: '0',
-      assists: '0',
-      appearances: '0',
-      yellowCards: '0',
-      redCards: '0',
-    });
+    setFormData({ name: '', number: '', position: 'Forward' });
     setShowModal(true);
   };
 
   const openEditModal = (player: Player) => {
     setEditingPlayer(player);
-    setFormData({
-      name: player.name,
-      number: player.number.toString(),
-      position: player.position,
-      goals: player.goals.toString(),
-      assists: player.assists.toString(),
-      appearances: player.appearances.toString(),
-      yellowCards: player.yellowCards.toString(),
-      redCards: player.redCards.toString(),
-    });
+    setFormData({ name: player.name, number: player.number === null ? '' : String(player.number), position: player.position });
     setShowModal(true);
   };
 
   const handleSave = async () => {
+    const name = formData.name.trim();
+    const number = formData.number.trim();
+    if (!name) {
+      Alert.alert('Name needed', "Enter the player's name.");
+      return;
+    }
+    if (number && !/^\d{1,3}$/.test(number)) {
+      Alert.alert('Shirt number', 'The shirt number must be a whole number.');
+      return;
+    }
     try {
-      const playerData = {
-        name: formData.name,
-        number: formData.number,
-        position: formData.position,
-        goals: formData.goals,
-        assists: formData.assists,
-        appearances: formData.appearances,
-        yellowCards: formData.yellowCards,
-        redCards: formData.redCards,
-      };
+      const playerData = { name, number: number ? Number(number) : null, position: formData.position };
 
       if (editingPlayer) {
         await squadApi.updatePlayer(editingPlayer.id, playerData);
@@ -186,7 +169,7 @@ export default function ManageSquadScreen() {
     <View style={styles.container}>
       <ScrollView style={styles.scrollView}>
         <Paragraph style={styles.intro}>
-          Manage players, update stats, and track performance
+          Add players, set shirt numbers and positions, and add stats from past seasons.
         </Paragraph>
 
         <View style={styles.playersContainer}>
@@ -214,9 +197,11 @@ export default function ManageSquadScreen() {
                       <View style={styles.playerInfo}>
                         <View style={styles.nameRow}>
                           <Title style={styles.playerName}>{player.name}</Title>
-                          <View style={styles.numberBadge}>
-                            <Title style={styles.numberText}>#{player.number}</Title>
-                          </View>
+                          {player.number !== null ? (
+                            <View style={styles.numberBadge}>
+                              <Title style={styles.numberText}>#{player.number}</Title>
+                            </View>
+                          ) : null}
                         </View>
                         <Chip
                           style={styles.positionChip}
@@ -256,6 +241,10 @@ export default function ManageSquadScreen() {
                     </View>
                   </View>
 
+                  <Paragraph style={styles.totalsNote}>All-time totals</Paragraph>
+                  <Button mode="contained-tonal" icon="chart-box-plus-outline" onPress={() => setStatsFor(player)} style={styles.statsButton}>
+                    Season stats
+                  </Button>
                   <Button
                     mode="outlined"
                     onPress={() => handleDelete(player.id)}
@@ -325,53 +314,9 @@ export default function ManageSquadScreen() {
               </View>
             </View>
 
-            <Paragraph style={styles.sectionTitle}>Season Stats</Paragraph>
-
-            <View style={styles.statsInputRow}>
-              <TextInput
-                label="Goals"
-                value={formData.goals}
-                onChangeText={(text) => setFormData({ ...formData, goals: text })}
-                style={[styles.input, styles.quarterInput]}
-                mode="outlined"
-                keyboardType="numeric"
-              />
-              <TextInput
-                label="Assists"
-                value={formData.assists}
-                onChangeText={(text) => setFormData({ ...formData, assists: text })}
-                style={[styles.input, styles.quarterInput]}
-                mode="outlined"
-                keyboardType="numeric"
-              />
-              <TextInput
-                label="Apps"
-                value={formData.appearances}
-                onChangeText={(text) => setFormData({ ...formData, appearances: text })}
-                style={[styles.input, styles.quarterInput]}
-                mode="outlined"
-                keyboardType="numeric"
-              />
-            </View>
-
-            <View style={styles.statsInputRow}>
-              <TextInput
-                label="🟨 Yellow"
-                value={formData.yellowCards}
-                onChangeText={(text) => setFormData({ ...formData, yellowCards: text })}
-                style={[styles.input, styles.halfInput]}
-                mode="outlined"
-                keyboardType="numeric"
-              />
-              <TextInput
-                label="🟥 Red"
-                value={formData.redCards}
-                onChangeText={(text) => setFormData({ ...formData, redCards: text })}
-                style={[styles.input, styles.halfInput]}
-                mode="outlined"
-                keyboardType="numeric"
-              />
-            </View>
+            <Paragraph style={styles.formHelp}>
+              Goals, apps and cards come from Match Centre. To add numbers for past seasons, save the player and tap Season stats.
+            </Paragraph>
 
             <View style={styles.modalActions}>
               <Button
@@ -392,11 +337,35 @@ export default function ManageSquadScreen() {
           </ScrollView>
         </Modal>
       </Portal>
+      <SeasonStatsModal
+        player={statsFor}
+        onClose={() => setStatsFor(null)}
+        onSaved={(message) => {
+          setStatsFor(null);
+          Alert.alert('Saved', message);
+          loadPlayers();
+        }}
+      />
     </View>
   );
 }
 
 const useStyles = themedStyles((COLORS) => ({
+  totalsNote: {
+    color: COLORS.textLight,
+    fontSize: 11,
+    textAlign: 'center',
+    marginTop: 4,
+  },
+  statsButton: {
+    marginTop: 8,
+  },
+  formHelp: {
+    color: COLORS.textLight,
+    fontSize: 13,
+    lineHeight: 18,
+    marginVertical: 8,
+  },
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
@@ -553,10 +522,6 @@ const useStyles = themedStyles((COLORS) => ({
     flex: 1,
     marginRight: 8,
   },
-  quarterInput: {
-    flex: 1,
-    marginRight: 8,
-  },
   chipGroup: {
     marginTop: 8,
   },
@@ -576,19 +541,6 @@ const useStyles = themedStyles((COLORS) => ({
   },
   selectChipActive: {
     backgroundColor: COLORS.primarySoft,
-  },
-  sectionTitle: {
-    fontFamily: FONTS.display,
-    fontSize: 20,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    marginTop: 8,
-    marginBottom: 12,
-    color: COLORS.text,
-  },
-  statsInputRow: {
-    flexDirection: 'row',
-    marginBottom: 12,
   },
   modalActions: {
     flexDirection: 'row',

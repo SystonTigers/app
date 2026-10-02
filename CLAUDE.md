@@ -82,9 +82,14 @@ with personal data.
   kick-off, half time and goals line up with match footage later.
 - Line-ups: `routes/lineup.ts` (5/7/9/11-a-side; club `default_team_size`,
   fixture `team_size`). "Post team news" queues a line-up post.
-- Man of the Match: nominees default to everyone who played (starters plus subs
-  who came on, `playersWhoPlayed`); full time opens a 48h vote automatically
-  when a line-up exists. Closing the vote queues the winner post.
+- Man of the Match: at full time the manager's phone pops up
+  `components/motm/FullTimeMotmSheet` with everyone who played ticked
+  (`GET /api/v1/motm/:id` gives staff `suggested` from `playersWhoPlayed`;
+  the whole squad if there was no line-up). They untick anyone who didn't
+  play, pick 2/3/4 hours or a custom time (up to 3 days) and open voting.
+  Opening a vote that starts now queues a `motm` alert to everyone at the
+  club (people at the match too; `queueMotmAlert`, one per opening), which
+  opens the vote screen. Closing the vote queues the winner post.
 - Automatic posts: `services/social/` builds the caption and a `Graphic`
   (`services/graphics/types.ts`), applying the club's name style (full /
   `first_initial` / `initial_last` / `first` / `last`; managers can change it)
@@ -252,6 +257,27 @@ with personal data.
 - App navigation: a back arrow sits next to the menu button, the drawer goes
   back through history, and the web app has real URLs (`navigation/linking.ts`)
   so the phone's back gesture returns to the last page instead of closing it.
+
+## Squad, roles and training
+
+- Player stats are counted from Match Centre and match reports
+  (`match_events`, line-ups); staff add numbers for past seasons by hand
+  (Manage Squad → Season stats; `player_stat_entries`,
+  `routes/playerStatEntries.ts`, `PUT /api/v1/players/:id/season-stats/:season`),
+  added on top in `GET /stats/players`. Seasons always offer at least three
+  past football years.
+- The website's match report (`POST /api/v1/matches/:id/report`) takes the
+  starting line-up and subs (starters and subs count as appearances), saves
+  the result with scorers' names and rebuilds the league table.
+- Sign-up: people choose Parent, Player or Supporter and get that role;
+  choosing Coach makes them a Supporter with a pending request admins see in
+  People & Roles (`rolesForSignUp`, `profile.pendingRole`). Nobody can make
+  themselves staff. Supporters see what parents see, without children.
+  App staff checks use `utils/roles.ts` (`isStaffRole`, `menuRole`).
+- Training Centre (`TrainingScreen`, `routes/trainingSessions.ts`): staff plan
+  sessions (date, time, place, focus, drills as `lib:<id>`/`club:<id>` refs in
+  `training_plans.drill_refs`) and take the register (`training_attendance`);
+  drill of the week rotates through the built-in library each Monday.
 
 ## Photo and video consent
 

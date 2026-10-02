@@ -168,7 +168,7 @@ export default function ProfileScreen() {
 
         <View style={styles.roleBadge}>
           <MaterialCommunityIcons
-            name={user?.role === 'admin' ? 'shield-crown' : user?.role === 'coach' ? 'whistle' : user?.role === 'player' ? 'soccer' : 'account-child'}
+            name={user?.role === 'admin' ? 'shield-crown' : user?.role === 'coach' ? 'whistle' : user?.role === 'player' ? 'soccer' : user?.role === 'supporter' ? 'account-heart' : 'account-child'}
             size={16}
             color={COLORS.primary}
           />

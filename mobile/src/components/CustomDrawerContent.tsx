@@ -1,4 +1,5 @@
 import React from 'react';
+import { menuRole } from '../utils/roles';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -85,7 +86,7 @@ export default function CustomDrawerContent(props: any) {
     const userRole = user?.role || 'player'; // Default to player if role unknown
     const current: string | undefined = props.state?.routes?.[props.state.index]?.name;
 
-    const hasAccess = (allowedRoles?: string[]) => !allowedRoles || allowedRoles.includes(userRole);
+    const hasAccess = (allowedRoles?: string[]) => !allowedRoles || allowedRoles.includes(menuRole(userRole));
     const name = user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : 'Welcome';
 
     const handleLogout = async () => {

@@ -13,6 +13,8 @@ interface AddPlayerRequest {
     name: string;
     position?: string;
     squadNumber?: number;
+    /** The app sends the shirt number as `number` */
+    number?: number | string | null;
     photoUrl?: string;
     dateOfBirth?: string;
     previousClub?: string;
@@ -20,6 +22,15 @@ interface AddPlayerRequest {
     // Welcome post options
     createWelcomePost?: boolean;
     welcomePostOptions?: WelcomePostOptions;
+}
+
+/** The shirt number from either field name: a whole number 0–999, null to clear, undefined if not sent. */
+function shirtNumber(body: Partial<AddPlayerRequest>): number | null | undefined {
+    const raw = body.number !== undefined ? body.number : body.squadNumber;
+    if (raw === undefined) return undefined;
+    if (raw === null || raw === "") return null;
+    const n = Number(raw);
+    return Number.isInteger(n) && n >= 0 && n <= 999 ? n : null;
 }
 
 // Helper: Generate welcome post content
@@ -155,6 +166,8 @@ export async function handleAddPlayer(req: Request, env: any, corsHdrs: Headers)
             return json({ success: false, error: "Player name is required" }, 400, corsHdrs);
         }
 
+        const shirt = shirtNumber(body);
+        if (shirt !== undefined) body.squadNumber = shirt ?? undefined;
         const playerId = crypto.randomUUID();
         const now = Date.now();
         const signedDate = body.signedDate || new Date().toISOString().split('T')[0];
@@ -275,16 +288,18 @@ export async function handleUpdatePlayer(req: Request, env: any, corsHdrs: Heade
             updates.push("position = ?");
             values.push(body.position);
         }
-        if (body.squadNumber !== undefined) {
-            updates.push("squad_number = ?");
-            values.push(body.squadNumber);
+        const shirt = shirtNumber(body);
+        if (shirt !== undefined) {
+            body.squadNumber = shirt ?? undefined;
+            updates.push("number = ?");
+            values.push(shirt);
         }
         if (body.photoUrl !== undefined) {
             updates.push("photo_url = ?");
             values.push(body.photoUrl);
         }
         if (body.dateOfBirth !== undefined) {
-            updates.push("date_of_birth = ?");
+            updates.push("dob = ?");
             values.push(body.dateOfBirth);
         }
         if (body.previousClub !== undefined) {

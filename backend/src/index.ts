@@ -510,21 +510,22 @@ router.delete("/api/:v/gallery/albums/:id", staffOnly((req, env, corsHdrs) => {
 
 // Training Routes
 import {
-    handleCreateSession,
-    handleListSessions,
-    handleDeleteSession,
     handleCreateDrill,
     handleListDrills,
     handleDeleteDrill,
     handleAddDrillToSession,
     handleGetSessionDrills
 } from "./routes/training";
-router.post("/api/:v/training/sessions", staffOnly((req, env, corsHdrs) => handleCreateSession(req, env, corsHdrs)));
-router.get("/api/:v/training/sessions", (req, env, corsHdrs) => handleListSessions(req, env, corsHdrs));
-router.delete("/api/:v/training/sessions/:id", staffOnly((req, env, corsHdrs) => {
-    const params = (req as any).params || {};
-    return handleDeleteSession(req, env, corsHdrs, params.id);
-}));
+import {
+    handleListTrainingSessions, handleCreateTrainingSession, handleUpdateTrainingSession, handleDeleteTrainingSession as handleDeletePlannedSession,
+    handleGetTrainingAttendance, handleSetTrainingAttendance,
+} from "./routes/trainingSessions";
+router.post("/api/:v/training/sessions", staffOnly((req, env, corsHdrs) => handleCreateTrainingSession(req, env as never, corsHdrs)));
+router.get("/api/:v/training/sessions", (req, env, corsHdrs) => handleListTrainingSessions(req, env as never, corsHdrs));
+router.put("/api/:v/training/sessions/:id", staffOnly((req, env, corsHdrs) => handleUpdateTrainingSession(req, env as never, corsHdrs, (req as any).params?.id)));
+router.delete("/api/:v/training/sessions/:id", staffOnly((req, env, corsHdrs) => handleDeletePlannedSession(req, env as never, corsHdrs, (req as any).params?.id)));
+router.get("/api/:v/training/sessions/:id/attendance", staffOnly((req, env, corsHdrs) => handleGetTrainingAttendance(req, env as never, corsHdrs, (req as any).params?.id)));
+router.put("/api/:v/training/sessions/:id/attendance", staffOnly((req, env, corsHdrs) => handleSetTrainingAttendance(req, env as never, corsHdrs, (req as any).params?.id)));
 router.post("/api/:v/training/drills", staffOnly((req, env, corsHdrs) => handleCreateDrill(req, env, corsHdrs)));
 router.get("/api/:v/training/drills", (req, env, corsHdrs) => handleListDrills(req, env, corsHdrs));
 router.delete("/api/:v/training/drills/:id", staffOnly((req, env, corsHdrs) => {
@@ -1055,6 +1056,9 @@ router.get("/api/:v/fixtures", (req, env, corsHdrs) => handleListFixtures(req, e
 router.get("/api/:v/fixtures/upcoming", (req, env) => handleGetUpcomingFixtures(req, env));
 router.get("/api/:v/fixtures/all", (req, env) => handleGetAllFixtures(req, env));
 router.get("/api/:v/fixtures/results", (req, env, corsHdrs) => handleListResults(req, env, corsHdrs));
+import { handleGetPlayerSeasonStats, handleSetPlayerSeasonStats } from "./routes/playerStatEntries";
+router.get("/api/:v/players/:id/season-stats", (req, env, corsHdrs) => handleGetPlayerSeasonStats(req, env as never, corsHdrs, (req as any).params?.id));
+router.put("/api/:v/players/:id/season-stats/:season", staffOnly((req, env, corsHdrs) => handleSetPlayerSeasonStats(req, env as never, corsHdrs, (req as any).params?.id, decodeURIComponent((req as any).params?.season ?? ""))));
 router.get("/api/:v/results/seasons", (req, env, corsHdrs) => handleResultSeasons(req, env as never, corsHdrs));
 router.get("/api/:v/results", (req, env, corsHdrs) => handleListResults(req, env, corsHdrs));
 router.get("/api/:v/table", (req, env, corsHdrs) => handleGetLeagueTable(req, env, corsHdrs));

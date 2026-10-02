@@ -159,6 +159,7 @@ export const roleFromRoles = (roles: unknown): AuthUser['role'] | undefined => {
   if (roles.some((r) => ['owner', 'tenant_admin', 'admin', 'platform_admin', 'manager'].includes(r))) return 'admin';
   if (roles.includes('coach')) return 'coach';
   if (roles.includes('player')) return 'player';
+  if (roles.includes('supporter')) return 'supporter';
   return 'parent';
 };
 
@@ -762,6 +763,8 @@ export interface MotmVote {
   opensAt: string | null;
   closesAt: string | null;
   nominees: MotmNominee[];
+  /** Staff, before a vote is set up: everyone who played (from the line-up) */
+  suggested?: string[];
   userVote: string | null;
   winners: MotmNominee[];
   /** Only for staff, or once voting has closed */
@@ -958,13 +961,51 @@ export const chatApi = {
 };
 
 // ===== Training API =====
+/** A planned training session (GET /api/v1/training/sessions) */
+export interface TrainingSession {
+  id: string;
+  /** yyyy-mm-dd */
+  session_date: string;
+  /** HH:MM or "" */
+  session_time: string;
+  team: string;
+  focus: string;
+  location: string | null;
+  notes: string | null;
+  /** "lib:<id>" built-in drills, "club:<id>" club drills */
+  drills: string[];
+  attendance: { present: number; marked: number };
+}
+
+export interface SessionInput {
+  date: string;
+  time?: string | null;
+  location?: string | null;
+  focus: string;
+  notes?: string | null;
+  drills: string[];
+}
+
+export interface AttendancePlayer {
+  id: string;
+  name: string;
+  number: number | null;
+  /** null: not marked yet */
+  present: boolean | null;
+}
+
 export const trainingApi = {
-  listSessions: async () => {
-    const response = await api.get('/api/v1/training/sessions', {
-      params: { tenant: getTenantId() },
-    });
-    return response.data;
+  listSessions: async (): Promise<{ success: boolean; data: TrainingSession[] }> => (await api.get('/api/v1/training/sessions')).data,
+  createSession: async (input: SessionInput): Promise<TrainingSession> => (await api.post('/api/v1/training/sessions', input)).data.data,
+  updateSession: async (id: string, input: Partial<SessionInput>): Promise<TrainingSession> =>
+    (await api.put(`/api/v1/training/sessions/${encodeURIComponent(id)}`, input)).data.data,
+  deleteSession: async (id: string): Promise<void> => {
+    await api.delete(`/api/v1/training/sessions/${encodeURIComponent(id)}`);
   },
+  attendance: async (id: string): Promise<AttendancePlayer[]> =>
+    (await api.get(`/api/v1/training/sessions/${encodeURIComponent(id)}/attendance`)).data.data.players,
+  setAttendance: async (id: string, present: string[]): Promise<{ present: number; marked: number }> =>
+    (await api.put(`/api/v1/training/sessions/${encodeURIComponent(id)}/attendance`, { present })).data.data,
   listDrills: async () => {
     const response = await api.get('/api/v1/training/drills', {
       params: { tenant: getTenantId() },
@@ -1078,6 +1119,30 @@ export interface ResultInput {
   competition?: string;
   scorers?: string | null;
 }
+
+/** Numbers staff enter by hand for one player and season, added on top of Match Centre */
+export interface StatNumbers {
+  appearances: number;
+  goals: number;
+  assists: number;
+  yellowCards: number;
+  redCards: number;
+  motm: number;
+}
+
+export interface PlayerSeasonStats {
+  id: string;
+  label: string;
+  current: boolean;
+  entered: StatNumbers | null;
+}
+
+export const playerStatsApi = {
+  seasons: async (playerId: string): Promise<PlayerSeasonStats[]> =>
+    (await api.get(`/api/v1/players/${encodeURIComponent(playerId)}/season-stats`)).data.data,
+  set: async (playerId: string, seasonId: string, numbers: StatNumbers): Promise<{ entered: StatNumbers | null }> =>
+    (await api.put(`/api/v1/players/${encodeURIComponent(playerId)}/season-stats/${encodeURIComponent(seasonId)}`, numbers)).data.data,
+};
 
 export const resultsApi = {
   seasons: async (): Promise<{ success: boolean; data: SeasonOption[] }> => (await api.get('/api/v1/results/seasons')).data,
@@ -1233,7 +1298,7 @@ export const parentLinkApi = {
   },
 };
 
-export type ClubRole = 'admin' | 'manager' | 'coach' | 'player' | 'parent';
+export type ClubRole = 'admin' | 'manager' | 'coach' | 'player' | 'parent' | 'supporter';
 
 export interface ClubMember {
   id: string;
@@ -1244,6 +1309,8 @@ export interface ClubMember {
   joinedAt: number | null;
   lastLoginAt: number | null;
   linkedPlayers: number;
+  /** They asked to be a coach when signing up; an admin hasn't decided yet */
+  requestedRole?: 'coach' | null;
 }
 
 /** Everyone with an account at the club (staff), and changing roles (club admins). */

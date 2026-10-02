@@ -7,6 +7,7 @@
  *          see the result once voting has closed.
  * Public:  the latest winner is on the club page (see routes/public.ts).
  */
+import { queueMotmAlert } from "../services/matchAlerts/queue";
 import { json } from "../services/util";
 import { requireStaff, requireTenantJWT, hasAnyRole, STAFF_ROLES, type TenantClaims } from "../services/auth";
 import { playersWhoPlayed } from "../services/lineup";
@@ -131,7 +132,9 @@ export async function handleInitVote(req: Request, env: Env, corsHdrs: Headers, 
     if (!session) {
       const match = await findMatch(env, claims.tenantId, matchId);
       if (!match) return fail(corsHdrs, 404, "NOT_FOUND", "Match not found.");
-      return json({ success: true, data: { matchId, match, status: "draft", votingOpen: false, nominees: [], userVote: null, winners: [], results: null, totalVotes: null } }, 200, corsHdrs);
+      // Staff get everyone who played (line-up starters and subs who came on) to pre-tick
+      const suggested = hasAnyRole(claims, STAFF_ROLES) ? (await playersWhoPlayed(env, claims.tenantId, matchId)).slice(0, MAX_NOMINEES) : [];
+      return json({ success: true, data: { matchId, match, status: "draft", votingOpen: false, nominees: [], suggested, userVote: null, winners: [], results: null, totalVotes: null } }, 200, corsHdrs);
     }
     return json({ success: true, data: await describeVote(env, claims, session) }, 200, corsHdrs);
   } catch (err) {
@@ -247,6 +250,15 @@ export async function handleOpenVoting(req: Request, env: Env, corsHdrs: Headers
     // Another club can't take over this match id
     const session = await getSession(env, claims.tenantId, matchId);
     if (!session) return fail(corsHdrs, 409, "CONFLICT", "This match can't be used for a vote.");
+
+    // Voting that opens now tells everyone at the club
+    if (status === "active" && Date.parse(start) <= Date.now() + 60_000) {
+      try {
+        await queueMotmAlert(env as never, claims.tenantId, matchId, match.opponent ?? null, end, claims.userId ?? null);
+      } catch (err) {
+        console.error(JSON.stringify({ level: "error", msg: "motm_alert_queue_failed", matchId, error: err instanceof Error ? err.message : String(err) }));
+      }
+    }
 
     return json({ success: true, data: await describeVote(env, claims, session) }, 200, corsHdrs);
   } catch (err) {

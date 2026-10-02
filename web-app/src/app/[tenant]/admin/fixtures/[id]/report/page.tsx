@@ -139,7 +139,8 @@ export default function MatchReportPage({ params }: PageProps) {
             await sdk.saveMatchReport(fixtureId, {
                 homeScore,
                 awayScore,
-                events
+                events,
+                lineup: { starters: startingXI, subs },
             });
             alert('Match report saved!');
             router.push(`/${tenant}/admin/fixtures`);
@@ -167,7 +168,7 @@ export default function MatchReportPage({ params }: PageProps) {
                             <input
                                 type="number"
                                 value={homeScore}
-                                onChange={(e) => setHomeScore(parseInt(e.target.value))}
+                                onChange={(e) => setHomeScore(parseInt(e.target.value) || 0)}
                                 className="w-20 text-center text-2xl p-2 border rounded dark:bg-gray-700 font-bold"
                             />
                         </div>
@@ -177,7 +178,7 @@ export default function MatchReportPage({ params }: PageProps) {
                             <input
                                 type="number"
                                 value={awayScore}
-                                onChange={(e) => setAwayScore(parseInt(e.target.value))}
+                                onChange={(e) => setAwayScore(parseInt(e.target.value) || 0)}
                                 className="w-20 text-center text-2xl p-2 border rounded dark:bg-gray-700 font-bold"
                             />
                         </div>

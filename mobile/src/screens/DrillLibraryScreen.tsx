@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { View, ScrollView, TouchableOpacity, Share, Image } from 'react-native';
 import { Text, Card, Searchbar, Chip, Portal, Modal, IconButton, Button } from 'react-native-paper';
 import { themedStyles, useBrandColors } from '../theme/brand';
@@ -7,13 +7,19 @@ import { FONTS } from '../theme/brandFonts';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { DRILLS_LIBRARY, DRILL_CATEGORIES, Drill } from '../data/drillsData';
 
-export default function DrillLibraryScreen() {
+export default function DrillLibraryScreen({ route }: { route?: { params?: { drillId?: string } } }) {
   const COLORS = useBrandColors();
   const styles = useStyles();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>('All');
   const [selectedDrill, setSelectedDrill] = useState<Drill | null>(null);
+
+  // Opened from Training Centre on a particular drill
+  const linkedDrill = route?.params?.drillId;
+  useEffect(() => {
+    if (linkedDrill) setSelectedDrill(DRILLS_LIBRARY.find((d) => d.id === linkedDrill) ?? null);
+  }, [linkedDrill]);
 
   // Filter drills based on search and filters
   const filteredDrills = useMemo(() => {

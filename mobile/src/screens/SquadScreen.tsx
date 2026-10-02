@@ -4,7 +4,7 @@ import { Card, Title, Paragraph, Avatar, Chip, Button } from 'react-native-paper
 import { themedStyles, useBrandColors } from '../theme/brand';
 import { FONTS } from '../theme/brandFonts';
 import ScreenIntro from '../components/brand/ScreenIntro';
-import { squadApi } from '../services/api';
+import { resultsApi, squadApi, statsApi } from '../services/api';
 
 interface PhysicalStats {
   sprint40m?: number;  // seconds
@@ -43,7 +43,13 @@ export default function SquadScreen() {
   const loadSquad = useCallback(async () => {
     setError(null);
     try {
-      const response = await squadApi.getSquad();
+      // This season's numbers come from the stats endpoint (the squad list has none)
+      const seasonId = await resultsApi.seasons().then((r) => r.data.find((o) => o.current)?.id).catch(() => undefined);
+      const [response, stats] = await Promise.all([
+        squadApi.getSquad(),
+        seasonId ? statsApi.getPlayerStats(seasonId).catch(() => null) : Promise.resolve(null),
+      ]);
+      const totals = new Map<string, any>((stats?.data || []).map((t: any) => [t.id, t]));
 
       // Normalize the response
       let playerList: any[] = [];
@@ -54,21 +60,21 @@ export default function SquadScreen() {
       }
 
       // Map backend players to our format
-      const mappedPlayers: Player[] = playerList.map((player: any) => ({
-        id: player.id || player.playerId || String(Math.random()),
-        name: player.name || player.playerName || 'Unknown Player',
-        number: player.number || player.shirtNumber || 0,
-        position: player.position || 'Unknown',
-        stats: {
-          goals: player.stats?.goals || player.goals || 0,
-          assists: player.stats?.assists || player.assists || 0,
-          appearances: player.stats?.appearances || player.apps || player.matches || 0,
-          cards: {
-            yellow: player.stats?.cards?.yellow || player.yellows || player.yellowCards || 0,
-            red: player.stats?.cards?.red || player.reds || player.redCards || 0,
+      const mappedPlayers: Player[] = playerList.map((player: any) => {
+        const t = totals.get(player.id) || {};
+        return {
+          id: player.id || player.playerId || String(Math.random()),
+          name: player.name || player.playerName || 'Unknown Player',
+          number: player.number || player.shirtNumber || 0,
+          position: player.position || 'Unknown',
+          stats: {
+            goals: t.goals || 0,
+            assists: t.assists || 0,
+            appearances: t.appearances || 0,
+            cards: { yellow: t.yellowCards || 0, red: t.redCards || 0 },
           },
-        },
-      }));
+        };
+      });
 
       setSquad(mappedPlayers);
     } catch (err) {

@@ -1,6 +1,6 @@
 /** Club members list helpers. No react-native imports (tested in Node). */
 
-export type MemberRole = 'owner' | 'admin' | 'manager' | 'coach' | 'player' | 'parent';
+export type MemberRole = 'owner' | 'admin' | 'manager' | 'coach' | 'player' | 'parent' | 'supporter';
 
 export interface MemberLike {
   name: string;
@@ -15,12 +15,13 @@ export const ROLE_INFO: Record<MemberRole, { label: string; description: string 
   coach: { label: 'Coach', description: 'Match Centre, squad, fixtures and training.' },
   player: { label: 'Player', description: 'Sees the club, fixtures and their own stats.' },
   parent: { label: 'Parent', description: 'Sees the club and answers for their children.' },
+  supporter: { label: 'Supporter', description: 'Follows the club: matches, results, MOTM votes, gallery and posts.' },
 };
 
 /** Roles a club admin can give (the owner stays the owner). */
-export const ASSIGNABLE_ROLES: Exclude<MemberRole, 'owner'>[] = ['admin', 'manager', 'coach', 'player', 'parent'];
+export const ASSIGNABLE_ROLES: Exclude<MemberRole, 'owner'>[] = ['admin', 'manager', 'coach', 'player', 'parent', 'supporter'];
 
-export type MemberFilter = 'all' | 'staff' | 'player' | 'parent';
+export type MemberFilter = 'all' | 'staff' | 'player' | 'parent' | 'supporter';
 
 const STAFF: MemberRole[] = ['owner', 'admin', 'manager', 'coach'];
 
@@ -30,13 +31,14 @@ export function filterMembers<T extends MemberLike>(members: T[], filter: Member
     if (filter === 'staff' && !STAFF.includes(m.role)) return false;
     if (filter === 'player' && m.role !== 'player') return false;
     if (filter === 'parent' && m.role !== 'parent') return false;
+    if (filter === 'supporter' && m.role !== 'supporter') return false;
     return !q || m.name.toLowerCase().includes(q) || m.email.toLowerCase().includes(q);
   });
 }
 
 /** Staff first (owner, admin, manager, coach), then everyone else, by name. */
 export function sortMembers<T extends MemberLike>(members: T[]): T[] {
-  const order: MemberRole[] = ['owner', 'admin', 'manager', 'coach', 'player', 'parent'];
+  const order: MemberRole[] = ['owner', 'admin', 'manager', 'coach', 'player', 'parent', 'supporter'];
   return [...members].sort((a, b) => order.indexOf(a.role) - order.indexOf(b.role) || a.name.localeCompare(b.name));
 }
 

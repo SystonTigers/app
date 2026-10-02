@@ -17,6 +17,7 @@ export const CLUB_ROLES = {
   coach: ["coach"],
   player: ["tenant_member", "player"],
   parent: ["tenant_member"],
+  supporter: ["tenant_member", "supporter"],
 } as const;
 export type ClubRole = keyof typeof CLUB_ROLES;
 
@@ -31,6 +32,8 @@ export interface ClubMember {
   joinedAt: number | null;
   lastLoginAt: number | null;
   linkedPlayers: number;
+  /** Set when they asked to be a coach at sign-up and an admin hasn't decided yet */
+  requestedRole: "coach" | null;
 }
 
 export class ClubMemberError extends Error {
@@ -55,7 +58,19 @@ export function roleLabel(roles: string[]): ClubMember["role"] {
   if (roles.includes("manager")) return "manager";
   if (roles.includes("coach")) return "coach";
   if (roles.includes("player")) return "player";
+  if (roles.includes("supporter")) return "supporter";
   return "parent";
+}
+
+/**
+ * What someone signing themselves up gets. Nobody can make themselves staff:
+ * asking to be a coach makes them a supporter until an admin says yes.
+ */
+export function rolesForSignUp(requested: unknown): { roles: string[]; requestedRole: "coach" | null } {
+  if (requested === "player") return { roles: [...CLUB_ROLES.player], requestedRole: null };
+  if (requested === "supporter") return { roles: [...CLUB_ROLES.supporter], requestedRole: null };
+  if (requested === "coach") return { roles: [...CLUB_ROLES.supporter], requestedRole: "coach" };
+  return { roles: [...CLUB_ROLES.parent], requestedRole: null };
 }
 
 export function isClubAdmin(claims: Pick<TenantClaims, "roles">): boolean {
@@ -72,14 +87,18 @@ export async function listClubMembers(env: Env, tenantId: string): Promise<ClubM
   ).bind(tenantId).all<{ id: string; email: string; roles: string; profile: string | null; joined: number | null; last_login: number | null; linked: number }>();
   return (results ?? []).map((r) => {
     let name = "";
+    let asked: unknown = null;
     try {
-      const p = JSON.parse(r.profile || "{}") as { name?: unknown; firstName?: unknown; lastName?: unknown };
+      const p = JSON.parse(r.profile || "{}") as { name?: unknown; firstName?: unknown; lastName?: unknown; pendingRole?: unknown };
       name = typeof p.name === "string" && p.name.trim() ? p.name.trim() : [p.firstName, p.lastName].filter((x) => typeof x === "string" && x).join(" ");
+      asked = p.pendingRole;
     } catch { /* no profile */ }
     const roles = parseRoles(r.roles);
+    const role = roleLabel(roles);
     return {
-      id: r.id, email: r.email, name: name || r.email.split("@")[0], roles, role: roleLabel(roles),
+      id: r.id, email: r.email, name: name || r.email.split("@")[0], roles, role,
       joinedAt: r.joined, lastLoginAt: r.last_login, linkedPlayers: r.linked ?? 0,
+      requestedRole: asked === "coach" && (role === "supporter" || role === "parent" || role === "player") ? "coach" : null,
     };
   });
 }
@@ -87,13 +106,19 @@ export async function listClubMembers(env: Env, tenantId: string): Promise<ClubM
 /** Change a member's role. Returns the updated member. */
 export async function setMemberRole(env: Env, claims: TenantClaims, memberId: string, role: string): Promise<ClubMember> {
   if (!isClubAdmin(claims)) throw new ClubMemberError(403, "Only the club's admins can change roles.");
-  if (!(role in CLUB_ROLES)) throw new ClubMemberError(400, "Choose admin, manager, coach, player or parent.");
+  if (!(role in CLUB_ROLES)) throw new ClubMemberError(400, "Choose admin, manager, coach, player, parent or supporter.");
   if (memberId === claims.userId || memberId === claims.sub) throw new ClubMemberError(400, "You can't change your own role.");
-  const row = await env.DB.prepare(`SELECT roles FROM auth_users WHERE id = ? AND tenant_id = ?`).bind(memberId, claims.tenantId).first<{ roles: string }>();
+  const row = await env.DB.prepare(`SELECT roles, profile FROM auth_users WHERE id = ? AND tenant_id = ?`).bind(memberId, claims.tenantId).first<{ roles: string; profile: string | null }>();
   if (!row) throw new ClubMemberError(404, "That person isn't in your club.");
   const current = parseRoles(row.roles);
   if (current.includes("owner")) throw new ClubMemberError(400, "The club owner's role can't be changed.");
   const next = [...CLUB_ROLES[role as ClubRole]];
+  // An admin choosing a role answers any coach request made at sign-up
+  const profile = (() => { try { return JSON.parse(row.profile || "{}") as Record<string, unknown>; } catch { return {}; } })();
+  if ("pendingRole" in profile) {
+    delete profile.pendingRole;
+    await env.DB.prepare(`UPDATE auth_users SET profile = ? WHERE id = ? AND tenant_id = ?`).bind(JSON.stringify(profile), memberId, claims.tenantId).run();
+  }
   if (JSON.stringify(current) !== JSON.stringify(next)) {
     await env.DB.prepare(`UPDATE auth_users SET roles = ?, updated_at = ? WHERE id = ? AND tenant_id = ?`)
       .bind(JSON.stringify(next), Date.now(), memberId, claims.tenantId).run();

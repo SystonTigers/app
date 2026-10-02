@@ -68,13 +68,31 @@ describe("Line-ups and Man of the Match", () => {
 
     // One sub comes on, one doesn't
     await post({ type: "sub", playerId: subs[0], player2Id: starters[6] });
-    const ft = await post({ type: "full_time" });
-    expect(ft.data.data.motmOpened).toBe(true);
+    await post({ type: "full_time" });
 
-    // Everyone who played is nominated: 7 starters + the sub who came on
+    // Full time doesn't open the vote by itself: the manager's pop-up shows
+    // everyone who played (7 starters + the sub who came on) ticked
+    const draft = await call(`/api/v1/motm/${fixtureId}`, { token: coach.token });
+    expect(draft.data.data.status).toBe("draft");
+    expect([...draft.data.data.suggested].sort()).toEqual([...starters, subs[0]].sort());
+    expect((await call(`/api/v1/motm/${fixtureId}`, { token: parent.token })).data.data.suggested).toEqual([]);
+
+    // The manager untick one and opens voting for 3 hours: everyone is told
+    const nominees = [...starters, subs[0]].filter((id) => id !== starters[0]);
+    const end = new Date(Date.now() + 3 * 3600_000).toISOString();
+    const opened = await call(`/api/v1/admin/matches/${fixtureId}/motm/open`, { token: coach.token, body: { nominees, votingWindow: { end } } });
+    expect(opened.status).toBe(200);
+    const alert = await env.DB.prepare(`SELECT kind, title, body, skip_user_id FROM match_alerts WHERE fixture_id = ? AND kind = 'motm'`).bind(fixtureId).first<any>();
+    expect(alert).toMatchObject({ kind: "motm", title: "⭐ Man of the Match vote is open", skip_user_id: coach.userId });
+    expect(alert.body).toMatch(/v Lineup United\? Voting closes /);
+    // Asking again with the same closing time doesn't tell people twice
+    await call(`/api/v1/admin/matches/${fixtureId}/motm/open`, { token: coach.token, body: { nominees, votingWindow: { end } } });
+    const count = await env.DB.prepare(`SELECT COUNT(*) AS c FROM match_alerts WHERE fixture_id = ? AND kind = 'motm'`).bind(fixtureId).first<any>();
+    expect(count.c).toBe(1);
+
     const vote = await call(`/api/v1/motm/${fixtureId}`, { token: parent.token });
     expect(vote.data.data.votingOpen).toBe(true);
-    expect(vote.data.data.nominees.map((n: any) => n.playerId).sort()).toEqual([...starters, subs[0]].sort());
+    expect(vote.data.data.nominees.map((n: any) => n.playerId).sort()).toEqual([...nominees].sort());
 
     // Parents vote; closing announces the winner
     await call(`/api/v1/matches/${fixtureId}/motm/vote`, { token: parent.token, body: { candidateId: starters[3] } });
@@ -85,7 +103,7 @@ describe("Line-ups and Man of the Match", () => {
     expect(jobs.c).toBe(1);
   });
 
-  it("doesn't open a vote at full time without a line-up", async () => {
+  it("suggests nobody at full time without a line-up", async () => {
     const coach = await registerAdmin("lineup-none");
     const fixtureId = (await call("/api/v1/admin/fixtures", {
       token: coach.token,
@@ -93,6 +111,8 @@ describe("Line-ups and Man of the Match", () => {
     })).data.id as string;
     const post = (body: Record<string, unknown>) => call(`/api/v1/fixtures/${fixtureId}/live/events`, { token: coach.token, body: { clientEventId: tap(), ...body } });
     await post({ type: "kick_off" });
-    expect((await post({ type: "full_time" })).data.data.motmOpened).toBe(false);
+    await post({ type: "full_time" });
+    const draft = await call(`/api/v1/motm/${fixtureId}`, { token: coach.token });
+    expect(draft.data.data).toMatchObject({ status: "draft", suggested: [] });
   });
 });

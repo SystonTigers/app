@@ -10,7 +10,6 @@
  *   POST   /api/v1/fixtures/:id/live/events              record an event (staff)
  *   DELETE /api/v1/fixtures/:id/live/events/:eventId     undo an event (staff)
  */
-import { MAX_NOMINEES } from "./motm";
 import { json } from "../services/util";
 import { hasAnyRole, requireStaff, requireTenantJWT, STAFF_ROLES, type TenantClaims } from "../services/auth";
 import { computeState, isLiveEventType, matchMinute, rejectReason, undoBlockedReason, type LiveEventType } from "../services/liveMatchState";
@@ -18,26 +17,8 @@ import { describeMatch, loadEvents, loadFixture, recentLiveFixtureIds, recordFul
 import { cancelPost, drawAndPostSoon, jobsForFixture, postPerson, queuePost, type JobSummary } from "../services/social/jobs";
 import { CORRECTABLE_KINDS, MATCH_KINDS, type MatchKind } from "../services/social/content";
 import type { LiveEvent } from "../services/liveMatchState";
-import { getSession, openVote } from "../services/motm";
-import { playersWhoPlayed } from "../services/lineup";
 import { refreshLeagueTable } from "../services/league/store";
 import { cancelEventAlert, queueEventAlert, type AlertsEnv } from "../services/matchAlerts/queue";
-
-const MOTM_VOTING_HOURS = 48;
-
-/**
- * Full time: open Man of the Match voting straight away, nominating everyone
- * who played (starting line-up plus subs who came on). Needs a line-up; if
- * the manager already set up a vote, it's left alone.
- */
-async function openMotmAtFullTime(env: Env, tenantId: string, fixtureId: string): Promise<boolean> {
-  if (await getSession(env, tenantId, fixtureId)) return false;
-  const nominees = await playersWhoPlayed(env, tenantId, fixtureId);
-  if (nominees.length < 2) return false;
-  const start = new Date();
-  const end = new Date(start.getTime() + MOTM_VOTING_HOURS * 3600_000);
-  return openVote(env, tenantId, fixtureId, { nominees: nominees.slice(0, MAX_NOMINEES), status: "active", start: start.toISOString(), end: end.toISOString(), autoPost: true });
-}
 
 type Env = { DB: D1Database; [key: string]: unknown };
 
@@ -229,15 +210,11 @@ export async function handleRecordLiveEvent(req: Request, env: Env, corsHdrs: He
 
     const updated = await loadEvents(env, claims.tenantId, fixtureId);
     const newState = computeState(updated);
-    let motmOpened = false;
+    // Man of the Match isn't opened here: the manager's phone shows a pop-up at
+    // full time to check the nominees and open voting (which tells everyone)
     if (type === "full_time") {
       await recordFullTime(env, claims.tenantId, fixture, updated);
       await refreshLeagueTable(env, claims.tenantId);
-      try {
-        motmOpened = await openMotmAtFullTime(env, claims.tenantId, fixtureId);
-      } catch (err) {
-        console.error(JSON.stringify({ level: "error", msg: "motm_auto_open_failed", fixtureId, error: err instanceof Error ? err.message : String(err) }));
-      }
     }
     await setMatchStatus(env, claims.tenantId, fixtureId, newState.status);
 
@@ -258,7 +235,7 @@ export async function handleRecordLiveEvent(req: Request, env: Env, corsHdrs: He
     } catch (err) {
       console.error(JSON.stringify({ level: "error", msg: "social_queue_failed", fixtureId, error: err instanceof Error ? err.message : String(err) }));
     }
-    return matchResponse(env, claims, fixtureId, corsHdrs, { newPost, motmOpened }, 201);
+    return matchResponse(env, claims, fixtureId, corsHdrs, { newPost }, 201);
   } catch (err) {
     return internalError(corsHdrs, "record", err);
   }

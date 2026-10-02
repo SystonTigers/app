@@ -36,17 +36,27 @@ function authHeader(): Record<string, string> {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
+/**
+ * Older calls pass `Authorization: Bearer <localStorage token>`, which is
+ * "Bearer null" when the session is kept under another key; drop that so the
+ * real session token (authHeader) is used.
+ */
+function mergeHeaders(extra: HeadersInit | undefined): Headers {
+  const headers = new Headers({ 'Content-Type': 'application/json', ...authHeader() });
+  new Headers(extra).forEach((value, key) => {
+    if (key === 'authorization' && /^Bearer\s*(null|undefined)?$/i.test(value.trim())) return;
+    headers.set(key, value);
+  });
+  return headers;
+}
+
 async function http<T>(url: string, init?: RequestInit): Promise<T> {
   try {
     const res = await fetch(url, {
       ...init,
       credentials: 'include',
       cache: 'no-store',
-      headers: {
-        'Content-Type': 'application/json',
-        ...authHeader(),
-        ...(init?.headers || {})
-      }
+      headers: mergeHeaders(init?.headers)
     });
     if (!res.ok) {
       const text = await res.text().catch(() => '');

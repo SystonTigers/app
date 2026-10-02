@@ -6,6 +6,7 @@ import { themedStyles, useBrandColors } from '../theme/brand';
 import { FONTS } from '../theme/brandFonts';
 import { apiErrorMessage, galleryApi, type GalleryAlbum, type GalleryPhoto } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { isStaffRole } from '../utils/roles';
 import AlbumFormModal from '../components/gallery/AlbumFormModal';
 import UploadPhotosModal from '../components/gallery/UploadPhotosModal';
 import { groupBySeason, kindOf, photoCount } from '../utils/gallery';
@@ -23,7 +24,7 @@ export default function GalleryScreen() {
   const styles = useStyles();
   const { width } = useWindowDimensions();
   const { user } = useAuth();
-  const isStaff = !!user && user.role !== 'parent' && user.role !== 'player';
+  const isStaff = isStaffRole(user?.role);
   const [albums, setAlbums] = useState<GalleryAlbum[]>([]);
   const [album, setAlbum] = useState<GalleryAlbum | null>(null);
   const [photos, setPhotos] = useState<GalleryPhoto[]>([]);
