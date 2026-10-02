@@ -72,7 +72,7 @@ function findExisting(rows: FixtureRow[], f: FaEmailFixture, opponent: string, h
   return moved.length === 1 ? moved[0] : null;
 }
 
-export async function importFaFixtures(env: DB, tenantId: string, fixtures: FaEmailFixture[], now = new Date()): Promise<FaImportSummary> {
+export async function importFaFixtures(env: DB, tenantId: string, fixtures: FaEmailFixture[], now = new Date(), source: "fa_email" | "photo" = "fa_email"): Promise<FaImportSummary> {
   const summary: FaImportSummary = { found: fixtures.length, added: 0, updated: 0, unchanged: 0, notOurs: 0, lines: [] };
   if (!fixtures.length) return summary;
   const tenant = await env.DB.prepare(`SELECT name FROM tenants WHERE id = ?`).bind(tenantId).first<{ name: string }>();
@@ -109,9 +109,9 @@ export async function importFaFixtures(env: DB, tenantId: string, fixtures: FaEm
       const [home, away] = side === "home" ? [ourName, opponent] : [opponent, ourName];
       await env.DB.prepare(
         `INSERT INTO fixtures (id, tenant_id, fixture_date, kick_off_time, opponent, venue, competition, status, home_team, away_team, source, fa_fixture_id, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'fa_email', ?, ?, ?)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT(tenant_id, fixture_date, home_team, away_team) DO NOTHING`,
-      ).bind(id, tenantId, f.date, f.time, opponent, f.venue, f.competition, f.status, home, away, f.faFixtureId, stamp, stamp).run();
+      ).bind(id, tenantId, f.date, f.time, opponent, f.venue, f.competition, f.status, home, away, source, f.faFixtureId, stamp, stamp).run();
       rows.push({ id, fixture_date: f.date, kick_off_time: f.time, opponent, home_team: home, away_team: away, venue: f.venue, competition: f.competition, status: f.status, fa_fixture_id: f.faFixtureId });
       line.action = "added";
       summary.added++;

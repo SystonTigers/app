@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, ActivityIndicator, Alert } from 'react-native';
+import { View, ScrollView, ActivityIndicator, Alert, Pressable, Text } from 'react-native';
 import {
   Card,
   Title,
@@ -18,6 +18,7 @@ import { FONTS } from '../theme/brandFonts';
 import { fixturesApi } from '../services/api';
 import { useClubName } from '../context/ClubContext';
 import FaEmailPaste from '../components/FaEmailPaste';
+import FixturePhotoReader from '../components/fixtures/FixturePhotoReader';
 
 interface Fixture {
   id: string;
@@ -41,6 +42,8 @@ export default function ManageFixturesScreen() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingFixture, setEditingFixture] = useState<Fixture | null>(null);
+  // Set when the form was filled in from a photo, so staff are reminded to check it
+  const [fromPhoto, setFromPhoto] = useState(false);
   const [formData, setFormData] = useState({
     opponent: '',
     date: '',
@@ -74,6 +77,7 @@ export default function ManageFixturesScreen() {
 
   const openAddModal = () => {
     setEditingFixture(null);
+    setFromPhoto(false);
     setFormData({
       opponent: '',
       date: '',
@@ -89,6 +93,7 @@ export default function ManageFixturesScreen() {
 
   const openEditModal = (fixture: Fixture) => {
     setEditingFixture(fixture);
+    setFromPhoto(false);
     setFormData({
       opponent: fixture.opponent,
       date: fixture.date,
@@ -172,6 +177,10 @@ export default function ManageFixturesScreen() {
         <Paragraph style={styles.intro}>
           Add upcoming matches and update results
         </Paragraph>
+
+        <Pressable onPress={openAddModal} accessibilityRole="button" style={styles.photoLink}>
+          <Text style={styles.photoLinkText}>Got a fixture list, poster or screenshot? Add fixtures from a photo</Text>
+        </Pressable>
 
         <FaEmailPaste onImported={loadFixtures} />
 
@@ -273,6 +282,26 @@ export default function ManageFixturesScreen() {
             <Title style={styles.modalTitle}>
               {editingFixture ? 'Edit Fixture' : 'Add New Fixture'}
             </Title>
+
+            {!editingFixture ? (
+              <FixturePhotoReader
+                onFill={(form) => {
+                  setFormData((current) => ({ ...current, ...form, homeScore: '', awayScore: '' }));
+                  setFromPhoto(true);
+                }}
+                onAdded={(message) => {
+                  setShowModal(false);
+                  loadFixtures();
+                  Alert.alert('Fixtures added', message);
+                }}
+              />
+            ) : null}
+
+            {fromPhoto ? (
+              <Paragraph style={styles.photoNote} accessibilityRole="alert">
+                Filled in from the photo. Check every detail before saving.
+              </Paragraph>
+            ) : null}
 
             <TextInput
               label="Opponent Team"
@@ -428,6 +457,9 @@ const useStyles = themedStyles((COLORS) => ({
   scrollView: {
     flex: 1,
   },
+  photoLink: { paddingHorizontal: 16, paddingTop: 4 },
+  photoLinkText: { color: COLORS.primary, fontWeight: '700' },
+  photoNote: { color: COLORS.warning, fontWeight: '700', marginBottom: 8 },
   intro: {
     color: COLORS.textLight,
     marginHorizontal: 16,

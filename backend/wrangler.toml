@@ -94,6 +94,11 @@ id = "2b092164260d45d6a9a4af55555ffc09"
 binding = "KV"
 id = "908ef48f308d44319fcb9fe7508f11e1"
 
+# Workers AI: reads fixtures from photos and screenshots (services/fixtureImage).
+# Production only: the local test runner can't provide it (reading then says it isn't on).
+[env.production.ai]
+binding = "AI"
+
 [[env.production.d1_databases]]
 binding = "DB"
 database_name = "syston-db"

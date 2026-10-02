@@ -195,6 +195,17 @@ with personal data.
   email's link), else date + opponent, else the one unplayed match against
   that opponent at the same end. Our side is the League Table's team or the
   name closest to the club's.
+- From a photo or screenshot (app: Manage Fixtures → Add fixture → "Fill in
+  from a photo"; `components/fixtures/FixturePhotoReader.tsx`): the picture
+  is shrunk on the phone and read by Workers AI's vision model
+  (`services/fixtureImage/`, `[env.production.ai]` binding, model
+  `FIXTURE_IMAGE_MODEL` or `@cf/meta/llama-3.2-11b-vision-instruct`; Meta's
+  licence is accepted automatically on first use). Nothing is saved or kept:
+  `POST /api/v1/club/fixtures/from-image` returns the fixtures for staff to
+  check (one fills the form, several are ticked) and
+  `POST .../from-image/apply` adds them through the FA email import
+  (`source = 'photo'`, no duplicates). 40 pictures per club per day. The local
+  test runner has no AI binding, so locally it says it isn't switched on.
 - Automatic: each club has a private address `fixtures-<token>@EMAIL_DOMAIN`
   (`tenants.fixture_email_token`, `GET /api/v1/club/fixture-email`) and sets
   its inbox to forward FA Full-Time emails there. The Worker's `email()`

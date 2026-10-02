@@ -1268,6 +1268,36 @@ export const faEmailApi = {
   },
 };
 
+/** A fixture read from a photo or screenshot (checked by staff before saving) */
+export interface PhotoFixture {
+  date: string;
+  time: string | null;
+  home: string;
+  away: string;
+  venue: string | null;
+  competition: string | null;
+  status: 'scheduled' | 'postponed' | 'cancelled';
+  /** Which team is the club; null when the picture doesn't make it clear */
+  us: 'home' | 'away' | null;
+  opponent: string | null;
+}
+
+/** Staff: fixtures from a photo or screenshot. Reading saves nothing; apply adds the ticked ones. */
+export const fixturePhotoApi = {
+  read: async (image: Blob): Promise<{ success: boolean; data: { fixtures: PhotoFixture[] } }> => {
+    const response = await api.post('/api/v1/club/fixtures/from-image', image, {
+      headers: { 'Content-Type': image.type || 'image/jpeg' },
+      timeout: 60000,
+      transformRequest: [(data) => data],
+    });
+    return response.data;
+  },
+  apply: async (fixtures: PhotoFixture[]): Promise<{ success: boolean; data: { found: number; added: number; updated: number; unchanged: number; notOurs: number; lines: FaImportLine[] } }> => {
+    const response = await api.post('/api/v1/club/fixtures/from-image/apply', { fixtures });
+    return response.data;
+  },
+};
+
 export const highlightsApi = {
   /** Recent matches with a video and moments tapped in Match Centre */
   list: async (): Promise<{ success: boolean; data: HighlightsMatch[] }> => {

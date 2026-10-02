@@ -576,6 +576,7 @@ router.delete("/api/:v/fixtures/:id/stream", staffOnly((req, env, corsHdrs) => h
 router.put("/api/:v/fixtures/:id/venue", staffOnly((req, env, corsHdrs) => handlePutVenue(req, env, corsHdrs, ((req as any).params || {}).id)));
 
 // Platform owner panel (routes/owner.ts); the website's /owner pages call these through their own server
+import { handleApplyFixtureImage, handleReadFixtureImage } from "./routes/fixtureImage";
 import { handleOwnerAction, handleOwnerGet, handleOwnerLogin, handleOwnerLogout } from "./routes/owner";
 import { handleGetAlertPrefs, handleSetAlertPrefs } from "./routes/alertPrefs";
 router.post("/api/:v/owner/login", (req, env, corsHdrs) => handleOwnerLogin(req, env, corsHdrs));
@@ -1242,6 +1243,9 @@ router.delete("/api/:v/club/league/results", staffOnly((req, env, corsHdrs) => h
 // Fixtures from FA Full-Time emails, pasted by staff (routes/faEmail.ts)
 import { handleFaEmailImport, handleGetFixtureEmail } from "./routes/faEmail";
 router.post("/api/:v/club/fixtures/fa-email", staffOnly((req, env, corsHdrs) => handleFaEmailImport(req, env, corsHdrs)));
+// Fixtures from a photo or screenshot (routes/fixtureImage.ts)
+router.post("/api/:v/club/fixtures/from-image", staffOnly((req, env, corsHdrs) => handleReadFixtureImage(req, env as never, corsHdrs)));
+router.post("/api/:v/club/fixtures/from-image/apply", staffOnly((req, env, corsHdrs) => handleApplyFixtureImage(req, env as never, corsHdrs)));
 router.get("/api/:v/club/fixture-email", staffOnly((req, env, corsHdrs) => handleGetFixtureEmail(req, env, corsHdrs)));
 // FA Full-Time code snippets shown on the club's league pages (routes/faFullTime.ts)
 router.get("/api/:v/club/fa-full-time", (req, env, corsHdrs) => handleGetFaFullTime(req, env, corsHdrs));
