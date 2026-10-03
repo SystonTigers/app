@@ -9,7 +9,7 @@ function load(file) {
   new Function('module', 'exports', 'require', js)(mod, mod.exports, (p) => (p === '../data/drillsData' ? load('src/data/drillsData.ts') : require(p)));
   return mod.exports;
 }
-const { splitSessions, sessionDay, drillFromRef, libRef, totalMinutes, drillOfTheWeek } = load('src/utils/training.ts');
+const { splitSessions, sessionDay, totalMinutes, drillOfTheWeek } = load('src/utils/training.ts');
 const { DRILLS_LIBRARY } = load('src/data/drillsData.ts');
 
 const now = new Date(2026, 9, 2, 20, 0);
@@ -21,11 +21,6 @@ assert.deepStrictEqual(past.map((x) => x.session_date), ['2026-09-30', '2026-09-
 assert.match(sessionDay('2026-10-07', now), /^Wednesday,? 7 Oct$/);
 assert.match(sessionDay('2025-10-07', now), /2025/);
 
-const first = DRILLS_LIBRARY[0];
-assert.strictEqual(libRef(first), `lib:${first.id}`);
-assert.strictEqual(drillFromRef(libRef(first)).id, first.id);
-assert.strictEqual(drillFromRef('lib:nope'), null);
-assert.strictEqual(drillFromRef('club:abc'), null);
 assert.strictEqual(totalMinutes([{ duration: '10 mins' }, { duration: '15-20 mins' }, { duration: 'varies' }]), 25);
 
 // Same drill all week (Mon-Sun), a different one next week, never a warm-up

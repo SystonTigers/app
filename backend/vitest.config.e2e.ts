@@ -24,6 +24,8 @@ export default defineWorkersConfig(async () => {
               JWT_ISSUER: "syston.app",
               JWT_AUDIENCE: "syston-mobile",
               ENVIRONMENT: "test",
+              // No TikTok/YouTube lookups for drill video links
+              LINK_PREVIEWS: "off",
               // Test-only key for encrypting social media tokens (32 zero bytes)
               SOCIAL_TOKEN_KEY: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
               BACKEND_URL: "https://api.test",

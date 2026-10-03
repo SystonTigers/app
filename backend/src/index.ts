@@ -510,12 +510,12 @@ router.delete("/api/:v/gallery/albums/:id", staffOnly((req, env, corsHdrs) => {
 
 // Training Routes
 import {
-    handleCreateDrill,
-    handleListDrills,
-    handleDeleteDrill,
     handleAddDrillToSession,
     handleGetSessionDrills
 } from "./routes/training";
+import {
+    handleAddDrillLink, handleCreateClubDrill, handleDeleteClubDrill, handleDeleteDrillLink, handleListClubDrills, handleSetDrillFavourite, handleUpdateClubDrill,
+} from "./routes/drills";
 import {
     handleListTrainingSessions, handleCreateTrainingSession, handleUpdateTrainingSession, handleDeleteTrainingSession as handleDeletePlannedSession,
     handleGetTrainingAttendance, handleSetTrainingAttendance,
@@ -526,12 +526,14 @@ router.put("/api/:v/training/sessions/:id", staffOnly((req, env, corsHdrs) => ha
 router.delete("/api/:v/training/sessions/:id", staffOnly((req, env, corsHdrs) => handleDeletePlannedSession(req, env as never, corsHdrs, (req as any).params?.id)));
 router.get("/api/:v/training/sessions/:id/attendance", staffOnly((req, env, corsHdrs) => handleGetTrainingAttendance(req, env as never, corsHdrs, (req as any).params?.id)));
 router.put("/api/:v/training/sessions/:id/attendance", staffOnly((req, env, corsHdrs) => handleSetTrainingAttendance(req, env as never, corsHdrs, (req as any).params?.id)));
-router.post("/api/:v/training/drills", staffOnly((req, env, corsHdrs) => handleCreateDrill(req, env, corsHdrs)));
-router.get("/api/:v/training/drills", (req, env, corsHdrs) => handleListDrills(req, env, corsHdrs));
-router.delete("/api/:v/training/drills/:id", staffOnly((req, env, corsHdrs) => {
-    const params = (req as any).params || {};
-    return handleDeleteDrill(req, env, corsHdrs, params.id);
-}));
+// Drills: club drills, favourites and video links (routes/drills.ts)
+router.post("/api/:v/training/drills", (req, env, corsHdrs) => handleCreateClubDrill(req, env, corsHdrs));
+router.get("/api/:v/training/drills", (req, env, corsHdrs) => handleListClubDrills(req, env, corsHdrs));
+router.put("/api/:v/training/drills/:id", (req, env, corsHdrs) => handleUpdateClubDrill(req, env, corsHdrs, (req as any).params?.id));
+router.delete("/api/:v/training/drills/:id", (req, env, corsHdrs) => handleDeleteClubDrill(req, env, corsHdrs, (req as any).params?.id));
+router.put("/api/:v/training/drill-favourites", (req, env, corsHdrs) => handleSetDrillFavourite(req, env, corsHdrs));
+router.post("/api/:v/training/drill-links", (req, env, corsHdrs) => handleAddDrillLink(req, env, corsHdrs));
+router.delete("/api/:v/training/drill-links/:id", (req, env, corsHdrs) => handleDeleteDrillLink(req, env, corsHdrs, (req as any).params?.id));
 router.post("/api/:v/training/session-drills", staffOnly((req, env, corsHdrs) => handleAddDrillToSession(req, env, corsHdrs)));
 router.get("/api/:v/training/sessions/:id/drills", (req, env, corsHdrs) => {
     const params = (req as any).params || {};

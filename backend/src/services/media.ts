@@ -7,7 +7,7 @@
  */
 
 /** Key prefixes the public media route will serve. Anything else is 404. */
-export const PUBLIC_MEDIA_PREFIXES = ["gallery/", "headshots/", "players/", "badges/", "sponsors/", "products/", "videos/", "social/"] as const;
+export const PUBLIC_MEDIA_PREFIXES = ["gallery/", "headshots/", "players/", "badges/", "sponsors/", "products/", "videos/", "social/", "drills/"] as const;
 
 export const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // 10 MB
 

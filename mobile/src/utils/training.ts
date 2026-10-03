@@ -1,6 +1,6 @@
 /**
- * Training Centre helpers: which sessions are coming up, drills by reference
- * and the drill of the week. No react-native imports (node test/training.test.js).
+ * Training Centre helpers: which sessions are coming up, session length and
+ * the drill of the week (drills by reference: utils/drills.ts). No react-native imports (node test/training.test.js).
  */
 import { DRILLS_LIBRARY, type Drill } from '../data/drillsData';
 
@@ -33,14 +33,6 @@ export function sessionDay(date: string, now: Date = new Date()): string {
     weekday: 'long', day: 'numeric', month: 'short', timeZone: 'UTC',
     ...(Number(m[1]) !== now.getFullYear() ? { year: 'numeric' } : {}),
   });
-}
-
-export const libRef = (drill: Pick<Drill, 'id'>): string => `lib:${drill.id}`;
-
-/** The built-in drill a reference points at, if any. */
-export function drillFromRef(ref: string, library: Drill[] = DRILLS_LIBRARY): Drill | null {
-  if (!ref.startsWith('lib:')) return null;
-  return library.find((d) => d.id === ref.slice(4)) ?? null;
 }
 
 /** Total minutes of a list of drills ("15 mins", "10-15 mins" counts the first number). */

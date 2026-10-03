@@ -9,7 +9,9 @@ import FeedCard from '../components/FeedCard';
 import { apiErrorMessage, trainingApi, type TrainingSession } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { isStaffRole } from '../utils/roles';
-import { drillFromRef, drillOfTheWeek, localDay, sessionDay, splitSessions, totalMinutes } from '../utils/training';
+import { drillOfTheWeek, localDay, sessionDay, splitSessions, totalMinutes } from '../utils/training';
+import { allDrills, findDrill, type AppDrill } from '../utils/drills';
+import { loadDrills, useDrills } from '../services/drillsStore';
 import SessionFormModal from '../components/training/SessionFormModal';
 import AttendanceModal from '../components/training/AttendanceModal';
 
@@ -43,6 +45,11 @@ export default function TrainingScreen({ navigation }: any) {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+  // Club drills in session plans need the club's drill list
+  const drillStore = useDrills();
+  useEffect(() => { void loadDrills(); }, []);
+  const everything = useMemo(() => allDrills(drillStore.club), [drillStore.club]);
+  const drillsFor = (refs: string[]) => refs.map((r) => findDrill(r, everything)).filter((d): d is AppDrill => !!d);
 
   const { upcoming, past } = useMemo(() => splitSessions(sessions), [sessions]);
   const next = upcoming[0] ?? null;
@@ -51,7 +58,7 @@ export default function TrainingScreen({ navigation }: any) {
   // The register is usually taken at (or just after) a session
   const registerFor = next && next.session_date.slice(0, 10) <= localDay(new Date()) ? next : past[0] ?? next;
 
-  const openDrill = (drillId: string) => navigation.navigate('DrillLibrary', { drillId });
+  const openDrill = (ref: string) => navigation.navigate('Drill', { ref });
 
   const remove = (s: TrainingSession) => {
     Alert.alert('Remove this session?', `${s.focus} on ${sessionDay(s.session_date)} and its register will be removed.`, [
@@ -100,14 +107,11 @@ export default function TrainingScreen({ navigation }: any) {
       </Pressable>
       {selected === s.id ? (
         <View style={styles.expanded}>
-          {s.drills.map((r, i) => {
-            const d = drillFromRef(r);
-            return d ? (
-              <Pressable key={r} onPress={() => openDrill(d.id)} accessibilityRole="link">
-                <Text style={[styles.planDrill, { color: colors.text }]}>{i + 1}. {d.name} <Text style={{ color: colors.textLight }}>· {d.duration}</Text></Text>
-              </Pressable>
-            ) : null;
-          })}
+          {drillsFor(s.drills).map((d, i) => (
+            <Pressable key={d.ref} onPress={() => openDrill(d.ref)} accessibilityRole="link">
+              <Text style={[styles.planDrill, { color: colors.text }]}>{i + 1}. {d.name} <Text style={{ color: colors.textLight }}>· {d.duration}</Text></Text>
+            </Pressable>
+          ))}
           {!s.drills.length ? <Text style={{ color: colors.textLight, fontSize: 12 }}>No drills added.</Text> : null}
           {staff ? staffActions(s) : null}
         </View>
@@ -115,7 +119,7 @@ export default function TrainingScreen({ navigation }: any) {
     </View>
   );
 
-  const nextDrills = next ? next.drills.map((r) => drillFromRef(r)).filter((d): d is NonNullable<typeof d> => !!d) : [];
+  const nextDrills = next ? drillsFor(next.drills) : [];
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -152,7 +156,7 @@ export default function TrainingScreen({ navigation }: any) {
                 <View style={styles.plan}>
                   <Text style={[styles.planTitle, { color: colors.text }]}>Session plan · about {totalMinutes(nextDrills)} mins</Text>
                   {nextDrills.map((d, i) => (
-                    <Pressable key={d.id} onPress={() => openDrill(d.id)} accessibilityRole="link" style={styles.planRow}>
+                    <Pressable key={d.ref} onPress={() => openDrill(d.ref)} accessibilityRole="link" style={styles.planRow}>
                       <Text style={[styles.planNo, { color: colors.primary }]}>{i + 1}</Text>
                       <View style={styles.flex}>
                         <Text style={[styles.planDrillName, { color: colors.text }]}>{d.name}</Text>
@@ -208,7 +212,7 @@ export default function TrainingScreen({ navigation }: any) {
         <FeedCard
           title="DRILL OF THE WEEK"
           headerRight={<MaterialCommunityIcons name="star" size={20} color={colors.primary} />}
-          onPress={() => openDrill(weekDrill.id)}
+          onPress={() => openDrill(`lib:${weekDrill.id}`)}
         >
           <View style={styles.drillContent}>
             <Text style={[styles.drillName, { color: colors.text }]}>{weekDrill.name}</Text>

@@ -252,6 +252,23 @@ with personal data.
   competition name. Live Match shows the whole live table; Home refreshes
   every 30 s during a match.
 
+## Drills
+
+- The app's Drill Library mixes the built-in drills (`mobile/src/data/drillsData.ts`,
+  with set-up, steps, coaching points and progressions in `drillDetails.ts`)
+  and the club's own (`training_drills`, `routes/drills.ts`). Drills are
+  referenced as `lib:<id>` or `club:<id>` everywhere (session plans too).
+- `GET /api/v1/training/drills` (members) returns the club drills plus my
+  `favourites` (per person, `drill_favourites`) and video `links` by ref.
+  Staff create/edit/remove club drills (or "Make our version" of a built-in
+  one) and add TikTok/Instagram/YouTube links (`drill_links`). Only links are
+  kept; videos open on those sites. TikTok and YouTube previews come from their
+  public oEmbed and the picture is copied to R2 (`drills/<tenant>/links/`);
+  Instagram oEmbed needs a Meta token, so it shows without a picture.
+  `LINK_PREVIEWS=off` skips the lookups (tests).
+- App: `DrillLibraryScreen` (All / Favourites / Our drills), `DrillScreen`
+  (one drill), shared state in `services/drillsStore.ts`.
+
 ## Results, seasons and gallery
 
 - Seasons are football years (1 Aug to 31 Jul, id `2025-26`) unless the club

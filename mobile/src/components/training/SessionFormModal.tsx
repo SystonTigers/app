@@ -5,15 +5,17 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { themedStyles, useBrandColors } from '../../theme/brand';
 import { FONTS } from '../../theme/brandFonts';
 import { apiErrorMessage, trainingApi, type TrainingSession } from '../../services/api';
-import { DRILLS_LIBRARY } from '../../data/drillsData';
-import { drillFromRef, libRef, localDay, totalMinutes } from '../../utils/training';
+import { localDay, totalMinutes } from '../../utils/training';
+import { allDrills, filterDrills, findDrill, type AppDrill } from '../../utils/drills';
+import { loadDrills, useDrills } from '../../services/drillsStore';
 import { normaliseResultDate } from '../../utils/results';
 
 const TIME = /^([01]?\d|2[0-3])[:.]([0-5]\d)$/;
 
 /**
  * Staff: plan a training session (or change one): when, where, the focus and
- * the drills, picked from the drill library.
+ * the drills, picked from the drill library and the club's own drills (your
+ * favourites are suggested first).
  */
 export default function SessionFormModal({ visible, editing, onClose, onSaved }: {
   visible: boolean;
@@ -32,6 +34,8 @@ export default function SessionFormModal({ visible, editing, onClose, onSaved }:
   const [query, setQuery] = useState('');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const store = useDrills();
+  const everything = useMemo(() => allDrills(store.club), [store.club]);
 
   useEffect(() => {
     if (!visible) return;
@@ -43,14 +47,18 @@ export default function SessionFormModal({ visible, editing, onClose, onSaved }:
     setFocus(editing?.focus ?? '');
     setNotes(editing?.notes ?? '');
     setDrills(editing?.drills ?? []);
+    void loadDrills();
   }, [visible, editing]);
 
-  const chosen = drills.map((r) => drillFromRef(r)).filter((d): d is NonNullable<typeof d> => !!d);
+  const chosen = drills.map((r) => findDrill(r, everything)).filter((d): d is AppDrill => !!d);
   const matches = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return [];
-    return DRILLS_LIBRARY.filter((d) => !drills.includes(libRef(d)) && (d.name.toLowerCase().includes(q) || d.category.toLowerCase().includes(q) || d.focus.some((f) => f.toLowerCase().includes(q)))).slice(0, 8);
-  }, [query, drills]);
+    const q = query.trim();
+    // Nothing typed: suggest my favourites
+    const found = q
+      ? [...filterDrills(everything, { query: q }), ...everything.filter((d) => d.category.toLowerCase().includes(q.toLowerCase()))]
+      : filterDrills(everything, { view: 'favourites', favourites: store.favourites });
+    return [...new Map(found.map((d) => [d.ref, d])).values()].filter((d) => !drills.includes(d.ref)).slice(0, 8);
+  }, [query, drills, everything, store.favourites]);
 
   const move = (i: number, by: number) => setDrills((list) => {
     const next = [...list];
@@ -99,7 +107,7 @@ export default function SessionFormModal({ visible, editing, onClose, onSaved }:
 
           <Text style={styles.section}>Drills{chosen.length ? ` · ${chosen.length} · about ${totalMinutes(chosen)} mins` : ''}</Text>
           {chosen.map((d, i) => (
-            <View key={d.id} style={styles.drill}>
+            <View key={d.ref} style={styles.drill}>
               <Text style={styles.drillNo}>{i + 1}</Text>
               <View style={styles.flex}>
                 <Text style={styles.drillName}>{d.name}</Text>
@@ -107,18 +115,19 @@ export default function SessionFormModal({ visible, editing, onClose, onSaved }:
               </View>
               <Pressable onPress={() => move(i, -1)} accessibilityLabel={`Move ${d.name} up`} hitSlop={8}><MaterialCommunityIcons name="chevron-up" size={22} color={COLORS.textLight} /></Pressable>
               <Pressable onPress={() => move(i, 1)} accessibilityLabel={`Move ${d.name} down`} hitSlop={8}><MaterialCommunityIcons name="chevron-down" size={22} color={COLORS.textLight} /></Pressable>
-              <Pressable onPress={() => setDrills((list) => list.filter((r) => r !== libRef(d)))} accessibilityLabel={`Remove ${d.name}`} hitSlop={8}>
+              <Pressable onPress={() => setDrills((list) => list.filter((r) => r !== d.ref))} accessibilityLabel={`Remove ${d.name}`} hitSlop={8}>
                 <MaterialCommunityIcons name="close" size={20} color={COLORS.error} />
               </Pressable>
             </View>
           ))}
           <Searchbar placeholder="Add a drill: search passing, rondo…" value={query} onChangeText={setQuery} style={styles.search} inputStyle={styles.searchInput} />
+          {!query.trim() && matches.length ? <Text style={styles.small}>Your favourites</Text> : null}
           {matches.map((d) => (
-            <Pressable key={d.id} onPress={() => { setDrills((list) => [...list, libRef(d)].slice(0, 20)); setQuery(''); }} accessibilityRole="button" style={styles.match}>
+            <Pressable key={d.ref} onPress={() => { setDrills((list) => [...list, d.ref].slice(0, 20)); setQuery(''); }} accessibilityRole="button" style={styles.match}>
               <MaterialCommunityIcons name="plus-circle" size={20} color={COLORS.primary} />
               <View style={styles.flex}>
                 <Text style={styles.drillName}>{d.name}</Text>
-                <Text style={styles.small}>{d.category} · {d.duration} · {d.difficulty}</Text>
+                <Text style={styles.small}>{d.club ? 'Our drill · ' : ''}{d.category} · {d.duration} · {d.difficulty}</Text>
               </View>
             </Pressable>
           ))}

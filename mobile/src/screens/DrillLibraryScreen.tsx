@@ -1,527 +1,178 @@
-import React, { useEffect, useState, useMemo } from 'react';
-import { View, ScrollView, TouchableOpacity, Share, Image } from 'react-native';
-import { Text, Card, Searchbar, Chip, Portal, Modal, IconButton, Button } from 'react-native-paper';
-import { themedStyles, useBrandColors } from '../theme/brand';
-import { withOpacity } from '../theme/utils';
-import { FONTS } from '../theme/brandFonts';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { RefreshControl, ScrollView, Text, View } from 'react-native';
+import { Button, Chip, Searchbar, Snackbar } from 'react-native-paper';
+import { useFocusEffect } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { DRILLS_LIBRARY, DRILL_CATEGORIES, Drill } from '../data/drillsData';
+import { themedStyles, useBrandColors } from '../theme/brand';
+import DrillCard from '../components/drills/DrillCard';
+import DrillFormModal from '../components/drills/DrillFormModal';
+import { DRILL_CATEGORIES } from '../data/drillsData';
+import { allDrills, filterDrills, refFrom, type DrillView } from '../utils/drills';
+import { loadDrills, setFavourite, useDrills } from '../services/drillsStore';
+import { apiErrorMessage } from '../services/api';
+import { useAuth } from '../context/AuthContext';
+import { isStaffRole } from '../utils/roles';
 
-export default function DrillLibraryScreen({ route }: { route?: { params?: { drillId?: string } } }) {
-  const COLORS = useBrandColors();
+const VIEWS: Array<[DrillView, string, string]> = [
+  ['all', 'All drills', 'view-grid-outline'],
+  ['favourites', 'Favourites', 'star'],
+  ['club', 'Our drills', 'shield-star-outline'],
+];
+
+/**
+ * Drill Library: the built-in drills and the club's own, with search,
+ * category and difficulty filters, favourites (each person has their own)
+ * and, for staff, "New drill". Tapping a drill opens its page.
+ */
+export default function DrillLibraryScreen({ navigation, route }: { navigation: any; route?: { params?: { drillId?: string; view?: DrillView } } }) {
+  const c = useBrandColors();
   const styles = useStyles();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('All');
-  const [selectedDifficulty, setSelectedDifficulty] = useState<string>('All');
-  const [selectedDrill, setSelectedDrill] = useState<Drill | null>(null);
+  const { user } = useAuth();
+  const staff = isStaffRole(user?.role);
+  const drills = useDrills();
+  const [query, setQuery] = useState('');
+  const [category, setCategory] = useState('All');
+  const [difficulty, setDifficulty] = useState('All');
+  const [view, setView] = useState<DrillView>(route?.params?.view ?? 'all');
+  const [creating, setCreating] = useState(false);
+  const [message, setMessage] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
 
-  // Opened from Training Centre on a particular drill
-  const linkedDrill = route?.params?.drillId;
+  useFocusEffect(useCallback(() => {
+    void loadDrills();
+  }, []));
+
+  // Older links (Training Centre, shared addresses) open a drill straight away
+  const linked = refFrom(route?.params?.drillId);
   useEffect(() => {
-    if (linkedDrill) setSelectedDrill(DRILLS_LIBRARY.find((d) => d.id === linkedDrill) ?? null);
-  }, [linkedDrill]);
+    if (!linked) return;
+    navigation.setParams({ drillId: undefined });
+    navigation.navigate('Drill', { ref: linked });
+  }, [linked, navigation]);
 
-  // Filter drills based on search and filters
-  const filteredDrills = useMemo(() => {
-    let drills = DRILLS_LIBRARY;
-
-    // Filter by search query
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      drills = drills.filter(
-        (drill) =>
-          drill.name.toLowerCase().includes(query) ||
-          drill.description.toLowerCase().includes(query) ||
-          drill.focus.some((f) => f.toLowerCase().includes(query))
-      );
-    }
-
-    // Filter by category
-    if (selectedCategory !== 'All') {
-      drills = drills.filter((drill) => drill.category === selectedCategory);
-    }
-
-    // Filter by difficulty
-    if (selectedDifficulty !== 'All') {
-      drills = drills.filter((drill) => drill.difficulty === selectedDifficulty);
-    }
-
-    return drills;
-  }, [searchQuery, selectedCategory, selectedDifficulty]);
-
-  // Count drills by category
-  const categoryCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    DRILL_CATEGORIES.forEach((cat) => {
-      counts[cat] = DRILLS_LIBRARY.filter((d) => d.category === cat).length;
-    });
-    return counts;
-  }, []);
-
-  const getDifficultyColor = (difficulty: string) => {
-    switch (difficulty) {
-      case 'beginner':
-        return COLORS.success;
-      case 'intermediate':
-        return COLORS.warning;
-      case 'advanced':
-        return COLORS.error;
-      default:
-        return COLORS.textLight;
-    }
-  };
-
-  const renderDrillCard = (drill: Drill) => (
-    <Card key={drill.id} style={styles.drillCard} onPress={() => setSelectedDrill(drill)}>
-      <Card.Content>
-        <View style={styles.drillHeader}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.drillName}>{drill.name}</Text>
-            <Text style={styles.drillCategory}>{drill.category}</Text>
-          </View>
-          <MaterialCommunityIcons name="chevron-right" size={24} color={COLORS.textLight} />
-        </View>
-
-        <View style={styles.drillMeta}>
-          <Chip
-            style={[styles.difficultyChip, { backgroundColor: withOpacity(getDifficultyColor(drill.difficulty), 0.16) }]}
-            textStyle={{ color: getDifficultyColor(drill.difficulty), fontSize: 11, fontWeight: '700' }}
-          >
-            {drill.difficulty}
-          </Chip>
-          <View style={styles.metaItem}>
-            <MaterialCommunityIcons name="clock-outline" size={14} color={COLORS.textLight} />
-            <Text style={styles.metaText}>{drill.duration}</Text>
-          </View>
-          <View style={styles.metaItem}>
-            <MaterialCommunityIcons name="account-group" size={14} color={COLORS.textLight} />
-            <Text style={styles.metaText}>{drill.players}</Text>
-          </View>
-        </View>
-
-        <Text style={styles.drillDescription} numberOfLines={2}>
-          {drill.description}
-        </Text>
-
-        <View style={styles.focusChips}>
-          {drill.focus.slice(0, 3).map((focus, idx) => (
-            <Chip key={idx} style={styles.focusChip} textStyle={styles.focusChipText}>
-              {focus}
-            </Chip>
-          ))}
-        </View>
-      </Card.Content>
-    </Card>
+  const everything = useMemo(() => allDrills(drills.club), [drills.club]);
+  const shown = useMemo(
+    () => filterDrills(everything, { query, category, difficulty, view, favourites: drills.favourites }),
+    [everything, query, category, difficulty, view, drills.favourites],
   );
+  const categories = useMemo(() => {
+    const extra = drills.club.map((d) => d.category).filter((x) => !DRILL_CATEGORIES.includes(x));
+    return [...DRILL_CATEGORIES, ...new Set(extra)];
+  }, [drills.club]);
 
-  const renderDrillDetail = () => {
-    if (!selectedDrill) return null;
-
-    return (
-      <Portal>
-        <Modal
-          visible={!!selectedDrill}
-          onDismiss={() => setSelectedDrill(null)}
-          contentContainerStyle={styles.modalContainer}
-        >
-          <ScrollView>
-            <View style={styles.modalHeader}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.modalTitle}>{selectedDrill.name}</Text>
-                <Text style={styles.modalCategory}>{selectedDrill.category}</Text>
-              </View>
-              <IconButton icon="close" onPress={() => setSelectedDrill(null)} />
-            </View>
-
-            <View style={styles.modalMeta}>
-              <Chip
-                style={[
-                  styles.difficultyChip,
-                  { backgroundColor: withOpacity(getDifficultyColor(selectedDrill.difficulty), 0.16) },
-                ]}
-                textStyle={{ color: getDifficultyColor(selectedDrill.difficulty), fontWeight: '700' }}
-              >
-                {selectedDrill.difficulty.toUpperCase()}
-              </Chip>
-              <View style={styles.metaItem}>
-                <MaterialCommunityIcons name="clock" size={18} color={COLORS.primary} />
-                <Text style={styles.modalMetaText}>{selectedDrill.duration}</Text>
-              </View>
-              <View style={styles.metaItem}>
-                <MaterialCommunityIcons name="account-group" size={18} color={COLORS.primary} />
-                <Text style={styles.modalMetaText}>{selectedDrill.players} players</Text>
-              </View>
-            </View>
-
-            <Text style={styles.sectionTitle}>Description</Text>
-            <Text style={styles.modalDescription}>{selectedDrill.description}</Text>
-
-            <Text style={styles.sectionTitle}>Equipment Needed</Text>
-            <View style={styles.equipmentList}>
-              {selectedDrill.equipment.length === 0 ? (
-                <Text style={styles.equipmentItem}>• None required</Text>
-              ) : (
-                selectedDrill.equipment.map((item, idx) => (
-                  <Text key={idx} style={styles.equipmentItem}>
-                    • {item}
-                  </Text>
-                ))
-              )}
-            </View>
-
-            <Text style={styles.sectionTitle}>Focus Areas</Text>
-            <View style={styles.focusChips}>
-              {selectedDrill.focus.map((focus, idx) => (
-                <Chip key={idx} style={styles.focusChipLarge} textStyle={styles.focusChipText}>
-                  {focus}
-                </Chip>
-              ))}
-            </View>
-
-            {selectedDrill.diagramUrl && (
-              <View style={styles.diagramSection}>
-                <Text style={styles.sectionTitle}>Drill Diagram</Text>
-                <Image
-                  source={{ uri: selectedDrill.diagramUrl }}
-                  style={styles.diagramImage}
-                  resizeMode="contain"
-                  accessibilityLabel={`${selectedDrill.name} diagram`}
-                />
-              </View>
-            )}
-
-            <Button
-              mode="outlined"
-              icon="share"
-              onPress={async () => {
-                try {
-                  await Share.share({
-                    title: selectedDrill.name,
-                    message: `Check out this drill: ${selectedDrill.name}\n\n${selectedDrill.description}\n\nDifficulty: ${selectedDrill.difficulty} | Duration: ${selectedDrill.duration} | Players: ${selectedDrill.players}`,
-                  });
-                } catch (error) {
-                  console.error('Share failed:', error);
-                }
-              }}
-              style={styles.shareButton}
-            >
-              Share Drill
-            </Button>
-          </ScrollView>
-        </Modal>
-      </Portal>
-    );
+  const toggle = async (ref: string) => {
+    const on = !drills.favourites.includes(ref);
+    try {
+      await setFavourite(ref, on);
+    } catch (err) {
+      setMessage(apiErrorMessage(err, "That didn't save. Check your connection and try again."));
+    }
   };
+
+  const refresh = async () => {
+    setRefreshing(true);
+    await loadDrills(true);
+    setRefreshing(false);
+  };
+
+  const emptyText = view === 'favourites'
+    ? 'Tap the star on any drill to keep it here.'
+    : view === 'club'
+      ? staff ? "Your club hasn't made any drills yet. Tap New drill, or open any drill and choose \"Make our version\"." : "Your coaches haven't added any club drills yet."
+      : 'Try a different search or filter.';
 
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <Text style={styles.subtitle}>{DRILLS_LIBRARY.length} drills available</Text>
-
-      {/* Search */}
-      <Searchbar
-        placeholder="Search drills..."
-        onChangeText={setSearchQuery}
-        value={searchQuery}
-        style={styles.searchBar}
-        iconColor={COLORS.primary}
-      />
-
-      {/* Category Filter */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterContainer}>
-        <TouchableOpacity onPress={() => setSelectedCategory('All')}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.views}>
+        {VIEWS.map(([key, label, icon]) => (
           <Chip
-            selected={selectedCategory === 'All'}
-            style={[styles.filterChip, selectedCategory === 'All' && styles.selectedFilterChip]}
-            textStyle={selectedCategory === 'All' && styles.selectedFilterText}
+            key={key}
+            icon={icon}
+            selected={view === key}
+            showSelectedCheck={false}
+            onPress={() => setView(key)}
+            style={[styles.chip, view === key ? styles.chipOn : null]}
+            textStyle={view === key ? styles.chipOnText : undefined}
+            accessibilityLabel={`${label}${key === 'favourites' ? `, ${drills.favourites.length}` : ''}`}
           >
-            All ({DRILLS_LIBRARY.length})
+            {label}{key === 'favourites' && drills.favourites.length ? ` (${drills.favourites.length})` : ''}{key === 'club' && drills.club.length ? ` (${drills.club.length})` : ''}
           </Chip>
-        </TouchableOpacity>
-        {DRILL_CATEGORIES.map((category) => (
-          <TouchableOpacity key={category} onPress={() => setSelectedCategory(category)}>
-            <Chip
-              selected={selectedCategory === category}
-              style={[
-                styles.filterChip,
-                selectedCategory === category && styles.selectedFilterChip,
-              ]}
-              textStyle={selectedCategory === category && styles.selectedFilterText}
-            >
-              {category} ({categoryCounts[category] || 0})
-            </Chip>
-          </TouchableOpacity>
         ))}
       </ScrollView>
 
-      {/* Difficulty Filter */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.difficultyFilter}>
-        <Text style={styles.filterLabel}>Difficulty:</Text>
-        {['All', 'beginner', 'intermediate', 'advanced'].map((diff) => (
-          <TouchableOpacity key={diff} onPress={() => setSelectedDifficulty(diff)}>
-            <Chip
-              selected={selectedDifficulty === diff}
-              style={[
-                styles.filterChip,
-                selectedDifficulty === diff && styles.selectedFilterChip,
-              ]}
-              textStyle={selectedDifficulty === diff && styles.selectedFilterText}
-            >
-              {diff === 'All' ? 'All' : diff.charAt(0).toUpperCase() + diff.slice(1)}
-            </Chip>
-          </TouchableOpacity>
+      <Searchbar placeholder="Search drills" onChangeText={setQuery} value={query} style={styles.search} iconColor={c.primary} />
+
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters}>
+        {['All', ...categories].map((cat) => (
+          <Chip key={cat} selected={category === cat} showSelectedCheck={false} onPress={() => setCategory(cat)} style={[styles.chip, category === cat ? styles.chipOn : null]} textStyle={category === cat ? styles.chipOnText : undefined} compact>
+            {cat}
+          </Chip>
+        ))}
+      </ScrollView>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters}>
+        {['All', 'beginner', 'intermediate', 'advanced'].map((d) => (
+          <Chip key={d} selected={difficulty === d} showSelectedCheck={false} onPress={() => setDifficulty(d)} style={[styles.chip, difficulty === d ? styles.chipOn : null]} textStyle={difficulty === d ? styles.chipOnText : undefined} compact>
+            {d === 'All' ? 'Any level' : d.charAt(0).toUpperCase() + d.slice(1)}
+          </Chip>
         ))}
       </ScrollView>
 
-      {/* Results */}
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-        <Text style={styles.resultsText}>
-          {filteredDrills.length} drill{filteredDrills.length !== 1 ? 's' : ''} found
-        </Text>
-
-        {filteredDrills.length === 0 ? (
-          <Card style={styles.emptyCard}>
-            <Card.Content>
-              <MaterialCommunityIcons
-                name="soccer-field"
-                size={64}
-                color={COLORS.textLight}
-                style={{ alignSelf: 'center' }}
-              />
-              <Text style={styles.emptyText}>No drills found</Text>
-              <Text style={styles.emptySubtext}>Try adjusting your filters</Text>
-            </Card.Content>
-          </Card>
-        ) : (
-          filteredDrills.map(renderDrillCard)
+      <ScrollView
+        style={styles.list}
+        contentContainerStyle={styles.listContent}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={c.primary} />}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={styles.countRow}>
+          <Text style={styles.count}>{shown.length} drill{shown.length === 1 ? '' : 's'}</Text>
+          {staff ? <Button mode="contained" icon="plus" compact onPress={() => setCreating(true)}>New drill</Button> : null}
+        </View>
+        {drills.error ? <Text style={styles.error}>{drills.error}</Text> : null}
+        {shown.length ? shown.map((d) => (
+          <DrillCard
+            key={d.ref}
+            drill={d}
+            favourite={drills.favourites.includes(d.ref)}
+            videos={drills.links[d.ref]?.length ?? 0}
+            onPress={() => navigation.navigate('Drill', { ref: d.ref })}
+            onToggleFavourite={() => toggle(d.ref)}
+          />
+        )) : (
+          <View style={styles.empty}>
+            <MaterialCommunityIcons name={view === 'favourites' ? 'star-outline' : 'soccer-field'} size={56} color={c.textLight} />
+            <Text style={styles.emptyTitle}>{view === 'favourites' ? 'No favourites yet' : 'No drills here'}</Text>
+            <Text style={styles.emptyText}>{emptyText}</Text>
+          </View>
         )}
       </ScrollView>
 
-      {renderDrillDetail()}
+      <DrillFormModal
+        visible={creating}
+        onDismiss={() => setCreating(false)}
+        onSaved={(saved) => {
+          setCreating(false);
+          navigation.navigate('Drill', { ref: saved.ref });
+        }}
+      />
+      <Snackbar visible={!!message} onDismiss={() => setMessage('')} duration={5000}>{message}</Snackbar>
     </View>
   );
 }
 
-const useStyles = themedStyles((COLORS) => ({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: COLORS.textLight,
-    marginHorizontal: 16,
-    marginTop: 12,
-    marginBottom: 12,
-  },
-  searchBar: {
-    marginHorizontal: 16,
-    marginBottom: 12,
-    backgroundColor: COLORS.surface,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  filterContainer: {
-    flexGrow: 0,
-    marginBottom: 8,
-  },
-  filterChip: {
-    marginLeft: 8,
-    backgroundColor: COLORS.surface,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  selectedFilterChip: {
-    backgroundColor: COLORS.primary,
-  },
-  selectedFilterText: {
-    color: COLORS.onPrimary,
-  },
-  difficultyFilter: {
-    flexGrow: 0,
-    marginBottom: 12,
-    paddingLeft: 8,
-  },
-  filterLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.text,
-    alignSelf: 'center',
-    marginRight: 8,
-    marginLeft: 8,
-  },
-  resultsText: {
-    fontSize: 14,
-    color: COLORS.textLight,
-    marginBottom: 12,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: 16,
-    paddingTop: 0,
-  },
-  drillCard: {
-    marginBottom: 12,
-    backgroundColor: COLORS.surface,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  drillHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  drillName: {
-    fontFamily: FONTS.display,
-    fontSize: 20,
-    letterSpacing: 0.5,
-    color: COLORS.text,
-  },
-  drillCategory: {
-    fontSize: 12,
-    color: COLORS.textLight,
-    marginTop: 2,
-  },
-  drillMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 8,
-  },
-  difficultyChip: {
-    height: 24,
-  },
-  metaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  metaText: {
-    fontSize: 12,
-    color: COLORS.textLight,
-  },
-  drillDescription: {
-    fontSize: 14,
-    color: COLORS.text,
-    lineHeight: 20,
-    marginBottom: 8,
-  },
-  focusChips: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-  },
-  focusChip: {
-    height: 24,
-    backgroundColor: COLORS.primarySoft,
-  },
-  focusChipLarge: {
-    height: 28,
-    backgroundColor: COLORS.primarySoft,
-  },
-  focusChipText: {
-    fontSize: 11,
-    color: COLORS.text,
-  },
-  modalContainer: {
-    backgroundColor: COLORS.surface,
-    margin: 20,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    maxHeight: '90%',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-  },
-  modalTitle: {
-    fontFamily: FONTS.display,
-    fontSize: 26,
-    letterSpacing: 0.5,
-    color: COLORS.text,
-  },
-  modalCategory: {
-    fontSize: 14,
-    color: COLORS.textLight,
-    marginTop: 4,
-  },
-  modalMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-    padding: 16,
-    paddingBottom: 8,
-  },
-  modalMetaText: {
-    fontSize: 14,
-    color: COLORS.text,
-    fontWeight: '500',
-  },
-  sectionTitle: {
-    fontFamily: FONTS.display,
-    fontSize: 20,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    color: COLORS.text,
-    padding: 16,
-    paddingBottom: 8,
-  },
-  modalDescription: {
-    fontSize: 14,
-    color: COLORS.text,
-    lineHeight: 22,
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-  },
-  equipmentList: {
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-  },
-  equipmentItem: {
-    fontSize: 14,
-    color: COLORS.text,
-    marginBottom: 4,
-  },
-  diagramSection: {
-    marginTop: 8,
-  },
-  diagramImage: {
-    height: 200,
-    backgroundColor: COLORS.background,
-    marginHorizontal: 16,
-    borderRadius: 8,
-  },
-  shareButton: {
-    marginHorizontal: 16,
-    marginTop: 16,
-    marginBottom: 16,
-  },
-  emptyCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    padding: 32,
-  },
-  emptyText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: COLORS.text,
-    textAlign: 'center',
-    marginTop: 16,
-  },
-  emptySubtext: {
-    fontSize: 14,
-    color: COLORS.textLight,
-    textAlign: 'center',
-    marginTop: 8,
-  },
+const useStyles = themedStyles((c) => ({
+  container: { flex: 1, backgroundColor: c.background },
+  views: { paddingHorizontal: 16, paddingTop: 12, gap: 8 },
+  filters: { paddingHorizontal: 16, paddingBottom: 8, gap: 8 },
+  chip: { backgroundColor: c.surface, borderColor: c.border, borderWidth: 1 },
+  chipOn: { backgroundColor: c.primary, borderColor: c.primary },
+  chipOnText: { color: c.onPrimary, fontWeight: '700' },
+  search: { marginHorizontal: 16, marginVertical: 12, backgroundColor: c.surface, borderRadius: 14 },
+  list: { flex: 1 },
+  listContent: { paddingHorizontal: 16, paddingBottom: 48 },
+  countRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginVertical: 8 },
+  count: { color: c.textLight, fontSize: 13 },
+  error: { color: c.error, marginBottom: 8 },
+  empty: { alignItems: 'center', paddingVertical: 40, paddingHorizontal: 24 },
+  emptyTitle: { color: c.text, fontSize: 17, fontWeight: 'bold', marginTop: 12, marginBottom: 6 },
+  emptyText: { color: c.textLight, fontSize: 14, textAlign: 'center', lineHeight: 20 },
 }));
