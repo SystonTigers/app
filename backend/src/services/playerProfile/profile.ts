@@ -28,7 +28,7 @@ export interface SeasonLine {
 }
 
 export interface PlayerProfile {
-  player: { id: string; name: string; number: number | null; position: string | null; photo: string | null };
+  player: { id: string; name: string; firstName: string; number: number | null; position: string | null; photo: string | null };
   bio: string | null;
   bioUpdatedAt: number | null;
   /** Only the player themselves writes their bio */
@@ -44,7 +44,7 @@ export interface PlayerProfile {
 }
 
 interface SquadRow {
-  id: string; name: string; number: number | null; position: string | null; bio: string | null; bio_updated_at: number | null;
+  id: string; name: string; first_name: string | null; number: number | null; position: string | null; bio: string | null; bio_updated_at: number | null;
   headshot_url: string | null; photo_url: string | null; photo_consent: number | null; video_consent: number | null;
 }
 
@@ -63,7 +63,7 @@ export async function isThePlayer(env: Env, claims: TenantClaims, playerId: stri
 
 export async function playerProfile(env: Env, claims: TenantClaims, playerId: string): Promise<PlayerProfile | null> {
   const row = await env.DB.prepare(
-    `SELECT id, name, number, position, bio, bio_updated_at, headshot_url, photo_url, photo_consent, video_consent
+    `SELECT id, name, first_name, number, position, bio, bio_updated_at, headshot_url, photo_url, photo_consent, video_consent
      FROM squad WHERE tenant_id = ? AND id = ?`,
   ).bind(claims.tenantId, playerId).first<SquadRow>();
   if (!row) return null;
@@ -92,7 +92,7 @@ export async function playerProfile(env: Env, claims: TenantClaims, playerId: st
 
   return {
     player: {
-      id: row.id, name: row.name, number: row.number, position: row.position,
+      id: row.id, name: row.name, firstName: row.first_name || row.name.split(/\s+/)[0] || row.name, number: row.number, position: row.position,
       photo: showPhotos ? row.headshot_url || row.photo_url || null : null,
     },
     bio: row.bio?.trim() || null,

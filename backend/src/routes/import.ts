@@ -1,4 +1,5 @@
 import { json } from "../services/util";
+import { readPlayerName } from "../services/playerNames";
 import { requireTenantJWT as requireJWT } from "../services/auth";
 
 /**
@@ -259,16 +260,16 @@ export async function handleImportPlayers(req: Request, env: any, corsHdrs: Head
 
         for (let i = 0; i < rows.length; i++) {
             const row = rows[i];
-            const missing = missingFields(row, [['name', 'name', 'player_name']]);
-            if (missing) {
-                errors.push(`Row ${i + 2}: ${missing}`);
+            const name = readPlayerName({ ...row, name: row.name || row.player_name || undefined, firstName: row.first_name || row.firstname, lastName: row.last_name || row.surname || row.lastname });
+            if (!name || "error" in name) {
+                errors.push(`Row ${i + 2}: ${name ? name.error : "missing first_name and last_name (or name)"}`);
                 continue;
             }
             try {
                 const id = crypto.randomUUID();
                 const player = {
                     id,
-                    name: row.name || row.player_name,
+                    name: name.full,
                     number: parseInt(row.number || row.squad_number || '0') || null,
                     position: row.position || null,
                     dob: row.dob || row.date_of_birth || row.birthday || null,
@@ -279,12 +280,14 @@ export async function handleImportPlayers(req: Request, env: any, corsHdrs: Head
                 };
 
                 await env.DB.prepare(`
-                    INSERT INTO squad (id, tenant_id, name, number, position, photo_url, dob, bio, role, previous_club, created_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO squad (id, tenant_id, name, first_name, last_name, number, position, photo_url, dob, bio, role, previous_club, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 `).bind(
                     id,
                     tenant,
                     player.name,
+                    name.first,
+                    name.last,
                     player.number,
                     player.position,
                     player.photo_url,
@@ -434,7 +437,7 @@ export async function handleGetImportTemplate(req: Request, env: any, corsHdrs: 
     const templates: { [key: string]: string } = {
         fixtures: 'date,opponent,venue,competition,time\n2024-01-15,Rovers FC,Home,League,14:00\n2024-01-22,United,Away,Cup,15:00',
         results: 'date,opponent,home_score,away_score,venue,competition\n2024-01-08,City FC,3,1,Home,League\n2024-01-01,Town,2,2,Away,League',
-        players: 'name,number,position,dob,previous_club\nJohn Smith,9,Forward,1998-05-15,Academy FC\nDave Jones,4,Defender,1995-08-22,United Reserves',
+        players: 'first_name,last_name,number,position,dob,previous_club\nJohn,Smith,9,Forward,1998-05-15,Academy FC\nMary Jane,Van Dijk,4,Defender,1995-08-22,United Reserves',
         'match-events': 'date,player,event_type,minute\n2024-01-08,John Smith,goal,23\n2024-01-08,Dave Jones,assist,23\n2024-01-08,John Smith,goal,67',
     };
 

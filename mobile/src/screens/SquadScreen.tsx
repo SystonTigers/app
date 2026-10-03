@@ -10,6 +10,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import LinkChildCard from '../components/consent/LinkChildCard';
 import { useAuth } from '../context/AuthContext';
 import type { MyPlayer } from '../utils/playerPage';
+import { playerInitials } from '../utils/playerNames';
 
 interface PlayerStats {
   goals: number;
@@ -24,6 +25,7 @@ interface PlayerStats {
 interface Player {
   id: string;
   name: string;
+  initials: string;
   number: number;
   position: string;
   stats: PlayerStats;
@@ -74,6 +76,7 @@ export default function SquadScreen() {
         return {
           id: player.id || player.playerId || String(Math.random()),
           name: player.name || player.playerName || 'Unknown Player',
+          initials: playerInitials(player),
           number: player.number || player.shirtNumber || 0,
           position: player.position || 'Unknown',
           stats: {
@@ -103,13 +106,6 @@ export default function SquadScreen() {
     setRefreshing(true);
     await loadSquad();
   }, [loadSquad]);
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map((n) => n[0])
-      .join('');
-  };
-
   const getPositionColor = (position: string) => {
     switch (position.toLowerCase()) {
       case 'goalkeeper':
@@ -184,7 +180,7 @@ export default function SquadScreen() {
                   <View style={styles.playerInfo}>
                     <Avatar.Text
                       size={50}
-                      label={getInitials(player.name)}
+                      label={player.initials}
                       style={[styles.avatar, { backgroundColor: COLORS.primary }]}
                       labelStyle={{ color: COLORS.onPrimary }}
                     />

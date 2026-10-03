@@ -2,6 +2,7 @@
 
 import { useState, useEffect, use } from 'react';
 import { createClientSDK, updateSquad, addPlayer } from '@/lib/sdk';
+import { fullName, namePartsOf } from '@/lib/playerNames';
 import { AddPlayerModal } from '@/components/admin/AddPlayerModal';
 import { TransferCodeModal } from '@/components/TransferCodeModal';
 import { ClaimTransferModal } from '@/components/ClaimTransferModal';
@@ -14,6 +15,8 @@ interface PageProps {
 interface Player {
     id: string;
     name: string;
+    first_name: string;
+    last_name: string;
     number?: number;
     position?: string;
     dob?: string;
@@ -45,7 +48,8 @@ export default function SquadAdminPage({ params }: PageProps) {
             } else if ((data as any).data && Array.isArray((data as any).data)) {
                 list = (data as any).data;
             }
-            setPlayers(list);
+            // Older players only have `name`: show it as first name and surname
+            setPlayers(list.map((p) => ({ ...p, ...namePartsOf(p) })));
         } catch (err) {
             console.error('Failed to load squad', err);
         } finally {
@@ -60,9 +64,11 @@ export default function SquadAdminPage({ params }: PageProps) {
     }
 
     function updatePlayer(id: string, field: keyof Player, value: any) {
-        setPlayers(players.map(p =>
-            p.id === id ? { ...p, [field]: value } : p
-        ));
+        setPlayers(players.map((p) => {
+            if (p.id !== id) return p;
+            const next = { ...p, [field]: value };
+            return field === 'first_name' || field === 'last_name' ? { ...next, name: fullName(next.first_name, next.last_name) } : next;
+        }));
     }
 
     function removePlayer(id: string) {
@@ -155,12 +161,26 @@ export default function SquadAdminPage({ params }: PageProps) {
                                     />
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap">
-                                    <input
-                                        type="text"
-                                        value={player.name}
-                                        onChange={(e) => updatePlayer(player.id, 'name', e.target.value)}
-                                        className="w-full p-1 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                                    />
+                                    <div className="flex gap-2">
+                                        <input
+                                            type="text"
+                                            aria-label={`First name of ${player.name}`}
+                                            placeholder="First name"
+                                            maxLength={40}
+                                            value={player.first_name}
+                                            onChange={(e) => updatePlayer(player.id, 'first_name', e.target.value)}
+                                            className="w-full min-w-24 p-1 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                                        />
+                                        <input
+                                            type="text"
+                                            aria-label={`Surname of ${player.name}`}
+                                            placeholder="Surname"
+                                            maxLength={40}
+                                            value={player.last_name}
+                                            onChange={(e) => updatePlayer(player.id, 'last_name', e.target.value)}
+                                            className="w-full min-w-24 p-1 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                                        />
+                                    </div>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap">
                                     <select

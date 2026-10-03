@@ -11,7 +11,8 @@ interface AddPlayerModalProps {
 export function AddPlayerModal({ isOpen, onClose, onSave }: AddPlayerModalProps) {
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
-        name: '',
+        firstName: '',
+        lastName: '',
         number: '',
         position: 'Midfielder',
         role: 'Player',
@@ -56,14 +57,28 @@ export function AddPlayerModal({ isOpen, onClose, onSave }: AddPlayerModalProps)
                     {/* Basic Info */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
-                            <label className="text-sm font-medium dark:text-gray-300">Full Name *</label>
+                            <label htmlFor="player-first-name" className="text-sm font-medium dark:text-gray-300">First name *</label>
                             <input
+                                id="player-first-name"
                                 required
+                                maxLength={40}
                                 type="text"
                                 className="w-full p-2 rounded border dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                                value={formData.name}
-                                onChange={e => setFormData({ ...formData, name: e.target.value })}
-                                placeholder="e.g. Jamie Tartt"
+                                value={formData.firstName}
+                                onChange={e => setFormData({ ...formData, firstName: e.target.value })}
+                                placeholder="e.g. Mary Jane"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label htmlFor="player-last-name" className="text-sm font-medium dark:text-gray-300">Surname</label>
+                            <input
+                                id="player-last-name"
+                                maxLength={40}
+                                type="text"
+                                className="w-full p-2 rounded border dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                                value={formData.lastName}
+                                onChange={e => setFormData({ ...formData, lastName: e.target.value })}
+                                placeholder="e.g. Van Dijk"
                             />
                         </div>
                         <div className="space-y-2">

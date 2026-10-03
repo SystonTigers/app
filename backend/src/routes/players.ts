@@ -1,4 +1,5 @@
 import { json } from "../services/util";
+import { readPlayerName } from "../services/playerNames";
 import { requireJWT, type TenantClaims } from "../services/auth";
 import { canSeeFullPlayer } from "../services/playerPrivacy";
 
@@ -118,7 +119,7 @@ export async function handleGetPlayer(req: Request, env: any, corsHdrs: Headers,
         // Fallback to squad_players table
         if (!player) {
             const squadPlayer = await env.DB.prepare(`
-                SELECT id, name, number, position, dob, photo_url, role
+                SELECT id, name, first_name, last_name, number, position, dob, photo_url, role
                 FROM squad
                 WHERE id = ? AND tenant_id = ?
             `).bind(playerId, claims.tenantId).first();
@@ -146,7 +147,7 @@ export async function handleUpdatePlayer(req: Request, env: any, corsHdrs: Heade
 
         // Build update query dynamically based on provided fields
         const allowedFields = [
-            'name', 'number', 'position', 'dob', 'role',
+            'number', 'position', 'dob', 'role',
             'contact1_relationship', 'contact1_name', 'contact1_phone', 'contact1_email',
             'contact2_relationship', 'contact2_name', 'contact2_phone', 'contact2_email',
             'contact3_relationship', 'contact3_name', 'contact3_phone', 'contact3_email',
@@ -154,6 +155,13 @@ export async function handleUpdatePlayer(req: Request, env: any, corsHdrs: Heade
 
         const updates: string[] = [];
         const values: any[] = [];
+
+        const name = readPlayerName(body);
+        if (name && "error" in name) return json({ success: false, error: name.error }, 400, corsHdrs);
+        if (name) {
+            updates.push("name = ?", "first_name = ?", "last_name = ?");
+            values.push(name.full, name.first, name.last);
+        }
 
         for (const field of allowedFields) {
             if (body[field] !== undefined) {

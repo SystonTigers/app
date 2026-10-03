@@ -396,7 +396,7 @@ fix123,player456,,45`;
             const response = await handleGetImportTemplate(req, env, corsHdrs, "players");
 
             const text = await response.text();
-            expect(text).toContain("name,number,position");
+            expect(text).toContain("first_name,last_name,number,position");
         });
 
         it("returns match-events template", async () => {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { initialLastName, publicName, publicPhoto, publicScorers, shortName } from "../publicNames";
+import { initialLastName, nameKey, publicName, publicPhoto, publicScorers, shortName, type NameStyle, type PublicNamePolicy } from "../publicNames";
 
 describe("public player names", () => {
   it("shortens to first name and surname initial", () => {
@@ -42,5 +42,31 @@ describe("public player names", () => {
     expect(publicScorers(first, ["Alfie Smith 2", "Ben Jones"])).toEqual(["Alfie S. 2", "Ben J."]);
     expect(publicScorers(last, ["Alfie Smith 2"])).toEqual(["A. Smith 2"]);
     expect(publicScorers(full, ["Alfie Smith 2"])).toEqual(["Alfie Smith 2"]);
+  });
+});
+
+describe("names staff split into first name and surname", () => {
+  const names = new Map([
+    [nameKey("Mary Jane Watson"), { first: "Mary Jane", last: "Watson" }],
+    [nameKey("Virgil Van Dijk"), { first: "Virgil", last: "Van Dijk" }],
+    [nameKey("Pele"), { first: "Pele", last: null }],
+  ]);
+  const policy = (style: NameStyle): PublicNamePolicy => ({ style, photos: false, names });
+
+  it("uses the stored split for every style", () => {
+    expect(publicName(policy("first_initial"), "Mary Jane Watson")).toBe("Mary Jane W.");
+    expect(publicName(policy("initial_last"), "Virgil Van Dijk")).toBe("V. Van Dijk");
+    expect(publicName(policy("last"), "Virgil Van Dijk")).toBe("Van Dijk");
+    expect(publicName(policy("first"), "Mary Jane Watson")).toBe("Mary Jane");
+    expect(publicName(policy("initial_last"), "Pele")).toBe("Pele");
+  });
+
+  it("keeps goal counts and notes after a known name, and ignores case and spacing", () => {
+    expect(publicName(policy("initial_last"), "virgil  van dijk 2")).toBe("V. Van Dijk 2");
+    expect(publicScorers(policy("first_initial"), ["Mary Jane Watson pen", "Sam Smith"])).toEqual(["Mary Jane W. pen", "Sam S."]);
+  });
+
+  it("falls back to first word and last word for names it doesn't know", () => {
+    expect(publicName(policy("initial_last"), "Alfie James Smith")).toBe("A. Smith");
   });
 });

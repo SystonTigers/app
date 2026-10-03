@@ -12,6 +12,8 @@ const TEAM_SHEET_FIELDS = [
   "id",
   "tenant_id",
   "name",
+  "first_name",
+  "last_name",
   "number",
   "squad_number",
   "position",

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, use } from 'react';
+import { fullName, namePartsOf } from '@/lib/playerNames';
 import { createClientSDK } from '@/lib/sdk';
 import Link from 'next/link';
 import { apiFetch, API_BASE } from '@/lib/session';
@@ -29,6 +30,8 @@ interface Contact {
 interface PlayerDetails {
     id: string;
     name: string;
+    first_name: string;
+    last_name: string;
     number?: number;
     position?: string;
     dob?: string;
@@ -64,7 +67,8 @@ export default function PlayerDetailsPage({ params }: PageProps) {
             const sdk = createClientSDK(tenant);
             const data = await sdk.getPlayer(playerId);
             if (data) {
-                setPlayer(data as unknown as PlayerDetails);
+                const loaded = data as unknown as PlayerDetails;
+                setPlayer({ ...loaded, ...namePartsOf(loaded) });
             }
         } catch (err) {
             console.error('Failed to load player', err);
@@ -75,7 +79,8 @@ export default function PlayerDetailsPage({ params }: PageProps) {
 
     function updateField(field: keyof PlayerDetails, value: any) {
         if (!player) return;
-        setPlayer({ ...player, [field]: value });
+        const next = { ...player, [field]: value };
+        setPlayer(field === 'first_name' || field === 'last_name' ? { ...next, name: fullName(next.first_name, next.last_name) } : next);
     }
 
     async function handleSave() {
@@ -214,11 +219,24 @@ export default function PlayerDetailsPage({ params }: PageProps) {
                     <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Basic Information</h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name</label>
+                            <label htmlFor="first-name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">First name</label>
                             <input
+                                id="first-name"
                                 type="text"
-                                value={player.name}
-                                onChange={(e) => updateField('name', e.target.value)}
+                                maxLength={40}
+                                value={player.first_name}
+                                onChange={(e) => updateField('first_name', e.target.value)}
+                                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            />
+                        </div>
+                        <div>
+                            <label htmlFor="last-name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Surname</label>
+                            <input
+                                id="last-name"
+                                type="text"
+                                maxLength={40}
+                                value={player.last_name}
+                                onChange={(e) => updateField('last_name', e.target.value)}
                                 className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                             />
                         </div>

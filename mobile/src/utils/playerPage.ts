@@ -34,7 +34,7 @@ export interface GoalClip {
 }
 
 export interface PlayerProfile {
-  player: { id: string; name: string; number: number | null; position: string | null; photo: string | null };
+  player: { id: string; name: string; firstName: string; number: number | null; position: string | null; photo: string | null };
   bio: string | null;
   bioUpdatedAt: number | null;
   canEditBio: boolean;

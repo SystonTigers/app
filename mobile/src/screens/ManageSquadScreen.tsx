@@ -17,10 +17,13 @@ import { themedStyles, useBrandColors } from '../theme/brand';
 import { FONTS } from '../theme/brandFonts';
 import { squadApi, statsApi } from '../services/api';
 import SeasonStatsModal from '../components/squad/SeasonStatsModal';
+import { namePartsOf, playerInitials } from '../utils/playerNames';
 
 interface Player {
   id: string;
   name: string;
+  firstName: string;
+  lastName: string;
   number: number | null;
   position: string;
   photo?: string;
@@ -42,7 +45,7 @@ export default function ManageSquadScreen() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingPlayer, setEditingPlayer] = useState<Player | null>(null);
-  const [formData, setFormData] = useState({ name: '', number: '', position: 'Forward' });
+  const [formData, setFormData] = useState({ firstName: '', lastName: '', number: '', position: 'Forward' });
   // Player whose season stats are open
   const [statsFor, setStatsFor] = useState<Player | null>(null);
 
@@ -63,6 +66,8 @@ export default function ManageSquadScreen() {
         return {
           id: p.id || p.playerId,
           name: p.name || `${p.firstName || ''} ${p.lastName || ''}`.trim(),
+          firstName: namePartsOf(p).first,
+          lastName: namePartsOf(p).last,
           number: shirt === null || shirt === undefined || shirt === '' ? null : Number(shirt),
           position: p.position || 'Forward',
           goals: t.goals || 0,
@@ -84,21 +89,22 @@ export default function ManageSquadScreen() {
 
   const openAddModal = () => {
     setEditingPlayer(null);
-    setFormData({ name: '', number: '', position: 'Forward' });
+    setFormData({ firstName: '', lastName: '', number: '', position: 'Forward' });
     setShowModal(true);
   };
 
   const openEditModal = (player: Player) => {
     setEditingPlayer(player);
-    setFormData({ name: player.name, number: player.number === null ? '' : String(player.number), position: player.position });
+    setFormData({ firstName: player.firstName, lastName: player.lastName, number: player.number === null ? '' : String(player.number), position: player.position });
     setShowModal(true);
   };
 
   const handleSave = async () => {
-    const name = formData.name.trim();
+    const firstName = formData.firstName.trim();
+    const lastName = formData.lastName.trim();
     const number = formData.number.trim();
-    if (!name) {
-      Alert.alert('Name needed', "Enter the player's name.");
+    if (!firstName) {
+      Alert.alert('Name needed', "Enter the player's first name.");
       return;
     }
     if (number && !/^\d{1,3}$/.test(number)) {
@@ -106,7 +112,7 @@ export default function ManageSquadScreen() {
       return;
     }
     try {
-      const playerData = { name, number: number ? Number(number) : null, position: formData.position };
+      const playerData = { firstName, lastName, number: number ? Number(number) : null, position: formData.position };
 
       if (editingPlayer) {
         await squadApi.updatePlayer(editingPlayer.id, playerData);
@@ -148,14 +154,6 @@ export default function ManageSquadScreen() {
     );
   };
 
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map((n) => n[0])
-      .join('')
-      .toUpperCase();
-  };
-
   if (loading) {
     return (
       <View style={[styles.container, styles.centerContent]}>
@@ -190,7 +188,7 @@ export default function ManageSquadScreen() {
                     <View style={styles.playerLeft}>
                       <Avatar.Text
                         size={60}
-                        label={getInitials(player.name)}
+                        label={playerInitials({ first_name: player.firstName, last_name: player.lastName, name: player.name })}
                         style={styles.avatar}
                         color={COLORS.primary}
                       />
@@ -279,13 +277,27 @@ export default function ManageSquadScreen() {
               {editingPlayer ? 'Edit Player' : 'Add New Player'}
             </Title>
 
-            <TextInput
-              label="Player Name"
-              value={formData.name}
-              onChangeText={(text) => setFormData({ ...formData, name: text })}
-              style={styles.input}
-              mode="outlined"
-            />
+            <View style={styles.row}>
+              <TextInput
+                label="First name"
+                accessibilityLabel="First name"
+                value={formData.firstName}
+                onChangeText={(text) => setFormData({ ...formData, firstName: text })}
+                style={[styles.input, styles.halfInput]}
+                mode="outlined"
+                maxLength={40}
+              />
+              <TextInput
+                label="Surname"
+                accessibilityLabel="Surname"
+                value={formData.lastName}
+                onChangeText={(text) => setFormData({ ...formData, lastName: text })}
+                style={[styles.input, styles.halfInput]}
+                mode="outlined"
+                maxLength={40}
+              />
+            </View>
+            <Paragraph style={styles.nameHelp}>Two-word names go in one box, e.g. first name &quot;Mary Jane&quot; or surname &quot;Van Dijk&quot;. Posts use these for &quot;S. Smith&quot; style names.</Paragraph>
 
             <View style={styles.row}>
               <TextInput
@@ -521,6 +533,12 @@ const useStyles = themedStyles((COLORS) => ({
   halfInput: {
     flex: 1,
     marginRight: 8,
+  },
+  nameHelp: {
+    fontSize: 12,
+    marginTop: -4,
+    marginBottom: 12,
+    opacity: 0.7,
   },
   chipGroup: {
     marginTop: 8,

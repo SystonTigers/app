@@ -1,4 +1,5 @@
 import { json } from "../services/util";
+import { readPlayerName } from "../services/playerNames";
 import { requireJWT, requireStaff, type TenantClaims } from "../services/auth";
 import { playersForViewer } from "../services/playerPrivacy";
 
@@ -90,10 +91,12 @@ export async function handleUpdateSquad(req: Request, env: any, corsHdrs: Header
         // 2. Sync to D1
         if (body.length > 0) {
             const stmt = env.DB.prepare(`
-                INSERT INTO squad (id, tenant_id, name, number, position, photo_url, dob, bio, role, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO squad (id, tenant_id, name, first_name, last_name, number, position, photo_url, dob, bio, role, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(id) DO UPDATE SET
                     name=excluded.name,
+                    first_name=excluded.first_name,
+                    last_name=excluded.last_name,
                     number=excluded.number,
                     position=excluded.position,
                     photo_url=excluded.photo_url,
@@ -101,8 +104,13 @@ export async function handleUpdateSquad(req: Request, env: any, corsHdrs: Header
                     bio=excluded.bio,
                     role=excluded.role
             `);
-            const batch = body.map((p: any) => stmt.bind(
-                p.id, tenant, p.name, p.number || null, p.position || null, p.photo_url || null,
+            const named = body.map((p: any) => ({ p, name: readPlayerName(p) }));
+            const bad = named.find((x) => !x.name || "error" in x.name);
+            if (bad) {
+                return json({ success: false, error: bad.name && "error" in bad.name ? bad.name.error : "Every player needs a first name." }, 400, corsHdrs);
+            }
+            const batch = named.map(({ p, name }: { p: any; name: any }) => stmt.bind(
+                p.id, tenant, name.full, name.first, name.last, p.number || null, p.position || null, p.photo_url || null,
                 p.dob || null, p.bio || null, p.role || 'Player', p.created_at || Date.now()
             ));
             await env.DB.batch(batch);
@@ -162,9 +170,10 @@ export async function handleAddPlayer(req: Request, env: any, corsHdrs: Headers)
         const body = await req.json() as AddPlayerRequest;
 
         // Validate required fields
-        if (!body.name) {
-            return json({ success: false, error: "Player name is required" }, 400, corsHdrs);
-        }
+        const name = readPlayerName(body as unknown as Record<string, unknown>);
+        if (!name) return json({ success: false, error: "Enter the player's first name and surname." }, 400, corsHdrs);
+        if ("error" in name) return json({ success: false, error: name.error }, 400, corsHdrs);
+        body.name = name.full;
 
         const shirt = shirtNumber(body);
         if (shirt !== undefined) body.squadNumber = shirt ?? undefined;
@@ -174,12 +183,14 @@ export async function handleAddPlayer(req: Request, env: any, corsHdrs: Headers)
 
         // Insert player into squad table
         await env.DB.prepare(
-            `INSERT INTO squad (id, tenant_id, name, position, number, photo_url, dob, previous_club, signed_date, created_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+            `INSERT INTO squad (id, tenant_id, name, first_name, last_name, position, number, photo_url, dob, previous_club, signed_date, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
         ).bind(
             playerId,
             claims.tenantId,
-            body.name,
+            name.full,
+            name.first,
+            name.last,
             body.position || null,
             body.squadNumber || null,
             body.photoUrl || null,
@@ -280,9 +291,11 @@ export async function handleUpdatePlayer(req: Request, env: any, corsHdrs: Heade
         const updates: string[] = [];
         const values: any[] = [];
 
-        if (body.name !== undefined) {
-            updates.push("name = ?");
-            values.push(body.name);
+        const name = readPlayerName(body as unknown as Record<string, unknown>);
+        if (name && "error" in name) return json({ success: false, error: name.error }, 400, corsHdrs);
+        if (name) {
+            updates.push("name = ?", "first_name = ?", "last_name = ?");
+            values.push(name.full, name.first, name.last);
         }
         if (body.position !== undefined) {
             updates.push("position = ?");

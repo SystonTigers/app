@@ -55,7 +55,7 @@ export default function PlayerScreen({ navigation, route }: { navigation: any; r
   }
 
   const { player } = profile;
-  const firstName = player.name.split(/\s+/)[0] || player.name;
+  const firstName = player.firstName || player.name;
   const cards = cardsText(profile.career);
 
   return (
