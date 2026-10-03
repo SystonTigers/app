@@ -2,13 +2,14 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { View, ScrollView, StyleSheet, RefreshControl } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../theme/useTheme';
 import { Fixture, getUpcomingFixtures, formatFixtureDate, formatKickOffTime } from '../services/fixturesApi';
 import { feedApi, fixturesApi, liveApi } from '../services/api';
 import { scoreline, statusLabel, type LiveMatchView } from '../utils/liveMatch';
 import { useClub } from '../context/ClubContext';
 import { useMatchDay } from '../context/MatchDayContext';
-import { isOurTeam } from '../utils/clubMatch';
+import { stripFor, type LeagueSnapshot } from '../utils/leagueTable';
 
 import HighlightCard from '../components/HighlightCard';
 import ResultCard from '../components/ResultCard';
@@ -18,19 +19,15 @@ import InstallPrompt from '../components/InstallPrompt';
 import ConsentPrompt from '../components/ConsentPrompt';
 import HomeHeader from '../components/home/HomeHeader';
 import NextMatchCard from '../components/home/NextMatchCard';
-import LeagueSnapshot from '../components/home/LeagueSnapshot';
+import LeagueStrip from '../components/home/LeagueStrip';
 import LiveCard from '../components/home/LiveCard';
 import QuickActions, { type QuickAction } from '../components/home/QuickActions';
 import SectionTitle from '../components/home/SectionTitle';
 import { isStaffRole } from '../utils/roles';
 import { useAuth } from '../context/AuthContext';
 
-interface QuickStats {
-  position: string;
-  points: string;
-  won: string;
-  goalDifference: string;
-}
+/** While a match is live the score and "as it stands" table refresh this often. */
+const LIVE_REFRESH_MS = 30000;
 
 /** "5 minutes ago" style label for a post date (ISO string or epoch ms). */
 function timeAgo(value: unknown): string {
@@ -60,7 +57,7 @@ export default function HomeScreen({ navigation }: any) {
   const [fixturesLoading, setFixturesLoading] = useState(true);
   const [newsPosts, setNewsPosts] = useState<any[]>([]);
   const [feedItems, setFeedItems] = useState<any[]>([]);
-  const [quickStats, setQuickStats] = useState<QuickStats | null>(null);
+  const [league, setLeague] = useState<LeagueSnapshot | null>(null);
   const [liveMatches, setLiveMatches] = useState<LiveMatchView[]>([]);
 
   const loadData = useCallback(async () => {
@@ -70,21 +67,14 @@ export default function HomeScreen({ navigation }: any) {
         getUpcomingFixtures({ limit: 2 }),
         feedApi.getPosts(1, 10),
         // The table and live score are optional: they must not blank the rest of the page.
-        fixturesApi.getLeagueTable().catch(() => null),
+        fixturesApi.getLeagueSnapshot().catch(() => null),
         liveApi.list().catch(() => ({ data: [] as LiveMatchView[] })),
       ]);
       const onNow = live.data.filter((m) => m.status === 'live' || m.status === 'half_time');
       setLiveMatches(onNow);
       // A match that's on now shows as the live card, so "next up" is the one after it
       setNextFixture(fixtures.find((f) => !onNow.some((m) => String(m.fixture.id) === String(f.id))) || null);
-      const rows: any[] = Array.isArray(table?.data) ? table.data : [];
-      const ourRow = rows.find((row) => isOurTeam(row.team_name, club));
-      setQuickStats(ourRow ? {
-        position: String(ourRow.position ?? '-'),
-        points: String(ourRow.points ?? '-'),
-        won: String(ourRow.won ?? '-'),
-        goalDifference: String((ourRow.goals_for ?? 0) - (ourRow.goals_against ?? 0)),
-      } : null);
+      setLeague(table);
       const allPosts = Array.isArray(news.data) ? news.data : [];
       setNewsPosts(allPosts.filter((p: any) => p.type === 'news' || !p.type));
       // Extract result and highlight items from feed
@@ -100,6 +90,22 @@ export default function HomeScreen({ navigation }: any) {
     loadData();
   }, [loadData]);
 
+  // During a match: keep the live score and "as it stands" table fresh while Home is open
+  const anyLive = liveMatches.length > 0;
+  useFocusEffect(useCallback(() => {
+    if (!anyLive) return undefined;
+    const refreshLive = async () => {
+      const [live, table] = await Promise.all([
+        liveApi.list().catch(() => null),
+        fixturesApi.getLeagueSnapshot().catch(() => null),
+      ]);
+      if (live) setLiveMatches(live.data.filter((m) => m.status === 'live' || m.status === 'half_time'));
+      if (table) setLeague(table);
+    };
+    const timer = setInterval(refreshLive, LIVE_REFRESH_MS);
+    return () => clearInterval(timer);
+  }, [anyLive]));
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await loadData();
@@ -113,6 +119,7 @@ export default function HomeScreen({ navigation }: any) {
   const videoFirst = (day?.fixtures ?? [])
     .filter((f) => f.stream?.status === 'live' && f.matchStatus !== 'full_time' && !liveMatches.some((m) => m.fixture.id === f.id));
   const matchToday = (day?.fixtures ?? []).length > 0;
+  const strip = stripFor(league);
   const actions: QuickAction[] = [
     { label: 'Live Match', icon: 'whistle', onPress: () => navigation.navigate('LiveMatch'), highlight: matchToday || liveMatches.length > 0 },
     { label: 'Fixtures', icon: 'calendar-month', onPress: () => navigation.navigate('Matches') },
@@ -204,17 +211,16 @@ export default function HomeScreen({ navigation }: any) {
         </>
       ) : null}
 
-      {/* League position (only when the club is in the table) */}
-      {quickStats ? (
+      {/* Our league row and the teams around us; "as it stands" during a league game */}
+      {strip && league?.ourTeam ? (
         <>
-          <SectionTitle title="THE TABLE" color={color} />
-          <LeagueSnapshot
-            position={Number(quickStats.position) || null}
-            points={quickStats.points}
-            won={quickStats.won}
-            goalDifference={Number(quickStats.goalDifference) || 0}
+          <SectionTitle title={strip.live ? 'LIVE TABLE' : 'THE TABLE'} color={color} />
+          <LeagueStrip
+            rows={strip.rows}
+            ourTeam={league.ourTeam}
+            live={strip.live}
             color={color}
-            onPress={() => navigation.navigate('LeagueTable')}
+            onPress={() => navigation.navigate(strip.live ? 'LiveMatch' : 'LeagueTable')}
           />
         </>
       ) : null}

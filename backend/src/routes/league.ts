@@ -5,9 +5,12 @@
  *   POST   /api/v1/club/league/paste    club staff: { text } results or a table copied from the league's website
  *   PUT    /api/v1/club/league          club admins: { competition?, ourTeam?, seasonStart? }
  *   DELETE /api/v1/club/league/results  club admins: forget pasted results (start again)
+ *   GET    /api/v1/league/snapshot       members: our row, the teams around us and, during a
+ *                                        league game, the table as it stands (services/league/snapshot.ts)
  */
 import { json } from "../services/util";
-import { hasAnyRole, requireStaff, type TenantClaims } from "../services/auth";
+import { hasAnyRole, requireStaff, requireTenantJWT, type TenantClaims } from "../services/auth";
+import { leagueSnapshot } from "../services/league/snapshot";
 import { logJSON } from "../lib/log";
 import { parseLeaguePaste } from "../services/league/parse";
 import {
@@ -156,4 +159,21 @@ export async function handleClearLeagueResults(req: Request, env: Env, corsHdrs:
   const settings = await loadLeagueSettings(db, claims.tenantId);
   await saveLeagueSettings(db, claims.tenantId, { ...settings, mode: "results" });
   return json({ success: true, data: await overview(db, claims.tenantId) }, 200, corsHdrs);
+}
+
+/** Members: the league at a glance, and "as it stands" while one of our league games is on. */
+export async function handleLeagueSnapshot(req: Request, env: Env, corsHdrs: Headers): Promise<Response> {
+  let claims: TenantClaims;
+  try {
+    claims = await requireTenantJWT(req, env);
+  } catch {
+    return fail(corsHdrs, 401, "UNAUTHORIZED", "Please log in again.");
+  }
+  try {
+    const data = await leagueSnapshot(env, claims.tenantId);
+    return json({ success: true, data }, 200, corsHdrs);
+  } catch (err) {
+    logJSON({ level: "error", msg: "league_snapshot_failed", tenantId: claims.tenantId, error: err instanceof Error ? err.message : String(err) });
+    return fail(corsHdrs, 500, "INTERNAL", "The league table couldn't load. Please try again.");
+  }
 }

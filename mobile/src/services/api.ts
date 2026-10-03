@@ -8,6 +8,7 @@ import { API_BASE_URL } from '../config';
 import { AUTH_STORAGE_KEYS, authStorage, type AuthStorageKey } from './authStorage';
 import { getTenantId } from './club';
 import { appendPhoto } from './photoUpload';
+import type { LeagueSnapshot } from '../utils/leagueTable';
 
 // Re-exported for existing imports
 export { AUTH_STORAGE_KEYS };
@@ -578,6 +579,14 @@ export const fixturesApi = {
       params: { tenant: getTenantId() },
     });
     return response.data;
+  },
+
+  /** Our row, the teams around us and, during a league game, the table as it stands. */
+  getLeagueSnapshot: async (): Promise<LeagueSnapshot> => {
+    const response = await api.get('/api/v1/league/snapshot', {
+      params: { tenant: getTenantId() },
+    });
+    return response.data.data;
   },
 };
 

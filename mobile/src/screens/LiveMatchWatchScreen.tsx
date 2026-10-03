@@ -6,7 +6,9 @@ import { themedStyles, useBrandColors } from '../theme/brand';
 import { FONTS } from '../theme/brandFonts';
 import { useClubName } from '../context/ClubContext';
 import { useMatchDay } from '../context/MatchDayContext';
-import { apiErrorMessage, liveApi } from '../services/api';
+import { apiErrorMessage, fixturesApi, liveApi } from '../services/api';
+import type { LeagueSnapshot } from '../utils/leagueTable';
+import LiveLeagueTable from '../components/live/LiveLeagueTable';
 import type { LiveMatchView } from '../utils/liveMatch';
 import Card from '../components/ui/Card';
 import ScoreHeader from '../components/live/ScoreHeader';
@@ -16,8 +18,9 @@ import { fixtureTitle } from '../utils/matchDay';
 
 /**
  * Live Match (everyone): today's score and updates from the touchline,
- * refreshed every 15 seconds while a match is on, with the match's live video
- * and "I'm at the match" (pauses match alerts).
+ * refreshed every 15 seconds while a match is on, with the match's live video,
+ * "I'm at the match" (pauses match alerts) and, for league games, the table
+ * as it stands.
  */
 export default function LiveMatchWatchScreen() {
   const COLORS = useBrandColors();
@@ -29,11 +32,17 @@ export default function LiveMatchWatchScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
   const [focused, setFocused] = useState(false);
+  const [league, setLeague] = useState<LeagueSnapshot | null>(null);
 
   const load = useCallback(async () => {
     try {
-      const res = await liveApi.list();
+      const [res, table] = await Promise.all([
+        liveApi.list(),
+        // The table is extra: a failure here mustn't hide the score
+        fixturesApi.getLeagueSnapshot().catch(() => null),
+      ]);
       setMatches(res.data);
+      setLeague(table);
       setError('');
     } catch (err) {
       setError(apiErrorMessage(err, "We couldn't load the live match. Pull down to try again."));
@@ -89,6 +98,9 @@ export default function LiveMatchWatchScreen() {
             {today ? <MatchDayPanel fixture={today} /> : null}
             <ScoreHeader match={m} clubName={clubName} />
             <LiveTimeline events={m.events} opponent={m.fixture.opponent} usIsHome={m.fixture.homeAway !== 'away'} />
+            {league?.live && league.ourTeam && String(league.live.fixtureId) === String(m.fixture.id) ? (
+              <LiveLeagueTable live={league.live} ourTeam={league.ourTeam} competition={league.competition} />
+            ) : null}
           </Card>
         );
       })}

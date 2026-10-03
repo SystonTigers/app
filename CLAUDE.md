@@ -244,6 +244,13 @@ with personal data.
   (`mode = 'table'`) and isn't touched by later results until the next paste.
 - The website, app and weekly table graphic all read `league_standings`;
   `/public/:club/table` returns `meta.source` so pages can say how it's sorted.
+- `GET /api/v1/league/snapshot` (members, `services/league/snapshot.ts`): our
+  row with the teams around us (app Home: `LeagueStrip`) and, while one of our
+  league games is live or at half time, `live.rows`: the table "as it stands"
+  with the live score counted (`live.ts`, nothing saved; full time saves it).
+  League games are fixtures with no competition, "League" or the table's own
+  competition name. Live Match shows the whole live table; Home refreshes
+  every 30 s during a match.
 
 ## Results, seasons and gallery
 
