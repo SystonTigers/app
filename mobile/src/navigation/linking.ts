@@ -26,6 +26,7 @@ const DRAWER_PATHS: Record<string, string> = {
   MatchCentre: 'match-centre',
   ManageMOTM: 'manage/man-of-the-match',
   ManagePlayerImages: 'manage/player-images',
+  ClubSettings: 'manage/club-settings',
   PushNotificationsSetup: 'manage/notifications',
   Profile: 'profile',
   MediaConsent: 'consent',

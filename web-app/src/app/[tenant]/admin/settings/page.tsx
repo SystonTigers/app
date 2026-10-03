@@ -4,13 +4,14 @@ import { Suspense, use } from 'react';
 import Link from 'next/link';
 import { SocialSettings } from '@/components/SocialSettings';
 import { LiveVideoSettings } from '@/components/LiveVideoSettings';
+import { ClubBadgeSettings } from '@/components/ClubBadgeSettings';
 
 interface PageProps {
     params: Promise<{ tenant: string }>;
 }
 
 /**
- * Club settings hub: FA Full-Time snippets (league table, fixtures, results), how players appear
+ * Club settings hub: the club badge, FA Full-Time snippets (league table, fixtures, results), how players appear
  * publicly, the Facebook/Instagram connection, automatic posting and live match video.
  */
 export default function SettingsPage({ params }: PageProps) {
@@ -29,10 +30,11 @@ export default function SettingsPage({ params }: PageProps) {
         <div className="container mx-auto p-6 space-y-6">
             <div className="bg-gradient-to-r from-brand to-brand/80 text-white p-6 rounded-lg">
                 <h2 className="text-2xl font-bold">Settings</h2>
-                <p className="text-sm opacity-90">League table, privacy, automatic posts and live video for your club</p>
+                <p className="text-sm opacity-90">Badge, league table, privacy, automatic posts and live video for your club. Also in the app: Manager Zone → Club Settings.</p>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
+                <ClubBadgeSettings />
                 {sections.map((section) => (
                     <Link
                         key={section.href}

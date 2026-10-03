@@ -37,7 +37,7 @@ export class MediaError extends Error {
   }
 }
 
-interface MediaEnv {
+export interface MediaEnv {
   R2_MEDIA?: R2Bucket;
   R2_PUBLIC_URL?: string;
 }

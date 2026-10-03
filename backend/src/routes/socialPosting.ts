@@ -5,8 +5,8 @@
  *   GET    /api/v1/social/settings                 staff
  *   PUT    /api/v1/social/settings                 club admins: { undoWindow?, events?, pack?, sponsorName?, nameStyle? }
  *                                                  managers: { nameStyle } only
- *   POST   /api/v1/social/meta/start               club admins -> { url } to send them to Facebook
- *   GET    /api/v1/social/meta/callback            Facebook sends them back here
+ *   POST   /api/v1/social/meta/start               club admins: { from?: "app" } -> { url } to send them to Facebook
+ *   GET    /api/v1/social/meta/callback            Facebook sends them back here (website: redirect; app: a "go back" page)
  *   POST   /api/v1/social/meta/select              club admins: { key, pageId } when they run several Pages
  *   DELETE /api/v1/social/connections/:platform    club admins
  *   POST   /api/v1/social/jobs/:id/graphic         staff: JPEG body
@@ -19,6 +19,7 @@ import { isPostKind, POST_KINDS, type EventSettings } from "../services/social/c
 import { attachImage, loadClubSocial, processDueJobs, type SocialEnv } from "../services/social/jobs";
 import { getPublicNamePolicy, isNameStyle } from "../services/publicNames";
 import { getPack, PACKS } from "../services/graphics/packs";
+import { appReturnPage, clearPendingChoice, loadPendingChoice, savePendingChoice, type ConnectOutcome } from "../services/social/metaAppReturn";
 
 type Env = SocialEnv & { KV_IDEMP: KVNamespace; APP_BASE_URL?: string; FRONTEND_URL?: string; [key: string]: unknown };
 
@@ -57,10 +58,19 @@ async function settingsPage(env: Env, tenantId: string, params: Record<string, s
 export async function handleGetSocialSettings(req: Request, env: Env, corsHdrs: Headers): Promise<Response> {
   const claims = await staff(req, env, corsHdrs);
   if (claims instanceof Response) return claims;
-  const [club, policy] = await Promise.all([loadClubSocial(env, claims.tenantId), getPublicNamePolicy(env, claims.tenantId)]);
+  const canManage = hasAnyRole(claims, ADMIN_ROLES);
+  const [club, policy, pendingChoice] = await Promise.all([
+    loadClubSocial(env, claims.tenantId),
+    getPublicNamePolicy(env, claims.tenantId),
+    canManage ? loadPendingChoice(env.KV_IDEMP, claims.tenantId) : Promise.resolve(null),
+  ]);
   return json({
     success: true,
     data: {
+      /** Club admins change everything here; managers only the name style */
+      canManage,
+      /** Facebook Pages waiting to be chosen after connecting from the app */
+      pendingChoice,
       nameStyle: policy.style,
       photos: policy.photos,
       undoWindow: club.undoWindow,
@@ -138,8 +148,10 @@ export async function handleStartMetaConnect(req: Request, env: Env, corsHdrs: H
   if (!metaConfigured(env) || !env.SOCIAL_TOKEN_KEY) {
     return fail(corsHdrs, 503, "NOT_SET_UP", "Facebook and Instagram posting isn't set up on the server yet.");
   }
+  const body = (await req.json().catch(() => ({}))) as { from?: unknown };
+  const from = body?.from === "app" ? "app" : "web";
   const state = crypto.randomUUID();
-  await env.KV_IDEMP.put(`meta_state:${state}`, JSON.stringify({ tenantId: claims.tenantId, userId: claims.userId ?? null }), { expirationTtl: 600 });
+  await env.KV_IDEMP.put(`meta_state:${state}`, JSON.stringify({ tenantId: claims.tenantId, userId: claims.userId ?? null, from }), { expirationTtl: 600 });
   return json({ success: true, data: { url: loginUrl(env, callbackUrl(env), state) } }, 200, corsHdrs);
 }
 
@@ -169,11 +181,15 @@ async function saveConnection(env: Env, tenantId: string, userId: string | null,
 export async function handleMetaCallback(req: Request, env: Env): Promise<Response> {
   const url = new URL(req.url);
   const state = url.searchParams.get("state") ?? "";
-  const saved = state ? await env.KV_IDEMP.get(`meta_state:${state}`, "json") as { tenantId: string; userId: string | null } | null : null;
+  const saved = state ? await env.KV_IDEMP.get(`meta_state:${state}`, "json") as { tenantId: string; userId: string | null; from?: string } | null : null;
   if (!saved) return new Response("This link has expired. Go back to your club settings and click Connect again.", { status: 400 });
   await env.KV_IDEMP.delete(`meta_state:${state}`);
 
-  const back = (params: Record<string, string>) => settingsPage(env, saved.tenantId, params).then((to) => Response.redirect(to, 302));
+  const back = async (params: { social: ConnectOutcome; key?: string }): Promise<Response> => {
+    if (saved.from !== "app") return settingsPage(env, saved.tenantId, params as Record<string, string>).then((to) => Response.redirect(to, 302));
+    if (params.social === "choose" && params.key) await savePendingChoice(env.KV_IDEMP, saved.tenantId, params.key);
+    return appReturnPage(params.social);
+  };
   const code = url.searchParams.get("code");
   if (!code) return back({ social: "cancelled" });
 
@@ -216,6 +232,7 @@ export async function handleSelectMetaPage(req: Request, env: Env, corsHdrs: Hea
   if (!page) return fail(corsHdrs, 400, "VALIDATION", "Choose one of your Pages.");
   await saveConnection(env, claims.tenantId, saved.userId, page);
   await env.KV_IDEMP.delete(`meta_pages:${body.key as string}`);
+  await clearPendingChoice(env.KV_IDEMP, claims.tenantId);
   return handleGetSocialSettings(req, env, corsHdrs);
 }
 

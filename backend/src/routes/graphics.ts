@@ -2,7 +2,7 @@
  * Graphics styles for automatic posts.
  *
  *   GET    /api/v1/social/graphics/preview/:pack/:sample   staff: JPEG preview with the club's colours and badge
- *   POST   /api/v1/social/sponsor-logo                     club admins: PNG/JPEG body
+ *   POST   /api/v1/social/sponsor-logo                     club admins: PNG/JPEG body, or a form field named "logo"
  *   DELETE /api/v1/social/sponsor-logo                     club admins
  *   GET    /api/v1/admin/tenants/:id/graphics              platform owner: packs and which are unlocked
  *   PUT    /api/v1/admin/tenants/:id/graphics/:pack        platform owner: unlock a premium pack
@@ -15,6 +15,7 @@ import { PACKS, packsIncludedWith } from "../services/graphics/packs";
 import { sampleGraphics } from "../services/graphics/samples";
 import { imageMime } from "../services/graphics/images";
 import { deleteMedia, keyFromMediaUrl, mediaUrl, putMedia } from "../services/media";
+import { readImageUpload } from "../services/imageUpload";
 
 type Env = SocialEnv & { [key: string]: unknown };
 
@@ -67,12 +68,12 @@ export async function handleGraphicPreview(req: Request, env: Env, corsHdrs: Hea
 export async function handleUploadSponsorLogo(req: Request, env: Env, corsHdrs: Headers): Promise<Response> {
   const claims = await staff(req, env, corsHdrs, true);
   if (claims instanceof Response) return claims;
-  const bytes = new Uint8Array(await req.arrayBuffer());
-  if (!bytes.length || bytes.length > MAX_LOGO_BYTES) return fail(corsHdrs, 400, "VALIDATION", "The logo must be a PNG or JPG under 2 MB.");
+  const bytes = await readImageUpload(req, "logo");
+  if (!bytes || !bytes.length || bytes.length > MAX_LOGO_BYTES) return fail(corsHdrs, 400, "VALIDATION", "The logo must be a PNG or JPG under 2 MB.");
   const mime = imageMime(bytes);
   if (mime !== "image/png" && mime !== "image/jpeg") return fail(corsHdrs, 400, "VALIDATION", "Please upload the logo as a PNG or JPG.");
   const key = `sponsors/${claims.tenantId}/logo-${Date.now()}.${mime === "image/png" ? "png" : "jpg"}`;
-  await putMedia(env as never, key, bytes.buffer as ArrayBuffer, mime);
+  await putMedia(env as never, key, bytes.slice().buffer as ArrayBuffer, mime);
   const previous = await env.DB.prepare(`SELECT sponsor_logo_url FROM tenants WHERE id = ?`).bind(claims.tenantId).first<{ sponsor_logo_url: string | null }>();
   const url = mediaUrl(env as never, req.url, key);
   await env.DB.prepare(`UPDATE tenants SET sponsor_logo_url = ? WHERE id = ?`).bind(url, claims.tenantId).run();

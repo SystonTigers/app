@@ -4,7 +4,6 @@ import { Card } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { themedStyles, useBrandColors } from '../theme/brand';
 import { FONTS } from '../theme/brandFonts';
-import SectionTitle from '../components/home/SectionTitle';
 
 interface ManagementCard {
   title: string;
@@ -63,6 +62,12 @@ const managementCards: ManagementCard[] = [
     screen: 'ManageMOTM',
   },
   {
+    title: 'Club Settings',
+    description: 'Badge, social media, what gets posted, graphics, FA snippets, email forwarding',
+    icon: 'cog-outline',
+    screen: 'ClubSettings',
+  },
+  {
     title: 'People & Roles',
     description: 'Everyone at the club, and who can manage it',
     icon: 'account-cog-outline',
@@ -104,31 +109,6 @@ export default function ManageScreen({ navigation }: any) {
         ))}
       </View>
 
-      <SectionTitle title="QUICK STATS" color={COLORS.primary} />
-      <View style={styles.stats}>
-        <Card style={styles.card}>
-          <Card.Content>
-            <View style={styles.statsRow}>
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>12</Text>
-                <Text style={styles.statLabel}>Fixtures</Text>
-              </View>
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>23</Text>
-                <Text style={styles.statLabel}>Players</Text>
-              </View>
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>8</Text>
-                <Text style={styles.statLabel}>Events</Text>
-              </View>
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>45</Text>
-                <Text style={styles.statLabel}>Posts</Text>
-              </View>
-            </View>
-          </Card.Content>
-        </Card>
-      </View>
     </ScrollView>
   );
 }
@@ -145,7 +125,6 @@ const useStyles = themedStyles((COLORS) => ({
   },
   cardsContainer: {
     padding: 16,
-    paddingBottom: 0,
   },
   card: {
     marginBottom: 12,
@@ -183,26 +162,5 @@ const useStyles = themedStyles((COLORS) => ({
   cardDescription: {
     fontSize: 13,
     color: COLORS.textLight,
-  },
-  stats: {
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-  },
-  statItem: {
-    alignItems: 'center',
-  },
-  statValue: {
-    fontFamily: FONTS.display,
-    fontSize: 32,
-    color: COLORS.primary,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: COLORS.textLight,
-    marginTop: 4,
   },
 }));

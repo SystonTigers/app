@@ -701,6 +701,10 @@ import { handleDeleteSponsorLogo, handleGetTenantGraphics, handleGraphicPreview,
 router.get("/api/:v/social/graphics/preview/:pack/:sample", (req, env, corsHdrs) => handleGraphicPreview(req, env, corsHdrs, ((req as any).params || {}).pack, ((req as any).params || {}).sample));
 router.post("/api/:v/social/sponsor-logo", (req, env, corsHdrs) => handleUploadSponsorLogo(req, env, corsHdrs));
 router.delete("/api/:v/social/sponsor-logo", (req, env, corsHdrs) => handleDeleteSponsorLogo(req, env, corsHdrs));
+// The club's own badge, uploaded by club admins (routes/clubBadge.ts)
+import { handleDeleteClubBadge, handleUploadClubBadge } from "./routes/clubBadge";
+router.post("/api/:v/club/badge", staffOnly((req, env, corsHdrs) => handleUploadClubBadge(req, env, corsHdrs)));
+router.delete("/api/:v/club/badge", staffOnly((req, env, corsHdrs) => handleDeleteClubBadge(req, env, corsHdrs)));
 router.get("/api/:v/admin/tenants/:id/graphics", (req, env, corsHdrs) => handleGetTenantGraphics(req, env, corsHdrs, ((req as any).params || {}).id));
 router.put("/api/:v/admin/tenants/:id/graphics/:pack", (req, env, corsHdrs) => handleSetTenantGraphics(req, env, corsHdrs, ((req as any).params || {}).id, ((req as any).params || {}).pack, true));
 router.delete("/api/:v/admin/tenants/:id/graphics/:pack", (req, env, corsHdrs) => handleSetTenantGraphics(req, env, corsHdrs, ((req as any).params || {}).id, ((req as any).params || {}).pack, false));

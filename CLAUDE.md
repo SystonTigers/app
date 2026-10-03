@@ -96,7 +96,10 @@ with personal data.
   and showing photos only if `public_photos`. `social_jobs` wait for the undo
   window (60s, per club) and the once-a-minute cron (`processDueJobs`) draws
   any missing graphic and posts to the club feed, Facebook and Instagram.
-  Which events go where is set per club in the website's admin settings.
+  Which events go where is set per club in Club Settings (app: Manager Zone →
+  Club Settings, `ClubSettingsScreen`; website: Admin → Settings). Connecting
+  Facebook from the app passes `from: "app"`; the callback then shows a "go back
+  to the app" page and parks any Page choice in KV (`metaAppReturn.ts`).
   TikTok needs TikTok's app review first; until then managers use Share.
 - A scorer's 2nd, 3rd, 4th... goal in a match posts as BRACE! / HAT-TRICK! /
   FOUR GOALS! (`goalMilestone`); the graphic shows one ball per goal and turns
@@ -160,7 +163,10 @@ with personal data.
 - Packs: Touchline and Floodlights (free, small "Made with Boost Huddle"
   credit) and Elite (premium: included with Pro, otherwise unlocked per club
   in `graphics_unlocks` from the owner panel; no purchase flow until Stripe
-  is live). Clubs pick a pack and sponsor in the website's admin settings.
+  is live). Clubs pick a pack and sponsor in Club Settings (app or website).
+- The club badge is uploaded in Club Settings (`POST /api/v1/club/badge`,
+  PNG/JPG under 3 MB, `tenant_brand.badge_url`); graphics, the app and club
+  pages all read it from there.
 - Opponent badges come from the website's Opponents page (`opponent_teams`);
   opponents are added there automatically when a post mentions them. PNG/JPG
   only: the renderer can't draw WebP or SVG (initials are shown instead).

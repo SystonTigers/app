@@ -62,6 +62,7 @@ const MENU_GROUPS = [
             { label: 'Manage Events', screen: 'ManageEvents', icon: 'calendar-clock', roles: ['admin', 'manager'] },
             { label: 'Manage MOTM', screen: 'ManageMOTM', icon: 'star-cog', roles: ['admin', 'manager'] },
             { label: 'Player Images', screen: 'ManagePlayerImages', icon: 'camera-account', roles: ['admin', 'manager'] },
+            { label: 'Club Settings', screen: 'ClubSettings', icon: 'cog-outline', roles: ['admin', 'manager'] },
             { label: 'Push Notifications', screen: 'PushNotificationsSetup', icon: 'bell-ring', roles: ['admin'] },
         ]
     },

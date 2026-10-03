@@ -60,6 +60,7 @@ import ManageFixturesScreen from './src/screens/ManageFixturesScreen';
 import ManageEventsScreen from './src/screens/ManageEventsScreen';
 import ManageMOTMScreen from './src/screens/ManageMOTMScreen';
 import ManagePlayerImagesScreen from './src/screens/ManagePlayerImagesScreen';
+import ClubSettingsScreen from './src/screens/ClubSettingsScreen';
 import ImportDataScreen from './src/screens/ImportDataScreen';
 import PushNotificationsSetupScreen from './src/screens/PushNotificationsSetupScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
@@ -258,6 +259,7 @@ function MainDrawer() {
       <Drawer.Screen name="MatchCentre" component={LiveMatchInputScreen} options={{ title: 'Match Centre' }} />
       <Drawer.Screen name="ManageMOTM" component={ManageMOTMScreen} options={{ title: 'Manage MOTM' }} />
       <Drawer.Screen name="ManagePlayerImages" component={ManagePlayerImagesScreen} options={{ title: 'Player Images' }} />
+      <Drawer.Screen name="ClubSettings" component={ClubSettingsScreen} options={{ title: 'Club Settings' }} />
       <Drawer.Screen
         name="PushNotificationsSetup"
         options={{ title: 'Push Notifications' }}
