@@ -83,11 +83,11 @@ export default function DrillLibraryScreen({ navigation, route }: { navigation: 
 
   return (
     <View style={styles.container}>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.views}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.strip} contentContainerStyle={styles.views}>
         {VIEWS.map(([key, label, icon]) => (
           <Chip
             key={key}
-            icon={icon}
+            icon={({ size }) => <MaterialCommunityIcons name={icon as never} size={size} color={view === key ? c.onPrimary : c.primary} />}
             selected={view === key}
             showSelectedCheck={false}
             onPress={() => setView(key)}
@@ -102,14 +102,14 @@ export default function DrillLibraryScreen({ navigation, route }: { navigation: 
 
       <Searchbar placeholder="Search drills" onChangeText={setQuery} value={query} style={styles.search} iconColor={c.primary} />
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.strip} contentContainerStyle={styles.filters}>
         {['All', ...categories].map((cat) => (
           <Chip key={cat} selected={category === cat} showSelectedCheck={false} onPress={() => setCategory(cat)} style={[styles.chip, category === cat ? styles.chipOn : null]} textStyle={category === cat ? styles.chipOnText : undefined} compact>
             {cat}
           </Chip>
         ))}
       </ScrollView>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.strip} contentContainerStyle={styles.filters}>
         {['All', 'beginner', 'intermediate', 'advanced'].map((d) => (
           <Chip key={d} selected={difficulty === d} showSelectedCheck={false} onPress={() => setDifficulty(d)} style={[styles.chip, difficulty === d ? styles.chipOn : null]} textStyle={difficulty === d ? styles.chipOnText : undefined} compact>
             {d === 'All' ? 'Any level' : d.charAt(0).toUpperCase() + d.slice(1)}
@@ -161,8 +161,10 @@ export default function DrillLibraryScreen({ navigation, route }: { navigation: 
 
 const useStyles = themedStyles((c) => ({
   container: { flex: 1, backgroundColor: c.background },
-  views: { paddingHorizontal: 16, paddingTop: 12, gap: 8 },
-  filters: { paddingHorizontal: 16, paddingBottom: 8, gap: 8 },
+  // Chip rows keep their own height (a horizontal ScrollView otherwise stretches on the web)
+  strip: { flexGrow: 0, flexShrink: 0 },
+  views: { paddingHorizontal: 16, paddingTop: 12, gap: 8, alignItems: 'center' },
+  filters: { paddingHorizontal: 16, paddingBottom: 8, gap: 8, alignItems: 'center' },
   chip: { backgroundColor: c.surface, borderColor: c.border, borderWidth: 1 },
   chipOn: { backgroundColor: c.primary, borderColor: c.primary },
   chipOnText: { color: c.onPrimary, fontWeight: '700' },
