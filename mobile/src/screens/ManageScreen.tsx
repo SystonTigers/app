@@ -20,55 +20,55 @@ const managementCards: ManagementCard[] = [
     screen: 'MatchCentre',
   },
   {
-    title: 'Fixtures & Results',
-    description: 'Add matches, update scores, manage competitions',
+    title: 'Fixtures',
+    description: 'Add matches, kick-off times and venues',
     icon: 'soccer',
     screen: 'ManageFixtures',
   },
   {
-    title: 'Squad Management',
-    description: 'Add players, update stats, manage positions',
+    title: 'Manage squad',
+    description: 'Add players, shirt numbers and positions',
     icon: 'account-group-outline',
     screen: 'ManageSquad',
   },
   {
-    title: 'Import Data',
-    description: 'Bulk upload players, fixtures from CSV/Excel',
+    title: 'Import data',
+    description: 'Add players, fixtures and results from a CSV file',
     icon: 'file-upload-outline',
     screen: 'ImportData',
   },
   {
-    title: 'Events & Calendar',
-    description: 'Create events, training sessions, social gatherings',
+    title: 'Events',
+    description: 'Training sessions, socials and other dates',
     icon: 'calendar-month-outline',
     screen: 'ManageEvents',
   },
   {
-    title: 'Create Post',
-    description: 'Post updates, news, photos to team feed',
+    title: 'New club post',
+    description: 'Share news on everyone\'s Home screen',
     icon: 'pencil-outline',
     screen: 'CreatePost',
   },
   {
-    title: 'Player Images',
-    description: 'Upload headshots & action photos, manage gallery',
+    title: 'Player images',
+    description: 'Headshots and action photos for each player',
     icon: 'camera-outline',
     screen: 'ManagePlayerImages',
   },
   {
-    title: 'MOTM Voting',
-    description: 'Create votes, manage results, auto-post winners',
+    title: 'Man of the Match',
+    description: 'Open and close votes; the winner is posted for you',
     icon: 'trophy-outline',
     screen: 'ManageMOTM',
   },
   {
-    title: 'Club Settings',
+    title: 'Club settings',
     description: 'Badge, social media, what gets posted, graphics, FA snippets, email forwarding',
     icon: 'cog-outline',
     screen: 'ClubSettings',
   },
   {
-    title: 'People & Roles',
+    title: 'People & roles',
     description: 'Everyone at the club, and who can manage it',
     icon: 'account-cog-outline',
     screen: 'TeamMembers',
@@ -81,7 +81,7 @@ export default function ManageScreen({ navigation }: any) {
   return (
     <ScrollView style={styles.container}>
       <Text style={styles.intro}>
-        Manage your team's fixtures, squad, events, and content
+        Everything for running the club, in one place.
       </Text>
 
       <View style={styles.cardsContainer}>

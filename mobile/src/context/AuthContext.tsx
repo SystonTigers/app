@@ -3,6 +3,7 @@ import { usersApi, authApi, onUnauthorized, type AuthResult } from '../services/
 import { fetchClubInfo, getTenantId, setCurrentClub } from '../services/club';
 import { AUTH_STORAGE_KEYS, authStorage, type AuthStorageKey } from '../services/authStorage';
 import { setCrashReportingUser } from '../services/crashReporting';
+import { clubRoleFromRoles, type ClubRole } from '../utils/roles';
 
 interface User {
   userId: string;
@@ -11,6 +12,8 @@ interface User {
   firstName?: string;
   lastName?: string;
   email?: string;
+  /** The role people see ("Owner", "Manager"); `role` above is what the app checks */
+  clubRole?: ClubRole;
 }
 
 interface AuthContextType {
@@ -52,6 +55,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         AUTH_STORAGE_KEYS.firstName,
         AUTH_STORAGE_KEYS.lastName,
         AUTH_STORAGE_KEYS.email,
+        AUTH_STORAGE_KEYS.clubRole,
       ]);
       const map = Object.fromEntries(entries) as Record<string, string | null>;
 
@@ -67,7 +71,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           firstName: map[AUTH_STORAGE_KEYS.firstName] || undefined,
           lastName: map[AUTH_STORAGE_KEYS.lastName] || undefined,
           email: map[AUTH_STORAGE_KEYS.email] || undefined,
+          clubRole: (map[AUTH_STORAGE_KEYS.clubRole] as ClubRole | null) || undefined,
         });
+        // Signed in before the app kept the club role: look it up once, quietly
+        if (!map[AUTH_STORAGE_KEYS.clubRole]) {
+          usersApi
+            .getProfile()
+            .then(async (profile) => {
+              const clubRole = profile?.success ? clubRoleFromRoles(profile.user?.roles) : null;
+              if (!clubRole) return;
+              await authStorage.multiSet([[AUTH_STORAGE_KEYS.clubRole, clubRole]]);
+              setUser((prev) => (prev ? { ...prev, clubRole } : prev));
+            })
+            .catch(() => undefined);
+        }
       }
     } catch (error) {
       console.error('Error checking auth status:', error);
@@ -84,13 +101,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         [AUTH_STORAGE_KEYS.role, role],
       ]);
 
-      let names: Pick<User, 'firstName' | 'lastName' | 'email'> = {};
+      let names: Pick<User, 'firstName' | 'lastName' | 'email' | 'clubRole'> = {};
       try {
         const profile = await usersApi.getProfile();
         if (profile.success && profile.user) {
           const { firstName, lastName, email } = profile.user;
-          names = { firstName, lastName, email };
+          const clubRole = clubRoleFromRoles(profile.user.roles) ?? undefined;
+          names = { firstName, lastName, email, clubRole };
           const profileEntries: [AuthStorageKey, string][] = [];
+          if (clubRole) profileEntries.push([AUTH_STORAGE_KEYS.clubRole, clubRole]);
           if (firstName) profileEntries.push([AUTH_STORAGE_KEYS.firstName, firstName]);
           if (lastName) profileEntries.push([AUTH_STORAGE_KEYS.lastName, lastName]);
           if (email) profileEntries.push([AUTH_STORAGE_KEYS.email, email]);

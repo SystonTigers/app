@@ -19,7 +19,8 @@ export const WEBSITE_URL = envOr(process.env.EXPO_PUBLIC_WEBSITE_URL, 'https://b
 // Legal pages (App Store / Play Store require these to be reachable in the app)
 export const TERMS_URL = envOr(process.env.EXPO_PUBLIC_TERMS_URL, 'https://boosthuddle-legal.pages.dev/terms');
 export const PRIVACY_URL = envOr(process.env.EXPO_PUBLIC_PRIVACY_URL, 'https://boosthuddle-legal.pages.dev/privacy');
-export const SUPPORT_EMAIL = envOr(process.env.EXPO_PUBLIC_SUPPORT_EMAIL, 'systontowntigersfc@gmail.com');
+/** Shown for account help when set; otherwise people are pointed to their club */
+export const SUPPORT_EMAIL = envOr(process.env.EXPO_PUBLIC_SUPPORT_EMAIL, '');
 
 // Club Branding Defaults
 export const DEFAULT_CLUB_NAME = envOr(process.env.EXPO_PUBLIC_CLUB_NAME, 'Home Club');

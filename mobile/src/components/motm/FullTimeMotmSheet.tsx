@@ -6,6 +6,7 @@ import { themedStyles, useBrandColors } from '../../theme/brand';
 import { FONTS } from '../../theme/brandFonts';
 import { apiErrorMessage, motmApi } from '../../services/api';
 import { customHours, lengthText } from '../../utils/motmVote';
+import { shirtNumber } from '../../utils/playerNames';
 
 const LENGTHS = [2, 3, 4];
 const DEFAULT_HOURS = 3;
@@ -113,7 +114,7 @@ export default function FullTimeMotmSheet({ matchId, opponent, players, visible,
                   <Pressable key={p.id} onPress={() => toggle(p.id)} accessibilityRole="checkbox" accessibilityState={{ checked: on }} style={styles.row}>
                     <MaterialCommunityIcons name={on ? 'checkbox-marked' : 'checkbox-blank-outline'} size={24} color={on ? COLORS.primary : COLORS.textLight} />
                     <Text style={[styles.name, !on && { color: COLORS.textLight }]}>{p.name}</Text>
-                    {p.number !== null ? <Text style={styles.small}>#{p.number}</Text> : null}
+                    {shirtNumber(p.number) ? <Text style={styles.small}>#{shirtNumber(p.number)}</Text> : null}
                   </Pressable>
                 );
               })}

@@ -5,7 +5,7 @@ const ts = require('typescript');
 require.extensions['.ts'] = (module, filename) => {
   module._compile(ts.transpileModule(fs.readFileSync(filename, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2019 } }).outputText, filename);
 };
-const { namePartsOf, playerInitials } = require('../src/utils/playerNames.ts');
+const { namePartsOf, playerInitials, shirtNumber } = require('../src/utils/playerNames.ts');
 
 assert.deepEqual(namePartsOf({ name: 'x', first_name: 'Mary Jane', last_name: 'Watson' }), { first: 'Mary Jane', last: 'Watson' });
 assert.deepEqual(namePartsOf({ name: 'Sam  Smith' }), { first: 'Sam', last: 'Smith' });
@@ -15,4 +15,12 @@ assert.deepEqual(namePartsOf({}), { first: '', last: '' });
 assert.equal(playerInitials({ first_name: 'Mary Jane', last_name: 'Watson' }), 'MW');
 assert.equal(playerInitials({ name: 'virgil van dijk' }), 'VV');
 assert.equal(playerInitials({}), '?');
+assert.equal(shirtNumber(7), '7');
+assert.equal(shirtNumber('07'), '7');
+assert.equal(shirtNumber('#10'), '10');
+assert.equal(shirtNumber(0), null);
+assert.equal(shirtNumber(''), null);
+assert.equal(shirtNumber('--'), null);
+assert.equal(shirtNumber(null), null);
+assert.equal(shirtNumber(undefined), null);
 console.log('playerNames tests passed');

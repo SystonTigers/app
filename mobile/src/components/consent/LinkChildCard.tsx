@@ -76,8 +76,8 @@ export default function LinkChildCard({ prominent, onLinked, forSelf = false }: 
       </View>
       {error ? <Text style={styles.error} accessibilityRole="alert">{error}</Text> : null}
       {done ? <Text style={styles.done}>{done}</Text> : null}
-      {forSelf ? <Text style={styles.small}>No code? Ask your manager: they can make one in Photo & Video Consent.</Text> : !prominent ? <Text style={styles.small}>No code? Ask your child's manager to send you one from the app.</Text> : (
-        <Text style={styles.small}>No code yet? Ask your child's manager: they can send you one from Photo & Video Consent in the app.</Text>
+      {forSelf ? <Text style={styles.small}>No code? Ask your manager: they can make one in Photo & video consent.</Text> : !prominent ? <Text style={styles.small}>No code? Ask your child's manager to send you one from the app.</Text> : (
+        <Text style={styles.small}>No code yet? Ask your child's manager: they can send you one from Photo & video consent in the app.</Text>
       )}
     </View>
   );
@@ -89,8 +89,9 @@ const useStyles = themedStyles((COLORS) => ({
   title: { color: COLORS.text, fontFamily: FONTS.display, fontSize: 20, letterSpacing: 1, textTransform: 'uppercase' },
   help: { color: COLORS.textLight },
   row: { flexDirection: 'row', gap: 8, alignItems: 'center' },
-  input: { flex: 1, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.background, borderRadius: 12, padding: 10, color: COLORS.text, fontSize: 18, letterSpacing: 2, fontWeight: '800' },
-  button: { backgroundColor: COLORS.primary, borderRadius: 12, paddingVertical: 12, paddingHorizontal: 18 },
+  // minWidth 0: a web text box otherwise keeps its natural width and pushes Link off the card
+  input: { flex: 1, minWidth: 0, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.background, borderRadius: 12, padding: 10, color: COLORS.text, fontSize: 18, letterSpacing: 2, fontWeight: '800' },
+  button: { flexShrink: 0, backgroundColor: COLORS.primary, borderRadius: 12, paddingVertical: 12, paddingHorizontal: 18 },
   buttonText: { color: COLORS.onPrimary, fontWeight: '900' },
   disabled: { opacity: 0.5 },
   error: { color: COLORS.error },

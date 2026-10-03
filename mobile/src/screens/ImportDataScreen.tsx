@@ -38,27 +38,27 @@ interface ImportOption {
 const importOptions: ImportOption[] = [
     {
         value: 'players',
-        label: 'Players/Squad',
+        label: 'Players',
         icon: 'account-group-outline',
-        description: 'Import player roster with positions, numbers, DOB',
+        description: 'Your squad, with positions, shirt numbers and dates of birth',
     },
     {
         value: 'fixtures',
         label: 'Fixtures',
         icon: 'calendar-month-outline',
-        description: 'Import upcoming matches and schedule',
+        description: 'Upcoming matches and kick-off times',
     },
     {
         value: 'results',
-        label: 'Match Results',
+        label: 'Match results',
         icon: 'scoreboard-outline',
-        description: 'Import historical match results with scores',
+        description: 'Past results with scores',
     },
     {
         value: 'match-events',
-        label: 'Goals/Assists/Cards',
+        label: 'Goals, assists and cards',
         icon: 'soccer',
-        description: 'Import match events and player stats',
+        description: 'Match events that count towards player stats',
     },
 ];
 
@@ -113,7 +113,7 @@ export default function ImportDataScreen() {
                 const validation = validateHeaders(parsed.headers, importType);
 
                 if (!validation.valid) {
-                    Alert.alert('Invalid CSV', validation.message || 'Invalid format');
+                    Alert.alert("That file doesn't fit", validation.message || 'Check it matches the template and try again.');
                     return;
                 }
 
@@ -125,20 +125,20 @@ export default function ImportDataScreen() {
             }
         } catch (err: any) {
             console.error('File selection error:', err);
-            Alert.alert('Error', 'Failed to select file');
+            Alert.alert("Couldn't open that file", 'Please try again, or pick a different file.');
         }
     };
 
     const handleDownloadTemplate = () => {
         const url = getTemplateUrl(importType);
         Linking.openURL(url).catch(() => {
-            Alert.alert('Error', 'Failed to open template URL');
+            Alert.alert("Couldn't open the template", 'Check your connection and try again.');
         });
     };
 
     const handleImport = async () => {
         if (!csvContent.trim()) {
-            Alert.alert('Error', 'No CSV content to import');
+            Alert.alert('Choose a file first', 'Pick a CSV file to import.');
             return;
         }
 
@@ -171,11 +171,11 @@ export default function ImportDataScreen() {
             if (importResult.success) {
                 loadCounts();
                 Alert.alert(
-                    'Success',
-                    `Imported ${importResult.imported} of ${importResult.total} rows`
+                    'Imported',
+                    `Added ${importResult.imported} of ${importResult.total} rows.`
                 );
             } else {
-                Alert.alert('Import Failed', importResult.error || 'Unknown error');
+                Alert.alert("That didn't import", importResult.error || 'Check the file matches the template and try again.');
             }
         } catch (err: any) {
             console.error('Import error:', err);
@@ -183,7 +183,7 @@ export default function ImportDataScreen() {
                 success: false,
                 error: err.message || 'Import failed',
             });
-            Alert.alert('Error', err.message || 'Import failed');
+            Alert.alert("That didn't import", err.message || 'Check your connection and try again.');
         } finally {
             setImporting(false);
         }
@@ -199,7 +199,7 @@ export default function ImportDataScreen() {
     return (
         <ScrollView style={styles.container}>
             <Paragraph style={styles.intro}>
-                Upload CSV files to bulk import data
+                Add lots of players, fixtures or results at once from a CSV file.
             </Paragraph>
 
             {/* Current Data Counts */}
@@ -226,7 +226,7 @@ export default function ImportDataScreen() {
                     <Card style={styles.countCard}>
                         <Card.Content style={styles.countContent}>
                             <Title style={styles.countValue}>{counts.match_events}</Title>
-                            <Paragraph style={styles.countLabel}>Events</Paragraph>
+                            <Paragraph style={styles.countLabel}>Match events</Paragraph>
                         </Card.Content>
                     </Card>
                 </View>
@@ -238,13 +238,13 @@ export default function ImportDataScreen() {
                     {/* Season Selection */}
                     {seasons.length > 0 && (
                         <View style={styles.seasonSection}>
-                            <Title style={styles.sectionTitle}>Select Season (Optional)</Title>
+                            <Title style={styles.sectionTitle}>Season (optional)</Title>
                             <View style={styles.seasonBox}>
                                 <RadioButton.Group
                                     onValueChange={(value) => setSelectedSeasonId(value)}
                                     value={selectedSeasonId}
                                 >
-                                    <RadioButton.Item label="Current Season (Default)" value="" />
+                                    <RadioButton.Item label="This season" value="" />
                                     {seasons.map((season) => (
                                         <RadioButton.Item
                                             key={season.id}
@@ -255,13 +255,13 @@ export default function ImportDataScreen() {
                                 </RadioButton.Group>
                             </View>
                             <Paragraph style={styles.seasonHint}>
-                                Select a historical season to import data for that specific season
+                                Pick an older season to fill in its history.
                             </Paragraph>
                         </View>
                     )}
 
                     {/* Step 1: Select Type */}
-                    <Title style={styles.sectionTitle}>1. Select Data Type</Title>
+                    <Title style={styles.sectionTitle}>1. What are you adding?</Title>
                     <RadioButton.Group
                         onValueChange={(value) => setImportType(value as ImportType)}
                         value={importType}
@@ -298,11 +298,11 @@ export default function ImportDataScreen() {
                         icon="download"
                         compact
                     >
-                        Download {importType} template
+                        Download the template
                     </Button>
 
                     {/* Step 2: Upload File */}
-                    <Title style={styles.sectionTitle}>2. Select CSV File</Title>
+                    <Title style={styles.sectionTitle}>2. Choose a CSV file</Title>
                     <Card
                         style={styles.uploadCard}
                         onPress={handleSelectFile}
@@ -325,7 +325,7 @@ export default function ImportDataScreen() {
                                         Tap to select a CSV file
                                     </Title>
                                     <Paragraph style={styles.uploadHint}>
-                                        From device storage or cloud drive
+                                        From your phone or a cloud drive
                                     </Paragraph>
                                 </View>
                             )}
@@ -355,7 +355,7 @@ export default function ImportDataScreen() {
                             </ScrollView>
                             {parsedData.rows.length > 5 && (
                                 <Paragraph style={styles.moreRows}>
-                                    ... and {parsedData.rows.length - 5} more rows
+                                    …and {parsedData.rows.length - 5} more rows
                                 </Paragraph>
                             )}
                         </View>
@@ -374,14 +374,14 @@ export default function ImportDataScreen() {
                                     <View>
                                         <View style={styles.resultRow}>
                                             <MaterialCommunityIcons name="check-circle" size={20} color={COLORS.success} />
-                                            <Title style={styles.resultTitle}>Import Successful</Title>
+                                            <Title style={styles.resultTitle}>Imported</Title>
                                         </View>
                                         <Paragraph style={styles.resultText}>
-                                            Imported {result.imported} of {result.total} rows
+                                            Added {result.imported} of {result.total} rows.
                                         </Paragraph>
                                         {result.errors && result.errors.length > 0 && (
                                             <View style={styles.warnings}>
-                                                <Paragraph style={styles.warningTitle}>Warnings:</Paragraph>
+                                                <Paragraph style={styles.warningTitle}>Rows we skipped:</Paragraph>
                                                 {result.errors.slice(0, 3).map((err, i) => (
                                                     <Paragraph key={i} style={styles.warningText}>
                                                         • {err}
@@ -411,7 +411,7 @@ export default function ImportDataScreen() {
                             loading={importing}
                             style={styles.button}
                         >
-                            {importing ? 'Importing...' : `Import ${importType}`}
+                            {importing ? 'Importing…' : `Import ${importOptions.find((o) => o.value === importType)?.label.toLowerCase() ?? ''}`}
                         </Button>
                         <Button
                             mode="outlined"

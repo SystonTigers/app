@@ -6,7 +6,7 @@ import { themedStyles, useBrandColors } from '../theme/brand';
 import { FONTS } from '../theme/brandFonts';
 import { apiErrorMessage, clubMembersApi, type ClubMember, type ClubRole } from '../services/api';
 import { isStaffRole } from '../utils/roles';
-import { ASSIGNABLE_ROLES, filterMembers, initialsOf, lastSeen, ROLE_INFO, sortMembers, type MemberFilter } from '../utils/members';
+import { ASSIGNABLE_ROLES, filterMembers, initialsOf, lastSeen, linkedLabel, ROLE_INFO, sortMembers, type MemberFilter } from '../utils/members';
 
 const FILTERS: Array<{ id: MemberFilter; label: string }> = [
   { id: 'all', label: 'Everyone' },
@@ -135,7 +135,7 @@ export default function TeamMembersScreen() {
                   <Text style={[styles.small, { color: c.primary, fontWeight: '800' }]}>Asked to be a coach{canChange ? ': tap to approve' : ''}</Text>
                 ) : null}
                 <Text style={styles.small}>
-                  {lastSeen(m.lastLoginAt)}{m.linkedPlayers ? ` · ${m.linkedPlayers} ${m.linkedPlayers === 1 ? 'child' : 'children'} linked` : ''}
+                  {lastSeen(m.lastLoginAt)}{m.linkedPlayers ? ` · ${linkedLabel(m.role, m.linkedPlayers)}` : ''}
                 </Text>
               </View>
               <View style={[styles.rolePill, isStaffRole(m.role) ? { backgroundColor: c.primarySoft, borderColor: c.primary } : null]}>

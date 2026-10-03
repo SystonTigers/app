@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { Platform, Pressable, Share, Text, View } from 'react-native';
-import { themedStyles } from '../../theme/brand';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { themedStyles, useBrandColors } from '../../theme/brand';
 import { apiErrorMessage, consentApi, parentLinkApi, type LinkedParent, type PlayerConsent } from '../../services/api';
 import { inviteMessage } from '../../services/inviteLink';
 import ConsentQuestion from './ConsentQuestion';
+import { shirtNumber } from '../../utils/playerNames';
 
 const mark = (v: boolean | null) => (v === true ? '✓' : v === false ? '✗' : '?');
 
@@ -34,6 +36,8 @@ export default function StaffConsentRow({ player, clubName, clubSlug, onChanged 
   player: PlayerConsent; clubName: string; clubSlug: string | null; onChanged: (p: PlayerConsent) => void;
 }) {
   const styles = useStyles();
+  const c = useBrandColors();
+  const markColour = (v: boolean | null) => (v === true ? c.primary : v === false ? c.error : c.warning);
   const markStyle = (v: boolean | null) => (v === true ? styles.yes : v === false ? styles.no : styles.unknown);
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
@@ -93,10 +97,19 @@ export default function StaffConsentRow({ player, clubName, clubSlug, onChanged 
   return (
     <View style={styles.wrap}>
       <Pressable onPress={toggle} accessibilityRole="button" accessibilityLabel={`${player.name}: photos ${mark(player.photos)}, video ${mark(player.video)}, ${linked} parents linked`} style={styles.row}>
-        <Text style={styles.name} numberOfLines={1}>{player.number !== null ? `${player.number}. ` : ''}{player.name}</Text>
-        <Text style={[styles.badge, markStyle(player.photos)]}>📷 {mark(player.photos)}</Text>
-        <Text style={[styles.badge, markStyle(player.video)]}>🎥 {mark(player.video)}</Text>
-        <Text style={[styles.badge, linked ? styles.plain : styles.unknown]}>👪 {linked}</Text>
+        <Text style={styles.name} numberOfLines={1}>{shirtNumber(player.number) ? `${shirtNumber(player.number)}. ` : ''}{player.name}</Text>
+        <View style={styles.badge}>
+          <MaterialCommunityIcons name="camera" size={15} color={markColour(player.photos)} />
+          <Text style={[styles.badgeText, markStyle(player.photos)]}>{mark(player.photos)}</Text>
+        </View>
+        <View style={styles.badge}>
+          <MaterialCommunityIcons name="video" size={15} color={markColour(player.video)} />
+          <Text style={[styles.badgeText, markStyle(player.video)]}>{mark(player.video)}</Text>
+        </View>
+        <View style={styles.badge}>
+          <MaterialCommunityIcons name="account-multiple" size={15} color={linked ? c.textLight : c.warning} />
+          <Text style={[styles.badgeText, linked ? styles.plain : styles.unknown]}>{linked}</Text>
+        </View>
       </Pressable>
       {open ? (
         <View style={styles.panel}>
@@ -133,7 +146,8 @@ const useStyles = themedStyles((COLORS) => ({
   wrap: { backgroundColor: COLORS.surface, borderRadius: 18, borderWidth: 1, borderColor: COLORS.border },
   row: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 12, paddingHorizontal: 12 },
   name: { flex: 1, color: COLORS.text, fontWeight: '700' },
-  badge: { fontSize: 13, fontWeight: '800', minWidth: 40, textAlign: 'center' },
+  badge: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 3, minWidth: 40 },
+  badgeText: { fontSize: 13, fontWeight: '800' },
   yes: { color: COLORS.primary },
   no: { color: COLORS.error },
   unknown: { color: COLORS.warning },

@@ -22,3 +22,14 @@ export function playerInitials(p: NamedPlayer): string {
   const { first, last } = namePartsOf(p);
   return `${first.charAt(0)}${last.charAt(0)}`.toUpperCase() || '?';
 }
+
+/**
+ * A shirt number to show, or null when there isn't one (missing, blank, 0 or
+ * placeholders like "--"), so screens never show "#0" or a lone "#".
+ */
+export function shirtNumber(value: unknown): string | null {
+  if (value === null || value === undefined) return null;
+  const s = String(value).trim().replace(/^#/, '');
+  if (!/^\d{1,3}$/.test(s) || Number(s) === 0) return null;
+  return String(Number(s));
+}

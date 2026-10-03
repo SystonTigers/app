@@ -9,6 +9,7 @@ import PlayerPhotos from '../components/player/PlayerPhotos';
 import GoalClips from '../components/player/GoalClips';
 import { apiErrorMessage, playerPageApi } from '../services/api';
 import { cardsText, careerTiles, initials, type PlayerProfile } from '../utils/playerPage';
+import { playerInitials, shirtNumber } from '../utils/playerNames';
 
 /**
  * A player's page: their own bio, all-time numbers, stats for each season,
@@ -69,11 +70,11 @@ export default function PlayerScreen({ navigation, route }: { navigation: any; r
             <Image source={{ uri: player.photo }} style={styles.avatar} accessibilityLabel={`Photo of ${player.name}`} />
           ) : (
             <View style={[styles.avatar, styles.initials, { backgroundColor: c.primary }]}>
-              <Text style={[styles.initialsText, { color: c.onPrimary }]}>{initials(player.name)}</Text>
+              <Text style={[styles.initialsText, { color: c.onPrimary }]}>{player.firstName && player.name.startsWith(player.firstName) ? playerInitials({ first_name: player.firstName, last_name: player.name.slice(player.firstName.length).trim() }) : initials(player.name)}</Text>
             </View>
           )}
           <View style={styles.heroText}>
-            {player.number !== null ? <Text style={[styles.number, { color: c.primary }]}>#{player.number}</Text> : null}
+            {shirtNumber(player.number) ? <Text style={[styles.number, { color: c.primary }]}>#{shirtNumber(player.number)}</Text> : null}
             <Text style={styles.name} accessibilityRole="header">{player.name}</Text>
             {player.position ? <Text style={styles.position}>{player.position.toUpperCase()}</Text> : null}
           </View>

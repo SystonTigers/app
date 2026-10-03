@@ -3,6 +3,7 @@ import { Modal, Portal, Text, Button, TextInput } from 'react-native-paper';
 import { View, Alert } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { SUPPORT_EMAIL } from '../config';
+import { useClubName } from '../context/ClubContext';
 import { themedStyles, useBrandColors } from '../theme/brand';
 import { FONTS } from '../theme/brandFonts';
 
@@ -19,28 +20,26 @@ export function DeleteAccountModal({
 }: DeleteAccountModalProps) {
     const COLORS = useBrandColors();
     const styles = useStyles();
+    const clubName = useClubName();
     const [confirmText, setConfirmText] = useState('');
     const [deleting, setDeleting] = useState(false);
 
     const handleDelete = async () => {
         if (confirmText.trim().toUpperCase() !== 'DELETE') {
-            Alert.alert(
-                'Confirmation Required',
-                'Please type DELETE to confirm account deletion'
-            );
+            Alert.alert('Type DELETE first', 'Type DELETE in the box to confirm.');
             return;
         }
 
         Alert.alert(
-            'Final Confirmation',
-            'Are you absolutely sure? This action cannot be undone. All your data will be permanently deleted.',
+            'Delete your account?',
+            "This can't be undone. Your account and everything listed will be removed.",
             [
                 {
                     text: 'Cancel',
                     style: 'cancel',
                 },
                 {
-                    text: 'Delete Forever',
+                    text: 'Delete my account',
                     style: 'destructive',
                     onPress: async () => {
                         setDeleting(true);
@@ -50,8 +49,8 @@ export function DeleteAccountModal({
                             await deleteAccount();
 
                             Alert.alert(
-                                'Account Deleted',
-                                'Your account has been permanently deleted. You will now be logged out.',
+                                'Account deleted',
+                                'Your account has been deleted. You will now be logged out.',
                                 [
                                     {
                                         text: 'OK',
@@ -62,10 +61,10 @@ export function DeleteAccountModal({
                         } catch (error) {
                             console.error('Delete account error:', error);
                             Alert.alert(
-                                'Error',
-                                error instanceof Error
+                                "That didn't work",
+                                error instanceof Error && error.message
                                     ? error.message
-                                    : 'Failed to delete account. Please try again or contact support.'
+                                    : 'Your account was not deleted. Please try again.'
                             );
                             setDeleting(false);
                         }
@@ -93,22 +92,21 @@ export function DeleteAccountModal({
                     {/* Header */}
                     <View style={styles.header}>
                         <MaterialCommunityIcons name="alert" size={48} color={COLORS.error} style={styles.icon} />
-                        <Text style={styles.title}>Delete Account</Text>
+                        <Text style={styles.title}>Delete account</Text>
                     </View>
 
                     {/* Warning Message */}
                     <View style={styles.warningBox}>
-                        <Text style={styles.warningTitle}>This action is permanent!</Text>
+                        <Text style={styles.warningTitle}>This is permanent</Text>
                         <Text style={styles.warningText}>
                             Deleting your account will:
                         </Text>
-                        <Text style={styles.bulletPoint}>• Remove all your personal information</Text>
-                        <Text style={styles.bulletPoint}>• Delete all your posts and comments</Text>
-                        <Text style={styles.bulletPoint}>• Remove you from team rosters</Text>
-                        <Text style={styles.bulletPoint}>• Delete your match statistics</Text>
-                        <Text style={styles.bulletPoint}>• Cancel any active subscriptions</Text>
-                        <Text style={[styles.warningText, { marginTop: 12, fontWeight: '600' }]}>
-                            This cannot be undone.
+                        <Text style={styles.bulletPoint}>• Remove your account, name and email</Text>
+                        <Text style={styles.bulletPoint}>• Unlink you from any players you&apos;re linked to</Text>
+                        <Text style={styles.bulletPoint}>• Remove your votes, replies and predictions</Text>
+                        <Text style={styles.bulletPoint}>• Remove your comments</Text>
+                        <Text style={[styles.warningText, { marginTop: 12 }]}>
+                            Players&apos; match stats belong to the club&apos;s squad and stay.
                         </Text>
                     </View>
 
@@ -149,14 +147,17 @@ export function DeleteAccountModal({
                             buttonColor={COLORS.error}
                             textColor="#FFFFFF"
                             style={styles.deleteButton}
+                            accessibilityLabel="Delete my account forever"
                         >
-                            {deleting ? 'Deleting...' : 'Delete Forever'}
+                            {deleting ? 'Deleting…' : 'Delete'}
                         </Button>
                     </View>
 
                     {/* Support Link */}
                     <Text style={styles.supportText}>
-                        Need help? Contact {SUPPORT_EMAIL}
+                        {SUPPORT_EMAIL
+                            ? `Need help? Email ${SUPPORT_EMAIL}.`
+                            : `Need help? Ask ${clubName}'s manager.`}
                     </Text>
                 </View>
             </Modal>

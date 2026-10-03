@@ -77,6 +77,7 @@ import OnboardingScreen from './src/screens/OnboardingScreen';
 import FindClubScreen from './src/screens/FindClubScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import { captureInviteFromLink } from './src/services/inviteLink';
+import { staffScreen } from './src/components/StaffOnly';
 import BrandSplash from './src/components/brand/BrandSplash';
 import { useBrandFonts } from './src/theme/brandFonts';
 import { useTheme } from './src/theme/useTheme';
@@ -86,6 +87,21 @@ import { FONTS } from './src/theme/brandFonts';
 
 // A parent opened the manager's invite link: keep the code until they're signed in
 captureInviteFromLink();
+
+// Staff pages: other members who open one by its address see "This is for club staff"
+const StaffTeamMembers = staffScreen(TeamMembersScreen);
+const StaffManageSquad = staffScreen(ManageSquadScreen);
+const StaffManageFixtures = staffScreen(ManageFixturesScreen);
+const StaffManageEvents = staffScreen(ManageEventsScreen);
+const StaffMatchCentre = staffScreen(LiveMatchInputScreen);
+const StaffManageMOTM = staffScreen(ManageMOTMScreen);
+const StaffManagePlayerImages = staffScreen(ManagePlayerImagesScreen);
+const StaffClubSettings = staffScreen(ClubSettingsScreen);
+const AdminPushNotificationsSetup = staffScreen(PushNotificationsSetupScreen, 'admin');
+const StaffCreatePost = staffScreen(CreatePostScreen);
+const StaffManage = staffScreen(ManageScreen);
+const StaffImportData = staffScreen(ImportDataScreen);
+const StaffScoutNotes = staffScreen(ScoutNotesScreen);
 
 const Drawer = createDrawerNavigator();
 const Tab = createBottomTabNavigator();
@@ -247,29 +263,29 @@ function MainDrawer() {
       <Drawer.Screen name="Drill" component={DrillScreen} options={{ title: 'Drill' }} />
       <Drawer.Screen name="Player" component={PlayerScreen} options={{ title: 'Player' }} />
       <Drawer.Screen name="Results" component={ResultsScreen} options={{ title: 'Results' }} />
-      <Drawer.Screen name="Stats" component={StatsScreen} options={{ title: 'Statistics' }} />
+      <Drawer.Screen name="Stats" component={StatsScreen} options={{ title: 'Stats' }} />
       <Drawer.Screen name="LeagueTable" component={LeagueTableScreen} options={{ title: 'League Table' }} />
       <Drawer.Screen name="Wearables" component={WearablesScreen} options={{ title: 'Wearables' }} />
 
       {/* My Club Group */}
-      <Drawer.Screen name="TeamMembers" component={TeamMembersScreen} options={{ title: 'People & Roles' }} />
+      <Drawer.Screen name="TeamMembers" component={StaffTeamMembers} options={{ title: 'People & Roles' }} />
       <Drawer.Screen name="Shop" component={ShopScreen} options={{ title: 'Club Shop' }} />
       <Drawer.Screen name="Payments" component={PaymentsScreen} options={{ title: 'Payments' }} />
       {/* <Drawer.Screen name="Documents" component={DocumentsScreen} /> */}
 
       {/* Admin Zone Group */}
-      <Drawer.Screen name="ManageSquad" component={ManageSquadScreen} options={{ title: 'Manage Squad' }} />
-      <Drawer.Screen name="ManageFixtures" component={ManageFixturesScreen} options={{ title: 'Manage Fixtures' }} />
-      <Drawer.Screen name="ManageEvents" component={ManageEventsScreen} options={{ title: 'Manage Events' }} />
-      <Drawer.Screen name="MatchCentre" component={LiveMatchInputScreen} options={{ title: 'Match Centre' }} />
-      <Drawer.Screen name="ManageMOTM" component={ManageMOTMScreen} options={{ title: 'Manage MOTM' }} />
-      <Drawer.Screen name="ManagePlayerImages" component={ManagePlayerImagesScreen} options={{ title: 'Player Images' }} />
-      <Drawer.Screen name="ClubSettings" component={ClubSettingsScreen} options={{ title: 'Club Settings' }} />
+      <Drawer.Screen name="ManageSquad" component={StaffManageSquad} options={{ title: 'Manage Squad' }} />
+      <Drawer.Screen name="ManageFixtures" component={StaffManageFixtures} options={{ title: 'Manage Fixtures' }} />
+      <Drawer.Screen name="ManageEvents" component={StaffManageEvents} options={{ title: 'Manage Events' }} />
+      <Drawer.Screen name="MatchCentre" component={StaffMatchCentre} options={{ title: 'Match Centre' }} />
+      <Drawer.Screen name="ManageMOTM" component={StaffManageMOTM} options={{ title: 'Manage MOTM' }} />
+      <Drawer.Screen name="ManagePlayerImages" component={StaffManagePlayerImages} options={{ title: 'Player Images' }} />
+      <Drawer.Screen name="ClubSettings" component={StaffClubSettings} options={{ title: 'Club Settings' }} />
       <Drawer.Screen
         name="PushNotificationsSetup"
         options={{ title: 'Push Notifications' }}
         children={({ navigation }: any) => (
-          <PushNotificationsSetupScreen
+          <AdminPushNotificationsSetup
             onComplete={() => navigation.goBack()}
             onSkip={() => navigation.goBack()}
           />
@@ -283,14 +299,14 @@ function MainDrawer() {
 
       {/* Other/Hidden Screens */}
       <Drawer.Screen name="Chat" component={ChatScreen} options={{ title: 'Team Chat' }} />
-      <Drawer.Screen name="CreatePost" component={CreatePostScreen} options={{ title: 'Create Post' }} />
+      <Drawer.Screen name="CreatePost" component={StaffCreatePost} options={{ title: 'New club post' }} />
       <Drawer.Screen name="Gallery" component={GalleryScreen} options={{ title: 'Gallery' }} />
       <Drawer.Screen name="Highlights" component={HighlightsScreen} />
       <Drawer.Screen name="MatchHighlights" component={MatchHighlightsScreen} options={{ title: 'Match Highlights' }} />
-      <Drawer.Screen name="Manage" component={ManageScreen} options={{ title: 'Team Admin' }} />
-      <Drawer.Screen name="ImportData" component={ImportDataScreen} options={{ title: 'Import Data' }} />
-      <Drawer.Screen name="ScoutNotes" component={ScoutNotesScreen} options={{ title: 'Scout Report' }} />
-      <Drawer.Screen name="Carpool" component={CarpoolScreen} options={{ title: 'Carpool' }} />
+      <Drawer.Screen name="Manage" component={StaffManage} options={{ title: 'Team Admin' }} />
+      <Drawer.Screen name="ImportData" component={StaffImportData} options={{ title: 'Import data' }} />
+      <Drawer.Screen name="ScoutNotes" component={StaffScoutNotes} options={{ title: 'Scout Report' }} />
+      <Drawer.Screen name="Carpool" component={CarpoolScreen} options={{ title: 'Lift sharing' }} />
 
       <Drawer.Screen
         name="Onboarding"

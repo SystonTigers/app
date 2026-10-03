@@ -1,13 +1,16 @@
-import React, { useState, useEffect } from 'react';
-import { View, ScrollView, Alert, Image } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, ScrollView, Alert, Image, Pressable } from 'react-native';
 import { Text, Card, TextInput, Button, Avatar, Divider } from 'react-native-paper';
 import { themedStyles, useBrandColors } from '../theme/brand';
 import { FONTS } from '../theme/brandFonts';
 import { useAuth } from '../context/AuthContext';
-import { usersApi } from '../services/api';
+import { playerPageApi, usersApi } from '../services/api';
+import type { MyPlayer } from '../utils/playerPage';
+import { roleLabel } from '../utils/roles';
+import LinkChildCard from '../components/consent/LinkChildCard';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
-export default function ProfileScreen() {
+export default function ProfileScreen({ navigation }: any) {
   const COLORS = useBrandColors();
   const styles = useStyles();
   const { user, logout } = useAuth();
@@ -27,10 +30,17 @@ export default function ProfileScreen() {
   });
   const [showPasswordSection, setShowPasswordSection] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [linked, setLinked] = useState<MyPlayer[] | null>(null);
+
+  const loadLinked = useCallback(() => {
+    if (user?.role !== 'player' && user?.role !== 'parent') return;
+    playerPageApi.mine().then(setLinked).catch(() => setLinked(null));
+  }, [user?.role]);
 
   useEffect(() => {
     loadProfile();
-  }, []);
+    loadLinked();
+  }, [loadLinked]);
 
   const loadProfile = async () => {
     try {
@@ -80,27 +90,27 @@ export default function ProfileScreen() {
       if (response.success) {
         setLoading(false);
         setIsEditing(false);
-        Alert.alert('Success', 'Profile updated successfully!');
+        Alert.alert('Saved', 'Your details are saved.');
       }
     } catch (error) {
       setLoading(false);
-      Alert.alert('Error', 'Failed to update profile. Please try again.');
+      Alert.alert("That didn't save", 'Please check your connection and try again.');
     }
   };
 
   const handleChangePassword = async () => {
     if (!passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword) {
-      Alert.alert('Error', 'Please fill in all password fields');
+      Alert.alert('Fill in all three', 'Enter your current password and the new one twice.');
       return;
     }
 
     if (passwordData.newPassword.length < 8) {
-      Alert.alert('Error', 'New password must be at least 8 characters');
+      Alert.alert('Too short', 'Your new password needs at least 8 characters.');
       return;
     }
 
     if (passwordData.newPassword !== passwordData.confirmPassword) {
-      Alert.alert('Error', 'New passwords do not match');
+      Alert.alert("Passwords don't match", 'Type the same new password in both boxes.');
       return;
     }
 
@@ -116,32 +126,17 @@ export default function ProfileScreen() {
         setLoading(false);
         setShowPasswordSection(false);
         setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
-        Alert.alert('Success', 'Password changed successfully!');
+        Alert.alert('Password changed', 'Use your new password next time you log in.');
       }
     } catch (error: any) {
       setLoading(false);
       const serverMessage = error?.response?.data?.error?.message;
       Alert.alert(
-        'Error',
+        "That didn't work",
         typeof serverMessage === 'string' && serverMessage
           ? serverMessage
-          : 'Failed to change password. Please check your current password and try again.'
+          : 'Check your current password and try again.'
       );
-    }
-  };
-
-  const getRoleBadgeColor = (role: string | undefined) => {
-    switch (role) {
-      case 'admin':
-        return COLORS.error;
-      case 'coach':
-        return COLORS.primary;
-      case 'player':
-        return COLORS.success;
-      case 'parent':
-        return '#9C27B0';
-      default:
-        return COLORS.textLight;
     }
   };
 
@@ -155,7 +150,7 @@ export default function ProfileScreen() {
           ) : (
             <Avatar.Text
               size={100}
-              label={`${profileData.firstName.charAt(0)}${profileData.lastName.charAt(0)}`}
+              label={`${profileData.firstName.charAt(0)}${profileData.lastName.charAt(0)}`.toUpperCase() || '?'}
               style={styles.avatar}
               color={COLORS.primary}
             />
@@ -172,7 +167,7 @@ export default function ProfileScreen() {
             size={16}
             color={COLORS.primary}
           />
-          <Text style={styles.roleText}>{user?.role?.toUpperCase()}</Text>
+          <Text style={styles.roleText}>{roleLabel(user?.clubRole ?? user?.role).toUpperCase()}</Text>
         </View>
       </View>
 
@@ -180,7 +175,7 @@ export default function ProfileScreen() {
       <Card style={styles.card}>
         <Card.Content>
           <View style={styles.cardHeader}>
-            <Text style={styles.cardTitle}>Profile Information</Text>
+            <Text style={styles.cardTitle}>Your details</Text>
             {!isEditing ? (
               <Button
                 mode="text"
@@ -216,7 +211,7 @@ export default function ProfileScreen() {
 
           {/* First Name */}
           <TextInput
-            label="First Name"
+            label="First name"
             value={profileData.firstName}
             onChangeText={(text) => updateProfileField('firstName', text)}
             mode="outlined"
@@ -227,7 +222,7 @@ export default function ProfileScreen() {
 
           {/* Last Name */}
           <TextInput
-            label="Last Name"
+            label="Last name"
             value={profileData.lastName}
             onChangeText={(text) => updateProfileField('lastName', text)}
             mode="outlined"
@@ -246,11 +241,11 @@ export default function ProfileScreen() {
             left={<TextInput.Icon icon="email" />}
             right={<TextInput.Icon icon="lock" />}
           />
-          <Text style={styles.hint}>Email cannot be changed</Text>
+          <Text style={styles.hint}>Your email can&apos;t be changed here.</Text>
 
           {/* Phone */}
           <TextInput
-            label="Phone Number"
+            label="Phone number"
             value={profileData.phone}
             onChangeText={(text) => updateProfileField('phone', text)}
             mode="outlined"
@@ -274,7 +269,7 @@ export default function ProfileScreen() {
                 labelStyle={{ fontSize: 14 }}
                 icon="lock-reset"
               >
-                Change Password
+                Change password
               </Button>
             )}
           </View>
@@ -284,7 +279,7 @@ export default function ProfileScreen() {
               <Divider style={styles.divider} />
 
               <TextInput
-                label="Current Password"
+                label="Current password"
                 value={passwordData.currentPassword}
                 onChangeText={(text) => updatePasswordField('currentPassword', text)}
                 mode="outlined"
@@ -294,7 +289,7 @@ export default function ProfileScreen() {
               />
 
               <TextInput
-                label="New Password"
+                label="New password"
                 value={passwordData.newPassword}
                 onChangeText={(text) => updatePasswordField('newPassword', text)}
                 mode="outlined"
@@ -304,7 +299,7 @@ export default function ProfileScreen() {
               />
 
               <TextInput
-                label="Confirm New Password"
+                label="Confirm new password"
                 value={passwordData.confirmPassword}
                 onChangeText={(text) => updatePasswordField('confirmPassword', text)}
                 mode="outlined"
@@ -331,7 +326,7 @@ export default function ProfileScreen() {
                   disabled={loading}
                   style={styles.passwordButton}
                 >
-                  Update Password
+                  Update password
                 </Button>
               </View>
             </>
@@ -339,31 +334,35 @@ export default function ProfileScreen() {
         </Card.Content>
       </Card>
 
-      {/* Account Stats */}
-      <Card style={styles.card}>
-        <Card.Content>
-          <Text style={styles.cardTitle}>Account Stats</Text>
-          <Divider style={styles.divider} />
-
-          <View style={styles.statsRow}>
-            <View style={styles.statItem}>
-              <MaterialCommunityIcons name="calendar-check" size={32} color={COLORS.primary} />
-              <Text style={styles.statValue}>15</Text>
-              <Text style={styles.statLabel}>Events Attended</Text>
-            </View>
-            <View style={styles.statItem}>
-              <MaterialCommunityIcons name="soccer" size={32} color={COLORS.primary} />
-              <Text style={styles.statValue}>8</Text>
-              <Text style={styles.statLabel}>Matches Played</Text>
-            </View>
-            <View style={styles.statItem}>
-              <MaterialCommunityIcons name="trophy" size={32} color={COLORS.primary} />
-              <Text style={styles.statValue}>3</Text>
-              <Text style={styles.statLabel}>MOTM Awards</Text>
-            </View>
-          </View>
-        </Card.Content>
-      </Card>
+      {/* Players: their own page. Parents: their children's pages (real links only, no made-up numbers) */}
+      {linked && (user?.role === 'player' || user?.role === 'parent') ? (
+        <Card style={styles.card}>
+          <Card.Content>
+            <Text style={styles.cardTitle}>{user?.role === 'player' ? 'Your player page' : 'Your children'}</Text>
+            <Divider style={styles.divider} />
+            {linked.length ? (
+              linked.map((p) => (
+                <Pressable
+                  key={p.id}
+                  onPress={() => navigation.navigate('Player', { id: p.id })}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Open ${p.isMe ? 'your' : `${p.name}'s`} player page`}
+                  style={styles.linkedRow}
+                >
+                  <MaterialCommunityIcons name={p.isMe ? 'account-star' : 'account-child'} size={24} color={COLORS.primary} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.linkedName}>{p.isMe ? 'Stats, photos and goals' : p.name}</Text>
+                    <Text style={styles.linkedHint}>{p.isMe ? (p.hasBio ? 'Open your player page' : 'Add a short bio so everyone knows a bit about you.') : 'Open their player page'}</Text>
+                  </View>
+                  <MaterialCommunityIcons name="chevron-right" size={22} color={COLORS.textLight} />
+                </Pressable>
+              ))
+            ) : (
+              <LinkChildCard prominent forSelf={user?.role === 'player'} onLinked={loadLinked} />
+            )}
+          </Card.Content>
+        </Card>
+      ) : null}
 
       {/* Spacer for bottom */}
       <View style={{ height: 32 }} />
@@ -475,25 +474,20 @@ const useStyles = themedStyles((COLORS) => ({
   passwordButton: {
     flex: 1,
   },
-  statsRow: {
+  linkedRow: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginTop: 8,
-  },
-  statItem: {
     alignItems: 'center',
-    flex: 1,
+    gap: 12,
+    paddingVertical: 10,
   },
-  statValue: {
-    fontFamily: FONTS.display,
-    fontSize: 30,
+  linkedName: {
     color: COLORS.text,
-    marginTop: 8,
+    fontSize: 16,
+    fontWeight: '700',
   },
-  statLabel: {
-    fontSize: 11,
+  linkedHint: {
     color: COLORS.textLight,
-    marginTop: 4,
-    textAlign: 'center',
+    fontSize: 13,
+    marginTop: 2,
   },
 }));

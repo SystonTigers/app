@@ -6,6 +6,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { themedStyles, useBrandColors } from '../theme/brand';
 import { FONTS } from '../theme/brandFonts';
 import { playerImagesApi, squadApi } from '../services/api';
+import { shirtNumber } from '../utils/playerNames';
 
 interface PlayerImage {
   id: string;
@@ -345,7 +346,7 @@ export default function ManagePlayerImagesScreen() {
                   uploadData.playerId === player.id && styles.playerChipTextSelected
                 ]}
               >
-                #{player.number} {player.name}
+                {shirtNumber(player.number) ? `#${shirtNumber(player.number)} ` : ''}{player.name}
               </Chip>
             ))}
           </ScrollView>

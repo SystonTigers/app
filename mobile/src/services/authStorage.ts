@@ -21,6 +21,8 @@ export const AUTH_STORAGE_KEYS = {
   firstName: 'user_firstName',
   lastName: 'user_lastName',
   email: 'user_email',
+  /** The role shown to people ("owner", "manager"...); `role` is what the app checks */
+  clubRole: 'user_club_role',
 } as const;
 
 export type AuthStorageKey = (typeof AUTH_STORAGE_KEYS)[keyof typeof AUTH_STORAGE_KEYS];

@@ -1,5 +1,5 @@
 import React from 'react';
-import { menuRole } from '../utils/roles';
+import { menuRole, roleLabel } from '../utils/roles';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -11,59 +11,72 @@ import Backdrop from './brand/Backdrop';
 import Crest from './home/Crest';
 
 // The menu: every section is open, so everything is one tap away.
+const ALL = ['admin', 'manager', 'coach', 'parent', 'player'];
+const STAFF = ['admin', 'manager', 'coach'];
+const MANAGERS = ['admin', 'manager'];
 
-const MENU_GROUPS = [
+interface MenuItem {
+    label: string;
+    screen: string;
+    icon: string;
+    roles: string[];
+    /** Hidden for these roles, before supporters are treated as parents */
+    hiddenFor?: string[];
+}
+
+const MENU_GROUPS: { id: string; title: string; icon: string; protected?: boolean; roles?: string[]; items: MenuItem[] }[] = [
     {
         id: 'match_day',
-        title: 'Match Day',
+        title: 'Match day',
         icon: 'soccer-field',
         items: [
-            { label: 'Home', screen: 'TabNavigator', icon: 'home-variant', roles: ['admin', 'manager', 'coach', 'parent', 'player'] },
-            { label: 'Match Highlights', screen: 'Highlights', icon: 'play-box-multiple', roles: ['admin', 'manager', 'coach', 'parent', 'player'] },
-            { label: 'Live Match', screen: 'LiveMatch', icon: 'whistle', roles: ['admin', 'manager', 'coach', 'parent', 'player'] },
-            { label: 'Man of the Match', screen: 'MOTMVoting', icon: 'star-circle', roles: ['admin', 'manager', 'coach', 'parent', 'player'] },
-            { label: 'Predictions', screen: 'LastManStanding', icon: 'crystal-ball', roles: ['admin', 'manager', 'coach', 'parent', 'player'] },
+            { label: 'Home', screen: 'TabNavigator', icon: 'home-variant', roles: ALL },
+            { label: 'Match highlights', screen: 'Highlights', icon: 'play-box-multiple', roles: ALL },
+            { label: 'Live match', screen: 'LiveMatch', icon: 'whistle', roles: ALL },
+            { label: 'Man of the Match', screen: 'MOTMVoting', icon: 'star-circle', roles: ALL },
+            { label: 'Predictions', screen: 'LastManStanding', icon: 'crystal-ball', roles: ALL },
         ]
     },
     {
         id: 'training',
-        title: 'Training & Stats',
+        title: 'Training & stats',
         icon: 'whistle',
         items: [
-            { label: 'Training Centre', screen: 'Training', icon: 'run', roles: ['admin', 'manager', 'coach', 'player'] },
-            { label: 'Drill Library', screen: 'DrillLibrary', icon: 'clipboard-list', roles: ['admin', 'manager', 'coach', 'player'] },
-            { label: 'Results', screen: 'Results', icon: 'scoreboard-outline', roles: ['admin', 'manager', 'coach', 'parent', 'player'] },
-            { label: 'Stats Center', screen: 'Stats', icon: 'chart-bar', roles: ['admin', 'manager', 'coach', 'parent', 'player'] },
-            { label: 'League Table', screen: 'LeagueTable', icon: 'format-list-numbered', roles: ['admin', 'manager', 'coach', 'parent', 'player'] },
+            { label: 'Training centre', screen: 'Training', icon: 'run', roles: ['admin', 'manager', 'coach', 'player'] },
+            { label: 'Drill library', screen: 'DrillLibrary', icon: 'clipboard-list', roles: ['admin', 'manager', 'coach', 'player'] },
+            { label: 'Results', screen: 'Results', icon: 'scoreboard-outline', roles: ALL },
+            { label: 'Stats', screen: 'Stats', icon: 'chart-bar', roles: ALL },
+            { label: 'League table', screen: 'LeagueTable', icon: 'format-list-numbered', roles: ALL },
         ]
     },
     {
         id: 'my_club',
-        title: 'My Club',
+        title: 'My club',
         icon: 'shield-account',
         items: [
-            { label: 'People & Roles', screen: 'TeamMembers', icon: 'account-group', roles: ['admin', 'manager', 'coach'] },
-            { label: 'Gallery', screen: 'Gallery', icon: 'image-multiple', roles: ['admin', 'manager', 'coach', 'parent', 'player'] },
-            { label: 'Club Shop', screen: 'Shop', icon: 'shopping', roles: ['admin', 'manager', 'coach', 'parent', 'player'] },
-            // Documents screen is planned but not yet implemented — add back when screen is registered in App.tsx
+            { label: 'People & roles', screen: 'TeamMembers', icon: 'account-group', roles: STAFF },
+            { label: 'Gallery', screen: 'Gallery', icon: 'image-multiple', roles: ALL },
+            { label: 'Club shop', screen: 'Shop', icon: 'shopping', roles: ALL },
         ]
     },
     {
         id: 'admin_zone',
-        title: 'Manager Zone',
+        title: 'Manager zone',
         icon: 'security',
         protected: true,
-        roles: ['admin', 'manager', 'coach'], // Only these roles see this group
+        roles: STAFF, // Only these roles see this group
         items: [
-            { label: 'Manage Squad', screen: 'ManageSquad', icon: 'account-cog', roles: ['admin', 'manager', 'coach'] },
-            { label: 'Match Centre', screen: 'MatchCentre', icon: 'scoreboard', roles: ['admin', 'manager', 'coach'] },
-            { label: 'Manage Fixtures', screen: 'ManageFixtures', icon: 'calendar-edit', roles: ['admin', 'manager'] },
-            { label: 'Manage Results', screen: 'Results', icon: 'scoreboard', roles: ['admin', 'manager'] },
-            { label: 'Manage Events', screen: 'ManageEvents', icon: 'calendar-clock', roles: ['admin', 'manager'] },
-            { label: 'Manage MOTM', screen: 'ManageMOTM', icon: 'star-cog', roles: ['admin', 'manager'] },
-            { label: 'Player Images', screen: 'ManagePlayerImages', icon: 'camera-account', roles: ['admin', 'manager'] },
-            { label: 'Club Settings', screen: 'ClubSettings', icon: 'cog-outline', roles: ['admin', 'manager'] },
-            { label: 'Push Notifications', screen: 'PushNotificationsSetup', icon: 'bell-ring', roles: ['admin'] },
+            { label: 'Match Centre', screen: 'MatchCentre', icon: 'scoreboard', roles: STAFF },
+            { label: 'New club post', screen: 'CreatePost', icon: 'pencil-plus', roles: STAFF },
+            { label: 'Manage squad', screen: 'ManageSquad', icon: 'account-cog', roles: STAFF },
+            { label: 'Manage fixtures', screen: 'ManageFixtures', icon: 'calendar-edit', roles: MANAGERS },
+            { label: 'Manage results', screen: 'Results', icon: 'scoreboard-outline', roles: MANAGERS },
+            { label: 'Manage events', screen: 'ManageEvents', icon: 'calendar-clock', roles: MANAGERS },
+            { label: 'Man of the Match votes', screen: 'ManageMOTM', icon: 'star-cog', roles: MANAGERS },
+            { label: 'Player images', screen: 'ManagePlayerImages', icon: 'camera-account', roles: MANAGERS },
+            { label: 'Import data', screen: 'ImportData', icon: 'file-upload-outline', roles: MANAGERS },
+            { label: 'Club settings', screen: 'ClubSettings', icon: 'cog-outline', roles: MANAGERS },
+            { label: 'Push notifications', screen: 'PushNotificationsSetup', icon: 'bell-ring', roles: ['admin'] },
         ]
     },
     {
@@ -71,9 +84,9 @@ const MENU_GROUPS = [
         title: 'Settings',
         icon: 'cog',
         items: [
-            { label: 'My Profile', screen: 'Profile', icon: 'account-circle', roles: ['admin', 'manager', 'coach', 'parent', 'player'] },
-            { label: 'Photo & Video Consent', screen: 'MediaConsent', icon: 'camera-lock', roles: ['admin', 'manager', 'coach', 'parent', 'player'] },
-            { label: 'App Settings', screen: 'Settings', icon: 'tune', roles: ['admin', 'manager', 'coach', 'parent', 'player'] },
+            { label: 'My profile', screen: 'Profile', icon: 'account-circle', roles: ALL },
+            { label: 'Photo & video consent', screen: 'MediaConsent', icon: 'camera-lock', roles: ALL, hiddenFor: ['supporter'] },
+            { label: 'App settings', screen: 'Settings', icon: 'tune', roles: ALL },
         ]
     }
 ];
@@ -88,6 +101,7 @@ export default function CustomDrawerContent(props: any) {
     const current: string | undefined = props.state?.routes?.[props.state.index]?.name;
 
     const hasAccess = (allowedRoles?: string[]) => !allowedRoles || allowedRoles.includes(menuRole(userRole));
+    const shows = (item: MenuItem) => hasAccess(item.roles) && !item.hiddenFor?.includes(userRole);
     const name = user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : 'Welcome';
 
     const handleLogout = async () => {
@@ -113,7 +127,7 @@ export default function CustomDrawerContent(props: any) {
                     </View>
                     <Text style={styles.userName} numberOfLines={1}>{name}</Text>
                     <View style={[styles.role, { borderColor: `${color}88` }]}>
-                        <Text style={[styles.roleText, { color }]}>{userRole.toUpperCase()}</Text>
+                        <Text style={[styles.roleText, { color }]}>{roleLabel(user?.clubRole ?? userRole).toUpperCase()}</Text>
                     </View>
                 </View>
             </View>
@@ -121,7 +135,7 @@ export default function CustomDrawerContent(props: any) {
             <ScrollView contentContainerStyle={styles.menu}>
                 {MENU_GROUPS.map((group) => {
                     if (group.protected && !hasAccess(group.roles)) return null;
-                    const items = group.items.filter((item) => hasAccess(item.roles));
+                    const items = group.items.filter(shows);
                     if (!items.length) return null;
                     const staffZone = group.id === 'admin_zone';
                     return (
@@ -134,7 +148,7 @@ export default function CustomDrawerContent(props: any) {
                                 const active = current === item.screen;
                                 return (
                                     <Pressable
-                                        key={item.screen}
+                                        key={`${group.id}-${item.screen}`}
                                         onPress={() => props.navigation.navigate(item.screen)}
                                         accessibilityRole="button"
                                         accessibilityState={{ selected: active }}

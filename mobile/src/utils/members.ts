@@ -1,4 +1,5 @@
 /** Club members list helpers. No react-native imports (tested in Node). */
+import { roleLabel } from './roles';
 
 export type MemberRole = 'owner' | 'admin' | 'manager' | 'coach' | 'player' | 'parent' | 'supporter';
 
@@ -9,13 +10,13 @@ export interface MemberLike {
 }
 
 export const ROLE_INFO: Record<MemberRole, { label: string; description: string }> = {
-  owner: { label: 'Owner', description: 'Set up the club. Can do everything.' },
-  admin: { label: 'Admin', description: 'Everything, including who does what.' },
-  manager: { label: 'Manager', description: 'Match Centre, squad, fixtures, posts and settings.' },
-  coach: { label: 'Coach', description: 'Match Centre, squad, fixtures and training.' },
-  player: { label: 'Player', description: 'Sees the club, fixtures and their own stats.' },
-  parent: { label: 'Parent', description: 'Sees the club and answers for their children.' },
-  supporter: { label: 'Supporter', description: 'Follows the club: matches, results, MOTM votes, gallery and posts.' },
+  owner: { label: roleLabel('owner'), description: 'Set up the club. Can do everything.' },
+  admin: { label: roleLabel('admin'), description: 'Everything, including who does what.' },
+  manager: { label: roleLabel('manager'), description: 'Match Centre, squad, fixtures, posts and settings.' },
+  coach: { label: roleLabel('coach'), description: 'Match Centre, squad, fixtures and training.' },
+  player: { label: roleLabel('player'), description: 'Sees the club, fixtures and their own stats.' },
+  parent: { label: roleLabel('parent'), description: 'Sees the club and answers for their children.' },
+  supporter: { label: roleLabel('supporter'), description: 'Follows the club: matches, results, MOTM votes, gallery and posts.' },
 };
 
 /** Roles a club admin can give (the owner stays the owner). */
@@ -50,6 +51,13 @@ export function lastSeen(ms: number | null, now = Date.now()): string {
   if (days === 1) return 'Signed in yesterday';
   if (days < 31) return `Signed in ${days} days ago`;
   return `Signed in ${new Date(ms).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`;
+}
+
+/** What a member's linked players mean: a player's own page, or a parent's children. */
+export function linkedLabel(role: MemberRole, count: number): string {
+  if (!count) return '';
+  if (role === 'player') return 'Linked to their player page';
+  return `${count} ${count === 1 ? 'child' : 'children'} linked`;
 }
 
 export function initialsOf(name: string): string {

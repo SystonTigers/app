@@ -8,6 +8,9 @@ import { consentSummary, filterConsent, type ConsentFilter } from '../utils/cons
 import ConsentQuestion from '../components/consent/ConsentQuestion';
 import LinkChildCard from '../components/consent/LinkChildCard';
 import StaffConsentRow from '../components/consent/StaffConsentRow';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useAuth } from '../context/AuthContext';
+import { seesConsent } from '../utils/roles';
 
 type Field = 'photos' | 'video';
 
@@ -27,6 +30,8 @@ export default function MediaConsentScreen() {
   const COLORS = useBrandColors();
   const styles = useStyles();
   const { club } = useClub();
+  const { user } = useAuth();
+  const isPlayer = user?.role === 'player';
   const clubName = club?.name || 'the club';
   const [players, setPlayers] = useState<PlayerConsent[]>([]);
   const [staff, setStaff] = useState(false);
@@ -66,6 +71,17 @@ export default function MediaConsentScreen() {
     }
   };
 
+  if (!seesConsent(user?.role)) {
+    return (
+      <View style={[styles.container, styles.center, { padding: 32 }]}>
+        <MaterialCommunityIcons name="camera-lock" size={40} color={COLORS.primary} />
+        <Text style={[styles.intro, { textAlign: 'center', marginTop: 12 }]}>
+          Photo and video consent is answered by players and their parents. As a supporter there&apos;s nothing for you to do here.
+        </Text>
+      </View>
+    );
+  }
+
   if (loading) return <View style={[styles.container, styles.center]}><ActivityIndicator size="large" color={COLORS.primary} /></View>;
 
   const summary = consentSummary(players);
@@ -80,9 +96,15 @@ export default function MediaConsentScreen() {
       <Text style={styles.intro}>
         {staff
           ? 'Who can appear in photos and videos the club shares publicly. Parents answer in the app once linked to their child; tap a player to send the family a code or record a paper form.'
-          : `Can ${clubName} use your child's photo and video? This covers social media posts, the club website and match highlight videos.`}
+          : isPlayer
+            ? `Can ${clubName} use your photo and video? This covers social media posts, the club website and match highlight videos.`
+            : `Can ${clubName} use your child's photo and video? This covers social media posts, the club website and match highlight videos.`}
       </Text>
-      <Text style={styles.small}>Without a yes, a child's photo is never shown publicly and the manager is warned before sharing video of them. Answers can be changed at any time.</Text>
+      <Text style={styles.small}>
+        {isPlayer
+          ? 'Without a yes, your photo is never shown publicly and the manager is warned before sharing video of you. You can change your answer at any time.'
+          : "Without a yes, a child's photo is never shown publicly and the manager is warned before sharing video of them. Answers can be changed at any time."}
+      </Text>
       {error ? <Text style={styles.error} accessibilityRole="alert">{error}</Text> : null}
 
       {staff ? (
@@ -100,17 +122,22 @@ export default function MediaConsentScreen() {
               </Pressable>
             ))}
           </View>
-          <Text style={styles.small}>📷 photos · 🎥 video · 👪 parents linked · ✓ yes · ✗ no · ? not answered</Text>
+          <View style={styles.legend}>
+            <MaterialCommunityIcons name="camera" size={14} color={COLORS.textLight} /><Text style={styles.small}>photos</Text>
+            <MaterialCommunityIcons name="video" size={14} color={COLORS.textLight} /><Text style={styles.small}>video</Text>
+            <MaterialCommunityIcons name="account-multiple" size={14} color={COLORS.textLight} /><Text style={styles.small}>parents linked · ✓ yes · ✗ no · ? not answered</Text>
+          </View>
           {shown.length ? shown.map((p) => (
             <StaffConsentRow key={p.playerId} player={p} clubName={clubName} clubSlug={club?.slug ?? null} onChanged={replace} />
-          )) : <Text style={styles.empty}>{players.length ? 'Nobody here. 🎉' : 'Add players in Manage Squad first.'}</Text>}
+          )) : <Text style={styles.empty}>{players.length ? 'Nobody here: all done.' : 'Add players in Manage squad first.'}</Text>}
         </>
       ) : (
         <>
-          <LinkChildCard prominent={!players.length} onLinked={() => load()} />
+          {/* A player links once, to themselves; parents can link more children */}
+          {isPlayer && players.length ? null : <LinkChildCard prominent={!players.length} forSelf={isPlayer} onLinked={() => load()} />}
           {players.map((p) => (
             <View key={p.playerId} style={styles.card}>
-              <Text style={styles.name}>{p.name}</Text>
+              <Text style={styles.name}>{isPlayer ? 'Your answer' : p.name}</Text>
               <ConsentQuestion label="Photos" value={p.photos} busy={saving === `${p.playerId}:photos`} onAnswer={(v) => answer(p, 'photos', v)} />
               <ConsentQuestion label="Video (live stream and highlights)" value={p.video} busy={saving === `${p.playerId}:video`} onAnswer={(v) => answer(p, 'video', v)} />
             </View>
@@ -143,6 +170,7 @@ const useStyles = themedStyles((COLORS) => ({
   summaryValue: { color: COLORS.text, fontSize: 26, fontFamily: FONTS.display, fontVariant: ['tabular-nums'] },
   warn: { color: COLORS.warning },
   filters: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  legend: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 4 },
   filter: { borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.surface, borderRadius: 999, paddingVertical: 6, paddingHorizontal: 12 },
   filterOn: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
   filterText: { color: COLORS.text, fontWeight: '700', fontSize: 13 },

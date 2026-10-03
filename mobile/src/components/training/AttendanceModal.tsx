@@ -6,6 +6,7 @@ import { themedStyles, useBrandColors } from '../../theme/brand';
 import { FONTS } from '../../theme/brandFonts';
 import { apiErrorMessage, trainingApi, type AttendancePlayer, type TrainingSession } from '../../services/api';
 import { sessionDay } from '../../utils/training';
+import { shirtNumber } from '../../utils/playerNames';
 
 /** Staff: tick who came to a training session. */
 export default function AttendanceModal({ session, onClose, onSaved }: {
@@ -72,7 +73,7 @@ export default function AttendanceModal({ session, onClose, onSaved }: {
                 <Pressable key={p.id} onPress={() => toggle(p.id)} accessibilityRole="checkbox" accessibilityState={{ checked: on }} style={styles.row}>
                   <MaterialCommunityIcons name={on ? 'checkbox-marked' : 'checkbox-blank-outline'} size={24} color={on ? COLORS.primary : COLORS.textLight} />
                   <Text style={styles.name}>{p.name}</Text>
-                  {p.number !== null ? <Text style={styles.small}>#{p.number}</Text> : null}
+                  {shirtNumber(p.number) ? <Text style={styles.small}>#{shirtNumber(p.number)}</Text> : null}
                 </Pressable>
               );
             })}

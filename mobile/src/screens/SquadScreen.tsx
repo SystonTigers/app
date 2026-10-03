@@ -10,7 +10,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import LinkChildCard from '../components/consent/LinkChildCard';
 import { useAuth } from '../context/AuthContext';
 import type { MyPlayer } from '../utils/playerPage';
-import { playerInitials } from '../utils/playerNames';
+import { playerInitials, shirtNumber } from '../utils/playerNames';
 
 interface PlayerStats {
   goals: number;
@@ -186,7 +186,7 @@ export default function SquadScreen() {
                     />
                     <View style={styles.playerDetails}>
                       <Title style={styles.playerName}>
-                        #{player.number} {player.name}
+                        {shirtNumber(player.number) ? `#${shirtNumber(player.number)} ` : ''}{player.name}
                       </Title>
                       <Chip
                         style={[styles.positionChip, { backgroundColor: getPositionColor(player.position) }]}

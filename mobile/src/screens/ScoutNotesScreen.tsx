@@ -5,6 +5,7 @@ import { API_BASE_URL } from '../config';
 import { themedStyles, useBrandColors } from '../theme/brand';
 import { FONTS } from '../theme/brandFonts';
 import { authStorage } from '../services/authStorage';
+import { shirtNumber } from '../utils/playerNames';
 
 interface KeyPlayer {
     number: string;
@@ -236,7 +237,7 @@ function ScoutNotesContent({ fixtureId, opponent, navigation }: ContentProps) {
                     {scoutNote.key_players.map((player, index) => (
                         <View key={index} style={styles.playerCard}>
                             <View style={styles.playerInfo}>
-                                <Text style={styles.playerNumber}>#{player.number || '?'}</Text>
+                                <Text style={styles.playerNumber}>{shirtNumber(player.number) ? `#${shirtNumber(player.number)}` : '?'}</Text>
                                 <View>
                                     <Text style={styles.playerPosition}>{player.position}</Text>
                                     <Text style={styles.playerNotes}>{player.notes}</Text>

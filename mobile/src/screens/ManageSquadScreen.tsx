@@ -17,7 +17,7 @@ import { themedStyles, useBrandColors } from '../theme/brand';
 import { FONTS } from '../theme/brandFonts';
 import { squadApi, statsApi } from '../services/api';
 import SeasonStatsModal from '../components/squad/SeasonStatsModal';
-import { namePartsOf, playerInitials } from '../utils/playerNames';
+import { namePartsOf, playerInitials, shirtNumber } from '../utils/playerNames';
 
 interface Player {
   id: string;
@@ -195,9 +195,9 @@ export default function ManageSquadScreen() {
                       <View style={styles.playerInfo}>
                         <View style={styles.nameRow}>
                           <Title style={styles.playerName}>{player.name}</Title>
-                          {player.number !== null ? (
+                          {shirtNumber(player.number) ? (
                             <View style={styles.numberBadge}>
-                              <Title style={styles.numberText}>#{player.number}</Title>
+                              <Title style={styles.numberText}>#{shirtNumber(player.number)}</Title>
                             </View>
                           ) : null}
                         </View>
