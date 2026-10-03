@@ -144,8 +144,8 @@ export async function handlePaymentRequestStatus(req: Request, env: any, corsHdr
         // Get all payments for this request
         const { results: payments } = await env.DB.prepare(`
             SELECT id, player_id, payer_name, payer_email, amount_paid, net_to_club, status, paid_at
-            FROM member_payments WHERE request_id = ?
-        `).bind(requestId).all();
+            FROM member_payments WHERE request_id = ? AND tenant_id = ?
+        `).bind(requestId, tenantId).all();
 
         // Get all players to show who hasn't paid
         const { results: players } = await env.DB.prepare(
@@ -230,8 +230,8 @@ export async function handleCreateDuesPayment(req: Request, env: any, corsHdrs: 
 
         // Check if already paid
         const existingPayment = await env.DB.prepare(
-            'SELECT id FROM member_payments WHERE request_id = ? AND payer_email = ? AND status = ?'
-        ).bind(requestId, payerEmail, 'completed').first();
+            'SELECT id FROM member_payments WHERE request_id = ? AND tenant_id = ? AND payer_email = ? AND status = ?'
+        ).bind(requestId, request.tenant_id, payerEmail, 'completed').first();
 
         if (existingPayment) {
             return json({ success: false, error: { message: 'Already paid' } }, 400, corsHdrs);
@@ -340,16 +340,22 @@ export async function handleConfirmDuesPayment(req: Request, env: any, corsHdrs:
             }, 400, corsHdrs);
         }
 
-        // Update payment record
+        // Update payment record. The club comes from the payment intent's own
+        // metadata (set by Stripe when we created it), never from the caller.
+        const tenantId = paymentIntent.metadata?.tenant_id;
+        if (!tenantId) {
+            return json({ success: false, error: { message: 'This payment is not a club payment.' } }, 400, corsHdrs);
+        }
         await env.DB.prepare(`
             UPDATE member_payments 
             SET status = 'completed', 
                 stripe_charge_id = ?,
                 paid_at = unixepoch()
-            WHERE stripe_payment_intent_id = ?
+            WHERE stripe_payment_intent_id = ? AND tenant_id = ?
         `).bind(
             paymentIntent.latest_charge || null,
-            paymentIntentId
+            paymentIntentId,
+            tenantId
         ).run();
 
         return json({
@@ -385,13 +391,13 @@ export async function handleSendReminder(req: Request, env: any, corsHdrs: Heade
         // Get unpaid parents
         const paidEmails = await env.DB.prepare(`
             SELECT payer_email FROM member_payments 
-            WHERE request_id = ? AND status = 'completed'
-        `).bind(requestId).all();
+            WHERE request_id = ? AND tenant_id = ? AND status = 'completed'
+        `).bind(requestId, tenantId).all();
 
         const paidSet = new Set((paidEmails.results || []).map((r: any) => r.payer_email));
 
         const { results: players } = await env.DB.prepare(
-            'SELECT parent_email FROM squad WHERE tenant_id = ? AND parent_email IS NOT NULL'
+            'SELECT name, parent_email FROM squad WHERE tenant_id = ? AND parent_email IS NOT NULL'
         ).bind(tenantId).all();
 
         const unpaidEmails = (players || [])
@@ -418,8 +424,8 @@ export async function handleSendReminder(req: Request, env: any, corsHdrs: Heade
 
         // Update reminder count
         await env.DB.prepare(
-            'UPDATE payment_requests SET reminder_count = reminder_count + 1 WHERE id = ?'
-        ).bind(requestId).run();
+            'UPDATE payment_requests SET reminder_count = reminder_count + 1 WHERE id = ? AND tenant_id = ?'
+        ).bind(requestId, tenantId).run();
 
         return json({
             success: true,

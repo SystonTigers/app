@@ -214,15 +214,15 @@ export async function handleGetLMSGame(req: Request, env: any, corsHdrs: Headers
 
         // Check if user has joined
         const userEntry = await env.DB.prepare(
-            "SELECT * FROM lms_entries WHERE game_id = ? AND user_id = ?"
-        ).bind(gameId, claims.sub).first();
+            "SELECT * FROM lms_entries WHERE game_id = ? AND tenant_id = ? AND user_id = ?"
+        ).bind(gameId, claims.tenantId, claims.sub).first();
 
         // Get user's prediction for current round if exists
         let userPrediction = null;
         if (userEntry && currentRound) {
             userPrediction = await env.DB.prepare(
-                "SELECT * FROM lms_predictions WHERE entry_id = ? AND round_id = ?"
-            ).bind(userEntry.id, currentRound.id).first();
+                "SELECT * FROM lms_predictions WHERE entry_id = ? AND round_id = ? AND tenant_id = ?"
+            ).bind(userEntry.id, currentRound.id, claims.tenantId).first();
         }
 
         return json({
@@ -267,8 +267,8 @@ export async function handleJoinLMSGame(req: Request, env: any, corsHdrs: Header
 
         // Check if already joined
         const existing = await env.DB.prepare(
-            "SELECT id FROM lms_entries WHERE game_id = ? AND user_id = ?"
-        ).bind(gameId, claims.sub).first();
+            "SELECT id FROM lms_entries WHERE game_id = ? AND tenant_id = ? AND user_id = ?"
+        ).bind(gameId, claims.tenantId, claims.sub).first();
 
         if (existing) {
             return json({ success: false, error: "Already joined this game" }, 400, corsHdrs);
@@ -388,8 +388,8 @@ export async function handleCreateLMSRound(req: Request, env: any, corsHdrs: Hea
 
         // Check for open round
         const openRound = await env.DB.prepare(
-            "SELECT id FROM lms_rounds WHERE game_id = ? AND status IN ('open', 'locked')"
-        ).bind(body.game_id).first();
+            "SELECT id FROM lms_rounds WHERE game_id = ? AND tenant_id = ? AND status IN ('open', 'locked')"
+        ).bind(body.game_id, claims.tenantId).first();
 
         if (openRound) {
             return json({ success: false, error: "Close current round before creating new one" }, 400, corsHdrs);
@@ -435,8 +435,8 @@ export async function handleCreateLMSRound(req: Request, env: any, corsHdrs: Hea
 
         // Update game round number
         await env.DB.prepare(
-            "UPDATE lms_games SET round_number = ?, updated_at = ? WHERE id = ?"
-        ).bind(roundNumber, now, body.game_id).run();
+            "UPDATE lms_games SET round_number = ?, updated_at = ? WHERE id = ? AND tenant_id = ?"
+        ).bind(roundNumber, now, body.game_id, claims.tenantId).run();
 
         return json({
             success: true,
@@ -525,8 +525,8 @@ export async function handleSubmitLMSPrediction(req: Request, env: any, corsHdrs
 
         // Get user's entry
         const entry = await env.DB.prepare(
-            "SELECT * FROM lms_entries WHERE game_id = ? AND user_id = ?"
-        ).bind(round.game_id, claims.sub).first() as LMSEntry | null;
+            "SELECT * FROM lms_entries WHERE game_id = ? AND tenant_id = ? AND user_id = ?"
+        ).bind(round.game_id, claims.tenantId, claims.sub).first() as LMSEntry | null;
 
         if (!entry) {
             return json({ success: false, error: "You haven't joined this game" }, 400, corsHdrs);
@@ -548,28 +548,23 @@ export async function handleSubmitLMSPrediction(req: Request, env: any, corsHdrs
 
         // Check if prediction exists (update) or create new
         const existing = await env.DB.prepare(
-            "SELECT id FROM lms_predictions WHERE entry_id = ? AND round_id = ?"
-        ).bind(entry.id, body.round_id).first();
+            "SELECT id, team_picked FROM lms_predictions WHERE entry_id = ? AND round_id = ? AND tenant_id = ?"
+        ).bind(entry.id, body.round_id, claims.tenantId).first();
 
         const now = Date.now();
 
         if (existing) {
-            // Get the old prediction to remove from teams_used
-            const oldPred = await env.DB.prepare(
-                "SELECT team_picked FROM lms_predictions WHERE id = ?"
-            ).bind(existing.id).first();
-
             // Update prediction
             await env.DB.prepare(
-                "UPDATE lms_predictions SET team_picked = ?, fixture_id = ?, created_at = ? WHERE id = ?"
-            ).bind(body.team_picked, body.fixture_id || null, now, existing.id).run();
+                "UPDATE lms_predictions SET team_picked = ?, fixture_id = ?, created_at = ? WHERE id = ? AND tenant_id = ?"
+            ).bind(body.team_picked, body.fixture_id || null, now, existing.id, claims.tenantId).run();
 
             // Update teams_used - remove old, add new
-            const updatedTeams = teamsUsed.filter(t => t !== oldPred?.team_picked);
+            const updatedTeams = teamsUsed.filter(t => t !== existing.team_picked);
             updatedTeams.push(body.team_picked);
             await env.DB.prepare(
-                "UPDATE lms_entries SET teams_used = ? WHERE id = ?"
-            ).bind(JSON.stringify(updatedTeams), entry.id).run();
+                "UPDATE lms_entries SET teams_used = ? WHERE id = ? AND tenant_id = ?"
+            ).bind(JSON.stringify(updatedTeams), entry.id, claims.tenantId).run();
         } else {
             // Create new prediction
             const predictionId = crypto.randomUUID();
@@ -589,8 +584,8 @@ export async function handleSubmitLMSPrediction(req: Request, env: any, corsHdrs
             // Add team to teams_used
             teamsUsed.push(body.team_picked);
             await env.DB.prepare(
-                "UPDATE lms_entries SET teams_used = ? WHERE id = ?"
-            ).bind(JSON.stringify(teamsUsed), entry.id).run();
+                "UPDATE lms_entries SET teams_used = ? WHERE id = ? AND tenant_id = ?"
+            ).bind(JSON.stringify(teamsUsed), entry.id, claims.tenantId).run();
         }
 
         return json({
@@ -661,8 +656,8 @@ export async function handleProcessLMSRound(req: Request, env: any, corsHdrs: He
 
         // Update fixtures in round
         await env.DB.prepare(
-            "UPDATE lms_rounds SET fixtures_json = ?, status = 'processed', processed_at = ? WHERE id = ?"
-        ).bind(JSON.stringify(fixtures), Date.now(), roundId).run();
+            "UPDATE lms_rounds SET fixtures_json = ?, status = 'processed', processed_at = ? WHERE id = ? AND tenant_id = ?"
+        ).bind(JSON.stringify(fixtures), Date.now(), roundId, claims.tenantId).run();
 
         // Get all predictions for this round
         const predictions = await env.DB.prepare(
@@ -679,22 +674,22 @@ export async function handleProcessLMSRound(req: Request, env: any, corsHdrs: He
 
             // Update prediction result
             await env.DB.prepare(
-                "UPDATE lms_predictions SET result = ?, processed_at = ? WHERE id = ?"
-            ).bind(teamResult || 'unknown', Date.now(), pred.id).run();
+                "UPDATE lms_predictions SET result = ?, processed_at = ? WHERE id = ? AND tenant_id = ?"
+            ).bind(teamResult || 'unknown', Date.now(), pred.id, claims.tenantId).run();
 
             if (!isWin) {
                 // Eliminate the player
                 await env.DB.prepare(`
                     UPDATE lms_entries 
                     SET status = 'eliminated', eliminated_round = ?
-                    WHERE id = ?
-                `).bind(round.round_number, pred.entry_id).run();
+                    WHERE id = ? AND tenant_id = ?
+                `).bind(round.round_number, pred.entry_id, claims.tenantId).run();
                 eliminatedCount++;
             } else {
                 // Increment streak
                 await env.DB.prepare(
-                    "UPDATE lms_entries SET streak = streak + 1 WHERE id = ?"
-                ).bind(pred.entry_id).run();
+                    "UPDATE lms_entries SET streak = streak + 1 WHERE id = ? AND tenant_id = ?"
+                ).bind(pred.entry_id, claims.tenantId).run();
                 survivedCount++;
             }
         }
@@ -702,26 +697,26 @@ export async function handleProcessLMSRound(req: Request, env: any, corsHdrs: He
         // Check for entries without predictions (auto-eliminate)
         const allEntries = await env.DB.prepare(`
             SELECT e.id FROM lms_entries e
-            WHERE e.game_id = ? AND e.status = 'alive'
+            WHERE e.game_id = ? AND e.tenant_id = ? AND e.status = 'alive'
             AND NOT EXISTS (
                 SELECT 1 FROM lms_predictions p 
                 WHERE p.entry_id = e.id AND p.round_id = ?
             )
-        `).bind(round.game_id, roundId).all();
+        `).bind(round.game_id, claims.tenantId, roundId).all();
 
         for (const entry of (allEntries.results || [])) {
             await env.DB.prepare(`
                 UPDATE lms_entries 
                 SET status = 'eliminated', eliminated_round = ?
-                WHERE id = ?
-            `).bind(round.round_number, entry.id).run();
+                WHERE id = ? AND tenant_id = ?
+            `).bind(round.round_number, entry.id, claims.tenantId).run();
             eliminatedCount++;
         }
 
         // Check if game is over (0 or 1 survivor)
         const survivors = await env.DB.prepare(
-            "SELECT * FROM lms_entries WHERE game_id = ? AND status = 'alive'"
-        ).bind(round.game_id).all();
+            "SELECT * FROM lms_entries WHERE game_id = ? AND tenant_id = ? AND status = 'alive'"
+        ).bind(round.game_id, claims.tenantId).all();
 
         let gameOver = false;
         let winners: any[] = [];
@@ -733,19 +728,19 @@ export async function handleProcessLMSRound(req: Request, env: any, corsHdrs: He
             if (winners.length === 1) {
                 // Update winner
                 await env.DB.prepare(`
-                    UPDATE lms_entries SET status = 'winner' WHERE id = ?
-                `).bind(winners[0].id).run();
+                    UPDATE lms_entries SET status = 'winner' WHERE id = ? AND tenant_id = ?
+                `).bind(winners[0].id, claims.tenantId).run();
 
                 await env.DB.prepare(`
                     UPDATE lms_games 
                     SET status = 'completed', winner_user_id = ?, winner_name = ?, updated_at = ?
-                    WHERE id = ?
-                `).bind(winners[0].user_id, winners[0].user_name, Date.now(), round.game_id).run();
+                    WHERE id = ? AND tenant_id = ?
+                `).bind(winners[0].user_id, winners[0].user_name, Date.now(), round.game_id, claims.tenantId).run();
             } else {
                 // No survivors - mark game as completed
                 await env.DB.prepare(
-                    "UPDATE lms_games SET status = 'completed', updated_at = ? WHERE id = ?"
-                ).bind(Date.now(), round.game_id).run();
+                    "UPDATE lms_games SET status = 'completed', updated_at = ? WHERE id = ? AND tenant_id = ?"
+                ).bind(Date.now(), round.game_id, claims.tenantId).run();
             }
         }
 

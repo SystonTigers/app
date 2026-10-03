@@ -45,8 +45,8 @@ export async function handleGetPersonalizedProducts(req: Request, env: any, cors
 
         if (playerId) {
             const player = await env.DB.prepare(
-                'SELECT name, number AS squad_number FROM squad WHERE id = ?'
-            ).bind(playerId).first();
+                'SELECT name, number AS squad_number FROM squad WHERE id = ? AND tenant_id = ?'
+            ).bind(playerId, tenantId).first();
 
             if (player) {
                 playerName = player.name || '';
@@ -483,8 +483,8 @@ export async function handleConfirmShopOrder(req: Request, env: any, corsHdrs: H
         const update = await env.DB.prepare(`
             UPDATE shop_orders
             SET status = 'paid', stripe_payment_id = ?, shipping_address_json = ?
-            WHERE id = ? AND status != 'paid'
-        `).bind(paymentId, shippingAddress ? JSON.stringify(shippingAddress) : null, orderId).run();
+            WHERE id = ? AND tenant_id = ? AND status != 'paid'
+        `).bind(paymentId, shippingAddress ? JSON.stringify(shippingAddress) : null, orderId, order.tenant_id).run();
 
         if (!update?.meta?.changes) {
             return json({ success: true, message: 'Already confirmed' }, 200, corsHdrs);
@@ -545,7 +545,10 @@ async function fulfillOrder(order: any, env: any) {
                 templateId = parts.slice(1).join('_');
             }
 
-            const template = await env.DB.prepare('SELECT * FROM printify_templates WHERE id = ?').bind(templateId).first();
+            // The club's own templates or the shared defaults (tenant_id NULL), never another club's.
+            const template = await env.DB.prepare(
+                'SELECT * FROM printify_templates WHERE id = ? AND (tenant_id = ? OR tenant_id IS NULL)'
+            ).bind(templateId, order.tenant_id).first();
 
             if (!template) {
                 console.error('Template not found for item', item);

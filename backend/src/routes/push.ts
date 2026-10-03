@@ -62,8 +62,8 @@ export async function handlePushRegister(request: IRequest, env: Env) {
 
         // Remove old devices for this user and platform (to support single device per platform per user as per test)
         await env.DB.prepare(
-            `DELETE FROM devices WHERE user_id = ? AND platform = ?`
-        ).bind(user_id, platform).run();
+            `DELETE FROM devices WHERE user_id = ? AND tenant_id = ? AND platform = ?`
+        ).bind(user_id, tenant_id, platform).run();
 
         // Store device in D1
         await env.DB.prepare(

@@ -64,8 +64,8 @@ export async function handleUploadHeadshot(req: Request, env: any, corsHdrs: Hea
         await env.DB.prepare(`
             UPDATE squad 
             SET headshot_url = ?, headshot_uploaded_at = unixepoch()
-            WHERE id = ?
-        `).bind(headshotUrl, playerId).run();
+            WHERE id = ? AND tenant_id = ?
+        `).bind(headshotUrl, playerId, tenantId).run();
 
         return json({
             success: true,
@@ -113,8 +113,8 @@ export async function handleDeleteHeadshot(req: Request, env: any, corsHdrs: Hea
 
         // Clear URL in database
         await env.DB.prepare(`
-            UPDATE squad SET headshot_url = NULL, headshot_uploaded_at = NULL WHERE id = ?
-        `).bind(playerId).run();
+            UPDATE squad SET headshot_url = NULL, headshot_uploaded_at = NULL WHERE id = ? AND tenant_id = ?
+        `).bind(playerId, tenantId).run();
 
         return json({ success: true }, 200, corsHdrs);
     } catch (error: any) {

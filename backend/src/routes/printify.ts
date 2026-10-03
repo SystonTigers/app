@@ -408,6 +408,23 @@ export async function handleGetPrintifyOrder(req: Request, env: any, corsHdrs: H
 // ============================================
 
 /**
+ * A signed Printify webhook names an order only by Printify's own id, which
+ * is unique across every club's orders. Find which club it belongs to first,
+ * then update it within that club.
+ */
+async function setStatusByPrintifyOrder(env: any, printifyOrderId: string, status: string): Promise<void> {
+    const { results } = await env.DB.prepare(
+        'SELECT id, tenant_id FROM shop_orders WHERE printify_order_id = ?'
+    ).bind(printifyOrderId).all();
+    const rows = (results || []) as Array<{ id: string; tenant_id: string }>;
+    if (!rows.length) return;
+    await env.DB.batch(rows.map((r) => env.DB.prepare(
+        'UPDATE shop_orders SET status = ? WHERE id = ? AND tenant_id = ?'
+    ).bind(status, r.id, r.tenant_id)));
+    console.log(JSON.stringify({ level: 'info', msg: 'printify_order_status', status, tenants: [...new Set(rows.map((r) => r.tenant_id))] }));
+}
+
+/**
  * POST /webhooks/printify
  * Handle Printify webhooks (order updates, shipping notifications)
  */
@@ -435,17 +452,13 @@ export async function handlePrintifyWebhook(req: Request, env: any) {
                     const status = body.resource.status === 'fulfilled' ? 'shipped' :
                         body.resource.status === 'canceled' ? 'cancelled' :
                             'processing';
-                    await env.DB.prepare(
-                        'UPDATE shop_orders SET status = ? WHERE printify_order_id = ?'
-                    ).bind(status, body.resource.id).run();
+                    await setStatusByPrintifyOrder(env, String(body.resource.id), status);
                 }
                 break;
 
             case 'order:shipped':
                 if (body.resource?.id) {
-                    await env.DB.prepare(
-                        'UPDATE shop_orders SET status = ? WHERE printify_order_id = ?'
-                    ).bind('shipped', body.resource.id).run();
+                    await setStatusByPrintifyOrder(env, String(body.resource.id), 'shipped');
                 }
                 break;
         }

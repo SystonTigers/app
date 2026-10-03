@@ -63,14 +63,14 @@ export async function redeemInvite(env: DB, claims: TenantClaims, code: string, 
   if (!invite) throw fail("That code didn't work. Check it with the manager.");
   if (invite.revoked_at || invite.expires_at < now) throw fail("That code has expired. Ask the manager for a new one.");
 
-  const existing = await env.DB.prepare(`SELECT 1 AS hit FROM auth_user_players WHERE user_id = ? AND player_id = ?`).bind(claims.userId, invite.player_id).first();
+  const existing = await env.DB.prepare(`SELECT 1 AS hit FROM auth_user_players WHERE user_id = ? AND player_id = ? AND tenant_id = ?`).bind(claims.userId, invite.player_id, claims.tenantId).first();
   if (existing) return { playerId: invite.player_id, name: invite.name, alreadyLinked: true };
   if (invite.uses >= INVITE_MAX_USES) throw fail("That code has been used too many times. Ask the manager for a new one.");
 
   await env.DB.batch([
     env.DB.prepare(`INSERT OR IGNORE INTO auth_user_players (user_id, player_id, tenant_id, created_at) VALUES (?, ?, ?, ?)`)
       .bind(claims.userId, invite.player_id, claims.tenantId, Math.floor(now / 1000)),
-    env.DB.prepare(`UPDATE parent_invites SET uses = uses + 1 WHERE id = ?`).bind(invite.id),
+    env.DB.prepare(`UPDATE parent_invites SET uses = uses + 1 WHERE id = ? AND tenant_id = ?`).bind(invite.id, claims.tenantId),
   ]);
   console.log(JSON.stringify({ level: "info", msg: "parent_linked", tenantId: claims.tenantId, playerId: invite.player_id }));
   return { playerId: invite.player_id, name: invite.name, alreadyLinked: false };

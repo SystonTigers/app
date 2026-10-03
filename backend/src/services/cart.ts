@@ -69,13 +69,14 @@ export async function addToCart(
     let productId = '';
     let price = 0;
 
-    // 1. Try Legacy/Synced Product Variants first
+    // 1. Try Legacy/Synced Product Variants first: the cart's club's own
+    // products or the shared catalogue (tenant_id NULL), never another club's.
     const legacyVariant = await env.DB.prepare(`
     SELECT v.*, p.title as product_title, p.id as product_id
     FROM product_variants v
     JOIN products p ON v.product_id = p.id
-    WHERE v.id = ?
-  `).bind(variantId).first();
+    WHERE v.id = ? AND (p.tenant_id = ? OR p.tenant_id IS NULL)
+  `).bind(variantId, cart.tenantId).first();
 
     if (legacyVariant) {
         foundVariant = legacyVariant;
@@ -105,8 +106,8 @@ export async function addToCart(
             const templateId = parts.slice(1).join('_'); // Rejoin the middle
 
             const template = await env.DB.prepare(`
-                SELECT * FROM printify_templates WHERE id = ?
-            `).bind(templateId).first();
+                SELECT * FROM printify_templates WHERE id = ? AND (tenant_id = ? OR tenant_id IS NULL)
+            `).bind(templateId, cart.tenantId).first();
 
             if (template && template.variants_json) {
                 const variants = JSON.parse(template.variants_json);

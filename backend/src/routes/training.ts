@@ -65,10 +65,10 @@ export async function handleGetSessionDrills(req: Request, env: any, corsHdrs: H
         const result = await env.DB.prepare(
             `SELECT pd.order_index, d.*
              FROM training_plan_drills pd
-             JOIN training_drills d ON pd.drill_id = d.id
+             JOIN training_drills d ON pd.drill_id = d.id AND d.tenant_id = ?
              WHERE pd.plan_id = ?
              ORDER BY pd.order_index ASC`
-        ).bind(sessionId).all();
+        ).bind(claims.tenantId, sessionId).all();
 
         const drills = result.results.map((d: any) => ({
             id: d.id,

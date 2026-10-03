@@ -118,28 +118,31 @@ export async function processDueJobs(env: SocialEnv, opts: { now?: number; jobId
   await env.DB.prepare(`UPDATE social_jobs SET status = 'pending' WHERE status = 'posting' AND updated_at < ? AND attempts < ?`)
     .bind(now - 5 * 60_000, MAX_ATTEMPTS).run();
 
+  // The cron serves every club: each due job carries its tenant_id and is
+  // claimed, read and updated within that club.
+  type DueJob = Pick<JobRow, "id" | "tenant_id" | "image_key">;
   const due = opts.jobId
-    ? await env.DB.prepare(`SELECT * FROM social_jobs WHERE id = ? AND tenant_id = ? AND status = 'pending' AND post_after <= ?`)
-      .bind(opts.jobId, opts.tenantId ?? "", now).all<JobRow>()
-    : await env.DB.prepare(`SELECT * FROM social_jobs WHERE status = 'pending' AND post_after <= ? ORDER BY post_after LIMIT 20`)
-      .bind(now).all<JobRow>();
+    ? await env.DB.prepare(`SELECT id, tenant_id, image_key FROM social_jobs WHERE id = ? AND tenant_id = ? AND status = 'pending' AND post_after <= ?`)
+      .bind(opts.jobId, opts.tenantId ?? "", now).all<DueJob>()
+    : await env.DB.prepare(`SELECT id, tenant_id, image_key FROM social_jobs WHERE status = 'pending' AND post_after <= ? ORDER BY post_after LIMIT 20`)
+      .bind(now).all<DueJob>();
 
   let posted = 0;
   for (const found of due.results || []) {
     const claim = await env.DB.prepare(
-      `UPDATE social_jobs SET status = 'posting', attempts = attempts + 1, updated_at = ? WHERE id = ? AND status = 'pending'`,
-    ).bind(now, found.id).run();
+      `UPDATE social_jobs SET status = 'posting', attempts = attempts + 1, updated_at = ? WHERE id = ? AND tenant_id = ? AND status = 'pending'`,
+    ).bind(now, found.id, found.tenant_id).run();
     if (!claim.meta.changes) continue; // someone else is posting it
 
-    let row = found;
-    if (!row.image_key && (await renderJobImage(env, row.tenant_id, row.id, fetchImpl))) {
-      row = (await env.DB.prepare(`SELECT * FROM social_jobs WHERE id = ?`).bind(row.id).first<JobRow>()) ?? row;
-    }
+    if (!found.image_key) await renderJobImage(env, found.tenant_id, found.id, fetchImpl);
+    // Read after claiming (and drawing), so attempts already counts this try
+    const row = await env.DB.prepare(`SELECT * FROM social_jobs WHERE id = ? AND tenant_id = ?`).bind(found.id, found.tenant_id).first<JobRow>();
+    if (!row) continue;
     const results = await publish(env, row, fetchImpl);
     const failed = Object.values(results).some((r) => !r.ok);
-    const status: JobStatus = !failed ? "done" : row.attempts + 1 >= MAX_ATTEMPTS ? "failed" : "pending";
-    await env.DB.prepare(`UPDATE social_jobs SET status = ?, results = ?, post_after = ?, updated_at = ? WHERE id = ?`)
-      .bind(status, JSON.stringify(results), status === "pending" ? now + 60_000 : row.post_after, Date.now(), row.id).run();
+    const status: JobStatus = !failed ? "done" : row.attempts >= MAX_ATTEMPTS ? "failed" : "pending";
+    await env.DB.prepare(`UPDATE social_jobs SET status = ?, results = ?, post_after = ?, updated_at = ? WHERE id = ? AND tenant_id = ?`)
+      .bind(status, JSON.stringify(results), status === "pending" ? now + 60_000 : row.post_after, Date.now(), row.id, row.tenant_id).run();
     log({ event: "social_post", outcome: status, id: row.id, tenant: row.tenant_id, kind: row.kind, results });
     posted++;
   }
@@ -154,8 +157,8 @@ export async function cancelPost(env: SocialEnv, tenantId: string, sourceType: s
   const row = await env.DB.prepare(`SELECT * FROM social_jobs WHERE tenant_id = ? AND source_type = ? AND source_id = ?`)
     .bind(tenantId, sourceType, sourceId).first<JobRow>();
   if (!row) return { cancelled: false, instagramLeftUp: false, wasPublished: false };
-  const pending = await env.DB.prepare(`UPDATE social_jobs SET status = 'cancelled', updated_at = ? WHERE id = ? AND status = 'pending'`)
-    .bind(Date.now(), row.id).run();
+  const pending = await env.DB.prepare(`UPDATE social_jobs SET status = 'cancelled', updated_at = ? WHERE id = ? AND tenant_id = ? AND status = 'pending'`)
+    .bind(Date.now(), row.id, tenantId).run();
   if (pending.meta.changes) return { cancelled: true, instagramLeftUp: false, wasPublished: false };
 
   const results: Record<string, TargetResult> = row.results ? JSON.parse(row.results) : {};
@@ -170,7 +173,7 @@ export async function cancelPost(env: SocialEnv, tenantId: string, sourceType: s
       log({ event: "social_delete", outcome: "failed", id: row.id, error: errorText(err) });
     }
   }
-  await env.DB.prepare(`UPDATE social_jobs SET status = 'cancelled', updated_at = ? WHERE id = ?`).bind(Date.now(), row.id).run();
+  await env.DB.prepare(`UPDATE social_jobs SET status = 'cancelled', updated_at = ? WHERE id = ? AND tenant_id = ?`).bind(Date.now(), row.id, tenantId).run();
   return {
     cancelled: true,
     instagramLeftUp: !!(results.instagram?.ok && results.instagram.id),

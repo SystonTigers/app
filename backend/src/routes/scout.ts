@@ -143,7 +143,7 @@ export async function handleSaveScoutNotes(
           notes = ?,
           visible_to_players = ?,
           updated_at = ?
-        WHERE id = ?
+        WHERE id = ? AND tenant_id = ?
       `).bind(
                 validated.opponent_name,
                 validated.formation || null,
@@ -154,7 +154,8 @@ export async function handleSaveScoutNotes(
                 validated.notes || null,
                 validated.visible_to_players ? 1 : 0,
                 now,
-                existing.id
+                existing.id,
+                tenant
             ).run();
 
             logJSON({ level: 'info', msg: 'Scout notes updated', fixtureId, tenant });

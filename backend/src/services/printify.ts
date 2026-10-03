@@ -86,10 +86,12 @@ export async function syncPrintifyProducts(env: any): Promise<number> {
         const timestamp = Date.now();
         const slug = slugify(product.title);
 
-        // Insert or update product
+        // Insert or update product. Products synced from the platform's
+        // Printify shop are the shared catalogue every club sells, so
+        // tenant_id is NULL on purpose (club-only products carry their club).
         await env.DB.prepare(`
-      INSERT INTO products (id, title, description, handle, image_url, printify_id, vendor, status, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, 'printify', 'active', ?, ?)
+      INSERT INTO products (id, tenant_id, title, description, handle, image_url, printify_id, vendor, status, created_at, updated_at)
+      VALUES (?, NULL, ?, ?, ?, ?, ?, 'printify', 'active', ?, ?)
       ON CONFLICT(id) DO UPDATE SET
         title = excluded.title,
         description = excluded.description,

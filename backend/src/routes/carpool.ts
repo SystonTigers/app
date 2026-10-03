@@ -78,8 +78,8 @@ export async function handleGetCarpoolOffers(
                 const requests = await db.prepare(`
           SELECT id, passenger_name, player_name, seats_needed, pickup_notes, status
           FROM carpool_requests
-          WHERE offer_id = ?
-        `).bind(offer.id).all();
+          WHERE offer_id = ? AND tenant_id = ?
+        `).bind(offer.id, tenant).all();
 
                 return {
                     ...offer,
@@ -283,8 +283,8 @@ export async function handleRequestSeat(
         // Check if user already has a pending request for this offer
         const existingRequest = await db.prepare(`
       SELECT id FROM carpool_requests
-      WHERE offer_id = ? AND passenger_user_id = ? AND status IN ('pending', 'accepted')
-    `).bind(offerId, userId).first();
+      WHERE offer_id = ? AND tenant_id = ? AND passenger_user_id = ? AND status IN ('pending', 'accepted')
+    `).bind(offerId, tenant, userId).first();
 
         if (existingRequest) {
             return json(
@@ -376,7 +376,7 @@ export async function handleRespondToRequest(
         const request = await db.prepare(`
       SELECT r.id, r.offer_id, r.seats_needed, o.driver_user_id, o.seats_taken
       FROM carpool_requests r
-      JOIN carpool_offers o ON r.offer_id = o.id
+      JOIN carpool_offers o ON r.offer_id = o.id AND o.tenant_id = r.tenant_id
       WHERE r.id = ? AND r.tenant_id = ?
     `).bind(requestId, tenant).first();
 
@@ -401,22 +401,22 @@ export async function handleRespondToRequest(
         // Update request status
         await db.prepare(`
       UPDATE carpool_requests SET status = ?, updated_at = ?
-      WHERE id = ?
-    `).bind(validated.status, now, requestId).run();
+      WHERE id = ? AND tenant_id = ?
+    `).bind(validated.status, now, requestId, tenant).run();
 
         // If accepted, update seats_taken
         if (validated.status === 'accepted') {
             const newSeatsTaken = (request.seats_taken as number) + (request.seats_needed as number);
             await db.prepare(`
         UPDATE carpool_offers SET seats_taken = ?, updated_at = ?
-        WHERE id = ?
-      `).bind(newSeatsTaken, now, request.offer_id).run();
+        WHERE id = ? AND tenant_id = ?
+      `).bind(newSeatsTaken, now, request.offer_id, tenant).run();
         }
 
         // Send push notification to passenger
         const passengerRequest = await db.prepare(`
-            SELECT passenger_user_id FROM carpool_requests WHERE id = ?
-        `).bind(requestId).first();
+            SELECT passenger_user_id FROM carpool_requests WHERE id = ? AND tenant_id = ?
+        `).bind(requestId, tenant).first();
 
         if (passengerRequest?.passenger_user_id) {
             const statusEmoji = validated.status === 'accepted' ? '✅' : '❌';

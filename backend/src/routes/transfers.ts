@@ -121,8 +121,8 @@ export async function handleGenerateTransferCode(req: any, env: Env, corsHdrs: H
 
         // Link squad member to global profile
         await env.DB.prepare(`
-            UPDATE squad SET global_profile_id = ? WHERE id = ?
-        `).bind(globalProfileId, playerId).run();
+            UPDATE squad SET global_profile_id = ? WHERE id = ? AND tenant_id = ?
+        `).bind(globalProfileId, playerId, tenantId).run();
     }
 
     // 3. Get player stats
@@ -268,8 +268,8 @@ export async function handleClaimTransfer(req: any, env: Env, corsHdrs: Headers)
 
     // 3. Link new player to global profile
     await env.DB.prepare(`
-        UPDATE squad SET global_profile_id = ? WHERE id = ?
-    `).bind(t.global_profile_id, newPlayerId).run();
+        UPDATE squad SET global_profile_id = ? WHERE id = ? AND tenant_id = ?
+    `).bind(t.global_profile_id, newPlayerId, tenantId).run();
 
     // 4. Mark transfer as redeemed
     await env.DB.prepare(`

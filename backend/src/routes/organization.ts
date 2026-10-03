@@ -440,8 +440,8 @@ export async function handleAcceptInvite(req: Request, env: any, corsHdrs: Heade
         await env.DB.prepare(`
             UPDATE organization_invites 
             SET status = 'accepted', responded_at = unixepoch()
-            WHERE id = ?
-        `).bind(invite.id).run();
+            WHERE id = ? AND tenant_id = ?
+        `).bind(invite.id, tenantId).run();
 
         // Move team to organization
         await env.DB.prepare(`

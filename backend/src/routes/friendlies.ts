@@ -180,9 +180,11 @@ export async function handleRequestMatch(req: Request, env: any, corsHdrs: Heade
         const requestId = url.pathname.split('/').slice(-2)[0];
         const body = await req.json() as any;
 
-        // Get the friendly request
+        // Get the friendly request. Deliberately not filtered by the caller's
+        // club: the listing belongs to another club (the host), whose id is
+        // read here and used for the match, fixtures and notifications.
         const friendlyRequest = await env.DB.prepare(
-            `SELECT * FROM friendly_requests WHERE id = ? AND status = 'open'`
+            `SELECT id, tenant_id FROM friendly_requests WHERE id = ? AND status = 'open'`
         ).bind(requestId).first();
 
         if (!friendlyRequest) {
@@ -311,8 +313,8 @@ export async function handleRespondToMatch(req: Request, env: any, corsHdrs: Hea
             await env.DB.prepare(`
                 UPDATE friendly_requests 
                 SET status = 'matched', updated_at = unixepoch()
-                WHERE id = ?
-            `).bind(match.request_id).run();
+                WHERE id = ? AND tenant_id = ?
+            `).bind(match.request_id, tenantId).run();
 
             // Auto-create fixture for BOTH teams
             const fixtureDate = confirmed_date || match.proposed_date;

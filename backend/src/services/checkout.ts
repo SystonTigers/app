@@ -166,13 +166,13 @@ async function handlePaymentSuccess(
     }
 
     // Trigger Printify fulfillment
-    await fulfillOrder(orderId, env);
+    await fulfillOrder(orderId, tenantId, env);
 
     // Clean up cart
     await env.KV_CARTS.delete(cartId);
 }
 
-async function fulfillOrder(orderId: string, env: any): Promise<void> {
+async function fulfillOrder(orderId: string, tenantId: string, env: any): Promise<void> {
     // Get order with items
     const { results } = await env.DB.prepare(`
     SELECT o.*, oi.*, p.printify_id, v.printify_variant_id
@@ -180,8 +180,8 @@ async function fulfillOrder(orderId: string, env: any): Promise<void> {
     JOIN order_items oi ON o.id = oi.order_id
     JOIN products p ON oi.product_id = p.id
     JOIN product_variants v ON oi.variant_id = v.id
-    WHERE o.id = ? AND p.vendor = 'printify'
-  `).bind(orderId).all();
+    WHERE o.id = ? AND o.tenant_id = ? AND p.vendor = 'printify'
+  `).bind(orderId, tenantId).all();
 
     if (!results || results.length === 0) {
         return; // No Printify items
@@ -234,8 +234,8 @@ async function fulfillOrder(orderId: string, env: any): Promise<void> {
         await env.DB.prepare(`
       UPDATE orders
       SET status = 'fulfilled', updated_at = ?
-      WHERE id = ?
-    `).bind(Date.now(), orderId).run();
+      WHERE id = ? AND tenant_id = ?
+    `).bind(Date.now(), orderId, tenantId).run();
 
     } catch (error) {
         console.error('Printify fulfillment failed:', error);

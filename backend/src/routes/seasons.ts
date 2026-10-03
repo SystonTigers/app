@@ -941,9 +941,9 @@ async function calculateSeasonStats(env: any, seasonId: string, tenantId: string
         SELECT e.player_id, e.type, p.name
         FROM events e
         JOIN matches m ON e.match_id = m.id
-        LEFT JOIN squad p ON e.player_id = p.id
+        LEFT JOIN squad p ON e.player_id = p.id AND p.tenant_id = ?
         WHERE m.season_id = ? AND m.team_id = ?
-    `).bind(seasonId, tenantId).all();
+    `).bind(tenantId, seasonId, tenantId).all();
 
     const playerStats = new Map<string, { name: string, goals: number, assists: number }>();
     const eventList = events.results || [];
@@ -983,7 +983,7 @@ export async function handleGetSeasonStats(req: Request, env: any, corsHdrs: Hea
         if (!season) { return json({ success: false, error: "Season not found" }, 404, corsHdrs); }
 
         if (season.status === 'archived') {
-            const snapshot = await env.DB.prepare("SELECT data FROM season_snapshots WHERE season_id = ? AND snapshot_type = 'stats'").bind(seasonId).first();
+            const snapshot = await env.DB.prepare("SELECT data FROM season_snapshots WHERE season_id = ? AND tenant_id = ? AND snapshot_type = 'stats'").bind(seasonId, tenantId).first();
             if (snapshot && snapshot.data) {
                 const data = JSON.parse(snapshot.data);
                 return json({

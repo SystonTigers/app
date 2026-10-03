@@ -96,9 +96,10 @@ export async function handleScheduleMOTMVoting(req: Request, env: any, corsHdrs:
  */
 export async function processScheduledNotifications(env: any) {
     try {
-        // Get notifications that should be sent
+        // Get notifications that should be sent. This cron serves every club,
+        // so each row carries its own tenant_id and is handled per club below.
         const notifications = await env.DB.prepare(`
-            SELECT * FROM scheduled_notifications
+            SELECT id, tenant_id, user_id, title, body, data FROM scheduled_notifications
             WHERE scheduled_for <= ? AND sent_at IS NULL
             ORDER BY scheduled_for ASC
             LIMIT 100
@@ -133,8 +134,8 @@ export async function processScheduledNotifications(env: any) {
 
                 // Mark as sent
                 await env.DB.prepare(`
-                    UPDATE scheduled_notifications SET sent_at = ? WHERE id = ?
-                `).bind(Date.now(), notification.id).run();
+                    UPDATE scheduled_notifications SET sent_at = ? WHERE id = ? AND tenant_id = ?
+                `).bind(Date.now(), notification.id, notification.tenant_id).run();
 
                 processed++;
             } catch (err) {
