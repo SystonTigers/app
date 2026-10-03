@@ -3,9 +3,6 @@
 import Link from 'next/link';
 import { ReactNode } from 'react';
 import {
-    ThemeProvider as DarkModeProvider,
-    SoundProvider,
-    OnboardingProvider,
     PremiumNav,
     CommandPalette,
     QuickActionsFAB,
@@ -22,9 +19,6 @@ interface PremiumLayoutWrapperProps {
 
 export function PremiumLayoutWrapper({ children, tenant, tenantName, badgeUrl }: PremiumLayoutWrapperProps) {
     return (
-        <DarkModeProvider>
-            <SoundProvider>
-                <OnboardingProvider>
                     <div className="min-h-screen flex flex-col bg-background text-foreground transition-colors duration-300">
                         {/* Premium Navigation - Desktop */}
                         <div className="hidden md:block">
@@ -71,8 +65,5 @@ export function PremiumLayoutWrapper({ children, tenant, tenantName, badgeUrl }:
                         {/* Mobile Bottom Navigation */}
                         <MobileBottomNav tenant={tenant} />
                     </div>
-                </OnboardingProvider>
-            </SoundProvider>
-        </DarkModeProvider>
     );
 }

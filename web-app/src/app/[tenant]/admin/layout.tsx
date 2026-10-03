@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import { ThemeProvider } from '@/components/ThemeProvider';
 import { AdminGuard } from '@/components/AdminGuard';
 import { getClubInfo } from '@/lib/club';
 import { TrialExpiryBanner } from '@/components/TrialExpiryBanner';
@@ -14,7 +13,6 @@ export default async function TenantAdminLayout({ children, params }: TenantAdmi
     const tenantName = (await getClubInfo(tenant)).name;
 
     return (
-        <ThemeProvider tenant={tenant}>
             <AdminGuard>
                 <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
                     <TrialExpiryBanner />
@@ -80,6 +78,5 @@ export default async function TenantAdminLayout({ children, params }: TenantAdmi
                     </main>
                 </div>
             </AdminGuard>
-        </ThemeProvider>
     );
 }
