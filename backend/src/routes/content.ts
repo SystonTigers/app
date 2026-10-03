@@ -1,4 +1,5 @@
 import { json } from "../services/util";
+import { lockedResultIds, ownGoalsIn, pickedGoals, removeResultGoals } from "../services/resultGoals";
 import { requireJWT, requireStaff } from "../services/auth";
 import { refreshLeagueTable } from "../services/league/store";
 import { resolveSeason } from "../services/seasons/range";
@@ -172,6 +173,8 @@ export async function handleDeleteResult(req: Request, env: any, corsHdrs: Heade
         const claims = await requireStaff(req, env);
         await env.DB.prepare("DELETE FROM team_results WHERE id = ? AND tenant_id = ?")
             .bind(id, claims.tenantId).run();
+        // Goals picked on the result go with it
+        await removeResultGoals(env, claims.tenantId, id);
         await refreshLeagueTable(env, claims.tenantId);
         return json({ success: true }, 200, corsHdrs);
     } catch (err) {
@@ -664,7 +667,13 @@ export async function handleListResults(req: Request, env: any, corsHdrs: Header
              ORDER BY r.match_date DESC LIMIT ?`
         ).bind(claims.tenantId, season?.from ?? null, season?.from ?? null, season?.to ?? null, season ? Math.max(limit, 200) : limit).all();
 
-        const rows = (results || []).map((r: any) => ({
+        // Scorers picked from the squad (for the edit form), and results whose scorers come from Match Centre
+        const list = (results || []) as any[];
+        const [picked, locked] = await Promise.all([
+            pickedGoals(env, claims.tenantId!, list.map((r) => Number(r.id))),
+            lockedResultIds(env, claims.tenantId!, list.map((r) => ({ id: Number(r.id), fixture_id: r.fixture_id ?? null }))),
+        ]);
+        const rows = list.map((r: any) => ({
             id: r.id,
             date: r.match_date,
             opponent: r.opponent,
@@ -676,6 +685,9 @@ export async function handleListResults(req: Request, env: any, corsHdrs: Header
             result: r.result,
             points: r.points,
             scorers: r.scorers,
+            scorerIds: picked.get(Number(r.id)) ?? [],
+            ownGoals: ownGoalsIn(r.scorers),
+            scorersFrom: locked.has(Number(r.id)) ? 'match_centre' : picked.has(Number(r.id)) ? 'picked' : r.scorers ? 'typed' : null,
             fixtureId: r.fixture_id ?? null,
             // Which end we were at, when known (from the fixture, or a venue of "home"/"away")
             homeAway: r.home_away ?? null,

@@ -18,12 +18,35 @@ export default function ResultsAdminPage({ params }: PageProps) {
         competition: 'League',
         ourScore: 0,
         theirScore: 0,
-        scorers: ''
     });
+    // One squad id per goal (the same player twice for two goals), plus own goals
+    const [scorerIds, setScorerIds] = useState<string[]>([]);
+    const [ownGoals, setOwnGoals] = useState(0);
+    const [squad, setSquad] = useState<Array<{ id: string; name: string; number: number | null }>>([]);
+    const [pick, setPick] = useState('');
+    const [error, setError] = useState('');
 
     useEffect(() => {
         loadResults();
+        createClientSDK(tenant).getSquad()
+            .then((rows) => setSquad(rows.map((r) => ({ id: String(r.id), name: String(r.name ?? ''), number: r.number == null ? null : Number(r.number) }))))
+            .catch(() => setSquad([]));
     }, [tenant]);
+
+    const goalsLeft = formData.ourScore - scorerIds.length - ownGoals;
+    const scorerCounts = scorerIds.reduce<Map<string, number>>((m, id) => m.set(id, (m.get(id) ?? 0) + 1), new Map());
+
+    function addScorer() {
+        if (!pick || goalsLeft <= 0) return;
+        if (pick === 'og') setOwnGoals(ownGoals + 1);
+        else setScorerIds([...scorerIds, pick]);
+        setPick('');
+    }
+
+    function removeScorer(id: string) {
+        const i = scorerIds.lastIndexOf(id);
+        if (i >= 0) setScorerIds([...scorerIds.slice(0, i), ...scorerIds.slice(i + 1)]);
+    }
 
     async function loadResults() {
         try {
@@ -47,12 +70,19 @@ export default function ResultsAdminPage({ params }: PageProps) {
         e.preventDefault();
         if (!formData.date || !formData.opponent) return;
 
+        if (goalsLeft < 0) {
+            setError(`You've picked more scorers than goals (${formData.ourScore}).`);
+            return;
+        }
+        setError('');
         try {
-            await createResult(formData);
-            setFormData({ ...formData, opponent: '', ourScore: 0, theirScore: 0, scorers: '' });
+            await createResult({ ...formData, scorerIds, ownGoals });
+            setFormData({ ...formData, opponent: '', ourScore: 0, theirScore: 0 });
+            setScorerIds([]);
+            setOwnGoals(0);
             loadResults();
         } catch (err) {
-            alert('Failed to create result');
+            setError(err instanceof Error && err.message ? err.message : "The result didn't save. Please try again.");
         }
     }
 
@@ -119,15 +149,36 @@ export default function ResultsAdminPage({ params }: PageProps) {
                                 </div>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium mb-1">Scorers (comma sep)</label>
-                                <input
-                                    type="text"
-                                    value={formData.scorers}
-                                    onChange={e => setFormData({ ...formData, scorers: e.target.value })}
-                                    className="w-full p-2 border rounded dark:bg-gray-700"
-                                    placeholder="Smith, Jones (2)"
-                                />
+                                <label htmlFor="scorer-pick" className="block text-sm font-medium mb-1">Scorers</label>
+                                <div className="flex gap-2">
+                                    <select
+                                        id="scorer-pick"
+                                        value={pick}
+                                        onChange={e => setPick(e.target.value)}
+                                        disabled={goalsLeft <= 0}
+                                        className="flex-1 p-2 border rounded dark:bg-gray-700"
+                                    >
+                                        <option value="">{goalsLeft > 0 ? `Who scored? (${goalsLeft} left)` : formData.ourScore ? 'Every goal has a scorer' : 'Enter our score first'}</option>
+                                        {squad.map((p) => <option key={p.id} value={p.id}>{p.number != null ? `${p.number}. ` : ''}{p.name}</option>)}
+                                        <option value="og">Own goal</option>
+                                    </select>
+                                    <button type="button" onClick={addScorer} disabled={!pick || goalsLeft <= 0} className="px-3 rounded border disabled:opacity-40">Add</button>
+                                </div>
+                                <p className="text-xs text-gray-500 mt-1">Add a player once for each goal they scored. Picked scorers count in player stats.</p>
+                                <div className="flex flex-wrap gap-2 mt-2">
+                                    {[...scorerCounts].map(([id, n]) => (
+                                        <button key={id} type="button" onClick={() => removeScorer(id)} className="text-sm px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-700" aria-label={`Remove one goal for ${squad.find((p) => p.id === id)?.name ?? 'player'}`}>
+                                            ⚽ {squad.find((p) => p.id === id)?.name ?? 'Player'}{n > 1 ? ` ×${n}` : ''} ✕
+                                        </button>
+                                    ))}
+                                    {ownGoals ? (
+                                        <button type="button" onClick={() => setOwnGoals(ownGoals - 1)} className="text-sm px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-700" aria-label="Remove one own goal">
+                                            ⚽ Own goal{ownGoals > 1 ? ` ×${ownGoals}` : ''} ✕
+                                        </button>
+                                    ) : null}
+                                </div>
                             </div>
+                            {error ? <p role="alert" className="text-sm text-red-600">{error}</p> : null}
                             <button type="submit" className="w-full bg-black text-white py-2 rounded hover:bg-gray-800">
                                 Add Result
                             </button>

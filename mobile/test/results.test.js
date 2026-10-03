@@ -31,8 +31,14 @@ assert.match(resultDate('2025-09-14'), /^Sun,? 14 Sept? 2025$/);
 // The form
 const today = new Date(2026, 9, 2, 12);
 assert.strictEqual(emptyResultForm(today).date, '2026-10-02');
-const ok = checkResultForm({ date: '14/09/2025', opponent: '  Rovers   FC ', ourScore: '3', theirScore: '0', venue: ' ', competition: 'Cup', scorers: 'Sam 2, Alex' }, today);
-assert.deepStrictEqual(ok, { date: '2025-09-14', opponent: 'Rovers FC', ourScore: 3, theirScore: 0, venue: null, competition: 'Cup', scorers: 'Sam 2, Alex' });
+const ok = checkResultForm({ date: '14/09/2025', opponent: '  Rovers   FC ', ourScore: '3', theirScore: '0', venue: ' ', competition: 'Cup', picks: { scorerIds: ['sam', 'sam', 'alex'], ownGoals: 0 } }, today);
+assert.deepStrictEqual(ok, { date: '2025-09-14', opponent: 'Rovers FC', ourScore: 3, theirScore: 0, venue: null, competition: 'Cup', scorerIds: ['sam', 'sam', 'alex'], ownGoals: 0 });
+// Scorers untouched: nothing sent; more scorers than goals: refused
+assert.ok(!('scorerIds' in checkResultForm({ date: '14/09/2025', opponent: 'X', ourScore: '1', theirScore: '0', venue: '', competition: 'League', picks: null }, today)));
+assert.match(checkResultForm({ date: '14/09/2025', opponent: 'X', ourScore: '1', theirScore: '0', venue: '', competition: 'League', picks: { scorerIds: ['a'], ownGoals: 1 } }, today), /picked 2 scorers but we only scored 1/);
+const { scorerChips, removeOneGoal } = mod.exports;
+assert.deepStrictEqual(scorerChips(['a', 'b', 'a'], new Map([['a', 'Pat'], ['b', 'Sam']])), [{ id: 'a', name: 'Pat', goals: 2 }, { id: 'b', name: 'Sam', goals: 1 }]);
+assert.deepStrictEqual(removeOneGoal({ scorerIds: ['a', 'b', 'a'], ownGoals: 1 }, 'a'), { scorerIds: ['a', 'b'], ownGoals: 1 });
 assert.match(checkResultForm({ ...emptyResultForm(today), date: '03/10/2026', opponent: 'X', ourScore: '1', theirScore: '1' }, today), /future/);
 assert.match(checkResultForm({ ...emptyResultForm(today), opponent: '', ourScore: '1', theirScore: '1' }, today), /who you played/);
 assert.match(checkResultForm({ ...emptyResultForm(today), opponent: 'X', ourScore: '1', theirScore: '' }, today), /both scores/);

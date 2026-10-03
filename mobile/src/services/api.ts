@@ -1116,6 +1116,11 @@ export interface ClubResult {
   result: 'win' | 'draw' | 'loss' | string;
   points: number;
   scorers: string | null;
+  /** Scorers picked from the squad, one id per goal */
+  scorerIds: string[];
+  ownGoals: number;
+  /** Where the scorers line came from: Match Centre (locked), picked here, or typed before picking existed */
+  scorersFrom: 'match_centre' | 'picked' | 'typed' | null;
   fixtureId: string | null;
   homeAway: 'home' | 'away' | null;
 }
@@ -1127,7 +1132,8 @@ export interface ResultInput {
   theirScore: number;
   venue?: string | null;
   competition?: string;
-  scorers?: string | null;
+  scorerIds?: string[];
+  ownGoals?: number;
 }
 
 /** Numbers staff enter by hand for one player and season, added on top of Match Centre */

@@ -57,7 +57,16 @@ export interface ResultForm {
   theirScore: string;
   venue: string;
   competition: string;
-  scorers: string;
+  /**
+   * Scorers picked from the squad (one id per goal) and own goals. null until
+   * staff change them, so editing a result doesn't touch its scorers.
+   */
+  picks: GoalPicks | null;
+}
+
+export interface GoalPicks {
+  scorerIds: string[];
+  ownGoals: number;
 }
 
 export const COMPETITIONS = ['League', 'Cup', 'Friendly'] as const;
@@ -68,7 +77,7 @@ export function localDay(d: Date): string {
 }
 
 export function emptyResultForm(today: Date = new Date()): ResultForm {
-  return { date: localDay(today), opponent: '', ourScore: '', theirScore: '', venue: '', competition: 'League', scorers: '' };
+  return { date: localDay(today), opponent: '', ourScore: '', theirScore: '', venue: '', competition: 'League', picks: null };
 }
 
 /** Accepts 2025-09-14, 14/09/2025 or 14/9/25 and gives YYYY-MM-DD, or null. */
@@ -97,7 +106,9 @@ export interface CheckedResult {
   theirScore: number;
   venue: string | null;
   competition: string;
-  scorers: string | null;
+  /** Only sent when staff picked or changed the scorers */
+  scorerIds?: string[];
+  ownGoals?: number;
 }
 
 /** Checks the form the same way the server does; returns the result to send or a message to show. */
@@ -111,6 +122,8 @@ export function checkResultForm(form: ResultForm, today: Date = new Date()): Che
   const ours = form.ourScore.trim();
   const theirs = form.theirScore.trim();
   if (!/^\d{1,2}$/.test(ours) || !/^\d{1,2}$/.test(theirs)) return 'Enter both scores as whole numbers.';
+  const picked = form.picks ? form.picks.scorerIds.length + form.picks.ownGoals : 0;
+  if (picked > Number(ours)) return `You've picked ${picked} scorers but we only scored ${Number(ours)}.`;
   return {
     date,
     opponent,
@@ -118,6 +131,19 @@ export function checkResultForm(form: ResultForm, today: Date = new Date()): Che
     theirScore: Number(theirs),
     venue: form.venue.trim() ? form.venue.trim().slice(0, 120) : null,
     competition: form.competition.trim() || 'League',
-    scorers: form.scorers.trim() ? form.scorers.trim().slice(0, 500) : null,
+    ...(form.picks ? { scorerIds: form.picks.scorerIds, ownGoals: form.picks.ownGoals } : {}),
   };
+}
+
+/** Picked scorers as chips: each player once with their goals, in the order they were picked. */
+export function scorerChips(ids: string[], names: Map<string, string>): Array<{ id: string; name: string; goals: number }> {
+  const counts = new Map<string, number>();
+  for (const id of ids) counts.set(id, (counts.get(id) ?? 0) + 1);
+  return Array.from(counts, ([id, goals]) => ({ id, name: names.get(id) ?? 'Removed player', goals }));
+}
+
+/** The picks with one goal taken off this player. */
+export function removeOneGoal(picks: GoalPicks, id: string): GoalPicks {
+  const i = picks.scorerIds.lastIndexOf(id);
+  return i < 0 ? picks : { ...picks, scorerIds: [...picks.scorerIds.slice(0, i), ...picks.scorerIds.slice(i + 1)] };
 }

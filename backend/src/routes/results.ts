@@ -5,6 +5,11 @@
  *   GET    /api/v1/results?season=        (in content.ts) results, optionally for one season
  *   POST   /api/v1/results                staff: add a result (any date, so past seasons too)
  *   PUT    /api/v1/results/:id            staff: change a result
+ *
+ * Scorers: `scorerIds` (squad ids, one per goal) and `ownGoals` save goals that
+ * count in player stats (services/resultGoals.ts) and write `scorers` from
+ * them. A plain `scorers` text is still accepted but counts for nothing.
+ * Results recorded in Match Centre keep the scorers from there.
  *   DELETE /api/v1/results/:id            (in content.ts) staff: remove one
  *
  * Scores set the result and league points; the league table is rebuilt after
@@ -15,6 +20,7 @@ import { requireStaff, requireTenantJWT } from "../services/auth";
 import { outcomeFromScores } from "../services/results";
 import { refreshLeagueTable } from "../services/league/store";
 import { seasonOptions } from "../services/seasons/range";
+import { lockedResultIds, readGoalPicks, replaceResultGoals, scorersText, squadNames, type GoalPicks } from "../services/resultGoals";
 
 type Env = { DB: D1Database; [key: string]: unknown };
 
@@ -65,6 +71,16 @@ export function parseResult(body: Record<string, unknown>, partial: boolean): Pa
   return out;
 }
 
+/** Picks checked against the score and the squad: the scorers text, or a response explaining the problem. */
+async function checkPicks(env: Env, tenantId: string, picks: GoalPicks, ourScore: number, corsHdrs: Headers): Promise<string | null | Response> {
+  if (picks.scorerIds.length + picks.ownGoals > ourScore) {
+    return fail(corsHdrs, 400, "VALIDATION", `You've picked more scorers than goals (${ourScore}).`);
+  }
+  const names = await squadNames(env, tenantId, picks.scorerIds);
+  if ("unknown" in names) return fail(corsHdrs, 400, "VALIDATION", "One of the scorers isn't in the squad any more. Pick them again.");
+  return scorersText(picks, names);
+}
+
 export async function handleResultSeasons(req: Request, env: Env, corsHdrs: Headers): Promise<Response> {
   let tenantId: string;
   try {
@@ -83,6 +99,13 @@ export async function handleAddResult(req: Request, env: Env, corsHdrs: Headers)
   if (!body) return fail(corsHdrs, 400, "INVALID_BODY", "Couldn't read that result.");
   const r = parseResult(body, false);
   if (typeof r === "string") return fail(corsHdrs, 400, "VALIDATION", r);
+  const picks = readGoalPicks(body);
+  if (typeof picks === "string") return fail(corsHdrs, 400, "VALIDATION", picks);
+  if (picks) {
+    const text = await checkPicks(env, tenantId, picks, r.ourScore!, corsHdrs);
+    if (text instanceof Response) return text;
+    r.scorers = text;
+  }
   const { result, points } = outcomeFromScores(r.ourScore!, r.theirScore!);
   const existing = await env.DB.prepare(`SELECT id FROM team_results WHERE tenant_id = ? AND match_date = ? AND lower(opponent) = lower(?)`)
     .bind(tenantId, r.date, r.opponent).first<{ id: number }>();
@@ -91,6 +114,8 @@ export async function handleAddResult(req: Request, env: Env, corsHdrs: Headers)
     `INSERT INTO team_results (tenant_id, match_date, opponent, venue, competition, our_score, their_score, result, points, scorers, source)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'manual')`,
   ).bind(tenantId, r.date, r.opponent, r.venue ?? "TBC", r.competition ?? "League", r.ourScore, r.theirScore, result, points, r.scorers ?? null).run();
+  const newId = Number(inserted.meta?.last_row_id);
+  if (picks && newId) await replaceResultGoals(env, tenantId, { id: newId, fixture_id: null }, picks);
   await refreshLeagueTable(env as never, tenantId);
   return json({ success: true, id: inserted.meta?.last_row_id ?? null, data: { id: inserted.meta?.last_row_id ?? null, result, points } }, 200, corsHdrs);
 }
@@ -98,12 +123,23 @@ export async function handleAddResult(req: Request, env: Env, corsHdrs: Headers)
 export async function handleEditResult(req: Request, env: Env, corsHdrs: Headers, id: string): Promise<Response> {
   const tenantId = await staffTenant(req, env, corsHdrs);
   if (tenantId instanceof Response) return tenantId;
-  const row = await env.DB.prepare(`SELECT id, our_score, their_score FROM team_results WHERE id = ? AND tenant_id = ?`).bind(id, tenantId).first<{ id: number; our_score: number; their_score: number }>();
+  const row = await env.DB.prepare(`SELECT id, our_score, their_score, fixture_id FROM team_results WHERE id = ? AND tenant_id = ?`)
+    .bind(id, tenantId).first<{ id: number; our_score: number; their_score: number; fixture_id: string | null }>();
   if (!row) return fail(corsHdrs, 404, "NOT_FOUND", "That result isn't there any more.");
   const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
   if (!body) return fail(corsHdrs, 400, "INVALID_BODY", "Couldn't read that result.");
   const r = parseResult(body, true);
   if (typeof r === "string") return fail(corsHdrs, 400, "VALIDATION", r);
+  const picks = readGoalPicks(body);
+  if (typeof picks === "string") return fail(corsHdrs, 400, "VALIDATION", picks);
+  if (picks) {
+    if ((await lockedResultIds(env, tenantId, [row])).has(row.id)) {
+      return fail(corsHdrs, 409, "FROM_MATCH_CENTRE", "This match's scorers come from Match Centre. Change them there.");
+    }
+    const text = await checkPicks(env, tenantId, picks, r.ourScore ?? row.our_score, corsHdrs);
+    if (text instanceof Response) return text;
+    r.scorers = text;
+  }
   const sets: string[] = [];
   const binds: unknown[] = [];
   const set = (col: string, v: unknown) => { sets.push(`${col} = ?`); binds.push(v); };
@@ -128,6 +164,7 @@ export async function handleEditResult(req: Request, env: Env, corsHdrs: Headers
     if (String(err).includes("UNIQUE")) return fail(corsHdrs, 409, "DUPLICATE", "There's already a result against them on that date.");
     throw err;
   }
+  if (picks) await replaceResultGoals(env, tenantId, row, picks);
   await refreshLeagueTable(env as never, tenantId);
   return json({ success: true }, 200, corsHdrs);
 }
