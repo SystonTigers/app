@@ -15,7 +15,6 @@ export { ThemeProvider, useTheme, ThemeToggle, ThemeSelector } from './ThemeProv
 export { LiveMatchHub } from './LiveMatchHub';
 export { OnboardingProvider, useOnboarding, RestartTourButton } from './OnboardingTour';
 export { PremiumNav } from './PremiumNav';
-export { PremiumToolbar, HeaderToolbarItems } from './PremiumToolbar';
 export { MobileBottomNav } from './MobileBottomNav';
 export { PullToRefresh } from './PullToRefresh';
 export { ShareButton, ShareResultCard, SharePlayerStats } from './SocialShare';

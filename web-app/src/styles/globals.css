@@ -2,63 +2,49 @@
 @tailwind components;
 @tailwind utilities;
 
-/* 
-   FREQUENCY: 8 | BUILD: 22 | VISION: 33 
-   The Internal Environment is set to Wealth & Mastery.
+/*
+   Boost Huddle website look, matching the app (mobile/src/theme/brand.ts):
+   dark ink background, raised charcoal cards, the club's colour as the accent
+   and Barlow Condensed for headings. Club pages set --brand / --brand-rgb from
+   the club's colour (lib/brand.ts); everything else uses the Boost Huddle cyan.
 */
 
 @layer base {
   :root {
-    /* Boost Huddle Theme: Obsidian & Chrome */
+    color-scheme: dark;
 
     /* Backgrounds */
     --bg: #0B0D0F;
-    /* Section 1: Deep Matte Obsidian */
-    --surface: rgba(11, 13, 15, 0.7);
-    /* Glassmorphism base */
+    --surface: #14171C;
+    --surface-raised: #1D2127;
 
-    /* Typography */
-    --text: #FFFFFF;
-    --text-muted: #C0C0C0;
-    /* Section 1: Secondary Accent - Brushed Chrome */
+    /* Text */
+    --text: #F2F5F7;
+    --text-muted: #9EA6B0;
 
     /* Borders */
-    --border: #C0C0C0;
-    /* Brushed Chrome */
+    --border: #2A2F36;
 
-    /* Brand Colors */
+    /* Accent (overridden per club) */
     --brand: #00FFFF;
-    /* Section 1: Electric Cyan / Neon Aqua */
-    --brand-2: #C0C0C0;
-    /* Brushed Chrome */
-    --on-brand: #0B0D0F;
-    /* Obsidian text on Cyan */
-    --on-brand-2: #0B0D0F;
+    --brand-rgb: 0 255 255;
+    --on-brand-rgb: 6 8 11;
+    --on-brand: rgb(6 8 11);
 
-    /* Status Colors */
-    --success: #00FFFF;
-    /* Keep it Cyber */
+    /* Status */
+    --success: #2BD576;
     --warning: #F59E0B;
-    --error: #FF0055;
-    --info: #00FFFF;
-
-    /* Spacing */
-    --spacing-xs: 0.25rem;
-    --spacing-sm: 0.5rem;
-    --spacing-md: 1rem;
-    --spacing-lg: 1.5rem;
-    --spacing-xl: 2rem;
-    --spacing-2xl: 3rem;
-
-    /* Typography Defaults */
-    --font-heading: var(--font-orbitron);
-    --font-body: var(--font-roboto-mono);
+    --error: #FF4D6A;
   }
 
-  /* Force Dark Mode Aesthetic everywhere */
   html,
   body {
-    @apply max-w-[100vw] overflow-x-hidden font-mono bg-[var(--bg)] text-[var(--text)];
+    @apply bg-[var(--bg)] text-[var(--text)] font-sans antialiased;
+  }
+
+  /* Never let one wide element push the whole page sideways */
+  body {
+    overflow-x: clip;
   }
 
   h1,
@@ -67,55 +53,108 @@
   h4,
   h5,
   h6 {
-    @apply font-sans uppercase tracking-widest;
-    /* Orbitron + Uppercase */
+    @apply font-display uppercase tracking-wide;
+    font-weight: 800;
+    line-height: 1.05;
+  }
+
+  ::selection {
+    background: rgb(var(--brand-rgb) / 0.35);
+  }
+
+  :focus-visible {
+    outline: 2px solid rgb(var(--brand-rgb));
+    outline-offset: 2px;
+  }
+
+  input,
+  select,
+  textarea {
+    color-scheme: dark;
   }
 }
 
 @layer components {
   .container {
-    @apply max-w-[1400px] mx-auto px-6;
-    /* Slightly wider for the dashboard feel */
+    @apply max-w-[1280px] mx-auto px-4 sm:px-6;
   }
 
-  /* 
-     Section 2: Hex-Grid Layout & Chamfered Edges
-     Avoiding rounded corners. Using clip-path for 45-degree angles.
-  */
+  /* Chamfered panels: the Boost Huddle hex-cut corner */
   .card {
-    @apply bg-[#0B0D0F]/70 backdrop-blur-md border border-[var(--border)] p-6 relative;
-    box-shadow: 0 0 8px rgba(0, 255, 255, 0.05);
-    /* Section 3: Subtle defined glow (8px) */
-    clip-path: polygon(20px 0, 100% 0,
-        100% calc(100% - 20px), calc(100% - 20px) 100%,
-        0 100%, 0 20px);
+    @apply bg-surface border border-border p-6 relative;
+    clip-path: polygon(16px 0, 100% 0,
+        100% calc(100% - 16px), calc(100% - 16px) 100%,
+        0 100%, 0 16px);
   }
 
-  /* Section 5: Movement & Interaction */
   .btn {
-    @apply inline-flex items-center justify-center px-6 py-3 font-bold cursor-pointer transition-all duration-400 ease-out-wealth border uppercase tracking-wider text-sm;
+    @apply inline-flex items-center justify-center gap-2 px-6 py-3 font-display font-bold cursor-pointer transition-all duration-200 border uppercase tracking-wider text-base leading-none disabled:opacity-50 disabled:cursor-not-allowed;
     clip-path: polygon(10px 0, 100% 0,
         100% calc(100% - 10px), calc(100% - 10px) 100%,
         0 100%, 0 10px);
   }
 
+  .btn-sm {
+    @apply px-4 py-2 text-sm;
+  }
+
   .btn-primary {
-    @apply bg-brand text-[var(--on-brand)] border-brand hover:bg-transparent hover:text-brand hover:shadow-glow-16;
+    @apply bg-brand text-brand-foreground border-brand hover:brightness-110 hover:shadow-glow-16;
   }
 
   .btn-secondary {
-    @apply bg-[var(--brand-2)] text-[var(--on-brand-2)] border-[var(--brand-2)] hover:bg-transparent hover:text-[var(--brand-2)] hover:shadow-[0_0_8px_#C0C0C0];
+    @apply bg-surface-raised text-foreground border-border hover:border-brand/60 hover:text-brand;
   }
 
   .btn-outline {
-    @apply bg-transparent border-brand text-brand hover:bg-brand hover:text-[var(--on-brand)] hover:shadow-glow-16;
+    @apply bg-transparent border-brand/70 text-brand hover:bg-brand hover:text-brand-foreground;
   }
 
-  /* Animations */
+  .btn-ghost {
+    @apply bg-transparent border-transparent text-muted hover:text-foreground hover:bg-surface-raised;
+  }
+
+  .btn-danger {
+    @apply bg-transparent border-red-500/60 text-red-400 hover:bg-red-500 hover:text-white;
+  }
+
+  /* Form fields */
+  .field {
+    @apply w-full bg-background border border-border px-4 py-3 text-foreground placeholder:text-gray-500 transition-colors focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand;
+  }
+
+  .label {
+    @apply block text-xs font-bold uppercase tracking-wider text-muted mb-2;
+  }
+
+  /* Small uppercase label above headings */
+  .eyebrow {
+    @apply font-display text-sm font-bold uppercase tracking-[0.2em] text-brand;
+  }
+
+  /* Section heading used across club and admin pages */
+  .page-title {
+    @apply font-display text-4xl md:text-5xl font-extrabold uppercase italic tracking-tight text-foreground;
+  }
+
+  /* Wide tables scroll inside their card instead of pushing the page sideways */
+  .table-scroll {
+    @apply w-full overflow-x-auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .scrollbar-none {
+    scrollbar-width: none;
+  }
+
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+
   @keyframes fadeInUp {
     from {
       opacity: 0;
-      transform: translateY(20px);
+      transform: translateY(16px);
     }
 
     to {
@@ -124,29 +163,14 @@
     }
   }
 
-  @keyframes pulse-glow {
-
-    0%,
-    100% {
-      box-shadow: 0 0 8px rgba(0, 255, 255, 0.3);
-      opacity: 1;
-    }
-
-    50% {
-      box-shadow: 0 0 16px rgba(0, 255, 255, 0.6);
-      opacity: 0.8;
-    }
-  }
-
   .animate-fade-in-up {
-    animation: fadeInUp 0.8s ease-out;
+    animation: fadeInUp 0.6s ease-out;
   }
 
   .animate-pulse-glow {
     animation: pulse-glow 4s ease-in-out infinite;
   }
 
-  /* Utility Classes for Hex-Grid */
   .chamfer-sm {
     clip-path: polygon(10px 0, 100% 0,
         100% calc(100% - 10px), calc(100% - 10px) 100%,
@@ -157,5 +181,15 @@
     clip-path: polygon(20px 0, 100% 0,
         100% calc(100% - 20px), calc(100% - 20px) 100%,
         0 100%, 0 20px);
+  }
+
+  /* The hexagon used for club badges without a picture */
+  .hexagon {
+    clip-path: polygon(25% 3%, 75% 3%, 100% 50%, 75% 97%, 25% 97%, 0 50%);
+  }
+
+  /* Faint hex grid behind hero sections */
+  .hex-grid {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='98' viewBox='0 0 56 98'%3E%3Cpath d='M28 66L0 50V17L28 1l28 16v33L28 66zm0 32L0 82V67l28 16 28-16v15L28 98z' fill='none' stroke='%23ffffff' stroke-opacity='0.05'/%3E%3C/svg%3E");
   }
 }

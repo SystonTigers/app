@@ -1,16 +1,19 @@
 'use client';
 
-export default function GlobalError({ error }: { error: Error & { digest?: string } }) {
+/** Shown when a page fails to load. */
+export default function ErrorPage({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   return (
-    <html>
-      <body>
-        <main className="mx-auto max-w-xl p-8 text-center">
-          <h1 className="text-2xl font-semibold mb-2">Something went wrong</h1>
-          <p className="text-muted-foreground mb-6">Please try again in a moment.</p>
-          <pre className="text-xs opacity-60">{error?.digest ?? ''}</pre>
-          <a className="underline" href="/">Go home</a>
-        </main>
-      </body>
-    </html>
+    <main className="min-h-[60vh] flex items-center justify-center px-4 py-16">
+      <div className="max-w-md text-center">
+        <p className="eyebrow mb-3">Something went wrong</p>
+        <h1 className="text-4xl italic mb-4">That page didn&apos;t load</h1>
+        <p className="text-muted mb-8">Please try again in a moment. If it keeps happening, let the club know.</p>
+        <div className="flex flex-col sm:flex-row gap-3 justify-center">
+          <button type="button" onClick={reset} className="btn btn-primary">Try again</button>
+          <a href="/" className="btn btn-secondary">Go home</a>
+        </div>
+        {error?.digest && <p className="mt-6 text-xs text-gray-500">Reference: {error.digest}</p>}
+      </div>
+    </main>
   );
 }

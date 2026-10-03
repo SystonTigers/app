@@ -11,14 +11,16 @@ import {
     QuickActionsFAB,
     MobileBottomNav,
 } from '@/components/ui';
+import { ClubBadge } from '@/components/ui/Brand';
 
 interface PremiumLayoutWrapperProps {
     children: ReactNode;
     tenant: string;
     tenantName: string;
+    badgeUrl: string | null;
 }
 
-export function PremiumLayoutWrapper({ children, tenant, tenantName }: PremiumLayoutWrapperProps) {
+export function PremiumLayoutWrapper({ children, tenant, tenantName, badgeUrl }: PremiumLayoutWrapperProps) {
     return (
         <DarkModeProvider>
             <SoundProvider>
@@ -26,21 +28,21 @@ export function PremiumLayoutWrapper({ children, tenant, tenantName }: PremiumLa
                     <div className="min-h-screen flex flex-col bg-background text-foreground transition-colors duration-300">
                         {/* Premium Navigation - Desktop */}
                         <div className="hidden md:block">
-                            <PremiumNav tenant={tenant} teamName={tenantName} />
+                            <PremiumNav tenant={tenant} teamName={tenantName} badgeUrl={badgeUrl} />
                         </div>
 
                         {/* Simple Mobile Header */}
                         <header className="md:hidden sticky top-0 z-40 bg-background/95 backdrop-blur-lg border-b border-border">
                             <div className="container py-3">
-                                <div className="flex items-center justify-between">
-                                    <Link
-                                        href={`/${tenant}`}
-                                        className="text-xl font-black text-brand no-underline"
-                                    >
+                                <Link
+                                    href={`/${tenant}`}
+                                    className="flex items-center gap-3 no-underline"
+                                >
+                                    <ClubBadge name={tenantName} badgeUrl={badgeUrl} size={34} />
+                                    <span className="font-display text-xl uppercase tracking-wide text-foreground truncate">
                                         {tenantName}
-                                    </Link>
-                                    <div className="text-2xl">⚽</div>
-                                </div>
+                                    </span>
+                                </Link>
                             </div>
                         </header>
 

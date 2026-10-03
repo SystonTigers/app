@@ -1,72 +1,80 @@
 'use client';
 
+/** The signed-in person's menu in the club header: their clubs, linking a player and logging out. */
 import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { clearSession } from '@/lib/session';
 import { LinkPlayerModal } from './LinkPlayerModal';
+import { Icon } from './ui/Icon';
 
 export function TenantSwitcher() {
-    const { user, myTenants, switchTenant } = useAuth();
+    const { user, myTenants, switchTenant, logout } = useAuth();
     const [isOpen, setIsOpen] = useState(false);
     const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
 
     if (!user) return null;
 
-    // Current tenant is usually inferred from URL, but let's check myTenants
-    // If we are strictly on a tenant page URL, we can use that param, but this component might be used globally?
-    // Let's assume the navbar passes the current tenant context or we find it.
-    // For now, let's just list ALL.
+    const initial = (user.name || user.email || '?').charAt(0).toUpperCase();
+    const logOut = () => {
+        clearSession();
+        logout();
+    };
 
     return (
         <>
             <div className="relative">
                 <button
+                    type="button"
                     onClick={() => setIsOpen(!isOpen)}
-                    className="flex items-center gap-2 px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors"
+                    className="flex items-center gap-1.5 p-1 text-gray-300 hover:text-foreground transition-colors"
+                    aria-label="Your account"
+                    aria-expanded={isOpen}
                 >
-                    <div className="w-8 h-8 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center text-xs font-bold">
-                        {user.email.charAt(0).toUpperCase()}
-                    </div>
-                    <span className="text-sm font-medium hidden sm:block truncate max-w-[100px]">
-                        My Teams
+                    <span className="w-8 h-8 hexagon bg-surface-raised border border-border flex items-center justify-center font-display font-bold text-brand">
+                        {initial}
                     </span>
-                    <span className="text-xs">▼</span>
+                    <Icon name="chevronDown" className="w-4 h-4 hidden sm:block" />
                 </button>
 
                 {isOpen && (
                     <>
-                        <div className="fixed inset-0 z-30" onClick={() => setIsOpen(false)} />
-                        <div className="absolute right-0 top-full mt-2 w-64 bg-white dark:bg-gray-900 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 z-40 overflow-hidden">
-                            <div className="p-3 border-b border-gray-100 dark:border-gray-800">
-                                <p className="text-xs text-gray-500 font-medium uppercase tracking-wider mb-2">My Accounts</p>
-                                {myTenants.length === 0 ? (
-                                    <p className="text-sm text-gray-400 italic">No other teams found</p>
-                                ) : (
-                                    <div className="space-y-1">
-                                        {myTenants.map((t) => (
-                                            <button
-                                                key={t.id}
-                                                onClick={() => {
-                                                    switchTenant(t.id);
-                                                    setIsOpen(false);
-                                                }}
-                                                className="w-full text-left px-2 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 text-sm flex items-center justify-between"
-                                            >
-                                                <span>{t.name}</span>
-                                                {/* Maybe highlight current? */}
-                                            </button>
-                                        ))}
-                                    </div>
-                                )}
+                        <button type="button" aria-label="Close menu" className="fixed inset-0 z-40 cursor-default" onClick={() => setIsOpen(false)} />
+                        <div className="absolute right-0 top-full mt-2 w-64 bg-surface border border-border shadow-2xl z-50 chamfer-sm">
+                            <div className="p-3 border-b border-border">
+                                <p className="text-sm font-semibold truncate">{user.name || user.email}</p>
+                                {user.name && <p className="text-xs text-muted truncate">{user.email}</p>}
                             </div>
+                            {myTenants.length > 1 && (
+                                <div className="p-2 border-b border-border">
+                                    <p className="px-2 py-1 text-xs font-bold uppercase tracking-wider text-muted">Your clubs</p>
+                                    {myTenants.map((t) => (
+                                        <button
+                                            type="button"
+                                            key={t.id}
+                                            onClick={() => {
+                                                setIsOpen(false);
+                                                void switchTenant(t.id);
+                                            }}
+                                            className="w-full text-left px-2 py-2 text-sm hover:bg-surface-raised"
+                                        >
+                                            {t.name}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
                             <div className="p-2">
                                 <button
+                                    type="button"
                                     onClick={() => {
                                         setIsOpen(false);
                                         setIsLinkModalOpen(true);
                                     }}
-                                    className="w-full py-2 px-3 text-sm text-brand font-medium hover:bg-brand/5 rounded-lg flex items-center justify-center gap-2"
+                                    className="w-full text-left px-2 py-2 text-sm hover:bg-surface-raised flex items-center gap-2"
                                 >
-                                    <span>+</span> Link Another Player
+                                    <Icon name="link" className="w-4 h-4 text-brand" /> Link another player
+                                </button>
+                                <button type="button" onClick={logOut} className="w-full text-left px-2 py-2 text-sm hover:bg-surface-raised flex items-center gap-2">
+                                    <Icon name="logout" className="w-4 h-4 text-brand" /> Log out
                                 </button>
                             </div>
                         </div>

@@ -1,231 +1,243 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+/**
+ * The club site's navigation: a header (links on wide screens), a bottom bar
+ * on phones and tablets, and one menu sheet both open.
+ *
+ * Visitors only see pages that work without logging in; members also get the
+ * members-only pages, and staff get Admin.
+ */
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { NotificationCenter } from './NotificationCenter';
-import { ThemeToggle } from './ThemeProvider';
-import { SoundToggle } from './SoundEffects';
-import { CommandPaletteTrigger } from './CommandPalette';
-import { useUserRole, canAccessAdmin, canAccess } from '@/hooks/useUserRole';
+import { Icon, type IconName } from './Icon';
+import { ClubBadge } from './Brand';
+import { useUserRole, canAccessAdmin } from '@/hooks/useUserRole';
 import { TenantSwitcher } from '../TenantSwitcher';
+import { clubAppLink } from '@/lib/app-link';
 
 interface NavItem {
     label: string;
     href: string;
-    icon: string;
-    feature?: string; // Feature name for access control
+    icon: IconName;
 }
 
 interface PremiumNavProps {
     tenant: string;
-    teamName?: string;
+    teamName: string;
+    badgeUrl?: string | null;
 }
 
-export function PremiumNav({ tenant, teamName }: PremiumNavProps) {
-    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-    const [isScrolled, setIsScrolled] = useState(false);
-    const pathname = usePathname();
+export function clubNav(tenant: string, signedIn: boolean): { main: NavItem[]; more: NavItem[] } {
+    const t = `/${tenant}`;
+    const main: NavItem[] = [
+        { label: 'Home', href: t, icon: 'home' },
+        { label: 'Fixtures', href: `${t}/fixtures`, icon: 'calendar' },
+        { label: 'Results', href: `${t}/results`, icon: 'trophy' },
+        { label: 'Table', href: `${t}/table`, icon: 'table' },
+        { label: 'Squad', href: `${t}/squad`, icon: 'users' },
+        { label: 'Stats', href: `${t}/stats`, icon: 'chart' },
+    ];
+    const more: NavItem[] = signedIn
+        ? [
+            { label: 'Gallery', href: `${t}/gallery`, icon: 'image' },
+            { label: 'Videos', href: `${t}/videos`, icon: 'video' },
+            { label: 'Training', href: `${t}/training`, icon: 'clipboard' },
+            { label: 'Team talk', href: `${t}/team`, icon: 'chat' },
+            { label: 'Calendar', href: `${t}/calendar`, icon: 'calendar' },
+            { label: 'Season history', href: `${t}/history`, icon: 'history' },
+            { label: 'Sponsors', href: `${t}/sponsors`, icon: 'handshake' },
+        ]
+        : [{ label: 'Sponsors', href: `${t}/sponsors`, icon: 'handshake' }];
+    return { main, more };
+}
+
+export function PremiumNav({ tenant, teamName, badgeUrl }: PremiumNavProps) {
+    const [menuOpen, setMenuOpen] = useState(false);
+    const [moreOpen, setMoreOpen] = useState(false);
+    const pathname = usePathname() ?? '';
     const { role, isLoggedIn } = useUserRole();
-
-    const allMainNav: NavItem[] = [
-        { label: 'Home', href: `/${tenant}`, icon: '🏠' },
-        { label: 'Fixtures', href: `/${tenant}/fixtures`, icon: '📅', feature: 'fixtures' },
-        { label: 'Results', href: `/${tenant}/results`, icon: '🏆', feature: 'results' },
-        { label: 'Table', href: `/${tenant}/table`, icon: '📊', feature: 'table' },
-        { label: 'Squad', href: `/${tenant}/squad`, icon: '👥', feature: 'squad' },
-        { label: 'Stats', href: `/${tenant}/stats`, icon: '📈', feature: 'stats' },
-        { label: 'Training', href: `/${tenant}/training`, icon: '⚽', feature: 'training' },
-        { label: 'Team', href: `/${tenant}/team`, icon: '💬', feature: 'discussions' },
-    ];
-
-    const allSecondaryNav: NavItem[] = [
-        { label: 'Videos', href: `/${tenant}/videos`, icon: '🎬' },
-        { label: 'Chat', href: `/${tenant}/chat`, icon: '💬', feature: 'discussions' },
-        { label: 'Shop', href: `/${tenant}/shop`, icon: '🛒' },
-        { label: 'Calendar', href: `/${tenant}/calendar`, icon: '📆' },
-        { label: 'Gallery', href: `/${tenant}/gallery`, icon: '🖼️' },
-    ];
-
-    // Filter navigation based on role
-    const mainNav = allMainNav.filter(item =>
-        !item.feature || canAccess(role, item.feature)
-    );
-    const secondaryNav = allSecondaryNav.filter(item =>
-        !item.feature || canAccess(role, item.feature)
-    );
-
+    const { main, more } = clubNav(tenant, isLoggedIn);
     const showAdmin = canAccessAdmin(role);
 
+    // Close menus when the page changes
     useEffect(() => {
-        const handleScroll = () => {
-            setIsScrolled(window.scrollY > 10);
-        };
-        window.addEventListener('scroll', handleScroll);
-        return () => window.removeEventListener('scroll', handleScroll);
-    }, []);
+        setMenuOpen(false);
+        setMoreOpen(false);
+    }, [pathname]);
 
-    const isActive = (href: string) => {
-        if (href === `/${tenant}`) {
-            return pathname === `/${tenant}`;
-        }
-        return pathname.startsWith(href);
-    };
+    useEffect(() => {
+        if (!menuOpen) return;
+        const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setMenuOpen(false);
+        document.addEventListener('keydown', onKey);
+        document.body.style.overflow = 'hidden';
+        return () => {
+            document.removeEventListener('keydown', onKey);
+            document.body.style.overflow = '';
+        };
+    }, [menuOpen]);
+
+    const isActive = (href: string) => (href === `/${tenant}` ? pathname === href : pathname.startsWith(href));
+    const moreActive = more.some((i) => isActive(i.href));
+    const loginHref = `/login?next=${encodeURIComponent(pathname || `/${tenant}`)}`;
 
     return (
         <>
-            <header className={`sticky top-0 z-50 transition-all duration-300 ${isScrolled
-                ? 'bg-white/95 dark:bg-gray-900/95 backdrop-blur-lg shadow-lg'
-                : 'bg-white dark:bg-gray-900'
-                } border-b border-gray-200 dark:border-gray-800`}>
-                <div className="container">
-                    {/* Main Nav Row */}
-                    <div className="flex items-center justify-between h-16">
-                        {/* Logo */}
-                        <Link href={`/${tenant}`} className="flex items-center gap-3 group">
-                            <div className="w-10 h-10 bg-brand chamfer-sm flex items-center justify-center text-white font-black text-lg group-hover:scale-110 transition-transform">
-                                {(teamName || tenant)?.[0]?.toUpperCase()}
-                            </div>
-                            <span className="text-xl font-black uppercase tracking-tight hidden sm:block">
-                                {teamName || tenant.replace(/-/g, ' ')}
-                            </span>
-                        </Link>
+            <header className="sticky top-0 z-40 bg-background/90 backdrop-blur-lg border-b border-border">
+                <div className="container flex items-center justify-between gap-4 h-16">
+                    <Link href={`/${tenant}`} className="flex items-center gap-3 min-w-0 group">
+                        <ClubBadge name={teamName} badgeUrl={badgeUrl} size={40} className="transition-transform group-hover:scale-105" />
+                        <span className="font-display text-xl font-extrabold uppercase italic tracking-wide truncate max-w-[52vw] lg:max-w-[150px] xl:max-w-[240px]">
+                            {teamName}
+                        </span>
+                    </Link>
 
-                        {/* Desktop Navigation */}
-                        <nav className="hidden lg:flex items-center gap-1">
-                            {mainNav.map((item) => (
-                                <Link
-                                    key={item.href}
-                                    href={item.href}
-                                    className={`px-4 py-2 chamfer-sm font-medium text-sm transition-all ${isActive(item.href)
-                                        ? 'bg-brand text-white shadow-md'
-                                        : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
-                                        }`}
-                                >
-                                    {item.label}
-                                </Link>
-                            ))}
-
-                            {/* More Dropdown */}
-                            <div className="relative group">
-                                <button className="px-4 py-2 chamfer-sm font-medium text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all flex items-center gap-1">
-                                    More
-                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                    </svg>
-                                </button>
-                                <div className="absolute top-full right-0 mt-1 w-56 bg-white dark:bg-gray-900 chamfer-lg shadow-xl border border-gray-200 dark:border-gray-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all p-2">
-                                    {secondaryNav.map((item) => (
-                                        <Link
-                                            key={item.href}
-                                            href={item.href}
-                                            className={`flex items-center gap-3 px-4 py-3 chamfer-sm transition-colors ${isActive(item.href)
-                                                ? 'bg-brand/10 text-brand'
-                                                : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
-                                                }`}
-                                        >
-                                            <span className="text-lg">{item.icon}</span>
-                                            <span className="font-medium">{item.label}</span>
-                                        </Link>
-                                    ))}
-                                </div>
-                            </div>
-                        </nav>
-
-                        {/* Right Side Actions */}
-                        <div className="flex items-center gap-2">
-                            <div className="hidden md:block">
-                                <CommandPaletteTrigger />
-                            </div>
-                            <div className="hidden sm:flex items-center gap-1">
-                                <SoundToggle />
-                                <ThemeToggle />
-                            </div>
-                            <TenantSwitcher />
-                            <NotificationCenter tenant={tenant} />
-
-                            {/* Admin Link - Only for managers and coaches */}
-                            {showAdmin && (
-                                <Link
-                                    href={`/${tenant}/admin`}
-                                    className="hidden sm:flex items-center gap-2 px-3 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 chamfer-sm text-sm font-bold transition-colors"
-                                >
-                                    <span>⚙️</span>
-                                    <span className="hidden lg:inline">Admin</span>
-                                </Link>
-                            )}
-
-                            {/* Mobile Menu Button */}
-                            <button
-                                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                                className="lg:hidden p-2 chamfer-sm hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                    {/* Wide screens: the links themselves */}
+                    <nav aria-label="Club" className="hidden lg:flex items-center gap-0.5">
+                        {main.map((item) => (
+                            <Link
+                                key={item.href}
+                                href={item.href}
+                                aria-current={isActive(item.href) ? 'page' : undefined}
+                                className={`px-3 py-2 font-display text-[15px] font-bold uppercase tracking-wider transition-colors border-b-2 ${isActive(item.href)
+                                    ? 'text-brand border-brand'
+                                    : 'text-gray-300 border-transparent hover:text-foreground'
+                                    }`}
                             >
-                                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    {isMobileMenuOpen ? (
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                    ) : (
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                                    )}
-                                </svg>
+                                {item.label}
+                            </Link>
+                        ))}
+                        <div className="relative" onMouseLeave={() => setMoreOpen(false)}>
+                            <button
+                                type="button"
+                                aria-expanded={moreOpen}
+                                onClick={() => setMoreOpen((o) => !o)}
+                                onMouseEnter={() => setMoreOpen(true)}
+                                className={`px-3 py-2 font-display text-[15px] font-bold uppercase tracking-wider flex items-center gap-1 border-b-2 transition-colors ${moreActive ? 'text-brand border-brand' : 'text-gray-300 border-transparent hover:text-foreground'}`}
+                            >
+                                More <Icon name="chevronDown" className="w-4 h-4" />
                             </button>
+                            {moreOpen && (
+                                <div className="absolute top-full right-0 pt-2 w-56 z-50">
+                                    <div className="bg-surface border border-border shadow-2xl p-2 chamfer-sm">
+                                        {more.map((item) => (
+                                            <Link
+                                                key={item.href}
+                                                href={item.href}
+                                                className={`flex items-center gap-3 px-3 py-2.5 text-sm font-semibold transition-colors ${isActive(item.href) ? 'bg-brand/10 text-brand' : 'text-gray-200 hover:bg-surface-raised hover:text-foreground'}`}
+                                            >
+                                                <Icon name={item.icon} className="w-4 h-4 text-brand" />
+                                                {item.label}
+                                            </Link>
+                                        ))}
+                                        {!isLoggedIn && (
+                                            <p className="px-3 pt-2 pb-1 text-xs text-muted border-t border-border mt-1">
+                                                Log in to see the gallery, training and team talk.
+                                            </p>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
                         </div>
+                    </nav>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                        {isLoggedIn ? (
+                            <>
+                                <NotificationCenter />
+                                <TenantSwitcher />
+                                {showAdmin && (
+                                    <Link href={`/${tenant}/admin`} className="hidden sm:inline-flex btn btn-sm btn-secondary">
+                                        <Icon name="settings" className="w-4 h-4" />
+                                        <span className="hidden xl:inline">Admin</span>
+                                    </Link>
+                                )}
+                            </>
+                        ) : (
+                            <>
+                                <Link href={loginHref} className="hidden sm:inline-flex btn btn-sm btn-ghost">Log in</Link>
+                                <a href={clubAppLink(tenant)} className="hidden sm:inline-flex btn btn-sm btn-primary">Get the app</a>
+                            </>
+                        )}
+                        <button
+                            type="button"
+                            onClick={() => setMenuOpen(true)}
+                            className="lg:hidden p-2 text-gray-200 hover:text-brand"
+                            aria-label="Open menu"
+                            aria-expanded={menuOpen}
+                        >
+                            <Icon name="menu" className="w-6 h-6" />
+                        </button>
                     </div>
                 </div>
             </header>
 
-            {/* Mobile Menu Overlay */}
-            {isMobileMenuOpen && (
-                <div className="fixed inset-0 z-40 lg:hidden">
-                    <div
-                        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-                        onClick={() => setIsMobileMenuOpen(false)}
-                    />
-                    <div className="absolute right-0 top-0 bottom-0 w-80 max-w-[85vw] bg-white dark:bg-gray-900 shadow-2xl overflow-y-auto">
-                        <div className="p-6">
-                            <div className="flex items-center justify-between mb-8">
-                                <span className="text-lg font-black uppercase">Menu</span>
-                                <button
-                                    onClick={() => setIsMobileMenuOpen(false)}
-                                    className="p-2 chamfer-sm hover:bg-gray-100 dark:hover:bg-gray-800"
+            {/* Phones and tablets: bottom bar */}
+            <nav aria-label="Club shortcuts" className="fixed bottom-0 inset-x-0 z-40 lg:hidden bg-background/95 backdrop-blur-lg border-t border-border pb-[env(safe-area-inset-bottom)]">
+                <div className="grid grid-cols-5 h-16">
+                    {main.slice(0, 4).map((item) => (
+                        <Link
+                            key={item.href}
+                            href={item.href}
+                            aria-current={isActive(item.href) ? 'page' : undefined}
+                            className={`flex flex-col items-center justify-center gap-1 text-[11px] font-bold uppercase tracking-wide transition-colors ${isActive(item.href) ? 'text-brand' : 'text-gray-400 hover:text-foreground'}`}
+                        >
+                            <Icon name={item.icon} className="w-5 h-5" />
+                            {item.label}
+                        </Link>
+                    ))}
+                    <button
+                        type="button"
+                        onClick={() => setMenuOpen(true)}
+                        className="flex flex-col items-center justify-center gap-1 text-[11px] font-bold uppercase tracking-wide text-gray-400 hover:text-foreground"
+                    >
+                        <Icon name="menu" className="w-5 h-5" />
+                        More
+                    </button>
+                </div>
+            </nav>
+
+            {/* Menu sheet */}
+            {menuOpen && (
+                <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="Menu">
+                    <button type="button" aria-label="Close menu" className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setMenuOpen(false)} />
+                    <div className="absolute right-0 top-0 bottom-0 w-80 max-w-[88vw] bg-surface border-l border-border shadow-2xl overflow-y-auto flex flex-col">
+                        <div className="flex items-center justify-between gap-3 p-4 border-b border-border">
+                            <div className="flex items-center gap-3 min-w-0">
+                                <ClubBadge name={teamName} badgeUrl={badgeUrl} size={32} />
+                                <span className="font-display text-lg font-extrabold uppercase italic truncate">{teamName}</span>
+                            </div>
+                            <button type="button" onClick={() => setMenuOpen(false)} className="p-2 text-gray-300 hover:text-brand" aria-label="Close menu">
+                                <Icon name="close" className="w-5 h-5" />
+                            </button>
+                        </div>
+                        <div className="p-3 space-y-1 flex-1">
+                            {[...main, ...more].map((item) => (
+                                <Link
+                                    key={item.href}
+                                    href={item.href}
+                                    onClick={() => setMenuOpen(false)}
+                                    className={`flex items-center gap-3 px-3 py-3 font-semibold transition-colors ${isActive(item.href) ? 'bg-brand/10 text-brand' : 'text-gray-200 hover:bg-surface-raised'}`}
                                 >
-                                    ✕
-                                </button>
-                            </div>
-
-                            <div className="space-y-2 mb-8">
-                                {[...mainNav, ...secondaryNav].map((item) => (
-                                    <Link
-                                        key={item.href}
-                                        href={item.href}
-                                        onClick={() => setIsMobileMenuOpen(false)}
-                                        className={`flex items-center gap-4 px-4 py-3 chamfer-sm transition-colors ${isActive(item.href)
-                                            ? 'bg-brand text-white'
-                                            : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
-                                            }`}
-                                    >
-                                        <span className="text-xl">{item.icon}</span>
-                                        <span className="font-medium">{item.label}</span>
-                                    </Link>
-                                ))}
-                            </div>
-
-                            <div className="border-t border-gray-200 dark:border-gray-700 pt-6 space-y-4">
-                                {showAdmin && (
-                                    <Link
-                                        href={`/${tenant}/admin`}
-                                        onClick={() => setIsMobileMenuOpen(false)}
-                                        className="flex items-center gap-4 px-4 py-3 bg-gray-100 dark:bg-gray-800 chamfer-sm font-medium"
-                                    >
-                                        <span>⚙️</span>
-                                        Admin Dashboard
-                                    </Link>
-                                )}
-
-                                <div className="flex items-center justify-center gap-4">
-                                    <SoundToggle />
-                                    <ThemeToggle />
-                                </div>
-                            </div>
+                                    <Icon name={item.icon} className="w-5 h-5 text-brand" />
+                                    {item.label}
+                                </Link>
+                            ))}
+                        </div>
+                        <div className="p-4 border-t border-border space-y-3">
+                            {showAdmin && (
+                                <Link href={`/${tenant}/admin`} onClick={() => setMenuOpen(false)} className="btn btn-secondary w-full">
+                                    <Icon name="settings" className="w-4 h-4" /> Club admin
+                                </Link>
+                            )}
+                            {!isLoggedIn && (
+                                <>
+                                    <a href={clubAppLink(tenant)} className="btn btn-primary w-full">Get the club app</a>
+                                    <Link href={loginHref} onClick={() => setMenuOpen(false)} className="btn btn-secondary w-full">Log in</Link>
+                                    <p className="text-xs text-muted text-center">Players, parents and staff log in to see the gallery, training and team talk.</p>
+                                </>
+                            )}
                         </div>
                     </div>
                 </div>
