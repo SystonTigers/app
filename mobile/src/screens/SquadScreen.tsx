@@ -4,14 +4,12 @@ import { Card, Title, Paragraph, Avatar, Chip, Button } from 'react-native-paper
 import { themedStyles, useBrandColors } from '../theme/brand';
 import { FONTS } from '../theme/brandFonts';
 import ScreenIntro from '../components/brand/ScreenIntro';
-import { resultsApi, squadApi, statsApi } from '../services/api';
-
-interface PhysicalStats {
-  sprint40m?: number;  // seconds
-  topSpeed?: number;   // km/h
-  acceleration?: number; // 0-10m time
-  endurance?: number;  // beep test level
-}
+import { playerPageApi, resultsApi, squadApi, statsApi } from '../services/api';
+import { useNavigation } from '@react-navigation/native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import LinkChildCard from '../components/consent/LinkChildCard';
+import { useAuth } from '../context/AuthContext';
+import type { MyPlayer } from '../utils/playerPage';
 
 interface PlayerStats {
   goals: number;
@@ -21,7 +19,6 @@ interface PlayerStats {
     yellow: number;
     red: number;
   };
-  physical?: PhysicalStats;
 }
 
 interface Player {
@@ -32,9 +29,18 @@ interface Player {
   stats: PlayerStats;
 }
 
+/**
+ * Players (bottom tab): everyone in the squad with this season's numbers. Tap
+ * a player for their page. A player sees a shortcut to their own page, or
+ * links it with the code from the manager.
+ */
 export default function SquadScreen() {
   const COLORS = useBrandColors();
   const styles = useStyles();
+  const navigation = useNavigation<any>();
+  const { user } = useAuth();
+  const [mine, setMine] = useState<MyPlayer[] | null>(null);
+  const openPlayer = (id: string) => navigation.navigate('Player', { id });
   const [squad, setSquad] = useState<Player[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -45,10 +51,13 @@ export default function SquadScreen() {
     try {
       // This season's numbers come from the stats endpoint (the squad list has none)
       const seasonId = await resultsApi.seasons().then((r) => r.data.find((o) => o.current)?.id).catch(() => undefined);
-      const [response, stats] = await Promise.all([
+      const [response, stats, linked] = await Promise.all([
         squadApi.getSquad(),
         seasonId ? statsApi.getPlayerStats(seasonId).catch(() => null) : Promise.resolve(null),
+        // Only players get the "your page" shortcut
+        user?.role === 'player' ? playerPageApi.mine().catch(() => null) : Promise.resolve(null),
       ]);
+      setMine(linked);
       const totals = new Map<string, any>((stats?.data || []).map((t: any) => [t.id, t]));
 
       // Normalize the response
@@ -84,7 +93,7 @@ export default function SquadScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [user?.role]);
 
   useEffect(() => {
     loadSquad();
@@ -132,7 +141,23 @@ export default function SquadScreen() {
         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primary} colors={[COLORS.primary]} />
       }
     >
-      <ScreenIntro title="Squad" subtitle="Team Players" />
+      <ScreenIntro title="Players" subtitle="Tap a player for their page" />
+
+      {/* A player's own page: a shortcut, or link it with the manager's code */}
+      {user?.role === 'player' && mine ? (
+        mine.find((p) => p.isMe) ? (
+          <TouchableOpacity onPress={() => openPlayer(mine.find((p) => p.isMe)!.id)} accessibilityRole="button" style={styles.mine}>
+            <MaterialCommunityIcons name="account-star" size={26} color={COLORS.primary} />
+            <View style={{ flex: 1 }}>
+              <Paragraph style={styles.mineTitle}>Your player page</Paragraph>
+              <Paragraph style={styles.mineText}>{mine.find((p) => p.isMe)!.hasBio ? 'See your stats, photos and goals.' : 'Write your bio so everyone knows a bit about you.'}</Paragraph>
+            </View>
+            <MaterialCommunityIcons name="chevron-right" size={24} color={COLORS.textLight} />
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.linkCard}><LinkChildCard prominent forSelf onLinked={() => loadSquad()} /></View>
+        )
+      ) : null}
 
       {/* Error Message */}
       {error && (
@@ -152,7 +177,7 @@ export default function SquadScreen() {
         </View>
       ) : (
         squad.map((player) => (
-          <TouchableOpacity key={player.id} onPress={() => console.log('Player details:', player.id)}>
+          <TouchableOpacity key={player.id} onPress={() => openPlayer(player.id)} accessibilityRole="button" accessibilityLabel={`${player.name}, open their page`}>
             <Card style={styles.playerCard}>
               <Card.Content>
                 <View style={styles.playerHeader}>
@@ -201,42 +226,6 @@ export default function SquadScreen() {
                   </View>
                 </View>
 
-                {/* Physical Performance Stats */}
-                {player.stats.physical && (
-                  <View style={styles.physicalStats}>
-                    <Paragraph style={styles.physicalTitle}>PHYSICAL STATS</Paragraph>
-                    <View style={styles.physicalRow}>
-                      {player.stats.physical.topSpeed && (
-                        <View style={styles.physicalItem}>
-                          <Title style={styles.physicalValue}>{player.stats.physical.topSpeed}</Title>
-                          <Paragraph style={styles.physicalLabel}>km/h</Paragraph>
-                          <Paragraph style={styles.physicalSublabel}>Top Speed</Paragraph>
-                        </View>
-                      )}
-                      {player.stats.physical.acceleration && (
-                        <View style={styles.physicalItem}>
-                          <Title style={styles.physicalValue}>{player.stats.physical.acceleration}s</Title>
-                          <Paragraph style={styles.physicalLabel}>0-10m</Paragraph>
-                          <Paragraph style={styles.physicalSublabel}>Acceleration</Paragraph>
-                        </View>
-                      )}
-                      {player.stats.physical.sprint40m && (
-                        <View style={styles.physicalItem}>
-                          <Title style={styles.physicalValue}>{player.stats.physical.sprint40m}s</Title>
-                          <Paragraph style={styles.physicalLabel}>40m</Paragraph>
-                          <Paragraph style={styles.physicalSublabel}>Sprint</Paragraph>
-                        </View>
-                      )}
-                      {player.stats.physical.endurance && (
-                        <View style={styles.physicalItem}>
-                          <Title style={styles.physicalValue}>{player.stats.physical.endurance}</Title>
-                          <Paragraph style={styles.physicalLabel}>Level</Paragraph>
-                          <Paragraph style={styles.physicalSublabel}>Beep Test</Paragraph>
-                        </View>
-                      )}
-                    </View>
-                  </View>
-                )}
               </Card.Content>
             </Card>
           </TouchableOpacity>
@@ -350,40 +339,8 @@ const useStyles = themedStyles((COLORS) => ({
   cardRed: {
     fontSize: 14,
   },
-  physicalStats: {
-    marginTop: 16,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.border,
-  },
-  physicalTitle: {
-    fontSize: 10,
-    fontWeight: 'bold',
-    color: COLORS.textLight,
-    letterSpacing: 1,
-    marginBottom: 12,
-    textAlign: 'center',
-  },
-  physicalRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-  },
-  physicalItem: {
-    alignItems: 'center',
-  },
-  physicalValue: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: COLORS.text,
-  },
-  physicalLabel: {
-    fontSize: 10,
-    color: COLORS.textLight,
-    marginTop: 2,
-  },
-  physicalSublabel: {
-    fontSize: 9,
-    color: COLORS.textLight,
-    opacity: 0.7,
-  },
+  mine: { flexDirection: 'row', alignItems: 'center', gap: 12, marginHorizontal: 16, marginBottom: 12, padding: 14, borderRadius: 16, backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.primary },
+  mineTitle: { color: COLORS.text, fontWeight: '800', fontSize: 15 },
+  mineText: { color: COLORS.textLight, fontSize: 13 },
+  linkCard: { marginHorizontal: 16, marginBottom: 12 },
 }));

@@ -1063,6 +1063,11 @@ router.get("/api/:v/fixtures/upcoming", (req, env) => handleGetUpcomingFixtures(
 router.get("/api/:v/fixtures/all", (req, env) => handleGetAllFixtures(req, env));
 router.get("/api/:v/fixtures/results", (req, env, corsHdrs) => handleListResults(req, env, corsHdrs));
 import { handleGetPlayerSeasonStats, handleSetPlayerSeasonStats } from "./routes/playerStatEntries";
+// Player pages (routes/playerProfile.ts)
+import { handleGetPlayerProfile, handleMyPlayers, handleSetPlayerBio } from "./routes/playerProfile";
+router.get("/api/:v/players/:id/profile", (req, env, corsHdrs) => handleGetPlayerProfile(req, env, corsHdrs, (req as any).params?.id));
+router.put("/api/:v/players/:id/bio", (req, env, corsHdrs) => handleSetPlayerBio(req, env, corsHdrs, (req as any).params?.id));
+router.get("/api/:v/me/players", (req, env, corsHdrs) => handleMyPlayers(req, env, corsHdrs));
 router.get("/api/:v/players/:id/season-stats", (req, env, corsHdrs) => handleGetPlayerSeasonStats(req, env as never, corsHdrs, (req as any).params?.id));
 router.put("/api/:v/players/:id/season-stats/:season", staffOnly((req, env, corsHdrs) => handleSetPlayerSeasonStats(req, env as never, corsHdrs, (req as any).params?.id, decodeURIComponent((req as any).params?.season ?? ""))));
 router.get("/api/:v/results/seasons", (req, env, corsHdrs) => handleResultSeasons(req, env as never, corsHdrs));

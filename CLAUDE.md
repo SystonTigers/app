@@ -252,6 +252,21 @@ with personal data.
   competition name. Live Match shows the whole live table; Home refreshes
   every 30 s during a match.
 
+## Player pages
+
+- Players tab (`SquadScreen`) → `PlayerScreen` (`GET /api/v1/players/:id/profile`,
+  `routes/playerProfile.ts`, `services/playerProfile/`): bio, all-time and
+  per-season stats (`services/squadStats.ts`, shared with the Stats screen),
+  photos (`player_images`) and goal clips (Match Centre goal taps in matches
+  with a lined-up YouTube video, same clips as Highlights, hidden ones left out).
+- Only the player writes their bio (`PUT /players/:id/bio`): an account with
+  the `player` role linked to that squad entry (`auth_user_players`, linked
+  with the manager's code). Staff can only remove a bio. Bios can't contain
+  links, emails, phone numbers or social media names (`playerProfile/bio.ts`).
+- Photos and clips show to staff and the player's family always, and to
+  other members only with `photo_consent` / `video_consent` = 1.
+- `GET /api/v1/me/players`: players linked to my account (`isMe` for players).
+
 ## Drills
 
 - The app's Drill Library mixes the built-in drills (`mobile/src/data/drillsData.ts`,

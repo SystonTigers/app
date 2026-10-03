@@ -9,6 +9,7 @@ import { AUTH_STORAGE_KEYS, authStorage, type AuthStorageKey } from './authStora
 import { getTenantId } from './club';
 import { appendPhoto } from './photoUpload';
 import type { LeagueSnapshot } from '../utils/leagueTable';
+import type { MyPlayer, PlayerProfile } from '../utils/playerPage';
 
 // Re-exported for existing imports
 export { AUTH_STORAGE_KEYS };
@@ -1305,6 +1306,17 @@ export const parentLinkApi = {
     const response = await api.post('/api/v1/link-child', { code });
     return response.data;
   },
+};
+
+/** Player pages: bio (written by the player), stats by season, photos and goal clips. */
+export const playerPageApi = {
+  profile: async (playerId: string): Promise<PlayerProfile> =>
+    (await api.get(`/api/v1/players/${encodeURIComponent(playerId)}/profile`)).data.data,
+  /** The player themselves; staff may only send "" to remove it */
+  setBio: async (playerId: string, bio: string): Promise<string | null> =>
+    (await api.put(`/api/v1/players/${encodeURIComponent(playerId)}/bio`, { bio })).data.data.bio,
+  /** The players linked to my account (isMe for a player's own account) */
+  mine: async (): Promise<MyPlayer[]> => (await api.get('/api/v1/me/players')).data.data,
 };
 
 export type ClubRole = 'admin' | 'manager' | 'coach' | 'player' | 'parent' | 'supporter';

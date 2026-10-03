@@ -1,5 +1,6 @@
 
 import { resolveSeason } from "../services/seasons/range";
+import { squadStats } from "../services/squadStats";
 import { outcomeFromScores } from "../services/results";
 import { refreshLeagueTable } from "../services/league/store";
 import { z } from 'zod';
@@ -137,61 +138,7 @@ export async function handleGetPlayerStats(req: Request, env: any, corsHdrs?: He
         // ?season=<id or 2025-26> for one season; no value = all time
         const seasonParam = new URL(req.url).searchParams.get('season');
         const season = seasonParam ? await resolveSeason(env, tenantId, seasonParam) : null;
-        const from = season?.from ?? null;
-        const to = season?.to ?? null;
-        const { results } = await (env.DB as D1Database).prepare(`
-            SELECT s.id, s.name, s.number, s.position, COALESCE(s.headshot_url, s.photo_url) AS photo,
-                   COALESCE(e.goals, 0) + COALESCE(h.goals, 0) AS goals,
-                   COALESCE(e.assists, 0) + COALESCE(h.assists, 0) AS assists,
-                   COALESCE(e.motm, 0) + COALESCE(h.motm, 0) AS motm,
-                   COALESCE(e.yellow, 0) + COALESCE(h.yellow, 0) AS yellow_cards,
-                   COALESCE(e.red, 0) + COALESCE(h.red, 0) AS red_cards,
-                   MAX(COALESCE(a.apps, 0), COALESCE(e.fixtures, 0)) + COALESCE(h.apps, 0) AS appearances
-            FROM squad s
-            LEFT JOIN (
-                SELECT player_id, SUM(event_type = 'goal') AS goals, SUM(event_type = 'assist') AS assists,
-                       SUM(event_type = 'motm') AS motm, SUM(event_type = 'yellow_card') AS yellow,
-                       SUM(event_type = 'red_card') AS red, COUNT(DISTINCT fixture_id) AS fixtures
-                FROM match_events me
-                WHERE me.tenant_id = ? AND me.player_id IS NOT NULL
-                  AND (? IS NULL OR COALESCE(
-                    (SELECT substr(f.fixture_date, 1, 10) FROM fixtures f WHERE f.id = me.fixture_id AND f.tenant_id = me.tenant_id),
-                    (SELECT substr(r.match_date, 1, 10) FROM team_results r WHERE CAST(r.id AS TEXT) = me.fixture_id AND r.tenant_id = me.tenant_id)
-                  ) BETWEEN ? AND ?)
-                GROUP BY player_id
-            ) e ON e.player_id = s.id
-            LEFT JOIN (
-                SELECT ml.player_id, COUNT(DISTINCT ml.fixture_id) AS apps
-                FROM match_lineups ml JOIN fixtures f ON f.id = ml.fixture_id AND f.tenant_id = ml.tenant_id
-                WHERE ml.tenant_id = ? AND f.status = 'completed' AND (? IS NULL OR substr(f.fixture_date, 1, 10) BETWEEN ? AND ?)
-                  AND (ml.role = 'starter' OR EXISTS (
-                    SELECT 1 FROM live_match_events le WHERE le.tenant_id = ml.tenant_id AND le.fixture_id = ml.fixture_id
-                      AND le.type = 'sub' AND le.player_id = ml.player_id AND le.deleted_at IS NULL))
-                GROUP BY ml.player_id
-            ) a ON a.player_id = s.id
-            LEFT JOIN (
-                SELECT player_id, SUM(appearances) AS apps, SUM(goals) AS goals, SUM(assists) AS assists,
-                       SUM(yellow_cards) AS yellow, SUM(red_cards) AS red, SUM(motm) AS motm
-                FROM player_stat_entries
-                WHERE tenant_id = ? AND (? IS NULL OR season_from BETWEEN ? AND ?)
-                GROUP BY player_id
-            ) h ON h.player_id = s.id
-            WHERE s.tenant_id = ?
-            ORDER BY goals DESC, assists DESC, s.name
-        `).bind(tenantId, from, from, to, tenantId, from, from, to, tenantId, from, from, to, tenantId).all<Record<string, any>>();
-        const data = (results || []).map((r) => ({
-            id: r.id,
-            name: r.name,
-            number: r.number,
-            position: r.position,
-            photo: r.photo,
-            goals: Number(r.goals),
-            assists: Number(r.assists),
-            motmCount: Number(r.motm),
-            yellowCards: Number(r.yellow_cards),
-            redCards: Number(r.red_cards),
-            appearances: Number(r.appearances),
-        }));
+        const data = await squadStats(env, tenantId, season);
         return json({ success: true, data, meta: { season: season ? { id: season.id, label: season.label } : null } }, 200, corsHdrs);
     } catch (err) {
         console.error(JSON.stringify({ level: 'error', msg: 'player_stats_failed', tenantId, error: err instanceof Error ? err.message : String(err) }));

@@ -14,6 +14,7 @@ const DRAWER_PATHS: Record<string, string> = {
   Training: 'training',
   DrillLibrary: 'drills',
   Drill: 'drills/drill',
+  Player: 'players/player',
   Stats: 'stats',
   Results: 'results',
   LeagueTable: 'table',

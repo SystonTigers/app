@@ -47,6 +47,7 @@ import MediaConsentScreen from './src/screens/MediaConsentScreen';
 import TrainingScreen from './src/screens/TrainingScreen';
 import DrillLibraryScreen from './src/screens/DrillLibraryScreen';
 import DrillScreen from './src/screens/DrillScreen';
+import PlayerScreen from './src/screens/PlayerScreen';
 import StatsScreen from './src/screens/StatsScreen';
 import ResultsScreen from './src/screens/ResultsScreen';
 import LeagueTableScreen from './src/screens/LeagueTableScreen';
@@ -128,6 +129,7 @@ function TabNavigator() {
         name="Squad"
         component={SquadScreen}
         options={{
+          title: 'Players',
           tabBarIcon: ({ color, size }) => (
             <MaterialCommunityIcons name="account-group" size={size} color={color} />
           ),
@@ -243,6 +245,7 @@ function MainDrawer() {
       <Drawer.Screen name="Training" component={TrainingScreen} options={{ title: 'Training Centre' }} />
       <Drawer.Screen name="DrillLibrary" component={DrillLibraryScreen} options={{ title: 'Drill Library' }} />
       <Drawer.Screen name="Drill" component={DrillScreen} options={{ title: 'Drill' }} />
+      <Drawer.Screen name="Player" component={PlayerScreen} options={{ title: 'Player' }} />
       <Drawer.Screen name="Results" component={ResultsScreen} options={{ title: 'Results' }} />
       <Drawer.Screen name="Stats" component={StatsScreen} options={{ title: 'Statistics' }} />
       <Drawer.Screen name="LeagueTable" component={LeagueTableScreen} options={{ title: 'League Table' }} />

@@ -7,9 +7,10 @@ import { clearPendingInvite, pendingInvite } from '../../services/inviteLink';
 
 /**
  * Parent: enter the code from the manager to link your account to your child.
+ * A player uses the same code to link their own page (`forSelf`).
  * A code from an invite link is filled in already.
  */
-export default function LinkChildCard({ prominent, onLinked }: { prominent: boolean; onLinked: (name: string) => void }) {
+export default function LinkChildCard({ prominent, onLinked, forSelf = false }: { prominent: boolean; onLinked: (name: string) => void; forSelf?: boolean }) {
   const COLORS = useBrandColors();
   const styles = useStyles();
   const [code, setCode] = useState('');
@@ -54,8 +55,8 @@ export default function LinkChildCard({ prominent, onLinked }: { prominent: bool
 
   return (
     <View style={[styles.card, prominent ? styles.prominent : null]}>
-      <Text style={styles.title}>Link your child</Text>
-      <Text style={styles.help}>Enter the code the manager sent you (like K7QM-3XRD).</Text>
+      <Text style={styles.title}>{forSelf ? 'Link your player page' : 'Link your child'}</Text>
+      <Text style={styles.help}>{forSelf ? 'Enter the code your manager gave you (like K7QM-3XRD). Then you can write your bio.' : 'Enter the code the manager sent you (like K7QM-3XRD).'}</Text>
       <View style={styles.row}>
         <TextInput
           value={code}
@@ -75,7 +76,7 @@ export default function LinkChildCard({ prominent, onLinked }: { prominent: bool
       </View>
       {error ? <Text style={styles.error} accessibilityRole="alert">{error}</Text> : null}
       {done ? <Text style={styles.done}>{done}</Text> : null}
-      {!prominent ? <Text style={styles.small}>No code? Ask your child's manager to send you one from the app.</Text> : (
+      {forSelf ? <Text style={styles.small}>No code? Ask your manager: they can make one in Photo & Video Consent.</Text> : !prominent ? <Text style={styles.small}>No code? Ask your child's manager to send you one from the app.</Text> : (
         <Text style={styles.small}>No code yet? Ask your child's manager: they can send you one from Photo & Video Consent in the app.</Text>
       )}
     </View>
