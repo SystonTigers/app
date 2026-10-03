@@ -77,3 +77,15 @@ claude-ops/
 # Python
 __pycache__/
 *.pyc
+
+# Local command output (tsc/test runs); keep it out of the repo
+tsc_output*.txt
+tsc-errors.txt
+failures*.txt
+test-output.txt
+test_output.txt
+test-report.txt
+test-results.txt
+migration_out.txt
+build_log.txt
+temp_*.txt

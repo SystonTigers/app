@@ -1,37 +1,33 @@
-# Security Policy
+# Security
 
-## Auth & Roles
-- JWT HS256 (`JWT_SECRET`), `iss`=`syston.app`, `aud`=`syston-mobile`.
-- Roles:
-  - `admin`: full admin endpoints.
-  - `tenant_admin`: can only manage their own tenant via `/tenant/self/*`.
-- Tenant-scoped tokens include `tenant_id`.
+Checked against the code in October 2026.
 
-## Secrets & Storage
-- Secrets via `wrangler secret` (never commit to git).
-- KV_IDEMP stores tenant config under `tenant:<id>`. No PII.
+## Reporting a problem
 
-## Webhooks
-- Only allow HTTPS.
-- Validate host via `ALLOWED_WEBHOOK_HOSTS` (e.g., `hook.make.com,webhook.site`).
-- Do not log full webhook URLs or response bodies. Log status code only.
+Email systontowntigersfc@gmail.com. Please don't open a public issue for a
+security problem.
 
-## CORS
-- Allow only known origins: `https://localhost:5173`, `capacitor://localhost`, `https://app.YOURBRAND.com`, `https://admin.YOURBRAND.com`.
-- Reflect exact origin, do not use `*` with credentials.
+## How the platform is protected
 
-## Rate Limiting
-- Durable Object rate limiter per tenant (sane defaults, e.g., 5 req/min).
-- Admin can raise limits based on plan (future endpoint).
-
-## Queues & DLQ
-- Normal processing on `POST_QUEUE`.
-- On processing error, message is **sent to `DLQ` and acked** (no retries **yet**).
-- DLQ is for manual review/alerting (optional consumer later).
-
-## Stripe
-- Endpoint exists; add signature verification or protect behind Zero-Trust.
-
-## Token Rotation
-- Regenerate ADMIN_JWT if leaked.
-- Rotate `JWT_SECRET` with caution (will invalidate existing tokens).
+- **Logins:** HS256 JWTs signed with `JWT_SECRET` (`iss` `syston.app`, `aud`
+  `syston-mobile`), each with a revocable id. Passwords are bcrypt hashes.
+  Owner-panel sessions are 12-hour tokens in an HttpOnly, SameSite=Strict
+  cookie.
+- **Roles** come only from the token. People choose Parent, Player or
+  Supporter at sign-up; staff roles are given by club admins; platform
+  owners are created from the command line (`npm run owner:create:prod`).
+- **Clubs are kept apart:** every query on club data filters by `tenant_id`.
+  `backend/src/__tests__/tenantGuard.test.ts` fails if a new query doesn't
+  (older exceptions under review are listed in `tests/tenant-guard-baseline.json`).
+- **Club-admin writes** go through `staffOnly(...)` and role checks in the
+  handler. End-to-end tests check that members get 403.
+- **Children:** public pages and social posts use the club's name style and
+  show photos and video only with a parent's consent. Player bios can't
+  contain contact details. Locations for "at the match" never leave the phone.
+- **CORS:** only our own sites (and `CORS_ALLOWED`); no wildcards.
+- **Stripe webhooks** are verified with `STRIPE_WEBHOOK_SECRET`.
+- **Third-party scripts:** the FA Full-Time widget runs in a sandboxed frame
+  without same-origin, so it can't read tokens.
+- **Secrets** are set with `npx wrangler secret put NAME --env production` and
+  never committed. Social media tokens are encrypted with `SOCIAL_TOKEN_KEY`.
+  Changing `JWT_SECRET` logs everyone out.

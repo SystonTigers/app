@@ -1,3 +1,9 @@
+> **Status (October 2026):** these Python tools are not used on match day.
+> Highlights in the app are clips of the match's YouTube video made from
+> Match Centre taps, and the video to post is cut on the phone
+> (see `CLAUDE.md` → Match highlights). This README describes the older
+> tools and hasn't been rechecked against the current app.
+
 # 🎬 Video Processing & Highlights System
 
 **Complete video processing infrastructure with TWO MODES: Mobile App + Server-Side Automation**
@@ -407,7 +413,7 @@ docker-compose build --no-cache
 
 ### Main System Docs
 - `CLAUDE.md` - Complete system guide
-- `PRODUCT_ROADMAP.md` - Video features timeline
+- `docs/ROADMAP.md` - what is built and what is next
 
 ---
 

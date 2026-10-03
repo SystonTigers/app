@@ -1,8 +1,11 @@
-# Syston Tigers platform – guide for Claude
+# Boost Huddle (Syston Tigers is the first club): guide for developers and AI assistants
 
-Read `START_HERE.md` first: it covers running, testing and deploying.
-The code is the source of truth. Many older `.md` files describe plans from 2025
-that changed; when a doc disagrees with the code, trust the code.
+Read `START_HERE.md` first: it covers running, testing and deploying. Then
+`docs/CONVENTIONS.md` (how code is written here) and `docs/ROADMAP.md`
+(what's next). Other AI tools read `AGENTS.md`, which points to the same files.
+The code is the source of truth; old plans and status reports are in
+`archive/` for history only. When a doc disagrees with the code, trust the
+code, and fix the doc. Checked against the code on 3 October 2026.
 
 ## What this is
 
@@ -28,6 +31,8 @@ Worker, sends a verification email and then saves the club's details.
 - Auth: `services/auth.ts` – `requireJWT`, `requireTenantJWT`, `requireStaff`,
   `hasAnyRole`. Tokens are HS256 JWTs signed with `JWT_SECRET`.
 - Every query that reads or writes club data must filter by `tenant_id`.
+  `src/__tests__/tenantGuard.test.ts` enforces it; older exceptions under
+  review are in `tests/tenant-guard-baseline.json` (only ever shrink it).
 - Roles are never taken from a client request; admins are created with
   `npm run admin:password[:prod]`.
 - Storage: D1 `DB` (data), R2 `R2_MEDIA` (videos, images), KV (cache,
@@ -54,7 +59,7 @@ and YouTube tokens; `META_APP_SECRET` is needed to connect Facebook.
 `claude-ops/` and `*.bundle` are git-ignored because they can contain backups
 with personal data.
 
-## Known gaps (September 2026)
+## Known gaps (October 2026; the full list is `docs/ROADMAP.md`)
 
 - Email isn't sent until `RESEND_API_KEY` and a verified sending domain are set;
   until then emails are only logged.
@@ -67,6 +72,7 @@ with personal data.
   live pages (`legal-docs/*.html`) are older and should be replaced once the
   drafts are approved.
 - `web-app` `npm run lint` fails: Next 16 removed `next lint`. Use `npx tsc --noEmit`.
+- A club's trial end date isn't enforced yet: nothing changes when it passes.
 
 ## Match day
 
@@ -195,7 +201,8 @@ with personal data.
   "Around the League". The website's frame reports what happened (FA
   unreachable, `cs1.html` blocked by the FA's security check, or loaded) so
   the card says why when it can't show the table.
-- Our own results, scorers and points still come from Match Centre.
+- Our own results, scorers and points come from Match Centre, match reports
+  and results staff add (see Results).
 - FA fixture emails (new fixture, change, referee appointment, weekly
   reminder): staff paste the email on the website (Settings → League Table)
   or in the app (Manage Fixtures); `POST /api/v1/club/fixtures/fa-email`
@@ -293,6 +300,15 @@ with personal data.
   chips (`components/seasons/SeasonPicker`), summary, and staff add/edit/remove
   (`routes/results.ts`, `POST/PUT /api/v1/results`) for any past date, so old
   seasons can be filled in. Stats has the same season chips.
+- Scorers on added results are picked from the squad (app
+  `ResultFormModal` with `PlayerPicker`, website results admin): `scorerIds`
+  (one squad id per goal) and `ownGoals`. They're saved as `match_events`
+  goals with ids `res-<resultId>-<n>` (`services/resultGoals.ts`), tied to the
+  fixture if the result has one, else to the result id, so they count in
+  stats and player pages; the `scorers` line ("Pat Player 2, OG") is written
+  from them and deleting the result removes them. `GET /results` returns
+  `scorerIds`, `ownGoals` and `scorersFrom` (`match_centre` = locked, edit in
+  Match Centre; `picked`; `typed` = old free text that counts for nothing).
 - Gallery (`routes/gallery.ts`, app `GalleryScreen`, menu: My Club → Gallery):
   members-only albums (match / training / days out / throwback) grouped by
   season. Staff make, rename and remove albums (removing one removes its
@@ -305,6 +321,14 @@ with personal data.
 
 ## Squad, roles and training
 
+- Players have `first_name` and `last_name` (migration 0025); `name` stays the
+  full name for everything that reads it. Forms send `firstName`/`lastName`
+  (or a single `name`, split at the first space: `services/playerNames.ts`,
+  matched by `mobile/src/utils/playerNames.ts` and `web-app/src/lib/playerNames.ts`).
+  CSV import takes `first_name,last_name` (or `name`). `getPublicNamePolicy`
+  loads the club's names so name styles split "Mary Jane" + "Watson" or
+  "Virgil" + "Van Dijk" correctly; players saved before the split use the
+  first and last word until staff save them again.
 - Player stats are counted from Match Centre and match reports
   (`match_events`, line-ups); staff add numbers for past seasons by hand
   (Manage Squad → Season stats; `player_stat_entries`,
