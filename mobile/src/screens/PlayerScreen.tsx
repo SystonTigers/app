@@ -8,7 +8,7 @@ import PlayerBio from '../components/player/PlayerBio';
 import PlayerPhotos from '../components/player/PlayerPhotos';
 import GoalClips from '../components/player/GoalClips';
 import { apiErrorMessage, playerPageApi } from '../services/api';
-import { cardsText, careerTiles, initials, type PlayerProfile } from '../utils/playerPage';
+import { allTimeText, careerTiles, initials, type PlayerProfile } from '../utils/playerPage';
 import { playerInitials, shirtNumber } from '../utils/playerNames';
 
 /**
@@ -57,7 +57,6 @@ export default function PlayerScreen({ navigation, route }: { navigation: any; r
 
   const { player } = profile;
   const firstName = player.firstName || player.name;
-  const cards = cardsText(profile.career);
 
   return (
     <View style={styles.container}>
@@ -88,7 +87,7 @@ export default function PlayerScreen({ navigation, route }: { navigation: any; r
             </View>
           ))}
         </View>
-        <Text style={styles.allTime}>All time{cards ? ` · ${cards}` : ''}</Text>
+        <Text style={styles.allTime}>{allTimeText(profile.career)}</Text>
 
         <Section title={profile.canEditBio ? 'About me' : `About ${firstName}`}>
           <PlayerBio

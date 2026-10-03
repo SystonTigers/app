@@ -10,6 +10,9 @@ export interface StatLine {
   motm: number;
   yellowCards: number;
   redCards: number;
+  /** Older servers don't send these */
+  sinBins?: number;
+  minutes?: number;
 }
 
 export interface SeasonLine extends StatLine {
@@ -65,10 +68,22 @@ export function careerTiles(c: StatLine): Array<{ label: string; value: number }
   ];
 }
 
-/** "2 yellow, 1 red" or null when clean. */
-export function cardsText(s: Pick<StatLine, 'yellowCards' | 'redCards'>): string | null {
-  const parts = [s.yellowCards ? `${s.yellowCards} yellow` : '', s.redCards ? `${s.redCards} red` : ''].filter(Boolean);
+/** "2 yellow, 1 red, 1 sin bin" or null when clean. */
+export function cardsText(s: Pick<StatLine, 'yellowCards' | 'redCards' | 'sinBins'>): string | null {
+  const bins = s.sinBins ?? 0;
+  const parts = [
+    s.yellowCards ? `${s.yellowCards} yellow` : '',
+    s.redCards ? `${s.redCards} red` : '',
+    bins ? `${bins} sin bin${bins === 1 ? '' : 's'}` : '',
+  ].filter(Boolean);
   return parts.length ? parts.join(', ') : null;
+}
+
+/** "All time · 1,240 minutes · 2 yellow" (minutes only count matches with a line-up). */
+export function allTimeText(s: StatLine): string {
+  const minutes = s.minutes ?? 0;
+  const cards = cardsText(s);
+  return ['All time', minutes ? `${minutes.toLocaleString('en-GB')} minute${minutes === 1 ? '' : 's'}` : '', cards ?? ''].filter(Boolean).join(' · ');
 }
 
 /** "Goal v Page Rovers · 4'" with the date as "Sun 20 Sep". */

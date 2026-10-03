@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Modal, Portal, TextInput } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -8,12 +8,13 @@ import { useClub, useClubName } from '../context/ClubContext';
 import { useMatchDay } from '../context/MatchDayContext';
 import { apiErrorMessage, fixturesApi, lineupApi, liveApi, motmApi, squadApi, type Lineup } from '../services/api';
 import FullTimeMotmSheet from '../components/motm/FullTimeMotmSheet';
-import { newClientEventId, type LiveEvent, type LiveEventType, type LiveMatchView, type NewLiveEvent, type SocialPost } from '../utils/liveMatch';
+import { activeSinBins, newClientEventId, sentOffIds, sinBinMinutes, type LiveEvent, type LiveEventType, type LiveMatchView, type NewLiveEvent, type SocialPost } from '../utils/liveMatch';
 import { shareGraphic } from '../utils/postGraphic';
 import LineupEditor from '../components/live/LineupEditor';
 import MatchScoreboard from '../components/matchCentre/MatchScoreboard';
 import PhaseBar from '../components/matchCentre/PhaseBar';
 import ActionTile from '../components/matchCentre/ActionTile';
+import MatchPrompts from '../components/matchCentre/MatchPrompts';
 import Crest from '../components/home/Crest';
 import { nextPhase } from '../components/matchCentre/phase';
 import { FONTS } from '../theme/brandFonts';
@@ -33,6 +34,7 @@ type PickStep =
   | { kind: 'assist'; scorerId: string }
   | { kind: 'yellow' }
   | { kind: 'red' }
+  | { kind: 'sin_bin' }
   | { kind: 'sub_on' }
   | { kind: 'sub_off'; onId: string };
 
@@ -186,6 +188,7 @@ export default function LiveMatchInputScreen() {
       case 'assist': setPick(null); record('goal', { playerId: pick.scorerId, player2Id: player.id }); return;
       case 'yellow': setPick(null); record('yellow', { playerId: player.id }); return;
       case 'red': setPick(null); record('red', { playerId: player.id }); return;
+      case 'sin_bin': setPick(null); record('sin_bin', { playerId: player.id }); return;
       case 'sub_on': setPick({ kind: 'sub_off', onId: player.id }); return;
       case 'sub_off': setPick(null); record('sub', { playerId: pick.onId, player2Id: player.id }); return;
     }
@@ -234,12 +237,20 @@ export default function LiveMatchInputScreen() {
     }
   };
 
+  // Sent-off players can't be picked again; someone already in the sin bin can't go in twice
+  const pickable = useMemo(() => {
+    if (!match || !pick) return players;
+    const off = sentOffIds(match.events);
+    const binned = pick.kind === 'sin_bin' ? new Set(activeSinBins(match, Date.now()).map((b) => b.playerId)) : new Set<string | null>();
+    return players.filter((p) => !off.has(p.id) && !binned.has(p.id));
+  }, [players, match, pick]);
+
   if (loading) {
     return <View style={[styles.container, styles.center]}><ActivityIndicator size="large" color={color} /></View>;
   }
 
   const pickTitle = pick ? {
-    goal: 'Who scored?', assist: 'Who made the assist?', yellow: 'Yellow card for…', red: 'Red card for…', sub_on: 'Who is coming on?', sub_off: 'Who is going off?',
+    goal: 'Who scored?', assist: 'Who made the assist?', yellow: 'Yellow card for…', red: 'Red card for…', sin_bin: `Sin bin (${sinBinMinutes(match?.halfLength ?? 40)} min) for…`, sub_on: 'Who is coming on?', sub_off: 'Who is going off?',
   }[pick.kind] : '';
   const next = match ? nextPhase(match.status, match.period) : 'kick_off';
   const playing = match?.status === 'live';
@@ -310,6 +321,7 @@ export default function LiveMatchInputScreen() {
               onPress={(step) => record(step)}
               onEndEarly={() => record('full_time')}
             />
+            <MatchPrompts match={match} color={color} disabled={sending} onFullTime={() => record('full_time')} />
 
             {match.status === 'full_time' ? (
               <View style={styles.finished}>
@@ -349,6 +361,7 @@ export default function LiveMatchInputScreen() {
                 <Text style={styles.section}>TEAM</Text>
                 <View style={styles.grid}>
                   <ActionTile icon="swap-horizontal" label="Sub" color={color} onPress={() => setPick({ kind: 'sub_on' })} disabled={sending} />
+                  <ActionTile icon="timer-sand" label="Sin bin" color={color} iconColor={YELLOW} onPress={() => setPick({ kind: 'sin_bin' })} disabled={sending} />
                   <ActionTile icon="message-text-outline" label="Post an update" color={color} onPress={() => setNoteOpen(true)} disabled={sending} />
                 </View>
                 {/* One tap marks the moment for the highlights video; nothing is posted */}
@@ -383,7 +396,7 @@ export default function LiveMatchInputScreen() {
       <PlayerPicker
         visible={!!pick}
         title={pickTitle}
-        players={players}
+        players={pickable}
         excludeId={pick?.kind === 'assist' ? pick.scorerId : pick?.kind === 'sub_off' ? pick.onId : null}
         onPick={onPick}
         onCancel={() => setPick(null)}

@@ -19,6 +19,9 @@ assert.deepEqual(p.careerTiles({ appearances: 12, goals: 7, assists: 3, motm: 2,
 assert.equal(p.cardsText({ yellowCards: 2, redCards: 1 }), '2 yellow, 1 red');
 assert.equal(p.cardsText({ yellowCards: 0, redCards: 1 }), '1 red');
 assert.equal(p.cardsText({ yellowCards: 0, redCards: 0 }), null);
+assert.equal(p.cardsText({ yellowCards: 1, redCards: 0, sinBins: 2 }), '1 yellow, 2 sin bins');
+assert.equal(p.allTimeText({ appearances: 20, goals: 0, assists: 0, motm: 0, yellowCards: 1, redCards: 0, minutes: 1240 }), 'All time · 1,240 minutes · 1 yellow');
+assert.equal(p.allTimeText({ appearances: 0, goals: 0, assists: 0, motm: 0, yellowCards: 0, redCards: 0 }), 'All time');
 
 const clip = { opponent: 'Page Rovers', minute: 4, date: '2026-09-20' };
 assert.equal(p.clipLabel(clip).title, "Goal v Page Rovers · 4'");

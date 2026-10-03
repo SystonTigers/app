@@ -25,6 +25,9 @@ export interface SeasonLine {
   motm: number;
   yellowCards: number;
   redCards: number;
+  sinBins: number;
+  /** Minutes on the pitch in matches with a line-up */
+  minutes: number;
 }
 
 export interface PlayerProfile {
@@ -51,7 +54,7 @@ interface SquadRow {
 function line(s: PlayerStatLine | undefined): Omit<SeasonLine, "id" | "label" | "current"> {
   return {
     appearances: s?.appearances ?? 0, goals: s?.goals ?? 0, assists: s?.assists ?? 0, motm: s?.motmCount ?? 0,
-    yellowCards: s?.yellowCards ?? 0, redCards: s?.redCards ?? 0,
+    yellowCards: s?.yellowCards ?? 0, redCards: s?.redCards ?? 0, sinBins: s?.sinBins ?? 0, minutes: s?.minutes ?? 0,
   };
 }
 
@@ -82,7 +85,7 @@ export async function playerProfile(env: Env, claims: TenantClaims, playerId: st
   const seasonLines = seasons
     .map((s, i) => ({ id: s.id, label: s.label, current: s.current, ...line(perSeason[i][0]) }))
     // Seasons with nothing recorded are left out (the current one always shows)
-    .filter((s) => s.current || s.appearances || s.goals || s.assists || s.motm || s.yellowCards || s.redCards);
+    .filter((s) => s.current || s.appearances || s.goals || s.assists || s.motm || s.yellowCards || s.redCards || s.sinBins || s.minutes);
 
   const { results: images } = showPhotos
     ? await env.DB.prepare(

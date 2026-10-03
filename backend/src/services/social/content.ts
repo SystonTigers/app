@@ -82,6 +82,8 @@ export interface PostInput {
   /** Half/full time: our goals so far (full names), in order */
   scorers?: Array<{ name: string; minute: number | null }>;
   goalNumber?: number;          // goals: this scorer's goals so far this match, counting this one (2 = brace, 3 = hat-trick)
+  /** Yellow cards: the player's second of the match, so they're sent off */
+  secondYellow?: boolean;
   /** Corrections: the kind of update that was posted in error (the score in `match` is the corrected one) */
   corrects?: MatchKind;
   lineup?: { starters: LineupPerson[]; subs: LineupPerson[]; teamSize: number; kickOff: string | null; venue: string | null };
@@ -174,10 +176,20 @@ export function buildPost(policy: PublicNamePolicy, match: MatchContext, input: 
         graphic: { ...moment, headline: HEADLINES.opp_goal, playerName: match.opponent, secondary: null, photoUrl: null },
       };
     case "yellow":
+      if (input.secondYellow) {
+        return {
+          caption: `🟨🟥 Second yellow – sent off: ${name ?? ""}${at}`,
+          graphic: { ...moment, headline: "SECOND YELLOW", playerName: name, secondary: "Sent off", photoUrl: photo(input.player), card: "red" },
+        };
+      }
+      return {
+        caption: `🟨 Yellow card: ${name ?? ""}${at}`,
+        graphic: { ...moment, headline: HEADLINES.yellow, playerName: name, secondary: null, photoUrl: photo(input.player), card: "yellow" },
+      };
     case "red":
       return {
-        caption: `${input.kind === "yellow" ? "🟨 Yellow" : "🟥 Red"} card: ${name ?? ""}${at}`,
-        graphic: { ...moment, headline: HEADLINES[input.kind], playerName: name, secondary: null, photoUrl: photo(input.player), card: input.kind },
+        caption: `🟥 Red card: ${name ?? ""}${at}`,
+        graphic: { ...moment, headline: HEADLINES.red, playerName: name, secondary: null, photoUrl: photo(input.player), card: "red" },
       };
     case "sub":
       return {

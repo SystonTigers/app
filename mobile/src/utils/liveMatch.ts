@@ -9,7 +9,9 @@ export type LiveEventType =
   /** Moments for the highlights: no score change, no posts or alerts */
   | 'chance' | 'save' | 'skill'
   /** The other team's cards: timeline only (no stats, posts or alerts) */
-  | 'opp_yellow' | 'opp_red';
+  | 'opp_yellow' | 'opp_red'
+  /** One of our players off for a while (text = minutes); timeline and stats */
+  | 'sin_bin';
 
 export type LiveStatus = 'scheduled' | 'live' | 'half_time' | 'full_time';
 
@@ -36,6 +38,12 @@ export interface LiveMatchView {
   endedAt: number | null;
   halfLength: number;
   minute: number | null;
+  /** The clock as the server worked it out: "23'", "40+2'" (the app keeps it ticking with clockLabel) */
+  clock?: string | null;
+  /** Running well past full length: Match Centre asks whether it has finished */
+  overdue?: boolean;
+  /** Kicked off hours ago and never finished: "Awaiting full time" */
+  stale?: boolean;
   /** Newest first */
   events: LiveEvent[];
   /** Staff only: automatic posts for these updates */
@@ -72,16 +80,76 @@ export function currentMinute(match: Pick<LiveMatchView, 'status' | 'period' | '
   return null;
 }
 
-export function statusLabel(match: Pick<LiveMatchView, 'status' | 'period' | 'kickedOffAt' | 'secondHalfAt' | 'halfLength'>, now: number): string {
+/** Added time is shown as "40+3'" up to this many minutes, then "40+'" (same as the server). */
+export const ADDED_TIME_SHOWN = 15;
+
+/** "23'", "40+2'", "40+'" while the clock runs (same rule as the server's matchClock). */
+export function clockLabel(match: Pick<LiveMatchView, 'status' | 'period' | 'kickedOffAt' | 'secondHalfAt' | 'halfLength'>, now: number): string | null {
+  const minute = currentMinute(match, now);
+  if (minute === null) return null;
+  const end = match.period === 2 ? match.halfLength * 2 : match.halfLength;
+  const added = minute - end;
+  return added <= 0 ? `${minute}'` : added <= ADDED_TIME_SHOWN ? `${end}+${added}'` : `${end}+'`;
+}
+
+export function statusLabel(match: Pick<LiveMatchView, 'status' | 'period' | 'kickedOffAt' | 'secondHalfAt' | 'halfLength' | 'stale'>, now: number): string {
+  if (match.stale) return 'Awaiting full time';
   switch (match.status) {
     case 'scheduled': return 'Not started';
     case 'half_time': return 'Half time';
     case 'full_time': return 'Full time';
-    default: {
-      const minute = currentMinute(match, now);
-      return minute !== null ? `${minute}'` : 'Live';
-    }
+    default: return clockLabel(match, now) ?? 'Live';
   }
+}
+
+/** Ids of yellow cards that were a player's second (they were sent off). Any order. */
+export function secondYellowIds(events: LiveEvent[]): Set<string> {
+  const booked = new Set<string>();
+  const second = new Set<string>();
+  for (const e of [...events].sort((a, b) => a.createdAt - b.createdAt)) {
+    if (e.type !== 'yellow' || !e.playerId) continue;
+    if (booked.has(e.playerId)) second.add(e.id);
+    else booked.add(e.playerId);
+  }
+  return second;
+}
+
+/** Players sent off (red card or second yellow): they can't be picked again. */
+export function sentOffIds(events: LiveEvent[]): Set<string> {
+  const seconds = secondYellowIds(events);
+  return new Set(events.filter((e) => e.playerId && (e.type === 'red' || seconds.has(e.id))).map((e) => e.playerId as string));
+}
+
+/** Sin bin length: a tenth of the match, at least 2 minutes (same as the server). */
+export function sinBinMinutes(halfLength: number): number {
+  return Math.max(2, Math.round((halfLength * 2) / 10));
+}
+
+/** Sin bins still running: who, and how long is left (the clock stops at half time). */
+export function activeSinBins(match: Pick<LiveMatchView, 'events' | 'halfLength' | 'endedAt'>, now: number): Array<{ id: string; playerId: string | null; playerName: string | null; remainingMs: number }> {
+  if (match.endedAt !== null && match.endedAt <= now) return [];
+  const at = (type: LiveEventType) => match.events.find((e) => e.type === type)?.createdAt ?? null;
+  const kickOff = at('kick_off');
+  const halfTime = at('half_time');
+  const secondHalf = at('second_half');
+  const playing: Array<[number, number]> = [];
+  if (kickOff !== null) playing.push([kickOff, halfTime ?? Infinity]);
+  if (secondHalf !== null) playing.push([secondHalf, Infinity]);
+  return match.events
+    .filter((e) => e.type === 'sin_bin')
+    .map((e) => {
+      const length = Number(e.text);
+      const total = (Number.isFinite(length) && length > 0 ? length : sinBinMinutes(match.halfLength)) * 60_000;
+      const served = playing.reduce((sum, [from, to]) => sum + Math.max(0, Math.min(to, now) - Math.max(from, e.createdAt)), 0);
+      return { id: e.id, playerId: e.playerId, playerName: e.playerName, remainingMs: Math.max(0, total - served) };
+    })
+    .filter((b) => b.remainingMs > 0);
+}
+
+/** "4:05" */
+export function countdown(ms: number): string {
+  const secs = Math.ceil(ms / 1000);
+  return `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
 }
 
 /** "Syston 2 - 1 Rovers", home team first. */
@@ -91,8 +159,9 @@ export function scoreline(match: LiveMatchView, clubName: string): { home: strin
     : { home: match.fixture.opponent, away: clubName, homeScore: match.theirScore, awayScore: match.ourScore };
 }
 
-/** One line for the timeline. */
-export function describeEvent(e: LiveEvent, opponent: string): string {
+/** One line for the timeline. `secondYellow`: this yellow was the player's second, so they're off. */
+export function describeEvent(e: LiveEvent, opponent: string, secondYellow = false): string {
+  if (e.type === 'yellow' && secondYellow) return `Second yellow, sent off: ${e.playerName ?? 'Unknown'}`;
   switch (e.type) {
     case 'kick_off': return 'Kick-off';
     case 'half_time': return 'Half time';
@@ -109,6 +178,7 @@ export function describeEvent(e: LiveEvent, opponent: string): string {
     case 'skill': return `Great play${e.playerName ? `: ${e.playerName}` : ''}`;
     case 'opp_yellow': return `Yellow card: ${opponent}${e.text ? ` (${e.text})` : ''}`;
     case 'opp_red': return `Red card: ${opponent}${e.text ? ` (${e.text})` : ''}`;
+    case 'sin_bin': return `Sin bin: ${e.playerName ?? 'Unknown'}${e.text ? ` (${e.text} min)` : ''}`;
   }
 }
 
@@ -122,11 +192,11 @@ export function eventSide(e: LiveEvent): 'us' | 'them' | 'middle' {
 }
 
 /** The text for an update shown under its team's name (the team is already clear from the side). */
-export function describeEventOnSide(e: LiveEvent, opponent: string): string {
+export function describeEventOnSide(e: LiveEvent, opponent: string, secondYellow = false): string {
   if (e.type === 'opp_goal') return `GOAL!${e.text ? ` ${e.text}` : ''}`;
   if (e.type === 'opp_yellow') return `Yellow card${e.text ? ` ${e.text}` : ''}`;
   if (e.type === 'opp_red') return `Red card${e.text ? ` ${e.text}` : ''}`;
-  return describeEvent(e, opponent);
+  return describeEvent(e, opponent, secondYellow);
 }
 
 export function newClientEventId(): string {

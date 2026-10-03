@@ -4,7 +4,7 @@
  * Every query is scoped to one club (tenant_id).
  */
 import { outcomeFromScores } from "./results";
-import { computeState, matchMinute, type LiveEvent, type LiveEventType, type LiveState } from "./liveMatchState";
+import { computeState, matchClock, secondYellowIds, STALE_AFTER_MS, type LiveEvent, type LiveEventType, type LiveState } from "./liveMatchState";
 
 type DB = { DB: D1Database };
 
@@ -71,23 +71,39 @@ export async function loadEvents(env: DB, tenantId: string, fixtureId: string): 
 
 export interface LiveMatchView extends LiveState {
   fixture: LiveFixture;
+  /** The clock as a number, never past the end of the half (the website shows it as "40'") */
   minute: number | null;
+  /** The clock as shown in the app: "23'", "40+2'", "40+'" (null when it isn't running) */
+  clock: string | null;
+  /** Running well past full length: Match Centre asks staff whether it has finished */
+  overdue: boolean;
+  /** Kicked off over 4 hours ago and never finished: "Awaiting full time", not live */
+  stale: boolean;
   /** Newest first */
   events: LiveEvent[];
 }
 
 export function describeMatch(fixture: LiveFixture, events: LiveEvent[], now = Date.now()): LiveMatchView {
   const state = computeState(events);
-  return { fixture, ...state, minute: matchMinute(state, now), events: [...events].reverse() };
+  const clock = matchClock(state, now);
+  return { fixture, ...state, minute: clock.minute, clock: clock.label, overdue: clock.overdue, stale: clock.stale, events: [...events].reverse() };
 }
 
-/** Fixtures with live activity in the last 12 hours. */
-export async function recentLiveFixtureIds(env: DB, tenantId: string, now = Date.now()): Promise<string[]> {
+/**
+ * Fixtures with live activity in the last 12 hours. Matches left running
+ * (kicked off over 4 hours ago, no full time) are left out unless
+ * `includeStale`, so the club page and league table stop showing them as
+ * live; staff still get them so they can tap Full time.
+ */
+export async function recentLiveFixtureIds(env: DB, tenantId: string, now = Date.now(), includeStale = false): Promise<string[]> {
+  const kickOff = `MIN(CASE WHEN type = 'kick_off' THEN COALESCE(occurred_at, created_at) END)`;
   const { results } = await env.DB.prepare(
     `SELECT fixture_id, MAX(created_at) AS last FROM live_match_events
      WHERE tenant_id = ? AND deleted_at IS NULL AND created_at > ?
-     GROUP BY fixture_id ORDER BY last DESC LIMIT 10`,
-  ).bind(tenantId, now - 12 * 3600_000).all<{ fixture_id: string }>();
+     GROUP BY fixture_id
+     HAVING ? = 1 OR SUM(type = 'full_time') > 0 OR ${kickOff} IS NULL OR ${kickOff} > ?
+     ORDER BY last DESC LIMIT 10`,
+  ).bind(tenantId, now - 12 * 3600_000, includeStale ? 1 : 0, now - STALE_AFTER_MS).all<{ fixture_id: string }>();
   return (results || []).map((r) => r.fixture_id);
 }
 
@@ -103,11 +119,12 @@ export function scorersText(events: LiveEvent[]): string | null {
   return counts.size ? [...counts].map(([name, n]) => (n > 1 ? `${name} ${n}` : name)).join(", ") : null;
 }
 
-const STAT_EVENTS: Partial<Record<LiveEventType, string>> = { goal: "goal", yellow: "yellow_card", red: "red_card" };
+const STAT_EVENTS: Partial<Record<LiveEventType, string>> = { goal: "goal", yellow: "yellow_card", red: "red_card", sin_bin: "sin_bin" };
 
 /**
  * Full time: save the result (results page, league table) and players' goals,
- * assists and cards (stats), and mark the fixture completed. Safe to repeat.
+ * assists, cards and sin bins (stats), and mark the fixture completed. A second
+ * yellow counts as a yellow and a red. Safe to repeat.
  */
 export async function recordFullTime(env: DB, tenantId: string, fixture: LiveFixture, events: LiveEvent[]): Promise<void> {
   const state = computeState(events);
@@ -138,8 +155,10 @@ export async function recordFullTime(env: DB, tenantId: string, fixture: LiveFix
       `INSERT OR IGNORE INTO match_events (id, tenant_id, fixture_id, player_id, event_type, minute, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
     ).bind(id, tenantId, fixture.id, playerId, type, minute, now);
 
+  const seconds = secondYellowIds(events);
   for (const e of events) {
     const statType = STAT_EVENTS[e.type];
+    if (seconds.has(e.id) && e.playerId) statements.push(insertStat(`live-${e.id}-red`, e.playerId, "red_card", e.minute));
     if (statType && e.playerId) statements.push(insertStat(`live-${e.id}`, e.playerId, statType, e.minute));
     if (e.type === "goal" && e.player2Id) statements.push(insertStat(`live-${e.id}-assist`, e.player2Id, "assist", e.minute));
   }

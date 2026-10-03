@@ -372,6 +372,30 @@ with personal data.
 - Match Centre also has Their yellow / Their red (`opp_yellow`, `opp_red`):
   timeline only, no stats, posts or alerts.
 
+## Discipline, clock and minutes
+
+- A player's second yellow shows as "Second yellow, sent off" (red icon), posts
+  as SECOND YELLOW with a red card, and at full time saves the yellow plus a
+  red (`live-<id>-red`). Sent-off players can't be picked again: the app hides
+  them and the server refuses them (409).
+- Sin bin (`sin_bin`, one of our players): a tenth of the match, at least 2
+  minutes (`sinBinMinutes`), saved in the event's `text` so the length never
+  changes. Match Centre shows each running sin bin with a countdown that
+  pauses at half time (`activeSinBins`, `MatchPrompts.tsx`); the same player
+  can't go in twice at once. Counted as `sinBins` in stats.
+- The clock shows added time as "40+2'" (up to 15 minutes, then "40+'":
+  `matchClock` on the server, `clockLabel` in the app). Past full length by 20
+  minutes the match is `overdue` and Match Centre asks "Has it finished?"
+  with a Full time button; 4 hours after kick-off it's `stale` ("Awaiting full
+  time"), drops off members' screens and stays in staff's list to finish.
+- Minutes played (`minutesPlayed`, `squadStats.seasonMinutes`) come from the
+  line-up, subs, reds and the whistle times, only for matches with a line-up
+  (match reports' red cards with a minute stop the clock too). Shown on the
+  Stats screen (Minutes board) and player pages.
+- Stats screen (`StatsScreen`, `utils/stats.ts`): season chips, squad totals
+  and leaderboards (goals, assists, G+A, minutes, MOTM, cards: red = 2,
+  sin bin = 1); joint places share a rank; tap a player for their page.
+
 ## App look (brand)
 
 - Brand: the Boost Huddle hexagon emblem (`assets/emblem.png`, cut out of the

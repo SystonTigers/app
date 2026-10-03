@@ -1,18 +1,19 @@
 /**
  * Live match updates.
  *
- * Staff record what happens from the touchline (kick off, goals, cards, subs,
- * notes, half time, full time) and can undo mistakes. Members follow along in
- * the app; the public club page shows the live score.
+ * Staff record what happens from the touchline (kick off, goals, cards, sin
+ * bins, subs, notes, half time, full time) and can undo mistakes. Members
+ * follow along in the app; the public club page shows the live score.
  *
- *   GET    /api/v1/live                                  matches with recent live activity (members)
+ *   GET    /api/v1/live                                  matches with recent live activity (members; staff
+ *                                                        also get matches left running, to tap Full time)
  *   GET    /api/v1/fixtures/:id/live                     one match (members)
  *   POST   /api/v1/fixtures/:id/live/events              record an event (staff)
  *   DELETE /api/v1/fixtures/:id/live/events/:eventId     undo an event (staff)
  */
 import { json } from "../services/util";
 import { hasAnyRole, requireStaff, requireTenantJWT, STAFF_ROLES, type TenantClaims } from "../services/auth";
-import { computeState, isLiveEventType, matchMinute, rejectReason, undoBlockedReason, type LiveEventType } from "../services/liveMatchState";
+import { computeState, isLiveEventType, matchMinute, rejectReason, secondYellowIds, sentOffIds, sinBinMinutes, sinBinRemainingMs, undoBlockedReason, type LiveEventType } from "../services/liveMatchState";
 import { describeMatch, loadEvents, loadFixture, recentLiveFixtureIds, recordFullTime, revertFullTime, setMatchStatus, type LiveFixture } from "../services/liveMatch";
 import { cancelPost, drawAndPostSoon, jobsForFixture, postPerson, queuePost, type JobSummary } from "../services/social/jobs";
 import { CORRECTABLE_KINDS, MATCH_KINDS, type MatchKind } from "../services/social/content";
@@ -84,6 +85,7 @@ async function queueEventPost(env: Env, tenantId: string, fixture: LiveFixture, 
       player,
       player2,
       goalNumber: event.type === "goal" ? goalNumberFor(events, event) : undefined,
+      secondYellow: secondYellowIds(events).has(event.id) || undefined,
       scorers: event.type === "full_time" || event.type === "half_time"
         ? upTo.filter((e) => e.type === "goal").map((e) => ({ name: e.playerName ?? "Unknown", minute: e.minute }))
         : undefined,
@@ -114,7 +116,7 @@ export async function handleListLive(req: Request, env: Env, corsHdrs: Headers):
   const claims = await authenticate(req, env, corsHdrs, false);
   if (claims instanceof Response) return claims;
   try {
-    const ids = await recentLiveFixtureIds(env, claims.tenantId);
+    const ids = await recentLiveFixtureIds(env, claims.tenantId, Date.now(), hasAnyRole(claims, STAFF_ROLES));
     const matches = [];
     for (const id of ids) {
       const fixture = await loadFixture(env, claims.tenantId, id);
@@ -172,6 +174,11 @@ export async function handleRecordLiveEvent(req: Request, env: Env, corsHdrs: He
     if (player === "invalid" || player2 === "invalid") return fail(corsHdrs, 400, "VALIDATION", "That player isn't in your squad.");
     // A goal can be saved without a scorer (own goal, or nobody saw who); a card can't
     if ((type === "yellow" || type === "red") && !player) return fail(corsHdrs, 400, "VALIDATION", "Choose which player was booked.");
+    if (type === "sin_bin" && !player) return fail(corsHdrs, 400, "VALIDATION", "Choose which player is going to the sin bin.");
+    // A player who has been sent off takes no further part
+    const sentOff = sentOffIds(events);
+    const offPlayer = [player, player2].find((p) => p && sentOff.has(p.id));
+    if (offPlayer) return fail(corsHdrs, 409, "NOT_NOW", `${offPlayer.name} has been sent off.`);
     if (type === "goal" && !player && player2) return fail(corsHdrs, 400, "VALIDATION", "Choose who scored before the assist.");
     if (type === "sub" && (!player || !player2)) return fail(corsHdrs, 400, "VALIDATION", "Choose who came on and who went off.");
 
@@ -187,6 +194,12 @@ export async function handleRecordLiveEvent(req: Request, env: Env, corsHdrs: He
     const now = Date.now();
     const tapped = Number(body.occurredAt);
     const occurredAt = Number.isFinite(tapped) && tapped <= now + 60_000 && tapped >= now - 15 * 60_000 ? Math.round(tapped) : now;
+    if (type === "sin_bin" && player) {
+      const serving = events.some((e) => e.type === "sin_bin" && e.playerId === player.id && sinBinRemainingMs(events, e, occurredAt) > 0);
+      if (serving) return fail(corsHdrs, 409, "NOT_NOW", `${player.name} is already in the sin bin.`);
+      // The length is saved with it, so the countdown never changes afterwards
+      text = String(sinBinMinutes(state.halfLength));
+    }
     const given = Number(body.minute);
     const minute = Number.isInteger(given) && given >= 0 && given <= 130 ? given : matchMinute(state, occurredAt);
 

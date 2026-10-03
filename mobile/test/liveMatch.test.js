@@ -70,3 +70,46 @@ assert.equal(describeEventOnSide(ev('opp_goal'), 'Rival FC'), 'GOAL!');
 assert.equal(describeEventOnSide(ev('opp_goal', { text: 'penalty' }), 'Rival FC'), 'GOAL! penalty');
 assert.equal(describeEventOnSide(ev('goal'), 'Rival FC'), 'GOAL! Sam');
 console.log('eventSide tests passed');
+
+// Clock with added time, second yellows, sin bins
+const { clockLabel, secondYellowIds, sentOffIds, sinBinMinutes, activeSinBins, countdown } = require('../src/utils/liveMatch.ts');
+assert.equal(clockLabel(firstHalf, 29 * MIN), "30'");
+assert.equal(clockLabel(firstHalf, 31 * MIN), "30+2'");
+assert.equal(clockLabel(firstHalf, 60 * MIN), "30+'");
+assert.equal(clockLabel(secondHalf, 72 * MIN), "60+3'");
+assert.equal(statusLabel({ ...firstHalf, stale: true }, 0), 'Awaiting full time');
+
+const cards = [
+  ev('yellow', { id: 'y1', playerId: 'p1', createdAt: 1 }),
+  ev('yellow', { id: 'y2', playerId: 'p2', createdAt: 2 }),
+  ev('yellow', { id: 'y3', playerId: 'p1', createdAt: 3 }),
+  ev('red', { id: 'r1', playerId: 'p3', createdAt: 4 }),
+].reverse();
+assert.deepEqual([...secondYellowIds(cards)], ['y3']);
+assert.deepEqual([...sentOffIds(cards)].sort(), ['p1', 'p3']);
+assert.equal(describeEvent(cards[1], 'Rovers', true), 'Second yellow, sent off: Sam');
+assert.equal(describeEvent(ev('sin_bin', { text: '6' }), 'Rovers'), 'Sin bin: Sam (6 min)');
+assert.equal(eventSide(ev('sin_bin')), 'us');
+
+assert.equal(sinBinMinutes(30), 6);
+assert.equal(sinBinMinutes(5), 2);
+assert.equal(countdown(65_000), '1:05');
+assert.equal(countdown(1), '0:01');
+
+// 6-minute sin bin at 25'; half time at 30' pauses it; second half at 40' (wall clock)
+const binMatch = {
+  halfLength: 30,
+  endedAt: null,
+  events: [
+    ev('half_time', { createdAt: 30 * MIN }),
+    ev('sin_bin', { id: 'b1', playerId: 'p2', text: '6', createdAt: 25 * MIN }),
+    ev('kick_off', { createdAt: 0 }),
+  ],
+};
+assert.equal(activeSinBins(binMatch, 27 * MIN)[0].remainingMs, 4 * MIN);
+assert.equal(activeSinBins(binMatch, 35 * MIN)[0].remainingMs, 1 * MIN, 'paused at half time');
+const restarted = { ...binMatch, events: [ev('second_half', { createdAt: 40 * MIN }), ...binMatch.events] };
+assert.equal(activeSinBins(restarted, 40 * MIN + 30_000)[0].remainingMs, 30_000);
+assert.equal(activeSinBins(restarted, 41 * MIN).length, 0, 'back on');
+assert.equal(activeSinBins({ ...binMatch, endedAt: 26 * MIN }, 27 * MIN).length, 0, 'nothing after full time');
+console.log('clock, second yellow and sin bin tests passed');

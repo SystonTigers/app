@@ -22,6 +22,8 @@ export interface AlertInput {
   player?: string | null;
   /** This scorer's goal number in the match (2 = brace, 3 = hat-trick) */
   goalNumber?: number;
+  /** Yellow cards: the player's second, so they're sent off */
+  secondYellow?: boolean;
   /** Full time: "Sam S. 2, Ben J." */
   scorers?: string | null;
 }
@@ -68,6 +70,7 @@ export function buildAlert(i: AlertInput): AlertText {
     case "half_time":
       return { title: `Half time: ${scoreText(i)}`, body: "Second half coming up." };
     case "yellow":
+      if (i.secondYellow) return { title: `🟥 Second yellow, sent off${i.player ? `: ${i.player}` : ""}${at(i.minute)}`, body: scoreText(i) };
       return { title: `🟨 Yellow card${i.player ? `: ${i.player}` : ""}${at(i.minute)}`, body: scoreText(i) };
     case "red":
       return { title: `🟥 Red card${i.player ? `: ${i.player}` : ""}${at(i.minute)}`, body: scoreText(i) };

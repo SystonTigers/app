@@ -6,7 +6,8 @@ done, move it to "Built" (one line) and update `CLAUDE.md`.
 ## Built (the detail is in CLAUDE.md)
 
 - **Match day:** Match Centre (live score, undo, line-ups, subs, opposition
-  goals/cards, chances/saves), match alerts that skip people at the ground,
+  goals/cards, chances/saves, second yellows, sin bins with a countdown, added
+  time on the clock, a nudge when full time is forgotten, minutes played), match alerts that skip people at the ground,
   live YouTube video, an "as it stands" league table during league games, Man
   of the Match pop-up and vote at full time.
 - **Automatic posts:** server-drawn graphics in three packs (Elite is
@@ -40,18 +41,12 @@ done, move it to "Built" (one line) and update `CLAUDE.md`.
    tier, read-only after the trial, multi-team discounts. Once decided:
    update PLANS and Stripe prices, add the read-only check, update the
    landing page.
-3. **Review the tenant-guard baseline** (`backend/tests/tenant-guard-baseline.json`):
-   about 60 older queries don't mention `tenant_id`. Most look up a row by an
-   id already checked to belong to the club, but each should get an explicit
-   `AND tenant_id = ?` (or be shown to be global) and leave the list.
-4. **Match Centre gaps:** second yellow card (shown as a red), sin bin,
-   minutes played worked out from line-ups and subs.
-5. **More posts:** a player stats round-up post; monthly fixtures/results
+3. **More posts:** a player stats round-up post; monthly fixtures/results
    round-ups; check Goal of the Month end to end (`routes/gotm.ts`).
-6. **Gallery tagging:** tag players in gallery photos so they appear on
+4. **Gallery tagging:** tag players in gallery photos so they appear on
    player pages (today player pages show Player Images only).
-7. **XbotGo scoreboard:** push the live score to the camera's overlay.
-8. **TikTok posting:** waiting on TikTok's app review; managers use Share.
+5. **XbotGo scoreboard:** push the live score to the camera's overlay.
+6. **TikTok posting:** waiting on TikTok's app review; managers use Share.
 
 ## Tidy-up
 

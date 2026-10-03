@@ -10,7 +10,7 @@
  */
 import { groupForKind, groupToken, wantsGroupSql } from "../alertPrefs";
 import { buildAlert, EVENT_ALERT_KINDS, motmAlert, type AlertInput, type AlertKind } from "./content";
-import { computeState, type LiveEvent } from "../liveMatchState";
+import { computeState, secondYellowIds, type LiveEvent } from "../liveMatchState";
 import { scorersText, type LiveFixture } from "../liveMatch";
 import { getPublicNamePolicy, publicName, type PublicNamePolicy } from "../publicNames";
 import { deliver, type PushEnv } from "../push/delivery";
@@ -56,6 +56,7 @@ export async function queueEventAlert(env: AlertsEnv, tenantId: string, fixture:
   const input = baseInput(club, fixture, upTo, event.type as AlertKind);
   input.minute = event.minute;
   if (event.playerName) input.player = publicName(club.policy, event.playerName);
+  if (event.type === "yellow" && secondYellowIds(upTo).has(event.id)) input.secondYellow = true;
   if (event.type === "goal") input.goalNumber = upTo.filter((e) => e.type === "goal" && event.playerId && e.playerId === event.playerId).length || 1;
   if (event.type === "full_time") {
     const goals = upTo.filter((e) => e.type === "goal").map((e) => ({ ...e, playerName: e.playerName ? publicName(club.policy, e.playerName) : e.playerName }));
@@ -88,7 +89,7 @@ export async function cancelEventAlert(env: AlertsEnv, tenantId: string, fixture
     .bind(tenantId, undone.id).first<{ id: string; status: string }>();
   if (!row) return { cancelled: false, corrected: false };
   if (row.status === "pending") {
-    const res = await env.DB.prepare(`UPDATE match_alerts SET status = 'cancelled', updated_at = ? WHERE id = ? AND status = 'pending'`).bind(Date.now(), row.id).run();
+    const res = await env.DB.prepare(`UPDATE match_alerts SET status = 'cancelled', updated_at = ? WHERE id = ? AND tenant_id = ? AND status = 'pending'`).bind(Date.now(), row.id, tenantId).run();
     if ((res.meta?.changes ?? 0) > 0) return { cancelled: true, corrected: false };
   }
   if (!fixture || !["goal", "opp_goal", "yellow", "red", "half_time", "full_time"].includes(undone.type)) return { cancelled: false, corrected: false };
@@ -137,7 +138,7 @@ export async function processDueAlerts(env: AlertsEnv, now = Date.now()): Promis
 
   let sent = 0;
   for (const alert of results || []) {
-    const claim = await env.DB.prepare(`UPDATE match_alerts SET status = 'sending', updated_at = ? WHERE id = ? AND status = 'pending'`).bind(now, alert.id).run();
+    const claim = await env.DB.prepare(`UPDATE match_alerts SET status = 'sending', updated_at = ? WHERE id = ? AND tenant_id = ? AND status = 'pending'`).bind(now, alert.id, alert.tenant_id).run();
     if ((claim.meta?.changes ?? 0) === 0) continue; // another run took it
     try {
       const tokens = await recipientTokens(env, alert.tenant_id, alert.fixture_id, alert.skip_user_id, alert.kind);
@@ -149,7 +150,7 @@ export async function processDueAlerts(env: AlertsEnv, now = Date.now()): Promis
           topic: alert.kind === "stream" ? undefined : `${alert.kind === "motm" ? "v" : "m"}${alert.fixture_id.replace(/[^A-Za-z0-9]/g, "").slice(0, 30)}`,
         })
         : { sent: 0, failed: 0, removed: 0, skipped: 0 };
-      await env.DB.prepare(`UPDATE match_alerts SET status = 'sent', sent_count = ?, updated_at = ? WHERE id = ?`).bind(result.sent, Date.now(), alert.id).run();
+      await env.DB.prepare(`UPDATE match_alerts SET status = 'sent', sent_count = ?, updated_at = ? WHERE id = ? AND tenant_id = ?`).bind(result.sent, Date.now(), alert.id, alert.tenant_id).run();
       sent += result.sent;
       console.log(JSON.stringify({ event: "match_alert", outcome: "sent", id: alert.id, tenant: alert.tenant_id, kind: alert.kind, devices: tokens.length, ...result }));
     } catch (err) {
