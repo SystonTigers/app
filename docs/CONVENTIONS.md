@@ -76,7 +76,7 @@ how to write it.
 
 ### Database
 - Schema changes are a new numbered file in `backend/migrations/`
-  (`0026_short_name.sql`) with a comment saying why. Never edit an applied
+  (`0028_short_name.sql`) with a comment saying why. Never edit an applied
   migration. `ALTER TABLE ... ADD COLUMN` for new fields; keep old columns
   working for screens that still send them.
 - Keep reads cheap: one query with `IN (...)` rather than one per row; batch

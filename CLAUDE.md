@@ -5,7 +5,7 @@ Read `START_HERE.md` first: it covers running, testing and deploying. Then
 (what's next). Other AI tools read `AGENTS.md`, which points to the same files.
 The code is the source of truth; old plans and status reports are in
 `archive/` for history only. When a doc disagrees with the code, trust the
-code, and fix the doc. Checked against the code on 3 October 2026.
+code, and fix the doc. Checked against the code on 4 October 2026.
 
 ## What this is
 
