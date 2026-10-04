@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Image, Platform, Pressable, RefreshControl, ScrollView, Text, useWindowDimensions, View } from 'react-native';
-import { Button, FAB, IconButton, Modal, Portal } from 'react-native-paper';
+import { Button, Chip, FAB, IconButton, Modal, Portal } from 'react-native-paper';
+import { useNavigation } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import { themedStyles, useBrandColors } from '../theme/brand';
 import { FONTS } from '../theme/brandFonts';
@@ -9,7 +10,8 @@ import { useAuth } from '../context/AuthContext';
 import { isStaffRole } from '../utils/roles';
 import AlbumFormModal from '../components/gallery/AlbumFormModal';
 import UploadPhotosModal from '../components/gallery/UploadPhotosModal';
-import { groupBySeason, kindOf, photoCount } from '../utils/gallery';
+import TagPlayersModal from '../components/gallery/TagPlayersModal';
+import { groupBySeason, kindOf, photoCount, taggedText } from '../utils/gallery';
 import { resultDate } from '../utils/results';
 
 const MAX_PICK = 30;
@@ -17,12 +19,14 @@ const MAX_PICK = 30;
 /**
  * Club gallery: albums of match days, training, days out and throwbacks,
  * grouped by season so old photos are easy to find. Members look; staff
- * make albums, add photos (several at once) and remove them.
+ * make albums, add photos (several at once), tag who's in them (the photo
+ * then shows on those players' pages) and remove them.
  */
 export default function GalleryScreen() {
   const COLORS = useBrandColors();
   const styles = useStyles();
   const { width } = useWindowDimensions();
+  const navigation = useNavigation<any>();
   const { user } = useAuth();
   const isStaff = isStaffRole(user?.role);
   const [albums, setAlbums] = useState<GalleryAlbum[]>([]);
@@ -35,6 +39,7 @@ export default function GalleryScreen() {
   const [notice, setNotice] = useState('');
   const [albumForm, setAlbumForm] = useState<{ open: boolean; editing: GalleryAlbum | null }>({ open: false, editing: null });
   const [picked, setPicked] = useState<string[]>([]);
+  const [tagging, setTagging] = useState<GalleryPhoto | null>(null);
 
   const columns = width >= 900 ? 5 : width >= 600 ? 4 : 3;
   const tile = Math.floor((Math.min(width, 1100) - 16) / columns) - 8;
@@ -224,8 +229,23 @@ export default function GalleryScreen() {
                 <View style={styles.viewerBody}>
                   {photo.caption ? <Text style={styles.caption}>{photo.caption}</Text> : null}
                   <Text style={styles.viewerMeta}>Added by {photo.uploadedBy}{photo.uploadedAt ? ` · ${resultDate(photo.uploadedAt)}` : ''}</Text>
+                  {photo.players?.length ? (
+                    <View style={styles.tagged} accessibilityLabel={`In this photo: ${taggedText(photo.players, 99)}`}>
+                      <Text style={styles.viewerMeta}>In this photo</Text>
+                      <View style={styles.chips}>
+                        {photo.players.map((pl) => (
+                          <Chip key={pl.id} compact icon="account" onPress={() => { setPhoto(null); navigation.navigate('Player', { id: pl.id }); }} accessibilityLabel={`Open ${pl.name}'s page`}>
+                            {pl.name}
+                          </Chip>
+                        ))}
+                      </View>
+                    </View>
+                  ) : null}
                   {isStaff ? (
-                    <Button mode="outlined" textColor={COLORS.error} style={styles.removeButton} onPress={() => removePhoto(photo)}>Remove photo</Button>
+                    <View style={styles.staffRow}>
+                      <Button mode="contained" icon="account-multiple-plus" onPress={() => setTagging(photo)}>{photo.players?.length ? 'Change tags' : 'Tag players'}</Button>
+                      <Button mode="outlined" textColor={COLORS.error} style={styles.removeButton} onPress={() => removePhoto(photo)}>Remove photo</Button>
+                    </View>
                   ) : (
                     <Text style={styles.viewerMeta}>Want this photo taken down? Ask a club coach or admin and they will remove it.</Text>
                   )}
@@ -235,6 +255,18 @@ export default function GalleryScreen() {
             ) : null}
           </Modal>
         </Portal>
+        <TagPlayersModal
+          photoId={tagging?.id ?? null}
+          tagged={tagging?.players ?? []}
+          onClose={() => setTagging(null)}
+          onSaved={(players) => {
+            const id = tagging?.id;
+            setTagging(null);
+            setPhotos((list) => list.map((x) => (x.id === id ? { ...x, players } : x)));
+            setPhoto((p) => (p && p.id === id ? { ...p, players } : p));
+            setNotice(players.length ? `Tagged ${taggedText(players)}.` : 'Tags removed.');
+          }}
+        />
         {modals}
       </View>
     );
@@ -323,6 +355,9 @@ const useStyles = themedStyles((c) => ({
   viewerBody: { padding: 16, gap: 8 },
   caption: { fontSize: 16, color: '#FFFFFF' },
   viewerMeta: { fontSize: 12, color: 'rgba(255,255,255,0.75)' },
-  removeButton: { borderColor: c.error, alignSelf: 'flex-start' },
+  removeButton: { borderColor: c.error },
+  staffRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  tagged: { gap: 6 },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   close: { position: 'absolute', top: 8, right: 8, backgroundColor: 'rgba(0, 0, 0, 0.5)' },
 }));

@@ -10,11 +10,15 @@
  *   GET    /api/v1/gallery/photos?albumId=   photos (one album, or all)
  *   POST   /api/v1/gallery/upload            staff: multipart file + albumId (+ caption, tags)
  *   DELETE /api/v1/gallery/photos/:id        staff: one photo and its file
+ *   PUT    /api/v1/gallery/photos/:id/players  staff: { playerIds } who's in the photo (shown on player pages)
+ *
+ * Photos come back with `players`: [{ id, name }] tagged in them.
  */
 import { json } from "../services/util";
 import { logJSON } from "../lib/log";
 import { getSessionFromRequest } from "../middleware/permissions";
 import { MediaError, deleteMedia, keyFromMediaUrl, mediaUrl, putMedia, validateImage } from "../services/media";
+import { playersInPhotos, readTagIds, removeTagsStatement, setPhotoPlayers, type TaggedPlayer } from "../services/galleryTags";
 
 type Session = NonNullable<Awaited<ReturnType<typeof getSessionFromRequest>>>;
 
@@ -151,6 +155,7 @@ export async function handleDeleteAlbum(req: Request, env: any, corsHdrs: Header
         if (!album) return fail(corsHdrs, 404, "Album not found");
         const { results } = await env.DB.prepare("SELECT url FROM photos WHERE album_id = ? AND tenant_id = ?").bind(id, tenantId).all();
         await env.DB.batch([
+            removeTagsStatement(env, tenantId, { albumId: id }),
             env.DB.prepare("DELETE FROM photos WHERE album_id = ? AND tenant_id = ?").bind(id, tenantId),
             env.DB.prepare("DELETE FROM albums WHERE id = ? AND tenant_id = ?").bind(id, tenantId),
         ]);
@@ -163,7 +168,7 @@ export async function handleDeleteAlbum(req: Request, env: any, corsHdrs: Header
     }
 }
 
-function photoRow(r: any) {
+function photoRow(r: any, players: TaggedPlayer[] = []) {
     return {
         id: r.id,
         uri: r.url,
@@ -174,6 +179,7 @@ function photoRow(r: any) {
         tags: (() => {
             try { return r.tags ? JSON.parse(r.tags) : []; } catch { return []; }
         })(),
+        players,
     };
 }
 
@@ -189,7 +195,9 @@ export async function handleListPhotos(req: Request, env: any, corsHdrs: Headers
             params.push(albumId);
         }
         const { results } = await env.DB.prepare(`${PHOTO_SELECT} WHERE ${where} ORDER BY p.uploaded_at DESC LIMIT 500`).bind(...params).all();
-        return json({ success: true, data: (results || []).map(photoRow) }, 200, corsHdrs);
+        const rows = (results || []) as Array<{ id: string }>;
+        const tagged = await playersInPhotos(env, tenantId, rows.map((r) => r.id));
+        return json({ success: true, data: rows.map((r) => photoRow(r, tagged.get(r.id))) }, 200, corsHdrs);
     } catch (err) {
         return failure(err, corsHdrs, "Failed to list photos");
     }
@@ -200,7 +208,8 @@ export async function handleGetPhoto(req: Request, env: any, corsHdrs: Headers, 
         const { tenantId } = await requireSession(req, env);
         const photo = await env.DB.prepare(`${PHOTO_SELECT} WHERE p.id = ? AND p.tenant_id = ?`).bind(id, tenantId).first();
         if (!photo) return fail(corsHdrs, 404, "Photo not found");
-        return json({ success: true, data: photoRow(photo) }, 200, corsHdrs);
+        const tagged = await playersInPhotos(env, tenantId, [id]);
+        return json({ success: true, data: photoRow(photo, tagged.get(id)) }, 200, corsHdrs);
     } catch (err) {
         return failure(err, corsHdrs, "Failed to get photo");
     }
@@ -255,10 +264,31 @@ export async function handleDeletePhoto(req: Request, env: any, corsHdrs: Header
         const { tenantId } = await requireSession(req, env);
         const photo = await env.DB.prepare("SELECT url FROM photos WHERE id = ? AND tenant_id = ?").bind(id, tenantId).first() as { url?: string } | null;
         if (!photo) return fail(corsHdrs, 404, "Photo not found");
-        await env.DB.prepare("DELETE FROM photos WHERE id = ? AND tenant_id = ?").bind(id, tenantId).run();
+        await env.DB.batch([
+            removeTagsStatement(env, tenantId, { photoId: id }),
+            env.DB.prepare("DELETE FROM photos WHERE id = ? AND tenant_id = ?").bind(id, tenantId),
+        ]);
         await removeFile(env, tenantId, photo.url);
         return json({ success: true }, 200, corsHdrs);
     } catch (err) {
         return failure(err, corsHdrs, "Failed to delete photo");
+    }
+}
+
+/** Staff: who's in the photo. Replaces the photo's tags; an empty list clears them. */
+export async function handleTagPhoto(req: Request, env: any, corsHdrs: Headers, id: string) {
+    try {
+        const { tenantId } = await requireSession(req, env);
+        const body = await req.json().catch(() => null);
+        const ids = readTagIds(body && typeof body === "object" ? (body as Record<string, unknown>) : {});
+        if (typeof ids === "string") return fail(corsHdrs, 400, ids);
+        const saved = await setPhotoPlayers(env, tenantId, id, ids);
+        if (saved === false) return fail(corsHdrs, 404, "Photo not found");
+        if (saved !== true) return fail(corsHdrs, 400, "One of those players isn't in your squad.");
+        const tagged = await playersInPhotos(env, tenantId, [id]);
+        logJSON({ level: "info", msg: "gallery_photo_tagged", tenant: tenantId, id, players: ids.length });
+        return json({ success: true, data: { players: tagged.get(id) ?? [] } }, 200, corsHdrs);
+    } catch (err) {
+        return failure(err, corsHdrs, "Failed to tag photo");
     }
 }

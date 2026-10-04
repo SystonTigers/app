@@ -28,6 +28,7 @@ done, move it to "Built" (one line) and update `CLAUDE.md`.
   season stats, photos, goal clips), results by season with scorers picked
   from the squad, stats, gallery, Training Centre (sessions, register), drill
   library with favourites, club drills and TikTok/Instagram/YouTube links,
+  gallery photos with players tagged (shown on their pages),
   People & Roles, parent invite codes, photo/video consent with reminders.
 - **Business:** club sign-up with a 14-day trial, Starter/Pro plans (Stripe,
   switched on by secrets), owner panel (clubs, trials, plans, suspensions).
@@ -43,10 +44,8 @@ done, move it to "Built" (one line) and update `CLAUDE.md`.
    (`routes/billing.ts` PLANS). Under discussion: per-team pricing, no free
    tier, multi-team discounts. Once decided: update PLANS and Stripe prices,
    flip the switch, update the landing page.
-3. **Gallery tagging:** tag players in gallery photos so they appear on
-   player pages (today player pages show Player Images only).
-4. **XbotGo scoreboard:** push the live score to the camera's overlay.
-5. **TikTok posting:** waiting on TikTok's app review; managers use Share.
+3. **XbotGo scoreboard:** push the live score to the camera's overlay.
+4. **TikTok posting:** waiting on TikTok's app review; managers use Share.
 
 ## Switched off until they're ready
 

@@ -47,3 +47,10 @@ export function uploadSummary(done: number, total: number): string {
   const failed = total - done;
   return `Uploaded ${done} of ${photoCount(total)}. ${failed} didn't upload, try ${failed === 1 ? 'it' : 'them'} again.`;
 }
+
+/** "Pat Player", "Pat Player and Sam Smith", "Pat Player, Sam Smith and 3 more" */
+export function taggedText(players: Array<{ name: string }> | undefined, shown = 2): string {
+  const names = (players ?? []).map((p) => p.name);
+  if (names.length <= shown + 1) return names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}` : names[0] ?? '';
+  return `${names.slice(0, shown).join(', ')} and ${names.length - shown} more`;
+}

@@ -1,6 +1,7 @@
 /**
  * A player's page: name, number, position, their own bio, stats for each
- * season, photos and goal clips.
+ * season, photos (their own and club gallery photos they're tagged in) and
+ * goal clips.
  *
  * Who sees what: everyone at the club sees the name, number, position, bio and
  * stats. Photos and goal clips are shown to staff and the player's own
@@ -12,6 +13,7 @@ import { isStaff, linkedPlayerIds } from "../playerPrivacy";
 import { seasonOptions } from "../seasons/range";
 import { squadStats, type PlayerStatLine } from "../squadStats";
 import { playerGoalClips, type GoalClip } from "./clips";
+import { taggedPhotos } from "../galleryTags";
 
 type Env = { DB: D1Database };
 
@@ -87,11 +89,14 @@ export async function playerProfile(env: Env, claims: TenantClaims, playerId: st
     // Seasons with nothing recorded are left out (the current one always shows)
     .filter((s) => s.current || s.appearances || s.goals || s.assists || s.motm || s.yellowCards || s.redCards || s.sinBins || s.minutes);
 
-  const { results: images } = showPhotos
-    ? await env.DB.prepare(
-      `SELECT id, image_url, image_type FROM player_images WHERE tenant_id = ? AND player_id = ? ORDER BY uploaded_at DESC LIMIT 60`,
-    ).bind(claims.tenantId, playerId).all<{ id: string; image_url: string; image_type: string }>()
-    : { results: [] };
+  const [{ results: images }, tagged] = showPhotos
+    ? await Promise.all([
+      env.DB.prepare(
+        `SELECT id, image_url, image_type FROM player_images WHERE tenant_id = ? AND player_id = ? ORDER BY uploaded_at DESC LIMIT 60`,
+      ).bind(claims.tenantId, playerId).all<{ id: string; image_url: string; image_type: string }>(),
+      taggedPhotos(env, claims.tenantId, playerId),
+    ])
+    : [{ results: [] }, []];
 
   return {
     player: {
@@ -104,7 +109,10 @@ export async function playerProfile(env: Env, claims: TenantClaims, playerId: st
     canRemoveBio: staff,
     career: line(career[0]),
     seasons: seasonLines,
-    photos: (images ?? []).map((r) => ({ id: r.id, url: r.image_url, type: r.image_type })),
+    photos: [
+      ...(images ?? []).map((r) => ({ id: r.id, url: r.image_url, type: r.image_type })),
+      ...tagged.map((r) => ({ id: `gallery:${r.id}`, url: r.url, type: "gallery" })),
+    ],
     clips: showClips ? await playerGoalClips(env, claims.tenantId, playerId) : [],
     hidden: { photos: !showPhotos, clips: !showClips },
   };

@@ -132,7 +132,7 @@ export default function PlayerScreen({ navigation, route }: { navigation: any; r
             <Text style={styles.note}>
               {profile.hidden.photos
                 ? `${firstName}'s photos show here once a parent says yes to photos in Photo & Video Consent.`
-                : profile.canRemoveBio ? 'Add photos in Manager Zone → Player Images.' : 'No photos yet.'}
+                : profile.canRemoveBio ? 'Add photos in Manager Zone → Player Images, or tag the player in a Gallery photo.' : 'No photos yet.'}
             </Text>
           )}
         </Section>

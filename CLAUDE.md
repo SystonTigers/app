@@ -292,7 +292,7 @@ with personal data.
 - Players tab (`SquadScreen`) → `PlayerScreen` (`GET /api/v1/players/:id/profile`,
   `routes/playerProfile.ts`, `services/playerProfile/`): bio, all-time and
   per-season stats (`services/squadStats.ts`, shared with the Stats screen),
-  photos (`player_images`) and goal clips (Match Centre goal taps in matches
+  photos (`player_images` plus gallery photos they're tagged in) and goal clips (Match Centre goal taps in matches
   with a lined-up YouTube video, same clips as Highlights, hidden ones left out).
 - Only the player writes their bio (`PUT /players/:id/bio`): an account with
   the `player` role linked to that squad entry (`auth_user_players`, linked
@@ -343,6 +343,12 @@ with personal data.
   photos and R2 files) and upload several photos at once after confirming
   consent. Photos record the uploader's account id; members see a name, never
   an email.
+- Staff tag who's in a photo (app photo viewer → Tag players;
+  `PUT /api/v1/gallery/photos/:id/players {playerIds}`, `photo_players`,
+  migration 0027, `services/galleryTags.ts`). Photo lists return `players`;
+  members tap a name to open that player's page. Tagged photos join the
+  player's own photos on their page (type `gallery`, id `gallery:<photoId>`)
+  under the same photo consent rule. Removing a photo or album removes its tags.
 - App navigation: a back arrow sits next to the menu button, the drawer goes
   back through history, and the web app has real URLs (`navigation/linking.ts`)
   so the phone's back gesture returns to the last page instead of closing it.

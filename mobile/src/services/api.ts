@@ -1143,6 +1143,8 @@ export interface GalleryPhoto {
   uploadedAt: string;
   caption: string | null;
   tags: string[];
+  /** Players tagged in the photo (it shows on their player pages) */
+  players?: Array<{ id: string; name: string }>;
 }
 
 export type AlbumInput = { title: string; date: string; type: GalleryAlbum['type'] };
@@ -1176,6 +1178,9 @@ export const galleryApi = {
   deletePhoto: async (id: string): Promise<void> => {
     await api.delete(`/api/v1/gallery/photos/${id}`);
   },
+  /** Staff: who's in the photo (replaces the tags) */
+  tagPlayers: async (id: string, playerIds: string[]): Promise<Array<{ id: string; name: string }>> =>
+    (await api.put(`/api/v1/gallery/photos/${id}/players`, { playerIds })).data.data.players,
 };
 
 export default api;

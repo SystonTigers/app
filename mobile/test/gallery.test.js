@@ -33,3 +33,14 @@ assert.strictEqual(uploadSummary(5, 5), 'Uploaded 5 photos.');
 assert.strictEqual(uploadSummary(4, 5), "Uploaded 4 of 5 photos. 1 didn't upload, try it again.");
 assert.strictEqual(uploadSummary(1, 3), "Uploaded 1 of 3 photos. 2 didn't upload, try them again.");
 console.log('gallery tests passed');
+
+{
+  const { taggedText } = require('../src/utils/gallery.ts');
+  const p = (...names) => names.map((name) => ({ name }));
+  assert.equal(taggedText(undefined), '');
+  assert.equal(taggedText(p('Pat Player')), 'Pat Player');
+  assert.equal(taggedText(p('Pat Player', 'Sam Smith')), 'Pat Player and Sam Smith');
+  assert.equal(taggedText(p('A', 'B', 'C')), 'A, B and C');
+  assert.equal(taggedText(p('A', 'B', 'C', 'D', 'E')), 'A, B and 3 more');
+  console.log('gallery tagging tests passed');
+}

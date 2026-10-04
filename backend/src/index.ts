@@ -432,6 +432,7 @@ import {
     handleListPhotos,
     handleGetPhoto,
     handleDeletePhoto,
+    handleTagPhoto,
     handleCreateAlbum,
     handleListAlbums,
     handleUpdateAlbum,
@@ -449,6 +450,10 @@ router.get("/api/:v/gallery/photos/:id", (req, env, corsHdrs) => {
     const params = (req as any).params || {};
     return handleGetPhoto(req, env, corsHdrs, params.id);
 });
+router.put("/api/:v/gallery/photos/:id/players", staffOnly((req, env, corsHdrs) => {
+    const params = (req as any).params || {};
+    return handleTagPhoto(req, env, corsHdrs, params.id);
+}));
 router.delete("/api/:v/gallery/photos/:id", staffOnly((req, env, corsHdrs) => {
     const params = (req as any).params || {};
     return handleDeletePhoto(req, env, corsHdrs, params.id);
