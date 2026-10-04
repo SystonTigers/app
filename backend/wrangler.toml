@@ -55,7 +55,6 @@ API_VERSION = "v1"
 JWT_ISSUER = "syston.app"
 JWT_AUDIENCE = "syston-mobile"
 APP_VERSION = "7.0.0"
-ALLOWED_WEBHOOK_HOSTS = "hook.make.com,hook.eu2.make.com,hook.us1.make.com,*.make.com,webhook.site"
 GALLERY_ALLOWED = "image/jpeg,image/png,image/webp"
 GALLERY_MAX_BYTES = "10485760"
 YT_REDIRECT_URL = "https://app-production.team-platform-2025.workers.dev/api/v1/admin/yt/callback"
@@ -75,7 +74,6 @@ WORKER_BASE_URL = "https://app-production.team-platform-2025.workers.dev"
 ENVIRONMENT = "production"
 PYTHON_COACHING_SERVICE_URL = "http://localhost:8000"
 DRY_RUN = "false"
-MAKE_VALIDATE_STRICT = "true"
 
 [[env.production.kv_namespaces]]
 binding = "TENANTS"
@@ -105,19 +103,12 @@ database_name = "syston-db"
 database_id = "3031c292-6290-4906-947d-ab9a145538ed"
 
 [[env.production.queues.producers]]
-binding = "POST_QUEUE"
-queue = "post-queue"
-
-[[env.production.queues.producers]]
 binding = "HIGHLIGHTS_QUEUE"
 queue = "highlights-queue"
 
 [[env.production.queues.producers]]
 binding = "DLQ"
 queue = "dead-letter"
-
-# post-queue is consumed by a separate Worker (Cloudflare allows one consumer per queue),
-# so this Worker only produces to it.
 
 [[env.production.r2_buckets]]
 binding = "R2_MEDIA"
@@ -167,7 +158,6 @@ API_VERSION = "v1"
 JWT_ISSUER = "syston.app"
 JWT_AUDIENCE = "syston-mobile"
 APP_VERSION = "7.0.0"
-ALLOWED_WEBHOOK_HOSTS = "hook.make.com,hook.eu2.make.com,hook.us1.make.com,*.make.com,webhook.site"
 GALLERY_ALLOWED = "image/jpeg,image/png,image/webp"
 GALLERY_MAX_BYTES = "10485760"
 YT_REDIRECT_URL = "https://syston-postbus.team-platform-2025.workers.dev/api/v1/admin/yt/callback"
@@ -181,7 +171,6 @@ WORKER_BASE_URL = "https://app-preview.team-platform-2025.workers.dev"
 ENVIRONMENT = "preview"
 PYTHON_COACHING_SERVICE_URL = "http://localhost:8000"
 DRY_RUN = "true"
-MAKE_VALIDATE_STRICT = "false"
 
 [[env.preview.kv_namespaces]]
 binding = "TENANTS"
@@ -201,19 +190,12 @@ database_name = "syston-db"
 database_id = "3031c292-6290-4906-947d-ab9a145538ed"
 
 [[env.preview.queues.producers]]
-binding = "POST_QUEUE"
-queue = "post-queue"
-
-[[env.preview.queues.producers]]
 binding = "HIGHLIGHTS_QUEUE"
 queue = "highlights-queue"
 
 [[env.preview.queues.producers]]
 binding = "DLQ"
 queue = "dead-letter"
-
-# post-queue is consumed by a separate Worker (Cloudflare allows one consumer per queue),
-# so this Worker only produces to it.
 
 [[env.preview.r2_buckets]]
 binding = "R2_MEDIA"

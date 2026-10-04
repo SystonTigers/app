@@ -5,7 +5,6 @@ export interface Env {
   R2_MEDIA: R2Bucket;
   DB: D1Database;
 
-  POST_QUEUE: Queue;
   DLQ: Queue;
 
   TenantRateLimiter: DurableObjectNamespace;

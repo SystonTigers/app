@@ -13,7 +13,6 @@ export type PostJob = {
 export type TenantId = string;
 
 export interface TenantFlags {
-  use_make?: boolean;    // legacy global switch (kept)
   direct_yt?: boolean;   // legacy
   // new per-channel switches (optional, default false)
   managed?: Partial<Record<Channel, boolean>>; // e.g. { ig:true, x:false }
@@ -45,8 +44,6 @@ export interface TenantCredentials {
     client_id?: string;
     client_secret?: string;
   };
-  // BYO-Make per channel
-  make?: Partial<Record<Channel, string>>; // channel→webhook URL
 }
 
 export interface TenantConfig {
@@ -56,8 +53,6 @@ export interface TenantConfig {
   tz?: string;     // e.g. "Europe/London"
   flags: TenantFlags;
   creds?: TenantCredentials;
-  // Legacy - kept for backward compatibility
-  makeWebhookUrl?: string | null;
   created_at?: number;
   updated_at?: number;
   // Tenant metadata
@@ -82,7 +77,6 @@ export interface FallbackResponse {
 export interface Env {
   DB: D1Database;
   KV_IDEMP: KVNamespace;
-  POST_QUEUE: Queue;
   DLQ: Queue;
   DLQ_ALERT_URL?: string;
   RATE_LIMIT_KV?: KVNamespace;
@@ -116,7 +110,6 @@ export interface Env {
   GALLERY_ALLOWED?: string;
   API_VERSION: string;
   CORS_ALLOWED?: string;
-  ALLOWED_WEBHOOK_HOSTS?: string;
   BACKEND_URL?: string;
   RESEND_API_KEY?: string;
   RESEND_FROM_EMAIL?: string;

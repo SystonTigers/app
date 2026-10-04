@@ -439,7 +439,7 @@ export async function handleCreateComment(req: Request, env: any, corsHdrs: Head
         // Notify discussion author (if different from commenter)
         if (discussion.author_id && discussion.author_id !== claims.userId) {
             const notifId = crypto.randomUUID();
-            env.DB.prepare(`
+            await env.DB.prepare(`
                 INSERT INTO notifications (id, tenant_id, user_id, type, title, message, link, related_id, read, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?)
             `).bind(
@@ -448,7 +448,7 @@ export async function handleCreateComment(req: Request, env: any, corsHdrs: Head
                 discussion.author_id,
                 'discussion_comment',
                 'New Comment',
-                `${claims.name || 'Someone'} commented on "${discussion.title}"`,
+                `${author} commented on "${discussion.title}"`,
                 discussionLink,
                 discussionId,
                 now
@@ -467,7 +467,7 @@ export async function handleCreateComment(req: Request, env: any, corsHdrs: Head
 
             if (parentComment && parentComment.author_id !== claims.userId && parentComment.author_id !== discussion.author_id) {
                 const notifId = crypto.randomUUID();
-                env.DB.prepare(`
+                await env.DB.prepare(`
                     INSERT INTO notifications (id, tenant_id, user_id, type, title, message, link, related_id, read, created_at)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?)
                 `).bind(
@@ -476,7 +476,7 @@ export async function handleCreateComment(req: Request, env: any, corsHdrs: Head
                     parentComment.author_id,
                     'comment_reply',
                     'New Reply',
-                    `${claims.name || 'Someone'} replied to your comment`,
+                    `${author} replied to your comment`,
                     discussionLink,
                     discussionId,
                     now
@@ -490,7 +490,7 @@ export async function handleCreateComment(req: Request, env: any, corsHdrs: Head
                 if (mentionedUserId === claims.userId) {continue;} // Don't notify self
 
                 const notifId = crypto.randomUUID();
-                env.DB.prepare(`
+                await env.DB.prepare(`
                     INSERT INTO notifications (id, tenant_id, user_id, type, title, message, link, related_id, read, created_at)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?)
                 `).bind(
@@ -499,7 +499,7 @@ export async function handleCreateComment(req: Request, env: any, corsHdrs: Head
                     mentionedUserId,
                     'mention',
                     'New Mention',
-                    `${claims.name || 'Someone'} mentioned you in "${discussion.title}"`,
+                    `${author} mentioned you in "${discussion.title}"`,
                     discussionLink,
                     discussionId,
                     now

@@ -18,8 +18,7 @@ A multi-club grassroots football app. One Cloudflare Worker serves every club
 | `backend/migrations/` | D1 schema (`0001_baseline.sql` onwards; `archive/` is history only) |
 | `mobile/` | Expo SDK 54 app for players, parents and coaches. Multi-club: the current club lives in `src/services/club.ts` (`getTenantId()`); never hardcode a club |
 | `web-app/` | Next.js site: landing page, club sign-up (`/create-team`), club pages and dashboards. Live as the `boost-huddle` Worker (OpenNext) |
-| `packages/sdk/` | Typed API client shared by the web frontends |
-| `video-processing/` | Python highlights editor (`highlights_bot`) and Docker processor |
+| `video-processing/` | Older Python highlights tools, not used by the app (see its README) |
 
 There is no Google Apps Script or Google Sheets in the system any more. New
 clubs sign up on `web-app` at `/create-team`, which registers the owner on the

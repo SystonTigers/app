@@ -56,32 +56,6 @@ export function json(body: unknown, status = 200, headers: HeadersInit = {}) {
   return new Response(bodyText, withSecurity({ status, headers: finalHeaders }));
 }
 
-export function cors(originList: string[] | null, reqOrigin: string | null) {
-  // Default allowed origins for development (only used if CORS_ALLOWED not set)
-  const defaultAllowed = new Set([
-    "https://localhost:5173",
-    "http://localhost:5173",
-    "https://localhost:3000",
-    "http://localhost:3000",
-    "capacitor://localhost",
-  ]);
-
-  // If CORS_ALLOWED is set, only allow those origins; otherwise use dev defaults
-  const allowed = originList
-    ? new Set(originList)
-    : defaultAllowed;
-
-  const origin = reqOrigin || "";
-  const allowOrigin = allowed.has(origin) ? origin : "*";
-
-  return {
-    "Access-Control-Allow-Origin": allowOrigin,
-    "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
-    "Access-Control-Allow-Headers": "content-type,authorization,Idempotency-Key,x-amz-content-sha256,x-amz-date,x-amz-acl,x-amz-meta-*",
-    "Vary": "Origin"
-  };
-}
-
 export function readIdempotencyKey(req: Request) {
   return req.headers.get("Idempotency-Key") || "";
 }

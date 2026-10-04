@@ -56,23 +56,20 @@ done, move it to "Built" (one line) and update `CLAUDE.md`.
   products show.
 - **Sponsors page:** not linked; it has no sponsor list behind it. The
   sponsor on graphics (Club Settings) works.
-- **Removed from the app (unreachable):** Team Chat (its backend in
-  `routes/chat.ts` + `do/chatRoom.ts` fails to send; Team talk covers club
-  conversation), Payments/dues (website Admin → Dues works; paying needs
-  Stripe) and Wearables (a mock-up). Decide whether to delete their backend
-  routes or finish them.
+- **Removed in October 2026 (unreachable or broken):** app Team Chat,
+  Payments and Wearables screens; the website's chat page; the wearables
+  API. Team Chat's backend (`routes/chat.ts`, `do/chatRoom.ts`) still exists
+  but fails to send; Team talk covers club conversation. Dues stay on the
+  website (Admin → Dues); paying online needs Stripe.
 
 ## Tidy-up
 
-- The old post queue and sign-up provisioner (`queue-consumer.ts`,
-  `do/provisioner.ts`, `adapters/`, `services/tenantConfig.ts`) still carry
-  the Make.com path (`use_make`, `ALLOWED_WEBHOOK_HOSTS`, `MAKE_VALIDATE_STRICT`).
-  No live feature uses them (posting is `services/social/`, sign-up is
-  `/create-team`); remove them together with their bindings and tests.
-- Folders not used by any build: `workers/` (old highlights orchestrator and
-  uploader), `shared/sdk` (the web uses `packages/sdk`), `docs/concepts`
-  (design inspiration images only).
-- `video-processing/` (Python highlights tools) hasn't been checked against
-  the current app since the free YouTube-clip highlights replaced it for
-  match day; check before relying on its README.
+- **Durable Objects no longer used:** `Provisioner` (old sign-up, also the
+  last Make.com code), `GeoFenceManager` and `ChatRoom` are still exported
+  because deleting a Durable Object class needs a wrangler migration
+  (`deleted_classes`) that permanently wipes its storage. Do it as its own
+  deploy, with the owner's agreement, then delete their files and bindings.
+- The old wearables tables are still in D1 (no code reads them); drop them in
+  a migration if they stay unused.
+- `docs/concepts/` holds design inspiration images only.
 - Older docs are in `archive/` for history only.

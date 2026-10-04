@@ -117,9 +117,8 @@ describe("Users Service", () => {
         slug: "syston",
         name: "Syston RFC",
         plan: "pro",
-        flags: { use_make: false, direct_yt: true },
+        flags: { direct_yt: true },
         creds: {},
-        makeWebhookUrl: null,
         created_at: Date.now(),
         updated_at: Date.now(),
       })
@@ -131,9 +130,8 @@ describe("Users Service", () => {
         slug: "kingsthorpe",
         name: "Kingsthorpe RFC",
         plan: "starter",
-        flags: { use_make: false, direct_yt: true },
+        flags: { direct_yt: true },
         creds: {},
-        makeWebhookUrl: null,
         created_at: Date.now(),
         updated_at: Date.now(),
       })

@@ -2,7 +2,6 @@ import { Router } from "itty-router";
 import { handlePublicTenantRequest } from "./routes/public";
 import { errorHandler } from "./middleware/errorHandler";
 import { getAuthFailure, requireStaff } from "./services/auth";
-import postQueueConsumer from "./queue-consumer";
 import { json } from "./services/util";
 import { handleGetMedia } from "./services/media";
 import { processDueJobs } from "./services/social/jobs";
@@ -130,12 +129,6 @@ import {
     handleCreatePersonalizedOrder,
     handleGetPlayerPreview
 } from "./routes/personalization";
-import {
-    handleProvisionQueue,
-    handleProvisionStatus,
-    handleTenantOverview,
-    handleProvisionRetry
-} from "./routes/provisioning";
 import { getUsage, incrementUsage } from "./routes/usage";
 import {
     handleSecuritySummary,
@@ -164,25 +157,6 @@ import {
     handleGetImportTemplate,
     handleGetImportStatus
 } from "./routes/import";
-import {
-    handleListDevices,
-    handleCreateDevice,
-    handleGetDevice,
-    handleUpdateDevice,
-    handleDeleteDevice,
-    handleListSessions as handleListWearableSessions,
-    handleCreateSession as handleCreateWearableSession,
-    handleGetSession as handleGetWearableSession,
-    handleGetGPSTrack,
-    handleSyncData,
-    handleManualEntry,
-    handleGetPlayerMetrics,
-    handleGetPlayerSummary,
-    handleGetFatigueAssessment,
-    handleListPitches,
-    handleCreatePitch,
-    handleImportData
-} from "./routes/wearables";
 // Cron Jobs
 import { runDaily } from "./cron/daily";
 import { runScheduledPosts } from "./services/social/scheduler";
@@ -374,20 +348,6 @@ router.post("/api/:v/personalization/generate", staffOnly((req, env, corsHdrs) =
 router.post("/api/:v/personalization/upload-to-printify", staffOnly((req, env, corsHdrs) => handleUploadDesignToPrintify(req, env, corsHdrs)));
 router.post("/api/:v/personalization/order", staffOnly((req, env, corsHdrs) => handleCreatePersonalizedOrder(req, env, corsHdrs)));
 router.get("/api/:v/personalization/preview/:playerId", staffOnly((req, env, corsHdrs) => handleGetPlayerPreview(req, env, corsHdrs)));
-
-// Provisioning Routes
-router.post("/internal/provision/queue", (req, env, corsHdrs, requestId) => handleProvisionQueue(req, env));
-router.get("/api/:v/tenants/:id/provision-status", (req, env, corsHdrs, requestId) => {
-    const params = (req as any).params || {};
-    return handleProvisionStatus(req, env, params.id);
-});
-router.get("/api/:v/tenants/:id/overview", (req, env, corsHdrs, requestId) => {
-    const params = (req as any).params || {};
-    return handleTenantOverview(req, env, params.id);
-});
-router.post("/internal/provision/retry", (req, env, corsHdrs, requestId) => {
-    return handleProvisionRetry(req, env);
-});
 
 // Usage Routes
 router.get("/api/:v/usage", (req, env, corsHdrs, requestId) => getUsage(req, env, requestId, corsHdrs));
@@ -1270,67 +1230,7 @@ router.get("/api/:v/club/fixture-email", staffOnly((req, env, corsHdrs) => handl
 router.get("/api/:v/club/fa-full-time", (req, env, corsHdrs) => handleGetFaFullTime(req, env, corsHdrs));
 router.put("/api/:v/club/fa-full-time", staffOnly((req, env, corsHdrs) => handleSetFaFullTime(req, env, corsHdrs)));
 
-// Season Scraper Configuration Routes
-
-
-
-
-
-
-
-
-
-
-router.post("/api/:v/wearables/sessions", staffOnly((req, env, corsHdrs) => handleCreateWearableSession(req, env, corsHdrs)));
-router.get("/api/:v/wearables/sessions/:id", staffOnly((req, env, corsHdrs) => {
-    const params = (req as any).params || {};
-    return handleGetWearableSession(req, env, corsHdrs, params.id);
-}));
-router.get("/api/:v/wearables/sessions/:id/gps-track", staffOnly((req, env, corsHdrs) => {
-    const params = (req as any).params || {};
-    return handleGetGPSTrack(req, env, corsHdrs, params.id);
-}));
-
-// Data Sync & Manual Entry
-router.post("/api/:v/wearables/sync", staffOnly((req, env, corsHdrs) => handleSyncData(req, env, corsHdrs)));
-router.post("/api/:v/wearables/manual", staffOnly((req, env, corsHdrs) => handleManualEntry(req, env, corsHdrs)));
-router.post("/api/:v/wearables/import", staffOnly((req, env, corsHdrs) => handleImportData(req, env, corsHdrs)));
-
-// Metrics & Analytics
-router.get("/api/:v/wearables/metrics/:playerId", staffOnly((req, env, corsHdrs) => {
-    const params = (req as any).params || {};
-    return handleGetPlayerMetrics(req, env, corsHdrs, params.playerId);
-}));
-router.get("/api/:v/wearables/summary/:playerId", staffOnly((req, env, corsHdrs) => {
-    const params = (req as any).params || {};
-    return handleGetPlayerSummary(req, env, corsHdrs, params.playerId);
-}));
-router.get("/api/:v/wearables/fatigue/:playerId", staffOnly((req, env, corsHdrs) => {
-    const params = (req as any).params || {};
-    return handleGetFatigueAssessment(req, env, corsHdrs, params.playerId);
-}));
-
-// Pitch Definitions
-router.get("/api/:v/wearables/pitches", (req, env, corsHdrs) => handleListPitches(req, env, corsHdrs));
-router.post("/api/:v/wearables/pitches", staffOnly((req, env, corsHdrs) => handleCreatePitch(req, env, corsHdrs)));
-
-// Default 404
-// Device Management Routes
-router.get("/api/:v/wearables/devices", (req, env, corsHdrs) => handleListDevices(req, env, corsHdrs));
-router.post("/api/:v/wearables/devices", staffOnly((req, env, corsHdrs) => handleCreateDevice(req, env, corsHdrs)));
-router.get("/api/:v/wearables/devices/:id", (req, env, corsHdrs) => {
-    const params = (req as any).params || {};
-    return handleGetDevice(req, env, corsHdrs, params.id);
-});
-router.put("/api/:v/wearables/devices/:id", staffOnly((req, env, corsHdrs) => {
-    const params = (req as any).params || {};
-    return handleUpdateDevice(req, env, corsHdrs, params.id);
-}));
-router.delete("/api/:v/wearables/devices/:id", staffOnly((req, env, corsHdrs) => {
-    const params = (req as any).params || {};
-    return handleDeleteDevice(req, env, corsHdrs, params.id);
-}));
-
+// Anything else
 router.all("*", () => new Response("Not Found", { status: 404 }));
 
 function mergeHeaders(base: Headers, extra?: HeadersInit) {
@@ -1382,12 +1282,6 @@ export default {
             const errorResponse = errorHandler(err, env, requestId);
             return respondWithCors(errorResponse, corsHdrs);
         }
-    },
-
-    // post-queue consumer (social publishing). wrangler.toml registers this Worker
-    // as the consumer, so the handler must be exported here or deploys fail.
-    async queue(batch: MessageBatch<any>, env: any): Promise<void> {
-        await postQueueConsumer.queue(batch, env);
     },
 
     // Email handler (Cloudflare Email Routing): FA Full-Time emails forwarded to a

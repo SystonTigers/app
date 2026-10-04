@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
     json,
-    cors,
     readIdempotencyKey,
     assert,
     badReq,
@@ -60,41 +59,6 @@ describe("Util Service", () => {
                 { "X-Release": "v1.2.3" }
             );
             expect(response.status).toBe(200);
-        });
-    });
-
-    describe("cors", () => {
-        it("returns allowed origin if in whitelist (null originList uses defaults)", () => {
-            const headers = cors(null, "http://localhost:5173");
-            expect(headers["Access-Control-Allow-Origin"]).toBe("http://localhost:5173");
-        });
-
-        it("returns * for non-whitelisted origins", () => {
-            const headers = cors(null, "https://evil.com");
-            expect(headers["Access-Control-Allow-Origin"]).toBe("*");
-        });
-
-        it("uses custom origin list when provided", () => {
-            const headers = cors(["https://myapp.com"], "https://myapp.com");
-            expect(headers["Access-Control-Allow-Origin"]).toBe("https://myapp.com");
-        });
-
-        it("denies origins not in custom list", () => {
-            const headers = cors(["https://myapp.com"], "https://other.com");
-            expect(headers["Access-Control-Allow-Origin"]).toBe("*");
-        });
-
-        it("includes required CORS headers", () => {
-            const headers = cors(null, null);
-            expect(headers["Access-Control-Allow-Methods"]).toContain("GET");
-            expect(headers["Access-Control-Allow-Methods"]).toContain("POST");
-            expect(headers["Access-Control-Allow-Headers"]).toContain("authorization");
-            expect(headers["Vary"]).toBe("Origin");
-        });
-
-        it("allows capacitor://localhost for mobile apps", () => {
-            const headers = cors(null, "capacitor://localhost");
-            expect(headers["Access-Control-Allow-Origin"]).toBe("capacitor://localhost");
         });
     });
 

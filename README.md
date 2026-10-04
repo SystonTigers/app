@@ -10,7 +10,6 @@ and club admin. One Cloudflare Worker serves every club. Syston Tigers
 | API (Cloudflare Worker, D1, R2, KV) | `backend/` | `app-production` |
 | App for players, parents and staff (Expo; also the installable web app) | `mobile/` | `boost-huddle-app` |
 | Website: landing page, club sign-up, club pages, admin, owner panel (Next.js) | `web-app/` | `boost-huddle` |
-| Shared API client for the web | `packages/sdk/` | |
 | Python highlights tools (not used on match day any more) | `video-processing/` | |
 
 ## Where to read

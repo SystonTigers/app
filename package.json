@@ -4,8 +4,7 @@
   "private": true,
   "workspaces": [
     "backend",
-    "web-app",
-    "packages/*"
+    "web-app"
   ],
   "scripts": {
     "dev:web": "npm --prefix web-app run dev",

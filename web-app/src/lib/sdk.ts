@@ -11,24 +11,6 @@ function rankPlayers(squad: any[], by: 'goals' | 'assists', then: 'goals' | 'ass
     .slice(0, limit);
 }
 
-export type ProvisionCheckpoint =
-  | 'seedDefaultContent'
-  | 'configureRouting'
-  | 'validateWebhook'
-  | 'deployAutomations'
-  | 'sendOwnerEmails'
-  | 'markReady';
-
-export type ProvisionStatus = 'pending' | 'running' | 'failed' | 'ready';
-
-export type ProvisionState = {
-  tenantId: string;
-  status: ProvisionStatus;
-  step?: ProvisionCheckpoint | null;
-  steps?: Record<ProvisionCheckpoint, 'pending' | 'running' | 'done' | 'failed'>;
-  error?: string | null;
-};
-
 /** Bearer header for the signed-in user (browser only). */
 function authHeader(): Record<string, string> {
   if (typeof window === 'undefined') return {};
@@ -70,12 +52,6 @@ async function http<T>(url: string, init?: RequestInit): Promise<T> {
     console.error('API fetch failed', { url, init, error: e });
     throw e;
   }
-}
-
-export async function getProvisionStatus(tenantId: string) {
-  return http<ProvisionState>(
-    `${API_BASE}/api/v1/tenants/${encodeURIComponent(tenantId)}/provision-status`
-  );
 }
 
 export async function updateSquad(players: any[]) {
@@ -246,119 +222,14 @@ export async function deleteEvent(id: string) {
   );
 }
 
-// ---- Compatibility shims for legacy imports ----
-export type AnySDK = {
-  // real endpoints
-  getProvisionStatus: (tenantId: string) => Promise<ProvisionState>;
-
-  // UI-only placeholders so pages compile & render empty states
-  getBrand: () => Promise<Record<string, unknown>>;
-  getBrandKit: () => Promise<Record<string, unknown>>;
-  getFeed: () => Promise<Array<Record<string, unknown>>>;
-  getFixtures: () => Promise<Array<Record<string, unknown>>>;
-  getNextFixture: () => Promise<Record<string, unknown> | null>;
-  getResults: () => Promise<Array<Record<string, unknown>>>;
-  getTable: () => Promise<Array<Record<string, unknown>>>;
-  getSquad: () => Promise<Array<Record<string, unknown>>>;
-  getStats: () => Promise<Record<string, unknown>>;
-  getLeagueTable: () => Promise<Array<Record<string, unknown>>>;
-  getTopScorers: (limit?: number) => Promise<Array<Record<string, unknown>>>;
-  getTopAssists: (limit?: number) => Promise<Array<Record<string, unknown>>>;
-  getTeamStats: () => Promise<Record<string, unknown> | null>;
-  listFixtures: () => Promise<Array<Record<string, unknown>>>;
-  listFeed: (page: number, limit: number) => Promise<Array<Record<string, unknown>>>;
-  listResults: () => Promise<Array<Record<string, unknown>>>;
-  listLiveUpdates: (fixtureId: string) => Promise<Array<Record<string, unknown>>>;
-  getPlayer: (id: string) => Promise<Record<string, unknown> | null>;
-
-  // Shop
-  getShopProducts: () => Promise<Array<Record<string, unknown>>>;
-  createCart: () => Promise<{ success: boolean; cart: any }>;
-  getCart: (cartId: string) => Promise<{ success: boolean; cart: any }>;
-  addToCart: (cartId: string, variantId: string, quantity: number, personalization?: any) => Promise<{ success: boolean; cart: any }>;
-  removeFromCart: (cartId: string, variantId: string) => Promise<{ success: boolean; cart: any }>;
-  createCheckoutSession: (cartId: string, email: string) => Promise<{ success: boolean; sessionId: string; url: string }>;
-  confirmShopOrder: (orderId: string, sessionId: string) => Promise<{ success: boolean; order: any }>;
-  saveMatchReport: (fixtureId: string, report: any) => Promise<{ success: boolean }>;
-  getMatchReport: (fixtureId: string) => Promise<{ success: boolean; events: any[] }>;
-  resignTeam: (teamName: string) => Promise<{ success: boolean }>;
-  autoCalculateTable: () => Promise<{ success: boolean; teams?: number; message?: string }>;
-  // GOTM Voting
-  startGOTMVoting: (month: string, year: number, goals: any[]) => Promise<{ success: boolean; votingId?: string }>;
-  getGOTMVoting: (votingId?: string) => Promise<{ success: boolean; voting: any; candidates: any[] }>;
-  castGOTMVote: (votingId: string, candidateId: string) => Promise<{ success: boolean }>;
-  closeGOTMVoting: (votingId: string) => Promise<{ success: boolean; winner?: any }>;
-  // LMS Game
-  getLMSGames: (status?: 'active' | 'completed') => Promise<any[]>;
-  getLMSGame: (gameId: string) => Promise<any>;
-  joinLMSGame: (gameId: string) => Promise<any>;
-  createLMSGame: (params: { name: string; sport?: string; competition?: string }) => Promise<any>;
-  createLMSRound: (gameId: string, params: { name?: string; deadline?: number; fixtures: any[] }) => Promise<any>;
-  processLMSRound: (roundId: string, fixtures: any[]) => Promise<any>;
-  resetLMSGame: (gameId: string) => Promise<any>;
-  submitLMSPrediction: (roundId: string, teamPicked: string, fixtureId?: string) => Promise<any>;
-};
-
-// One shared instance; hook these up to real calls later as needed
-const compat: AnySDK = {
-  getProvisionStatus,
-
-  // temporary no-op implementations (return empty data so UI shows empty state)
-  getBrand: async () => ({}),
-  getBrandKit: async () => ({}),
-  getFeed: async () => [],
-  getFixtures: async () => [],
-  getNextFixture: async () => null,
-  getResults: async () => [],
-  getTable: async () => [],
-  getSquad: async () => [],
-  getStats: async () => ({}),
-  getLeagueTable: async () => [],
-  getTopScorers: async () => [],
-  getTopAssists: async () => [],
-  getTeamStats: async () => null,
-  listFixtures: async () => [],
-  listFeed: async () => [],
-  listResults: async () => [],
-  listLiveUpdates: async () => [],
-  getPlayer: async () => null,
-
-  // Shop mocks
-  getShopProducts: async () => [],
-  createCart: async () => ({ success: true, cart: { items: [] } }),
-  getCart: async () => ({ success: true, cart: { items: [] } }),
-  addToCart: async () => ({ success: true, cart: { items: [] } }),
-  removeFromCart: async () => ({ success: true, cart: { items: [] } }),
-  createCheckoutSession: async () => ({ success: true, sessionId: 'mock', url: '#' }),
-  confirmShopOrder: async () => ({ success: true, order: {} }),
-  saveMatchReport: async () => ({ success: true }),
-  getMatchReport: async () => ({ success: true, events: [] }),
-  resignTeam: async () => ({ success: true }),
-  autoCalculateTable: async () => ({ success: true, teams: 0, message: 'Mock' }),
-  // GOTM mocks
-  startGOTMVoting: async () => ({ success: true, votingId: 'mock' }),
-  getGOTMVoting: async () => ({ success: true, voting: null, candidates: [] }),
-  castGOTMVote: async () => ({ success: true }),
-  closeGOTMVoting: async () => ({ success: true, winner: null }),
-  // LMS mocks
-  getLMSGames: async () => [],
-  getLMSGame: async () => ({ success: true, game: null, standings: [], currentRound: null }),
-  joinLMSGame: async () => ({ success: true }),
-  createLMSGame: async () => ({ success: true }),
-  createLMSRound: async () => ({ success: true }),
-  processLMSRound: async () => ({ success: true, summary: { eliminated: 0, survived: 0 } }),
-  resetLMSGame: async () => ({ success: true }),
-  submitLMSPrediction: async () => ({ success: true }),
-};
-
-// Client SDK implementation
 /** The backend wraps responses as { success, data }; public pages want the data. */
 async function publicGet<T>(url: string): Promise<T> {
   const body = await http<any>(url);
   return (body && typeof body === 'object' && !Array.isArray(body) && 'data' in body ? body.data : body) as T;
 }
 
-class ClientSDK implements AnySDK {
+/** The club's API calls used by the website's pages (public reads, shop, match reports, GOTM, Predictions). */
+export class ClientSDK {
   private tenantId: string;
 
   constructor(tenantId: string) {
@@ -502,13 +373,6 @@ class ClientSDK implements AnySDK {
     );
   }
 
-  async castGOTMVote(votingId: string, candidateId: string) {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
-    return http<{ success: boolean }>(
-      `${API_BASE}/api/v1/gotm/vote`,
-      { method: 'POST', body: JSON.stringify({ votingId, candidateId }), headers: { Authorization: `Bearer ${token}` } }
-    );
-  }
 
   async closeGOTMVoting(votingId: string) {
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
@@ -537,13 +401,6 @@ class ClientSDK implements AnySDK {
     );
   }
 
-  async joinLMSGame(gameId: string) {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
-    return http<any>(
-      `${API_BASE}/api/v1/lms/games/${gameId}/join`,
-      { method: 'POST', headers: { Authorization: `Bearer ${token}` } }
-    );
-  }
 
   async createLMSGame(params: { name: string; sport?: string; competition?: string }) {
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
@@ -576,35 +433,13 @@ class ClientSDK implements AnySDK {
       { method: 'POST', headers: { Authorization: `Bearer ${token}` } }
     );
   }
-
-  async submitLMSPrediction(roundId: string, teamPicked: string, fixtureId?: string) {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
-    return http<any>(
-      `${API_BASE}/api/v1/lms/predictions`,
-      { method: 'POST', body: JSON.stringify({ round_id: roundId, team_picked: teamPicked, fixture_id: fixtureId }), headers: { Authorization: `Bearer ${token}` } }
-    );
-  }
-
-  // Fallback to compat/mocks for others
-  getProvisionStatus = compat.getProvisionStatus;
-  getBrand = compat.getBrand;
-  getBrandKit = compat.getBrandKit;
-  getFeed = this.listFeed; // Alias
-  getFixtures = this.listFixtures; // Alias
-  getNextFixture = async () =>
-    publicGet<Record<string, unknown> | null>(`${API_BASE}/public/${this.tenantId}/fixtures/next`);
-  getResults = this.listResults; // Alias
-  getTable = this.getLeagueTable; // Alias
-  getStats = this.getTeamStats; // Alias
-  listLiveUpdates = compat.listLiveUpdates;
 }
 
-export function createClientSDK(tenant?: string): AnySDK {
-  if (!tenant) return compat;
+export function createClientSDK(tenant: string): ClientSDK {
   return new ClientSDK(tenant);
 }
 
-export function getServerSDK(tenant?: string): AnySDK {
-  if (!tenant) return compat;
+/** Same calls from a server component (public reads only). */
+export function getServerSDK(tenant: string): ClientSDK {
   return new ClientSDK(tenant);
 }
