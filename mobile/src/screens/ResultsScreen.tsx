@@ -8,6 +8,8 @@ import { isStaffRole } from '../utils/roles';
 import { apiErrorMessage, resultsApi, type ClubResult } from '../services/api';
 import SeasonPicker from '../components/seasons/SeasonPicker';
 import ResultFormModal from '../components/results/ResultFormModal';
+import FaSnippetCard from '../components/faFullTime/FaSnippetCard';
+import { useFaSnippets } from '../components/faFullTime/useFaSnippets';
 import { outcome, resultDate, seasonSummary } from '../utils/results';
 
 /**
@@ -25,6 +27,7 @@ export default function ResultsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const snippets = useFaSnippets();
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<ClubResult | null>(null);
   const [seasonsVersion, setSeasonsVersion] = useState(0);
@@ -137,6 +140,9 @@ export default function ResultsScreen() {
             );
           })
         )}
+        {/* Until the club adds its own results, its FA Full-Time snippets fill in (as on the website) */}
+        {!loading && results.length === 0 && !error && snippets.team ? <FaSnippetCard flush code={snippets.team} title="OUR FIXTURES AND RESULTS" /> : null}
+        {!loading && snippets.results ? <FaSnippetCard flush code={snippets.results} title="AROUND THE LEAGUE" /> : null}
         {isStaff ? (
           <Text style={styles.hint}>Filling in an old season? Tap Add result and enter the match date; choose that season above to check them.</Text>
         ) : null}

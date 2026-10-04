@@ -6,6 +6,8 @@ import { themedStyles, useBrandColors } from '../theme/brand';
 import ScreenIntro from '../components/brand/ScreenIntro';
 import SectionTitle from '../components/home/SectionTitle';
 import MatchRow, { opponentSide, type Side } from '../components/fixtures/MatchRow';
+import FaSnippetCard from '../components/faFullTime/FaSnippetCard';
+import { useFaSnippets } from '../components/faFullTime/useFaSnippets';
 import { useClub } from '../context/ClubContext';
 import { isStaffRole } from '../utils/roles';
 import { useAuth } from '../context/AuthContext';
@@ -32,7 +34,12 @@ function bySide<T>(us: T, them: T, homeAway: 'home' | 'away' | null | undefined)
   return homeAway === 'away' ? [them, us] : [us, them];
 }
 
-/** Upcoming fixtures and recent results (bottom tab "Matches"). */
+/**
+ * Upcoming fixtures and recent results (bottom tab "Matches"). Clubs that
+ * haven't added their own matches yet see their FA Full-Time team snippet
+ * instead, and the league's fixtures and results show below ("Around the
+ * league"), as on the website.
+ */
 export default function FixturesScreen() {
   const c = useBrandColors();
   const styles = useStyles();
@@ -45,6 +52,7 @@ export default function FixturesScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
+  const snippets = useFaSnippets();
 
   const load = useCallback(async () => {
     setError('');
@@ -83,6 +91,19 @@ export default function FixturesScreen() {
         </View>
       ) : null}
 
+      {!fixtures.length && !results.length && !error && snippets.team ? (
+        <>
+          <FaSnippetCard code={snippets.team} title="OUR FIXTURES AND RESULTS" />
+          {staff ? (
+            <Pressable onPress={() => navigation.navigate('ManageFixtures')} accessibilityRole="button" style={styles.hint}>
+              <Text style={styles.hintText}>
+                To run matches in Match Centre, add your fixtures in <Text style={{ color: c.primary, fontWeight: '800' }}>Manage Fixtures</Text>: paste the FA email or a photo of the fixture list.
+              </Text>
+            </Pressable>
+          ) : null}
+        </>
+      ) : (
+        <>
       <SectionTitle title="UPCOMING" color={c.primary} />
       {fixtures.length ? fixtures.map((f) => {
         const [home, away] = bySide(us(), opponentSide(f.opponent), f.homeAway);
@@ -139,6 +160,11 @@ export default function FixturesScreen() {
           />
         );
       }) : <Empty text="No results yet. Scores from Match Centre appear here after full time." />}
+        </>
+      )}
+
+      {snippets.fixtures ? <FaSnippetCard code={snippets.fixtures} title="AROUND THE LEAGUE: FIXTURES" /> : null}
+      {snippets.results ? <FaSnippetCard code={snippets.results} title="AROUND THE LEAGUE: RESULTS" /> : null}
     </ScrollView>
   );
 }
@@ -170,4 +196,6 @@ const useStyles = themedStyles((c) => ({
   actionText: { fontWeight: '800', fontSize: 13 },
   empty: { marginHorizontal: 16, marginBottom: 12, padding: 20, borderRadius: 18, borderWidth: 1, borderStyle: 'dashed', borderColor: 'rgba(255,255,255,0.15)' },
   emptyText: { color: c.textLight, textAlign: 'center' },
+  hint: { marginHorizontal: 16, marginBottom: 16, padding: 14, borderRadius: 16, borderWidth: 1, borderColor: c.border, backgroundColor: c.surface },
+  hintText: { color: c.text, fontSize: 14, lineHeight: 20 },
 }));

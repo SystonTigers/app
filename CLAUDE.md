@@ -35,7 +35,9 @@ Worker, sends a verification email and then saves the club's details.
 - Roles are never taken from a client request; admins are created with
   `npm run admin:password[:prod]`.
 - Storage: D1 `DB` (data), R2 `R2_MEDIA` (videos, images), KV (cache,
-  idempotency, rate limits), queues for background work.
+  idempotency, rate limits), queues for background work. No Durable Objects
+  (the old ones were deleted in October 2026, `wrangler.toml` migration v6;
+  never reuse their class names).
 - Scheduled jobs, webhooks and queue consumers must be safe to run twice.
 
 ## Tests
@@ -65,8 +67,6 @@ with personal data.
 - Phone-app (Expo) push needs a real EAS project id (`npx eas init`); until
   then the phone app skips push registration. The installable web app uses Web
   Push and only needs the VAPID keys (`npm run push:keys:prod`).
-- `GeoFenceManager` (Durable Object) is unused: it stored raw locations on the
-  server. "At the match" is now worked out on the phone (see Match day).
 - Privacy policy and terms: drafts awaiting legal review are in `legal-docs/drafts/`; the
   live pages (`legal-docs/*.html`) are older and should be replaced once the
   drafts are approved.
@@ -225,8 +225,12 @@ with personal data.
 - The website (`components/FaFullTimeEmbed.tsx`) and app
   (`components/faFullTime/`) load the FA's `cs1.js` inside a sandboxed frame
   without same-origin, so the FA script can't read our tokens. The table page
-  and app League screen show the FA table when set; Fixtures/Results show
-  "Around the League". The website's frame reports what happened (FA
+  and app League screen show the FA table when the club has no table of its
+  own. Fixtures/Results (website pages, app Matches tab and Results screen)
+  show the club's `team` snippet as "Our fixtures and results" until it has
+  added matches of its own, and the league's fixtures/results snippets as
+  "Around the league" (app: `components/faFullTime/FaSnippetCard`,
+  `useFaSnippets`). The website's frame reports what happened (FA
   unreachable, `cs1.html` blocked by the FA's security check, or loaded) so
   the card says why when it can't show the table.
 - Our own results, scorers and points come from Match Centre, match reports
