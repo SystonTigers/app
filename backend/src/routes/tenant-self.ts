@@ -44,6 +44,8 @@ export async function updateTenantMe(req: Request, env: any, corsHdrs: Headers):
             // How players appear on the club page and social posts
             publicNameStyle: z.enum(NAME_STYLES).optional(),
             publicPhotos: z.boolean().optional(),
+            // false = the club doesn't record assists (top goalscorers only)
+            trackAssists: z.boolean().optional(),
             // Older single switch: full names and photos on/off
             publicFullNames: z.boolean().optional()
             // Status is deliberately not editable here: it's set by sign-up (trial) and billing (active).
@@ -78,6 +80,11 @@ export async function updateTenantMe(req: Request, env: any, corsHdrs: Headers):
         if (photos !== undefined) {
             updates.push("public_photos = ?");
             params.push(photos ? 1 : 0);
+        }
+        if (data.trackAssists !== undefined) {
+            updates.push("track_assists = ?");
+            params.push(data.trackAssists ? 1 : 0);
+            logJSON({ level: "info", msg: "club_track_assists", tenantId, on: data.trackAssists });
         }
 
         if (updates.length > 0) {
@@ -126,6 +133,7 @@ export async function updateTenantMe(req: Request, env: any, corsHdrs: Headers):
                 name: data.name,
                 ...(nameStyle !== undefined ? { publicNameStyle: nameStyle } : {}),
                 ...(photos !== undefined ? { publicPhotos: photos } : {}),
+                ...(data.trackAssists !== undefined ? { trackAssists: data.trackAssists } : {}),
             }
         }, 200, corsHdrs);
 

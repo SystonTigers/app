@@ -1,5 +1,6 @@
 import { json } from "../services/util";
 import { requireJWT } from "../services/auth";
+import { tracksAssists } from "../services/clubOptions";
 
 /**
  * Fun Stats Service
@@ -158,8 +159,11 @@ async function calculatePlayerFunStats(env: any, tenantId: string, playerId: str
         stats.push({ key: 'goals', title: 'Goals', value: goals, icon: '⚽' });
         stats.push({ key: 'goals_per_game', title: 'Goals/Game', value: (goals / appearances).toFixed(2), icon: '📊' });
     }
-    if (assists > 0) {stats.push({ key: 'assists', title: 'Assists', value: assists, icon: '👟' });}
-    if (goals > 0 && assists > 0) {stats.push({ key: 'contributions', title: 'Goal Contributions', value: goals + assists, icon: '🎯' });}
+    // Clubs that don't record assists don't see them
+    if (assists > 0 && await tracksAssists(env, tenantId)) {
+        stats.push({ key: 'assists', title: 'Assists', value: assists, icon: '👟' });
+        if (goals > 0) {stats.push({ key: 'contributions', title: 'Goal Contributions', value: goals + assists, icon: '🎯' });}
+    }
     if (motm > 0) {stats.push({ key: 'motm', title: 'Man of the Match', value: motm, icon: '⭐' });}
     if (yellowCards > 0 || redCards > 0) {
         stats.push({ key: 'discipline', title: 'Cards', value: `${yellowCards}🟨 ${redCards}🟥`, icon: '⚠️' });

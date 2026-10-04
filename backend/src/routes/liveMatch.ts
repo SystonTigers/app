@@ -14,6 +14,7 @@
 import { json } from "../services/util";
 import { hasAnyRole, requireStaff, requireTenantJWT, STAFF_ROLES, type TenantClaims } from "../services/auth";
 import { computeState, isLiveEventType, matchMinute, rejectReason, secondYellowIds, sentOffIds, sinBinMinutes, sinBinRemainingMs, undoBlockedReason, type LiveEventType } from "../services/liveMatchState";
+import { tracksAssists } from "../services/clubOptions";
 import { describeMatch, loadEvents, loadFixture, recentLiveFixtureIds, recordFullTime, revertFullTime, setMatchStatus, type LiveFixture } from "../services/liveMatch";
 import { cancelPost, drawAndPostSoon, jobsForFixture, postPerson, queuePost, type JobSummary } from "../services/social/jobs";
 import { CORRECTABLE_KINDS, MATCH_KINDS, type MatchKind } from "../services/social/content";
@@ -170,8 +171,10 @@ export async function handleRecordLiveEvent(req: Request, env: Env, corsHdrs: He
     if (reason) return fail(corsHdrs, 409, "NOT_NOW", reason);
 
     const player = await squadName(env, claims.tenantId, body.playerId);
-    const player2 = await squadName(env, claims.tenantId, body.player2Id);
+    let player2 = await squadName(env, claims.tenantId, body.player2Id);
     if (player === "invalid" || player2 === "invalid") return fail(corsHdrs, 400, "VALIDATION", "That player isn't in your squad.");
+    // Clubs that don't record assists: an assist sent anyway (an older app) is left off
+    if (type === "goal" && player2 && !(await tracksAssists(env, claims.tenantId))) player2 = null;
     // A goal can be saved without a scorer (own goal, or nobody saw who); a card can't
     if ((type === "yellow" || type === "red") && !player) return fail(corsHdrs, 400, "VALIDATION", "Choose which player was booked.");
     if (type === "sin_bin" && !player) return fail(corsHdrs, 400, "VALIDATION", "Choose which player is going to the sin bin.");

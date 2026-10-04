@@ -58,12 +58,12 @@ export interface MyPlayer {
 
 export const MAX_BIO = 400;
 
-/** The big numbers at the top of the page. */
-export function careerTiles(c: StatLine): Array<{ label: string; value: number }> {
+/** The big numbers at the top of the page (no assists for clubs that don't record them). */
+export function careerTiles(c: StatLine, withAssists = true): Array<{ label: string; value: number }> {
   return [
     { label: 'APPS', value: c.appearances },
     { label: 'GOALS', value: c.goals },
-    { label: 'ASSISTS', value: c.assists },
+    ...(withAssists ? [{ label: 'ASSISTS', value: c.assists }] : []),
     { label: 'MOTM', value: c.motm },
   ];
 }

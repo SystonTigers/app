@@ -7,6 +7,7 @@
  */
 import type { SeasonOption } from "./seasons/range";
 import { minutesPlayed, type LineupEntry, type LiveEvent, type LiveEventType } from "./liveMatchState";
+import { hideAssists, tracksAssists } from "./clubOptions";
 
 export interface PlayerStatLine {
   id: string;
@@ -92,7 +93,7 @@ export async function squadStats(
 ): Promise<PlayerStatLine[]> {
   const from = season?.from ?? null;
   const to = season?.to ?? null;
-  const [played, { results }] = await Promise.all([seasonMinutes(env, tenantId, season), env.DB.prepare(`
+  const [played, tracked, { results }] = await Promise.all([seasonMinutes(env, tenantId, season), tracksAssists(env, tenantId), env.DB.prepare(`
         SELECT s.id, s.name, s.number, s.position, COALESCE(s.headshot_url, s.photo_url) AS photo,
                COALESCE(e.goals, 0) + COALESCE(h.goals, 0) AS goals,
                COALESCE(e.assists, 0) + COALESCE(h.assists, 0) AS assists,
@@ -134,7 +135,7 @@ export async function squadStats(
         WHERE s.tenant_id = ? AND (? IS NULL OR s.id = ?)
         ORDER BY goals DESC, assists DESC, s.name
         `).bind(tenantId, from, from, to, tenantId, from, from, to, tenantId, from, from, to, tenantId, playerId, playerId).all<Record<string, unknown>>()]);
-    return (results || []).map((r) => ({
+    return hideAssists((results || []).map((r) => ({
         id: String(r.id),
         name: String(r.name ?? ""),
         number: r.number === null || r.number === undefined ? null : Number(r.number),
@@ -148,5 +149,5 @@ export async function squadStats(
         sinBins: Number(r.sin_bins),
         appearances: Number(r.appearances),
         minutes: played.get(String(r.id)) ?? 0,
-    }));
+    })), tracked);
 }

@@ -5,6 +5,7 @@ import { themedStyles, useBrandColors } from '../../theme/brand';
 import { FONTS } from '../../theme/brandFonts';
 import { apiErrorMessage, playerStatsApi, type PlayerSeasonStats, type StatNumbers } from '../../services/api';
 import SeasonPicker from '../seasons/SeasonPicker';
+import { useTracksAssists } from '../../context/ClubContext';
 
 const FIELDS: Array<{ key: keyof StatNumbers; label: string }> = [
   { key: 'appearances', label: 'Apps' },
@@ -45,6 +46,8 @@ export default function SeasonStatsModal({ player, onClose, onSaved }: {
   onClose: () => void;
   onSaved: (message: string) => void;
 }) {
+  // Clubs that don't record assists don't see the field (any number already saved is kept)
+  const withAssists = useTracksAssists();
   const COLORS = useBrandColors();
   const styles = useStyles();
   const [season, setSeason] = useState<string | null>(null);
@@ -98,7 +101,7 @@ export default function SeasonStatsModal({ player, onClose, onSaved }: {
           {player ? <SeasonPicker value={season} onChange={(id) => setSeason(id)} allowAll={false} /> : null}
           {loading ? <ActivityIndicator color={COLORS.primary} style={styles.loading} /> : (
             <View style={styles.grid}>
-              {FIELDS.map((f) => (
+              {FIELDS.filter((f) => withAssists || f.key !== 'assists').map((f) => (
                 <TextInput
                   key={f.key}
                   label={f.label}

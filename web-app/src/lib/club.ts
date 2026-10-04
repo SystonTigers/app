@@ -6,6 +6,8 @@ export interface ClubInfo {
   primaryColor: string | null;
   secondaryColor: string | null;
   badgeUrl: string | null;
+  /** false: the club doesn't record assists (top goalscorers only) */
+  trackAssists?: boolean;
 }
 
 /** "riverside-rovers" -> "Riverside Rovers" (used if the club can't be loaded). */

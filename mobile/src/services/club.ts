@@ -18,6 +18,8 @@ export interface Club {
   primaryColor: string | null;
   secondaryColor: string | null;
   badgeUrl: string | null;
+  /** false: the club doesn't record assists (top goalscorers only). Missing means yes. */
+  trackAssists?: boolean;
 }
 
 export type ClubSummary = Pick<Club, 'slug' | 'name' | 'primaryColor' | 'badgeUrl'>;
@@ -80,6 +82,7 @@ export async function fetchClubInfo(slug: string): Promise<Club | null> {
     primaryColor: data.primaryColor ?? null,
     secondaryColor: data.secondaryColor ?? null,
     badgeUrl: data.badgeUrl ?? null,
+    trackAssists: data.trackAssists !== false,
   };
 }
 

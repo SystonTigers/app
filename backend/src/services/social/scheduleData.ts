@@ -5,6 +5,7 @@
  */
 import { opponentBadgeUrl } from "../opponentBadges";
 import { publicPhotoSql } from "../consent";
+import { tracksAssists } from "../clubOptions";
 import type { SocialEnv } from "./club";
 import type { FixtureFacts, ResultFacts } from "./clubPosts";
 
@@ -69,17 +70,19 @@ export async function person(env: SocialEnv, tenantId: string, playerId: string)
   return row ? { name: row.name, photoUrl: row.photo } : null;
 }
 
-/** Top player by goals ×5, assists ×3, MOTM ×10 between two times (ms). */
+/** Top player by goals ×5, assists ×3 (when the club records them), MOTM ×10 between two times (ms). */
 export async function topPlayer(env: SocialEnv, tenantId: string, from: number, to: number) {
+  const assistWeight = (await tracksAssists(env, tenantId)) ? 3 : 0;
   const { results } = await env.DB.prepare(
     `SELECT player_id, SUM(event_type = 'goal') AS goals, SUM(event_type = 'assist') AS assists, SUM(event_type = 'motm') AS motm
      FROM match_events WHERE tenant_id = ? AND player_id IS NOT NULL AND created_at >= ? AND created_at < ?
-     GROUP BY player_id ORDER BY SUM(event_type = 'goal') * 5 + SUM(event_type = 'assist') * 3 + SUM(event_type = 'motm') * 10 DESC LIMIT 1`,
-  ).bind(tenantId, from, to).all<{ player_id: string; goals: number; assists: number; motm: number }>();
+     GROUP BY player_id ORDER BY SUM(event_type = 'goal') * 5 + SUM(event_type = 'assist') * ? + SUM(event_type = 'motm') * 10 DESC LIMIT 1`,
+  ).bind(tenantId, from, to, assistWeight).all<{ player_id: string; goals: number; assists: number; motm: number }>();
   const top = results?.[0];
-  if (!top || top.goals * 5 + top.assists * 3 + top.motm * 10 === 0) return null;
+  const assists = assistWeight ? Number(top?.assists ?? 0) : 0;
+  if (!top || top.goals * 5 + assists * 3 + top.motm * 10 === 0) return null;
   const p = await person(env, tenantId, top.player_id);
-  return p ? { ...p, goals: Number(top.goals), assists: Number(top.assists), motm: Number(top.motm), playerId: top.player_id } : null;
+  return p ? { ...p, goals: Number(top.goals), assists, motm: Number(top.motm), playerId: top.player_id } : null;
 }
 
 /** Our results between two dates (inclusive), oldest first. */

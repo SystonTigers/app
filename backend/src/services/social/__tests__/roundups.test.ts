@@ -32,4 +32,13 @@ describe("monthly round-ups", () => {
     const many = Array.from({ length: 12 }, (_, i) => ({ name: `Player ${String.fromCharCode(65 + i)}`, goals: 12 - i, assists: 0, appearances: 10 }));
     expect((statsRoundupPost(brand, { style: "full", photos: false }, "2026/27", many).graphic as { rows: unknown[] }).rows).toHaveLength(8);
   });
+
+  it("leaves assists out for clubs that don't record them", () => {
+    const { caption, graphic } = statsRoundupPost(brand, { style: "full", photos: false }, "2026/27",
+      [{ name: "Sam Smith", goals: 4, assists: 2, appearances: 5 }], false);
+    const g = graphic as { columns: string[]; rows: Array<{ values: number[] }> };
+    expect(g.columns).toEqual(["GOALS", "APPS"]);
+    expect(g.rows[0].values).toEqual([4, 5]);
+    expect(caption).not.toMatch(/assist/);
+  });
 });

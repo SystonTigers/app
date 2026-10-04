@@ -10,6 +10,7 @@ import GoalClips from '../components/player/GoalClips';
 import { apiErrorMessage, playerPageApi } from '../services/api';
 import { allTimeText, careerTiles, initials, type PlayerProfile } from '../utils/playerPage';
 import { playerInitials, shirtNumber } from '../utils/playerNames';
+import { useTracksAssists } from '../context/ClubContext';
 
 /**
  * A player's page: their own bio, all-time numbers, stats for each season,
@@ -19,6 +20,7 @@ import { playerInitials, shirtNumber } from '../utils/playerNames';
  */
 export default function PlayerScreen({ navigation, route }: { navigation: any; route: { params?: { id?: string } } }) {
   const c = useBrandColors();
+  const withAssists = useTracksAssists();
   const styles = useStyles();
   const id = route.params?.id ?? '';
   const [profile, setProfile] = useState<PlayerProfile | null>(null);
@@ -80,7 +82,7 @@ export default function PlayerScreen({ navigation, route }: { navigation: any; r
         </View>
 
         <View style={styles.tiles}>
-          {careerTiles(profile.career).map((t) => (
+          {careerTiles(profile.career, withAssists).map((t) => (
             <View key={t.label} style={styles.tile}>
               <Text style={[styles.tileValue, { color: c.primary }]}>{t.value}</Text>
               <Text style={styles.tileLabel}>{t.label}</Text>
@@ -104,14 +106,14 @@ export default function PlayerScreen({ navigation, route }: { navigation: any; r
         <Section title="Season by season">
           <View style={[styles.seasonRow, styles.seasonHead]}>
             <Text style={[styles.seasonLabel, styles.headText]}>SEASON</Text>
-            {['APPS', 'GLS', 'AST', 'MOTM'].map((h) => <Text key={h} style={[styles.seasonNum, styles.headText]}>{h}</Text>)}
+            {(withAssists ? ['APPS', 'GLS', 'AST', 'MOTM'] : ['APPS', 'GLS', 'MOTM']).map((h) => <Text key={h} style={[styles.seasonNum, styles.headText]}>{h}</Text>)}
           </View>
           {profile.seasons.map((s) => (
-            <View key={s.id} style={styles.seasonRow} accessible accessibilityLabel={`${s.label}: ${s.appearances} appearances, ${s.goals} goals, ${s.assists} assists, ${s.motm} man of the match`}>
+            <View key={s.id} style={styles.seasonRow} accessible accessibilityLabel={`${s.label}: ${s.appearances} appearances, ${s.goals} goals, ${withAssists ? `${s.assists} assists, ` : ''}${s.motm} man of the match`}>
               <Text style={[styles.seasonLabel, s.current ? { color: c.primary, fontWeight: '800' } : null]}>{s.label}{s.current ? ' (now)' : ''}</Text>
               <Text style={styles.seasonNum}>{s.appearances}</Text>
               <Text style={styles.seasonNum}>{s.goals}</Text>
-              <Text style={styles.seasonNum}>{s.assists}</Text>
+              {withAssists ? <Text style={styles.seasonNum}>{s.assists}</Text> : null}
               <Text style={styles.seasonNum}>{s.motm}</Text>
             </View>
           ))}

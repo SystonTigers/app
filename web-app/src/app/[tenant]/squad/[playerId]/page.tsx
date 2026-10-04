@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getServerSDK } from '@/lib/sdk';
+import { findClub } from '@/lib/club';
 import { PlayerDiscussButton } from '@/components/PlayerDiscussButton';
 import { CareerHistory } from '@/components/CareerHistory';
 import { Icon } from '@/components/ui/Icon';
@@ -34,7 +35,12 @@ export default async function PlayerBioPage({ params }: { params: Promise<{ tena
   if (!player) notFound();
 
   const hasNumber = player.number !== undefined && player.number !== null;
-  const tiles = TILES.map((t) => ({ ...t, value: player.stats?.[t.key] })).filter((t): t is typeof t & { value: number } => typeof t.value === 'number');
+  // Clubs that don't record assists don't show them
+  const withAssists = (await findClub(tenant))?.trackAssists !== false;
+  const tiles = TILES
+    .filter((t) => withAssists || t.key !== 'assists')
+    .map((t) => ({ ...t, value: player.stats?.[t.key] }))
+    .filter((t): t is typeof t & { value: number } => typeof t.value === 'number');
 
   return (
     <div className="pb-12">

@@ -9,6 +9,7 @@
  * second run never posts twice. Nothing is posted for a month with no games
  * or a season with no goals yet. Clubs choose where each goes in Club Settings.
  */
+import { tracksAssists } from "../clubOptions";
 import { resolveSeason } from "../seasons/range";
 import { squadStats } from "../squadStats";
 import type { SocialEnv } from "./club";
@@ -36,7 +37,7 @@ export async function queueRoundups(env: SocialEnv, tenantId: string, t: UkTime,
       const lines = await squadStats(env, tenantId, season);
       if (!lines.some((l) => l.goals > 0)) return null;
       return statsRoundupPost(club.brand, policy, season?.label ?? "This season",
-        lines.map((l) => ({ name: l.name, goals: l.goals, assists: l.assists, appearances: l.appearances })));
+        lines.map((l) => ({ name: l.name, goals: l.goals, assists: l.assists, appearances: l.appearances })), await tracksAssists(env, tenantId));
     });
   }
 

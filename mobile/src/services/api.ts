@@ -727,6 +727,13 @@ export const matchDayApi = {
   },
 };
 
+/** Club-wide options (backend: PATCH /api/v1/tenants/me, club admins). */
+export const clubOptionsApi = {
+  setTrackAssists: async (on: boolean): Promise<void> => {
+    await api.patch('/api/v1/tenants/me', { trackAssists: on });
+  },
+};
+
 /** Goal of the Month (backend: /api/v1/gotm). */
 export const gotmApi = {
   /** The open vote (with my vote) and recent winners */

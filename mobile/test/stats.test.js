@@ -38,4 +38,6 @@ assert.equal(s.leaderboard(rows, 'goals', 1).length, 1);
 assert.equal(s.disciplineText(rows[0]), '1 yellow · 1 sin bin');
 assert.deepEqual(s.squadTotals(rows), { goals: 12, assists: 4, scorers: 3, motm: 2 });
 assert.equal(s.BOARDS.length, 6);
+assert.deepEqual(s.boardsFor(false).map((b) => b.id), ['goals', 'minutes', 'motm', 'discipline'], 'no assist boards when the club does not record them');
+assert.equal(s.boardsFor(true).length, 6);
 console.log('stats tests passed');

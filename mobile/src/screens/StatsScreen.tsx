@@ -8,9 +8,10 @@ import { withOpacity } from '../theme/utils';
 import { FONTS } from '../theme/brandFonts';
 import ScreenIntro from '../components/brand/ScreenIntro';
 import SeasonPicker from '../components/seasons/SeasonPicker';
+import { useTracksAssists } from '../context/ClubContext';
 import { apiErrorMessage, statsApi } from '../services/api';
 import { playerInitials } from '../utils/playerNames';
-import { BOARDS, disciplineText, leaderboard, readTotals, squadTotals, type Board, type PlayerTotals } from '../utils/stats';
+import { boardsFor, disciplineText, leaderboard, readTotals, squadTotals, type Board, type PlayerTotals } from '../utils/stats';
 
 /**
  * Stats: the season's leaderboards (goals, assists, goals + assists, minutes,
@@ -24,6 +25,10 @@ export default function StatsScreen() {
   const navigation = useNavigation<any>();
   const [season, setSeason] = useState<string | null>(null);
   const [board, setBoard] = useState<Board>('goals');
+  const withAssists = useTracksAssists();
+  const boards = boardsFor(withAssists);
+  // A board that's gone (assists switched off) falls back to Goals
+  const shown: Board = boards.some((b) => b.id === board) ? board : 'goals';
   const [players, setPlayers] = useState<PlayerTotals[] | null>(null);
   const [error, setError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
@@ -44,9 +49,9 @@ export default function StatsScreen() {
     void load(season);
   }, [season, load]);
 
-  const rows = useMemo(() => (players ? leaderboard(players, board) : []), [players, board]);
+  const rows = useMemo(() => (players ? leaderboard(players, shown) : []), [players, shown]);
   const totals = useMemo(() => (players ? squadTotals(players) : null), [players]);
-  const current = BOARDS.find((b) => b.id === board) ?? BOARDS[0];
+  const current = boards.find((b) => b.id === shown) ?? boards[0];
 
   const refresh = async () => {
     if (!season) return;
@@ -67,15 +72,15 @@ export default function StatsScreen() {
       {totals ? (
         <View style={styles.summary}>
           <Total value={totals.goals} label="GOALS" />
-          <Total value={totals.assists} label="ASSISTS" />
+          {withAssists ? <Total value={totals.assists} label="ASSISTS" /> : null}
           <Total value={totals.scorers} label="SCORERS" />
           <Total value={totals.motm} label="MOTM" />
         </View>
       ) : null}
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.boards} contentContainerStyle={styles.boardsRow}>
-        {BOARDS.map((b) => {
-          const on = b.id === board;
+        {boards.map((b) => {
+          const on = b.id === shown;
           return (
             <Chip
               key={b.id}
@@ -134,11 +139,11 @@ export default function StatsScreen() {
               <View style={styles.flex}>
                 <Text style={styles.name} numberOfLines={1}>{player.name}</Text>
                 <Text style={styles.sub} numberOfLines={1}>
-                  {board === 'discipline' ? disciplineText(player) : board === 'minutes' ? `${Math.round(player.minutes / Math.max(1, player.appearances))} a game` : [player.number ? `#${player.number}` : '', player.position ?? ''].filter(Boolean).join(' · ') || ' '}
+                  {shown === 'discipline' ? disciplineText(player) : shown === 'minutes' ? `${Math.round(player.minutes / Math.max(1, player.appearances))} a game` : [player.number ? `#${player.number}` : '', player.position ?? ''].filter(Boolean).join(' · ') || ' '}
                 </Text>
               </View>
               <Text style={[styles.apps, styles.appsCol]}>{player.appearances}</Text>
-              <Text style={[styles.value, styles.valueCol]}>{board === 'minutes' ? value.toLocaleString('en-GB') : value}</Text>
+              <Text style={[styles.value, styles.valueCol]}>{shown === 'minutes' ? value.toLocaleString('en-GB') : value}</Text>
             </Pressable>
           ))}
         </View>

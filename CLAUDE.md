@@ -426,6 +426,16 @@ with personal data.
   line-up, subs, reds and the whistle times, only for matches with a line-up
   (match reports' red cards with a minute stop the clock too). Shown on the
   Stats screen (Minutes board) and player pages.
+- Clubs can switch assists off (top goalscorers only): `tenants.track_assists`
+  (migration 0028, default on), set in Club Settings → Match stats (app
+  `MatchStatsCard`, website `MatchStatsSettings`; `PATCH /tenants/me
+  {trackAssists}`, club admins). `/public/:club/info` returns `trackAssists`, so
+  the app (`useTracksAssists`) and website hide assists: Match Centre skips
+  "Who made the assist?", Stats drops the Assists and G+A boards, player pages,
+  squad pages and the match report leave them out. The server also reads them
+  as 0 (`services/clubOptions.ts`, `squadStats`, public squad, fun stats),
+  ignores an assist sent with a goal, and the top scorers post drops the
+  column. Assists already recorded are kept for if it's switched back on.
 - Stats screen (`StatsScreen`, `utils/stats.ts`): season chips, squad totals
   and leaderboards (goals, assists, G+A, minutes, MOTM, cards: red = 2,
   sin bin = 1); joint places share a rank; tap a player for their page.

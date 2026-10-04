@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { getServerSDK } from '@/lib/sdk';
+import { findClub } from '@/lib/club';
 import { EmptyNote, PageHeader } from '@/components/ui/Page';
 
 interface SquadPlayer {
@@ -21,11 +22,11 @@ function initials(name: string): string {
     .slice(0, 2);
 }
 
-function PlayerCard({ player, tenant }: { player: SquadPlayer; tenant: string }) {
+function PlayerCard({ player, tenant, withAssists }: { player: SquadPlayer; tenant: string; withAssists: boolean }) {
   const stats = [
     { label: 'Apps', value: player.stats?.appearances ?? 0 },
     { label: 'Goals', value: player.stats?.goals ?? 0 },
-    { label: 'Assists', value: player.stats?.assists ?? 0 },
+    ...(withAssists ? [{ label: 'Assists', value: player.stats?.assists ?? 0 }] : []),
   ];
   return (
     <Link
@@ -51,7 +52,7 @@ function PlayerCard({ player, tenant }: { player: SquadPlayer; tenant: string })
       <h3 className="text-xl leading-tight mb-1 group-hover:text-brand transition-colors break-words">{player.name}</h3>
       <p className="text-xs font-bold uppercase tracking-wider text-muted mb-4">{player.position || 'Player'}</p>
 
-      <dl className="w-full grid grid-cols-3 border-t border-border pt-3 mt-auto">
+      <dl className={`w-full grid ${withAssists ? 'grid-cols-3' : 'grid-cols-2'} border-t border-border pt-3 mt-auto`}>
         {stats.map((s, i) => (
           <div key={s.label} className={`flex flex-col-reverse ${i > 0 ? 'border-l border-border' : ''}`}>
             <dt className="text-[10px] uppercase font-bold tracking-wider text-muted">{s.label}</dt>
@@ -70,10 +71,10 @@ const GROUPS: Array<{ title: string; match: (position: string) => boolean }> = [
   { title: 'Forwards', match: (p) => p.includes('forward') || p.includes('striker') },
 ];
 
-function PlayerGrid({ players, tenant }: { players: SquadPlayer[]; tenant: string }) {
+function PlayerGrid({ players, tenant, withAssists }: { players: SquadPlayer[]; tenant: string; withAssists: boolean }) {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-5">
-      {players.map((p) => <PlayerCard key={p.id} player={p} tenant={tenant} />)}
+      {players.map((p) => <PlayerCard key={p.id} player={p} tenant={tenant} withAssists={withAssists} />)}
     </div>
   );
 }
@@ -81,7 +82,9 @@ function PlayerGrid({ players, tenant }: { players: SquadPlayer[]; tenant: strin
 export default async function SquadPage({ params }: { params: Promise<{ tenant: string }> }) {
   const { tenant } = await params;
   const sdk = getServerSDK(tenant);
-  const raw: unknown = await sdk.getSquad().catch(() => []);
+  const [raw, club] = await Promise.all([sdk.getSquad().catch((): unknown => []), findClub(tenant)]);
+  // Clubs that don't record assists show apps and goals only
+  const withAssists = club?.trackAssists !== false;
   const squad = Array.isArray(raw) ? (raw as SquadPlayer[]) : [];
 
   const grouped = GROUPS.map((g) => ({
@@ -107,12 +110,12 @@ export default async function SquadPage({ params }: { params: Promise<{ tenant: 
               <h2 className="text-2xl italic mb-4 pb-2 border-b border-border">
                 {g.title} <span className="text-muted text-lg not-italic">{g.players.length}</span>
               </h2>
-              <PlayerGrid players={g.players} tenant={tenant} />
+              <PlayerGrid players={g.players} tenant={tenant} withAssists={withAssists} />
             </section>
           ))}
         </div>
       ) : (
-        <PlayerGrid players={squad} tenant={tenant} />
+        <PlayerGrid players={squad} tenant={tenant} withAssists={withAssists} />
       )}
     </div>
   );

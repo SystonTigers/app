@@ -52,6 +52,11 @@ export function useClub(): ClubContextType {
   return context;
 }
 
+/** Whether the club records assists (some only want top goalscorers). */
+export function useTracksAssists(): boolean {
+  return useClub().club?.trackAssists !== false;
+}
+
 /** The club's display name, with a neutral fallback. */
 export function useClubName(): string {
   return useClub().club?.name || 'your club';

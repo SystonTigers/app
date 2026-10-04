@@ -11,6 +11,7 @@ import LinkChildCard from '../components/consent/LinkChildCard';
 import { useAuth } from '../context/AuthContext';
 import type { MyPlayer } from '../utils/playerPage';
 import { playerInitials, shirtNumber } from '../utils/playerNames';
+import { useTracksAssists } from '../context/ClubContext';
 
 interface PlayerStats {
   goals: number;
@@ -39,6 +40,7 @@ interface Player {
 export default function SquadScreen() {
   const COLORS = useBrandColors();
   const styles = useStyles();
+  const withAssists = useTracksAssists();
   const navigation = useNavigation<any>();
   const { user } = useAuth();
   const [mine, setMine] = useState<MyPlayer[] | null>(null);
@@ -203,10 +205,12 @@ export default function SquadScreen() {
                     <Title style={styles.statValue}>{player.stats.goals}</Title>
                     <Paragraph style={styles.statLabel}>Goals</Paragraph>
                   </View>
-                  <View style={styles.statItem}>
-                    <Title style={styles.statValue}>{player.stats.assists}</Title>
-                    <Paragraph style={styles.statLabel}>Assists</Paragraph>
-                  </View>
+                  {withAssists ? (
+                    <View style={styles.statItem}>
+                      <Title style={styles.statValue}>{player.stats.assists}</Title>
+                      <Paragraph style={styles.statLabel}>Assists</Paragraph>
+                    </View>
+                  ) : null}
                   <View style={styles.statItem}>
                     <Title style={styles.statValue}>{player.stats.appearances}</Title>
                     <Paragraph style={styles.statLabel}>Apps</Paragraph>

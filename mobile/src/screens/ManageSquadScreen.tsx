@@ -18,6 +18,7 @@ import { FONTS } from '../theme/brandFonts';
 import { squadApi, statsApi } from '../services/api';
 import SeasonStatsModal from '../components/squad/SeasonStatsModal';
 import { namePartsOf, playerInitials, shirtNumber } from '../utils/playerNames';
+import { useTracksAssists } from '../context/ClubContext';
 
 interface Player {
   id: string;
@@ -41,6 +42,7 @@ const positions = ['Goalkeeper', 'Defender', 'Midfielder', 'Forward'];
 export default function ManageSquadScreen() {
   const COLORS = useBrandColors();
   const styles = useStyles();
+  const withAssists = useTracksAssists();
   const [players, setPlayers] = useState<Player[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -221,10 +223,12 @@ export default function ManageSquadScreen() {
                       <Title style={styles.statValue}>{player.goals}</Title>
                       <Paragraph style={styles.statLabel}>Goals</Paragraph>
                     </View>
-                    <View style={styles.statBox}>
-                      <Title style={styles.statValue}>{player.assists}</Title>
-                      <Paragraph style={styles.statLabel}>Assists</Paragraph>
-                    </View>
+                    {withAssists ? (
+                      <View style={styles.statBox}>
+                        <Title style={styles.statValue}>{player.assists}</Title>
+                        <Paragraph style={styles.statLabel}>Assists</Paragraph>
+                      </View>
+                    ) : null}
                     <View style={styles.statBox}>
                       <Title style={styles.statValue}>{player.appearances}</Title>
                       <Paragraph style={styles.statLabel}>Apps</Paragraph>

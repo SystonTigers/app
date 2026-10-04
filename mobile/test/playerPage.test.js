@@ -16,6 +16,7 @@ require.extensions['.ts'] = (module, filename) => {
 const p = require('../src/utils/playerPage.ts');
 
 assert.deepEqual(p.careerTiles({ appearances: 12, goals: 7, assists: 3, motm: 2, yellowCards: 1, redCards: 0 }).map((t) => `${t.label}:${t.value}`), ['APPS:12', 'GOALS:7', 'ASSISTS:3', 'MOTM:2']);
+assert.deepEqual(p.careerTiles({ appearances: 12, goals: 7, assists: 3, motm: 2, yellowCards: 1, redCards: 0 }, false).map((t) => t.label), ['APPS', 'GOALS', 'MOTM']);
 assert.equal(p.cardsText({ yellowCards: 2, redCards: 1 }), '2 yellow, 1 red');
 assert.equal(p.cardsText({ yellowCards: 0, redCards: 1 }), '1 red');
 assert.equal(p.cardsText({ yellowCards: 0, redCards: 0 }), null);

@@ -109,3 +109,8 @@ export function squadTotals(players: PlayerTotals[]): { goals: number; assists: 
     motm: players.reduce((s, p) => s + p.motm, 0),
   };
 }
+
+/** The boards to offer: clubs that don't record assists get no Assists or Goals + assists board. */
+export function boardsFor(withAssists: boolean): typeof BOARDS {
+  return withAssists ? BOARDS : BOARDS.filter((b) => b.id !== 'assists' && b.id !== 'involvements');
+}

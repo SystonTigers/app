@@ -1,6 +1,7 @@
 import { json } from "../services/util";
 import { publicPhotoSql } from "../services/consent";
 import { loadFaSnippets } from "../services/faFullTime";
+import { tracksAssists } from "../services/clubOptions";
 import { logJSON } from "../lib/log";
 import { closeExpiredSessions, findMatch, parseWinnerIds, playerNames } from "../services/motm";
 import { getPublicNamePolicy, publicName, publicPhoto, publicScorers } from "../services/publicNames";
@@ -343,9 +344,12 @@ export async function handlePublicTenantRequest(
 
         // Club name and colours for the club's public pages
         if (resource === "info") {
-            const brand = await env.DB.prepare(
-                `SELECT primary_color, secondary_color, badge_url FROM tenant_brand WHERE tenant_id = ?`
-            ).bind(tenant.id).first() as { primary_color?: string; secondary_color?: string; badge_url?: string } | null;
+            const [brand, trackAssists] = await Promise.all([
+                env.DB.prepare(
+                    `SELECT primary_color, secondary_color, badge_url FROM tenant_brand WHERE tenant_id = ?`
+                ).bind(tenant.id).first() as Promise<{ primary_color?: string; secondary_color?: string; badge_url?: string } | null>,
+                tracksAssists(env, tenant.id),
+            ]);
             return json({
                 success: true,
                 data: {
@@ -354,6 +358,8 @@ export async function handlePublicTenantRequest(
                     primaryColor: brand?.primary_color ?? null,
                     secondaryColor: brand?.secondary_color ?? null,
                     badgeUrl: brand?.badge_url ?? null,
+                    // false: the club doesn't record assists (top goalscorers only)
+                    trackAssists,
                 },
             }, 200, corsHdrs);
         }
@@ -689,7 +695,7 @@ export async function handlePublicTenantRequest(
             });
 
             // Merge stats into players
-            const policy = await getPublicNamePolicy(env, tenant.id);
+            const [policy, withAssists] = await Promise.all([getPublicNamePolicy(env, tenant.id), tracksAssists(env, tenant.id)]);
             const squad = mapSquadPlayers(raw).map(player => ({
                 ...player,
                 name: publicName(policy, player.name),
@@ -701,7 +707,7 @@ export async function handlePublicTenantRequest(
                         ...p,
                         stats: {
                             goals: s.goals,
-                            assists: s.assists,
+                            assists: withAssists ? s.assists : 0,
                             motm: s.motm,
                             appearances: s.appearances,
                             yellowCards: s.yellow_cards,

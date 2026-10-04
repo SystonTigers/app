@@ -2,6 +2,7 @@
 
 import { use, useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
+import { findClub } from '@/lib/club';
 import { useRouter } from 'next/navigation';
 import { createClientSDK } from '@/lib/sdk';
 import { apiFetch, errorMessage } from '@/lib/session';
@@ -63,6 +64,11 @@ const MAX_SUBS = 7;
 
 export default function MatchReportPage({ params }: PageProps) {
     const { tenant, id: fixtureId } = use(params);
+    // Clubs that don't record assists aren't offered them
+    const [withAssists, setWithAssists] = useState(true);
+    useEffect(() => {
+        findClub(tenant).then((club) => setWithAssists(club?.trackAssists !== false)).catch(() => undefined);
+    }, [tenant]);
     const router = useRouter();
 
     const [loading, setLoading] = useState(true);
@@ -260,7 +266,7 @@ export default function MatchReportPage({ params }: PageProps) {
                             <div>
                                 <label htmlFor="event-type" className="label">What</label>
                                 <select id="event-type" value={selectedType} onChange={(e) => setSelectedType(e.target.value as Exclude<EventType, 'sub_off'>)} className="field">
-                                    {EVENT_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                                    {EVENT_TYPES.filter((t) => withAssists || t.value !== 'assist').map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
                                 </select>
                             </div>
                             <div className="grid grid-cols-[1fr_90px] gap-3">
@@ -321,7 +327,7 @@ export default function MatchReportPage({ params }: PageProps) {
                     <section className="card" aria-labelledby="events-title">
                         <h2 id="events-title" className="text-2xl mb-4">In the report</h2>
                         {events.length === 0 ? (
-                            <p className="text-muted">Nothing added yet. Add goals, assists, cards, subs and Man of the Match above.</p>
+                            <p className="text-muted">Nothing added yet. Add goals, {withAssists ? 'assists, ' : ''}cards, subs and Man of the Match above.</p>
                         ) : (
                             <ul className="divide-y divide-border">
                                 {sorted.map(({ ev, i }) => {

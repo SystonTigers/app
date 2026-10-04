@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { getServerSDK } from '@/lib/sdk';
+import { findClub } from '@/lib/club';
 import { AnimatedCounter } from '@/components/ui';
 import { FunStatsCard } from '@/components/FunStatsCard';
 import { EmptyNote, PageHeader } from '@/components/ui/Page';
@@ -36,10 +37,13 @@ export default async function StatsPage({ params }: { params: Promise<{ tenant: 
   const { tenant } = await params;
   const sdk = getServerSDK(tenant);
 
+  // Clubs that don't record assists only see top goalscorers
+  const club = await findClub(tenant);
+  const withAssists = club?.trackAssists !== false;
   const [rawStats, rawScorers, rawAssists] = await Promise.all([
     sdk.getTeamStats().catch(() => null),
     sdk.getTopScorers(10).catch(() => []),
-    sdk.getTopAssists(10).catch(() => []),
+    withAssists ? sdk.getTopAssists(10).catch(() => []) : Promise.resolve([]),
   ]);
 
   const stats = readTeamStats(rawStats);
@@ -49,7 +53,7 @@ export default async function StatsPage({ params }: { params: Promise<{ tenant: 
 
   return (
     <div className="container py-8 md:py-12 space-y-10">
-      <PageHeader eyebrow="Numbers" title="Stats" subtitle="How the season is going, and who's scoring and setting them up." />
+      <PageHeader eyebrow="Numbers" title="Stats" subtitle={withAssists ? "How the season is going, and who's scoring and setting them up." : "How the season is going, and who's scoring."} />
 
       <section aria-labelledby="season-overview">
         <h2 id="season-overview" className="text-2xl italic mb-4">This season</h2>
@@ -94,17 +98,19 @@ export default async function StatsPage({ params }: { params: Promise<{ tenant: 
       <FunStatsCard tenant={tenant} />
 
       {(scorers.length > 0 || assisters.length > 0) && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className={`grid grid-cols-1 gap-6 ${withAssists ? 'md:grid-cols-2' : 'max-w-2xl'}`}>
           <Leaderboard title="Top scorers" icon="ball" empty="No goals recorded yet.">
             {scorers.map((p, i) => (
               <PlayerStatRow key={p.id ?? p.name} tenant={tenant} id={p.id} rank={i + 1} name={String(p.name)} stat={num(p.stats?.goals)} unit="goals" />
             ))}
           </Leaderboard>
-          <Leaderboard title="Most assists" icon="target" empty="No assists recorded yet.">
-            {assisters.map((p, i) => (
-              <PlayerStatRow key={p.id ?? p.name} tenant={tenant} id={p.id} rank={i + 1} name={String(p.name)} stat={num(p.stats?.assists)} unit="assists" />
-            ))}
-          </Leaderboard>
+          {withAssists && (
+            <Leaderboard title="Most assists" icon="target" empty="No assists recorded yet.">
+              {assisters.map((p, i) => (
+                <PlayerStatRow key={p.id ?? p.name} tenant={tenant} id={p.id} rank={i + 1} name={String(p.name)} stat={num(p.stats?.assists)} unit="assists" />
+              ))}
+            </Leaderboard>
+          )}
         </div>
       )}
     </div>

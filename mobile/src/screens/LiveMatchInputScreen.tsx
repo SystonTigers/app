@@ -4,7 +4,7 @@ import { Modal, Portal, TextInput } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { COLORS } from '../config';
-import { useClub, useClubName } from '../context/ClubContext';
+import { useClub, useClubName, useTracksAssists } from '../context/ClubContext';
 import { useMatchDay } from '../context/MatchDayContext';
 import { apiErrorMessage, fixturesApi, lineupApi, liveApi, motmApi, squadApi, type Lineup } from '../services/api';
 import FullTimeMotmSheet from '../components/motm/FullTimeMotmSheet';
@@ -28,7 +28,7 @@ interface FixtureOption { id: string; opponent: string; date: string; time: stri
 const HALF_LENGTHS = [20, 25, 30, 35, 40, 45];
 const DAY_MS = 24 * 3600_000;
 
-/** A two-step pick: goal then optional assist, or player on then player off. */
+/** A two-step pick: goal then optional assist (if the club records them), or player on then player off. */
 type PickStep =
   | { kind: 'goal' }
   | { kind: 'assist'; scorerId: string }
@@ -46,6 +46,7 @@ type PickStep =
 export default function LiveMatchInputScreen() {
   const clubName = useClubName();
   const { club } = useClub();
+  const assists = useTracksAssists();
   const { theme } = useTheme();
   const color = theme.colors.primary;
   const navigation = useNavigation<any>();
@@ -184,7 +185,11 @@ export default function LiveMatchInputScreen() {
   const onPick = (player: PickablePlayer) => {
     if (!pick) return;
     switch (pick.kind) {
-      case 'goal': setPick({ kind: 'assist', scorerId: player.id }); return;
+      case 'goal':
+        // Clubs that don't record assists: the scorer is all we need
+        if (!assists) { setPick(null); record('goal', { playerId: player.id }); return; }
+        setPick({ kind: 'assist', scorerId: player.id });
+        return;
       case 'assist': setPick(null); record('goal', { playerId: pick.scorerId, player2Id: player.id }); return;
       case 'yellow': setPick(null); record('yellow', { playerId: player.id }); return;
       case 'red': setPick(null); record('red', { playerId: player.id }); return;

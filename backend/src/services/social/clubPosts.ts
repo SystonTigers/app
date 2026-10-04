@@ -176,20 +176,21 @@ export interface LeaderFacts { name: string; goals: number; assists: number; app
 
 /**
  * The season's top scorers (goals, then assists, then fewer appearances),
- * names in the club's style. Joint places share a rank.
+ * names in the club's style. Joint places share a rank. Clubs that don't
+ * record assists get goals and apps only.
  */
-export function statsRoundupPost(brand: Brand, policy: PublicNamePolicy, seasonLabel: string, leaders: LeaderFacts[]): Built {
+export function statsRoundupPost(brand: Brand, policy: PublicNamePolicy, seasonLabel: string, leaders: LeaderFacts[], withAssists = true): Built {
   const sorted = [...leaders].filter((l) => l.goals > 0)
     .sort((a, b) => b.goals - a.goals || b.assists - a.assists || a.appearances - b.appearances).slice(0, 8);
   const rows = sorted.map((l) => ({
     rank: sorted.findIndex((o) => o.goals === l.goals && o.assists === l.assists) + 1,
     name: publicName(policy, l.name),
-    values: [l.goals, l.assists, l.appearances],
+    values: withAssists ? [l.goals, l.assists, l.appearances] : [l.goals, l.appearances],
   }));
-  const lines = rows.slice(0, 5).map((r) => `${r.rank}. ${r.name}: ${r.values[0]} goal${r.values[0] === 1 ? "" : "s"}${r.values[1] ? `, ${r.values[1]} assist${r.values[1] === 1 ? "" : "s"}` : ""}`);
+  const lines = rows.slice(0, 5).map((r) => `${r.rank}. ${r.name}: ${r.values[0]} goal${r.values[0] === 1 ? "" : "s"}${withAssists && r.values[1] ? `, ${r.values[1]} assist${r.values[1] === 1 ? "" : "s"}` : ""}`);
   return {
     caption: `⚽ Top scorers, ${seasonLabel} so far\n${lines.join("\n")}`,
-    graphic: { ...base(brand, "stats_roundup", "TOP SCORERS"), layout: "leaders", subtitle: `${seasonLabel} so far`, columns: ["GOALS", "ASSISTS", "APPS"], rows },
+    graphic: { ...base(brand, "stats_roundup", "TOP SCORERS"), layout: "leaders", subtitle: `${seasonLabel} so far`, columns: withAssists ? ["GOALS", "ASSISTS", "APPS"] : ["GOALS", "APPS"], rows },
   };
 }
 

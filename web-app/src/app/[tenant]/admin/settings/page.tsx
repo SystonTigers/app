@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { SocialSettings } from '@/components/SocialSettings';
 import { LiveVideoSettings } from '@/components/LiveVideoSettings';
 import { ClubBadgeSettings } from '@/components/ClubBadgeSettings';
+import { MatchStatsSettings } from '@/components/MatchStatsSettings';
 import { PageHeader } from '@/components/ui/Page';
 import { Icon } from '@/components/ui/Icon';
 
@@ -14,7 +15,7 @@ interface PageProps {
 
 /**
  * Club settings hub: the club badge, FA Full-Time snippets (league table, fixtures, results), how players appear
- * publicly, the Facebook/Instagram connection, automatic posting and live match video.
+ * publicly, the Facebook/Instagram connection, automatic posting, live match video and match stats (assists on/off).
  */
 export default function SettingsPage({ params }: PageProps) {
     const { tenant } = use(params);
@@ -51,6 +52,7 @@ export default function SettingsPage({ params }: PageProps) {
                 <Suspense fallback={null}>
                     <LiveVideoSettings />
                 </Suspense>
+                <MatchStatsSettings />
             </div>
         </div>
     );

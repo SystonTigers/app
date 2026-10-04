@@ -8,6 +8,7 @@ import PostingCard from '../components/clubSettings/PostingCard';
 import GraphicsCard from '../components/clubSettings/GraphicsCard';
 import FaSnippetsCard from '../components/clubSettings/FaSnippetsCard';
 import FixtureEmailCard from '../components/clubSettings/FixtureEmailCard';
+import MatchStatsCard from '../components/clubSettings/MatchStatsCard';
 import SettingsCard, { useCardStyles } from '../components/clubSettings/SettingsCard';
 import { apiErrorMessage } from '../services/api';
 import { clubSettingsApi, type SocialSettings } from '../services/clubSettingsApi';
@@ -84,12 +85,13 @@ export default function ClubSettingsScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => load(true)} tintColor={c.primary} />}
       >
         <Text style={styles.intro}>
-          Your badge, social media, what gets posted where, graphics, FA snippets and email forwarding. Changes here also show on the website.
+          Your badge, social media, what gets posted where, graphics, match stats, FA snippets and email forwarding. Changes here also show on the website.
         </Text>
         <ClubBadgeCard canManage={settings.canManage} onMessage={say} />
         <SocialAccountsCard settings={settings} onSaved={setSettings} onMessage={say} />
         <PostingCard settings={settings} onSaved={setSettings} onMessage={say} />
         <GraphicsCard settings={settings} onSaved={setSettings} onMessage={say} />
+        <MatchStatsCard canManage={settings.canManage} onMessage={say} />
         <FaSnippetsCard canManage={settings.canManage} onMessage={say} />
         <FixtureEmailCard onMessage={say} />
         {club?.slug ? (
