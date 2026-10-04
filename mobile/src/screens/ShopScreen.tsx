@@ -212,7 +212,7 @@ export default function ShopScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.headerSubtitle}>Official Merchandise</Text>
+      <Text style={styles.headerSubtitle}>Club kit and gear</Text>
 
       <View style={styles.searchContainer}>
         <Searchbar
@@ -247,6 +247,13 @@ export default function ShopScreen() {
       </ScrollView>
 
       <ScrollView style={styles.scrollContainer}>
+        {!loading && filteredProducts.length === 0 ? (
+          <View style={styles.emptyShop}>
+            <MaterialCommunityIcons name="tshirt-crew-outline" size={48} color={COLORS.textLight} />
+            <Text style={styles.emptyShopTitle}>{products.length ? 'Nothing in this section' : 'Nothing in the shop yet'}</Text>
+            <Text style={styles.emptyShopText}>{products.length ? 'Try another section above.' : 'Club kit and gear will show here once the club adds it.'}</Text>
+          </View>
+        ) : null}
         <View style={styles.productsGrid}>
           {filteredProducts.map(product => (
             <TouchableOpacity
@@ -381,6 +388,9 @@ const useStyles = themedStyles((COLORS) => ({
   categoryChipTextSelected: { color: COLORS.onPrimary, fontWeight: 'bold' },
 
   scrollContainer: { flex: 1 },
+  emptyShop: { alignItems: 'center', gap: 8, paddingVertical: 48, paddingHorizontal: 24 },
+  emptyShopTitle: { color: COLORS.text, fontFamily: FONTS.display, fontSize: 22, textAlign: 'center' },
+  emptyShopText: { color: COLORS.textLight, fontSize: 14, textAlign: 'center' },
   productsGrid: { flexDirection: 'row', flexWrap: 'wrap', padding: 8 },
   productCard: { width: (width - 48) / 2, margin: 8, borderRadius: 18, backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border, overflow: 'hidden' },
   productImage: { width: '100%', height: 150, resizeMode: 'cover' },

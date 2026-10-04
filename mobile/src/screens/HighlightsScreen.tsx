@@ -319,13 +319,17 @@ export default function HighlightsScreen({ inTab = false }: { inTab?: boolean } 
               mode={selectedTab === 'recent' ? 'contained' : 'outlined'}
               onPress={() => setSelectedTab('recent')}
               style={styles.tabButton}
+              compact
+              labelStyle={styles.tabLabel}
             >
-              Recent Clips
+              Matches
             </Button>
             <Button
               mode={selectedTab === 'gotm' ? 'contained' : 'outlined'}
               onPress={() => setSelectedTab('gotm')}
               style={styles.tabButton}
+              compact
+              labelStyle={styles.tabLabel}
             >
               Goal of Month
             </Button>
@@ -333,6 +337,8 @@ export default function HighlightsScreen({ inTab = false }: { inTab?: boolean } 
               mode={selectedTab === 'archive' ? 'contained' : 'outlined'}
               onPress={() => setSelectedTab('archive')}
               style={styles.tabButton}
+              compact
+              labelStyle={styles.tabLabel}
             >
               Archive
             </Button>
@@ -436,6 +442,11 @@ const useStyles = themedStyles((COLORS) => ({
   },
   tabButton: {
     flex: 1,
+  },
+  // Three tabs must fit a small phone without "Recent ..." cut-offs
+  tabLabel: {
+    marginHorizontal: 4,
+    fontSize: 13,
   },
   scrollContainer: {
     flex: 1,

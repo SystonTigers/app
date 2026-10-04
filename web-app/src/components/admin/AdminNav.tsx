@@ -28,6 +28,7 @@ const LINKS: AdminLink[] = [
     { label: 'News', path: '/feed', icon: 'news' },
     { label: 'Videos', path: '/videos', icon: 'video' },
     { label: 'Goal of the Month', path: '/gotm', icon: 'star' },
+    { label: 'Predictions', path: '/lms', icon: 'vote' },
     { label: 'Seasons', path: '/seasons', icon: 'history' },
     { label: 'Opponents', path: '/opponents', icon: 'shield' },
     { label: 'Import', path: '/import', icon: 'upload' },

@@ -130,7 +130,7 @@ export default function HomeScreen({ navigation }: any) {
     { label: 'Stats', icon: 'chart-bar', onPress: () => navigation.navigate('Stats') },
     staff
       ? { label: 'Match Centre', icon: 'scoreboard', onPress: () => navigation.navigate('MatchCentre') }
-      : { label: 'Club Shop', icon: 'shopping', onPress: () => navigation.navigate('Shop') },
+      : { label: 'Results', icon: 'scoreboard-outline', onPress: () => navigation.navigate('Results') },
   ];
 
   return (

@@ -186,9 +186,9 @@ export default function TrainingScreen({ navigation }: any) {
 
         <SectionTitle title="QUICK ACTIONS" color={colors.primary} />
         <View style={styles.actionsGrid}>
-          <TouchableOpacity style={[styles.actionCard, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => navigation.navigate('DrillLibrary')} accessibilityRole="button">
-            <MaterialCommunityIcons name="book-open-variant" size={32} color={colors.primary} />
-            <Text style={[styles.actionLabel, { color: colors.text }]}>Drill Library</Text>
+          <TouchableOpacity style={[styles.actionCard, !staff ? styles.actionWide : null, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => navigation.navigate('DrillLibrary')} accessibilityRole="button">
+            <MaterialCommunityIcons name="book-open-variant" size={staff ? 32 : 26} color={colors.primary} />
+            <Text style={[styles.actionLabel, !staff ? styles.actionLabelWide : null, { color: colors.text }]}>Drill Library</Text>
           </TouchableOpacity>
           {staff ? (
             <>
@@ -266,6 +266,9 @@ const useStyles = themedStyles(() => ({
   actionCard: { width: '31%', minWidth: 100, flexGrow: 1, aspectRatio: 1.1, borderRadius: 18, borderWidth: 1, justifyContent: 'center', alignItems: 'center', padding: 12 },
   disabled: { opacity: 0.6 },
   actionLabel: { fontSize: 12, fontWeight: 'bold', marginTop: 8, textAlign: 'center' },
+  // Players see only the Drill Library: one row, not one giant square
+  actionWide: { width: '100%', aspectRatio: undefined, flexDirection: 'row', justifyContent: 'flex-start', gap: 12, paddingVertical: 16, paddingHorizontal: 18 },
+  actionLabelWide: { marginTop: 0, fontSize: 15 },
   actionSub: { fontSize: 10, marginTop: 2, textAlign: 'center' },
   drillContent: { padding: 16 },
   drillName: { fontFamily: FONTS.display, fontSize: 22, letterSpacing: 0.5, marginBottom: 4 },

@@ -48,6 +48,20 @@ done, move it to "Built" (one line) and update `CLAUDE.md`.
 5. **XbotGo scoreboard:** push the live score to the camera's overlay.
 6. **TikTok posting:** waiting on TikTok's app review; managers use Share.
 
+## Switched off until they're ready
+
+- **Club shop:** the app and website pages exist but aren't linked until
+  Printify is set up (`PRINTIFY_API_TOKEN`, website Admin → Shop settings).
+  Link them again (app menu `CustomDrawerContent`, website club home) once
+  products show.
+- **Sponsors page:** not linked; it has no sponsor list behind it. The
+  sponsor on graphics (Club Settings) works.
+- **Removed from the app (unreachable):** Team Chat (its backend in
+  `routes/chat.ts` + `do/chatRoom.ts` fails to send; Team talk covers club
+  conversation), Payments/dues (website Admin → Dues works; paying needs
+  Stripe) and Wearables (a mock-up). Decide whether to delete their backend
+  routes or finish them.
+
 ## Tidy-up
 
 - The old post queue and sign-up provisioner (`queue-consumer.ts`,

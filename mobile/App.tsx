@@ -35,7 +35,6 @@ import HomeScreen from './src/screens/HomeScreen';
 import CalendarScreen from './src/screens/CalendarScreen';
 import FixturesScreen from './src/screens/FixturesScreen';
 import SquadScreen from './src/screens/SquadScreen';
-import ChatScreen from './src/screens/ChatScreen';
 import CreatePostScreen from './src/screens/CreatePostScreen';
 import MOTMVotingScreen from './src/screens/MOTMVotingScreen';
 import LiveMatchWatchScreen from './src/screens/LiveMatchWatchScreen';
@@ -51,9 +50,7 @@ import PlayerScreen from './src/screens/PlayerScreen';
 import StatsScreen from './src/screens/StatsScreen';
 import ResultsScreen from './src/screens/ResultsScreen';
 import LeagueTableScreen from './src/screens/LeagueTableScreen';
-import WearablesScreen from './src/screens/WearablesScreen';
 import ShopScreen from './src/screens/ShopScreen';
-import PaymentsScreen from './src/screens/PaymentsScreen';
 import LastManStandingScreen from './src/screens/LastManStandingScreen';
 import TeamMembersScreen from './src/screens/TeamMembersScreen';
 import ManageScreen from './src/screens/ManageScreen';
@@ -265,13 +262,10 @@ function MainDrawer() {
       <Drawer.Screen name="Results" component={ResultsScreen} options={{ title: 'Results' }} />
       <Drawer.Screen name="Stats" component={StatsScreen} options={{ title: 'Stats' }} />
       <Drawer.Screen name="LeagueTable" component={LeagueTableScreen} options={{ title: 'League Table' }} />
-      <Drawer.Screen name="Wearables" component={WearablesScreen} options={{ title: 'Wearables' }} />
 
       {/* My Club Group */}
       <Drawer.Screen name="TeamMembers" component={StaffTeamMembers} options={{ title: 'People & Roles' }} />
       <Drawer.Screen name="Shop" component={ShopScreen} options={{ title: 'Club Shop' }} />
-      <Drawer.Screen name="Payments" component={PaymentsScreen} options={{ title: 'Payments' }} />
-      {/* <Drawer.Screen name="Documents" component={DocumentsScreen} /> */}
 
       {/* Admin Zone Group */}
       <Drawer.Screen name="ManageSquad" component={StaffManageSquad} options={{ title: 'Manage Squad' }} />
@@ -298,7 +292,6 @@ function MainDrawer() {
       <Drawer.Screen name="Settings" component={SettingsScreen} options={{ title: 'Settings' }} />
 
       {/* Other/Hidden Screens */}
-      <Drawer.Screen name="Chat" component={ChatScreen} options={{ title: 'Team Chat' }} />
       <Drawer.Screen name="CreatePost" component={StaffCreatePost} options={{ title: 'New club post' }} />
       <Drawer.Screen name="Gallery" component={GalleryScreen} options={{ title: 'Gallery' }} />
       <Drawer.Screen name="Highlights" component={HighlightsScreen} />

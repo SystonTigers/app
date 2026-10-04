@@ -236,12 +236,6 @@ export default async function TenantHomePage({ params }: HomePageProps) {
           <a href={clubAppLink(tenant)} className="btn btn-primary btn-sm min-h-[40px]">
             <Icon name="phone" className="w-4 h-4" /> Get the app
           </a>
-          <Link href={`/${tenant}/shop`} className="btn btn-secondary btn-sm min-h-[40px]">
-            <Icon name="bag" className="w-4 h-4" /> Club shop
-          </Link>
-          <Link href={`/${tenant}/sponsors`} className="btn btn-secondary btn-sm min-h-[40px]">
-            <Icon name="handshake" className="w-4 h-4" /> Sponsors
-          </Link>
         </div>
       </header>
 

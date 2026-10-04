@@ -28,8 +28,7 @@ export function clubNav(tenant: string, signedIn: boolean): { main: NavItem[]; m
             { label: 'Team talk', href: `${t}/team`, icon: 'chat' },
             { label: 'Calendar', href: `${t}/calendar`, icon: 'calendar' },
             { label: 'Season history', href: `${t}/history`, icon: 'history' },
-            { label: 'Sponsors', href: `${t}/sponsors`, icon: 'handshake' },
         ]
-        : [{ label: 'Sponsors', href: `${t}/sponsors`, icon: 'handshake' }];
+        : [];
     return { main, more };
 }

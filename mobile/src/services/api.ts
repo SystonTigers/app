@@ -948,28 +948,6 @@ export const shopApi = {
 
 
 
-// ===== Chat API =====
-export const chatApi = {
-  listRooms: async () => {
-    const response = await api.get('/api/v1/chat/rooms');
-    return response.data;
-  },
-  createRoom: async (data: { roomId: string; name: string; type?: string }) => {
-    const response = await api.post('/api/v1/chat/rooms', data);
-    return response.data;
-  },
-  getHistory: async (roomId: string, cursor?: string, limit = 50) => {
-    const response = await api.get(`/api/v1/chat/${roomId}/history`, {
-      params: { cursor, limit },
-    });
-    return response.data;
-  },
-  sendMessage: async (roomId: string, text: string) => {
-    const response = await api.post(`/api/v1/chat/${roomId}/send`, { text });
-    return response.data;
-  },
-};
-
 // ===== Training API =====
 /** A planned training session (GET /api/v1/training/sessions) */
 export interface TrainingSession {
@@ -1036,49 +1014,6 @@ export const videosApi = {
   },
   delete: async (id: string) => {
     const response = await api.delete(`/api/v1/videos/${id}`);
-    return response.data;
-  },
-};
-
-// ===== Wearables / GPS API =====
-export const wearablesApi = {
-  // A player's recent sessions, built from their per-session fitness metrics
-  // (GET /wearables/metrics/:playerId). There is no club-wide session list.
-  listSessions: async (playerId?: string) => {
-    if (!playerId) {
-      return { success: true, data: [] };
-    }
-    const response = await api.get(`/api/v1/wearables/metrics/${encodeURIComponent(playerId)}`, {
-      params: { limit: 20 },
-    });
-    const metrics: any[] = Array.isArray(response.data?.data) ? response.data.data : [];
-    return {
-      success: true,
-      data: metrics.map((m) => ({
-        id: m.sessionId || m.id,
-        sessionDate: m.capturedAt ? new Date(m.capturedAt).toISOString() : '',
-        entryMethod: 'automatic',
-        metrics: m,
-      })),
-    };
-  },
-  getSession: async (sessionId: string) => {
-    const response = await api.get(`/api/v1/wearables/sessions/${sessionId}`);
-    return response.data;
-  },
-  getGPSTrack: async (sessionId: string) => {
-    const response = await api.get(`/api/v1/wearables/sessions/${sessionId}/gps-track`);
-    return response.data;
-  },
-  getPlayerSummary: async (playerId: string) => {
-    const response = await api.get(`/api/v1/wearables/summary/${playerId}`);
-    return response.data;
-  },
-  manualEntry: async (data: any) => {
-    const response = await api.post('/api/v1/wearables/manual', {
-      tenant: getTenantId(),
-      ...data,
-    });
     return response.data;
   },
 };
@@ -1167,18 +1102,6 @@ export const resultsApi = {
   add: async (input: ResultInput): Promise<{ success: boolean }> => (await api.post('/api/v1/results', input)).data,
   update: async (id: number, input: Partial<ResultInput>): Promise<{ success: boolean }> => (await api.put(`/api/v1/results/${id}`, input)).data,
   remove: async (id: number): Promise<{ success: boolean }> => (await api.delete(`/api/v1/results/${id}`)).data,
-};
-
-// ===== Dues / Payments API =====
-export const duesApi = {
-  listRequests: async () => {
-    const response = await api.get('/api/v1/dues/requests');
-    return response.data;
-  },
-  getRequestStatus: async (id: string) => {
-    const response = await api.get(`/api/v1/dues/requests/${id}/status`);
-    return response.data;
-  },
 };
 
 export const usersApi = {

@@ -16,6 +16,8 @@ import {
 import { themedStyles, useBrandColors } from '../theme/brand';
 import { FONTS } from '../theme/brandFonts';
 import { fixturesApi } from '../services/api';
+import { resultDate } from '../utils/results';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useClubName } from '../context/ClubContext';
 import FaEmailPaste from '../components/FaEmailPaste';
 import FixturePhotoReader from '../components/fixtures/FixturePhotoReader';
@@ -140,8 +142,8 @@ export default function ManageFixturesScreen() {
 
   const handleDelete = async (id: string) => {
     Alert.alert(
-      'Confirm Delete',
-      'Are you sure you want to delete this fixture?',
+      'Remove this fixture?',
+      'It comes off the fixtures list for everyone at the club.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -150,11 +152,10 @@ export default function ManageFixturesScreen() {
           onPress: async () => {
             try {
               await fixturesApi.deleteFixture(id);
-              Alert.alert('Success', 'Fixture deleted successfully!');
               loadFixtures(); // Reload fixtures from server
             } catch (error) {
               console.error('Failed to delete fixture:', error);
-              Alert.alert('Error', 'Failed to delete fixture. Please try again.');
+              Alert.alert("That didn't work", "The fixture wasn't removed. Check your signal and try again.");
             }
           },
         },
@@ -224,7 +225,7 @@ export default function ManageFixturesScreen() {
                     </Title>
                   </View>
 
-                  {fixture.homeScore !== undefined && fixture.awayScore !== undefined && (
+                  {fixture.homeScore != null && fixture.awayScore != null && (
                     <View style={styles.scoreContainer}>
                       <Title style={styles.score}>
                         {fixture.homeScore} - {fixture.awayScore}
@@ -235,9 +236,9 @@ export default function ManageFixturesScreen() {
                   <Divider style={styles.divider} />
 
                   <View style={styles.details}>
-                    <Paragraph style={styles.detailText}>📅 {fixture.date}</Paragraph>
-                    <Paragraph style={styles.detailText}>🕐 {fixture.time}</Paragraph>
-                    <Paragraph style={styles.detailText}>📍 {fixture.venue}</Paragraph>
+                    <Detail icon="calendar" text={resultDate(fixture.date)} />
+                    {fixture.time ? <Detail icon="clock-outline" text={fixture.time} /> : null}
+                    {fixture.venue ? <Detail icon="map-marker-outline" text={fixture.venue} /> : null}
                   </View>
 
                   <View style={styles.actions}>
@@ -421,6 +422,17 @@ export default function ManageFixturesScreen() {
   );
 }
 
+function Detail({ icon, text }: { icon: string; text: string }) {
+  const c = useBrandColors();
+  const styles = useStyles();
+  return (
+    <View style={styles.detailRow}>
+      <MaterialCommunityIcons name={icon as never} size={16} color={c.primary} />
+      <Paragraph style={styles.detailText}>{text}</Paragraph>
+    </View>
+  );
+}
+
 const useStyles = themedStyles((COLORS) => ({
   container: {
     flex: 1,
@@ -528,6 +540,7 @@ const useStyles = themedStyles((COLORS) => ({
   details: {
     marginBottom: 12,
   },
+  detailRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   detailText: {
     fontSize: 13,
     color: COLORS.textLight,

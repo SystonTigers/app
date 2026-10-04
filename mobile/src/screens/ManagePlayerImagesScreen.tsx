@@ -286,27 +286,10 @@ export default function ManagePlayerImagesScreen() {
         {filteredImages.length === 0 && (
           <View style={styles.emptyState}>
             <Paragraph style={styles.emptyText}>No images found</Paragraph>
-            <Paragraph style={styles.emptySubtext}>Upload player photos to get started</Paragraph>
+            <Paragraph style={styles.emptySubtext}>Tap Upload to add a headshot or action photo for a player.</Paragraph>
           </View>
         )}
 
-        {/* Bulk Import Info */}
-        <Card style={styles.bulkCard}>
-          <Card.Content>
-            <Title style={styles.bulkTitle}>Bulk Import</Title>
-            <Paragraph style={styles.bulkText}>
-              Need to upload multiple images at once? Contact admin to set up bulk import from Google Drive or folder.
-            </Paragraph>
-            <Button
-              mode="outlined"
-              icon="email"
-              onPress={() => Alert.alert('Bulk Import', 'Contact your system administrator to set up bulk image imports.')}
-              style={styles.bulkButton}
-            >
-              Request Bulk Import
-            </Button>
-          </Card.Content>
-        </Card>
       </ScrollView>
 
       <FAB
@@ -607,30 +590,6 @@ const useStyles = themedStyles((COLORS) => ({
   emptySubtext: {
     fontSize: 13,
     color: COLORS.textLight,
-  },
-  bulkCard: {
-    margin: 16,
-    marginTop: 8,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    backgroundColor: COLORS.surface,
-  },
-  bulkTitle: {
-    fontSize: 20,
-    fontFamily: FONTS.display,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    color: COLORS.text,
-    marginBottom: 8,
-  },
-  bulkText: {
-    fontSize: 13,
-    color: COLORS.textLight,
-    marginBottom: 12,
-  },
-  bulkButton: {
-    marginTop: 4,
   },
   fab: {
     position: 'absolute',

@@ -56,7 +56,6 @@ const MENU_GROUPS: { id: string; title: string; icon: string; protected?: boolea
         items: [
             { label: 'People & roles', screen: 'TeamMembers', icon: 'account-group', roles: STAFF },
             { label: 'Gallery', screen: 'Gallery', icon: 'image-multiple', roles: ALL },
-            { label: 'Club shop', screen: 'Shop', icon: 'shopping', roles: ALL },
         ]
     },
     {
