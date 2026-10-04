@@ -115,6 +115,20 @@ describe("E2E: Authentication Journey", () => {
     expect(data.success).toBe(false);
   });
 
+  it("tells people with an old club-less account how to join their club", async () => {
+    const bcrypt = await import("bcryptjs");
+    await env.DB.prepare(`INSERT INTO users (id, email, name, password_hash, email_verified, created_at, updated_at) VALUES (?, ?, ?, ?, 1, unixepoch(), unixepoch())`)
+      .bind(crypto.randomUUID(), "old-signup@example.com", "Old Signup", await bcrypt.hash("Whatever123!", 4)).run();
+    // A wrong password gives nothing away
+    expect((await call("/api/v1/auth/login", { body: { email: "old-signup@example.com", password: "Wrong123456!" } })).status).toBe(401);
+    const { status, data } = await call("/api/v1/auth/login", { body: { email: "old-signup@example.com", password: "Whatever123!" } });
+    expect(status).toBe(403);
+    expect(data.error.code).toBe("NO_CLUB");
+    expect(data.error.message).toMatch(/find your club in the app/);
+    // The old sign-up endpoints are gone
+    expect((await call("/api/v1/auth/signup", { body: { name: "X", email: "x@example.com", password: "Password123!" } })).status).toBe(404);
+  });
+
   it("rejects access without authentication token", async () => {
     const request = new Request("https://example.com/api/v1/videos", {
       method: "GET",

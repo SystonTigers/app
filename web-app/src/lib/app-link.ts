@@ -5,3 +5,12 @@ export const APP_URL = (process.env.NEXT_PUBLIC_APP_URL || 'https://boost-huddle
 export function clubAppLink(clubSlug: string): string {
   return `${APP_URL}/?club=${encodeURIComponent(clubSlug)}`;
 }
+
+/**
+ * Where people make an account: the app's sign-up, inside their club, so
+ * they get the right role and consent questions. Without a club the app
+ * asks them to find it first.
+ */
+export function appSignUpLink(clubSlug?: string | null): string {
+  return clubSlug ? `${APP_URL}/register?club=${encodeURIComponent(clubSlug)}` : `${APP_URL}/find-club`;
+}

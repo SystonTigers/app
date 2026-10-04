@@ -30,8 +30,6 @@ import {
     handleGetMyTenants,
     handleRequestPasswordReset,
     handleResetPassword,
-    handleSignup,
-    handleVerifySignup,
     handleDeleteAccount
 } from "./routes/auth";
 import {
@@ -240,8 +238,6 @@ router.post("/api/:v/auth/code-login", (req, env, corsHdrs) => handleCodeLogin(r
 router.post("/api/:v/auth/fan-login", (req, env, corsHdrs) => handleFanLogin(req, env, corsHdrs));
 router.post("/api/:v/auth/request-password-reset", (req, env, corsHdrs) => handleRequestPasswordReset(req, env, corsHdrs));
 router.post("/api/:v/auth/reset-password", (req, env, corsHdrs) => handleResetPassword(req, env, corsHdrs));
-router.post("/api/:v/auth/signup", (req, env, corsHdrs) => handleSignup(req, env, corsHdrs));
-router.post("/api/:v/auth/verify-signup", (req, env, corsHdrs) => handleVerifySignup(req, env, corsHdrs));
 router.delete("/api/:v/auth/account", (req, env, corsHdrs) => handleDeleteAccount(req, env, corsHdrs));
 
 

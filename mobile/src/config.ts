@@ -60,7 +60,6 @@ export const COLORS = {
 // API Endpoints
 export const API_ENDPOINTS = {
   // Auth
-  AUTH_SIGNUP: '/auth/signup',
   AUTH_LOGIN: '/auth/login',
 
   // Tenant

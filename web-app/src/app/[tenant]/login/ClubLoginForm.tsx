@@ -7,6 +7,7 @@ import { API_BASE, homeFor, saveSession, type SessionUser } from '@/lib/session'
 import { useAuth } from '@/context/AuthContext';
 import { AuthError, AuthField } from '@/components/ui/AuthShell';
 import { Icon, type IconName } from '@/components/ui/Icon';
+import { appSignUpLink } from '@/lib/app-link';
 
 type LoginMethod = 'password' | 'code' | 'fan';
 type Role = 'parent' | 'player' | 'coach';
@@ -285,7 +286,7 @@ export function ClubLoginForm({ tenant }: { tenant: string }) {
       </div>
 
       <div className="mt-6 text-center text-sm text-muted space-y-2">
-        <p>New here? <Link href="/signup" className="text-brand font-bold hover:underline">Create an account</Link></p>
+        <p>New here? <a href={appSignUpLink(tenant)} className="text-brand font-bold hover:underline">Create an account in the club app</a></p>
         <p>Club staff log in with their email.</p>
       </div>
     </>

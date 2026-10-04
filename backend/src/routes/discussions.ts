@@ -1,5 +1,5 @@
 import { json } from "../services/util";
-import { requireJWT } from "../services/auth";
+import { hasAnyRole, requireTenantJWT, STAFF_ROLES, type TenantClaims } from "../services/auth";
 
 // Types
 interface Discussion {
@@ -30,15 +30,59 @@ interface Comment {
     replies?: Comment[];
 }
 
-// Helper: Check if user is coach/admin
-function isCoach(claims: any): boolean {
-    return claims.role === 'admin' || claims.role === 'coach';
+type DiscussionRole = 'coach' | 'player' | 'parent' | 'fan';
+
+/**
+ * What someone can do in Team talk, from the roles in their token (tokens
+ * carry a `roles` list): staff run it, players and parents see general and
+ * match-analysis threads, fans see none.
+ */
+function discussionRole(claims: TenantClaims): DiscussionRole {
+    if (hasAnyRole(claims, STAFF_ROLES)) return 'coach';
+    if (hasAnyRole(claims, ['player'])) return 'player';
+    if (hasAnyRole(claims, ['fan'])) return 'fan';
+    return 'parent';
+}
+
+function isCoach(claims: TenantClaims): boolean {
+    return discussionRole(claims) === 'coach';
+}
+
+/** Players and parents only take part in these; fans in none. */
+const OPEN_CATEGORIES = ['general', 'match-analysis'];
+
+function canSeeCategory(claims: TenantClaims, category: string): boolean {
+    const role = discussionRole(claims);
+    if (role === 'coach') return true;
+    if (role === 'fan') return false;
+    return OPEN_CATEGORIES.includes(category);
+}
+
+/** A failed login check (thrown Response) becomes a proper 401/403 with CORS headers. */
+function authFailure(err: unknown, corsHdrs: Headers): Response | null {
+    if (!(err instanceof Response)) return null;
+    const message = err.status === 401 ? 'Please log in again.' : "You don't have access to Team talk for this club.";
+    return json({ success: false, error: message }, err.status, corsHdrs);
+}
+
+/** The name shown on a post: from the token, else the member's profile, never their email. */
+async function authorName(env: any, claims: TenantClaims): Promise<string> {
+    if (claims.name?.trim()) return claims.name.trim().slice(0, 60);
+    const row = await env.DB.prepare(`SELECT profile FROM auth_users WHERE id = ? AND tenant_id = ?`)
+        .bind(claims.userId ?? '', claims.tenantId).first() as { profile?: string | null } | null;
+    try {
+        const name = row?.profile ? JSON.parse(row.profile)?.name : null;
+        if (typeof name === 'string' && name.trim()) return name.trim().slice(0, 60);
+    } catch {
+        // Fall through to the generic name
+    }
+    return isCoach(claims) ? 'Club staff' : 'Club member';
 }
 
 // GET /api/v1/discussions - List all discussions
 export async function handleListDiscussions(req: Request, env: any, corsHdrs: Headers) {
     try {
-        const claims = await requireJWT(req, env);
+        const claims = await requireTenantJWT(req, env);
         const url = new URL(req.url);
         const category = url.searchParams.get('category');
         const pinnedOnly = url.searchParams.get('pinned') === 'true';
@@ -46,7 +90,7 @@ export async function handleListDiscussions(req: Request, env: any, corsHdrs: He
         const offset = parseInt(url.searchParams.get('offset') || '0');
 
         // Role-based access control
-        const role = (claims as any).role || 'parent';
+        const role = discussionRole(claims);
 
         // Fans cannot access discussions at all
         if (role === 'fan') {
@@ -109,8 +153,9 @@ export async function handleListDiscussions(req: Request, env: any, corsHdrs: He
 
         return json({ success: true, data: discussions }, 200, corsHdrs);
     } catch (err) {
+        const denied = authFailure(err, corsHdrs);
+        if (denied) return denied;
         console.error('List discussions error:', err);
-        if (err instanceof Response) {throw err;}
         return json({ success: false, error: 'Failed to list discussions' }, 500, corsHdrs);
     }
 }
@@ -118,7 +163,7 @@ export async function handleListDiscussions(req: Request, env: any, corsHdrs: He
 // POST /api/v1/discussions - Create discussion
 export async function handleCreateDiscussion(req: Request, env: any, corsHdrs: Headers) {
     try {
-        const claims = await requireJWT(req, env);
+        const claims = await requireTenantJWT(req, env);
         const { category, title, video_id, related_entity_type, related_entity_id } = await req.json() as any;
 
         if (!category || !title) {
@@ -129,10 +174,14 @@ export async function handleCreateDiscussion(req: Request, env: any, corsHdrs: H
         if (!validCategories.includes(category)) {
             return json({ success: false, error: 'Invalid category' }, 400, corsHdrs);
         }
+        if (!canSeeCategory(claims, category)) {
+            return json({ success: false, error: 'Only coaches can start threads in that section.' }, 403, corsHdrs);
+        }
 
         const id = crypto.randomUUID();
         const now = Date.now();
 
+        const author = await authorName(env, claims);
         await env.DB.prepare(`
             INSERT INTO discussions 
             (id, tenant_id, category, title, author_id, author_name, video_id, related_entity_type, related_entity_id, pinned, locked, created_at, updated_at)
@@ -143,7 +192,7 @@ export async function handleCreateDiscussion(req: Request, env: any, corsHdrs: H
             category,
             title,
             claims.userId,
-            claims.name || 'Unknown',
+            author,
             video_id || null,
             related_entity_type || null,
             related_entity_id || null,
@@ -157,7 +206,7 @@ export async function handleCreateDiscussion(req: Request, env: any, corsHdrs: H
             category,
             title,
             author_id: claims.userId,
-            author_name: claims.name || 'Unknown',
+            author_name: author,
             video_id: video_id || null,
             related_entity_type: related_entity_type || null,
             related_entity_id: related_entity_id || null,
@@ -169,8 +218,9 @@ export async function handleCreateDiscussion(req: Request, env: any, corsHdrs: H
 
         return json({ success: true, data: discussion }, 201, corsHdrs);
     } catch (err) {
+        const denied = authFailure(err, corsHdrs);
+        if (denied) return denied;
         console.error('Create discussion error:', err);
-        if (err instanceof Response) {throw err;}
         return json({ success: false, error: 'Failed to create discussion' }, 500, corsHdrs);
     }
 }
@@ -178,14 +228,14 @@ export async function handleCreateDiscussion(req: Request, env: any, corsHdrs: H
 // GET /api/v1/discussions/:id - Get single discussion with comments
 export async function handleGetDiscussion(req: Request, env: any, corsHdrs: Headers, discussionId: string) {
     try {
-        const claims = await requireJWT(req, env);
+        const claims = await requireTenantJWT(req, env);
 
         // Get discussion
         const discussion = await env.DB.prepare(`
             SELECT * FROM discussions WHERE id = ? AND tenant_id = ?
         `).bind(discussionId, claims.tenantId).first();
 
-        if (!discussion) {
+        if (!discussion || !canSeeCategory(claims, String(discussion.category))) {
             return json({ success: false, error: 'Discussion not found' }, 404, corsHdrs);
         }
 
@@ -232,8 +282,9 @@ export async function handleGetDiscussion(req: Request, env: any, corsHdrs: Head
             }
         }, 200, corsHdrs);
     } catch (err) {
+        const denied = authFailure(err, corsHdrs);
+        if (denied) return denied;
         console.error('Get discussion error:', err);
-        if (err instanceof Response) {throw err;}
         return json({ success: false, error: 'Failed to get discussion' }, 500, corsHdrs);
     }
 }
@@ -241,7 +292,7 @@ export async function handleGetDiscussion(req: Request, env: any, corsHdrs: Head
 // PATCH /api/v1/discussions/:id - Update discussion
 export async function handleUpdateDiscussion(req: Request, env: any, corsHdrs: Headers, discussionId: string) {
     try {
-        const claims = await requireJWT(req, env);
+        const claims = await requireTenantJWT(req, env);
         const { title, pinned, locked } = await req.json() as any;
 
         // Check if discussion exists and user owns it or is coach
@@ -296,8 +347,9 @@ export async function handleUpdateDiscussion(req: Request, env: any, corsHdrs: H
 
         return json({ success: true }, 200, corsHdrs);
     } catch (err) {
+        const denied = authFailure(err, corsHdrs);
+        if (denied) return denied;
         console.error('Update discussion error:', err);
-        if (err instanceof Response) {throw err;}
         return json({ success: false, error: 'Failed to update discussion' }, 500, corsHdrs);
     }
 }
@@ -305,7 +357,7 @@ export async function handleUpdateDiscussion(req: Request, env: any, corsHdrs: H
 // DELETE /api/v1/discussions/:id - Delete discussion
 export async function handleDeleteDiscussion(req: Request, env: any, corsHdrs: Headers, discussionId: string) {
     try {
-        const claims = await requireJWT(req, env);
+        const claims = await requireTenantJWT(req, env);
 
         const discussion = await env.DB.prepare(`
             SELECT * FROM discussions WHERE id = ? AND tenant_id = ?
@@ -326,8 +378,9 @@ export async function handleDeleteDiscussion(req: Request, env: any, corsHdrs: H
 
         return json({ success: true }, 200, corsHdrs);
     } catch (err) {
+        const denied = authFailure(err, corsHdrs);
+        if (denied) return denied;
         console.error('Delete discussion error:', err);
-        if (err instanceof Response) {throw err;}
         return json({ success: false, error: 'Failed to delete discussion' }, 500, corsHdrs);
     }
 }
@@ -335,7 +388,7 @@ export async function handleDeleteDiscussion(req: Request, env: any, corsHdrs: H
 // POST /api/v1/discussions/:id/comments - Create comment
 export async function handleCreateComment(req: Request, env: any, corsHdrs: Headers, discussionId: string) {
     try {
-        const claims = await requireJWT(req, env);
+        const claims = await requireTenantJWT(req, env);
         const { content, parent_comment_id, video_timestamp, mentions } = await req.json() as any;
 
         if (!content || content.trim().length === 0) {
@@ -344,10 +397,10 @@ export async function handleCreateComment(req: Request, env: any, corsHdrs: Head
 
         // Verify discussion exists and is not locked
         const discussion = await env.DB.prepare(`
-            SELECT id, title, author_id, locked FROM discussions WHERE id = ? AND tenant_id = ?
+            SELECT id, title, author_id, locked, category FROM discussions WHERE id = ? AND tenant_id = ?
         `).bind(discussionId, claims.tenantId).first();
 
-        if (!discussion) {
+        if (!discussion || !canSeeCategory(claims, String(discussion.category))) {
             return json({ success: false, error: 'Discussion not found' }, 404, corsHdrs);
         }
 
@@ -358,6 +411,7 @@ export async function handleCreateComment(req: Request, env: any, corsHdrs: Head
         const id = crypto.randomUUID();
         const now = Date.now();
 
+        const author = await authorName(env, claims);
         await env.DB.prepare(`
             INSERT INTO discussion_comments 
             (id, discussion_id, parent_comment_id, author_id, author_name, content, video_timestamp, created_at, updated_at)
@@ -367,7 +421,7 @@ export async function handleCreateComment(req: Request, env: any, corsHdrs: Head
             discussionId,
             parent_comment_id || null,
             claims.userId,
-            claims.name || 'Unknown',
+            author,
             content,
             video_timestamp || null,
             now,
@@ -459,7 +513,7 @@ export async function handleCreateComment(req: Request, env: any, corsHdrs: Head
             discussion_id: discussionId,
             parent_comment_id: parent_comment_id || null,
             author_id: claims.userId,
-            author_name: claims.name || 'Unknown',
+            author_name: author,
             content,
             video_timestamp: video_timestamp || null,
             created_at: now,
@@ -468,8 +522,9 @@ export async function handleCreateComment(req: Request, env: any, corsHdrs: Head
 
         return json({ success: true, data: comment }, 201, corsHdrs);
     } catch (err) {
+        const denied = authFailure(err, corsHdrs);
+        if (denied) return denied;
         console.error('Create comment error:', err);
-        if (err instanceof Response) {throw err;}
         return json({ success: false, error: 'Failed to create comment' }, 500, corsHdrs);
     }
 }
@@ -477,7 +532,7 @@ export async function handleCreateComment(req: Request, env: any, corsHdrs: Head
 // PATCH /api/v1/comments/:id - Update comment
 export async function handleUpdateComment(req: Request, env: any, corsHdrs: Headers, commentId: string) {
     try {
-        const claims = await requireJWT(req, env);
+        const claims = await requireTenantJWT(req, env);
         const { content } = await req.json() as any;
 
         if (!content || content.trim().length === 0) {
@@ -513,8 +568,9 @@ export async function handleUpdateComment(req: Request, env: any, corsHdrs: Head
 
         return json({ success: true }, 200, corsHdrs);
     } catch (err) {
+        const denied = authFailure(err, corsHdrs);
+        if (denied) return denied;
         console.error('Update comment error:', err);
-        if (err instanceof Response) {throw err;}
         return json({ success: false, error: 'Failed to update comment' }, 500, corsHdrs);
     }
 }
@@ -522,7 +578,7 @@ export async function handleUpdateComment(req: Request, env: any, corsHdrs: Head
 // DELETE /api/v1/comments/:id - Delete comment
 export async function handleDeleteComment(req: Request, env: any, corsHdrs: Headers, commentId: string) {
     try {
-        const claims = await requireJWT(req, env);
+        const claims = await requireTenantJWT(req, env);
 
         // SECURITY: Verify comment belongs to current tenant via discussion
         const comment = await env.DB.prepare(`
@@ -552,8 +608,9 @@ export async function handleDeleteComment(req: Request, env: any, corsHdrs: Head
 
         return json({ success: true }, 200, corsHdrs);
     } catch (err) {
+        const denied = authFailure(err, corsHdrs);
+        if (denied) return denied;
         console.error('Delete comment error:', err);
-        if (err instanceof Response) {throw err;}
         return json({ success: false, error: 'Failed to delete comment' }, 500, corsHdrs);
     }
 }

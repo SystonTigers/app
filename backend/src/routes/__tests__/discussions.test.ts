@@ -4,8 +4,10 @@ import { handleListDiscussions } from "../discussions";
 // Mock auth service with different roles
 const mockRequireJWT = vi.fn();
 
-vi.mock("../../services/auth", () => ({
-    requireJWT: (...args: any[]) => mockRequireJWT(...args),
+// Real role helpers; only the token check is mocked. Tokens carry a `roles` list.
+vi.mock("../../services/auth", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("../../services/auth")>()),
+    requireTenantJWT: (...args: any[]) => mockRequireJWT(...args),
 }));
 
 // Mock util service
@@ -48,7 +50,7 @@ describe("Discussions Routes - Role-Based Filtering", () => {
             mockRequireJWT.mockResolvedValue({
                 tenantId: "test-tenant",
                 userId: "fan-user",
-                role: "fan",
+                roles: ["fan"],
             });
 
             const env = createMockEnv();
@@ -73,7 +75,7 @@ describe("Discussions Routes - Role-Based Filtering", () => {
             mockRequireJWT.mockResolvedValue({
                 tenantId: "test-tenant",
                 userId: "player-user",
-                role: "player",
+                roles: ["player"],
             });
 
             const env = createMockEnv();
@@ -92,7 +94,7 @@ describe("Discussions Routes - Role-Based Filtering", () => {
             mockRequireJWT.mockResolvedValue({
                 tenantId: "test-tenant",
                 userId: "player-user",
-                role: "player",
+                roles: ["player"],
             });
 
             const env = createMockEnv();
@@ -111,7 +113,7 @@ describe("Discussions Routes - Role-Based Filtering", () => {
             mockRequireJWT.mockResolvedValue({
                 tenantId: "test-tenant",
                 userId: "player-user",
-                role: "player",
+                roles: ["player"],
             });
 
             const env = createMockEnv();
@@ -132,7 +134,7 @@ describe("Discussions Routes - Role-Based Filtering", () => {
             mockRequireJWT.mockResolvedValue({
                 tenantId: "test-tenant",
                 userId: "player-user",
-                role: "player",
+                roles: ["player"],
             });
 
             const env = createMockEnv();
@@ -155,7 +157,7 @@ describe("Discussions Routes - Role-Based Filtering", () => {
             mockRequireJWT.mockResolvedValue({
                 tenantId: "test-tenant",
                 userId: "parent-user",
-                role: "parent",
+                roles: ["parent"],
             });
 
             const env = createMockEnv();
@@ -174,7 +176,7 @@ describe("Discussions Routes - Role-Based Filtering", () => {
             mockRequireJWT.mockResolvedValue({
                 tenantId: "test-tenant",
                 userId: "parent-user",
-                role: "parent",
+                roles: ["parent"],
             });
 
             const env = createMockEnv();
@@ -196,7 +198,7 @@ describe("Discussions Routes - Role-Based Filtering", () => {
             mockRequireJWT.mockResolvedValue({
                 tenantId: "test-tenant",
                 userId: "coach-user",
-                role: "coach",
+                roles: ["coach"],
             });
 
             const env = createMockEnv();
@@ -225,7 +227,7 @@ describe("Discussions Routes - Role-Based Filtering", () => {
             mockRequireJWT.mockResolvedValue({
                 tenantId: "test-tenant",
                 userId: "manager-user",
-                role: "manager",
+                roles: ["manager"],
             });
 
             const env = createMockEnv();
@@ -246,7 +248,7 @@ describe("Discussions Routes - Role-Based Filtering", () => {
             mockRequireJWT.mockResolvedValue({
                 tenantId: "test-tenant",
                 userId: "parent-user",
-                role: "parent",
+                roles: ["parent"],
             });
 
             const env = createMockEnv();
