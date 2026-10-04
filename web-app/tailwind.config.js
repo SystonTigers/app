@@ -17,17 +17,17 @@ module.exports = {
                 mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
             },
             colors: {
-                background: "var(--bg)",
-                foreground: "var(--text)",
+                background: "rgb(var(--bg-rgb) / <alpha-value>)",
+                foreground: "rgb(var(--text-rgb) / <alpha-value>)",
                 surface: {
-                    DEFAULT: "var(--surface)",
-                    raised: "var(--surface-raised)",
+                    DEFAULT: "rgb(var(--surface-rgb) / <alpha-value>)",
+                    raised: "rgb(var(--surface-raised-rgb) / <alpha-value>)",
                 },
                 muted: {
-                    DEFAULT: "var(--text-muted)",
-                    foreground: "var(--text-muted)",
+                    DEFAULT: "rgb(var(--text-muted-rgb) / <alpha-value>)",
+                    foreground: "rgb(var(--text-muted-rgb) / <alpha-value>)",
                 },
-                border: "var(--border)",
+                border: "rgb(var(--border-rgb) / <alpha-value>)",
                 brand: {
                     // The club's colour (lib/brand.ts sets --brand-rgb), so opacity modifiers work: bg-brand/10
                     DEFAULT: "rgb(var(--brand-rgb) / <alpha-value>)",

@@ -5,6 +5,7 @@ import { apiFetch, errorMessage } from '@/lib/session';
 import { formatDate } from '@/lib/format';
 import { canAccessAdmin, useUserRole } from '@/hooks/useUserRole';
 import { EmptyNote, PageHeader } from '@/components/ui/Page';
+import Link from 'next/link';
 import { Icon, type IconName } from '@/components/ui/Icon';
 
 /** As GET /api/v1/gallery/photos returns it */
@@ -14,6 +15,8 @@ interface Photo {
     caption: string | null;
     uploadedAt: string;
     uploadedBy: string;
+    /** Players tagged in the photo (staff tag them in the app) */
+    players?: Array<{ id: string; name: string }>;
 }
 
 /** As GET /api/v1/gallery/albums returns it */
@@ -220,7 +223,7 @@ export function PhotoGallery({ tenant }: PhotoGalleryProps) {
                 )}
 
                 {selectedPhoto && (
-                    <div className="fixed inset-0 bg-background/95 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label="Photo">
+                    <div className="fixed inset-0 bg-background/95 z-[100] flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label="Photo">
                         <button
                             type="button"
                             onClick={() => setSelectedPhoto(null)}
@@ -234,6 +237,16 @@ export function PhotoGallery({ tenant }: PhotoGalleryProps) {
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img src={selectedPhoto.uri} alt={selectedPhoto.caption ?? ''} className="w-full h-auto max-h-[75vh] object-contain" />
                             {selectedPhoto.caption && <figcaption className="text-center mt-4">{selectedPhoto.caption}</figcaption>}
+                            {selectedPhoto.players && selectedPhoto.players.length > 0 && (
+                                <p className="mt-3 flex flex-wrap justify-center items-center gap-2 text-sm">
+                                    <span className="text-muted">In this photo:</span>
+                                    {selectedPhoto.players.map((pl) => (
+                                        <Link key={pl.id} href={`/${tenant}/squad/${pl.id}`} className="inline-flex items-center min-h-[32px] px-3 bg-brand/15 text-brand chamfer-sm no-underline hover:bg-brand/25">
+                                            {pl.name}
+                                        </Link>
+                                    ))}
+                                </p>
+                            )}
                             {error && <p className="text-red-300 text-center mt-2" role="alert">{error}</p>}
                             {isStaff && (
                                 <div className="mt-4 flex justify-center">
