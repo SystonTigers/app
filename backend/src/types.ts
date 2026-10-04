@@ -84,12 +84,6 @@ export interface Env {
   RL_POSTS_PER_MIN?: string;
   RL_UPLOADS_PER_MIN?: string;
   R2_MEDIA: R2Bucket;
-  TenantRateLimiter: DurableObjectNamespace;
-  VotingRoom: DurableObjectNamespace;
-  ChatRoom: DurableObjectNamespace;
-  MatchRoom: DurableObjectNamespace;
-  GeoFenceManager: DurableObjectNamespace;
-  PROVISIONER: DurableObjectNamespace;
   JWT_SECRET: string;
   JWT_ISSUER?: string;
   JWT_AUDIENCE?: string;

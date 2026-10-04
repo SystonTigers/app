@@ -166,14 +166,6 @@ import { handleGetFaFullTime, handleSetFaFullTime } from "./routes/faFullTime";
 import { handleClearLeagueResults, handleGetLeague, handleLeagueSnapshot, handlePasteLeague, handleSetLeague } from "./routes/league";
 import { processScheduledNotifications } from "./routes/mobile-notifications";
 
-// Export Durable Objects
-export { TenantRateLimiter } from "./do/rateLimiter";
-export { VotingRoom } from "./do/votingRoom";
-export { MatchRoom } from "./do/matchRoom";
-export { ChatRoom } from "./do/chatRoom";
-export { GeoFenceManager } from "./do/geoFenceManager";
-export { Provisioner } from "./do/provisioner";
-
 const router = Router();
 
 // Health Checks
@@ -412,19 +404,6 @@ router.get("/api/:v/matches/:id/updates", (req, env, corsHdrs) => {
     return handleMatchUpdates(req, env, corsHdrs, params.id);
 });
 
-// Chat Routes
-import {
-    handleListRooms,
-    handleSendMessage,
-    handleGetHistory,
-    handleTyping,
-    handleCreateRoom
-} from "./routes/chat";
-router.get("/api/:v/chat/rooms", (req, env, corsHdrs) => handleListRooms(req, env, corsHdrs));
-router.post("/api/:v/chat/rooms", staffOnly((req, env, corsHdrs) => handleCreateRoom(req, env, corsHdrs)));
-router.post("/api/:v/chat/:roomId/send", (req, env, corsHdrs) => handleSendMessage(req, env, corsHdrs));
-router.get("/api/:v/chat/:roomId/history", (req, env, corsHdrs) => handleGetHistory(req, env, corsHdrs));
-router.post("/api/:v/chat/:roomId/typing", (req, env, corsHdrs) => handleTyping(req, env, corsHdrs));
 
 // Gallery Routes
 import {

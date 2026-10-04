@@ -7,12 +7,6 @@ export interface Env {
 
   DLQ: Queue;
 
-  TenantRateLimiter: DurableObjectNamespace;
-  VotingRoom: DurableObjectNamespace;
-  ChatRoom: DurableObjectNamespace;
-  MatchRoom: DurableObjectNamespace;
-  GeoFenceManager: DurableObjectNamespace;
-
   SUPABASE_URL: string;
   SUPABASE_ANON_KEY: string;
   GITHUB_TOKEN: string;

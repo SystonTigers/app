@@ -57,17 +57,15 @@ done, move it to "Built" (one line) and update `CLAUDE.md`.
   sponsor on graphics (Club Settings) works.
 - **Removed in October 2026 (unreachable or broken):** app Team Chat,
   Payments and Wearables screens; the website's chat page; the wearables
-  API. Team Chat's backend (`routes/chat.ts`, `do/chatRoom.ts`) still exists
-  but fails to send; Team talk covers club conversation. Dues stay on the
+  API and Team Chat's backend; Team talk covers club conversation. Dues stay on the
   website (Admin → Dues); paying online needs Stripe.
 
 ## Tidy-up
 
-- **Durable Objects no longer used:** `Provisioner` (old sign-up, also the
-  last Make.com code), `GeoFenceManager` and `ChatRoom` are still exported
-  because deleting a Durable Object class needs a wrangler migration
-  (`deleted_classes`) that permanently wipes its storage. Do it as its own
-  deploy, with the owner's agreement, then delete their files and bindings.
+- The Worker has no Durable Objects any more: the six unused ones
+  (Provisioner, GeoFenceManager, ChatRoom, TenantRateLimiter, VotingRoom,
+  MatchRoom) were deleted with the owner's agreement (`wrangler.toml`
+  migration `v6`, October 2026). The old `chat_*` tables are still in D1.
 - The old wearables tables are still in D1 (no code reads them); drop them in
   a migration if they stay unused.
 - `docs/concepts/` holds design inspiration images only.
