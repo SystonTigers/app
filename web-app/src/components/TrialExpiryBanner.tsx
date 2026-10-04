@@ -13,6 +13,8 @@ interface TrialBannerProps {
 interface BillingSnapshot {
     trialDaysRemaining: number;
     trialEnded: boolean;
+    /** Staff changes are paused until a plan is chosen */
+    readOnly: boolean;
     paying: boolean;
     paymentsEnabled: boolean;
     pastDue: boolean;
@@ -50,6 +52,7 @@ export function TrialExpiryBanner({ className = '' }: TrialBannerProps) {
                 setBilling({
                     trialDaysRemaining: d.trialDaysRemaining ?? 0,
                     trialEnded: !!d.trialEnded,
+                    readOnly: !!d.readOnly,
                     paying: d.subscriptionStatus === 'active' || !!d.comped,
                     paymentsEnabled: !!d.paymentsEnabled,
                     pastDue: d.subscriptionStatus === 'past_due',
@@ -68,6 +71,9 @@ export function TrialExpiryBanner({ className = '' }: TrialBannerProps) {
         tone = 'critical';
         message = "Your last payment didn't go through. Please update your card.";
         action = 'Update card';
+    } else if (billing.readOnly) {
+        tone = 'critical';
+        message = "Your free trial has ended, so changes are paused. Choose a plan to carry on: everything you've added is still here.";
     } else if (billing.trialEnded && billing.paymentsEnabled) {
         tone = 'critical';
         message = 'Your free trial has ended. Choose a plan to keep your club app and website running.';

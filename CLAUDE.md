@@ -71,7 +71,12 @@ with personal data.
   live pages (`legal-docs/*.html`) are older and should be replaced once the
   drafts are approved.
 - `web-app` `npm run lint` fails: Next 16 removed `next lint`. Use `npx tsc --noEmit`.
-- A club's trial end date isn't enforced yet: nothing changes when it passes.
+- When a club's free trial ends nothing changes yet: `TRIAL_END_MODE` (wrangler
+  var) is "off". Set it to "read_only" once pricing is decided: staff changes
+  then get 402 `TRIAL_ENDED` until the club pays or is given free access;
+  reading, families' actions, sign-in, billing and the owner panel still work
+  (`services/trialLock.ts`, gate in `index.ts` fetch; `GET /billing/status`
+  returns `readOnly` for the website banner).
 
 ## Match day
 

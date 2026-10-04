@@ -6,6 +6,7 @@ import { json } from "./services/util";
 import { handleGetMedia } from "./services/media";
 import { processDueJobs } from "./services/social/jobs";
 import { processDueAlerts } from "./services/matchAlerts/queue";
+import { trialGate } from "./services/trialLock";
 import { sendConsentReminders } from "./services/consentReminders";
 import { receiveFixtureEmail } from "./services/faEmail/inbound";
 import { detectStreams } from "./services/stream/detect";
@@ -191,7 +192,6 @@ router.get("/public/*", async (req, env, corsHdrs, requestId) => {
 });
 
 // Stripe Webhook (No version prefix needed, publicly accessible)
-// router.post("/api/webhooks/stripe", (req, env) => handleStripeWebhook(req, env));
 
 // Auth Routes
 router.post("/api/:v/auth/register-owner", (req, env, corsHdrs) => {
@@ -1262,6 +1262,9 @@ export default {
         }
 
         try {
+            // A club whose free trial has ended may be read-only for staff (TRIAL_END_MODE)
+            const paused = await trialGate(req, env, corsHdrs);
+            if (paused) return respondWithCors(paused, corsHdrs);
             const response = await router.handle(req, env, corsHdrs, requestId, ctx);
             if (response instanceof Response) {
                 // A handler swallowed a failed auth check and returned a generic 5xx

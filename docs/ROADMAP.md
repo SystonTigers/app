@@ -34,13 +34,12 @@ done, move it to "Built" (one line) and update `CLAUDE.md`.
 1. **Make sign-up work for real clubs:** Resend key and a sending domain
    (emails are only logged today), legal pages approved and published
    (drafts in `legal-docs/drafts/`), `npx eas init` for phone-app push.
-2. **Decide the pricing model and enforce trial end.** Today the trial end
-   date is stored but nothing changes when it passes: clubs keep everything.
-   Prices in code: Starter £14.99, Pro £29.99 a month, per club
+2. **Decide the pricing model, then switch trial end on.** The read-only
+   switch is built (`TRIAL_END_MODE = "read_only"` in `wrangler.toml`; off
+   today). Prices in code: Starter £14.99, Pro £29.99 a month, per club
    (`routes/billing.ts` PLANS). Under discussion: per-team pricing, no free
-   tier, read-only after the trial, multi-team discounts. Once decided:
-   update PLANS and Stripe prices, add the read-only check, update the
-   landing page.
+   tier, multi-team discounts. Once decided: update PLANS and Stripe prices,
+   flip the switch, update the landing page.
 3. **More posts:** a player stats round-up post; monthly fixtures/results
    round-ups; check Goal of the Month end to end (`routes/gotm.ts`).
 4. **Gallery tagging:** tag players in gallery photos so they appear on

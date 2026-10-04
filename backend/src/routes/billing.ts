@@ -12,6 +12,7 @@
  */
 
 import Stripe from 'stripe';
+import { trialEndMode, trialOver } from '../services/trialLock';
 import { requireTenantJWT, hasAnyRole } from '../services/auth';
 import { json } from '../services/util';
 
@@ -220,6 +221,8 @@ export async function handleBillingStatus(req: Request, env: any, corsHdrs: Head
                 trialEndsAt: tenant.trial_ends_at,
                 trialDaysRemaining,
                 trialEnded: !paid && !!tenant.trial_ends_at && tenant.trial_ends_at <= now,
+                // Staff changes are paused while true (TRIAL_END_MODE=read_only)
+                readOnly: trialEndMode(env) === 'read_only' && trialOver(tenant, now),
                 hasPaymentMethod: !!tenant.stripe_customer_id,
                 paymentsEnabled,
                 subscription,

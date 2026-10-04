@@ -110,6 +110,8 @@ export interface Env {
   GALLERY_ALLOWED?: string;
   API_VERSION: string;
   CORS_ALLOWED?: string;
+  /** "off" (default) or "read_only": see services/trialLock.ts */
+  TRIAL_END_MODE?: string;
   BACKEND_URL?: string;
   RESEND_API_KEY?: string;
   RESEND_FROM_EMAIL?: string;

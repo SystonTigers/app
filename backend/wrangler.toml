@@ -50,6 +50,8 @@ bucket_name = "syston-media-local"
 compatibility_date = "2024-11-01"
 
 [env.production.vars]
+# What a club's ended free trial does: "off" (nothing) or "read_only" (staff changes paused until a plan is chosen)
+TRIAL_END_MODE = "off"
 # Global vars
 API_VERSION = "v1"
 JWT_ISSUER = "syston.app"
@@ -153,6 +155,7 @@ class_name = "Provisioner"
 compatibility_date = "2024-11-01"
 
 [env.preview.vars]
+TRIAL_END_MODE = "off"
 # Global vars
 API_VERSION = "v1"
 JWT_ISSUER = "syston.app"
