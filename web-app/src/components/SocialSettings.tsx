@@ -8,7 +8,7 @@ import { Notice } from '@/components/admin/AdminUi';
 
 type NameStyle = 'full' | 'first_initial' | 'initial_last' | 'first' | 'last';
 type MatchKind = 'lineup' | 'goal' | 'opp_goal' | 'kick_off' | 'half_time' | 'second_half' | 'full_time' | 'yellow' | 'red' | 'sub' | 'motm' | 'correction';
-type ClubKind = 'countdown' | 'matchday' | 'fixtures' | 'results' | 'table' | 'postponed' | 'birthday' | 'player_of_week' | 'player_of_month' | 'milestone' | 'throwback' | 'quote';
+type ClubKind = 'countdown' | 'matchday' | 'fixtures' | 'results' | 'table' | 'postponed' | 'birthday' | 'player_of_week' | 'player_of_month' | 'milestone' | 'throwback' | 'quote' | 'month_fixtures' | 'month_results' | 'stats_roundup';
 type Kind = MatchKind | ClubKind;
 type Events = Record<Kind, { feed: boolean; social: boolean }>;
 
@@ -47,6 +47,9 @@ const CLUB_KINDS: Array<[Kind, string]> = [
     ['table', 'League table (Monday 12pm)'],
     ['player_of_week', 'Player of the week (Monday 7pm)'],
     ['player_of_month', 'Player of the month (1st of the month)'],
+    ['month_results', "Last month's results (1st, 11am)"],
+    ['stats_roundup', 'Top scorers so far this season (1st, 12pm)'],
+    ['month_fixtures', "This month's fixtures (1st, 5pm)"],
     ['milestone', 'Milestones: 10, 25, 50... appearances or goals (7pm)'],
     ['birthday', 'Player birthdays (8am, no age shown)'],
     ['throwback', 'Throwback Thursday photo (6pm)'],

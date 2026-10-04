@@ -3,7 +3,7 @@
  * Huddle" credit; premium packs are unlocked per club (a one-off purchase).
  */
 import { footer, header, type DrawContext } from "./layouts/common";
-import { drawList, drawPerson, drawPhoto, drawQuote, drawTable } from "./layouts/club";
+import { drawLeaders, drawList, drawPerson, drawPhoto, drawQuote, drawTable } from "./layouts/club";
 import { drawFixture, drawLineup, drawMoment, drawScore } from "./layouts/match";
 import { createCanvas, svgDocument } from "./svg";
 import type { Theme } from "./theme";
@@ -57,6 +57,7 @@ export function drawGraphic(pack: Pack, g: Graphic, images: ImageMap): string {
     case "lineup": body = drawLineup(d, g); break;
     case "list": body = drawList(d, g); break;
     case "table": body = drawTable(d, g); break;
+    case "leaders": body = drawLeaders(d, g); break;
     case "person": body = drawPerson(d, g); break;
     case "quote": body = drawQuote(d, g); break;
     case "photo": body = drawPhoto(d, g); break;

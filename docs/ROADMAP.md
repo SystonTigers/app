@@ -14,7 +14,8 @@ done, move it to "Built" (one line) and update `CLAUDE.md`.
   premium), the club badge and sponsor on every graphic, name styles and
   consent applied, brace/hat-trick posts, correction posts, scheduled club
   posts (countdown, match day, weekly fixtures/results/table, birthdays,
-  player of the week/month, milestones, throwback, quotes). Club Settings in
+  player of the week/month, milestones, throwback, quotes, monthly results,
+  fixtures and top scorers round-ups). Club Settings in
   the app and on the website decide what goes where.
 - **Highlights:** clips of the match video from Match Centre taps (free), and
   a phone-first video maker with scoreboard and captions.
@@ -40,8 +41,7 @@ done, move it to "Built" (one line) and update `CLAUDE.md`.
    (`routes/billing.ts` PLANS). Under discussion: per-team pricing, no free
    tier, multi-team discounts. Once decided: update PLANS and Stripe prices,
    flip the switch, update the landing page.
-3. **More posts:** a player stats round-up post; monthly fixtures/results
-   round-ups; check Goal of the Month end to end (`routes/gotm.ts`).
+3. **Goal of the Month:** check it end to end (`routes/gotm.ts`).
 4. **Gallery tagging:** tag players in gallery photos so they appear on
    player pages (today player pages show Player Images only).
 5. **XbotGo scoreboard:** push the live score to the camera's overlay.

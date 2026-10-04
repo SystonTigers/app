@@ -186,6 +186,12 @@ with personal data.
   throwback (only gallery photos staff ticked "Throwback Thursday", 6+ months
   old, and public only if the club allows player photos) and quotes. Each
   has a unique `source_id`, so running twice never posts twice.
+- Monthly round-ups on the 1st (`services/social/roundups.ts`): last month's
+  results 11:00 (`month_results:<yyyy-mm>`), the season's top scorers 12:00
+  (`stats_roundup`, `leaders` graphic: goals, assists, apps; joint places
+  share a rank; names in the club's style) and this month's fixtures 17:00
+  (`month_fixtures`). Nothing posts for an empty month or a season with no
+  goals. The queries they share with the weekly posts are in `scheduleData.ts`.
 - End-to-end tests set `SOCIAL_BACKGROUND_DRAWING=off` and draw/post
   explicitly; the Workers test runner can't cope with WASM work left running.
 

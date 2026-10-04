@@ -76,17 +76,18 @@ function listRow(brand: Brand, x: { opponent: string; opponentBadgeUrl: string |
   };
 }
 
-export function fixturesPost(brand: Brand, fixtures: FixtureFacts[], rangeLabel: string): Built {
+/** A list of fixtures; `title` starts the caption ("This week's fixtures", "October's fixtures"). */
+export function fixturesPost(brand: Brand, fixtures: FixtureFacts[], rangeLabel: string, title = "This week's fixtures"): Built {
   const rows = fixtures.map((f) => listRow(brand, f, { time: f.time, venue: f.venue }));
   const lines = rows.map((r) => `• ${r.date}: ${r.home} v ${r.away}${r.time ? ` (${r.time}${r.venue ? `, ${r.venue}` : ""})` : ""}`);
   const comps = [...new Set(fixtures.map((f) => f.competition).filter(Boolean))];
   return {
-    caption: `📅 This week's fixtures\n${lines.join("\n")}`,
+    caption: `📅 ${title}\n${lines.join("\n")}`,
     graphic: { ...base(brand, "fixtures", "FIXTURES", comps.length === 1 ? comps[0] : null), layout: "list", mode: "fixtures", subtitle: rangeLabel, rows },
   };
 }
 
-export function resultsPost(brand: Brand, results: ResultFacts[], rangeLabel: string): Built {
+export function resultsPost(brand: Brand, results: ResultFacts[], rangeLabel: string, title = "This week's results"): Built {
   const rows = results.map((r) => {
     const outcome = r.ourScore > r.theirScore ? "W" : r.ourScore === r.theirScore ? "D" : "L";
     return listRow(brand, r, {
@@ -99,7 +100,7 @@ export function resultsPost(brand: Brand, results: ResultFacts[], rangeLabel: st
   const lines = rows.map((r) => `• ${r.home} ${r.homeScore}–${r.awayScore} ${r.away} ${icon[r.outcome as "W" | "D" | "L"]}`);
   const comps = [...new Set(results.map((r) => r.competition).filter(Boolean))];
   return {
-    caption: `📊 This week's results\n${lines.join("\n")}`,
+    caption: `📊 ${title}\n${lines.join("\n")}`,
     graphic: { ...base(brand, "results", "RESULTS", comps.length === 1 ? comps[0] : null), layout: "list", mode: "results", subtitle: rangeLabel, rows },
   };
 }
@@ -150,6 +151,27 @@ export function playerOfPeriodPost(brand: Brand, policy: PublicNamePolicy, perio
   return {
     caption: `🌟 ${title}: ${name}!${stat ? ` ${stat}.` : ""}`,
     graphic: { ...base(brand, period === "week" ? "player_of_week" : "player_of_month", period === "week" ? "PLAYER OF THE WEEK" : "PLAYER OF THE MONTH"), layout: "person", playerName: name, photoUrl: photo, stat: stat || null, secondary: period === "month" ? label : null },
+  };
+}
+
+export interface LeaderFacts { name: string; goals: number; assists: number; appearances: number }
+
+/**
+ * The season's top scorers (goals, then assists, then fewer appearances),
+ * names in the club's style. Joint places share a rank.
+ */
+export function statsRoundupPost(brand: Brand, policy: PublicNamePolicy, seasonLabel: string, leaders: LeaderFacts[]): Built {
+  const sorted = [...leaders].filter((l) => l.goals > 0)
+    .sort((a, b) => b.goals - a.goals || b.assists - a.assists || a.appearances - b.appearances).slice(0, 8);
+  const rows = sorted.map((l) => ({
+    rank: sorted.findIndex((o) => o.goals === l.goals && o.assists === l.assists) + 1,
+    name: publicName(policy, l.name),
+    values: [l.goals, l.assists, l.appearances],
+  }));
+  const lines = rows.slice(0, 5).map((r) => `${r.rank}. ${r.name}: ${r.values[0]} goal${r.values[0] === 1 ? "" : "s"}${r.values[1] ? `, ${r.values[1]} assist${r.values[1] === 1 ? "" : "s"}` : ""}`);
+  return {
+    caption: `⚽ Top scorers, ${seasonLabel} so far\n${lines.join("\n")}`,
+    graphic: { ...base(brand, "stats_roundup", "TOP SCORERS"), layout: "leaders", subtitle: `${seasonLabel} so far`, columns: ["GOALS", "ASSISTS", "APPS"], rows },
   };
 }
 

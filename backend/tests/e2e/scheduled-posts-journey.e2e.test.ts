@@ -2,7 +2,8 @@
  * Journey: scheduled club posts. On a Monday evening the club's week of
  * fixtures, a 3-days-to-go countdown, a postponement, a birthday and the
  * league table are queued once each (running the scheduler again changes
- * nothing). On Sunday evening the week's results go out.
+ * nothing). On Sunday evening the week's results go out. On the 1st, last
+ * month's results, the season's top scorers and this month's fixtures.
  */
 import { describe, it, expect } from "vitest";
 import { env } from "cloudflare:test";
@@ -87,5 +88,40 @@ describe("Scheduled club posts", () => {
     expect(results).toHaveLength(1);
     expect(results[0].caption).toContain("• Syston Tigers (test) 4–2 Weekend Wanderers ✅");
     expect(JSON.parse(results[0].graphic).rows[0]).toMatchObject({ homeScore: 4, awayScore: 2, outcome: "W" });
+  });
+
+  it("posts the monthly round-ups on the 1st, once each", async () => {
+    const coach = await registerAdmin("roundup-coach");
+    const scorer = (await call("/api/v1/admin/squad", { token: coach.token, body: { name: "Rory Roundup", squadNumber: 31 } })).data.playerId as string;
+    const added = await call("/api/v1/results", {
+      token: coach.token,
+      body: { date: "2026-09-19", opponent: "September Saints", ourScore: 3, theirScore: 1, competition: "Sched League", scorerIds: [scorer, scorer], ownGoals: 1 },
+    });
+    expect(added.status).toBe(200);
+    await call("/api/v1/admin/fixtures", { token: coach.token, body: { opponent: "October Orient", date: "2026-10-24", time: "11:00", venue: "Sched Park", competition: "Sched League", homeAway: "home" } });
+
+    const firstOfMonth = new Date("2026-10-01T16:30:00Z"); // 17:30 in the UK
+    await scheduleClub(env as any, "syston", firstOfMonth);
+    await scheduleClub(env as any, "syston", new Date(firstOfMonth.getTime() + 5 * 60_000));
+
+    const results = await jobsFor("month_results:2026-09");
+    expect(results).toHaveLength(1);
+    expect(results[0].caption).toMatch(/^📊 September's results\n/);
+    expect(results[0].caption).toContain("Syston Tigers (test) 3–1 September Saints ✅");
+    expect(JSON.parse(results[0].graphic)).toMatchObject({ layout: "list", mode: "results", subtitle: "September 2026" });
+
+    const stats = await jobsFor("stats:2026-10");
+    expect(stats).toHaveLength(1);
+    expect(stats[0].caption).toContain("Rory R.: 2 goals");
+    expect(JSON.parse(stats[0].graphic)).toMatchObject({ layout: "leaders", columns: ["GOALS", "ASSISTS", "APPS"] });
+
+    const fixtures = await jobsFor("month_fixtures:2026-10");
+    expect(fixtures).toHaveLength(1);
+    expect(fixtures[0].caption).toMatch(/^📅 October's fixtures\n/);
+    expect(fixtures[0].caption).toContain("October Orient");
+
+    // Not the 1st: nothing more
+    await scheduleClub(env as any, "syston", new Date("2026-10-02T16:30:00Z"));
+    expect(await jobsFor("month_")).toHaveLength(2);
   });
 });

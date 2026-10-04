@@ -11,6 +11,7 @@ export const MATCH_KINDS = [
 ] as const;
 export const SCHEDULED_KINDS = [
   "countdown", "matchday", "fixtures", "results", "table", "postponed", "birthday", "player_of_week", "player_of_month", "milestone", "throwback", "quote",
+  "month_fixtures", "month_results", "stats_roundup",
 ] as const;
 export const POST_KINDS = [...MATCH_KINDS, ...SCHEDULED_KINDS] as const;
 export type PostKind = (typeof POST_KINDS)[number];
@@ -32,6 +33,7 @@ export const DEFAULT_EVENT_SETTINGS: EventSettings = {
   full_time: BOTH, yellow: APP_ONLY, red: APP_ONLY, sub: APP_ONLY, motm: BOTH, correction: BOTH,
   countdown: BOTH, matchday: BOTH, fixtures: BOTH, results: BOTH, table: BOTH, postponed: BOTH,
   birthday: APP_ONLY, player_of_week: BOTH, player_of_month: BOTH, milestone: BOTH, throwback: APP_ONLY, quote: APP_ONLY,
+  month_fixtures: BOTH, month_results: BOTH, stats_roundup: BOTH,
 };
 
 export function isPostKind(value: unknown): value is PostKind {

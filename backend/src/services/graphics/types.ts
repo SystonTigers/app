@@ -127,6 +127,23 @@ export interface TableGraphic extends Base {
   rows: TableRow[];
 }
 
+export interface LeaderRow {
+  /** Joint places share a rank */
+  rank: number;
+  name: string;
+  /** One value per column, e.g. goals, assists, appearances */
+  values: number[];
+}
+
+/** A leaderboard: the season's top scorers. The first column decides the order. */
+export interface LeadersGraphic extends Base {
+  layout: "leaders";
+  subtitle: string | null;
+  /** Up to three short column labels, e.g. ["GOALS", "ASSISTS", "APPS"] */
+  columns: string[];
+  rows: LeaderRow[];
+}
+
 /** One player: birthday, player of the week/month, milestone, Man of the Match. */
 export interface PersonGraphic extends Base {
   layout: "person";
@@ -157,6 +174,7 @@ export type Graphic =
   | LineupGraphic
   | ListGraphic
   | TableGraphic
+  | LeadersGraphic
   | PersonGraphic
   | QuoteGraphic
   | PhotoGraphic;

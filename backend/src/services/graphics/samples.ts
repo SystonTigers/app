@@ -50,6 +50,10 @@ export function sampleGraphics(brand: Brand = DEFAULT_BRAND): Record<string, Gra
         ["Quorn Juniors", 6, 2, 1, 3, -2, 7], ["Thurmaston Town", 6, 1, 2, 3, -5, 5], ["Rothley Imperial", 6, 1, 1, 4, -8, 4], ["Sileby Saints", 6, 0, 2, 4, -13, 2],
       ].map(([team, played, won, drawn, lost, gd, pts], i) => ({ position: i + 1, team: String(team), played: Number(played), won: Number(won), drawn: Number(drawn), lost: Number(lost), goalDifference: Number(gd), points: Number(pts), isUs: team === brand.clubName })),
     },
+    stats: {
+      ...base, layout: "leaders", kind: "stats_roundup", headline: "TOP SCORERS", subtitle: "2026/27 so far", columns: ["GOALS", "ASSISTS", "APPS"],
+      rows: [["Sam S.", 9, 4, 8], ["Alfie B.", 6, 5, 7], ["Will J.", 6, 2, 8], ["Oscar P.", 3, 1, 8], ["Theo M.", 3, 1, 6]].map(([name, g, a, apps], i) => ({ rank: [1, 2, 3, 4, 4][i], name: String(name), values: [Number(g), Number(a), Number(apps)] })),
+    },
     birthday: { ...base, layout: "person", kind: "birthday", headline: "HAPPY BIRTHDAY", playerName: "Sam S.", photoUrl: null, stat: null, secondary: "Have a brilliant day from everyone at the club" },
     potw: { ...base, layout: "person", kind: "player_of_week", headline: "PLAYER OF THE WEEK", playerName: "Sam S.", photoUrl: "sample:photo", stat: "3 goals · 1 assist", secondary: null },
     milestone: { ...base, layout: "person", kind: "milestone", headline: "MILESTONE", playerName: "Will J.", photoUrl: null, stat: "50 appearances", secondary: "What a servant to the club" },

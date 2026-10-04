@@ -7,85 +7,28 @@
  * Mon 18:00 fixtures · Mon 12:00 table · Mon 19:00 player of the week
  * Sun 19:00 results · 1st 10:00 player of the month · Wed 12:00 quote
  * Thu 18:00 throwback · daily 08:00 birthdays and match day · 18:00 countdown
- * (3 days before) · 19:00 milestones · postponements whenever they happen.
+ * (3 days before) · 19:00 milestones · postponements whenever they happen ·
+ * monthly round-ups on the 1st (roundups.ts).
  */
-import { opponentBadgeUrl, normalizeTeamName } from "../opponentBadges";
+import { normalizeTeamName } from "../opponentBadges";
 import { publicPhotoSql } from "../consent";
 import { guessOurTeam } from "../league/table";
 import type { SocialEnv } from "./club";
 import {
   birthdayPost, countdownPost, fixturesPost, matchdayPost, milestonePost, playerOfPeriodPost, postponedPost, QUOTES, quotePost,
-  resultsPost, tablePost, throwbackPost, type FixtureFacts, type ResultFacts,
+  resultsPost, tablePost, throwbackPost,
 } from "./clubPosts";
 import { displayDate, type PostKind } from "./content";
 import { queueClubPost } from "./jobs";
+import { queueRoundups } from "./roundups";
+import { addDays, fixtureFacts, fixturesBetween, monthLabel, person, resultsBetween, topPlayer, ukTime, type UkTime } from "./scheduleData";
 
-export interface UkTime { date: string; hour: number; minute: number; weekday: number }
+export { addDays, ukTime } from "./scheduleData";
 
-/** The date, hour and weekday (0 = Sunday) in the UK. */
-export function ukTime(now: Date): UkTime {
-  const parts = Object.fromEntries(new Intl.DateTimeFormat("en-GB", {
-    timeZone: "Europe/London", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", weekday: "short", hourCycle: "h23",
-  }).formatToParts(now).map((p) => [p.type, p.value]));
-  const weekday = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(parts.weekday);
-  return { date: `${parts.year}-${parts.month}-${parts.day}`, hour: Number(parts.hour), minute: Number(parts.minute), weekday };
-}
-
-export function addDays(iso: string, days: number): string {
-  const d = new Date(`${iso}T12:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + days);
-  return d.toISOString().slice(0, 10);
-}
-
-const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const APPEARANCE_MILESTONES = [10, 25, 50, 75, 100, 150, 200, 250, 300];
 const GOAL_MILESTONES = [10, 25, 50, 75, 100, 150, 200];
 
-interface FixtureRow { id: string; opponent: string; fixture_date: string; kick_off_time: string | null; venue: string | null; competition: string | null; home_team: string | null; away_team: string | null }
-
-async function fixtureFacts(env: SocialEnv, tenantId: string, r: FixtureRow): Promise<FixtureFacts> {
-  return {
-    id: r.id, opponent: r.opponent, opponentBadgeUrl: await opponentBadgeUrl(env, tenantId, r.opponent),
-    homeAway: r.home_team && r.home_team === r.opponent && r.away_team !== r.opponent ? "away" : "home",
-    date: r.fixture_date.slice(0, 10), time: r.kick_off_time, venue: r.venue, competition: r.competition,
-  };
-}
-
-/**
- * Fixtures in a date range. "postponed" only returns ones changed in the last
- * week, so turning this on doesn't announce old postponements.
- */
-async function fixturesBetween(env: SocialEnv, tenantId: string, from: string, to: string, status: "live" | "postponed"): Promise<FixtureRow[]> {
-  const filter = status === "postponed"
-    ? `status = 'postponed' AND substr(COALESCE(updated_at, ''), 1, 10) >= ?`
-    : `COALESCE(status, 'scheduled') NOT IN ('postponed', 'cancelled', 'completed') AND ? = ?`;
-  const { results } = await env.DB.prepare(
-    `SELECT id, opponent, fixture_date, kick_off_time, venue, competition, home_team, away_team FROM fixtures
-     WHERE tenant_id = ? AND substr(fixture_date, 1, 10) BETWEEN ? AND ? AND ${filter} ORDER BY fixture_date, kick_off_time LIMIT 12`,
-  ).bind(tenantId, from, to, ...(status === "postponed" ? [addDays(from, -7)] : [1, 1])).all<FixtureRow>();
-  return results || [];
-}
-
-async function person(env: SocialEnv, tenantId: string, playerId: string): Promise<{ name: string; photoUrl: string | null } | null> {
-  const row = await env.DB.prepare(`SELECT name, ${publicPhotoSql()} AS photo FROM squad WHERE tenant_id = ? AND id = ?`)
-    .bind(tenantId, playerId).first<{ name: string; photo: string | null }>();
-  return row ? { name: row.name, photoUrl: row.photo } : null;
-}
-
-/** Top player by goals ×5, assists ×3, MOTM ×10 between two times (ms). */
-async function topPlayer(env: SocialEnv, tenantId: string, from: number, to: number) {
-  const { results } = await env.DB.prepare(
-    `SELECT player_id, SUM(event_type = 'goal') AS goals, SUM(event_type = 'assist') AS assists, SUM(event_type = 'motm') AS motm
-     FROM match_events WHERE tenant_id = ? AND player_id IS NOT NULL AND created_at >= ? AND created_at < ?
-     GROUP BY player_id ORDER BY SUM(event_type = 'goal') * 5 + SUM(event_type = 'assist') * 3 + SUM(event_type = 'motm') * 10 DESC LIMIT 1`,
-  ).bind(tenantId, from, to).all<{ player_id: string; goals: number; assists: number; motm: number }>();
-  const top = results?.[0];
-  if (!top || top.goals * 5 + top.assists * 3 + top.motm * 10 === 0) return null;
-  const p = await person(env, tenantId, top.player_id);
-  return p ? { ...p, goals: Number(top.goals), assists: Number(top.assists), motm: Number(top.motm), playerId: top.player_id } : null;
-}
-
-type Queue = (kind: PostKind, sourceId: string, build: Parameters<typeof queueClubPost>[1]["build"], extra?: { fixtureId?: string; showsPlayers?: boolean }) => Promise<void>;
+export type Queue = (kind: PostKind, sourceId: string, build: Parameters<typeof queueClubPost>[1]["build"], extra?: { fixtureId?: string; showsPlayers?: boolean }) => Promise<void>;
 
 /** Everything due for one club right now. */
 export async function scheduleClub(env: SocialEnv, tenantId: string, now: Date): Promise<number> {
@@ -133,17 +76,8 @@ export async function scheduleClub(env: SocialEnv, tenantId: string, now: Date):
   }
   if (t.weekday === 0 && t.hour >= 19) {
     await queue("results", `results:${t.date}`, async (club) => {
-      const { results } = await env.DB.prepare(
-        `SELECT r.match_date, r.opponent, r.our_score, r.their_score, r.competition, f.home_team, f.away_team
-         FROM team_results r LEFT JOIN fixtures f ON f.id = r.fixture_id AND f.tenant_id = r.tenant_id
-         WHERE r.tenant_id = ? AND substr(r.match_date, 1, 10) BETWEEN ? AND ? ORDER BY r.match_date LIMIT 8`,
-      ).bind(tenantId, addDays(t.date, -6), t.date).all<{ match_date: string; opponent: string; our_score: number; their_score: number; competition: string | null; home_team: string | null; away_team: string | null }>();
-      if (!results?.length) return null;
-      const facts: ResultFacts[] = await Promise.all(results.map(async (r) => ({
-        date: r.match_date.slice(0, 10), opponent: r.opponent, opponentBadgeUrl: await opponentBadgeUrl(env, tenantId, r.opponent),
-        homeAway: (r.home_team && r.home_team === r.opponent && r.away_team !== r.opponent ? "away" : "home") as "home" | "away",
-        ourScore: Number(r.our_score), theirScore: Number(r.their_score), competition: r.competition,
-      })));
+      const facts = await resultsBetween(env, tenantId, addDays(t.date, -6), t.date);
+      if (!facts.length) return null;
       return resultsPost(club.brand, facts, "This week");
     });
   }
@@ -179,10 +113,11 @@ export async function scheduleClub(env: SocialEnv, tenantId: string, now: Date):
     await queue("player_of_month", `potm:${prev}`, async (club, policy) => {
       const from = Date.parse(`${prev}-01T00:00:00Z`);
       const top = await topPlayer(env, tenantId, from, Date.parse(`${t.date}T00:00:00Z`));
-      return top ? playerOfPeriodPost(club.brand, policy, "month", top, `${MONTHS[Number(prev.slice(5, 7)) - 1]} ${prev.slice(0, 4)}`) : null;
+      return top ? playerOfPeriodPost(club.brand, policy, "month", top, monthLabel(prev)) : null;
     });
   }
   if (t.hour >= 19) await queueMilestones(env, tenantId, t, now, queue);
+  await queueRoundups(env, tenantId, t, now, queue);
   if (t.weekday === 4 && t.hour >= 18) {
     // Only gallery photos staff ticked for Throwback Thursday, from at least six months ago
     await queue("throwback", `throwback:${t.date}`, async (club) => {
@@ -194,7 +129,7 @@ export async function scheduleClub(env: SocialEnv, tenantId: string, now: Date):
       ).bind(tenantId, addDays(t.date, -180)).all<{ url: string; caption: string | null; title: string | null; taken: string | null }>();
       if (!results?.length) return null;
       const pick = results[Math.floor(Date.parse(t.date) / 604_800_000) % results.length];
-      const month = pick.taken && /^\d{4}-\d{2}/.test(pick.taken) ? `${MONTHS[Number(pick.taken.slice(5, 7)) - 1]} ${pick.taken.slice(0, 4)}` : null;
+      const month = pick.taken && /^\d{4}-\d{2}/.test(pick.taken) ? monthLabel(pick.taken.slice(0, 7)) : null;
       return throwbackPost(club.brand, pick.url, [pick.caption || pick.title, month].filter(Boolean).join(", ") || null);
     }, { showsPlayers: true });
   }

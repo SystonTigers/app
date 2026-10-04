@@ -1,7 +1,7 @@
 /** Club layouts: fixture/result lists, league table, player spotlights, quotes and photos. */
 import { badge, hasImage, containImage, rect, text } from "../svg";
 import { inkOn, wrap } from "../text";
-import { GRAPHIC_WIDTH as W, type ListGraphic, type PersonGraphic, type PhotoGraphic, type QuoteGraphic, type TableGraphic } from "../types";
+import { GRAPHIC_WIDTH as W, type LeadersGraphic, type ListGraphic, type PersonGraphic, type PhotoGraphic, type QuoteGraphic, type TableGraphic } from "../types";
 import { footerTop, MARGIN, type DrawContext } from "./common";
 
 const OUTCOME_COLOURS = { W: "#22C55E", D: "#A3A3A3", L: "#EF4444" };
@@ -68,6 +68,39 @@ export function drawTable(d: DrawContext, g: TableGraphic): string {
     const values = [row.played, row.won, row.drawn, row.lost, row.goalDifference > 0 ? `+${row.goalDifference}` : String(row.goalDifference), row.points];
     cols.forEach(([, x], j) => {
       out += text(String(values[j]), x, base, { font: j === 5 ? t.fonts.display : t.fonts.body, size: j === 5 ? size + 2 : size, fill: ink, anchor: "middle" });
+    });
+  });
+  return out;
+}
+
+export function drawLeaders(d: DrawContext, g: LeadersGraphic): string {
+  const { c, t, p } = d;
+  const bottom = footerTop(d);
+  let out = t.headline(c, g.headline, W / 2, 270, W - 2 * MARGIN, 170, p).svg;
+  if (g.subtitle) {
+    out += text(g.subtitle.toUpperCase(), W / 2, 336, { font: t.fonts.strong, size: 34, fill: p.accent, anchor: "middle", maxWidth: W - 2 * MARGIN, minSize: 20, letterSpacing: 2 });
+  }
+  const columns = g.columns.slice(0, 3);
+  const rows = g.rows.slice(0, 8);
+  const colX = columns.map((_, i) => W - MARGIN - 70 - (columns.length - 1 - i) * 150);
+  // Rows grow up to 118px; a short board sits a little above the middle of the space
+  const space = bottom - 450;
+  const rowH = Math.min(118, space / Math.max(rows.length, 1));
+  const labelY = 410 + Math.max(0, (space - rows.length * rowH) * 0.35);
+  const top = labelY + 22;
+  columns.forEach((label, i) => { out += text(label, colX[i], labelY, { font: t.fonts.body, size: 26, fill: p.muted, anchor: "middle", letterSpacing: 2, maxWidth: 140, minSize: 16 }); });
+  const nameRoom = colX[0] - 90 - (MARGIN + 110);
+  rows.forEach((row, i) => {
+    const y = top + i * rowH;
+    const leader = row.rank === 1;
+    out += t.row(c, MARGIN, y + 4, W - 2 * MARGIN, rowH - 8, p, leader);
+    const ink = leader ? p.accentInk : p.panelInk;
+    const size = Math.round(Math.min(rowH, 96) * 0.4);
+    const base = y + rowH / 2 + size * 0.36;
+    out += text(String(row.rank), MARGIN + 48, base, { font: t.fonts.display, size: size + 6, fill: leader ? ink : p.accent, anchor: "middle" });
+    out += text(row.name.toUpperCase(), MARGIN + 110, base, { font: t.fonts.strong, size, fill: ink, maxWidth: nameRoom, minSize: 16 });
+    columns.forEach((_, j) => {
+      out += text(String(row.values[j] ?? 0), colX[j], base, { font: j === 0 ? t.fonts.display : t.fonts.body, size: j === 0 ? size + 8 : size, fill: ink, anchor: "middle" });
     });
   });
   return out;
