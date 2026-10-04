@@ -66,15 +66,15 @@ export function FaEmailImport() {
     }
 
     return (
-        <section className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 space-y-4">
+        <section className="card space-y-4">
             <div>
-                <h2 className="text-xl font-bold text-gray-900 dark:text-white">Fixtures from FA emails</h2>
-                <p className="text-sm text-gray-500 mt-1">
+                <h2 className="text-2xl">Fixtures from FA emails</h2>
+                <p className="text-sm text-muted mt-1">
                     When FA Full-Time emails you about a fixture (a new fixture, a change, a referee appointment or the weekly reminder), open it, select all, copy and paste it here.
                     New fixtures are added and moved, postponed or cancelled ones are updated. Referee and contact details in the email are never saved.
                 </p>
             </div>
-            {error && <div className="p-3 rounded text-sm bg-red-50 text-red-800 dark:bg-red-900/30 dark:text-red-200">{error}</div>}
+            {error && <div role="alert" className="p-3 text-sm border border-red-500/40 bg-red-500/10 text-red-200">{error}</div>}
             <textarea
                 aria-label="FA Full-Time email"
                 value={text}
@@ -82,28 +82,28 @@ export function FaEmailImport() {
                 rows={6}
                 spellCheck={false}
                 placeholder={'e.g.\nUnder 18 Division One\nSun 20 Sept 2026 14:00, Rival FC U18 -v- Your Team U18 Status: Normal\nVenue: ...'}
-                className="w-full font-mono text-xs p-3 rounded border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900"
+                className="field font-mono text-xs"
             />
             <div className="flex justify-end">
-                <button type="button" onClick={importEmail} disabled={busy || !text.trim()} className="px-5 py-2 bg-brand text-white font-bold rounded disabled:opacity-50">
+                <button type="button" onClick={importEmail} disabled={busy || !text.trim()} className="btn btn-primary">
                     {busy ? 'Reading the email…' : 'Add to fixtures'}
                 </button>
             </div>
             {result && (
                 <div className="space-y-2 text-sm" role="status">
-                    <p className="font-semibold text-green-700 dark:text-green-400">
+                    <p className="font-semibold text-green-400">
                         {result.added || result.updated
                             ? `Done: ${[result.added ? `${result.added} added` : '', result.updated ? `${result.updated} updated` : ''].filter(Boolean).join(', ')}.`
                             : 'Your fixtures were already up to date.'}
                     </p>
-                    <ul className="divide-y divide-gray-100 dark:divide-gray-700">
+                    <ul className="divide-y divide-border">
                         {result.lines.map((l, i) => (
                             <li key={i} className="py-2 flex flex-wrap justify-between gap-2">
-                                <span className="text-gray-900 dark:text-white">
+                                <span className="text-foreground">
                                     {when(l)} · {l.opponent ? `${l.homeAway === 'home' ? 'v' : '@'} ${l.opponent}` : 'Other teams'}
-                                    {l.status !== 'scheduled' && <span className="ml-2 text-xs font-bold uppercase text-amber-600">{l.status}</span>}
+                                    {l.status !== 'scheduled' && <span className="ml-2 text-xs font-bold uppercase text-amber-300">{l.status}</span>}
                                 </span>
-                                <span className="text-gray-500">{ACTION_TEXT[l.action]}{l.changes.length ? ` (${l.changes.join(', ')})` : ''}</span>
+                                <span className="text-muted">{ACTION_TEXT[l.action]}{l.changes.length ? ` (${l.changes.join(', ')})` : ''}</span>
                             </li>
                         ))}
                     </ul>

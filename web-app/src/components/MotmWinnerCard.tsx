@@ -1,4 +1,6 @@
 import type { LatestMotm } from '@/lib/club';
+import { formatDate } from '@/lib/format';
+import { Icon } from '@/components/ui/Icon';
 
 /** Club page sidebar: the latest Man of the Match, voted for by parents and players in the app. */
 export function MotmWinnerCard({ motm }: { motm: LatestMotm }) {
@@ -8,29 +10,27 @@ export function MotmWinnerCard({ motm }: { motm: LatestMotm }) {
   const score = match && match.ourScore != null && match.theirScore != null ? ` ${match.ourScore}-${match.theirScore}` : '';
 
   return (
-    <div className="bg-gray-900 text-white chamfer-lg shadow-sm p-6">
-      <p className="text-xs font-black uppercase tracking-widest text-brand mb-3">
-        Man of the Match{motm.winners.length > 1 ? ' (joint)' : ''}
-      </p>
+    <section className="card border-brand/40">
+      <p className="eyebrow mb-4">Man of the Match{motm.winners.length > 1 ? ' (joint)' : ''}</p>
       <div className="flex items-center gap-4">
         {photo ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={photo} alt="" className="w-16 h-16 rounded-full object-cover border-2 border-brand" />
+          <img src={photo} alt="" className="w-16 h-16 hexagon object-cover" />
         ) : (
-          <div className="w-16 h-16 rounded-full bg-brand text-black flex items-center justify-center text-2xl font-black" aria-hidden="true">
-            ★
+          <div className="w-16 h-16 hexagon bg-brand text-brand-foreground flex items-center justify-center" aria-hidden="true">
+            <Icon name="star" className="w-7 h-7" />
           </div>
         )}
-        <div>
-          <p className="text-xl font-black uppercase italic leading-tight">{names}</p>
+        <div className="min-w-0">
+          <p className="font-display text-2xl font-extrabold uppercase italic leading-tight break-words">{names}</p>
           {match && (
-            <p className="text-sm text-gray-400 mt-1">
-              vs {match.opponent}{score} · {new Date(match.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+            <p className="text-sm text-muted mt-1">
+              v {match.opponent}{score} · {formatDate(match.date, { day: 'numeric', month: 'short' })}
             </p>
           )}
         </div>
       </div>
-      <p className="text-xs text-gray-400 mt-4">Voted for by parents and players in the club app.</p>
-    </div>
+      <p className="text-xs text-muted mt-4">Voted for by parents and players in the club app.</p>
+    </section>
   );
 }

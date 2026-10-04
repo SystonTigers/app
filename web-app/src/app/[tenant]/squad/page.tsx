@@ -1,167 +1,119 @@
-
-import { getServerSDK } from '@/lib/sdk';
-import { Suspense } from 'react';
-
 import Link from 'next/link';
+import { getServerSDK } from '@/lib/sdk';
+import { EmptyNote, PageHeader } from '@/components/ui/Page';
 
-// Helper to calculate time at club from joined_date
-function calculateTimeAtClub(joinedDate: string): string {
-  const joined = new Date(joinedDate);
-  const now = new Date();
-  const diffMs = now.getTime() - joined.getTime();
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-  if (diffDays < 30) return `${diffDays}d`;
-
-  const months = Math.floor(diffDays / 30);
-  const years = Math.floor(months / 12);
-  const remainingMonths = months % 12;
-
-  if (years === 0) return `${months}m`;
-  if (remainingMonths === 0) return `${years}y`;
-  return `${years}y ${remainingMonths}m`;
+interface SquadPlayer {
+  id: string;
+  name: string;
+  number?: number;
+  position?: string;
+  photo?: string | null;
+  stats?: { appearances?: number; goals?: number; assists?: number };
 }
 
-// Player Card Component
-function PlayerCard({ player, tenant }: { player: any; tenant: string }) {
-  const initials = player.name
-    .split(' ')
-    .map((n: string) => n[0])
+function initials(name: string): string {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((n) => n[0])
     .join('')
     .toUpperCase()
-    .substring(0, 2);
+    .slice(0, 2);
+}
 
+function PlayerCard({ player, tenant }: { player: SquadPlayer; tenant: string }) {
+  const stats = [
+    { label: 'Apps', value: player.stats?.appearances ?? 0 },
+    { label: 'Goals', value: player.stats?.goals ?? 0 },
+    { label: 'Assists', value: player.stats?.assists ?? 0 },
+  ];
   return (
-    <Link href={`/${tenant}/squad/${player.id}`} className="block group relative overflow-hidden chamfer-lg bg-white dark:bg-gray-800 shadow-md hover:shadow-xl transition-all duration-300 border border-gray-100 dark:border-gray-700 hover:-translate-y-1">
-      {/* Top Pattern / Gradient */}
-      <div className={`h-24 w-full bg-gradient-to-r from-brand to-brand/80 absolute top-0 left-0 z-0`}>
-        <div className="absolute inset-0 opacity-20 bg-[url('/assets/pattern.png')] bg-repeat" />
-      </div>
-
-      <div className="relative z-10 p-6 pt-12 flex flex-col items-center">
-        {/* Avatar / Photo */}
-        <div className="relative mb-4">
-          <div className="h-28 w-28 chamfer-lg border-4 border-white dark:border-gray-800 bg-gray-200 dark:bg-gray-700 flex items-center justify-center shadow-lg overflow-hidden">
-            {player.image ? (
-              <img src={player.image} alt={player.name} className="h-full w-full object-cover" />
-            ) : (
-              <span className="text-3xl font-black text-gray-400 select-none">{initials}</span>
-            )}
-          </div>
-          {player.number && (
-            <div className="absolute bottom-0 right-0 bg-white dark:bg-gray-900 border-2 border-brand text-brand font-black rotate-45 w-10 h-10 flex items-center justify-center shadow-md text-sm">
-              <div className="-rotate-45">{player.number}</div>
-            </div>
+    <Link
+      href={`/${tenant}/squad/${player.id}`}
+      className="card p-5 flex flex-col items-center text-center group hover:border-brand/60 transition-colors"
+    >
+      <div className="relative mb-4">
+        <div className="w-24 h-24 hexagon bg-surface-raised flex items-center justify-center overflow-hidden">
+          {player.photo ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={player.photo} alt="" className="w-full h-full object-cover" />
+          ) : (
+            <span className="font-display text-3xl font-extrabold text-muted select-none" aria-hidden="true">{initials(player.name)}</span>
           )}
         </div>
-
-        {/* Info */}
-        <h3 className="text-xl font-bold text-gray-900 dark:text-white text-center mb-1 group-hover:text-brand transition-colors">
-          {player.name}
-        </h3>
-        <span className="inline-block px-3 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-xs font-bold uppercase tracking-wider chamfer-sm mb-2">
-          {player.position || 'Player'}
-        </span>
-
-        {/* Time at Club Badge */}
-        {player.joined_date && (
-          <div className="text-xs text-gray-400 mb-4 flex items-center justify-center gap-1">
-            <span>⏱️</span>
-            <span>{calculateTimeAtClub(player.joined_date)}</span>
-          </div>
-        )}
-
-        {/* Stats Grid */}
-        {player.stats && (
-          <div className="w-full grid grid-cols-3 gap-2 border-t border-gray-100 dark:border-gray-700 pt-4">
-            <div className="text-center">
-              <div className="text-lg font-bold text-gray-800 dark:text-gray-100">{player.stats.appearances || 0}</div>
-              <div className="text-[10px] uppercase text-gray-500 font-bold">Apps</div>
-            </div>
-            <div className="text-center border-l border-gray-100 dark:border-gray-700">
-              <div className="text-lg font-bold text-gray-800 dark:text-gray-100">{player.stats.goals || 0}</div>
-              <div className="text-[10px] uppercase text-gray-500 font-bold">Goals</div>
-            </div>
-            <div className="text-center border-l border-gray-100 dark:border-gray-700">
-              <div className="text-lg font-bold text-gray-800 dark:text-gray-100">{player.stats.assists || 0}</div>
-              <div className="text-[10px] uppercase text-gray-500 font-bold">Assists</div>
-            </div>
-          </div>
+        {player.number != null && (
+          <span className="absolute -bottom-1 -right-2 w-10 h-10 hexagon bg-brand text-brand-foreground font-display text-lg font-extrabold flex items-center justify-center">
+            <span className="sr-only">Number </span>{player.number}
+          </span>
         )}
       </div>
+
+      <h3 className="text-xl leading-tight mb-1 group-hover:text-brand transition-colors break-words">{player.name}</h3>
+      <p className="text-xs font-bold uppercase tracking-wider text-muted mb-4">{player.position || 'Player'}</p>
+
+      <dl className="w-full grid grid-cols-3 border-t border-border pt-3 mt-auto">
+        {stats.map((s, i) => (
+          <div key={s.label} className={`flex flex-col-reverse ${i > 0 ? 'border-l border-border' : ''}`}>
+            <dt className="text-[10px] uppercase font-bold tracking-wider text-muted">{s.label}</dt>
+            <dd className="font-display text-2xl font-extrabold">{s.value}</dd>
+          </div>
+        ))}
+      </dl>
     </Link>
+  );
+}
+
+const GROUPS: Array<{ title: string; match: (position: string) => boolean }> = [
+  { title: 'Goalkeepers', match: (p) => p.includes('keeper') },
+  { title: 'Defenders', match: (p) => p.includes('defender') || p.includes('back') },
+  { title: 'Midfielders', match: (p) => p.includes('midfield') },
+  { title: 'Forwards', match: (p) => p.includes('forward') || p.includes('striker') },
+];
+
+function PlayerGrid({ players, tenant }: { players: SquadPlayer[]; tenant: string }) {
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-5">
+      {players.map((p) => <PlayerCard key={p.id} player={p} tenant={tenant} />)}
+    </div>
   );
 }
 
 export default async function SquadPage({ params }: { params: Promise<{ tenant: string }> }) {
   const { tenant } = await params;
   const sdk = getServerSDK(tenant);
+  const raw: unknown = await sdk.getSquad().catch(() => []);
+  const squad = Array.isArray(raw) ? (raw as SquadPlayer[]) : [];
 
-  let squad: any[] = [];
-  try {
-    squad = await sdk.getSquad().catch(() => []);
-  } catch (e) {
-    console.error("Failed to fetch squad");
-  }
-
-  const goalkeepers = squad.filter((p: any) => p.position?.toLowerCase().includes('keeper'));
-  const defenders = squad.filter((p: any) => p.position?.toLowerCase().includes('defender') || p.position?.toLowerCase().includes('back'));
-  const midfielders = squad.filter((p: any) => p.position?.toLowerCase().includes('midfield'));
-  const forwards = squad.filter((p: any) => p.position?.toLowerCase().includes('forward') || p.position?.toLowerCase().includes('striker'));
-  const others = squad.filter((p: any) => !goalkeepers.includes(p) && !defenders.includes(p) && !midfielders.includes(p) && !forwards.includes(p));
-
-  const renderSection = (title: string, players: any[]) => {
-    if (players.length === 0) return null;
-    return (
-      <div className="mb-12">
-        <h2 className="text-2xl font-black uppercase tracking-tighter text-gray-400 mb-6 border-b border-gray-200 dark:border-gray-800 pb-2">
-          {title}
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {players.map((p: any) => <PlayerCard key={p.id} player={p} tenant={tenant} />)}
-        </div>
-      </div>
-    );
-  };
+  const grouped = GROUPS.map((g) => ({
+    title: g.title,
+    players: squad.filter((p) => g.match(String(p.position ?? '').toLowerCase())),
+  }));
+  const placed = new Set(grouped.flatMap((g) => g.players.map((p) => p.id)));
+  const others = squad.filter((p) => !placed.has(p.id));
+  const useGroups = placed.size > 0;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-black pb-20">
-      {/* Hero Section */}
-      <div className="relative bg-gray-900 text-white py-24 px-6 overflow-hidden">
-        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1522778119026-d647f0565c6a?auto=format&fit=crop&q=80')] bg-cover bg-center opacity-20" />
-        <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-transparent to-transparent" />
+    <div className="container py-8 md:py-12">
+      <PageHeader eyebrow="The team" title="Squad" subtitle="The players wearing the badge this season. Tap a player to see their stats." />
 
-        <div className="container relative z-10 text-center">
-          <h1 className="text-5xl md:text-7xl font-black uppercase italic tracking-tighter mb-4">
-            Meet the <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand to-yellow-500">Squad</span>
-          </h1>
-          <p className="text-xl text-gray-300 max-w-2xl mx-auto font-medium">
-            The talented individuals representing our badge this season.
-          </p>
+      {squad.length === 0 ? (
+        <EmptyNote icon="users" title="No players yet">
+          The squad shows here once the club adds its players.
+        </EmptyNote>
+      ) : useGroups ? (
+        <div className="space-y-10">
+          {[...grouped, { title: 'Squad', players: others }].filter((g) => g.players.length > 0).map((g) => (
+            <section key={g.title}>
+              <h2 className="text-2xl italic mb-4 pb-2 border-b border-border">
+                {g.title} <span className="text-muted text-lg not-italic">{g.players.length}</span>
+              </h2>
+              <PlayerGrid players={g.players} tenant={tenant} />
+            </section>
+          ))}
         </div>
-      </div>
-
-      <div className="container px-6 -mt-10 relative z-20">
-        {/* If we have categorized players, show sections. Otherwise just a grid. */}
-        {squad.length === 0 ? (
-          <div className="chamfer-lg bg-white dark:bg-gray-800 shadow-md border border-gray-100 dark:border-gray-700 p-12 text-center">
-            <p className="text-lg font-semibold text-gray-900 dark:text-white">No players added yet.</p>
-            <p className="text-gray-500 dark:text-gray-400 mt-2">The squad will appear here once the club adds its players.</p>
-          </div>
-        ) : (goalkeepers.length > 0 || defenders.length > 0) ? (
-          <>
-            {renderSection('Goalkeepers', goalkeepers)}
-            {renderSection('Defenders', defenders)}
-            {renderSection('Midfielders', midfielders)}
-            {renderSection('Forwards', forwards)}
-            {renderSection('Squad', others)}
-          </>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {squad.map((p: any) => <PlayerCard key={p.id} player={p} tenant={tenant} />)}
-          </div>
-        )}
-      </div>
+      ) : (
+        <PlayerGrid players={squad} tenant={tenant} />
+      )}
     </div>
   );
 }

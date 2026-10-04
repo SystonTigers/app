@@ -2,6 +2,8 @@
 // Plans and prices. Keep in step with PLANS in backend/src/routes/billing.ts.
 
 import Link from 'next/link';
+import { SiteFooter, SiteHeader } from '@/components/SiteHeader';
+import { Icon } from '@/components/ui/Icon';
 
 export const metadata = {
   title: 'Pricing – Boost Huddle',
@@ -45,63 +47,59 @@ const faqs = [
 
 export default function PricingPage() {
   return (
-    <div className="min-h-screen bg-[#0B0D0F] text-white">
-      <header className="max-w-6xl mx-auto px-4 py-6 flex items-center justify-between">
-        <Link href="/" className="text-2xl font-black italic uppercase no-underline text-white">Boost Huddle</Link>
-        <nav className="flex items-center gap-5 text-sm font-bold">
-          <Link href="/login" className="text-gray-300 hover:text-white">Log in</Link>
-          <Link href="/create-team" className="px-4 py-2 bg-brand text-black chamfer-sm hover:bg-white">Start free trial</Link>
-        </nav>
-      </header>
+    <div className="min-h-screen bg-background text-foreground">
+      <SiteHeader />
 
-      <main className="max-w-5xl mx-auto px-4 pb-24">
-        <section className="text-center pt-10 pb-12">
-          <h1 className="text-4xl md:text-5xl font-black italic uppercase">Simple pricing</h1>
-          <p className="mt-4 text-lg text-gray-300">One price per club. Free for 14 days, no card needed.</p>
+      <main className="container max-w-5xl pb-20 sm:pb-24">
+        <section className="text-center pt-8 sm:pt-12 pb-10 sm:pb-12">
+          <p className="eyebrow mb-3">Pricing</p>
+          <h1 className="text-5xl md:text-6xl italic">Simple pricing</h1>
+          <p className="mt-4 text-lg text-muted">One price per club. Free for 14 days, no card needed.</p>
         </section>
 
-        <section className="grid gap-6 md:grid-cols-2">
+        <section aria-label="Plans" className="grid gap-6 md:grid-cols-2">
           {plans.map((plan) => (
-            <div key={plan.id} className={`relative bg-gray-900/60 border chamfer-lg p-8 flex flex-col ${plan.popular ? 'border-brand' : 'border-gray-800'}`}>
-              {plan.popular ? (
-                <span className="absolute -top-3 right-6 bg-brand text-black text-xs font-black uppercase tracking-wider px-3 py-1 chamfer-sm">Most help</span>
-              ) : null}
-              <h2 className="text-2xl font-black uppercase">{plan.name}</h2>
-              <p className="mt-2 text-gray-400">{plan.blurb}</p>
+            <div key={plan.id} className={`card p-6 sm:p-8 flex flex-col ${plan.popular ? 'border-brand' : ''}`}>
+              <div className="flex items-start justify-between gap-3">
+                <h2 className="font-display text-3xl uppercase">{plan.name}</h2>
+                {plan.popular ? (
+                  <span className="shrink-0 bg-brand text-brand-foreground text-xs font-bold uppercase tracking-wider px-3 py-1 chamfer-sm">Most help</span>
+                ) : null}
+              </div>
+              <p className="mt-2 text-muted">{plan.blurb}</p>
               <p className="mt-6">
-                <span className="text-5xl font-black">{plan.price}</span>
-                <span className="ml-2 text-gray-400">/month</span>
+                <span className="font-display text-6xl font-extrabold">{plan.price}</span>
+                <span className="ml-2 text-muted">a month</span>
               </p>
               <ul className="mt-8 space-y-3 flex-1">
                 {plan.features.map((f) => (
-                  <li key={f} className="flex gap-3 text-gray-200">
-                    <span className="text-brand font-black" aria-hidden>✓</span>
+                  <li key={f} className="flex gap-3">
+                    <Icon name="check" className="w-5 h-5 mt-0.5 shrink-0 text-brand" />
                     <span>{f}</span>
                   </li>
                 ))}
               </ul>
-              <Link
-                href="/create-team"
-                className={`mt-8 block text-center py-3 font-black uppercase italic tracking-wider chamfer-sm ${plan.popular ? 'bg-brand text-black hover:bg-white' : 'border border-gray-700 hover:border-brand'}`}
-              >
+              <Link href="/create-team" className={`btn mt-8 w-full ${plan.popular ? 'btn-primary' : 'btn-secondary'}`}>
                 Start free trial
               </Link>
             </div>
           ))}
         </section>
 
-        <section className="mt-20 max-w-3xl mx-auto">
-          <h2 className="text-2xl font-black uppercase text-center mb-8">Questions</h2>
-          <div className="space-y-6">
+        <section aria-labelledby="faq-title" className="mt-16 sm:mt-20 max-w-3xl mx-auto">
+          <h2 id="faq-title" className="text-4xl italic text-center mb-8">Questions</h2>
+          <dl className="space-y-6">
             {faqs.map((f) => (
-              <div key={f.q} className="border-b border-gray-800 pb-6">
-                <h3 className="font-bold text-lg">{f.q}</h3>
-                <p className="mt-2 text-gray-400">{f.a}</p>
+              <div key={f.q} className="border-b border-border pb-6">
+                <dt className="font-bold text-lg">{f.q}</dt>
+                <dd className="mt-2 text-muted">{f.a}</dd>
               </div>
             ))}
-          </div>
+          </dl>
         </section>
       </main>
+
+      <SiteFooter />
     </div>
   );
 }

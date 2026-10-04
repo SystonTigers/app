@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { createClientSDK } from '@/lib/sdk';
 import { clubAppLink } from '@/lib/app-link';
+import { Icon } from '@/components/ui/Icon';
 
 interface CheckItem {
     id: 'players' | 'fixtures' | 'share';
@@ -75,51 +76,46 @@ export default function OnboardingChecklist({ tenantSlug }: { tenantSlug: string
     const progress = Math.round((items.filter((i) => i.completed).length / items.length) * 100);
 
     return (
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-8">
-            <div className="flex justify-between items-start mb-4">
+        <section className="card mb-8 border-brand/40" aria-labelledby="get-started-title">
+            <div className="flex justify-between items-start gap-3 mb-4">
                 <div>
-                    <h2 className="text-lg font-bold text-gray-900 dark:text-white">Get started</h2>
-                    <p className="text-gray-500 dark:text-gray-400 text-sm">Three quick steps to get your club going.</p>
+                    <p className="eyebrow mb-1">Get started</p>
+                    <h2 id="get-started-title" className="text-2xl">Three quick steps to get your club going</h2>
                 </div>
-                <button onClick={dismiss} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
-                    <span className="sr-only">Dismiss</span>
-                    <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                        <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                    </svg>
+                <button type="button" onClick={dismiss} className="p-2 -mr-2 text-muted hover:text-foreground" aria-label="Hide these steps">
+                    <Icon name="close" className="w-5 h-5" />
                 </button>
             </div>
 
-            <div className="w-full bg-gray-200 rounded-full h-2 mb-6">
-                <div className="bg-brand h-2 rounded-full transition-all duration-500" style={{ width: `${progress}%` }}></div>
+            <div className="w-full bg-surface-raised h-1.5 mb-5" role="progressbar" aria-valuenow={progress} aria-valuemin={0} aria-valuemax={100} aria-label="Steps done">
+                <div className="bg-brand h-1.5 transition-all duration-500" style={{ width: `${progress}%` }} />
             </div>
 
-            <div className="space-y-4">
+            <ol className="space-y-2">
                 {items.map((item) => (
-                    <div key={item.id} className="flex items-center justify-between gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                        <div className="flex items-center gap-3">
-                            <div className={`w-6 h-6 rounded-full flex items-center justify-center border-2 ${item.completed ? 'bg-green-500 border-green-500 text-white' : 'border-gray-300 dark:border-gray-600'}`}>
-                                {item.completed && (
-                                    <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                    </svg>
-                                )}
-                            </div>
-                            <span className={`font-medium ${item.completed ? 'text-gray-500 line-through' : 'text-gray-900 dark:text-white'}`}>
+                    <li key={item.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 bg-surface-raised border border-border chamfer-sm">
+                        <div className="flex items-center gap-3 min-w-0">
+                            <span className={`w-7 h-7 hexagon flex items-center justify-center shrink-0 ${item.completed ? 'bg-brand text-brand-foreground' : 'bg-background text-muted'}`}>
+                                {item.completed ? <Icon name="check" className="w-4 h-4" strokeWidth={2.5} /> : null}
+                            </span>
+                            <span className={`font-semibold ${item.completed ? 'text-muted line-through' : 'text-foreground'}`}>
                                 {item.label}
                             </span>
                         </div>
                         {item.id === 'share' ? (
-                            <button onClick={copyLink} className="text-sm font-semibold text-brand hover:underline whitespace-nowrap">
+                            <button type="button" onClick={copyLink} className="btn btn-sm btn-outline">
+                                <Icon name={copied ? 'check' : 'copy'} className="w-4 h-4" />
                                 {item.cta}
                             </button>
                         ) : !item.completed && item.link ? (
-                            <Link href={item.link} className="text-sm font-semibold text-brand hover:underline whitespace-nowrap">
-                                {item.cta} &rarr;
+                            <Link href={item.link} className="btn btn-sm btn-outline">
+                                {item.cta}
+                                <Icon name="arrowRight" className="w-4 h-4" />
                             </Link>
                         ) : null}
-                    </div>
+                    </li>
                 ))}
-            </div>
-        </div>
+            </ol>
+        </section>
     );
 }

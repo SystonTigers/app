@@ -1,9 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { apiFetch } from '@/lib/session';
+import { PageHeader, EmptyNote } from '@/components/ui/Page';
+import { Icon } from '@/components/ui/Icon';
+import { Dialog, LoadingBlock, Notice, bodyError } from '@/components/admin/AdminUi';
 
 interface Team {
     id: string;
@@ -25,250 +28,127 @@ interface Organization {
     teams: Team[];
 }
 
+const PLAN_NAMES: Record<string, string> = { essentials: 'Essentials', team: 'Team', club: 'Club', club_pro: 'Club Pro' };
+
+const slugFrom = (name: string) => name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+
+/** Several teams (e.g. age groups) under one club account. Most clubs don't have one yet. */
 export default function OrganizationPage() {
     const params = useParams();
     const tenant = params?.tenant as string;
     const [org, setOrg] = useState<Organization | null>(null);
     const [loading, setLoading] = useState(true);
-    const [showAddModal, setShowAddModal] = useState(false);
+    const [showAdd, setShowAdd] = useState(false);
     const [newTeam, setNewTeam] = useState({ name: '', slug: '' });
     const [addingTeam, setAddingTeam] = useState(false);
-    const [settings, setSettings] = useState({ passFeesToPayer: false });
+    const [addError, setAddError] = useState('');
+    const [message, setMessage] = useState('');
+    const [origin, setOrigin] = useState('');
 
-    const API_BASE = process.env.NEXT_PUBLIC_API_BASE || '';
-
-    useEffect(() => {
-        fetchOrganization();
-    }, []);
-
-    const fetchOrganization = async () => {
+    const fetchOrganization = useCallback(async () => {
         try {
-            const res = await apiFetch(`/api/v1/organization`, { });
-            const data = await res.json();
-            if (data.success) {
-                setOrg(data.data);
-            }
-        } catch (error) {
-            console.error('Failed to fetch organization:', error);
+            const res = await apiFetch('/api/v1/organization');
+            const data = await res.json().catch(() => null);
+            setOrg(data?.success ? (data.data as Organization) : null);
+        } catch {
+            setOrg(null);
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
-    const handleAddTeam = async () => {
-        if (!newTeam.name || !newTeam.slug) return;
+    useEffect(() => {
+        setOrigin(window.location.origin);
+        fetchOrganization();
+    }, [fetchOrganization]);
+
+    const handleAddTeam = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!newTeam.name.trim() || !newTeam.slug.trim()) {
+            setAddError('Enter the team name and its web address.');
+            return;
+        }
         setAddingTeam(true);
+        setAddError('');
         try {
-            const res = await apiFetch(`/api/v1/organization/teams`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ teamName: newTeam.name, teamSlug: newTeam.slug }),
-            });
-            const data = await res.json();
-            if (data.success) {
-                setShowAddModal(false);
-                setNewTeam({ name: '', slug: '' });
-                fetchOrganization();
-            } else {
-                alert(data.error?.message || 'Failed to add team');
-            }
-        } catch (error) {
-            console.error('Failed to add team:', error);
+            const res = await apiFetch('/api/v1/organization/teams', { method: 'POST', body: JSON.stringify({ teamName: newTeam.name.trim(), teamSlug: newTeam.slug.trim() }) });
+            const data = await res.json().catch(() => null);
+            if (!res.ok || !data?.success) throw new Error(bodyError(data, "The team wasn't added. Please try again."));
+            setShowAdd(false);
+            setMessage(`${newTeam.name.trim()} added.`);
+            setNewTeam({ name: '', slug: '' });
+            fetchOrganization();
+        } catch (err) {
+            setAddError(err instanceof Error ? err.message : "The team wasn't added. Please try again.");
         } finally {
             setAddingTeam(false);
         }
     };
 
-    const generateSlug = (name: string) => {
-        return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-    };
-
-    if (loading) {
-        return (
-            <div className="p-6">
-                <div className="animate-pulse space-y-4">
-                    <div className="h-8 bg-gray-200 rounded w-1/3"></div>
-                    <div className="h-32 bg-gray-200 rounded"></div>
-                </div>
-            </div>
-        );
-    }
+    if (loading) return <div className="container py-8 md:py-10 max-w-4xl"><LoadingBlock label="Loading" /></div>;
 
     if (!org) {
         return (
-            <div className="p-6 max-w-4xl mx-auto">
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12 text-center">
-                    <div className="text-5xl mb-4">🏢</div>
-                    <h2 className="text-xl font-semibold text-gray-900 mb-2">No Organization</h2>
-                    <p className="text-gray-600 mb-6">
-                        Organizations are available on Club and Club Pro plans.
-                        Upgrade to manage multiple teams under one subscription.
-                    </p>
-                    <Link
-                        href={`/${tenant}/admin/billing`}
-                        className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors inline-block"
-                    >
-                        View Plans
-                    </Link>
-                </div>
+            <div className="container py-8 md:py-10 max-w-4xl">
+                <PageHeader eyebrow="Club admin" title="Teams" />
+                <EmptyNote icon="users" title="One team for now" action={<Link href={`/${tenant}/admin/billing`} className="btn btn-secondary">See plans</Link>}>
+                    Running several teams (such as age groups) under one club account isn&apos;t set up for your club yet.
+                </EmptyNote>
             </div>
         );
     }
-
-    const planNames: Record<string, string> = {
-        essentials: 'Essentials',
-        team: 'Team',
-        club: 'Club',
-        club_pro: 'Club Pro',
-    };
 
     const canAddTeams = org.teamCount < org.maxTeams;
 
     return (
-        <div className="p-6 max-w-6xl mx-auto">
-            <div className="flex items-center justify-between mb-6">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-900">{org.name}</h1>
-                    <p className="text-gray-600 mt-1">
-                        {planNames[org.plan] || org.plan} Plan • {org.teamCount} of {org.maxTeams === 999 ? '∞' : org.maxTeams} teams
-                    </p>
-                </div>
-                <div className="flex items-center gap-3">
-                    <Link
-                        href={`/${tenant}/admin/billing`}
-                        className="px-3 py-2 text-gray-600 hover:text-gray-800"
-                    >
-                        Manage Billing
-                    </Link>
-                    {canAddTeams && (
-                        <button
-                            onClick={() => setShowAddModal(true)}
-                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
-                        >
-                            <span>+</span>
-                            <span>Add Team</span>
-                        </button>
-                    )}
-                </div>
-            </div>
+        <div className="container py-8 md:py-10 max-w-4xl">
+            <PageHeader
+                eyebrow="Club admin"
+                title={org.name}
+                subtitle={`${PLAN_NAMES[org.plan] ?? org.plan} plan · ${org.teamCount} of ${org.maxTeams === 999 ? 'unlimited' : org.maxTeams} teams`}
+                actions={canAddTeams ? <button type="button" onClick={() => setShowAdd(true)} className="btn btn-primary"><Icon name="plus" className="w-4 h-4" /> Add a team</button> : undefined}
+            />
+            {message && <div className="mb-6"><Notice tone="success">{message}</Notice></div>}
 
-            {/* Teams */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 mb-6">
-                <div className="p-4 border-b border-gray-100">
-                    <h2 className="font-semibold text-gray-900">Teams</h2>
-                </div>
-                <div className="divide-y divide-gray-100">
+            <section className="card" aria-labelledby="teams-title">
+                <h2 id="teams-title" className="text-2xl mb-4">Teams</h2>
+                <ul className="divide-y divide-border">
                     {org.teams.map((team) => (
-                        <div key={team.id} className="p-4 flex items-center justify-between">
+                        <li key={team.id} className="py-3 flex flex-wrap items-center justify-between gap-3">
                             <div>
-                                <h3 className="font-medium text-gray-900">{team.name}</h3>
-                                <p className="text-sm text-gray-500">/{team.slug}</p>
+                                <p className="font-semibold">{team.name}</p>
+                                <p className="text-sm text-muted">/{team.slug}</p>
                             </div>
-                            <div className="flex items-center gap-3">
-                                <a
-                                    href={`/${team.slug}`}
-                                    target="_blank"
-                                    className="text-sm text-blue-600 hover:text-blue-700"
-                                >
-                                    Open Dashboard
-                                </a>
-                            </div>
-                        </div>
+                            <Link href={`/${team.slug}/admin`} className="btn btn-sm btn-secondary">Open</Link>
+                        </li>
                     ))}
-                </div>
+                </ul>
                 {!canAddTeams && org.maxTeams !== 999 && (
-                    <div className="p-4 bg-amber-50 border-t border-amber-100">
-                        <p className="text-sm text-amber-800">
-                            Team limit reached. <Link href={`/${tenant}/admin/billing`} className="underline">Upgrade</Link> to add more teams.
-                        </p>
-                    </div>
+                    <p className="text-sm text-muted mt-4">You&apos;ve reached your plan&apos;s team limit. <Link href={`/${tenant}/admin/billing`} className="text-brand underline">Change plan</Link> to add more.</p>
                 )}
-            </div>
+            </section>
 
-            {/* Settings */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100">
-                <div className="p-4 border-b border-gray-100">
-                    <h2 className="font-semibold text-gray-900">Payment Settings</h2>
-                </div>
-                <div className="p-4">
-                    <label className="flex items-center gap-3 cursor-pointer">
-                        <input
-                            type="checkbox"
-                            checked={settings.passFeesToPayer}
-                            onChange={(e) => setSettings(prev => ({ ...prev, passFeesToPayer: e.target.checked }))}
-                            className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                        />
+            {showAdd && (
+                <Dialog title="Add a team" onClose={() => setShowAdd(false)}>
+                    <form onSubmit={handleAddTeam} className="space-y-4" noValidate>
                         <div>
-                            <span className="font-medium text-gray-900">Pass transaction fees to payer</span>
-                            <p className="text-sm text-gray-500">
-                                When enabled, a small fee is added to payments so your club receives the full amount.
-                            </p>
+                            <label htmlFor="team-name" className="label">Team name</label>
+                            <input id="team-name" type="text" value={newTeam.name} placeholder="e.g. Under 12s"
+                                onChange={(e) => { const name = e.target.value; setNewTeam((prev) => ({ name, slug: prev.slug && prev.slug !== slugFrom(prev.name) ? prev.slug : slugFrom(name) })); }}
+                                className="field" />
                         </div>
-                    </label>
-                </div>
-            </div>
-
-            {/* Add Team Modal */}
-            {showAddModal && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4 p-6">
-                        <h2 className="text-xl font-bold text-gray-900 mb-4">Add Team</h2>
-
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Team Name <span className="text-red-500">*</span>
-                                </label>
-                                <input
-                                    type="text"
-                                    value={newTeam.name}
-                                    onChange={(e) => {
-                                        const name = e.target.value;
-                                        setNewTeam(prev => ({
-                                            ...prev,
-                                            name,
-                                            slug: prev.slug || generateSlug(name)
-                                        }));
-                                    }}
-                                    placeholder="e.g., Under 12s"
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    URL Slug <span className="text-red-500">*</span>
-                                </label>
-                                <input
-                                    type="text"
-                                    value={newTeam.slug}
-                                    onChange={(e) => setNewTeam(prev => ({ ...prev, slug: e.target.value }))}
-                                    placeholder="e.g., syston-tigers-u12"
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                />
-                                <p className="text-xs text-gray-500 mt-1">
-                                    This will be the team's URL: app.syston.co/{newTeam.slug || 'team-slug'}
-                                </p>
-                            </div>
+                        <div>
+                            <label htmlFor="team-slug" className="label">Web address</label>
+                            <input id="team-slug" type="text" value={newTeam.slug} onChange={(e) => setNewTeam({ ...newTeam, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-') })} className="field" />
+                            <p className="text-xs text-muted mt-1 break-all">{origin}/{newTeam.slug || 'team-name'}</p>
                         </div>
-
-                        <div className="flex items-center justify-end gap-3 mt-6 pt-4 border-t border-gray-100">
-                            <button
-                                onClick={() => setShowAddModal(false)}
-                                className="px-4 py-2 text-gray-600 hover:text-gray-800"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={handleAddTeam}
-                                disabled={addingTeam || !newTeam.name || !newTeam.slug}
-                                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                {addingTeam ? 'Creating...' : 'Add Team'}
-                            </button>
+                        {addError && <Notice tone="error">{addError}</Notice>}
+                        <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
+                            <button type="button" onClick={() => setShowAdd(false)} className="btn btn-ghost">Cancel</button>
+                            <button type="submit" disabled={addingTeam} className="btn btn-primary">{addingTeam ? 'Adding…' : 'Add team'}</button>
                         </div>
-                    </div>
-                </div>
+                    </form>
+                </Dialog>
             )}
         </div>
     );

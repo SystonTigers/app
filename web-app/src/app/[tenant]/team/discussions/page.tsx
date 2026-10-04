@@ -1,9 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { use, useCallback, useEffect, useState, type FormEvent } from 'react';
 import Link from 'next/link';
-import { apiFetch } from '@/lib/session';
+import { useRouter } from 'next/navigation';
+import { apiFetch, errorMessage } from '@/lib/session';
+import { formatDate } from '@/lib/format';
+import { canAccessAdmin, useUserRole } from '@/hooks/useUserRole';
+import { EmptyNote, MembersOnlyPage, PageHeader } from '@/components/ui/Page';
+import { Icon } from '@/components/ui/Icon';
 
 interface Discussion {
     id: string;
@@ -17,262 +21,196 @@ interface Discussion {
     comment_count: number;
 }
 
-function CategoryBadge({ category }: { category: string }) {
-    const colors: Record<string, string> = {
-        tactics: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
-        training: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
-        'match-analysis': 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
-        general: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300',
-    };
+const CATEGORY_LABEL: Record<string, string> = {
+    general: 'General',
+    'match-analysis': 'Match chat',
+    training: 'Training',
+    tactics: 'Tactics',
+};
 
+/** Players and parents only see these two (the server enforces it too). */
+const MEMBER_CATEGORIES = ['general', 'match-analysis'];
+const STAFF_CATEGORIES = ['general', 'match-analysis', 'training', 'tactics'];
+
+function DiscussionCard({ tenant, discussion }: { tenant: string; discussion: Discussion }) {
     return (
-        <span className={`px-2 py-1 chamfer-sm text-xs font-bold uppercase ${colors[category] || colors.general}`}>
-            {category.replace('-', ' ')}
-        </span>
+        <li>
+            <Link href={`/${tenant}/team/discussions/${discussion.id}`} className="card block p-5 hover:border-brand/60 transition-colors group">
+                <div className="flex items-center justify-between gap-3 mb-2">
+                    <div className="flex items-center gap-3 text-xs font-bold uppercase tracking-wider">
+                        <span className="text-brand">{CATEGORY_LABEL[discussion.category] ?? discussion.category}</span>
+                        {discussion.pinned && <span className="inline-flex items-center gap-1 text-muted"><Icon name="star" className="w-3.5 h-3.5" /> Pinned</span>}
+                        {discussion.locked && <span className="inline-flex items-center gap-1 text-muted"><Icon name="lock" className="w-3.5 h-3.5" /> Closed</span>}
+                    </div>
+                    <span className="inline-flex items-center gap-1.5 text-sm text-muted">
+                        <Icon name="chat" className="w-4 h-4" /><span className="sr-only">Replies:</span>{discussion.comment_count}
+                    </span>
+                </div>
+                <h3 className="text-xl leading-tight mb-2 group-hover:text-brand transition-colors break-words">{discussion.title}</h3>
+                <p className="flex flex-wrap justify-between gap-2 text-sm text-muted">
+                    <span>Started by {discussion.author_name}</span>
+                    <span>{formatDate(discussion.updated_at)}</span>
+                </p>
+            </Link>
+        </li>
     );
 }
 
-function DiscussionCard({ discussion }: { discussion: Discussion }) {
+function Discussions({ tenant }: { tenant: string }) {
     const router = useRouter();
-
-    return (
-        <div
-            onClick={() => router.push(`discussions/${discussion.id}`)}
-            className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 chamfer-lg p-6 hover:shadow-lg transition-all cursor-pointer group"
-        >
-            <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center gap-2">
-                    <CategoryBadge category={discussion.category} />
-                    {discussion.pinned && (
-                        <span className="text-lg" title="Pinned">📌</span>
-                    )}
-                    {discussion.locked && (
-                        <span className="text-lg" title="Locked">🔒</span>
-                    )}
-                </div>
-                <div className="flex items-center gap-2 text-sm text-gray-500">
-                    <span>💬</span>
-                    <span>{discussion.comment_count}</span>
-                </div>
-            </div>
-
-            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2 group-hover:text-brand transition-colors">
-                {discussion.title}
-            </h3>
-
-            <div className="flex items-center justify-between text-sm text-gray-500">
-                <span>by {discussion.author_name}</span>
-                <span>{new Date(discussion.updated_at).toLocaleDateString()}</span>
-            </div>
-        </div>
-    );
-}
-
-export default function DiscussionsPage({ params }: { params: Promise<{ tenant: string }> }) {
-    const [tenant, setTenant] = useState('');
+    const { role } = useUserRole();
+    const isStaff = canAccessAdmin(role);
+    const isFan = role === 'fan';
     const [discussions, setDiscussions] = useState<Discussion[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
     const [category, setCategory] = useState<string | null>(null);
-    const [showCreateDialog, setShowCreateDialog] = useState(false);
-    const router = useRouter();
+    const [creating, setCreating] = useState(false);
+    const [form, setForm] = useState({ category: 'general', title: '' });
+    const [formError, setFormError] = useState('');
+    const [submitting, setSubmitting] = useState(false);
 
-    useEffect(() => {
-        params.then(p => setTenant(p.tenant));
-    }, [params]);
+    const categories = isStaff ? STAFF_CATEGORIES : MEMBER_CATEGORIES;
 
-    useEffect(() => {
-        if (!tenant) return;
-        loadDiscussions();
-    }, [tenant, category]);
-
-    async function loadDiscussions() {
+    const load = useCallback(async () => {
+        setLoading(true);
+        setError('');
         try {
-            setLoading(true);
-            const query = category ? `?category=${category}` : '';
-            const res = await apiFetch(`/api/v1/discussions${query}`, {
-                headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
-                }
-            });
-            const data = await res.json();
-            if (data.success) {
-                setDiscussions(data.data);
+            const res = await apiFetch(`/api/v1/discussions${category ? `?category=${encodeURIComponent(category)}` : ''}`);
+            if (!res.ok) {
+                setError(await errorMessage(res, "We couldn't load Team talk. Please try again."));
+                return;
             }
+            const data = await res.json();
+            setDiscussions(Array.isArray(data.data) ? data.data : []);
         } catch (err) {
             console.error('Failed to load discussions:', err);
+            setError("We couldn't load Team talk. Check your connection and try again.");
         } finally {
             setLoading(false);
         }
-    }
+    }, [category]);
 
-    const categories = [
-        { value: null, label: 'All' },
-        { value: 'tactics', label: 'Tactics' },
-        { value: 'training', label: 'Training' },
-        { value: 'match-analysis', label: 'Match Analysis' },
-        { value: 'general', label: 'General' },
-    ];
+    useEffect(() => {
+        if (isFan) return;
+        load();
+    }, [load, isFan]);
 
-    return (
-        <div className="min-h-screen bg-gray-50 dark:bg-black pb-20">
-            {/* Header */}
-            <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 py-12 px-6">
-                <div className="container">
-                    <div className="flex items-end justify-between">
-                        <div>
-                            <h1 className="text-4xl font-black uppercase tracking-tighter mb-2">Team Discussions</h1>
-                            <p className="text-gray-500">Talk tactics, training, and match analysis with the team.</p>
-                        </div>
-                        <button
-                            onClick={() => setShowCreateDialog(true)}
-                            className="px-6 py-3 bg-brand text-white chamfer-sm font-bold hover:bg-brand/90 transition-colors"
-                        >
-                            + New Discussion
-                        </button>
-                    </div>
-                </div>
-            </div>
+    useEffect(() => {
+        if (!creating) return;
+        const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setCreating(false); };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+    }, [creating]);
 
-            <div className="container px-6 py-12">
-                {/* Category Filters */}
-                <div className="flex flex-wrap gap-2 mb-8">
-                    {categories.map((cat) => (
-                        <button
-                            key={cat.value || 'all'}
-                            onClick={() => setCategory(cat.value)}
-                            className={`px-4 py-2 chamfer-sm font-medium transition-all ${category === cat.value
-                                ? 'bg-brand text-white shadow-lg'
-                                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700'
-                                }`}
-                        >
-                            {cat.label}
-                        </button>
-                    ))}
-                </div>
-
-                {/* Discussions List */}
-                {loading ? (
-                    <div className="grid gap-4">
-                        {[1, 2, 3].map((i) => (
-                            <div key={i} className="h-40 bg-gray-200 dark:bg-gray-700 chamfer-sm animate-pulse"></div>
-                        ))}
-                    </div>
-                ) : discussions.length > 0 ? (
-                    <div className="grid gap-4">
-                        {discussions.map((discussion) => (
-                            <DiscussionCard key={discussion.id} discussion={discussion} />
-                        ))}
-                    </div>
-                ) : (
-                    <div className="text-center py-20 bg-white dark:bg-gray-800 chamfer-lg shadow-sm border border-gray-100 dark:border-gray-700">
-                        <div className="text-6xl mb-4">💬</div>
-                        <h3 className="text-2xl font-bold mb-2">No Discussions Yet</h3>
-                        <p className="text-gray-500 mb-6">Start a conversation about tactics, training, or match analysis.</p>
-                        <button
-                            onClick={() => setShowCreateDialog(true)}
-                            className="px-6 py-3 bg-brand text-white chamfer-sm font-bold hover:bg-brand/90 transition-colors"
-                        >
-                            Create First Discussion
-                        </button>
-                    </div>
-                )}
-            </div>
-
-            {/* Create Discussion Dialog (Simple version - can be enhanced) */}
-            {showCreateDialog && (
-                <CreateDiscussionDialog
-                    tenant={tenant}
-                    onClose={() => setShowCreateDialog(false)}
-                    onCreated={() => {
-                        setShowCreateDialog(false);
-                        loadDiscussions();
-                    }}
-                />
-            )}
-        </div>
-    );
-}
-
-function CreateDiscussionDialog({ tenant, onClose, onCreated }: { tenant: string; onClose: () => void; onCreated: () => void }) {
-    const [category, setCategory] = useState('general');
-    const [title, setTitle] = useState('');
-    const [submitting, setSubmitting] = useState(false);
-
-    async function handleSubmit(e: React.FormEvent) {
+    async function create(e: FormEvent) {
         e.preventDefault();
-        if (!title.trim()) return;
-
+        if (!form.title.trim()) return;
+        setSubmitting(true);
+        setFormError('');
         try {
-            setSubmitting(true);
-            const res = await apiFetch(`/api/v1/discussions`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
-                },
-                body: JSON.stringify({ category, title })
-            });
-
-            if (res.ok) {
-                onCreated();
+            const res = await apiFetch('/api/v1/discussions', { method: 'POST', body: JSON.stringify({ category: form.category, title: form.title.trim() }) });
+            if (!res.ok) {
+                setFormError(await errorMessage(res, "That didn't start. Please try again."));
+                return;
             }
-        } catch (err) {
-            console.error('Failed to create discussion:', err);
+            const data = await res.json();
+            router.push(`/${tenant}/team/discussions/${data.data.id}`);
+        } catch {
+            setFormError("That didn't start. Check your connection and try again.");
         } finally {
             setSubmitting(false);
         }
     }
 
+    const header = (
+        <PageHeader
+            eyebrow="Club"
+            title="Team talk"
+            subtitle={isStaff ? 'Talk tactics, training and matches with your coaches, players and parents.' : 'Chat about matches and club news with players, parents and coaches.'}
+            actions={!isFan ? (
+                <button type="button" onClick={() => { setFormError(''); setForm({ category: 'general', title: '' }); setCreating(true); }} className="btn btn-primary">
+                    <Icon name="plus" className="w-5 h-5" /> Start a conversation
+                </button>
+            ) : undefined}
+        />
+    );
+
+    if (isFan) {
+        return (
+            <>
+                <PageHeader eyebrow="Club" title="Team talk" />
+                <EmptyNote icon="lock" title="For players, parents and staff">
+                    Team talk is where the club&apos;s players, parents and coaches chat. Supporters can follow results and news on the club page.
+                </EmptyNote>
+            </>
+        );
+    }
+
     return (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={onClose}>
-            <div className="bg-white dark:bg-gray-800 rounded-2xl p-8 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
-                <h2 className="text-2xl font-black mb-6">New Discussion</h2>
+        <>
+            {header}
 
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    <div>
-                        <label className="block text-sm font-bold mb-2">Category</label>
-                        <select
-                            value={category}
-                            onChange={(e) => setCategory(e.target.value)}
-                            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 chamfer-sm bg-white dark:bg-gray-700"
-                        >
-                            <option value="general">General</option>
-                            <option value="tactics">Tactics</option>
-                            <option value="training">Training</option>
-                            <option value="match-analysis">Match Analysis</option>
-                        </select>
-                    </div>
-
-                    <div>
-                        <label className="block text-sm font-bold mb-2">Title</label>
-                        <input
-                            type="text"
-                            value={title}
-                            onChange={(e) => setTitle(e.target.value)}
-                            placeholder="What do you want to discuss?"
-                            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 chamfer-sm bg-white dark:bg-gray-700"
-                            required
-                        />
-                    </div>
-
-                    <div className="flex gap-3 pt-4">
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 chamfer-sm font-bold hover:bg-gray-100 dark:hover:bg-gray-700"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="submit"
-                            disabled={submitting || !title.trim()}
-                            className="flex-1 px-4 py-2 bg-brand text-white chamfer-sm font-bold hover:bg-brand/90 disabled:opacity-50"
-                        >
-                            {submitting ? 'Creating...' : 'Create'}
-                        </button>
-                    </div>
-                </form>
+            <div className="flex gap-2 overflow-x-auto scrollbar-none mb-6" role="tablist" aria-label="Topic">
+                {[null, ...categories].map((c) => (
+                    <button key={c ?? 'all'} type="button" role="tab" aria-selected={category === c} onClick={() => setCategory(c)} className={`btn btn-sm min-h-[40px] shrink-0 ${category === c ? 'btn-primary' : 'btn-secondary'}`}>
+                        {c ? CATEGORY_LABEL[c] : 'All'}
+                    </button>
+                ))}
             </div>
-        </div>
+
+            {loading ? (
+                <div className="space-y-3" aria-busy="true" aria-label="Loading conversations">
+                    {[1, 2, 3].map((i) => <div key={i} className="h-28 card animate-pulse" />)}
+                </div>
+            ) : error ? (
+                <EmptyNote icon="alert" title="Team talk didn't load" action={<button type="button" onClick={load} className="btn btn-primary">Try again</button>}>
+                    <p role="alert">{error}</p>
+                </EmptyNote>
+            ) : discussions.length === 0 ? (
+                <EmptyNote icon="chat" title="No conversations yet">Start one with the button above: a match, a question for the coaches, or club news.</EmptyNote>
+            ) : (
+                <ul className="space-y-3">
+                    {discussions.map((d) => <DiscussionCard key={d.id} tenant={tenant} discussion={d} />)}
+                </ul>
+            )}
+
+            {creating && (
+                <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-background/80 backdrop-blur-sm p-4" role="dialog" aria-modal="true" aria-label="Start a conversation">
+                    <form onSubmit={create} className="card w-full max-w-md space-y-4">
+                        <h2 className="text-2xl italic">Start a conversation</h2>
+                        <div>
+                            <label htmlFor="d-category" className="label">Topic</label>
+                            <select id="d-category" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className="field">
+                                {categories.map((c) => <option key={c} value={c}>{CATEGORY_LABEL[c]}</option>)}
+                            </select>
+                            {isStaff && (form.category === 'training' || form.category === 'tactics') && (
+                                <p className="text-xs text-muted mt-2">Only coaches and club staff see {CATEGORY_LABEL[form.category].toLowerCase()} conversations.</p>
+                            )}
+                        </div>
+                        <div>
+                            <label htmlFor="d-title" className="label">What&apos;s it about?</label>
+                            <input id="d-title" required maxLength={150} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="e.g. Saturday's win at Oadby" className="field" />
+                        </div>
+                        {formError && <p role="alert" className="text-sm text-red-400">{formError}</p>}
+                        <div className="flex gap-3 pt-2">
+                            <button type="button" onClick={() => setCreating(false)} className="btn btn-secondary flex-1">Cancel</button>
+                            <button type="submit" disabled={submitting || !form.title.trim()} className="btn btn-primary flex-1">{submitting ? 'Starting…' : 'Start'}</button>
+                        </div>
+                    </form>
+                </div>
+            )}
+        </>
+    );
+}
+
+export default function DiscussionsPage({ params }: { params: Promise<{ tenant: string }> }) {
+    const { tenant } = use(params);
+    return (
+        <MembersOnlyPage tenant={tenant} what="Team talk conversations" title="Team talk" subtitle="Chat about matches and club news.">
+            <div className="container py-8 md:py-12">
+                <Discussions tenant={tenant} />
+            </div>
+        </MembersOnlyPage>
     );
 }

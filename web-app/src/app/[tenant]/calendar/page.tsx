@@ -1,14 +1,17 @@
+'use client';
+
+import { use } from 'react';
 import { TeamCalendar } from '@/components/TeamCalendar';
+import { MembersOnlyPage } from '@/components/ui/Page';
 
-export default function CalendarPage() {
+export default function CalendarPage({ params }: { params: Promise<{ tenant: string }> }) {
+    const { tenant } = use(params);
+
     return (
-        <div className="container mx-auto py-8 px-4">
-            <div className="mb-8">
-                <h1 className="text-4xl font-bold mb-2">Calendar</h1>
-                <p className="text-muted-foreground">Manage team schedule and availability</p>
+        <MembersOnlyPage tenant={tenant} what="The club calendar and events" title="Calendar" subtitle="Club events, socials and fixtures.">
+            <div className="container py-8 md:py-12">
+                <TeamCalendar />
             </div>
-
-            <TeamCalendar />
-        </div>
+        </MembersOnlyPage>
     );
 }

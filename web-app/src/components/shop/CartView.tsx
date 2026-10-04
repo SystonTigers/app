@@ -1,144 +1,144 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { createClientSDK } from '@/lib/sdk';
+import { formatMoney } from '@/lib/format';
+import { Icon } from '@/components/ui/Icon';
+import { readCartId, writeCartId, type Cart } from './types';
 
 interface CartViewProps {
     tenantId: string;
     onClose: () => void;
 }
 
+const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+
 export function CartView({ tenantId, onClose }: CartViewProps) {
-    const [cart, setCart] = useState<any>(null);
+    const [cart, setCart] = useState<Cart | null>(null);
     const [loading, setLoading] = useState(true);
-    const [checkoutLoading, setCheckoutLoading] = useState(false);
+    const [email, setEmail] = useState('');
+    const [error, setError] = useState('');
+    const [checkingOut, setCheckingOut] = useState(false);
 
-    // Load cart on mount
-    useEffect(() => {
-        loadCart();
-    }, [tenantId]);
-
-    const loadCart = async () => {
+    const load = useCallback(async () => {
+        setLoading(true);
         try {
-            const cartId = localStorage.getItem(`cart_${tenantId}`);
+            const cartId = readCartId(tenantId);
             if (!cartId) {
                 setCart(null);
-                setLoading(false);
                 return;
             }
-            const sdk = createClientSDK(tenantId);
-            const res = await sdk.getCart(cartId);
+            const res = await createClientSDK(tenantId).getCart(cartId);
             if (res.success) {
-                setCart(res.cart);
+                setCart(res.cart as Cart);
             } else {
-                localStorage.removeItem(`cart_${tenantId}`); // Invalid cart
+                writeCartId(tenantId, null);
                 setCart(null);
             }
         } catch (e) {
             console.error('Load cart failed', e);
+            setError("We couldn't load your basket. Please try again.");
         } finally {
             setLoading(false);
         }
-    };
+    }, [tenantId]);
 
-    const handleRemove = async (variantId: string) => {
-        const cartId = localStorage.getItem(`cart_${tenantId}`);
+    useEffect(() => {
+        load();
+    }, [load]);
+
+    useEffect(() => {
+        const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+    }, [onClose]);
+
+    async function remove(variantId: string) {
+        const cartId = readCartId(tenantId);
         if (!cartId) return;
-
+        setError('');
         try {
-            const sdk = createClientSDK(tenantId);
-            const res = await sdk.removeFromCart(cartId, variantId);
-            if (res.success) {
-                setCart(res.cart);
-            }
+            const res = await createClientSDK(tenantId).removeFromCart(cartId, variantId);
+            if (res.success) setCart(res.cart as Cart);
         } catch (e) {
             console.error('Remove failed', e);
+            setError("That didn't come out of your basket. Please try again.");
         }
-    };
+    }
 
-    const handleCheckout = async () => {
-        const cartId = localStorage.getItem(`cart_${tenantId}`);
+    async function checkout(e: FormEvent) {
+        e.preventDefault();
+        const cartId = readCartId(tenantId);
         if (!cartId) return;
-
-        setCheckoutLoading(true);
+        if (!EMAIL.test(email.trim())) {
+            setError('Enter your email address so we can send your receipt.');
+            return;
+        }
+        setCheckingOut(true);
+        setError('');
         try {
-            const sdk = createClientSDK(tenantId);
-            // The receipt goes to this address, so a real one is required
-            const email = (prompt('Enter your email address for the receipt:') || '').trim();
-            if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
-                if (email) alert("That email address doesn't look right. Please try again.");
-                return;
-            }
-
-            const res = await sdk.createCheckoutSession(cartId, email);
+            const res = await createClientSDK(tenantId).createCheckoutSession(cartId, email.trim());
             if (res.success && res.url) {
                 window.location.href = res.url;
-            } else {
-                alert('Checkout failed initialization');
+                return;
             }
-        } catch (e) {
-            console.error('Checkout failed', e);
-            alert('Checkout error');
+            setError("Checkout didn't start. Please try again.");
+        } catch (err) {
+            console.error('Checkout failed', err);
+            setError("Checkout didn't start. Check your connection and try again.");
         } finally {
-            setCheckoutLoading(false);
+            setCheckingOut(false);
         }
-    };
+    }
 
-    if (loading) return <div className="p-8 text-center">Loading cart...</div>;
-
-    const items = cart?.items || [];
-    const isEmpty = items.length === 0;
-
-    // Calculate total
-    const total = items.reduce((sum: number, item: any) => sum + (item.priceGbp * item.quantity), 0);
+    const items = cart?.items ?? [];
+    const total = items.reduce((sum, item) => sum + item.priceGbp * item.quantity, 0);
 
     return (
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-2xl mx-auto shadow-lg">
-            <div className="flex justify-between items-center mb-6 border-b pb-4">
-                <h2 className="text-2xl font-bold">Your Cart</h2>
-                <button onClick={onClose} className="text-gray-500 hover:text-gray-700">✕ Close</button>
+        <div className="card w-full max-w-lg max-h-[90vh] overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="basket-title">
+            <div className="flex justify-between items-center mb-5">
+                <h2 id="basket-title" className="text-3xl italic">Your basket</h2>
+                <button type="button" onClick={onClose} className="w-11 h-11 flex items-center justify-center text-muted hover:text-brand" aria-label="Close basket">
+                    <Icon name="close" className="w-6 h-6" />
+                </button>
             </div>
 
-            {isEmpty ? (
-                <div className="text-center py-12 text-gray-500">
-                    <p className="mb-4">Your cart is empty.</p>
-                    <button onClick={onClose} className="text-brand hover:underline">Continue Shopping</button>
+            {loading ? (
+                <div className="h-32 bg-surface-raised animate-pulse" aria-busy="true" aria-label="Loading your basket" />
+            ) : items.length === 0 ? (
+                <div className="text-center py-8">
+                    <p className="text-muted mb-5">Your basket is empty.</p>
+                    {error && <p role="alert" className="text-sm text-red-400 mb-3">{error}</p>}
+                    <button type="button" onClick={onClose} className="btn btn-secondary">Keep shopping</button>
                 </div>
             ) : (
-                <>
-                    <div className="space-y-4 mb-6">
-                        {items.map((item: any) => (
-                            <div key={item.variantId} className="flex justify-between items-center bg-gray-50 dark:bg-gray-700 p-4 rounded">
-                                <div>
-                                    <h4 className="font-bold">{item.title}</h4>
-                                    <p className="text-sm text-gray-500">Qty: {item.quantity}</p>
+                <form onSubmit={checkout}>
+                    <ul className="space-y-3 mb-5">
+                        {items.map((item) => (
+                            <li key={item.variantId} className="flex justify-between items-center gap-3 bg-surface-raised border border-border chamfer-sm p-3">
+                                <div className="min-w-0">
+                                    <p className="font-bold break-words">{item.title}</p>
+                                    <p className="text-sm text-muted">Qty {item.quantity}</p>
                                 </div>
-                                <div className="text-right">
-                                    <p className="font-bold">£{((item.priceGbp * item.quantity) / 100).toFixed(2)}</p>
-                                    <button
-                                        onClick={() => handleRemove(item.variantId)}
-                                        className="text-red-500 text-xs hover:underline mt-1"
-                                    >
-                                        Remove
-                                    </button>
+                                <div className="text-right shrink-0">
+                                    <p className="font-bold">{formatMoney(item.priceGbp * item.quantity)}</p>
+                                    <button type="button" onClick={() => remove(item.variantId)} className="text-sm text-red-400 hover:underline min-h-[40px]">Remove</button>
                                 </div>
-                            </div>
+                            </li>
                         ))}
+                    </ul>
+
+                    <div className="flex justify-between font-display text-2xl font-extrabold uppercase border-t border-border pt-4 mb-5">
+                        <span>Total</span>
+                        <span>{formatMoney(total)}</span>
                     </div>
 
-                    <div className="border-t pt-4">
-                        <div className="flex justify-between text-xl font-bold mb-6">
-                            <span>Total</span>
-                            <span>£{(total / 100).toFixed(2)}</span>
-                        </div>
+                    <label htmlFor="receipt-email" className="label">Email (for your receipt)</label>
+                    <input id="receipt-email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="field mb-4" placeholder="you@example.com" />
 
-                        <button
-                            onClick={handleCheckout}
-                            disabled={checkoutLoading}
-                            className="w-full py-3 bg-brand text-white font-bold rounded hover:bg-brand/90 disabled:opacity-50"
-                        >
-                            {checkoutLoading ? 'Redirecting...' : 'Proceed to Checkout'}
-                        </button>
-                    </div>
-                </>
+                    {error && <p role="alert" className="text-sm text-red-400 mb-3">{error}</p>}
+                    <button type="submit" disabled={checkingOut} className="btn btn-primary w-full">
+                        {checkingOut ? 'Taking you to payment…' : 'Pay securely'}
+                    </button>
+                </form>
             )}
         </div>
     );

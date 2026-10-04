@@ -103,24 +103,24 @@ export function LeagueTableSettings() {
     const ourName = s?.ourTeam || s?.detectedTeam || '';
 
     return (
-        <section className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 space-y-5">
+        <section className="card space-y-5">
             <div>
-                <h2 className="text-xl font-bold text-gray-900 dark:text-white">Your league table</h2>
-                <p className="text-sm text-gray-500 mt-1">
+                <h2 className="text-2xl">Your league table</h2>
+                <p className="text-sm text-muted mt-1">
                     Sorted by points, then goal difference, then goals scored. Your own results from Match Centre are added automatically.
                     For everyone else&apos;s, copy the league&apos;s results page (FA Full-Time, COMET, GotSport, any site) and paste it here once a week.
                 </p>
             </div>
 
             {message && (
-                <div className={`p-3 rounded text-sm ${message.error ? 'bg-red-50 text-red-800 dark:bg-red-900/30 dark:text-red-200' : 'bg-green-50 text-green-800 dark:bg-green-900/30 dark:text-green-200'}`}>
+                <div role={message.error ? 'alert' : 'status'} className={`p-3 text-sm ${message.error ? 'border border-red-500/40 bg-red-500/10 text-red-200' : 'border border-green-500/40 bg-green-500/10 text-green-200'}`}>
                     {message.text}
                 </div>
             )}
 
             <div className="space-y-2">
-                <label htmlFor="league-paste" className="text-sm font-semibold">Paste results or the table</label>
-                <p className="text-xs text-gray-500">On the league&apos;s results page, press Ctrl+A then Ctrl+C (on a phone: select all, copy), then paste below. Pasting the same results again is fine: we skip ones we already have.</p>
+                <label htmlFor="league-paste" className="label">Paste results or the table</label>
+                <p className="text-xs text-muted">On the league&apos;s results page, press Ctrl+A then Ctrl+C (on a phone: select all, copy), then paste below. Pasting the same results again is fine: we skip ones we already have.</p>
                 <textarea
                     id="league-paste"
                     value={text}
@@ -128,10 +128,10 @@ export function LeagueTableSettings() {
                     rows={6}
                     spellCheck={false}
                     placeholder={'e.g.\n27/09/26 10:30   Syston Town Juniors U18 Tigers   3 - 1   Birstall United U18'}
-                    className="w-full font-mono text-xs p-3 rounded border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900"
+                    className="field font-mono text-xs"
                 />
                 <div className="flex justify-end">
-                    <button type="button" onClick={paste} disabled={busy || !text.trim()} className="px-5 py-2 bg-brand text-white font-bold rounded disabled:opacity-50">
+                    <button type="button" onClick={paste} disabled={busy || !text.trim()} className="btn btn-primary">
                         {busy ? 'Working it out…' : 'Update table'}
                     </button>
                 </div>
@@ -140,31 +140,31 @@ export function LeagueTableSettings() {
             {s && (
                 <div className="grid gap-4 md:grid-cols-3 text-sm">
                     <label className="space-y-1">
-                        <span className="font-semibold block">League name</span>
-                        <input value={competition} onChange={(e) => setCompetition(e.target.value)} className="w-full p-2 rounded border border-gray-300 dark:border-gray-600 bg-transparent" />
+                        <span className="label">League name</span>
+                        <input value={competition} onChange={(e) => setCompetition(e.target.value)} className="field" />
                     </label>
                     <label className="space-y-1">
-                        <span className="font-semibold block">Your team in the league</span>
+                        <span className="label">Your team in the league</span>
                         <select
                             value={s.ourTeam ?? ''}
                             onChange={(e) => send('/api/v1/club/league', 'PUT', { ourTeam: e.target.value })}
                             disabled={busy || data.teams.length === 0}
-                            className="w-full p-2 rounded border border-gray-300 dark:border-gray-600 bg-transparent"
+                            className="field"
                         >
                             <option value="">{s.detectedTeam ? `Automatic (${s.detectedTeam})` : 'Automatic'}</option>
                             {data.teams.map((t) => <option key={t} value={t}>{t}</option>)}
                         </select>
                     </label>
                     <label className="space-y-1">
-                        <span className="font-semibold block">Season started</span>
-                        <input type="date" value={seasonStart} onChange={(e) => setSeasonStart(e.target.value)} className="w-full p-2 rounded border border-gray-300 dark:border-gray-600 bg-transparent" />
+                        <span className="label">Season started</span>
+                        <input type="date" value={seasonStart} onChange={(e) => setSeasonStart(e.target.value)} className="field" />
                     </label>
                     <div className="md:col-span-3 flex flex-wrap justify-between gap-2">
                         <button
                             type="button"
                             disabled={busy || data.resultsSaved === 0}
                             onClick={() => send('/api/v1/club/league/results', 'DELETE', undefined).then((r) => r && setMessage({ error: false, text: 'Pasted results cleared. Paste the results page again to start fresh.' }))}
-                            className="text-gray-500 hover:text-red-600 underline disabled:opacity-40"
+                            className="btn btn-sm btn-ghost hover:text-red-400"
                         >
                             Clear pasted results ({data.resultsSaved})
                         </button>
@@ -172,7 +172,7 @@ export function LeagueTableSettings() {
                             type="button"
                             disabled={busy || (competition === s.competition && seasonStart === s.seasonStart)}
                             onClick={() => send('/api/v1/club/league', 'PUT', { competition, seasonStart }).then((r) => r && setMessage({ error: false, text: 'Saved.' }))}
-                            className="px-4 py-2 border border-brand text-brand font-bold rounded disabled:opacity-40"
+                            className="btn btn-outline"
                         >
                             Save league details
                         </button>
@@ -181,10 +181,10 @@ export function LeagueTableSettings() {
             )}
 
             {data && data.table.length > 0 && (
-                <div className="overflow-x-auto">
+                <div className="table-scroll relative">
                     <table className="w-full text-sm tabular-nums">
                         <thead>
-                            <tr className="text-left text-xs uppercase tracking-wider text-gray-500 border-b border-gray-200 dark:border-gray-700">
+                            <tr className="text-left text-xs uppercase tracking-wider text-muted border-b border-border">
                                 <th className="py-2 pr-2">#</th><th className="py-2 pr-2">Team</th>
                                 <th className="py-2 px-1 text-center">P</th><th className="py-2 px-1 text-center">W</th><th className="py-2 px-1 text-center">D</th><th className="py-2 px-1 text-center">L</th>
                                 <th className="py-2 px-1 text-center">GD</th><th className="py-2 pl-1 text-center">Pts</th>
@@ -192,7 +192,7 @@ export function LeagueTableSettings() {
                         </thead>
                         <tbody>
                             {data.table.map((r) => (
-                                <tr key={r.team} className={`border-b border-gray-100 dark:border-gray-700 ${r.team === ourName ? 'font-bold bg-brand/10' : ''}`}>
+                                <tr key={r.team} className={`border-b border-border ${r.team === ourName ? 'font-bold bg-brand/10' : ''}`}>
                                     <td className="py-2 pr-2">{r.position}</td>
                                     <td className="py-2 pr-2">{r.team}</td>
                                     <td className="py-2 px-1 text-center">{r.played}</td>

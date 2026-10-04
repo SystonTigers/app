@@ -1,112 +1,81 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { createClientSDK } from '@/lib/sdk';
+import { useEffect, useState } from 'react';
 import { apiFetch } from '@/lib/session';
+import { Icon } from '@/components/ui/Icon';
+import { Dialog, Notice, bodyError } from '@/components/admin/AdminUi';
 
 interface EndSeasonModalProps {
     isOpen: boolean;
     onClose: () => void;
     onSuccess: () => void;
-    season: any;
+    season: { id: string; name: string };
     tenantId: string;
 }
 
-export function EndSeasonModal({ isOpen, onClose, onSuccess, season, tenantId }: EndSeasonModalProps) {
-    const [step, setStep] = useState(1);
-    const [loading, setLoading] = useState(false);
-    const [preview, setPreview] = useState<any>(null);
-    const [squad, setSquad] = useState<any[]>([]);
+interface Preview {
+    summary?: { played?: number; won?: number; goalsFor?: number; cleanSheets?: number };
+    topScorer?: { id: string; name: string; goals: number } | null;
+    topAssister?: { id: string; name: string; assists: number } | null;
+}
 
-    // Awards State
-    const [awards, setAwards] = useState<any[]>([]);
+interface Award {
+    type: string;
+    award_name: string;
+    player_id: string;
+}
+
+/** End a season: a look at how it went, the club's awards, then archive it. */
+export function EndSeasonModal({ isOpen, onClose, onSuccess, season, tenantId }: EndSeasonModalProps) {
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
+    const [preview, setPreview] = useState<Preview | null>(null);
+    const [squad, setSquad] = useState<Array<{ id: string; name: string }>>([]);
+    const [awards, setAwards] = useState<Award[]>([]);
     const [customAwardName, setCustomAwardName] = useState('');
     const [customAwardPlayer, setCustomAwardPlayer] = useState('');
 
     useEffect(() => {
-        if (isOpen && season) {
-            loadPreview();
-            loadSquad();
-        }
-    }, [isOpen, season?.id]);
-
-    async function loadSquad() {
-        const sdk = createClientSDK(tenantId);
-        try {
-            const data = await sdk.getSquad();
-            let list: any[] = [];
-            if (Array.isArray(data)) list = data;
-            else if ((data as any).data) list = (data as any).data;
-            setSquad(list);
-        } catch (e) { console.error(e); }
-    }
-
-    async function loadPreview() {
+        if (!isOpen || !season) return;
         setLoading(true);
-        try {
-            const token = localStorage.getItem('token');
-            const res = await apiFetch(`/api/v1/seasons/${season.id}/end-preview`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            const data = await res.json();
-            if (data.success) {
-                setPreview(data);
-                // Pre-populate awards
-                const initialAwards = [];
-                if (data.topScorer) {
-                    initialAwards.push({
-                        type: 'golden_boot',
-                        award_name: 'Golden Boot',
-                        player_id: data.topScorer.id,
-                    });
-                }
-                // setAwards(initialAwards);
-            }
-        } catch (err) {
-            console.error(err);
-        } finally {
-            setLoading(false);
-        }
-    }
+        setError('');
+        apiFetch(`/api/v1/seasons/${encodeURIComponent(season.id)}/end-preview`)
+            .then((res) => res.json())
+            .then((data) => {
+                if (data?.success) setPreview(data as Preview);
+                else setError(bodyError(data, "We couldn't load this season's stats. Close this and try again."));
+            })
+            .catch(() => setError("We couldn't load this season's stats. Check your connection and try again."))
+            .finally(() => setLoading(false));
+        apiFetch('/api/v1/squad')
+            .then((res) => (res.ok ? res.json() : null))
+            .then((body) => {
+                const rows: Array<{ id: unknown; name?: unknown }> = Array.isArray(body?.data) ? body.data : [];
+                setSquad(rows.map((r) => ({ id: String(r.id), name: String(r.name ?? '') })));
+            })
+            .catch(() => setSquad([]));
+    }, [isOpen, season, tenantId]);
+
+    const nameOf = (id: string) => squad.find((p) => p.id === id)?.name ?? 'Player';
 
     const handleAddAward = () => {
-        if (!customAwardName || !customAwardPlayer) return;
-        setAwards([...awards, {
-            type: 'custom',
-            award_name: customAwardName,
-            player_id: customAwardPlayer
-        }]);
+        if (!customAwardName.trim() || !customAwardPlayer) return;
+        setAwards([...awards, { type: 'custom', award_name: customAwardName.trim(), player_id: customAwardPlayer }]);
         setCustomAwardName('');
         setCustomAwardPlayer('');
     };
 
-    const handleRemoveAward = (idx: number) => {
-        setAwards(awards.filter((_, i) => i !== idx));
-    };
-
     const handleConfirmEnd = async () => {
         setLoading(true);
+        setError('');
         try {
-            const token = localStorage.getItem('token');
-            const res = await apiFetch(`/api/v1/seasons/${season.id}/end`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`
-                },
-                body: JSON.stringify({
-                    awards
-                })
-            });
-            const data = await res.json();
-            if (data.success) {
-                onSuccess();
-                onClose();
-            } else {
-                alert(data.error || 'Failed to end season');
-            }
+            const res = await apiFetch(`/api/v1/seasons/${encodeURIComponent(season.id)}/end`, { method: 'POST', body: JSON.stringify({ awards }) });
+            const data = await res.json().catch(() => null);
+            if (!res.ok || !data?.success) throw new Error(bodyError(data, "The season wasn't ended. Please try again."));
+            onSuccess();
+            onClose();
         } catch (err) {
-            alert('Failed to end season');
+            setError(err instanceof Error ? err.message : "The season wasn't ended. Please try again.");
         } finally {
             setLoading(false);
         }
@@ -114,138 +83,83 @@ export function EndSeasonModal({ isOpen, onClose, onSuccess, season, tenantId }:
 
     if (!isOpen) return null;
 
+    const stats = [
+        { label: 'Matches', value: preview?.summary?.played ?? 0 },
+        { label: 'Wins', value: preview?.summary?.won ?? 0 },
+        { label: 'Goals', value: preview?.summary?.goalsFor ?? 0 },
+        { label: 'Clean sheets', value: preview?.summary?.cleanSheets ?? 0 },
+    ];
+
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-3xl overflow-hidden max-h-[90vh] flex flex-col">
-                <div className="p-6 border-b dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
-                    <h2 className="text-xl font-bold dark:text-white">End Season: {season?.name}</h2>
-                    <p className="text-sm text-gray-500">Archive this season and freeze stats.</p>
-                </div>
+        <Dialog title={`End ${season.name}`} onClose={onClose} wide>
+            <p className="text-muted mb-5">This archives the season and keeps its stats as they are.</p>
+            {loading && !preview ? (
+                <div className="py-16 text-center text-muted" role="status">Loading the season&apos;s stats…</div>
+            ) : (
+                <div className="space-y-6">
+                    <dl className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        {stats.map((s) => (
+                            <div key={s.label} className="bg-surface-raised border border-border p-3 text-center">
+                                <dd className="font-display text-3xl font-extrabold text-brand">{s.value}</dd>
+                                <dt className="text-xs uppercase tracking-wider text-muted">{s.label}</dt>
+                            </div>
+                        ))}
+                    </dl>
 
-                <div className="flex-1 overflow-y-auto p-6">
-                    {loading && !preview ? (
-                        <div className="py-20 text-center">Loading Season Stats...</div>
-                    ) : (
-                        <div className="space-y-8">
-                            {/* Stats Summary */}
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg text-center">
-                                    <div className="text-3xl font-bold text-brand">{preview?.summary?.played || 0}</div>
-                                    <div className="text-xs uppercase text-gray-500 mt-1">Matches</div>
-                                </div>
-                                <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg text-center">
-                                    <div className="text-3xl font-bold text-green-600">{preview?.summary?.won || 0}</div>
-                                    <div className="text-xs uppercase text-gray-500 mt-1">Wins</div>
-                                </div>
-                                <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg text-center">
-                                    <div className="text-3xl font-bold text-blue-600">{preview?.summary?.goalsFor || 0}</div>
-                                    <div className="text-xs uppercase text-gray-500 mt-1">Goals Scored</div>
-                                </div>
-                                <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg text-center">
-                                    <div className="text-3xl font-bold text-yellow-600">{preview?.summary?.cleanSheets || 0}</div>
-                                    <div className="text-xs uppercase text-gray-500 mt-1">Clean Sheets</div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {[
+                            { title: 'Top scorer', icon: 'ball' as const, who: preview?.topScorer?.name, what: preview?.topScorer ? `${preview.topScorer.goals} goals` : 'No goals recorded' },
+                            { title: 'Most assists', icon: 'arrowRight' as const, who: preview?.topAssister?.name, what: preview?.topAssister ? `${preview.topAssister.assists} assists` : 'No assists recorded' },
+                        ].map((t) => (
+                            <div key={t.title} className="border border-border p-4 flex items-center gap-3">
+                                <span className="w-10 h-10 hexagon bg-brand/15 text-brand flex items-center justify-center"><Icon name={t.icon} className="w-5 h-5" /></span>
+                                <div>
+                                    <p className="label mb-0">{t.title}</p>
+                                    {t.who && <p className="font-semibold">{t.who}</p>}
+                                    <p className="text-sm text-muted">{t.what}</p>
                                 </div>
                             </div>
+                        ))}
+                    </div>
 
-                            {/* Top Performers */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                <div className="border rounded-lg p-4 dark:border-gray-700">
-                                    <h3 className="font-semibold mb-3 dark:text-white">Top Scorer</h3>
-                                    {preview?.topScorer ? (
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">⚽</div>
-                                            <div>
-                                                <div className="font-medium dark:text-white">{preview.topScorer.name}</div>
-                                                <div className="text-sm text-gray-500">{preview.topScorer.goals} Goals</div>
-                                            </div>
-                                        </div>
-                                    ) : <div className="text-sm text-gray-500">No goals recorded</div>}
-                                </div>
-                                <div className="border rounded-lg p-4 dark:border-gray-700">
-                                    <h3 className="font-semibold mb-3 dark:text-white">Most Assists</h3>
-                                    {preview?.topAssister ? (
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">👟</div>
-                                            <div>
-                                                <div className="font-medium dark:text-white">{preview.topAssister.name}</div>
-                                                <div className="text-sm text-gray-500">{preview.topAssister.assists} Assists</div>
-                                            </div>
-                                        </div>
-                                    ) : <div className="text-sm text-gray-500">No assists recorded</div>}
-                                </div>
-                            </div>
-
-                            {/* Awards Editor */}
+                    <section aria-labelledby="awards-title">
+                        <h3 id="awards-title" className="text-xl mb-3 flex items-center gap-2"><Icon name="trophy" className="w-5 h-5 text-brand" /> Season awards</h3>
+                        {awards.length > 0 && (
+                            <ul className="space-y-2 mb-3">
+                                {awards.map((award, idx) => (
+                                    <li key={idx} className="flex items-center justify-between gap-3 px-3 py-2 border border-brand/40 bg-brand/10">
+                                        <span><strong>{award.award_name}</strong> <span className="text-muted">· {nameOf(award.player_id)}</span></span>
+                                        <button type="button" onClick={() => setAwards(awards.filter((_, i) => i !== idx))} className="p-2 text-muted hover:text-red-400" aria-label={`Remove ${award.award_name}`}>
+                                            <Icon name="trash" className="w-5 h-5" />
+                                        </button>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                        <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] items-end gap-3 bg-surface-raised border border-border p-4">
                             <div>
-                                <h3 className="font-semibold mb-4 flex items-center gap-2 dark:text-white">
-                                    🏆 Season Awards
-                                </h3>
-
-                                <div className="space-y-3 mb-4">
-                                    {awards.map((award, idx) => (
-                                        <div key={idx} className="flex items-center justify-between p-3 bg-yellow-50 dark:bg-yellow-900/10 border border-yellow-100 dark:border-yellow-900/30 rounded">
-                                            <div className="flex items-center gap-3">
-                                                <span className="text-xl">🏅</span>
-                                                <div>
-                                                    <div className="font-medium text-yellow-900 dark:text-yellow-100">{award.award_name}</div>
-                                                    <div className="text-sm text-yellow-700 dark:text-yellow-300">
-                                                        {squad.find(p => p.id === award.player_id)?.name || 'Unknown Player'}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <button onClick={() => handleRemoveAward(idx)} className="text-red-500 hover:text-red-700">Remove</button>
-                                        </div>
-                                    ))}
-                                </div>
-
-                                <div className="flex items-end gap-3 bg-gray-50 dark:bg-gray-800 p-4 rounded border dark:border-gray-700">
-                                    <div className="flex-1 space-y-1">
-                                        <label className="text-xs font-medium dark:text-gray-400">Award Name</label>
-                                        <input
-                                            type="text"
-                                            placeholder="e.g. Player of the Season"
-                                            value={customAwardName}
-                                            onChange={e => setCustomAwardName(e.target.value)}
-                                            className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                                        />
-                                    </div>
-                                    <div className="flex-1 space-y-1">
-                                        <label className="text-xs font-medium dark:text-gray-400">Winner</label>
-                                        <select
-                                            value={customAwardPlayer}
-                                            onChange={e => setCustomAwardPlayer(e.target.value)}
-                                            className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                                        >
-                                            <option value="">Select Player...</option>
-                                            {squad.map(p => (
-                                                <option key={p.id} value={p.id}>{p.name}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <button
-                                        onClick={handleAddAward}
-                                        disabled={!customAwardName || !customAwardPlayer}
-                                        className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 disabled:opacity-50"
-                                    >
-                                        Add
-                                    </button>
-                                </div>
+                                <label htmlFor="award-name" className="label">Award</label>
+                                <input id="award-name" type="text" placeholder="e.g. Players' Player" value={customAwardName} onChange={(e) => setCustomAwardName(e.target.value)} className="field" />
                             </div>
+                            <div>
+                                <label htmlFor="award-player" className="label">Winner</label>
+                                <select id="award-player" value={customAwardPlayer} onChange={(e) => setCustomAwardPlayer(e.target.value)} className="field">
+                                    <option value="">Pick a player</option>
+                                    {squad.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                                </select>
+                            </div>
+                            <button type="button" onClick={handleAddAward} disabled={!customAwardName.trim() || !customAwardPlayer} className="btn btn-secondary">Add</button>
                         </div>
-                    )}
+                    </section>
                 </div>
-
-                <div className="p-6 border-t dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex justify-end gap-3">
-                    <button onClick={onClose} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded dark:text-gray-300 dark:hover:bg-gray-700">Cancel</button>
-                    <button
-                        onClick={handleConfirmEnd}
-                        disabled={loading || !preview}
-                        className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 flex items-center gap-2"
-                    >
-                        {loading ? 'Archiving...' : 'End Season & Archive'}
-                    </button>
-                </div>
+            )}
+            {error && <div className="mt-4"><Notice tone="error">{error}</Notice></div>}
+            <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-6">
+                <button type="button" onClick={onClose} className="btn btn-ghost">Cancel</button>
+                <button type="button" onClick={handleConfirmEnd} disabled={loading || !preview} className="btn btn-danger">
+                    {loading && preview ? 'Archiving…' : 'End and archive season'}
+                </button>
             </div>
-        </div>
+        </Dialog>
     );
 }

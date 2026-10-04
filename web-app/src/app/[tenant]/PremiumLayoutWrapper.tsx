@@ -1,14 +1,8 @@
 'use client';
 
-import Link from 'next/link';
-import { ReactNode } from 'react';
-import {
-    PremiumNav,
-    CommandPalette,
-    QuickActionsFAB,
-    MobileBottomNav,
-} from '@/components/ui';
-import { ClubBadge } from '@/components/ui/Brand';
+import type { ReactNode } from 'react';
+import { CommandPalette, PremiumNav } from '@/components/ui';
+import { BoostHuddleMark } from '@/components/ui/Brand';
 
 interface PremiumLayoutWrapperProps {
     children: ReactNode;
@@ -17,53 +11,31 @@ interface PremiumLayoutWrapperProps {
     badgeUrl: string | null;
 }
 
+/**
+ * Every club page: the club nav (header, and a bottom bar plus menu on phones
+ * and tablets), the page, a footer and the quick search (Ctrl+K).
+ */
 export function PremiumLayoutWrapper({ children, tenant, tenantName, badgeUrl }: PremiumLayoutWrapperProps) {
     return (
-                    <div className="min-h-screen flex flex-col bg-background text-foreground transition-colors duration-300">
-                        {/* Premium Navigation - Desktop */}
-                        <div className="hidden md:block">
-                            <PremiumNav tenant={tenant} teamName={tenantName} badgeUrl={badgeUrl} />
-                        </div>
+        <div className="min-h-screen flex flex-col bg-background text-foreground">
+            <PremiumNav tenant={tenant} teamName={tenantName} badgeUrl={badgeUrl} />
 
-                        {/* Simple Mobile Header */}
-                        <header className="md:hidden sticky top-0 z-40 bg-background/95 backdrop-blur-lg border-b border-border">
-                            <div className="container py-3">
-                                <Link
-                                    href={`/${tenant}`}
-                                    className="flex items-center gap-3 no-underline"
-                                >
-                                    <ClubBadge name={tenantName} badgeUrl={badgeUrl} size={34} />
-                                    <span className="font-display text-xl uppercase tracking-wide text-foreground truncate">
-                                        {tenantName}
-                                    </span>
-                                </Link>
-                            </div>
-                        </header>
+            {/* The footer leaves room for the bottom bar on phones and tablets */}
+            <main className="flex-1">
+                {children}
+            </main>
 
-                        {/* Main Content */}
-                        <main className="flex-1 pb-20 md:pb-0">
-                            {children}
-                        </main>
-
-                        {/* Footer - Hidden on Mobile */}
-                        <footer className="hidden md:block bg-surface border-t border-border py-8 mt-12">
-                            <div className="container flex flex-col md:flex-row justify-between items-center gap-4">
-                                <div className="text-muted-foreground">
-                                    <p>&copy; {new Date().getFullYear()} {tenantName}. Powered by Boost Huddle</p>
-                                </div>
-                            </div>
-                        </footer>
-
-                        {/* Command Palette - Global (⌘K / Ctrl+K) */}
-                        <CommandPalette tenant={tenant} />
-
-                        {/* Quick Actions FAB - Desktop Only */}
-                        <div className="hidden md:block">
-                            <QuickActionsFAB tenant={tenant} />
-                        </div>
-
-                        {/* Mobile Bottom Navigation */}
-                        <MobileBottomNav tenant={tenant} />
+            <footer className="border-t border-border bg-surface mb-[calc(4rem+env(safe-area-inset-bottom))] lg:mb-0">
+                <div className="container py-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-muted">
+                    <p>&copy; {new Date().getFullYear()} {tenantName}</p>
+                    <div className="flex items-center gap-2">
+                        <BoostHuddleMark compact />
+                        <span>Powered by <a href="/" className="font-bold text-foreground hover:text-brand">Boost Huddle</a></span>
                     </div>
+                </div>
+            </footer>
+
+            <CommandPalette tenant={tenant} />
+        </div>
     );
 }

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { API_BASE, getSessionToken } from '@/lib/session';
+import { Icon } from '@/components/ui/Icon';
 
 interface TrialBannerProps {
     className?: string;
@@ -84,7 +85,11 @@ export function TrialExpiryBanner({ className = '' }: TrialBannerProps) {
         return null;
     }
 
-    const bgColor = { critical: 'bg-red-600', warning: 'bg-amber-500', info: 'bg-gray-800' }[tone];
+    const toneStyle = {
+        critical: 'bg-red-500/15 border-red-500/50 text-red-100',
+        warning: 'bg-amber-500/15 border-amber-500/50 text-amber-100',
+        info: 'bg-brand/10 border-brand/40 text-foreground',
+    }[tone];
 
     const dismiss = () => {
         setDismissed(true);
@@ -96,22 +101,20 @@ export function TrialExpiryBanner({ className = '' }: TrialBannerProps) {
     };
 
     return (
-        <div className={`${bgColor} text-white py-2 px-4 ${className}`} role="status">
-            <div className="max-w-7xl mx-auto flex items-center justify-between gap-4 flex-wrap">
-                <span className="font-medium">{message}</span>
-                <div className="flex items-center gap-3">
+        <div className={`border-b ${toneStyle} ${className}`} role="status">
+            <div className="container flex items-center justify-between gap-3 py-2.5 flex-wrap">
+                <span className="flex items-center gap-2 text-sm font-semibold">
+                    <Icon name={tone === 'info' ? 'info' : 'alert'} className="w-5 h-5" />
+                    {message}
+                </span>
+                <div className="flex items-center gap-2">
                     {action && (
-                        <Link
-                            href={`/${tenant}/admin/billing`}
-                            className="bg-white text-gray-900 px-4 py-1.5 rounded-lg font-semibold text-sm hover:bg-gray-100 transition-colors"
-                        >
+                        <Link href={`/${tenant}/admin/billing`} className="btn btn-sm btn-primary">
                             {action}
                         </Link>
                     )}
-                    <button onClick={dismiss} className="text-white/80 hover:text-white" aria-label="Hide this message">
-                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
+                    <button type="button" onClick={dismiss} className="p-2 opacity-80 hover:opacity-100" aria-label="Hide this message">
+                        <Icon name="close" className="w-5 h-5" />
                     </button>
                 </div>
             </div>

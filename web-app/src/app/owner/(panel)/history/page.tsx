@@ -1,9 +1,10 @@
 'use client';
 
 import Link from 'next/link';
+import { EmptyNote, PageHeader } from '@/components/ui/Page';
+import { formatDateTime } from '@/lib/format';
 import { ownerApi } from '@/lib/owner/client';
-import { dateTime } from '@/lib/owner/format';
-import { Card, Empty, ErrorBox, Loading, PageTitle, useLoad } from '@/components/owner/ui';
+import { Card, ErrorBox, Loading, useLoad } from '@/components/owner/ui';
 
 export default function OwnerHistoryPage() {
   const { data, error, loading, reload } = useLoad(() => ownerApi.history());
@@ -13,24 +14,32 @@ export default function OwnerHistoryPage() {
 
   return (
     <>
-      <PageTitle title="History" sub="The latest changes made from this panel, newest first." />
-      <Card>
-        {data.length ? (
-          <ul className="divide-y divide-gray-800">
+      <PageHeader eyebrow="Owner panel" title="History" subtitle="The latest changes made from this panel, newest first." />
+      {data.length ? (
+        <Card className="py-2">
+          <ul className="divide-y divide-border">
             {data.map((h, i) => (
-              <li key={`${h.at}-${i}`} className="py-3 flex flex-wrap items-baseline justify-between gap-2">
+              <li key={`${h.at}-${i}`} className="py-3 flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-1 sm:gap-4">
                 <div className="min-w-0">
-                  <div className="text-white">{h.detail ?? h.action}</div>
+                  <div className="text-foreground">{h.detail ?? h.action}</div>
                   {h.clubId ? (
-                    <Link href={`/owner/clubs/${h.clubId}`} className="text-xs text-brand no-underline hover:underline">{h.clubName ?? h.clubId}</Link>
+                    <Link href={`/owner/clubs/${h.clubId}`} className="inline-block py-1 text-sm font-bold text-brand hover:underline">{h.clubName ?? 'Open club'}</Link>
                   ) : null}
                 </div>
-                <div className="text-xs text-gray-500 whitespace-nowrap">{dateTime(h.at)}{h.by ? ` · ${h.by}` : ''}</div>
+                <div className="text-xs text-muted sm:whitespace-nowrap">{formatDateTime(h.at)}{h.by ? ` · ${h.by}` : ''}</div>
               </li>
             ))}
           </ul>
-        ) : <Empty>No changes yet.</Empty>}
-      </Card>
+        </Card>
+      ) : (
+        <EmptyNote
+          icon="history"
+          title="No changes yet"
+          action={<Link href="/owner/clubs" className="btn btn-secondary">Go to clubs</Link>}
+        >
+          When you extend a trial, change a plan or suspend a club, it&apos;s listed here.
+        </EmptyNote>
+      )}
     </>
   );
 }

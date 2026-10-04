@@ -1,12 +1,11 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { apiFetch } from '@/lib/session';
 
 interface Member {
     id: string;
-    email: string;
     name: string;
-    avatar: string | null;
 }
 
 interface MentionInputProps {
@@ -16,7 +15,9 @@ interface MentionInputProps {
     placeholder?: string;
     className?: string;
     disabled?: boolean;
-    tenant: string; // Needed for API calls
+    tenant: string;
+    /** For a <label htmlFor> */
+    id?: string;
 }
 
 export function MentionInput({
@@ -26,7 +27,7 @@ export function MentionInput({
     placeholder,
     className,
     disabled,
-    tenant
+    id,
 }: MentionInputProps) {
     const [showSuggestions, setShowSuggestions] = useState(false);
     const [suggestions, setSuggestions] = useState<Member[]>([]);
@@ -52,8 +53,7 @@ export function MentionInput({
         if (lastAt !== -1) {
             // content between @ and cursor
             const potentialName = textBeforeCursor.slice(lastAt + 1);
-            // Valid mention query: no spaces (or limited spaces), no newlines
-            // Simplified: allow spaces for "John Doe" but stop at some length or special chars
+            // A name can have spaces ("Pat Player") but not run past a line or 30 characters
             if (!potentialName.includes('\n') && potentialName.length < 30) {
                 setMentionStart(lastAt);
                 setQuery(potentialName);
@@ -74,14 +74,10 @@ export function MentionInput({
         const timer = setTimeout(async () => {
             setLoading(true);
             try {
-                const token = localStorage.getItem('token');
-                const baseUrl = process.env.NEXT_PUBLIC_API_BASE || '';
-                const res = await fetch(`${baseUrl}/api/v1/members/search?q=${encodeURIComponent(query)}`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
+                const res = await apiFetch(`/api/v1/members/search?q=${encodeURIComponent(query)}`);
                 if (res.ok) {
                     const data = await res.json();
-                    if (data.success) {
+                    if (data.success && Array.isArray(data.data)) {
                         setSuggestions(data.data);
                     }
                 }
@@ -111,11 +107,11 @@ export function MentionInput({
 
         setShowSuggestions(false);
 
-        // Restore focus and update cursor (approximate)
+        // Put the cursor back after the name
         setTimeout(() => {
             if (textareaRef.current) {
                 textareaRef.current.focus();
-                const newCursor = mentionStart + mentionText.length; // +1 for space
+                const newCursor = mentionStart + mentionText.length;
                 textareaRef.current.setSelectionRange(newCursor, newCursor);
             }
         }, 0);
@@ -125,47 +121,34 @@ export function MentionInput({
         <div className="relative">
             <textarea
                 ref={textareaRef}
+                id={id}
                 value={value}
                 onChange={handleInput}
                 placeholder={placeholder}
                 className={className}
                 disabled={disabled}
                 onKeyDown={(e) => {
-                    if (showSuggestions && (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Enter')) {
-                        // TODO: Keyboard navigation
-                    }
-                    // Close on Escape
                     if (e.key === 'Escape') setShowSuggestions(false);
                 }}
             />
 
             {showSuggestions && (suggestions.length > 0 || loading) && (
-                <div className="absolute left-0 bottom-full mb-2 w-64 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden z-50">
-                    {loading && (
-                        <div className="p-3 text-sm text-gray-500 text-center">Searching...</div>
-                    )}
-                    {!loading && suggestions.length === 0 && (
-                        <div className="p-3 text-sm text-gray-500 text-center">No members found</div>
-                    )}
+                <div className="absolute left-0 bottom-full mb-2 w-64 max-w-full bg-surface-raised border border-border shadow-xl z-50" role="listbox" aria-label="People to mention">
+                    {loading && <p className="p-3 text-sm text-muted text-center">Searching…</p>}
                     <ul className="max-h-48 overflow-y-auto">
-                        {suggestions.map(member => (
+                        {suggestions.map((member) => (
                             <li key={member.id}>
                                 <button
                                     type="button"
+                                    role="option"
+                                    aria-selected={false}
                                     onClick={() => selectMember(member)}
-                                    className="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                                    className="w-full text-left px-4 py-2 min-h-[44px] hover:bg-surface flex items-center gap-2"
                                 >
-                                    <div className="w-8 h-8 rounded-full bg-brand/10 text-brand flex items-center justify-center font-bold text-xs uppercase">
-                                        {member.avatar ? 'Img' : member.name[0]}
-                                    </div>
-                                    <div className="min-w-0">
-                                        <div className="text-sm font-bold text-gray-900 dark:text-white truncate">
-                                            {member.name}
-                                        </div>
-                                        <div className="text-xs text-gray-500 truncate">
-                                            {member.email}
-                                        </div>
-                                    </div>
+                                    <span className="w-8 h-8 shrink-0 hexagon bg-brand/15 text-brand flex items-center justify-center font-bold text-xs uppercase" aria-hidden="true">
+                                        {member.name[0]}
+                                    </span>
+                                    <span className="text-sm font-bold truncate">{member.name}</span>
                                 </button>
                             </li>
                         ))}

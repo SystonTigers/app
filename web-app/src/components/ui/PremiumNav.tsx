@@ -11,46 +11,18 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { NotificationCenter } from './NotificationCenter';
-import { Icon, type IconName } from './Icon';
+import { Icon } from './Icon';
+import { clubNav } from './clubNav';
+import { CommandPaletteTrigger } from './CommandPalette';
 import { ClubBadge } from './Brand';
 import { useUserRole, canAccessAdmin } from '@/hooks/useUserRole';
 import { TenantSwitcher } from '../TenantSwitcher';
 import { clubAppLink } from '@/lib/app-link';
 
-interface NavItem {
-    label: string;
-    href: string;
-    icon: IconName;
-}
-
 interface PremiumNavProps {
     tenant: string;
     teamName: string;
     badgeUrl?: string | null;
-}
-
-export function clubNav(tenant: string, signedIn: boolean): { main: NavItem[]; more: NavItem[] } {
-    const t = `/${tenant}`;
-    const main: NavItem[] = [
-        { label: 'Home', href: t, icon: 'home' },
-        { label: 'Fixtures', href: `${t}/fixtures`, icon: 'calendar' },
-        { label: 'Results', href: `${t}/results`, icon: 'trophy' },
-        { label: 'Table', href: `${t}/table`, icon: 'table' },
-        { label: 'Squad', href: `${t}/squad`, icon: 'users' },
-        { label: 'Stats', href: `${t}/stats`, icon: 'chart' },
-    ];
-    const more: NavItem[] = signedIn
-        ? [
-            { label: 'Gallery', href: `${t}/gallery`, icon: 'image' },
-            { label: 'Videos', href: `${t}/videos`, icon: 'video' },
-            { label: 'Training', href: `${t}/training`, icon: 'clipboard' },
-            { label: 'Team talk', href: `${t}/team`, icon: 'chat' },
-            { label: 'Calendar', href: `${t}/calendar`, icon: 'calendar' },
-            { label: 'Season history', href: `${t}/history`, icon: 'history' },
-            { label: 'Sponsors', href: `${t}/sponsors`, icon: 'handshake' },
-        ]
-        : [{ label: 'Sponsors', href: `${t}/sponsors`, icon: 'handshake' }];
-    return { main, more };
 }
 
 export function PremiumNav({ tenant, teamName, badgeUrl }: PremiumNavProps) {
@@ -143,6 +115,7 @@ export function PremiumNav({ tenant, teamName, badgeUrl }: PremiumNavProps) {
                     </nav>
 
                     <div className="flex items-center gap-2 shrink-0">
+                        <span className="hidden lg:inline-flex"><CommandPaletteTrigger /></span>
                         {isLoggedIn ? (
                             <>
                                 <NotificationCenter />

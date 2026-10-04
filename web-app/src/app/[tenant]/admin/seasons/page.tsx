@@ -1,10 +1,14 @@
 'use client';
 
-import { useState, useEffect, use } from 'react';
+import { useCallback, useEffect, useState, use } from 'react';
 import Link from 'next/link';
 import { StartSeasonModal } from '@/components/admin/seasons/StartSeasonModal';
 import { EndSeasonModal } from '@/components/admin/seasons/EndSeasonModal';
-import { apiFetch } from '@/lib/session';
+import { apiFetch, errorMessage } from '@/lib/session';
+import { formatDate } from '@/lib/format';
+import { PageHeader, EmptyNote } from '@/components/ui/Page';
+import { Icon } from '@/components/ui/Icon';
+import { ErrorNote, LoadingBlock, Notice, Pill, bodyError } from '@/components/admin/AdminUi';
 
 interface PageProps {
     params: Promise<{ tenant: string }>;
@@ -22,209 +26,123 @@ interface Season {
 
 export default function SeasonsAdminPage({ params }: PageProps) {
     const { tenant } = use(params);
-
     const [seasons, setSeasons] = useState<Season[]>([]);
     const [loading, setLoading] = useState(true);
-
-    // Modals
+    const [loadError, setLoadError] = useState('');
+    const [message, setMessage] = useState<{ tone: 'success' | 'error'; text: string } | null>(null);
     const [showStartModal, setShowStartModal] = useState(false);
-    const [showEndModal, setShowEndModal] = useState(false);
-    const [selectedSeason, setSelectedSeason] = useState<Season | null>(null);
+    const [endSeason, setEndSeason] = useState<Season | null>(null);
 
-    useEffect(() => {
-        loadSeasons();
-    }, [tenant]);
-
-    async function loadSeasons() {
+    const loadSeasons = useCallback(async () => {
+        setLoadError('');
         try {
-            const token = localStorage.getItem('token');
-            const res = await apiFetch(`/api/v1/seasons`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const res = await apiFetch('/api/v1/seasons');
+            if (!res.ok) throw new Error(await errorMessage(res, "We couldn't load your seasons."));
             const data = await res.json();
-            if (data.success) {
-                setSeasons(data.data || []);
-            }
+            setSeasons(Array.isArray(data?.data) ? (data.data as Season[]) : []);
         } catch (err) {
-            console.error('Failed to load seasons:', err);
+            setLoadError(err instanceof Error && err.message ? err.message : "We couldn't load your seasons. Check your connection and try again.");
         } finally {
             setLoading(false);
         }
-    }
+    }, []);
 
-    async function handleSetCurrent(seasonId: string) {
+    useEffect(() => {
+        loadSeasons();
+    }, [tenant, loadSeasons]);
+
+    async function post(path: string, body: unknown, done: string, fallback: string) {
+        setMessage(null);
         try {
-            const token = localStorage.getItem('token');
-            await apiFetch(`/api/v1/seasons/set-current`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`
-                },
-                body: JSON.stringify({ seasonId })
-            });
+            const res = await apiFetch(path, { method: 'POST', body: body === undefined ? undefined : JSON.stringify(body) });
+            const data = await res.json().catch(() => null);
+            if (!res.ok || data?.success === false) throw new Error(bodyError(data, fallback));
+            setMessage({ tone: 'success', text: done });
             loadSeasons();
         } catch (err) {
-            alert('Failed to set current season');
+            setMessage({ tone: 'error', text: err instanceof Error ? err.message : fallback });
         }
     }
 
-    async function handleReopen(seasonId: string) {
-        if (!confirm('Are you sure you want to reopen this season? It will become active again.')) return;
-        try {
-            const token = localStorage.getItem('token');
-            const res = await apiFetch(`/api/v1/seasons/${seasonId}/reopen`, {
-                method: 'POST',
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            const data = await res.json();
-            if (data.success) {
-                loadSeasons();
-            } else {
-                alert(data.error || 'Failed to reopen season');
-            }
-        } catch (err) {
-            alert('Failed to reopen season');
-        }
-    }
-
-    const openEndSeasonModal = (season: Season) => {
-        setSelectedSeason(season);
-        setShowEndModal(true);
+    const handleSetCurrent = (s: Season) => post('/api/v1/seasons/set-current', { seasonId: s.id }, `${s.name} is now the current season.`, "That season wasn't made current. Please try again.");
+    const handleReopen = (s: Season) => {
+        if (!confirm(`Reopen ${s.name}? It becomes active again.`)) return;
+        post(`/api/v1/seasons/${encodeURIComponent(s.id)}/reopen`, undefined, `${s.name} is open again.`, "That season wasn't reopened. Please try again.");
     };
 
-    if (loading) return <div className="p-8 dark:text-gray-200">Loading...</div>;
-
-    const currentSeason = seasons.find(s => s.is_current === 1);
+    const currentSeason = seasons.find((s) => s.is_current === 1);
+    const dates = (s: Season) => `${formatDate(s.start_date) || s.start_date} to ${s.end_date ? formatDate(s.end_date) || s.end_date : 'now'}`;
 
     return (
-        <div className="container mx-auto py-8 px-4">
-            <StartSeasonModal
-                isOpen={showStartModal}
-                onClose={() => setShowStartModal(false)}
-                onSuccess={loadSeasons}
-                tenantId={tenant}
-            />
-
-            {showEndModal && selectedSeason && (
-                <EndSeasonModal
-                    isOpen={showEndModal}
-                    onClose={() => setShowEndModal(false)}
-                    onSuccess={loadSeasons}
-                    season={selectedSeason}
-                    tenantId={tenant}
-                />
+        <div className="container py-8 md:py-10">
+            <StartSeasonModal isOpen={showStartModal} onClose={() => setShowStartModal(false)} onSuccess={loadSeasons} tenantId={tenant} />
+            {endSeason && (
+                <EndSeasonModal isOpen onClose={() => setEndSeason(null)} onSuccess={loadSeasons} season={endSeason} tenantId={tenant} />
             )}
 
-            <div className="flex justify-between items-center mb-8">
-                <div>
-                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white">📅 Seasons Manager</h1>
-                    <p className="text-gray-500 dark:text-gray-400 mt-1">Manage season lifecycle, archives, and awards.</p>
-                </div>
-                <div className="flex gap-4">
-                    <Link
-                        href={`/${tenant}/history`}
-                        className="text-brand hover:underline flex items-center gap-1"
-                    >
-                        View Public History →
-                    </Link>
-                    <button
-                        onClick={() => setShowStartModal(true)}
-                        className="bg-brand text-white px-4 py-2 rounded hover:bg-brand/90 transition-colors shadow-sm flex items-center gap-2"
-                    >
-                        <span>+</span> Start New Season
-                    </button>
-                </div>
-            </div>
+            <PageHeader
+                eyebrow="Club admin"
+                title="Seasons"
+                subtitle="Start a new season, end the old one with its awards, and look back at past seasons."
+                actions={
+                    <>
+                        <Link href={`/${tenant}/history`} className="btn btn-secondary"><Icon name="history" className="w-4 h-4" /> Club history</Link>
+                        <button type="button" onClick={() => setShowStartModal(true)} className="btn btn-primary"><Icon name="plus" className="w-4 h-4" /> New season</button>
+                    </>
+                }
+            />
 
-            <div className="space-y-8">
-                {/* Current Season Card */}
-                {currentSeason && (
-                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border-l-4 border-green-500 p-6">
-                        <div className="flex justify-between items-start">
+            {message && <div className="mb-6"><Notice tone={message.tone}>{message.text}</Notice></div>}
+
+            {loading ? (
+                <LoadingBlock label="Loading seasons" />
+            ) : loadError ? (
+                <ErrorNote message={loadError} onRetry={() => { setLoading(true); loadSeasons(); }} />
+            ) : seasons.length === 0 ? (
+                <EmptyNote icon="history" title="No seasons set up" action={<button type="button" onClick={() => setShowStartModal(true)} className="btn btn-primary">Start your first season</button>}>
+                    Until you start one, results and stats are grouped by football year (August to July).
+                </EmptyNote>
+            ) : (
+                <div className="space-y-6">
+                    {currentSeason && (
+                        <section className="card border-brand/50 flex flex-wrap justify-between items-center gap-4" aria-label="Current season">
                             <div>
-                                <div className="text-sm font-semibold text-green-600 uppercase tracking-wide mb-1">Current Active Season</div>
-                                <h2 className="text-2xl font-bold dark:text-white">{currentSeason.name}</h2>
-                                <p className="text-gray-500 mt-1">Started: {currentSeason.start_date}</p>
+                                <p className="eyebrow mb-1">Current season</p>
+                                <h2 className="text-4xl">{currentSeason.name}</h2>
+                                <p className="text-muted mt-1">Started {formatDate(currentSeason.start_date) || currentSeason.start_date}</p>
                             </div>
-                            <button
-                                onClick={() => openEndSeasonModal(currentSeason)}
-                                className="px-4 py-2 bg-red-50 text-red-600 border border-red-200 rounded hover:bg-red-100 transition-colors"
-                            >
-                                End Season...
-                            </button>
-                        </div>
-                    </div>
-                )}
+                            <button type="button" onClick={() => setEndSeason(currentSeason)} className="btn btn-danger">End season</button>
+                        </section>
+                    )}
 
-                {/* Seasons List */}
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
-                    <h2 className="text-xl font-semibold p-6 border-b dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
-                        Season History
-                    </h2>
-                    {seasons.length === 0 ? (
-                        <div className="p-8 text-center text-gray-500">
-                            No seasons found. Start your first season!
-                        </div>
-                    ) : (
-                        <div className="divide-y dark:divide-gray-700">
-                            {seasons.map(season => {
+                    <section aria-labelledby="season-list-title" className="space-y-3">
+                        <h2 id="season-list-title" className="text-2xl">All seasons</h2>
+                        <ul className="space-y-2">
+                            {seasons.map((season) => {
                                 const isCurrent = season.is_current === 1;
                                 const isArchived = season.status === 'archived';
-
                                 return (
-                                    <div key={season.id} className={`p-6 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors ${isCurrent ? 'bg-green-50/30' : ''}`}>
-                                        <div className="flex items-center gap-4">
-                                            <div className="text-3xl">
-                                                {isCurrent ? '🟢' : isArchived ? '📦' : '⚪'}
-                                            </div>
-                                            <div>
-                                                <div className="font-semibold flex items-center gap-2 text-lg dark:text-white">
-                                                    {season.name}
-                                                    {isCurrent && (
-                                                        <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded border border-green-200">Active</span>
-                                                    )}
-                                                    {isArchived && (
-                                                        <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded border border-gray-200">Archived</span>
-                                                    )}
-                                                </div>
-                                                <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                                                    {season.start_date} {season.end_date ? `— ${season.end_date}` : '— Present'}
-                                                </div>
-                                            </div>
+                                    <li key={season.id} className="bg-surface border border-border chamfer-sm p-4 flex flex-wrap items-center gap-4">
+                                        <div className="min-w-0 flex-1">
+                                            <p className="font-display text-2xl font-extrabold uppercase flex flex-wrap items-center gap-2">
+                                                {season.name}
+                                                {isCurrent && <Pill tone="success">Current</Pill>}
+                                                {isArchived && <Pill>Archived</Pill>}
+                                            </p>
+                                            <p className="text-sm text-muted">{dates(season)}</p>
                                         </div>
-
-                                        <div className="flex items-center gap-3">
-                                            {!isCurrent && !isArchived && (
-                                                <button
-                                                    onClick={() => handleSetCurrent(season.id)}
-                                                    className="text-sm text-blue-600 hover:text-blue-800 font-medium px-3 py-1 rounded hover:bg-blue-50"
-                                                >
-                                                    Set Active
-                                                </button>
-                                            )}
-                                            {isArchived && (
-                                                <button
-                                                    onClick={() => handleReopen(season.id)}
-                                                    className="text-sm text-yellow-600 hover:text-yellow-800 font-medium px-3 py-1 rounded hover:bg-yellow-50"
-                                                >
-                                                    Reopen
-                                                </button>
-                                            )}
-                                            <Link
-                                                href={`/${tenant}/history?season=${season.id}`}
-                                                className="text-sm text-gray-500 hover:text-gray-900 dark:hover:text-gray-300 px-3 py-1"
-                                            >
-                                                View Stats
-                                            </Link>
+                                        <div className="flex items-center gap-2">
+                                            {!isCurrent && !isArchived && <button type="button" onClick={() => handleSetCurrent(season)} className="btn btn-sm btn-secondary">Make current</button>}
+                                            {isArchived && <button type="button" onClick={() => handleReopen(season)} className="btn btn-sm btn-secondary">Reopen</button>}
+                                            <Link href={`/${tenant}/history?season=${season.id}`} className="btn btn-sm btn-ghost">Stats</Link>
                                         </div>
-                                    </div>
-                                )
+                                    </li>
+                                );
                             })}
-                        </div>
-                    )}
+                        </ul>
+                    </section>
                 </div>
-            </div>
+            )}
         </div>
     );
 }

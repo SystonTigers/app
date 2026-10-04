@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ownerBackendPath, ownerQuery, sameOrigin } from '../proxy';
-import { ago, pounds, trialText } from '../format';
+import { ago, paymentText, rolesText, trialText } from '../format';
 
 describe('owner proxy allow-list', () => {
   it('forwards only the owner panel calls', () => {
@@ -38,9 +38,7 @@ describe('owner proxy allow-list', () => {
 });
 
 describe('owner formatting', () => {
-  it('formats money and times', () => {
-    expect(pounds(2999)).toBe('£29.99');
-    expect(pounds(3000)).toBe('£30');
+  it('formats times', () => {
     const now = Date.UTC(2026, 8, 30, 12);
     expect(ago(null)).toBe('Never');
     expect(ago(now - 30_000, now)).toBe('Just now');
@@ -49,5 +47,14 @@ describe('owner formatting', () => {
     expect(trialText(1)).toBe('1 day of trial left');
     expect(trialText(0)).toBe('Trial ends today');
     expect(trialText(-2)).toBe('Trial ended 2 days ago');
+  });
+
+  it('names roles and payment status in words', () => {
+    expect(rolesText(['tenant_member'])).toBe('Member');
+    expect(rolesText(['tenant_member', 'supporter'])).toBe('Supporter');
+    expect(rolesText(['owner', 'tenant_admin', 'admin'])).toBe('Owner, Admin');
+    expect(paymentText(null)).toBe('Not set up');
+    expect(paymentText('trialing')).toBe('On trial');
+    expect(paymentText('past_due')).toBe('Payment overdue');
   });
 });

@@ -55,15 +55,15 @@ function Preview({ pack, sample, label, version }: { pack: string; sample: strin
     }, [pack, sample, version]);
     return (
         <figure className="shrink-0 w-36">
-            <div className="aspect-[4/5] rounded-md overflow-hidden bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+            <div className="aspect-[4/5] overflow-hidden bg-background border border-border flex items-center justify-center">
                 {src ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={src} alt={`${label} graphic in this style`} className="w-full h-full object-cover" />
                 ) : (
-                    <span className="text-xs text-gray-500 dark:text-gray-400">{failed ? 'No preview' : 'Drawing…'}</span>
+                    <span className="text-xs text-muted">{failed ? 'No preview' : 'Drawing…'}</span>
                 )}
             </div>
-            <figcaption className="text-xs text-gray-500 dark:text-gray-400 mt-1">{label}</figcaption>
+            <figcaption className="text-xs text-muted mt-1">{label}</figcaption>
         </figure>
     );
 }
@@ -123,9 +123,9 @@ export function GraphicsSettings({ graphics, busy, onSave, onMessage }: {
         }
     };
 
-    const card = 'bg-white dark:bg-gray-800 rounded-lg p-6 shadow';
-    const heading = 'font-semibold text-lg text-gray-900 dark:text-white';
-    const help = 'text-sm text-gray-500 dark:text-gray-400 mt-1';
+    const card = 'card';
+    const heading = 'text-2xl';
+    const help = 'text-sm text-muted mt-1';
     const lockedChoice = graphics.pack !== graphics.activePack;
 
     return (
@@ -133,33 +133,33 @@ export function GraphicsSettings({ graphics, busy, onSave, onMessage }: {
             <h3 id="graphics-title" className={heading}>Graphics style</h3>
             <p className={help}>Every post gets a graphic in your club&apos;s colours with both teams&apos; badges. Previews use your own club details.</p>
             {lockedChoice && (
-                <p className="mt-2 text-sm text-amber-700 dark:text-amber-400">Your chosen premium style is locked, so posts use {graphics.packs.find((p) => p.id === graphics.activePack)?.name} for now.</p>
+                <p className="mt-2 text-sm text-amber-300">Your chosen premium style is locked, so posts use {graphics.packs.find((p) => p.id === graphics.activePack)?.name} for now.</p>
             )}
             <div className="mt-4 space-y-3">
                 {graphics.packs.map((pack) => {
                     const current = graphics.pack === pack.id;
                     return (
-                        <div key={pack.id} className={`rounded-lg border ${current ? 'border-brand' : 'border-gray-200 dark:border-gray-600'}`}>
+                        <div key={pack.id} className={`border chamfer-sm ${current ? 'border-brand bg-brand/5' : 'border-border bg-surface-raised'}`}>
                             <div className="flex flex-wrap items-center gap-3 p-4">
                                 <div className="flex-1 min-w-[12rem]">
-                                    <p className="font-semibold text-gray-900 dark:text-white">
+                                    <p className="font-semibold text-foreground">
                                         {pack.name}
-                                        {pack.premium && <span className="ml-2 text-xs font-bold uppercase tracking-wide px-2 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200">Premium</span>}
-                                        {current && <span className="ml-2 text-xs font-bold uppercase tracking-wide text-green-700 dark:text-green-400">In use</span>}
+                                        {pack.premium && <span className="ml-2 text-xs font-bold uppercase tracking-wide px-2 py-0.5 border border-amber-500/40 bg-amber-500/10 text-amber-300">Premium</span>}
+                                        {current && <span className="ml-2 text-xs font-bold uppercase tracking-wide text-green-400">In use</span>}
                                     </p>
-                                    <p className="text-sm text-gray-500 dark:text-gray-400">{pack.description}</p>
+                                    <p className="text-sm text-muted">{pack.description}</p>
                                 </div>
                                 <button type="button" onClick={() => setOpen(open === pack.id ? '' : pack.id)} aria-expanded={open === pack.id}
-                                    className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-semibold text-gray-900 dark:text-white">
+                                    className="btn btn-sm btn-secondary">
                                     {open === pack.id ? 'Hide examples' : 'See examples'}
                                 </button>
                                 {!current && (pack.unlocked ? (
                                     <button type="button" disabled={busy} onClick={() => onSave({ pack: pack.id }, `${pack.name} is now your graphics style.`)}
-                                        className="px-3 py-2 bg-brand text-black rounded-lg text-sm font-bold disabled:opacity-50">
+                                        className="btn btn-sm btn-primary">
                                         Use this style
                                     </button>
                                 ) : (
-                                    <span className="text-sm text-gray-500 dark:text-gray-400">One-off purchase. Contact Boost Huddle to unlock it for your club.</span>
+                                    <span className="text-sm text-muted">One-off purchase. Contact Boost Huddle to unlock it for your club.</span>
                                 ))}
                             </div>
                             {open === pack.id && (
@@ -172,40 +172,40 @@ export function GraphicsSettings({ graphics, busy, onSave, onMessage }: {
                 })}
             </div>
 
-            <h4 className="mt-6 font-semibold text-gray-900 dark:text-white">Sponsor</h4>
+            <h4 className="mt-8 text-xl">Sponsor</h4>
             <p className={help}>Shown at the bottom of every graphic. A logo looks best; without one we show the sponsor&apos;s name.</p>
             <div className="mt-3 flex flex-wrap items-end gap-3">
-                <label className="flex-1 min-w-[14rem] text-sm text-gray-900 dark:text-white">
+                <label className="flex-1 min-w-[14rem] label mb-0">
                     Sponsor&apos;s name
                     <input id="sponsor-name" type="text" maxLength={60} value={sponsor} onChange={(e) => setSponsor(e.target.value)}
-                        className="mt-1 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2" placeholder="e.g. Cherry Tree Nursery" />
+                        className="field mt-2" placeholder="e.g. Cherry Tree Nursery" />
                 </label>
                 <button type="button" disabled={busy || sponsor.trim() === (graphics.sponsorName ?? '')}
                     onClick={() => onSave({ sponsorName: sponsor.trim() || null }, sponsor.trim() ? 'Sponsor saved.' : 'Sponsor removed.')}
-                    className="px-4 py-2 bg-brand text-black rounded-lg text-sm font-bold disabled:opacity-50">
+                    className="btn btn-primary">
                     Save sponsor
                 </button>
             </div>
             <div className="mt-3 flex flex-wrap items-center gap-3">
                 {logo && (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={logo} alt="Sponsor logo" className="h-12 max-w-[10rem] object-contain bg-white rounded p-1 border border-gray-200" />
+                    <img src={logo} alt="Sponsor logo" className="h-12 max-w-[10rem] object-contain bg-white p-1 border border-border" />
                 )}
-                <label className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-semibold text-gray-900 dark:text-white cursor-pointer">
+                <label className="btn btn-secondary">
                     {uploading ? 'Uploading…' : logo ? 'Change logo' : 'Upload logo (PNG or JPG)'}
                     <input id="sponsor-logo" type="file" accept="image/png,image/jpeg" className="sr-only" disabled={uploading}
                         onChange={(e) => { const f = e.target.files?.[0]; if (f) void uploadLogo(f); e.target.value = ''; }} />
                 </label>
                 {logo && (
-                    <button type="button" onClick={removeLogo} className="text-sm font-semibold text-red-600">Remove logo</button>
+                    <button type="button" onClick={removeLogo} className="btn btn-sm btn-danger">Remove logo</button>
                 )}
             </div>
 
-            <h4 className="mt-6 font-semibold text-gray-900 dark:text-white">Opponents&apos; badges</h4>
+            <h4 className="mt-8 text-xl">Opponents&apos; badges</h4>
             <p className={help}>
                 Every team you play is listed on the Opponents page. Upload each badge once (PNG or JPG) and it&apos;s used on every graphic; until then we show their initials.
             </p>
-            <a href={`/${params.tenant as string}/admin/opponents`} className="inline-block mt-3 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-semibold text-gray-900 dark:text-white">
+            <a href={`/${params.tenant as string}/admin/opponents`} className="btn btn-secondary mt-3">
                 Manage opponents&apos; badges
             </a>
         </section>

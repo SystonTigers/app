@@ -1,12 +1,15 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { Suspense, use, useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { createClientSDK } from '@/lib/sdk';
+import { writeCartId } from '@/components/shop/types';
+import { EmptyNote } from '@/components/ui/Page';
 
-export default function ShopSuccessPage({ params }: { params: { tenant: string } }) {
+/** Stripe sends buyers here with the order and payment ids; we confirm the order once. */
+function OrderConfirmation({ tenant }: { tenant: string }) {
     const searchParams = useSearchParams();
-    const router = useRouter();
     const sessionId = searchParams.get('session_id');
     const orderId = searchParams.get('order_id');
     const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
@@ -14,68 +17,61 @@ export default function ShopSuccessPage({ params }: { params: { tenant: string }
 
     useEffect(() => {
         if (!sessionId || !orderId || processedRef.current) return;
-
-        const confirmOrder = async () => {
-            processedRef.current = true;
+        processedRef.current = true;
+        (async () => {
             try {
-                const sdk = createClientSDK(params.tenant);
-                await sdk.confirmShopOrder(orderId, sessionId);
+                await createClientSDK(tenant).confirmShopOrder(orderId, sessionId);
+                writeCartId(tenant, null);
                 setStatus('success');
-                // Clear cart
-                localStorage.removeItem(`cart_${params.tenant}`);
             } catch (err) {
-                console.error(err);
+                console.error('Order confirmation failed', err);
                 setStatus('error');
             }
-        };
+        })();
+    }, [sessionId, orderId, tenant]);
 
-        confirmOrder();
-    }, [sessionId, orderId, params.tenant]);
+    const backToShop = <Link href={`/${tenant}/shop`} className="btn btn-primary">Back to the shop</Link>;
 
     if (!sessionId || !orderId) {
-        return <div className="p-10 text-center">Invalid order details.</div>;
+        return (
+            <EmptyNote icon="bag" title="No order to show" action={backToShop}>
+                This page is for orders coming back from payment. Your basket is still in the shop.
+            </EmptyNote>
+        );
+    }
+
+    if (status === 'loading') {
+        return (
+            <div aria-busy="true">
+                <EmptyNote icon="refresh" title="Confirming your order">Just a moment while we check your payment.</EmptyNote>
+            </div>
+        );
+    }
+
+    if (status === 'error') {
+        return (
+            <EmptyNote icon="alert" title="We couldn't confirm your order" action={backToShop}>
+                <p role="alert">
+                    Your payment may have gone through, but we couldn&apos;t finish the order. Please get in touch with the club and quote order {orderId}.
+                </p>
+            </EmptyNote>
+        );
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
-            <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-xl max-w-md w-full text-center">
-                {status === 'loading' && (
-                    <div className="animate-pulse">
-                        <div className="text-6xl mb-4">⚙️</div>
-                        <h1 className="text-2xl font-bold mb-2">Finalizing Order...</h1>
-                        <p className="text-gray-500">Please wait while we confirm your payment and start production.</p>
-                    </div>
-                )}
+        <EmptyNote icon="check" title="Order confirmed" action={backToShop}>
+            Thanks for supporting the club. Your gear is being made and we&apos;ll email you a confirmation.
+        </EmptyNote>
+    );
+}
 
-                {status === 'success' && (
-                    <div className="animate-bounce-in">
-                        <div className="text-6xl mb-4">🎉</div>
-                        <h1 className="text-2xl font-bold mb-2 text-green-600">Order Confirmed!</h1>
-                        <p className="text-gray-500 mb-6">Your custom gear is being created. You will receive an email confirmation shortly.</p>
-                        <button
-                            onClick={() => router.push(`/${params.tenant}/shop`)}
-                            className="bg-black text-white px-6 py-2 rounded-full hover:bg-gray-800 transition"
-                        >
-                            Back to Shop
-                        </button>
-                    </div>
-                )}
-
-                {status === 'error' && (
-                    <div>
-                        <div className="text-6xl mb-4">⚠️</div>
-                        <h1 className="text-2xl font-bold mb-2 text-red-600">Something went wrong</h1>
-                        <p className="text-gray-500 mb-6">We received your payment but couldn't finalize the order details. Please contact support.</p>
-                        <p className="text-sm text-gray-400 mb-4">Order ID: {orderId}</p>
-                        <button
-                            onClick={() => router.push(`/${params.tenant}/shop`)}
-                            className="text-blue-500 hover:underline"
-                        >
-                            Return to Shop
-                        </button>
-                    </div>
-                )}
-            </div>
+export default function ShopSuccessPage({ params }: { params: Promise<{ tenant: string }> }) {
+    const { tenant } = use(params);
+    return (
+        <div className="container py-12 max-w-2xl">
+            <Suspense fallback={<div className="min-h-[40vh]" aria-busy="true" />}>
+                <OrderConfirmation tenant={tenant} />
+            </Suspense>
         </div>
     );
 }

@@ -1,212 +1,217 @@
 'use client';
 
 import { useState } from 'react';
+import { ukDay } from '@/lib/format';
+import { Dialog, Notice, sdkErrorMessage } from '@/components/admin/AdminUi';
+
+/** What the "Sign a player" form sends to POST /api/v1/squad/add. */
+export interface NewPlayer {
+    firstName: string;
+    lastName: string;
+    number: number | null;
+    position: string;
+    role: string;
+    photo_url: string;
+    bio: string;
+    signedDate: string;
+    previousClub: string;
+    signingNotes: string;
+    announce: boolean;
+}
 
 interface AddPlayerModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSave: (playerData: any) => Promise<void>;
+    onSave: (playerData: NewPlayer) => Promise<void>;
 }
+
+const EMPTY = {
+    firstName: '',
+    lastName: '',
+    number: '',
+    position: 'Midfielder',
+    role: 'Player',
+    photo_url: '',
+    bio: '',
+    previousClub: '',
+    signingNotes: '',
+    announce: false,
+};
 
 export function AddPlayerModal({ isOpen, onClose, onSave }: AddPlayerModalProps) {
     const [loading, setLoading] = useState(false);
-    const [formData, setFormData] = useState({
-        firstName: '',
-        lastName: '',
-        number: '',
-        position: 'Midfielder',
-        role: 'Player',
-        photo_url: '',
-        bio: '',
-        signedDate: new Date().toISOString().split('T')[0],
-        previousClub: '',
-        signingNotes: '',
-        announce: false
-    });
+    const [error, setError] = useState('');
+    const [formData, setFormData] = useState({ ...EMPTY, signedDate: ukDay() });
 
     if (!isOpen) return null;
 
+    const close = () => {
+        setError('');
+        onClose();
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!formData.firstName.trim()) {
+            setError('Enter the player\'s first name.');
+            return;
+        }
         setLoading(true);
+        setError('');
         try {
-            await onSave({
-                ...formData,
-                number: formData.number ? parseInt(formData.number) : null
-            });
+            const number = parseInt(formData.number, 10);
+            await onSave({ ...formData, number: Number.isNaN(number) ? null : number });
+            setFormData({ ...EMPTY, signedDate: ukDay() });
             onClose();
         } catch (err) {
-            console.error(err);
-            alert('Failed to add player');
+            setError(sdkErrorMessage(err, "The player wasn't added. Please try again."));
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-                <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-                    <h2 className="text-xl font-bold dark:text-white">Sign New Player</h2>
-                    <button onClick={onClose} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
-                        ✕
-                    </button>
+        <Dialog title="Sign a player" onClose={close} wide>
+            <form onSubmit={handleSubmit} className="space-y-5" noValidate>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label htmlFor="player-first-name" className="label">First name</label>
+                        <input
+                            id="player-first-name"
+                            required
+                            maxLength={40}
+                            type="text"
+                            autoComplete="off"
+                            className="field"
+                            value={formData.firstName}
+                            onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                            placeholder="e.g. Mary Jane"
+                        />
+                    </div>
+                    <div>
+                        <label htmlFor="player-last-name" className="label">Surname</label>
+                        <input
+                            id="player-last-name"
+                            maxLength={40}
+                            type="text"
+                            autoComplete="off"
+                            className="field"
+                            value={formData.lastName}
+                            onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                            placeholder="e.g. Van Dijk"
+                        />
+                    </div>
+                    <div>
+                        <label htmlFor="player-number" className="label">Squad number</label>
+                        <input
+                            id="player-number"
+                            type="number"
+                            inputMode="numeric"
+                            min={1}
+                            max={99}
+                            className="field"
+                            value={formData.number}
+                            onChange={(e) => setFormData({ ...formData, number: e.target.value })}
+                            placeholder="9"
+                        />
+                    </div>
+                    <div>
+                        <label htmlFor="player-position" className="label">Position</label>
+                        <select id="player-position" className="field" value={formData.position} onChange={(e) => setFormData({ ...formData, position: e.target.value })}>
+                            <option>Goalkeeper</option>
+                            <option>Defender</option>
+                            <option>Midfielder</option>
+                            <option>Forward</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label htmlFor="player-role" className="label">Role</label>
+                        <select id="player-role" className="field" value={formData.role} onChange={(e) => setFormData({ ...formData, role: e.target.value })}>
+                            <option value="Player">Player</option>
+                            <option value="Captain">Captain</option>
+                            <option value="Vice Captain">Vice captain</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label htmlFor="player-signed" className="label">Signed on</label>
+                        <input
+                            id="player-signed"
+                            type="date"
+                            className="field"
+                            value={formData.signedDate}
+                            onChange={(e) => setFormData({ ...formData, signedDate: e.target.value })}
+                        />
+                    </div>
                 </div>
 
-                <form onSubmit={handleSubmit} className="p-6 space-y-6">
-                    {/* Basic Info */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <label htmlFor="player-first-name" className="text-sm font-medium dark:text-gray-300">First name *</label>
-                            <input
-                                id="player-first-name"
-                                required
-                                maxLength={40}
-                                type="text"
-                                className="w-full p-2 rounded border dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                                value={formData.firstName}
-                                onChange={e => setFormData({ ...formData, firstName: e.target.value })}
-                                placeholder="e.g. Mary Jane"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <label htmlFor="player-last-name" className="text-sm font-medium dark:text-gray-300">Surname</label>
-                            <input
-                                id="player-last-name"
-                                maxLength={40}
-                                type="text"
-                                className="w-full p-2 rounded border dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                                value={formData.lastName}
-                                onChange={e => setFormData({ ...formData, lastName: e.target.value })}
-                                placeholder="e.g. Van Dijk"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium dark:text-gray-300">Squad Number</label>
-                            <input
-                                type="number"
-                                className="w-full p-2 rounded border dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                                value={formData.number}
-                                onChange={e => setFormData({ ...formData, number: e.target.value })}
-                                placeholder="9"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium dark:text-gray-300">Position</label>
-                            <select
-                                className="w-full p-2 rounded border dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                                value={formData.position}
-                                onChange={e => setFormData({ ...formData, position: e.target.value })}
-                            >
-                                <option>Goalkeeper</option>
-                                <option>Defender</option>
-                                <option>Midfielder</option>
-                                <option>Forward</option>
-                            </select>
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium dark:text-gray-300">Role</label>
-                            <select
-                                className="w-full p-2 rounded border dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                                value={formData.role}
-                                onChange={e => setFormData({ ...formData, role: e.target.value })}
-                            >
-                                <option value="Player">Player</option>
-                                <option value="Captain">Captain</option>
-                                <option value="Vice Captain">Vice Captain</option>
-                            </select>
-                        </div>
-                    </div>
+                <div>
+                    <label htmlFor="player-photo" className="label">Photo link (optional)</label>
+                    <input
+                        id="player-photo"
+                        type="url"
+                        className="field"
+                        value={formData.photo_url}
+                        onChange={(e) => setFormData({ ...formData, photo_url: e.target.value })}
+                        placeholder="https://…"
+                    />
+                </div>
 
-                    {/* Extended Info */}
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium dark:text-gray-300">Photo URL</label>
+                <div>
+                    <label htmlFor="player-bio" className="label">About the player (optional)</label>
+                    <textarea
+                        id="player-bio"
+                        rows={3}
+                        className="field"
+                        value={formData.bio}
+                        onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
+                    />
+                </div>
+
+                <fieldset className="border border-border bg-surface-raised p-4 space-y-4 chamfer-sm">
+                    <legend className="font-display text-lg font-extrabold uppercase tracking-wide px-1">Signing news</legend>
+                    <div>
+                        <label htmlFor="player-previous" className="label">Previous club (optional)</label>
                         <input
-                            type="url"
-                            className="w-full p-2 rounded border dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                            value={formData.photo_url}
-                            onChange={e => setFormData({ ...formData, photo_url: e.target.value })}
-                            placeholder="https://..."
+                            id="player-previous"
+                            type="text"
+                            className="field"
+                            value={formData.previousClub}
+                            onChange={(e) => setFormData({ ...formData, previousClub: e.target.value })}
+                            placeholder="e.g. Anstey Nomads"
                         />
                     </div>
-
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium dark:text-gray-300">Bio</label>
+                    <div>
+                        <label htmlFor="player-notes" className="label">A few words for the announcement (optional)</label>
                         <textarea
-                            className="w-full p-2 rounded border dark:bg-gray-700 dark:border-gray-600 dark:text-white h-20"
-                            value={formData.bio}
-                            onChange={e => setFormData({ ...formData, bio: e.target.value })}
-                            placeholder="Player bio..."
+                            id="player-notes"
+                            rows={2}
+                            className="field"
+                            value={formData.signingNotes}
+                            onChange={(e) => setFormData({ ...formData, signingNotes: e.target.value })}
+                            placeholder="A quote from the manager or the player"
                         />
                     </div>
+                    <label htmlFor="announce" className="flex items-center gap-3 min-h-[40px] cursor-pointer">
+                        <input
+                            type="checkbox"
+                            id="announce"
+                            className="w-5 h-5 accent-[rgb(var(--brand-rgb))]"
+                            checked={formData.announce}
+                            onChange={(e) => setFormData({ ...formData, announce: e.target.checked })}
+                        />
+                        <span className="text-sm font-semibold">Post a welcome to the club news</span>
+                    </label>
+                </fieldset>
 
-                    {/* Signing Details */}
-                    <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg space-y-4 border border-blue-100 dark:border-blue-800">
-                        <h3 className="font-semibold text-blue-800 dark:text-blue-300 flex items-center gap-2">
-                            ✍️ Contract & Signing
-                        </h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium dark:text-gray-300">Signed Date</label>
-                                <input
-                                    type="date"
-                                    className="w-full p-2 rounded border dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                                    value={formData.signedDate}
-                                    onChange={e => setFormData({ ...formData, signedDate: e.target.value })}
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium dark:text-gray-300">Previous Club (Optional)</label>
-                                <input
-                                    type="text"
-                                    className="w-full p-2 rounded border dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                                    value={formData.previousClub}
-                                    onChange={e => setFormData({ ...formData, previousClub: e.target.value })}
-                                    placeholder="e.g. Richmond FC"
-                                />
-                            </div>
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium dark:text-gray-300">Signing Announcement Notes</label>
-                            <textarea
-                                className="w-full p-2 rounded border dark:bg-gray-700 dark:border-gray-600 dark:text-white h-20"
-                                value={formData.signingNotes}
-                                onChange={e => setFormData({ ...formData, signingNotes: e.target.value })}
-                                placeholder="Quote from manager or player..."
-                            />
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <input
-                                type="checkbox"
-                                id="announce"
-                                className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                                checked={formData.announce}
-                                onChange={e => setFormData({ ...formData, announce: e.target.checked })}
-                            />
-                            <label htmlFor="announce" className="text-sm font-medium dark:text-gray-300 cursor-pointer">
-                                Post "Welcome" announcement to Feed?
-                            </label>
-                        </div>
-                    </div>
+                {error && <Notice tone="error">{error}</Notice>}
 
-                    <div className="pt-4 flex justify-end gap-3">
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            className="px-4 py-2 rounded text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="submit"
-                            disabled={loading}
-                            className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
-                        >
-                            {loading ? 'Signing...' : 'Sign Player'}
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
+                <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
+                    <button type="button" onClick={close} className="btn btn-ghost">Cancel</button>
+                    <button type="submit" disabled={loading} className="btn btn-primary">
+                        {loading ? 'Signing…' : 'Sign player'}
+                    </button>
+                </div>
+            </form>
+        </Dialog>
     );
 }

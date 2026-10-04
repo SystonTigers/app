@@ -1,8 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
-import { apiFetch } from '@/lib/session';
+import { useCallback, useEffect, useState } from 'react';
+import { apiFetch, errorMessage } from '@/lib/session';
+import { formatDate } from '@/lib/format';
+import { PageHeader, EmptyNote } from '@/components/ui/Page';
+import { Icon } from '@/components/ui/Icon';
+import { Dialog, ErrorNote, LoadingBlock, Notice, bodyError } from '@/components/admin/AdminUi';
 
 interface PaymentRequest {
     id: string;
@@ -16,247 +19,159 @@ interface PaymentRequest {
     createdAt: number;
 }
 
+const pounds = (n: number) => n.toLocaleString('en-GB', { style: 'currency', currency: 'GBP' });
+const EMPTY = { title: '', amount: '', description: '', dueDate: '' };
+
+/**
+ * Subs and match fees. Members pay online through Stripe, which isn't
+ * switched on for clubs yet, so the page says so up front.
+ */
 export default function DuesPage() {
-    const params = useParams();
-    const tenant = params?.tenant as string;
     const [requests, setRequests] = useState<PaymentRequest[]>([]);
     const [loading, setLoading] = useState(true);
-    const [showCreateModal, setShowCreateModal] = useState(false);
-    const [newRequest, setNewRequest] = useState({ title: '', amount: '', description: '', dueDate: '' });
+    const [loadError, setLoadError] = useState('');
+    const [showCreate, setShowCreate] = useState(false);
+    const [newRequest, setNewRequest] = useState(EMPTY);
     const [creating, setCreating] = useState(false);
+    const [createError, setCreateError] = useState('');
+    const [message, setMessage] = useState<{ tone: 'success' | 'error'; text: string } | null>(null);
 
-    const API_BASE = process.env.NEXT_PUBLIC_API_BASE || '';
-
-    useEffect(() => {
-        fetchRequests();
-    }, []);
-
-    const fetchRequests = async () => {
+    const fetchRequests = useCallback(async () => {
+        setLoadError('');
         try {
-            const res = await apiFetch(`/api/v1/dues/requests`, { });
+            const res = await apiFetch('/api/v1/dues/requests');
+            if (!res.ok) throw new Error(await errorMessage(res, "We couldn't load your payment requests."));
             const data = await res.json();
-            if (data.success) {
-                setRequests(data.data);
-            }
-        } catch (error) {
-            console.error('Failed to fetch requests:', error);
+            setRequests(Array.isArray(data?.data) ? (data.data as PaymentRequest[]) : []);
+        } catch (err) {
+            setLoadError(err instanceof Error && err.message ? err.message : "We couldn't load your payment requests. Check your connection and try again.");
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
-    const handleCreate = async () => {
-        if (!newRequest.title || !newRequest.amount) return;
+    useEffect(() => {
+        fetchRequests();
+    }, [fetchRequests]);
+
+    const handleCreate = async (e: React.FormEvent) => {
+        e.preventDefault();
+        const amount = parseFloat(newRequest.amount);
+        if (!newRequest.title.trim() || !(amount > 0)) {
+            setCreateError('Enter what it is for and an amount.');
+            return;
+        }
         setCreating(true);
+        setCreateError('');
         try {
-            const res = await apiFetch(`/api/v1/dues/requests`, {
+            const res = await apiFetch('/api/v1/dues/requests', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    title: newRequest.title,
-                    amount: parseFloat(newRequest.amount),
+                    title: newRequest.title.trim(),
+                    amount,
                     description: newRequest.description || undefined,
                     dueDate: newRequest.dueDate || undefined,
                 }),
             });
-            const data = await res.json();
-            if (data.success) {
-                setShowCreateModal(false);
-                setNewRequest({ title: '', amount: '', description: '', dueDate: '' });
-                fetchRequests();
-            }
-        } catch (error) {
-            console.error('Failed to create request:', error);
+            const data = await res.json().catch(() => null);
+            if (!res.ok || !data?.success) throw new Error(bodyError(data, "The request wasn't made. Please try again."));
+            setShowCreate(false);
+            setNewRequest(EMPTY);
+            setMessage({ tone: 'success', text: 'Payment request made.' });
+            fetchRequests();
+        } catch (err) {
+            setCreateError(err instanceof Error ? err.message : "The request wasn't made. Please try again.");
         } finally {
             setCreating(false);
         }
     };
 
-    const handleSendReminder = async (requestId: string) => {
+    const handleSendReminder = async (request: PaymentRequest) => {
+        setMessage(null);
         try {
-            const res = await apiFetch(`/api/v1/dues/remind`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ requestId }),
-            });
-            const data = await res.json();
-            if (data.success) {
-                alert(`Reminders sent to ${data.data.remindersSent} members`);
-            }
-        } catch (error) {
-            console.error('Failed to send reminder:', error);
+            const res = await apiFetch('/api/v1/dues/remind', { method: 'POST', body: JSON.stringify({ requestId: request.id }) });
+            const data = await res.json().catch(() => null);
+            if (!res.ok || !data?.success) throw new Error(bodyError(data, "Reminders weren't sent. Please try again."));
+            setMessage({ tone: 'success', text: `Reminder sent to ${data.data?.remindersSent ?? 0} members.` });
+        } catch (err) {
+            setMessage({ tone: 'error', text: err instanceof Error ? err.message : "Reminders weren't sent. Please try again." });
         }
     };
 
-    if (loading) {
-        return (
-            <div className="p-6">
-                <div className="animate-pulse space-y-4">
-                    <div className="h-8 bg-gray-200 rounded w-1/3"></div>
-                    <div className="h-32 bg-gray-200 rounded"></div>
-                </div>
-            </div>
-        );
-    }
-
     return (
-        <div className="p-6 max-w-6xl mx-auto">
-            <div className="flex items-center justify-between mb-6">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Payment Collection</h1>
-                    <p className="text-gray-600 mt-1">Collect match fees, subs, and kit payments from members</p>
-                </div>
-                <button
-                    onClick={() => setShowCreateModal(true)}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
-                >
-                    <span>+</span>
-                    <span>New Request</span>
-                </button>
-            </div>
+        <div className="container py-8 md:py-10 max-w-5xl">
+            <PageHeader
+                eyebrow="Club admin"
+                title="Subs and fees"
+                subtitle="Ask members for match fees, subs and kit money."
+                actions={<button type="button" onClick={() => setShowCreate(true)} className="btn btn-primary"><Icon name="plus" className="w-4 h-4" /> New request</button>}
+            />
 
-            {requests.length === 0 ? (
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12 text-center">
-                    <div className="text-5xl mb-4">💳</div>
-                    <h2 className="text-xl font-semibold text-gray-900 mb-2">No Payment Requests Yet</h2>
-                    <p className="text-gray-600 mb-6">Create a payment request to start collecting money from members</p>
-                    <button
-                        onClick={() => setShowCreateModal(true)}
-                        className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                    >
-                        Create First Request
-                    </button>
-                </div>
+            <div className="mb-6">
+                <Notice tone="info">Paying online isn&apos;t switched on for clubs yet, so members can&apos;t pay through the app until it is.</Notice>
+            </div>
+            {message && <div className="mb-6"><Notice tone={message.tone}>{message.text}</Notice></div>}
+
+            {loading ? (
+                <LoadingBlock label="Loading payment requests" />
+            ) : loadError ? (
+                <ErrorNote message={loadError} onRetry={() => { setLoading(true); fetchRequests(); }} />
+            ) : requests.length === 0 ? (
+                <EmptyNote icon="money" title="No payment requests yet" action={<button type="button" onClick={() => setShowCreate(true)} className="btn btn-primary">Make a request</button>}>
+                    Make a request for this month&apos;s subs or a tournament fee.
+                </EmptyNote>
             ) : (
-                <div className="space-y-4">
+                <ul className="space-y-3">
                     {requests.map((request) => (
-                        <div key={request.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                            <div className="flex items-start justify-between">
-                                <div>
-                                    <h3 className="text-lg font-semibold text-gray-900">{request.title}</h3>
-                                    {request.description && (
-                                        <p className="text-gray-600 mt-1">{request.description}</p>
-                                    )}
-                                    <div className="flex items-center gap-4 mt-3 text-sm">
-                                        <span className="font-medium text-gray-900">£{request.amount.toFixed(2)}</span>
-                                        {request.dueDate && (
-                                            <span className="text-gray-500">
-                                                Due: {new Date(request.dueDate * 1000).toLocaleDateString()}
-                                            </span>
-                                        )}
-                                    </div>
+                        <li key={request.id} className="card">
+                            <div className="flex flex-wrap items-start justify-between gap-4">
+                                <div className="min-w-0">
+                                    <h2 className="text-2xl">{request.title}</h2>
+                                    {request.description && <p className="text-muted mt-1">{request.description}</p>}
+                                    <p className="text-sm mt-2">
+                                        <strong>{pounds(request.amount)}</strong>
+                                        {request.dueDate && <span className="text-muted"> · due {formatDate(request.dueDate * 1000)}</span>}
+                                    </p>
                                 </div>
                                 <div className="text-right">
-                                    <div className="text-2xl font-bold text-green-600">
-                                        £{request.totalCollected.toFixed(2)}
-                                    </div>
-                                    <div className="text-sm text-gray-500">
-                                        {request.paidCount} paid
-                                    </div>
+                                    <p className="font-display text-3xl font-extrabold text-brand">{pounds(request.totalCollected)}</p>
+                                    <p className="text-sm text-muted">{request.paidCount} paid</p>
                                 </div>
                             </div>
-
-                            <div className="flex items-center gap-3 mt-4 pt-4 border-t border-gray-100">
-                                <a
-                                    href={`/${tenant}/admin/dues/${request.id}`}
-                                    className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm"
-                                >
-                                    View Details
-                                </a>
-                                <button
-                                    onClick={() => handleSendReminder(request.id)}
-                                    className="px-3 py-1.5 bg-amber-100 text-amber-700 rounded-lg hover:bg-amber-200 transition-colors text-sm"
-                                >
-                                    Send Reminder
-                                </button>
-                                <button
-                                    className="px-3 py-1.5 bg-gray-100 text-gray-500 rounded-lg text-sm ml-auto"
-                                >
-                                    Share Link
-                                </button>
+                            <div className="mt-4 pt-4 border-t border-border">
+                                <button type="button" onClick={() => handleSendReminder(request)} className="btn btn-sm btn-secondary"><Icon name="bell" className="w-4 h-4" /> Send a reminder</button>
                             </div>
-                        </div>
+                        </li>
                     ))}
-                </div>
+                </ul>
             )}
 
-            {/* Create Modal */}
-            {showCreateModal && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4 p-6">
-                        <h2 className="text-xl font-bold text-gray-900 mb-4">Create Payment Request</h2>
-
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Title <span className="text-red-500">*</span>
-                                </label>
-                                <input
-                                    type="text"
-                                    value={newRequest.title}
-                                    onChange={(e) => setNewRequest(prev => ({ ...prev, title: e.target.value }))}
-                                    placeholder="e.g., March Training Subs"
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Amount (£) <span className="text-red-500">*</span>
-                                </label>
-                                <input
-                                    type="number"
-                                    step="0.01"
-                                    value={newRequest.amount}
-                                    onChange={(e) => setNewRequest(prev => ({ ...prev, amount: e.target.value }))}
-                                    placeholder="25.00"
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Description
-                                </label>
-                                <textarea
-                                    value={newRequest.description}
-                                    onChange={(e) => setNewRequest(prev => ({ ...prev, description: e.target.value }))}
-                                    placeholder="Optional details about this payment"
-                                    rows={2}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Due Date
-                                </label>
-                                <input
-                                    type="date"
-                                    value={newRequest.dueDate}
-                                    onChange={(e) => setNewRequest(prev => ({ ...prev, dueDate: e.target.value }))}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                />
-                            </div>
+            {showCreate && (
+                <Dialog title="New payment request" onClose={() => setShowCreate(false)}>
+                    <form onSubmit={handleCreate} className="space-y-4" noValidate>
+                        <div>
+                            <label htmlFor="due-title" className="label">What it&apos;s for</label>
+                            <input id="due-title" type="text" value={newRequest.title} onChange={(e) => setNewRequest({ ...newRequest, title: e.target.value })} placeholder="e.g. March training subs" className="field" />
                         </div>
-
-                        <div className="flex items-center justify-end gap-3 mt-6 pt-4 border-t border-gray-100">
-                            <button
-                                onClick={() => setShowCreateModal(false)}
-                                className="px-4 py-2 text-gray-600 hover:text-gray-800"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={handleCreate}
-                                disabled={creating || !newRequest.title || !newRequest.amount}
-                                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                {creating ? 'Creating...' : 'Create Request'}
-                            </button>
+                        <div>
+                            <label htmlFor="due-amount" className="label">Amount (£)</label>
+                            <input id="due-amount" type="number" inputMode="decimal" step="0.01" min="0" value={newRequest.amount} onChange={(e) => setNewRequest({ ...newRequest, amount: e.target.value })} placeholder="25.00" className="field" />
                         </div>
-                    </div>
-                </div>
+                        <div>
+                            <label htmlFor="due-description" className="label">Details (optional)</label>
+                            <textarea id="due-description" rows={2} value={newRequest.description} onChange={(e) => setNewRequest({ ...newRequest, description: e.target.value })} className="field" />
+                        </div>
+                        <div>
+                            <label htmlFor="due-date" className="label">Due by (optional)</label>
+                            <input id="due-date" type="date" value={newRequest.dueDate} onChange={(e) => setNewRequest({ ...newRequest, dueDate: e.target.value })} className="field" />
+                        </div>
+                        {createError && <Notice tone="error">{createError}</Notice>}
+                        <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
+                            <button type="button" onClick={() => setShowCreate(false)} className="btn btn-ghost">Cancel</button>
+                            <button type="submit" disabled={creating} className="btn btn-primary">{creating ? 'Saving…' : 'Make request'}</button>
+                        </div>
+                    </form>
+                </Dialog>
             )}
         </div>
     );

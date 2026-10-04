@@ -1,654 +1,445 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
-import { apiFetch } from '@/lib/session';
+import { use, useCallback, useEffect, useState, type FormEvent, type ReactNode } from 'react';
+import { apiFetch, errorMessage } from '@/lib/session';
+import { formatDate } from '@/lib/format';
+import { canAccessAdmin, useUserRole } from '@/hooks/useUserRole';
+import { EmptyNote, MembersOnlyPage, PageHeader } from '@/components/ui/Page';
+import { Icon } from '@/components/ui/Icon';
 
+/** A club looking for a friendly (GET /api/v1/friendlies, /mine) */
 interface FriendlyRequest {
     id: string;
-    tenant_id: string;
     team_name: string;
     team_display_name?: string;
-    preferred_dates: string;
     location_pref: string;
-    age_group: string;
-    skill_level: string;
-    kit_colors: string;
-    max_travel_miles: number;
-    pitch_type: string;
-    notes: string;
-    badge_url?: string;
-    primary_color?: string;
+    age_group: string | null;
+    kit_colors: string | null;
+    max_travel_miles: number | null;
+    pitch_type: string | null;
+    notes: string | null;
+    badge_url?: string | null;
     pending_count?: number;
     status: string;
 }
 
+/** A match offered for one of those (GET /inbox, /sent) */
 interface MatchRequest {
     id: string;
     requester_team_name: string;
     requester_display_name?: string;
-    requester_badge_url?: string;
-    requester_color?: string;
-    proposed_date: string;
-    proposed_venue: string;
-    proposed_kickoff: string;
-    message: string;
+    requester_badge_url?: string | null;
+    host_team_name?: string;
+    proposed_date: string | null;
+    message: string | null;
     status: string;
 }
 
-export default function FriendliesPage() {
-    const params = useParams();
-    const tenantSlug = params.tenant as string;
-    const [activeTab, setActiveTab] = useState<'browse' | 'mine' | 'inbox' | 'sent'>('browse');
-    const [requests, setRequests] = useState<FriendlyRequest[]>([]);
-    const [myRequests, setMyRequests] = useState<FriendlyRequest[]>([]);
-    const [inbox, setInbox] = useState<MatchRequest[]>([]);
-    const [sent, setSent] = useState<MatchRequest[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [showPostForm, setShowPostForm] = useState(false);
-    const [showRequestModal, setShowRequestModal] = useState<FriendlyRequest | null>(null);
+type Tab = 'browse' | 'mine' | 'inbox' | 'sent';
 
-    // Form state
-    const [formData, setFormData] = useState({
-        preferred_dates: [''],
-        location_pref: 'any',
-        age_group: '',
-        skill_level: 'recreational',
-        kit_colors: '',
-        max_travel_miles: 30,
-        pitch_type: 'any',
-        notes: ''
-    });
+const PATHS: Record<Tab, string> = { browse: '/api/v1/friendlies', mine: '/api/v1/friendlies/mine', inbox: '/api/v1/friendlies/inbox', sent: '/api/v1/friendlies/sent' };
 
-    useEffect(() => {
-        fetchData();
-    }, [activeTab]);
+const WHERE: Record<string, string> = { home: 'Home', away: 'Away', neutral: 'Neutral ground', any: 'Home or away' };
+const PITCH: Record<string, string> = { grass: 'Grass', '3g': '3G', '4g': '4G' };
+const AGE_GROUPS = ['U7', 'U8', 'U9', 'U10', 'U11', 'U12', 'U13', 'U14', 'U15', 'U16', 'U18', 'Adult'];
+const blankForm = () => ({ age_group: '', location_pref: 'any', kit_colors: '', max_travel_miles: '30', pitch_type: 'any', notes: '' });
 
-    const fetchData = async () => {
-        setLoading(true);
-        const token = localStorage.getItem('session_token');
-        const headers = { 'Authorization': `Bearer ${token}` };
-
-        try {
-            if (activeTab === 'browse') {
-                const res = await apiFetch('/api/v1/friendlies', { headers });
-                const data = await res.json();
-                if (data.success) setRequests(data.data);
-            } else if (activeTab === 'mine') {
-                const res = await apiFetch('/api/v1/friendlies/mine', { headers });
-                const data = await res.json();
-                if (data.success) setMyRequests(data.data);
-            } else if (activeTab === 'inbox') {
-                const res = await apiFetch('/api/v1/friendlies/inbox', { headers });
-                const data = await res.json();
-                if (data.success) setInbox(data.data);
-            } else if (activeTab === 'sent') {
-                const res = await apiFetch('/api/v1/friendlies/sent', { headers });
-                const data = await res.json();
-                if (data.success) setSent(data.data);
-            }
-        } catch (err) {
-            console.error('Fetch error:', err);
-        }
-        setLoading(false);
-    };
-
-    const handlePostRequest = async () => {
-        const token = localStorage.getItem('session_token');
-        try {
-            const res = await apiFetch('/api/v1/friendlies', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(formData)
-            });
-            const data = await res.json();
-            if (data.success) {
-                setShowPostForm(false);
-                setActiveTab('mine');
-                fetchData();
-            }
-        } catch (err) {
-            console.error('Post error:', err);
-        }
-    };
-
-    const handleRequestMatch = async (requestId: string, message: string, date: string) => {
-        const token = localStorage.getItem('session_token');
-        try {
-            const res = await apiFetch(`/api/v1/friendlies/${requestId}/request`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ message, proposed_date: date })
-            });
-            const data = await res.json();
-            if (data.success) {
-                setShowRequestModal(null);
-                alert('Request sent!');
-            }
-        } catch (err) {
-            console.error('Request error:', err);
-        }
-    };
-
-    const handleRespond = async (matchId: string, action: 'accept' | 'decline') => {
-        const token = localStorage.getItem('session_token');
-        try {
-            const res = await apiFetch(`/api/v1/friendlies/match/${matchId}/respond`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ action })
-            });
-            const data = await res.json();
-            if (data.success) {
-                fetchData();
-                if (action === 'accept') {
-                    alert('Match accepted! Fixture created for both teams.');
-                }
-            }
-        } catch (err) {
-            console.error('Respond error:', err);
-        }
-    };
-
-    const handleDeleteRequest = async (id: string) => {
-        const token = localStorage.getItem('session_token');
-        try {
-            await apiFetch(`/api/v1/friendlies/${id}`, {
-                method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            fetchData();
-        } catch (err) {
-            console.error('Delete error:', err);
-        }
-    };
-
-    const locationLabels: Record<string, string> = {
-        home: '🏠 Home',
-        away: '✈️ Away',
-        neutral: '🏟️ Neutral',
-        any: '📍 Any'
-    };
-
+function Badge({ name, url }: { name: string; url?: string | null }) {
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
-            <div className="max-w-5xl mx-auto">
-                {/* Header */}
-                <div className="mb-8 flex items-center justify-between">
-                    <div>
-                        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-                            ⚽ Friendly Marketplace
-                        </h1>
-                        <p className="text-gray-600 dark:text-gray-400">
-                            Find opponents for friendly matches
-                        </p>
-                    </div>
-                    <button
-                        onClick={() => setShowPostForm(true)}
-                        className="px-5 py-3 bg-green-600 hover:bg-green-700 text-white font-medium rounded-xl transition-colors flex items-center gap-2"
-                    >
-                        <span className="text-lg">+</span> Post Friendly Request
-                    </button>
-                </div>
+        <span className="w-12 h-12 shrink-0 hexagon bg-surface-raised flex items-center justify-center font-display text-xl font-extrabold text-brand overflow-hidden">
+            {url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={url} alt="" className="w-full h-full object-contain" />
+            ) : (
+                name.trim().charAt(0).toUpperCase() || '?'
+            )}
+        </span>
+    );
+}
 
-                {/* Tabs */}
-                <div className="flex gap-2 mb-6 bg-white dark:bg-gray-800 p-1 rounded-xl shadow-sm">
-                    {[
-                        { id: 'browse', label: 'Browse', icon: '🔍' },
-                        { id: 'mine', label: 'My Requests', icon: '📋' },
-                        { id: 'inbox', label: 'Inbox', icon: '📥' },
-                        { id: 'sent', label: 'Sent', icon: '📤' }
-                    ].map((tab) => (
-                        <button
-                            key={tab.id}
-                            onClick={() => setActiveTab(tab.id as any)}
-                            className={`flex-1 py-3 px-4 rounded-lg font-medium transition-colors ${activeTab === tab.id
-                                    ? 'bg-blue-600 text-white'
-                                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
-                                }`}
-                        >
-                            {tab.icon} {tab.label}
-                            {tab.id === 'inbox' && inbox.filter(m => m.status === 'pending').length > 0 && (
-                                <span className="ml-2 px-2 py-0.5 bg-red-500 text-white text-xs rounded-full">
-                                    {inbox.filter(m => m.status === 'pending').length}
-                                </span>
-                            )}
-                        </button>
-                    ))}
-                </div>
+function Tag({ children }: { children: ReactNode }) {
+    return <span className="px-2 py-1 bg-surface-raised border border-border text-xs font-bold text-muted chamfer-sm">{children}</span>;
+}
 
-                {/* Content */}
-                {loading ? (
-                    <div className="flex items-center justify-center h-64">
-                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-                    </div>
-                ) : (
-                    <div className="space-y-4">
-                        {/* Browse Tab */}
-                        {activeTab === 'browse' && (
-                            requests.length === 0 ? (
-                                <div className="text-center py-16 bg-white dark:bg-gray-800 rounded-xl">
-                                    <p className="text-gray-500 dark:text-gray-400 text-lg">
-                                        No friendly requests posted yet. Be the first!
-                                    </p>
-                                </div>
-                            ) : (
-                                requests.map((req) => (
-                                    <div key={req.id} className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm">
-                                        <div className="flex items-start justify-between">
-                                            <div className="flex items-center gap-4">
-                                                <div
-                                                    className="w-14 h-14 rounded-full flex items-center justify-center text-white font-bold text-lg"
-                                                    style={{ backgroundColor: req.primary_color || '#6B7280' }}
-                                                >
-                                                    {req.badge_url ? (
-                                                        <img src={req.badge_url} alt="" className="w-full h-full object-contain rounded-full" />
-                                                    ) : (
-                                                        req.team_name?.charAt(0) || '?'
-                                                    )}
-                                                </div>
-                                                <div>
-                                                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                                                        {req.team_display_name || req.team_name}
-                                                    </h3>
-                                                    <div className="flex flex-wrap gap-2 mt-1">
-                                                        {req.age_group && (
-                                                            <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 text-xs rounded-full">
-                                                                {req.age_group}
-                                                            </span>
-                                                        )}
-                                                        <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-xs rounded-full">
-                                                            {locationLabels[req.location_pref] || req.location_pref}
-                                                        </span>
-                                                        {req.max_travel_miles && (
-                                                            <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-xs rounded-full">
-                                                                Max {req.max_travel_miles}mi
-                                                            </span>
-                                                        )}
-                                                        {req.kit_colors && (
-                                                            <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-xs rounded-full">
-                                                                🎽 {req.kit_colors}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <button
-                                                onClick={() => setShowRequestModal(req)}
-                                                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
-                                            >
-                                                Request Match
-                                            </button>
-                                        </div>
-                                        {req.notes && (
-                                            <p className="mt-3 text-gray-600 dark:text-gray-400 text-sm">
-                                                {req.notes}
-                                            </p>
-                                        )}
-                                    </div>
-                                ))
-                            )
-                        )}
+function StatusText({ status }: { status: string }) {
+    const tone = status === 'accepted' || status === 'open' ? 'text-brand' : status === 'pending' ? 'text-yellow-400' : 'text-muted';
+    const label: Record<string, string> = { open: 'Open', matched: 'Matched', pending: 'Waiting for a reply', accepted: 'Accepted', declined: 'Declined' };
+    return <span className={`text-xs font-bold uppercase tracking-wider ${tone}`}>{label[status] ?? status}</span>;
+}
 
-                        {/* My Requests Tab */}
-                        {activeTab === 'mine' && (
-                            myRequests.length === 0 ? (
-                                <div className="text-center py-16 bg-white dark:bg-gray-800 rounded-xl">
-                                    <p className="text-gray-500 dark:text-gray-400 text-lg">
-                                        You haven't posted any friendly requests.
-                                    </p>
-                                </div>
-                            ) : (
-                                myRequests.map((req) => (
-                                    <div key={req.id} className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm">
-                                        <div className="flex items-center justify-between">
-                                            <div>
-                                                <div className="flex items-center gap-2">
-                                                    <span className={`w-2 h-2 rounded-full ${req.status === 'open' ? 'bg-green-500' :
-                                                            req.status === 'matched' ? 'bg-blue-500' : 'bg-gray-400'
-                                                        }`}></span>
-                                                    <span className="text-sm text-gray-500 dark:text-gray-400 capitalize">
-                                                        {req.status}
-                                                    </span>
-                                                    {(req.pending_count ?? 0) > 0 && (
-                                                        <span className="px-2 py-0.5 bg-orange-100 text-orange-800 text-xs rounded-full">
-                                                            {req.pending_count} pending requests
-                                                        </span>
-                                                    )}
-                                                </div>
-                                                <div className="flex flex-wrap gap-2 mt-2">
-                                                    {req.age_group && (
-                                                        <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 text-xs rounded-full">
-                                                            {req.age_group}
-                                                        </span>
-                                                    )}
-                                                    <span className="text-gray-600 dark:text-gray-400 text-sm">
-                                                        {locationLabels[req.location_pref]}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                            <button
-                                                onClick={() => handleDeleteRequest(req.id)}
-                                                className="text-red-500 hover:text-red-700 text-sm"
-                                            >
-                                                Delete
-                                            </button>
-                                        </div>
-                                    </div>
-                                ))
-                            )
-                        )}
-
-                        {/* Inbox Tab */}
-                        {activeTab === 'inbox' && (
-                            inbox.length === 0 ? (
-                                <div className="text-center py-16 bg-white dark:bg-gray-800 rounded-xl">
-                                    <p className="text-gray-500 dark:text-gray-400 text-lg">
-                                        No match requests received yet.
-                                    </p>
-                                </div>
-                            ) : (
-                                inbox.map((match) => (
-                                    <div key={match.id} className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm">
-                                        <div className="flex items-start justify-between">
-                                            <div className="flex items-center gap-4">
-                                                <div
-                                                    className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold"
-                                                    style={{ backgroundColor: match.requester_color || '#6B7280' }}
-                                                >
-                                                    {match.requester_badge_url ? (
-                                                        <img src={match.requester_badge_url} alt="" className="w-full h-full object-contain rounded-full" />
-                                                    ) : (
-                                                        match.requester_team_name?.charAt(0) || '?'
-                                                    )}
-                                                </div>
-                                                <div>
-                                                    <h3 className="font-semibold text-gray-900 dark:text-white">
-                                                        {match.requester_display_name || match.requester_team_name}
-                                                    </h3>
-                                                    {match.proposed_date && (
-                                                        <p className="text-sm text-gray-500 dark:text-gray-400">
-                                                            📅 {match.proposed_date}
-                                                        </p>
-                                                    )}
-                                                    {match.message && (
-                                                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                                                            "{match.message}"
-                                                        </p>
-                                                    )}
-                                                </div>
-                                            </div>
-                                            {match.status === 'pending' ? (
-                                                <div className="flex gap-2">
-                                                    <button
-                                                        onClick={() => handleRespond(match.id, 'accept')}
-                                                        className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors"
-                                                    >
-                                                        Accept
-                                                    </button>
-                                                    <button
-                                                        onClick={() => handleRespond(match.id, 'decline')}
-                                                        className="px-4 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 text-gray-700 dark:text-gray-300 font-medium rounded-lg transition-colors"
-                                                    >
-                                                        Decline
-                                                    </button>
-                                                </div>
-                                            ) : (
-                                                <span className={`px-3 py-1 rounded-full text-sm font-medium ${match.status === 'accepted' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'
-                                                    }`}>
-                                                    {match.status}
-                                                </span>
-                                            )}
-                                        </div>
-                                    </div>
-                                ))
-                            )
-                        )}
-
-                        {/* Sent Tab */}
-                        {activeTab === 'sent' && (
-                            sent.length === 0 ? (
-                                <div className="text-center py-16 bg-white dark:bg-gray-800 rounded-xl">
-                                    <p className="text-gray-500 dark:text-gray-400 text-lg">
-                                        You haven't sent any match requests.
-                                    </p>
-                                </div>
-                            ) : (
-                                sent.map((match) => (
-                                    <div key={match.id} className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm">
-                                        <div className="flex items-center justify-between">
-                                            <div>
-                                                <h3 className="font-semibold text-gray-900 dark:text-white">
-                                                    Request to {(match as any).host_team_name}
-                                                </h3>
-                                                {match.proposed_date && (
-                                                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                                                        📅 {match.proposed_date}
-                                                    </p>
-                                                )}
-                                            </div>
-                                            <span className={`px-3 py-1 rounded-full text-sm font-medium ${match.status === 'accepted' ? 'bg-green-100 text-green-800' :
-                                                    match.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                                                        'bg-gray-100 text-gray-600'
-                                                }`}>
-                                                {match.status}
-                                            </span>
-                                        </div>
-                                    </div>
-                                ))
-                            )
-                        )}
-                    </div>
-                )}
+function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
+    useEffect(() => {
+        const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+    }, [onClose]);
+    return (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-background/80 backdrop-blur-sm p-4" role="dialog" aria-modal="true" aria-label={title}>
+            <div className="card w-full max-w-lg max-h-[90vh] overflow-y-auto">
+                <h2 className="text-2xl italic mb-5">{title}</h2>
+                {children}
             </div>
-
-            {/* Post Form Modal */}
-            {showPostForm && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto">
-                        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">
-                            Post Friendly Request
-                        </h2>
-
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                    Age Group
-                                </label>
-                                <select
-                                    value={formData.age_group}
-                                    onChange={(e) => setFormData({ ...formData, age_group: e.target.value })}
-                                    className="w-full px-4 py-3 bg-gray-100 dark:bg-gray-700 border-0 rounded-lg"
-                                >
-                                    <option value="">Select...</option>
-                                    <option value="U7">U7</option>
-                                    <option value="U8">U8</option>
-                                    <option value="U9">U9</option>
-                                    <option value="U10">U10</option>
-                                    <option value="U11">U11</option>
-                                    <option value="U12">U12</option>
-                                    <option value="U13">U13</option>
-                                    <option value="U14">U14</option>
-                                    <option value="U15">U15</option>
-                                    <option value="U16">U16</option>
-                                    <option value="U18">U18</option>
-                                    <option value="Adult">Adult</option>
-                                </select>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                    Location Preference
-                                </label>
-                                <select
-                                    value={formData.location_pref}
-                                    onChange={(e) => setFormData({ ...formData, location_pref: e.target.value })}
-                                    className="w-full px-4 py-3 bg-gray-100 dark:bg-gray-700 border-0 rounded-lg"
-                                >
-                                    <option value="any">Any</option>
-                                    <option value="home">Home</option>
-                                    <option value="away">Away</option>
-                                    <option value="neutral">Neutral</option>
-                                </select>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                    Kit Colors (to avoid clashes)
-                                </label>
-                                <input
-                                    type="text"
-                                    value={formData.kit_colors}
-                                    onChange={(e) => setFormData({ ...formData, kit_colors: e.target.value })}
-                                    placeholder="e.g. Red/White"
-                                    className="w-full px-4 py-3 bg-gray-100 dark:bg-gray-700 border-0 rounded-lg"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                    Max Travel Distance (miles)
-                                </label>
-                                <input
-                                    type="number"
-                                    value={formData.max_travel_miles}
-                                    onChange={(e) => setFormData({ ...formData, max_travel_miles: parseInt(e.target.value) })}
-                                    className="w-full px-4 py-3 bg-gray-100 dark:bg-gray-700 border-0 rounded-lg"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                    Pitch Type
-                                </label>
-                                <select
-                                    value={formData.pitch_type}
-                                    onChange={(e) => setFormData({ ...formData, pitch_type: e.target.value })}
-                                    className="w-full px-4 py-3 bg-gray-100 dark:bg-gray-700 border-0 rounded-lg"
-                                >
-                                    <option value="any">Any</option>
-                                    <option value="grass">Grass</option>
-                                    <option value="3g">3G</option>
-                                    <option value="4g">4G</option>
-                                </select>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                    Additional Notes
-                                </label>
-                                <textarea
-                                    value={formData.notes}
-                                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                                    placeholder="Available dates, times, etc."
-                                    rows={3}
-                                    className="w-full px-4 py-3 bg-gray-100 dark:bg-gray-700 border-0 rounded-lg resize-none"
-                                />
-                            </div>
-                        </div>
-
-                        <div className="flex gap-3 mt-6">
-                            <button
-                                onClick={() => setShowPostForm(false)}
-                                className="flex-1 py-3 px-4 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-medium rounded-xl"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={handlePostRequest}
-                                className="flex-1 py-3 px-4 bg-green-600 hover:bg-green-700 text-white font-medium rounded-xl"
-                            >
-                                Post Request
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Request Match Modal */}
-            {showRequestModal && (
-                <RequestMatchModal
-                    request={showRequestModal}
-                    onClose={() => setShowRequestModal(null)}
-                    onSubmit={handleRequestMatch}
-                />
-            )}
         </div>
     );
 }
 
-function RequestMatchModal({
-    request,
-    onClose,
-    onSubmit
-}: {
-    request: FriendlyRequest;
-    onClose: () => void;
-    onSubmit: (id: string, message: string, date: string) => void;
-}) {
-    const [message, setMessage] = useState('');
-    const [date, setDate] = useState('');
+function Friendlies() {
+    const { role } = useUserRole();
+    const isStaff = canAccessAdmin(role);
+    const [tab, setTab] = useState<Tab>('browse');
+    const [requests, setRequests] = useState<FriendlyRequest[]>([]);
+    const [mine, setMine] = useState<FriendlyRequest[]>([]);
+    const [inbox, setInbox] = useState<MatchRequest[]>([]);
+    const [sent, setSent] = useState<MatchRequest[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState('');
+    const [notice, setNotice] = useState('');
+    const [error, setError] = useState('');
+    const [posting, setPosting] = useState<ReturnType<typeof blankForm> | null>(null);
+    const [asking, setAsking] = useState<FriendlyRequest | null>(null);
+    const [askForm, setAskForm] = useState({ date: '', message: '' });
+    const [formError, setFormError] = useState('');
+    const [busy, setBusy] = useState(false);
+
+    const load = useCallback(async (which: Tab) => {
+        setLoading(true);
+        setLoadError('');
+        try {
+            const res = await apiFetch(PATHS[which]);
+            if (!res.ok) {
+                setLoadError(await errorMessage(res, "We couldn't load friendlies. Please try again."));
+                return;
+            }
+            const data = await res.json();
+            const list = Array.isArray(data.data) ? data.data : [];
+            if (which === 'browse') setRequests(list);
+            else if (which === 'mine') setMine(list);
+            else if (which === 'inbox') setInbox(list);
+            else setSent(list);
+        } catch (err) {
+            console.error('Failed to load friendlies:', err);
+            setLoadError("We couldn't load friendlies. Check your connection and try again.");
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        load(tab);
+    }, [tab, load]);
+
+    const closePosting = useCallback(() => setPosting(null), []);
+    const closeAsking = useCallback(() => setAsking(null), []);
+
+    async function act(run: () => Promise<Response>, fallback: string, done: string, after?: Tab) {
+        setError('');
+        setNotice('');
+        try {
+            const res = await run();
+            if (!res.ok) {
+                setError(await errorMessage(res, fallback));
+                return false;
+            }
+            setNotice(done);
+            if (after && after !== tab) setTab(after);
+            else await load(tab);
+            return true;
+        } catch {
+            setError(`${fallback.replace(/ Please try again\.$/, '')} Check your connection and try again.`);
+            return false;
+        }
+    }
+
+    async function post(e: FormEvent) {
+        e.preventDefault();
+        if (!posting) return;
+        setBusy(true);
+        setFormError('');
+        try {
+            const res = await apiFetch('/api/v1/friendlies', {
+                method: 'POST',
+                body: JSON.stringify({
+                    preferred_dates: [],
+                    location_pref: posting.location_pref,
+                    age_group: posting.age_group,
+                    kit_colors: posting.kit_colors,
+                    max_travel_miles: Number(posting.max_travel_miles) || null,
+                    pitch_type: posting.pitch_type,
+                    notes: posting.notes,
+                }),
+            });
+            if (!res.ok) {
+                setFormError(await errorMessage(res, "Your post didn't save. Please try again."));
+                return;
+            }
+            setPosting(null);
+            setNotice('Posted. Other clubs can now offer you a game.');
+            if (tab === 'mine') await load('mine');
+            else setTab('mine');
+        } catch {
+            setFormError("Your post didn't save. Check your connection and try again.");
+        } finally {
+            setBusy(false);
+        }
+    }
+
+    async function ask(e: FormEvent) {
+        e.preventDefault();
+        if (!asking) return;
+        setBusy(true);
+        setFormError('');
+        try {
+            const res = await apiFetch(`/api/v1/friendlies/${asking.id}/request`, {
+                method: 'POST',
+                body: JSON.stringify({ proposed_date: askForm.date || null, message: askForm.message }),
+            });
+            if (!res.ok) {
+                setFormError(await errorMessage(res, "Your offer didn't send. Please try again."));
+                return;
+            }
+            setAsking(null);
+            setNotice(`Offer sent to ${asking.team_display_name || asking.team_name}. You'll see their reply under Sent.`);
+        } catch {
+            setFormError("Your offer didn't send. Check your connection and try again.");
+        } finally {
+            setBusy(false);
+        }
+    }
+
+    const respond = (id: string, action: 'accept' | 'decline') =>
+        act(
+            () => apiFetch(`/api/v1/friendlies/match/${id}/respond`, { method: 'POST', body: JSON.stringify({ action }) }),
+            "That reply didn't save. Please try again.",
+            action === 'accept' ? 'Game on! The friendly has been added to both clubs’ fixtures.' : 'Offer declined.',
+        );
+
+    const remove = (id: string) => {
+        if (!confirm('Take this post down?')) return;
+        act(() => apiFetch(`/api/v1/friendlies/${id}`, { method: 'DELETE' }), "That post couldn't be removed. Please try again.", 'Post taken down.');
+    };
+
+    const pendingCount = inbox.filter((m) => m.status === 'pending').length;
+    const tabs: Array<{ id: Tab; label: string }> = isStaff
+        ? [{ id: 'browse', label: 'Find a game' }, { id: 'mine', label: 'Our posts' }, { id: 'inbox', label: 'Offers' }, { id: 'sent', label: 'Sent' }]
+        : [];
 
     return (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-md w-full p-6">
-                <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-                    Request Match
-                </h2>
-                <p className="text-gray-600 dark:text-gray-400 mb-6">
-                    Send a match request to <strong>{request.team_display_name || request.team_name}</strong>
-                </p>
+        <>
+            <PageHeader
+                eyebrow="Matches"
+                title="Friendlies"
+                subtitle={isStaff ? 'Find clubs looking for a friendly, or post that you need a game.' : 'Clubs looking for a friendly. Club staff arrange games from here.'}
+                actions={isStaff ? <button type="button" onClick={() => { setFormError(''); setPosting(blankForm()); }} className="btn btn-primary"><Icon name="plus" className="w-5 h-5" /> We need a game</button> : undefined}
+            />
 
-                <div className="space-y-4">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                            Proposed Date
-                        </label>
-                        <input
-                            type="date"
-                            value={date}
-                            onChange={(e) => setDate(e.target.value)}
-                            className="w-full px-4 py-3 bg-gray-100 dark:bg-gray-700 border-0 rounded-lg"
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                            Message (optional)
-                        </label>
-                        <textarea
-                            value={message}
-                            onChange={(e) => setMessage(e.target.value)}
-                            placeholder="Introduce your team..."
-                            rows={3}
-                            className="w-full px-4 py-3 bg-gray-100 dark:bg-gray-700 border-0 rounded-lg resize-none"
-                        />
-                    </div>
+            {tabs.length > 0 && (
+                <div className="flex gap-2 overflow-x-auto scrollbar-none mb-6" role="tablist" aria-label="Friendlies">
+                    {tabs.map((t) => (
+                        <button key={t.id} type="button" role="tab" aria-selected={tab === t.id} onClick={() => { setTab(t.id); setNotice(''); setError(''); }} className={`btn btn-sm min-h-[40px] shrink-0 ${tab === t.id ? 'btn-primary' : 'btn-secondary'}`}>
+                            {t.label}
+                            {t.id === 'inbox' && pendingCount > 0 && <span className="px-1.5 bg-brand-foreground text-brand text-xs">{pendingCount}</span>}
+                        </button>
+                    ))}
                 </div>
+            )}
 
-                <div className="flex gap-3 mt-6">
-                    <button
-                        onClick={onClose}
-                        className="flex-1 py-3 px-4 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-medium rounded-xl"
-                    >
-                        Cancel
-                    </button>
-                    <button
-                        onClick={() => onSubmit(request.id, message, date)}
-                        className="flex-1 py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl"
-                    >
-                        Send Request
-                    </button>
+            {notice && <p className="card border-brand/40 py-3 mb-6 flex items-center gap-2" role="status"><Icon name="check" className="w-5 h-5 text-brand" />{notice}</p>}
+            {error && <p className="card border-red-500/40 text-red-300 py-3 mb-6" role="alert">{error}</p>}
+
+            {loading ? (
+                <div className="space-y-3" aria-busy="true" aria-label="Loading friendlies">
+                    {[1, 2, 3].map((i) => <div key={i} className="h-28 card animate-pulse" />)}
                 </div>
+            ) : loadError ? (
+                <EmptyNote icon="alert" title="Friendlies didn't load" action={<button type="button" onClick={() => load(tab)} className="btn btn-primary">Try again</button>}>
+                    <p role="alert">{loadError}</p>
+                </EmptyNote>
+            ) : tab === 'browse' ? (
+                requests.length === 0 ? (
+                    <EmptyNote icon="handshake" title="No clubs looking right now">
+                        {isStaff ? 'Post that you need a game and other clubs can offer you one.' : 'Clubs looking for a friendly will show here.'}
+                    </EmptyNote>
+                ) : (
+                    <ul className="space-y-3">
+                        {requests.map((r) => {
+                            const name = r.team_display_name || r.team_name;
+                            return (
+                                <li key={r.id} className="card p-4 md:p-5">
+                                    <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                                        <div className="flex items-center gap-4 flex-1 min-w-0">
+                                            <Badge name={name} url={r.badge_url} />
+                                            <div className="min-w-0">
+                                                <h3 className="text-xl leading-tight break-words">{name}</h3>
+                                                <div className="flex flex-wrap gap-2 mt-2">
+                                                    {r.age_group && <Tag>{r.age_group}</Tag>}
+                                                    <Tag>{WHERE[r.location_pref] ?? r.location_pref}</Tag>
+                                                    {r.max_travel_miles ? <Tag>Up to {r.max_travel_miles} miles</Tag> : null}
+                                                    {r.pitch_type && PITCH[r.pitch_type] && <Tag>{PITCH[r.pitch_type]}</Tag>}
+                                                    {r.kit_colors && <Tag>Kit: {r.kit_colors}</Tag>}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {isStaff && (
+                                            <button type="button" onClick={() => { setFormError(''); setAskForm({ date: '', message: '' }); setAsking(r); }} className="btn btn-outline btn-sm min-h-[40px] self-start sm:self-center">
+                                                Offer a game
+                                            </button>
+                                        )}
+                                    </div>
+                                    {r.notes && <p className="mt-3 text-sm text-muted whitespace-pre-line">{r.notes}</p>}
+                                </li>
+                            );
+                        })}
+                    </ul>
+                )
+            ) : tab === 'mine' ? (
+                mine.length === 0 ? (
+                    <EmptyNote icon="handshake" title="No posts yet">Tap &ldquo;We need a game&rdquo; to tell other clubs you&apos;re looking.</EmptyNote>
+                ) : (
+                    <ul className="space-y-3">
+                        {mine.map((r) => (
+                            <li key={r.id} className="card p-4 md:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                <div>
+                                    <div className="flex flex-wrap items-center gap-3 mb-2">
+                                        <StatusText status={r.status} />
+                                        {(r.pending_count ?? 0) > 0 && <span className="text-xs font-bold text-yellow-400">{r.pending_count} {r.pending_count === 1 ? 'offer' : 'offers'} waiting</span>}
+                                    </div>
+                                    <div className="flex flex-wrap gap-2">
+                                        {r.age_group && <Tag>{r.age_group}</Tag>}
+                                        <Tag>{WHERE[r.location_pref] ?? r.location_pref}</Tag>
+                                    </div>
+                                </div>
+                                <button type="button" onClick={() => remove(r.id)} className="btn btn-danger btn-sm min-h-[40px] self-start">
+                                    <Icon name="trash" className="w-4 h-4" /> Take down
+                                </button>
+                            </li>
+                        ))}
+                    </ul>
+                )
+            ) : tab === 'inbox' ? (
+                inbox.length === 0 ? (
+                    <EmptyNote icon="mail" title="No offers yet">When a club offers you a game, it shows here for you to accept or decline.</EmptyNote>
+                ) : (
+                    <ul className="space-y-3">
+                        {inbox.map((m) => {
+                            const name = m.requester_display_name || m.requester_team_name;
+                            return (
+                                <li key={m.id} className="card p-4 md:p-5 flex flex-col sm:flex-row sm:items-center gap-4">
+                                    <div className="flex items-start gap-4 flex-1 min-w-0">
+                                        <Badge name={name} url={m.requester_badge_url} />
+                                        <div className="min-w-0">
+                                            <h3 className="text-xl leading-tight break-words">{name}</h3>
+                                            {m.proposed_date && <p className="text-sm text-muted inline-flex items-center gap-1.5 mt-1"><Icon name="calendar" className="w-4 h-4" />{formatDate(m.proposed_date, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}</p>}
+                                            {m.message && <p className="text-sm mt-2 whitespace-pre-line">{m.message}</p>}
+                                        </div>
+                                    </div>
+                                    {m.status === 'pending' ? (
+                                        <div className="flex gap-2">
+                                            <button type="button" onClick={() => respond(m.id, 'accept')} className="btn btn-primary btn-sm min-h-[40px]">Accept</button>
+                                            <button type="button" onClick={() => respond(m.id, 'decline')} className="btn btn-secondary btn-sm min-h-[40px]">Decline</button>
+                                        </div>
+                                    ) : (
+                                        <StatusText status={m.status} />
+                                    )}
+                                </li>
+                            );
+                        })}
+                    </ul>
+                )
+            ) : sent.length === 0 ? (
+                <EmptyNote icon="mail" title="No offers sent">Offer a game to a club under &ldquo;Find a game&rdquo; and its reply shows here.</EmptyNote>
+            ) : (
+                <ul className="space-y-3">
+                    {sent.map((m) => (
+                        <li key={m.id} className="card p-4 md:p-5 flex flex-wrap items-center justify-between gap-3">
+                            <div className="min-w-0">
+                                <h3 className="text-xl leading-tight break-words">To {m.host_team_name ?? 'another club'}</h3>
+                                {m.proposed_date && <p className="text-sm text-muted mt-1">{formatDate(m.proposed_date, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}</p>}
+                            </div>
+                            <StatusText status={m.status} />
+                        </li>
+                    ))}
+                </ul>
+            )}
+
+            {posting && (
+                <Modal title="We need a game" onClose={closePosting}>
+                    <form onSubmit={post} className="space-y-4">
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <label htmlFor="f-age" className="label">Age group</label>
+                                <select id="f-age" required value={posting.age_group} onChange={(e) => setPosting({ ...posting, age_group: e.target.value })} className="field">
+                                    <option value="">Choose</option>
+                                    {AGE_GROUPS.map((a) => <option key={a} value={a}>{a}</option>)}
+                                </select>
+                            </div>
+                            <div>
+                                <label htmlFor="f-where" className="label">Where</label>
+                                <select id="f-where" value={posting.location_pref} onChange={(e) => setPosting({ ...posting, location_pref: e.target.value })} className="field">
+                                    {Object.entries(WHERE).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                                </select>
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <label htmlFor="f-miles" className="label">Travel up to (miles)</label>
+                                <input id="f-miles" type="number" min={1} max={500} value={posting.max_travel_miles} onChange={(e) => setPosting({ ...posting, max_travel_miles: e.target.value })} className="field" />
+                            </div>
+                            <div>
+                                <label htmlFor="f-pitch" className="label">Pitch</label>
+                                <select id="f-pitch" value={posting.pitch_type} onChange={(e) => setPosting({ ...posting, pitch_type: e.target.value })} className="field">
+                                    <option value="any">Any</option>
+                                    {Object.entries(PITCH).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                                </select>
+                            </div>
+                        </div>
+                        <div>
+                            <label htmlFor="f-kit" className="label">Our kit colours (to avoid a clash)</label>
+                            <input id="f-kit" value={posting.kit_colors} onChange={(e) => setPosting({ ...posting, kit_colors: e.target.value })} placeholder="e.g. Red and white" className="field" />
+                        </div>
+                        <div>
+                            <label htmlFor="f-notes" className="label">Anything else</label>
+                            <textarea id="f-notes" rows={3} value={posting.notes} onChange={(e) => setPosting({ ...posting, notes: e.target.value })} placeholder="Dates and times that suit you" className="field resize-none" />
+                        </div>
+                        {formError && <p role="alert" className="text-sm text-red-400">{formError}</p>}
+                        <div className="flex gap-3 pt-2">
+                            <button type="button" onClick={closePosting} className="btn btn-secondary flex-1">Cancel</button>
+                            <button type="submit" disabled={busy} className="btn btn-primary flex-1">{busy ? 'Posting…' : 'Post'}</button>
+                        </div>
+                    </form>
+                </Modal>
+            )}
+
+            {asking && (
+                <Modal title="Offer a game" onClose={closeAsking}>
+                    <p className="text-muted mb-5">To <strong className="text-foreground">{asking.team_display_name || asking.team_name}</strong></p>
+                    <form onSubmit={ask} className="space-y-4">
+                        <div>
+                            <label htmlFor="a-date" className="label">Date</label>
+                            <input id="a-date" type="date" value={askForm.date} onChange={(e) => setAskForm({ ...askForm, date: e.target.value })} className="field" />
+                        </div>
+                        <div>
+                            <label htmlFor="a-message" className="label">Message (optional)</label>
+                            <textarea id="a-message" rows={3} value={askForm.message} onChange={(e) => setAskForm({ ...askForm, message: e.target.value })} placeholder="Say hello and suggest a kick-off time" className="field resize-none" />
+                        </div>
+                        {formError && <p role="alert" className="text-sm text-red-400">{formError}</p>}
+                        <div className="flex gap-3 pt-2">
+                            <button type="button" onClick={closeAsking} className="btn btn-secondary flex-1">Cancel</button>
+                            <button type="submit" disabled={busy} className="btn btn-primary flex-1">{busy ? 'Sending…' : 'Send offer'}</button>
+                        </div>
+                    </form>
+                </Modal>
+            )}
+        </>
+    );
+}
+
+export default function FriendliesPage({ params }: { params: Promise<{ tenant: string }> }) {
+    const { tenant } = use(params);
+    return (
+        <MembersOnlyPage tenant={tenant} what="Friendlies" title="Friendlies" subtitle="Clubs looking for a friendly.">
+            <div className="container py-8 md:py-12">
+                <Friendlies />
             </div>
-        </div>
+        </MembersOnlyPage>
     );
 }

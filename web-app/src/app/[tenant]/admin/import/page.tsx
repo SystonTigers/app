@@ -1,8 +1,10 @@
 'use client';
 
-import { use, useState, useRef, useEffect } from 'react';
-import { createClientSDK } from '@/lib/sdk';
+import { use, useCallback, useEffect, useRef, useState } from 'react';
 import { apiFetch } from '@/lib/session';
+import { PageHeader } from '@/components/ui/Page';
+import { Icon, type IconName } from '@/components/ui/Icon';
+import { Notice, bodyError } from '@/components/admin/AdminUi';
 
 type ImportType = 'fixtures' | 'results' | 'players' | 'match-events';
 
@@ -14,6 +16,31 @@ interface ImportResult {
     error?: string;
 }
 
+interface Counts {
+    players: number;
+    fixtures: number;
+    matches: number;
+    match_events: number;
+}
+
+interface Season {
+    id: string;
+    name: string;
+    is_current: number;
+}
+
+const TYPES: Array<{ value: ImportType; label: string; icon: IconName }> = [
+    { value: 'players', label: 'Players', icon: 'users' },
+    { value: 'fixtures', label: 'Fixtures', icon: 'calendar' },
+    { value: 'results', label: 'Results', icon: 'trophy' },
+    { value: 'match-events', label: 'Goals, assists and cards', icon: 'ball' },
+];
+
+/** Split CSV text into rows for the preview (simple: commas, no quoted commas). */
+function previewRows(csv: string): string[][] {
+    return csv.split(/\r?\n/).filter((l) => l.trim()).map((l) => l.split(',').map((c) => c.trim()));
+}
+
 export default function ImportPage({ params }: { params: Promise<{ tenant: string }> }) {
     const { tenant } = use(params);
     const [importType, setImportType] = useState<ImportType>('players');
@@ -21,65 +48,43 @@ export default function ImportPage({ params }: { params: Promise<{ tenant: strin
     const [fileName, setFileName] = useState('');
     const [importing, setImporting] = useState(false);
     const [result, setResult] = useState<ImportResult | null>(null);
-    const [counts, setCounts] = useState<any>(null);
-    const [seasons, setSeasons] = useState<any[]>([]);
-    const [selectedSeasonId, setSelectedSeasonId] = useState<string>('');
+    const [counts, setCounts] = useState<Counts | null>(null);
+    const [seasons, setSeasons] = useState<Season[]>([]);
+    const [selectedSeasonId, setSelectedSeasonId] = useState('');
+    const [templateError, setTemplateError] = useState('');
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const sdk = createClientSDK(tenant);
-
-    // Load seasons on mount
-    useEffect(() => {
-        loadSeasons();
-        loadCounts();
-    }, []);
-
-    // Load seasons
-    const loadSeasons = async () => {
+    const loadCounts = useCallback(async () => {
         try {
-            const res = await apiFetch(`/api/v1/seasons`, {
-                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-            });
+            const res = await apiFetch('/api/v1/import/status');
             const data = await res.json();
-            if (data.success) {
-                setSeasons(data.data || []);
-            }
-        } catch (err) {
-            console.error('Failed to load seasons', err);
-        }
-    };
-
-    // Load current data counts
-    const loadCounts = async () => {
-        try {
-            const res = await apiFetch(`/api/v1/import/status`, {
-                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-            });
-            const data = await res.json();
-            if (data.success) {
-                setCounts(data.counts);
-            }
+            if (data?.success) setCounts(data.counts as Counts);
         } catch (err) {
             console.error('Failed to load counts', err);
         }
-    };
+    }, []);
 
-    // Handle file selection
+    useEffect(() => {
+        apiFetch('/api/v1/seasons')
+            .then((res) => res.json())
+            .then((data) => { if (data?.success) setSeasons((data.data ?? []) as Season[]); })
+            .catch((err) => console.error('Failed to load seasons', err));
+        loadCounts();
+    }, [tenant, loadCounts]);
+
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
-
+        setResult(null);
         setFileName(file.name);
         const reader = new FileReader();
-        reader.onload = (event) => {
-            setCsvContent(event.target?.result as string);
-        };
+        reader.onload = (event) => setCsvContent(String(event.target?.result ?? ''));
         reader.readAsText(file);
     };
 
-    // Download template
+    // Fetched from the backend and saved as a file (a plain link would hit this website instead)
     const downloadTemplate = async (type: ImportType) => {
-        // Fetched from the backend and saved as a file (a plain link would hit this website instead)
+        setTemplateError('');
         try {
             const res = await apiFetch(`/api/v1/import/template/${type}`);
             if (!res.ok) throw new Error();
@@ -90,257 +95,160 @@ export default function ImportPage({ params }: { params: Promise<{ tenant: strin
             a.click();
             setTimeout(() => URL.revokeObjectURL(url), 1000);
         } catch {
-            alert("The template didn't download. Please try again.");
+            setTemplateError("The template didn't download. Please try again.");
         }
     };
 
-    // Perform import
     const handleImport = async () => {
         if (!csvContent.trim()) {
-            setResult({ success: false, error: 'No CSV content to import' });
+            setResult({ success: false, error: 'Choose a CSV file first.' });
             return;
         }
-
         setImporting(true);
         setResult(null);
-
         try {
-            // Add seasonId to URL if selected
-            const url = selectedSeasonId
-                ? `/api/v1/import/${importType}?seasonId=${selectedSeasonId}`
+            const path = selectedSeasonId
+                ? `/api/v1/import/${importType}?seasonId=${encodeURIComponent(selectedSeasonId)}`
                 : `/api/v1/import/${importType}`;
-
-            const res = await fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'text/csv',
-                    Authorization: `Bearer ${localStorage.getItem('token')}`
-                },
-                body: csvContent
-            });
-            const data = await res.json();
-            setResult(data);
-
-            if (data.success) {
-                loadCounts();
+            // Sent to the API (not this website), with the login token
+            const res = await apiFetch(path, { method: 'POST', headers: { 'Content-Type': 'text/csv' }, body: csvContent });
+            const data = await res.json().catch(() => null);
+            if (!res.ok || !data?.success) {
+                setResult({ success: false, error: bodyError(data, "The import didn't work. Check the file matches the template and try again.") });
+                return;
             }
-        } catch (err: any) {
-            setResult({ success: false, error: err.message });
+            setResult(data as ImportResult);
+            loadCounts();
+        } catch {
+            setResult({ success: false, error: "We couldn't reach the server. Check your connection and try again." });
         } finally {
             setImporting(false);
         }
     };
 
-    // Reset form
     const handleReset = () => {
         setCsvContent('');
         setFileName('');
         setResult(null);
-        if (fileInputRef.current) {
-            fileInputRef.current.value = '';
-        }
+        if (fileInputRef.current) fileInputRef.current.value = '';
     };
 
-    const typeOptions = [
-        { value: 'players', label: 'Players/Squad', icon: '👥' },
-        { value: 'fixtures', label: 'Fixtures', icon: '📅' },
-        { value: 'results', label: 'Match Results', icon: '📊' },
-        { value: 'match-events', label: 'Goals/Assists/Cards', icon: '⚽' }
-    ];
+    const rows = csvContent ? previewRows(csvContent) : [];
+    const typeLabel = TYPES.find((t) => t.value === importType)?.label.toLowerCase() ?? importType;
 
     return (
-        <div className="container mx-auto py-8 px-4">
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-                Import Data
-            </h1>
-            <p className="text-gray-600 dark:text-gray-400 mb-8">
-                Upload CSV files to bulk import historical data
-            </p>
+        <div className="container py-8 md:py-10 max-w-5xl">
+            <PageHeader eyebrow="Club admin" title="Import" subtitle="Bring in players, fixtures, results and past stats from a spreadsheet saved as CSV." />
 
-            {/* Current Data Counts */}
             {counts && (
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-                    <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
-                        <div className="text-2xl font-bold text-brand">{counts.players}</div>
-                        <div className="text-sm text-gray-500">Players</div>
-                    </div>
-                    <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
-                        <div className="text-2xl font-bold text-brand">{counts.fixtures}</div>
-                        <div className="text-sm text-gray-500">Fixtures</div>
-                    </div>
-                    <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
-                        <div className="text-2xl font-bold text-brand">{counts.matches}</div>
-                        <div className="text-sm text-gray-500">Results</div>
-                    </div>
-                    <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
-                        <div className="text-2xl font-bold text-brand">{counts.match_events}</div>
-                        <div className="text-sm text-gray-500">Events</div>
-                    </div>
-                </div>
+                <dl className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
+                    {[
+                        { label: 'Players', value: counts.players },
+                        { label: 'Fixtures', value: counts.fixtures },
+                        { label: 'Results', value: counts.matches },
+                        { label: 'Goals, cards…', value: counts.match_events },
+                    ].map((c) => (
+                        <div key={c.label} className="bg-surface border border-border chamfer-sm p-4">
+                            <dd className="font-display text-4xl font-extrabold text-brand">{c.value}</dd>
+                            <dt className="text-xs text-muted uppercase tracking-wider">{c.label}</dt>
+                        </div>
+                    ))}
+                </dl>
             )}
 
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-                {/* Season Selection */}
-                <div className="mb-6 pb-6 border-b border-gray-200 dark:border-gray-700">
-                    <h3 className="text-lg font-bold mb-3">Select Season (Optional)</h3>
-                    <select
-                        value={selectedSeasonId}
-                        onChange={(e) => setSelectedSeasonId(e.target.value)}
-                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
-                    >
-                        <option value="">Current Season (Default)</option>
-                        {seasons.map((season) => (
-                            <option key={season.id} value={season.id}>
-                                {season.name} {season.is_current === 1 && '(Current)'}
-                            </option>
-                        ))}
-                    </select>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
-                        💡 Select a historical season to import data for that specific season
-                    </p>
-                </div>
-
-                {/* Step 1: Select Type */}
-                <div className="mb-6">
-                    <h3 className="text-lg font-bold mb-3">1. Select Data Type</h3>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                        {typeOptions.map(opt => (
+            <div className="card space-y-8">
+                <section aria-labelledby="step1">
+                    <h2 id="step1" className="text-2xl mb-3">1. What are you importing?</h2>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3" role="radiogroup" aria-labelledby="step1">
+                        {TYPES.map((opt) => (
                             <button
                                 key={opt.value}
-                                onClick={() => setImportType(opt.value as ImportType)}
-                                className={`p-4 rounded-xl border-2 transition-all text-left ${importType === opt.value
-                                    ? 'border-brand bg-brand/5'
-                                    : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
-                                    }`}
+                                type="button"
+                                role="radio"
+                                aria-checked={importType === opt.value}
+                                onClick={() => { setImportType(opt.value); setResult(null); }}
+                                className={`p-4 border text-left transition-colors chamfer-sm ${importType === opt.value ? 'border-brand bg-brand/10' : 'border-border bg-surface-raised hover:border-brand/50'}`}
                             >
-                                <div className="text-2xl mb-1">{opt.icon}</div>
-                                <div className="font-medium text-sm">{opt.label}</div>
+                                <Icon name={opt.icon} className="w-6 h-6 text-brand mb-2" />
+                                <span className="block font-semibold text-sm">{opt.label}</span>
                             </button>
                         ))}
                     </div>
-                    <button
-                        onClick={() => downloadTemplate(importType)}
-                        className="mt-3 text-sm text-brand hover:underline"
-                    >
-                        ⬇️ Download {importType} template
+                    <button type="button" onClick={() => downloadTemplate(importType)} className="btn btn-sm btn-ghost mt-3 px-0 text-brand">
+                        <Icon name="download" className="w-4 h-4" /> Download the {typeLabel} template
                     </button>
-                </div>
+                    {templateError && <Notice tone="error">{templateError}</Notice>}
+                </section>
 
-                {/* Step 2: Upload File */}
-                <div className="mb-6">
-                    <h3 className="text-lg font-bold mb-3">2. Upload CSV File</h3>
-                    <div
-                        onClick={() => fileInputRef.current?.click()}
-                        className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl p-8 text-center cursor-pointer hover:border-brand transition-colors"
-                    >
-                        <input
-                            ref={fileInputRef}
-                            type="file"
-                            accept=".csv"
-                            onChange={handleFileSelect}
-                            className="hidden"
-                        />
+                <section aria-labelledby="step-season">
+                    <h2 id="step-season" className="text-2xl mb-3">2. Which season?</h2>
+                    <label htmlFor="import-season" className="label">Season</label>
+                    <select id="import-season" value={selectedSeasonId} onChange={(e) => setSelectedSeasonId(e.target.value)} className="field max-w-md">
+                        <option value="">This season</option>
+                        {seasons.map((season) => (
+                            <option key={season.id} value={season.id}>{season.name}{season.is_current === 1 ? ' (current)' : ''}</option>
+                        ))}
+                    </select>
+                    <p className="text-sm text-muted mt-2">Pick an older season to fill in past results and stats.</p>
+                </section>
+
+                <section aria-labelledby="step2">
+                    <h2 id="step2" className="text-2xl mb-3">3. Choose the file</h2>
+                    <label htmlFor="import-file" className="block border-2 border-dashed border-border hover:border-brand transition-colors p-8 text-center cursor-pointer">
+                        <input ref={fileInputRef} id="import-file" type="file" accept=".csv,text/csv" onChange={handleFileSelect} className="sr-only" />
+                        <Icon name={fileName ? 'file' : 'upload'} className="w-10 h-10 text-brand mx-auto mb-2" />
                         {fileName ? (
-                            <div>
-                                <div className="text-4xl mb-2">📄</div>
-                                <div className="font-medium">{fileName}</div>
-                                <div className="text-sm text-gray-500 mt-1">
-                                    {csvContent.split('\n').length - 1} rows detected
-                                </div>
-                            </div>
+                            <>
+                                <span className="block font-semibold break-all">{fileName}</span>
+                                <span className="block text-sm text-muted mt-1">{Math.max(rows.length - 1, 0)} rows found</span>
+                            </>
                         ) : (
-                            <div>
-                                <div className="text-4xl mb-2">📁</div>
-                                <div className="font-medium">Click to select a CSV file</div>
-                                <div className="text-sm text-gray-500 mt-1">
-                                    or drag and drop here
-                                </div>
-                            </div>
+                            <>
+                                <span className="block font-semibold">Choose a CSV file</span>
+                                <span className="block text-sm text-muted mt-1">In Excel or Google Sheets: File, then Save as / Download as CSV.</span>
+                            </>
                         )}
-                    </div>
-                </div>
+                    </label>
+                </section>
 
-                {/* Preview */}
-                {csvContent && (
-                    <div className="mb-6">
-                        <h3 className="text-lg font-bold mb-3">3. Preview</h3>
-                        <div className="overflow-x-auto">
+                {rows.length > 0 && (
+                    <section aria-labelledby="step3">
+                        <h2 id="step3" className="text-2xl mb-3">4. Check it looks right</h2>
+                        <div className="table-scroll relative border border-border">
                             <table className="w-full text-sm">
-                                <thead className="bg-gray-50 dark:bg-gray-900">
-                                    <tr>
-                                        {csvContent.split('\n')[0].split(',').map((header, i) => (
-                                            <th key={i} className="px-4 py-2 text-left font-medium">
-                                                {header.trim()}
-                                            </th>
-                                        ))}
-                                    </tr>
+                                <thead className="bg-surface-raised">
+                                    <tr>{rows[0].map((h, i) => <th key={i} scope="col" className="px-3 py-2 text-left text-xs uppercase tracking-wider text-muted whitespace-nowrap">{h}</th>)}</tr>
                                 </thead>
-                                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                                    {csvContent.split('\n').slice(1, 6).map((row, i) => (
-                                        <tr key={i}>
-                                            {row.split(',').map((cell, j) => (
-                                                <td key={j} className="px-4 py-2">{cell.trim()}</td>
-                                            ))}
-                                        </tr>
+                                <tbody className="divide-y divide-border">
+                                    {rows.slice(1, 6).map((row, i) => (
+                                        <tr key={i}>{row.map((cell, j) => <td key={j} className="px-3 py-2 whitespace-nowrap">{cell}</td>)}</tr>
                                     ))}
                                 </tbody>
                             </table>
-                            {csvContent.split('\n').length > 6 && (
-                                <div className="text-center py-2 text-sm text-gray-500">
-                                    ... and {csvContent.split('\n').length - 6} more rows
-                                </div>
-                            )}
                         </div>
-                    </div>
+                        {rows.length > 6 && <p className="text-sm text-muted mt-2">and {rows.length - 6} more rows</p>}
+                    </section>
                 )}
 
-                {/* Result */}
                 {result && (
-                    <div className={`mb-6 p-4 rounded-xl ${result.success
-                        ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800'
-                        : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'
-                        }`}>
-                        {result.success ? (
-                            <div>
-                                <div className="font-bold text-green-700 dark:text-green-400">
-                                    ✅ Import Successful
-                                </div>
-                                <div className="text-sm mt-1">
-                                    Imported {result.imported} of {result.total} rows
-                                </div>
-                                {result.errors && result.errors.length > 0 && (
-                                    <div className="mt-2">
-                                        <div className="font-medium text-sm text-amber-600">Warnings:</div>
-                                        <ul className="text-sm list-disc list-inside">
-                                            {result.errors.slice(0, 5).map((err, i) => (
-                                                <li key={i}>{err}</li>
-                                            ))}
-                                        </ul>
-                                    </div>
-                                )}
-                            </div>
-                        ) : (
-                            <div className="font-bold text-red-700 dark:text-red-400">
-                                ❌ {result.error || 'Import failed'}
-                            </div>
-                        )}
-                    </div>
+                    result.success ? (
+                        <Notice tone="success">
+                            <p className="font-semibold">Imported {result.imported ?? 0} of {result.total ?? 0} rows.</p>
+                            {result.errors && result.errors.length > 0 && (
+                                <ul className="mt-2 list-disc list-inside text-amber-200">
+                                    {result.errors.slice(0, 5).map((err, i) => <li key={i}>{err}</li>)}
+                                </ul>
+                            )}
+                        </Notice>
+                    ) : (
+                        <Notice tone="error">{result.error || "The import didn't work. Please try again."}</Notice>
+                    )
                 )}
 
-                {/* Actions */}
-                <div className="flex gap-3">
-                    <button
-                        onClick={handleImport}
-                        disabled={!csvContent || importing}
-                        className="flex-1 bg-brand text-white py-3 px-6 rounded-xl font-bold hover:bg-brand/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                    >
-                        {importing ? '⏳ Importing...' : `Import ${importType}`}
-                    </button>
-                    <button
-                        onClick={handleReset}
-                        className="px-6 py-3 rounded-xl border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                    >
-                        Reset
+                <div className="flex flex-col-reverse sm:flex-row gap-3">
+                    <button type="button" onClick={handleReset} className="btn btn-ghost">Start again</button>
+                    <button type="button" onClick={handleImport} disabled={!csvContent || importing} className="btn btn-primary flex-1">
+                        {importing ? 'Importing…' : `Import ${typeLabel}`}
                     </button>
                 </div>
             </div>

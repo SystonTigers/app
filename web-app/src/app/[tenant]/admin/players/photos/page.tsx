@@ -1,14 +1,19 @@
 'use client';
 
-import { use, useState, useEffect } from 'react';
-import { apiFetch } from '@/lib/session';
+import { use, useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
+import { apiFetch, errorMessage } from '@/lib/session';
+import { clubInitials } from '@/lib/brand';
+import { PageHeader, EmptyNote } from '@/components/ui/Page';
+import { Icon } from '@/components/ui/Icon';
+import { ErrorNote, LoadingBlock, Notice } from '@/components/admin/AdminUi';
 
 interface Player {
     id: string;
     name: string;
-    position: string;
-    number?: number;
-    photo_url?: string;
+    position: string | null;
+    number?: number | null;
+    photo_url?: string | null;
 }
 
 interface PageProps {
@@ -20,128 +25,117 @@ export default function PlayerPhotosPage({ params }: PageProps) {
     const [players, setPlayers] = useState<Player[]>([]);
     const [uploading, setUploading] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState('');
+    const [message, setMessage] = useState<{ tone: 'success' | 'error'; text: string } | null>(null);
 
-    useEffect(() => {
-        loadPlayers();
-    }, []);
-
-    const loadPlayers = async () => {
+    const loadPlayers = useCallback(async () => {
+        setLoadError('');
         try {
-            const token = localStorage.getItem('token');
-            const res = await apiFetch(`/api/v1/squad`, {
-                headers: { Authorization: `Bearer ${token}` },
-            });
+            const res = await apiFetch('/api/v1/squad');
+            if (!res.ok) throw new Error(await errorMessage(res, "We couldn't load your squad."));
             const data = await res.json();
-            if (data.success) {
-                setPlayers(data.data || []);
-            }
-        } catch (error) {
-            console.error('Failed to load players:', error);
+            setPlayers(Array.isArray(data?.data) ? (data.data as Player[]) : []);
+        } catch (err) {
+            setLoadError(err instanceof Error && err.message ? err.message : "We couldn't load your squad. Check your connection and try again.");
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
-    const handlePhotoUpload = async (playerId: string, file: File) => {
-        setUploading(playerId);
+    useEffect(() => {
+        loadPlayers();
+    }, [tenant, loadPlayers]);
+
+    const handlePhotoUpload = async (player: Player, file: File) => {
+        setUploading(player.id);
+        setMessage(null);
         try {
-            const token = localStorage.getItem('token');
             const formData = new FormData();
             formData.append('photo', file);
-            formData.append('playerId', playerId);
-
-            await apiFetch(`/api/v1/players/${playerId}/photo`, {
-                method: 'POST',
-                headers: { Authorization: `Bearer ${token}` },
-                body: formData,
-            });
-
+            formData.append('playerId', player.id);
+            const res = await apiFetch(`/api/v1/players/${encodeURIComponent(player.id)}/photo`, { method: 'POST', body: formData });
+            if (!res.ok) throw new Error(await errorMessage(res, `${player.name}'s photo didn't upload. Please try again.`));
+            setMessage({ tone: 'success', text: `Photo saved for ${player.name}.` });
             await loadPlayers();
-        } catch (error) {
-            console.error('Upload failed:', error);
+        } catch (err) {
+            setMessage({ tone: 'error', text: err instanceof Error ? err.message : `${player.name}'s photo didn't upload. Please try again.` });
         } finally {
             setUploading(null);
         }
     };
 
-    const handlePhotoDelete = async (playerId: string) => {
+    const handlePhotoDelete = async (player: Player) => {
+        if (!confirm(`Remove ${player.name}'s photo?`)) return;
+        setMessage(null);
         try {
-            const token = localStorage.getItem('token');
-            await apiFetch(`/api/v1/players/${playerId}/photo`, {
-                method: 'DELETE',
-                headers: { Authorization: `Bearer ${token}` },
-            });
+            const res = await apiFetch(`/api/v1/players/${encodeURIComponent(player.id)}/photo`, { method: 'DELETE' });
+            if (!res.ok) throw new Error(await errorMessage(res, "The photo wasn't removed. Please try again."));
+            setMessage({ tone: 'success', text: `Photo removed for ${player.name}.` });
             await loadPlayers();
-        } catch (error) {
-            console.error('Delete failed:', error);
+        } catch (err) {
+            setMessage({ tone: 'error', text: err instanceof Error ? err.message : "The photo wasn't removed. Please try again." });
         }
     };
 
-    if (loading) {
-        return <div className="p-8">Loading players...</div>;
-    }
-
     return (
-        <div className="container mx-auto p-6 space-y-6">
-            <div className="bg-gradient-to-r from-brand to-brand/80 text-white p-6 rounded-lg">
-                <h2 className="text-2xl font-bold">Player Photo Management</h2>
-                <p className="text-sm opacity-90">Upload and manage player profile photos</p>
-            </div>
+        <div className="container py-8 md:py-10">
+            <Link href={`/${tenant}/admin/squad`} className="inline-flex items-center gap-2 text-sm font-semibold text-muted hover:text-brand mb-4 min-h-[40px]">
+                <Icon name="arrowLeft" className="w-4 h-4" /> Squad
+            </Link>
+            <PageHeader
+                eyebrow="Squad"
+                title="Player photos"
+                subtitle="Profile photos for each player. They only show publicly if the club allows photos and the player's parents agreed."
+            />
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {players.map((player) => (
-                    <div key={player.id} className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow">
-                        <div className="flex flex-col items-center">
+            {message && <div className="mb-6"><Notice tone={message.tone}>{message.text}</Notice></div>}
+
+            {loading ? (
+                <LoadingBlock label="Loading players" />
+            ) : loadError ? (
+                <ErrorNote message={loadError} onRetry={() => { setLoading(true); loadPlayers(); }} />
+            ) : players.length === 0 ? (
+                <EmptyNote icon="image" title="No players yet" action={<Link href={`/${tenant}/admin/squad`} className="btn btn-primary">Go to the squad</Link>}>
+                    Add players to your squad first, then come back to add their photos.
+                </EmptyNote>
+            ) : (
+                <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    {players.map((player) => (
+                        <li key={player.id} className="card flex flex-col items-center text-center">
                             {player.photo_url ? (
-                                <img
-                                    src={player.photo_url}
-                                    alt={player.name}
-                                    className="w-32 h-32 rounded-full object-cover mb-4"
-                                />
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img src={player.photo_url} alt={player.name} className="w-28 h-28 object-cover hexagon mb-4" />
                             ) : (
-                                <div className="w-32 h-32 rounded-full bg-brand/20 flex items-center justify-center text-4xl font-bold text-brand mb-4">
-                                    {player.name.charAt(0)}
+                                <div className="w-28 h-28 hexagon bg-brand/15 flex items-center justify-center font-display text-4xl font-extrabold text-brand mb-4" aria-hidden="true">
+                                    {clubInitials(player.name)}
                                 </div>
                             )}
-
-                            <h3 className="font-bold text-lg">{player.name}</h3>
-                            <p className="text-sm text-gray-600 dark:text-gray-400">
-                                #{player.number || '--'} • {player.position}
-                            </p>
-
-                            <div className="flex gap-2 mt-4">
-                                <label className={`bg-brand text-white px-4 py-2 rounded-lg hover:bg-brand/90 cursor-pointer text-sm ${uploading === player.id ? 'opacity-50' : ''}`}>
-                                    {uploading === player.id ? 'Uploading...' : player.photo_url ? 'Replace' : 'Upload'}
+                            <h2 className="text-xl">{player.name}</h2>
+                            <p className="text-sm text-muted">{player.number != null ? `#${player.number}` : 'No number'}{player.position ? ` · ${player.position}` : ''}</p>
+                            <div className="flex flex-wrap justify-center gap-2 mt-4">
+                                <label className={`btn btn-sm btn-primary ${uploading === player.id ? 'opacity-50 pointer-events-none' : ''}`}>
+                                    <Icon name="upload" className="w-4 h-4" />
+                                    {uploading === player.id ? 'Uploading…' : player.photo_url ? 'Change' : 'Upload'}
+                                    <span className="sr-only"> photo for {player.name}</span>
                                     <input
                                         type="file"
                                         accept="image/*"
-                                        className="hidden"
+                                        className="sr-only"
                                         disabled={uploading === player.id}
                                         onChange={(e) => {
                                             const file = e.target.files?.[0];
-                                            if (file) handlePhotoUpload(player.id, file);
+                                            if (file) handlePhotoUpload(player, file);
+                                            e.target.value = '';
                                         }}
                                     />
                                 </label>
-
                                 {player.photo_url && (
-                                    <button
-                                        onClick={() => handlePhotoDelete(player.id)}
-                                        className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 text-sm"
-                                    >
-                                        Delete
-                                    </button>
+                                    <button type="button" onClick={() => handlePhotoDelete(player)} className="btn btn-sm btn-danger">Remove<span className="sr-only"> {player.name}&apos;s photo</span></button>
                                 )}
                             </div>
-                        </div>
-                    </div>
-                ))}
-            </div>
-
-            {players.length === 0 && (
-                <div className="text-center py-12 text-gray-500">
-                    No players found. Add players to your squad first.
-                </div>
+                        </li>
+                    ))}
+                </ul>
             )}
         </div>
     );

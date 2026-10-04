@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { API_BASE } from '@/lib/session';
+import { Icon } from '@/components/ui/Icon';
 
 interface PublicLiveMatch {
     opponent: string;
@@ -56,18 +57,20 @@ export function LiveScoreCard({ tenant, clubName }: { tenant: string; clubName: 
                 const live = m.status === 'live' || m.status === 'half_time';
                 const scorers = m.events.filter((e) => e.type === 'goal' && e.player).reverse();
                 return (
-                    <section key={`${m.opponent}-${i}`} className="bg-gray-900 text-white chamfer-lg p-6" aria-label={`${home} ${homeScore}, ${away} ${awayScore}`}>
-                        <p className={`text-xs font-black uppercase tracking-widest mb-3 ${live ? 'text-brand' : 'text-gray-400'}`}>
-                            {live ? '● Live · ' : ''}{statusText(m)}
+                    <section key={`${m.opponent}-${i}`} className={`card ${live ? 'border-brand/50' : ''}`} aria-label={`${home} ${homeScore}, ${away} ${awayScore}`}>
+                        <p className={`inline-flex items-center gap-2 font-display text-sm font-bold uppercase tracking-widest mb-4 ${live ? 'text-brand' : 'text-muted'}`}>
+                            {live && <span className="w-2 h-2 bg-brand rotate-45 animate-pulse" aria-hidden="true" />}
+                            {live ? `Live · ${statusText(m)}` : statusText(m)}
                         </p>
-                        <div className="flex items-center justify-between gap-4">
-                            <span className="flex-1 text-lg md:text-2xl font-black uppercase italic">{home}</span>
-                            <span className="text-4xl md:text-5xl font-black tabular-nums">{homeScore} – {awayScore}</span>
-                            <span className="flex-1 text-right text-lg md:text-2xl font-black uppercase italic">{away}</span>
+                        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+                            <span className="font-display text-lg md:text-2xl font-extrabold uppercase italic leading-tight break-words">{home}</span>
+                            <span className="font-display text-4xl md:text-5xl font-extrabold tabular-nums">{homeScore}&ndash;{awayScore}</span>
+                            <span className="text-right font-display text-lg md:text-2xl font-extrabold uppercase italic leading-tight break-words">{away}</span>
                         </div>
                         {scorers.length > 0 && (
-                            <p className="mt-3 text-sm text-gray-300">
-                                ⚽ {scorers.map((s) => `${s.player}${s.minute !== null ? ` ${s.minute}'` : ''}`).join(', ')}
+                            <p className="mt-4 text-sm text-muted flex items-start gap-2">
+                                <Icon name="ball" className="w-4 h-4 mt-0.5 text-brand" />
+                                <span>{scorers.map((s) => `${s.player}${s.minute !== null ? ` ${s.minute}'` : ''}`).join(', ')}</span>
                             </p>
                         )}
                     </section>

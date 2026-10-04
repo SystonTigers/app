@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { API_BASE, errorMessage, getSessionToken } from '@/lib/session';
+import { Icon } from '@/components/ui/Icon';
+import { Notice } from '@/components/admin/AdminUi';
 
 interface StreamSettings {
     youtube: { connected: boolean; channelName: string | null; needsReconnect: boolean };
@@ -81,43 +83,39 @@ export function LiveVideoSettings() {
         }
     };
 
-    if (!settings) return message ? <p role="alert" className="text-sm text-red-600 md:col-span-2">{message.text}</p> : null;
+    if (!settings) return message ? <div className="md:col-span-2"><Notice tone="error">{message.text}</Notice></div> : null;
 
     const yt = settings.youtube;
-    const help = 'text-sm text-gray-500 dark:text-gray-400 mt-1';
+    const help = 'text-sm text-muted mt-1';
     const connectButton = (label: string) => (
-        <button type="button" onClick={connect} disabled={busy} className="mt-4 px-4 py-2 bg-brand text-black rounded-lg text-sm font-bold disabled:opacity-50">
-            {label}
+        <button type="button" onClick={connect} disabled={busy} className="btn btn-primary mt-4">
+            <Icon name="video" className="w-4 h-4" /> {label}
         </button>
     );
 
     return (
-        <section className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow md:col-span-2" aria-labelledby="live-video-title">
-            <h3 id="live-video-title" className="font-semibold text-lg text-gray-900 dark:text-white">Live match video</h3>
+        <section className="card md:col-span-2" aria-labelledby="live-video-title">
+            <h2 id="live-video-title" className="text-2xl flex items-center gap-2"><Icon name="play" className="w-5 h-5 text-brand" /> Live match video</h2>
             <p className={help}>
                 Stream from your camera (XbotGo, phone or any RTMP camera) to your club&apos;s YouTube channel. The video pops up in the
-                app for parents who can&apos;t be there, and they get a &quot;Live now&quot; alert. Set streams to <strong>Unlisted</strong> in
+                app for parents who can&apos;t be there, and they get a &quot;Live now&quot; alert. Set streams to <strong className="text-foreground">Unlisted</strong> in
                 YouTube so they only show in your app, and only stream matches where parents have agreed to filming.
             </p>
-            {message && (
-                <p role={message.error ? 'alert' : 'status'} className={`mt-3 text-sm ${message.error ? 'text-red-600' : 'text-green-700 dark:text-green-400'}`}>{message.text}</p>
-            )}
+            {message && <div className="mt-3"><Notice tone={message.error ? 'error' : 'success'}>{message.text}</Notice></div>}
             {yt.connected ? (
                 <>
                     <p className={`${help} mt-3`}>
-                        Connected to <strong className="text-gray-900 dark:text-white">{yt.channelName ?? 'your channel'}</strong>. Anything live on it
+                        Connected to <strong className="text-foreground">{yt.channelName ?? 'your channel'}</strong>. Anything live on it
                         from 45 minutes before kick-off shows in the app automatically.
                     </p>
                     {yt.needsReconnect && (
-                        <p role="alert" className="mt-3 text-sm text-amber-700 dark:text-amber-400">
-                            YouTube stopped accepting the connection (the password may have changed or access was removed). Connect again to keep streams appearing.
-                        </p>
+                        <div className="mt-3">
+                            <Notice tone="error">YouTube stopped accepting the connection (the password may have changed or access was removed). Connect again to keep streams appearing.</Notice>
+                        </div>
                     )}
                     <div className="flex flex-wrap gap-3">
                         {yt.needsReconnect && connectButton('Connect YouTube again')}
-                        <button type="button" onClick={disconnect} disabled={busy} className="mt-4 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-semibold text-gray-900 dark:text-white disabled:opacity-50">
-                            Disconnect
-                        </button>
+                        <button type="button" onClick={disconnect} disabled={busy} className="btn btn-secondary mt-4">Disconnect</button>
                     </div>
                 </>
             ) : settings.canConnect ? (
@@ -126,7 +124,7 @@ export function LiveVideoSettings() {
                     {connectButton('Connect YouTube')}
                 </>
             ) : (
-                <p className="mt-3 text-sm text-amber-700 dark:text-amber-400">Connecting YouTube isn&apos;t switched on yet.</p>
+                <p className="mt-3 text-sm text-amber-300">Connecting YouTube isn&apos;t switched on yet.</p>
             )}
             <p className={`${help} mt-4`}>No YouTube connection? Managers can paste the stream&apos;s link under Live video in Match Centre on match day.</p>
         </section>

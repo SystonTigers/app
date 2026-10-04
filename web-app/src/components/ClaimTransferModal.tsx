@@ -1,7 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { verifyTransferCode, claimTransfer, TransferVerifyResult } from '@/lib/sdk';
+import { verifyTransferCode, claimTransfer, type TransferVerifyResult } from '@/lib/sdk';
+import { Icon } from '@/components/ui/Icon';
+import { Dialog, Notice, sdkErrorMessage } from '@/components/admin/AdminUi';
 
 interface ClaimTransferModalProps {
     isOpen: boolean;
@@ -13,6 +15,7 @@ interface ClaimTransferModalProps {
     onSuccess?: () => void;
 }
 
+/** Bring a new signing's stats across from their old club with its transfer code. */
 export function ClaimTransferModal({ isOpen, onClose, newPlayer, onSuccess }: ClaimTransferModalProps) {
     const [step, setStep] = useState<'enter' | 'preview' | 'success'>('enter');
     const [transferCode, setTransferCode] = useState('');
@@ -24,21 +27,19 @@ export function ClaimTransferModal({ isOpen, onClose, newPlayer, onSuccess }: Cl
 
     if (!isOpen) return null;
 
-    const handleVerifyCode = async () => {
+    const handleVerifyCode = async (e: React.FormEvent) => {
+        e.preventDefault();
         if (!transferCode.trim()) {
-            setError('Please enter a transfer code');
+            setError('Enter the 8-character code from their old club.');
             return;
         }
-
         setIsVerifying(true);
         setError(null);
-
         try {
-            const result = await verifyTransferCode(transferCode);
-            setVerifyResult(result);
+            setVerifyResult(await verifyTransferCode(transferCode));
             setStep('preview');
-        } catch (err: any) {
-            setError(err.message || 'Invalid transfer code');
+        } catch (err) {
+            setError(sdkErrorMessage(err, "That code didn't work. Check it with their old club and try again."));
         } finally {
             setIsVerifying(false);
         }
@@ -46,17 +47,15 @@ export function ClaimTransferModal({ isOpen, onClose, newPlayer, onSuccess }: Cl
 
     const handleClaimTransfer = async () => {
         if (!verifyResult) return;
-
         setIsClaiming(true);
         setError(null);
-
         try {
             const result = await claimTransfer(transferCode, newPlayer.id);
             setSuccessMessage(result.message);
             setStep('success');
             onSuccess?.();
-        } catch (err: any) {
-            setError(err.message || 'Failed to claim transfer');
+        } catch (err) {
+            setError(sdkErrorMessage(err, "Their stats weren't brought across. Please try again."));
         } finally {
             setIsClaiming(false);
         }
@@ -72,138 +71,77 @@ export function ClaimTransferModal({ isOpen, onClose, newPlayer, onSuccess }: Cl
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md">
-                {/* Header */}
-                <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-                    <h2 className="text-xl font-bold dark:text-white flex items-center gap-2">
-                        👤 Link Career History
-                    </h2>
-                    <button
-                        onClick={handleClose}
-                        className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                    >
-                        ✕
-                    </button>
+        <Dialog title="Bring stats across" onClose={handleClose}>
+            {step === 'enter' && (
+                <form onSubmit={handleVerifyCode} className="space-y-4" noValidate>
+                    <p className="text-muted">
+                        Enter the transfer code from <strong className="text-foreground">{newPlayer.name}</strong>&apos;s old club to bring their stats across.
+                    </p>
+                    <div>
+                        <label htmlFor="transfer-code" className="label">Transfer code</label>
+                        <input
+                            id="transfer-code"
+                            type="text"
+                            autoComplete="off"
+                            placeholder="8 characters"
+                            value={transferCode}
+                            onChange={(e) => setTransferCode(e.target.value.toUpperCase())}
+                            maxLength={8}
+                            className="field font-mono text-center text-xl tracking-[0.3em] uppercase"
+                        />
+                    </div>
+                    {error && <Notice tone="error">{error}</Notice>}
+                    <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-2">
+                        <button type="button" onClick={handleClose} className="btn btn-ghost">Cancel</button>
+                        <button type="submit" disabled={isVerifying || !transferCode.trim()} className="btn btn-primary">
+                            {isVerifying ? 'Checking…' : 'Check code'}
+                        </button>
+                    </div>
+                </form>
+            )}
+
+            {step === 'preview' && verifyResult && (
+                <div className="space-y-4">
+                    <Notice tone="success">
+                        <p className="font-semibold">That code works.</p>
+                        <p>{verifyResult.playerName}, from {verifyResult.fromClub}</p>
+                    </Notice>
+                    <div>
+                        <p className="label">Stats coming across</p>
+                        <dl className="grid grid-cols-3 gap-2 text-center">
+                            {[
+                                { label: 'Goals', value: verifyResult.stats.goals },
+                                { label: 'Assists', value: verifyResult.stats.assists },
+                                { label: 'Games', value: verifyResult.stats.appearances },
+                            ].map((s) => (
+                                <div key={s.label} className="bg-surface-raised border border-border py-3">
+                                    <dd className="font-display text-2xl font-extrabold">{s.value}</dd>
+                                    <dt className="text-xs text-muted uppercase tracking-wider">{s.label}</dt>
+                                </div>
+                            ))}
+                        </dl>
+                    </div>
+                    {error && <Notice tone="error">{error}</Notice>}
+                    <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-2">
+                        <button type="button" onClick={() => setStep('enter')} className="btn btn-ghost">Back</button>
+                        <button type="button" onClick={handleClaimTransfer} disabled={isClaiming} className="btn btn-primary">
+                            <Icon name="link" className="w-4 h-4" />
+                            {isClaiming ? 'Linking…' : 'Link their stats'}
+                        </button>
+                    </div>
                 </div>
+            )}
 
-                <div className="p-6">
-                    {step === 'enter' && (
-                        <div className="space-y-4">
-                            <p className="text-gray-600 dark:text-gray-300">
-                                Enter a transfer code to import <strong>{newPlayer.name}</strong>'s career stats from their previous club.
-                            </p>
-
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium dark:text-gray-300">Transfer Code</label>
-                                <input
-                                    type="text"
-                                    placeholder="Enter 8-character code"
-                                    value={transferCode}
-                                    onChange={(e) => setTransferCode(e.target.value.toUpperCase())}
-                                    maxLength={8}
-                                    className="w-full p-3 rounded border dark:bg-gray-700 dark:border-gray-600 dark:text-white font-mono text-center text-lg tracking-widest uppercase"
-                                />
-                            </div>
-
-                            {error && (
-                                <div className="rounded-lg border border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/20 p-3 text-sm text-red-800 dark:text-red-200">
-                                    {error}
-                                </div>
-                            )}
-
-                            <div className="flex justify-end gap-3 pt-4">
-                                <button
-                                    onClick={handleClose}
-                                    className="px-4 py-2 rounded text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    onClick={handleVerifyCode}
-                                    disabled={isVerifying || !transferCode.trim()}
-                                    className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
-                                >
-                                    {isVerifying ? 'Verifying...' : '🔍 Verify Code'}
-                                </button>
-                            </div>
-                        </div>
-                    )}
-
-                    {step === 'preview' && verifyResult && (
-                        <div className="space-y-4">
-                            {/* Valid Code Banner */}
-                            <div className="rounded-lg border-2 border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/20 p-4">
-                                <div className="flex items-center gap-2 mb-2">
-                                    <span className="text-green-600">✓</span>
-                                    <span className="font-medium text-green-800 dark:text-green-200">Valid Transfer Code</span>
-                                </div>
-                                <div className="text-sm text-green-700 dark:text-green-300">
-                                    <p><strong>Player:</strong> {verifyResult.playerName}</p>
-                                    <p><strong>Previous Club:</strong> {verifyResult.fromClub}</p>
-                                </div>
-                            </div>
-
-                            {/* Stats Preview */}
-                            <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
-                                <h4 className="font-medium mb-3 dark:text-white">Career stats to import:</h4>
-                                <div className="grid grid-cols-3 gap-3 text-center">
-                                    <div className="rounded bg-gray-100 dark:bg-gray-700 p-2">
-                                        <div className="text-lg font-bold dark:text-white">{verifyResult.stats.goals}</div>
-                                        <div className="text-xs text-gray-500 dark:text-gray-400">Goals</div>
-                                    </div>
-                                    <div className="rounded bg-gray-100 dark:bg-gray-700 p-2">
-                                        <div className="text-lg font-bold dark:text-white">{verifyResult.stats.assists}</div>
-                                        <div className="text-xs text-gray-500 dark:text-gray-400">Assists</div>
-                                    </div>
-                                    <div className="rounded bg-gray-100 dark:bg-gray-700 p-2">
-                                        <div className="text-lg font-bold dark:text-white">{verifyResult.stats.appearances}</div>
-                                        <div className="text-xs text-gray-500 dark:text-gray-400">Apps</div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {error && (
-                                <div className="rounded-lg border border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/20 p-3 text-sm text-red-800 dark:text-red-200">
-                                    {error}
-                                </div>
-                            )}
-
-                            <div className="flex justify-end gap-3 pt-4">
-                                <button
-                                    onClick={() => setStep('enter')}
-                                    className="px-4 py-2 rounded text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
-                                >
-                                    Back
-                                </button>
-                                <button
-                                    onClick={handleClaimTransfer}
-                                    disabled={isClaiming}
-                                    className="px-4 py-2 rounded bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
-                                >
-                                    {isClaiming ? 'Linking...' : '🔗 Link Career History'}
-                                </button>
-                            </div>
-                        </div>
-                    )}
-
-                    {step === 'success' && (
-                        <div className="space-y-4 text-center py-4">
-                            <div className="mx-auto w-16 h-16 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center text-3xl">
-                                ✓
-                            </div>
-                            <h3 className="text-lg font-semibold dark:text-white">Career History Linked!</h3>
-                            <p className="text-gray-600 dark:text-gray-300">{successMessage}</p>
-                            <button
-                                onClick={handleClose}
-                                className="w-full px-4 py-2 rounded bg-gray-800 text-white hover:bg-gray-700 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-200"
-                            >
-                                Done
-                            </button>
-                        </div>
-                    )}
+            {step === 'success' && (
+                <div className="space-y-4 text-center py-2">
+                    <div className="mx-auto w-14 h-14 hexagon bg-brand text-brand-foreground flex items-center justify-center">
+                        <Icon name="check" className="w-7 h-7" strokeWidth={2.5} />
+                    </div>
+                    <h3 className="text-2xl">Stats linked</h3>
+                    {successMessage && <p className="text-muted">{successMessage}</p>}
+                    <button type="button" onClick={handleClose} className="btn btn-secondary w-full">Done</button>
                 </div>
-            </div>
-        </div>
+            )}
+        </Dialog>
     );
 }

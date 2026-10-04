@@ -1,135 +1,86 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { apiFetch, getSessionToken, homeFor, type SessionUser } from '@/lib/session';
+import { AuthShell } from '@/components/ui/AuthShell';
+import { ClubBadge } from '@/components/ui/Brand';
+import { Icon, type IconName } from '@/components/ui/Icon';
 
+/** What login saves: some accounts keep the name in `profile`. */
+type StoredUser = Partial<SessionUser> & { profile?: { name?: string } };
+
+interface MyClub {
+  id: string;
+  name: string;
+  slug: string;
+}
+
+const features: { icon: IconName; title: string; body: string }[] = [
+  { icon: 'calendar', title: 'Fixtures', body: 'Kick-off times and grounds for every match.' },
+  { icon: 'trophy', title: 'Results and stats', body: 'Scores, scorers and the league table.' },
+  { icon: 'chat', title: 'Team chat', body: 'Talk to coaches and other parents in one place.' },
+  { icon: 'bell', title: 'Match alerts', body: 'Goals and changes sent straight to your phone.' },
+];
+
+/** Shown after someone joins a club with a code. Works with whatever we know about them. */
 export default function WelcomePage() {
-    const router = useRouter();
-    const [userName, setUserName] = useState('');
-    const [teamName, setTeamName] = useState('');
-    const [step, setStep] = useState(0);
+  const [user, setUser] = useState<StoredUser>({});
+  const [club, setClub] = useState<MyClub | null>(null);
 
-    useEffect(() => {
-        const userData = localStorage.getItem('user_data');
-        if (userData) {
-            try {
-                const user = JSON.parse(userData);
-                setUserName(user.name || user.email?.split('@')[0] || 'there');
-                // For now, we'll use a placeholder - in production this would come from the team data
-                setTeamName(user.team_name || 'your team');
-            } catch (e) {
-                console.error('Error parsing user data');
-            }
-        }
-    }, []);
+  useEffect(() => {
+    let stored: StoredUser = {};
+    try {
+      stored = JSON.parse(localStorage.getItem('user_data') || '{}') as StoredUser;
+    } catch {
+      // Storage blocked: show the general welcome
+    }
+    setUser(stored);
+    if (!getSessionToken()) return;
 
-    const features = [
-        {
-            icon: (
-                <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                        d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-            ),
-            title: 'Match Schedule',
-            description: 'View upcoming fixtures, locations, and never miss a game'
-        },
-        {
-            icon: (
-                <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                        d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
-            ),
-            title: 'Stats & Results',
-            description: 'Track performance, goals, and season statistics'
-        },
-        {
-            icon: (
-                <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                        d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z" />
-                </svg>
-            ),
-            title: 'Team Discussions',
-            description: 'Connect with other parents and stay in the loop'
-        },
-        {
-            icon: (
-                <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                        d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                </svg>
-            ),
-            title: 'Notifications',
-            description: 'Get alerts for schedule changes and important updates'
-        }
-    ];
+    let cancelled = false;
+    apiFetch('/api/v1/auth/me/tenants')
+      .then(async (res) => {
+        if (!res.ok) return;
+        const { tenants = [] } = (await res.json()) as { tenants?: MyClub[] };
+        const mine = tenants.find((t) => t.id === stored.tenant_id) ?? (tenants.length === 1 ? tenants[0] : undefined);
+        if (!cancelled && mine) setClub(mine);
+      })
+      .catch(() => {
+        // The club name is a nice extra: the page reads fine without it
+      });
+    return () => { cancelled = true; };
+  }, []);
 
-    return (
-        <div className="min-h-screen bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500">
-            <div className="max-w-2xl mx-auto px-4 py-12">
-                {/* Welcome Header */}
-                <div className="text-center mb-12 animate-fade-in">
-                    <div className="inline-flex items-center justify-center w-20 h-20 bg-white/20 backdrop-blur-sm rounded-full mb-6">
-                        <span className="text-4xl">🎉</span>
-                    </div>
-                    <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
-                        Welcome, {userName}!
-                    </h1>
-                    <p className="text-xl text-white/80">
-                        You're all set up with {teamName}
-                    </p>
-                </div>
+  const firstName = (user.name || user.profile?.name || '').trim().split(/\s+/)[0];
+  const slug = user.tenant_slug || club?.slug || null;
+  const next = slug && user.id ? homeFor({ id: user.id, email: user.email || '', roles: user.roles, tenant_slug: slug }) : slug ? `/${slug}` : '/login';
 
-                {/* Features Carousel */}
-                <div className="bg-white/10 backdrop-blur-lg rounded-3xl p-8 mb-8">
-                    <h2 className="text-xl font-semibold text-white mb-6 text-center">
-                        Here's what you can do:
-                    </h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {features.map((feature, index) => (
-                            <div
-                                key={index}
-                                className="flex items-start gap-4 p-4 bg-white/10 rounded-xl hover:bg-white/20 transition-all cursor-pointer"
-                                style={{ animationDelay: `${index * 0.1}s` }}
-                            >
-                                <div className="flex-shrink-0 w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center text-white">
-                                    {feature.icon}
-                                </div>
-                                <div>
-                                    <h3 className="font-semibold text-white">{feature.title}</h3>
-                                    <p className="text-sm text-white/70">{feature.description}</p>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-
-                {/* CTA Button */}
-                <div className="text-center">
-                    <Link
-                        href="/"
-                        className="inline-flex items-center gap-2 py-4 px-8 bg-white text-indigo-600 font-bold text-lg 
-                                 rounded-full hover:bg-gray-100 focus:ring-4 focus:ring-white/50 transition-all shadow-xl"
-                    >
-                        Go to Dashboard
-                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                        </svg>
-                    </Link>
-                    <p className="text-sm text-white/60 mt-4">
-                        You can access this anytime from your profile settings
-                    </p>
-                </div>
-            </div>
-
-            {/* Background decoration */}
-            <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
-                <div className="absolute top-1/4 -left-20 w-60 h-60 bg-blue-400/30 rounded-full blur-3xl" />
-                <div className="absolute bottom-1/4 -right-20 w-80 h-80 bg-pink-400/30 rounded-full blur-3xl" />
-            </div>
-        </div>
-    );
+  return (
+    <AuthShell
+      mark={club ? <ClubBadge name={club.name} size={72} /> : undefined}
+      title={firstName ? `Welcome, ${firstName}` : 'Welcome aboard'}
+      subtitle={club ? <>You&apos;re now part of <strong className="text-foreground">{club.name}</strong>.</> : 'Your account is ready.'}
+      footer={<p>Find your club page any time from the menu once you&apos;re logged in.</p>}
+    >
+      <h2 className="font-display text-xl uppercase text-foreground mb-4">What you can do</h2>
+      <ul className="space-y-4 mb-8">
+        {features.map((f) => (
+          <li key={f.title} className="flex items-start gap-3">
+            <span className="w-10 h-10 shrink-0 hexagon bg-brand/15 text-brand flex items-center justify-center">
+              <Icon name={f.icon} className="w-5 h-5" />
+            </span>
+            <span>
+              <span className="block font-bold text-foreground">{f.title}</span>
+              <span className="block text-sm text-muted">{f.body}</span>
+            </span>
+          </li>
+        ))}
+      </ul>
+      <Link href={next} className="btn btn-primary w-full">
+        {slug ? 'Go to my club' : 'Log in to your club'}
+        <Icon name="arrowRight" className="w-4 h-4" />
+      </Link>
+    </AuthShell>
+  );
 }

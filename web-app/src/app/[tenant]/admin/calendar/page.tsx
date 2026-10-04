@@ -1,182 +1,174 @@
 'use client';
 
-import { useState, useEffect, use } from 'react';
+import { useCallback, useEffect, useState, use } from 'react';
 import { createEvent, deleteEvent, listEvents } from '@/lib/sdk';
+import { formatDate, formatTime } from '@/lib/format';
+import { PageHeader, EmptyNote } from '@/components/ui/Page';
+import { Icon } from '@/components/ui/Icon';
+import { ErrorNote, LoadingBlock, Notice, sdkErrorMessage } from '@/components/admin/AdminUi';
 
 interface PageProps {
     params: Promise<{ tenant: string }>;
 }
 
+/** A row from GET /api/v1/events. */
+interface ClubEvent {
+    id: string;
+    title: string;
+    start_time: string;
+    location: string | null;
+    description: string | null;
+    rsvp_yes_count: number | null;
+    rsvp_no_count: number | null;
+    rsvp_maybe_count: number | null;
+}
+
+const EMPTY = { title: '', date: '', time: '', location: '', description: '' };
+
 export default function CalendarAdminPage({ params }: PageProps) {
     const { tenant } = use(params);
-    const [events, setEvents] = useState<any[]>([]);
+    const [events, setEvents] = useState<ClubEvent[]>([]);
     const [loading, setLoading] = useState(true);
-    const [formData, setFormData] = useState({
-        title: '',
-        date: '',
-        time: '',
-        location: '',
-        description: ''
-    });
+    const [loadError, setLoadError] = useState('');
+    const [formData, setFormData] = useState(EMPTY);
+    const [formError, setFormError] = useState('');
+    const [formDone, setFormDone] = useState('');
+    const [listError, setListError] = useState('');
+    const [saving, setSaving] = useState(false);
 
-    useEffect(() => {
-        loadEvents();
-    }, [tenant]);
-
-    async function loadEvents() {
+    const loadEvents = useCallback(async () => {
+        setLoadError('');
         try {
-            // listEvents calls GET /api/v1/events which uses auth token
-            const data = await listEvents();
-            if ((data as any).success && Array.isArray((data as any).data)) {
-                setEvents((data as any).data);
-            } else if (Array.isArray(data)) {
-                setEvents(data);
-            } else {
-                setEvents([]);
-            }
+            const data: unknown = await listEvents();
+            const list = Array.isArray(data) ? data : (data as { data?: unknown })?.data;
+            setEvents(Array.isArray(list) ? (list as ClubEvent[]) : []);
         } catch (err) {
-            console.error(err);
+            setLoadError(sdkErrorMessage(err, "We couldn't load your events. Check your connection and try again."));
         } finally {
             setLoading(false);
         }
-    }
+    }, []);
+
+    useEffect(() => {
+        loadEvents();
+    }, [tenant, loadEvents]);
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
-        if (!formData.title || !formData.date || !formData.time) return;
-
+        setFormDone('');
+        if (!formData.title.trim() || !formData.date || !formData.time) {
+            setFormError('Enter a title, a date and a time.');
+            return;
+        }
+        setFormError('');
+        setSaving(true);
         try {
             const dateTime = new Date(`${formData.date}T${formData.time}`).toISOString();
             await createEvent({
-                title: formData.title,
+                title: formData.title.trim(),
                 date: dateTime,
                 location: formData.location,
-                description: formData.description
+                description: formData.description,
             });
-            setFormData({ title: '', date: '', time: '', location: '', description: '' });
+            setFormDone(`${formData.title.trim()} is on the club calendar.`);
+            setFormData(EMPTY);
             loadEvents();
         } catch (err) {
-            alert('Failed to create event');
+            setFormError(sdkErrorMessage(err, "The event didn't save. Please try again."));
+        } finally {
+            setSaving(false);
         }
     }
 
-    async function handleDelete(id: string) {
-        if (!confirm('Delete this event?')) return;
+    async function handleDelete(ev: ClubEvent) {
+        if (!confirm(`Delete ${ev.title}?`)) return;
+        setListError('');
         try {
-            await deleteEvent(id);
+            await deleteEvent(ev.id);
             loadEvents();
-        } catch (err) {
-            alert('Failed to delete event');
+        } catch {
+            setListError("That event wasn't deleted. Please try again.");
         }
     }
-
-    if (loading) return <div className="p-8">Loading...</div>;
 
     return (
-        <div className="container mx-auto py-8 px-4">
-            <h1 className="text-3xl font-bold mb-8 text-gray-900 dark:text-white">Calendar Manager</h1>
+        <div className="container py-8 md:py-10">
+            <PageHeader
+                eyebrow="Club admin"
+                title="Events"
+                subtitle="Presentation nights, tournaments, socials and meetings. Members see them in the app and say if they're coming."
+            />
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Form */}
-                <div className="lg:col-span-1">
-                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                        <h2 className="text-xl font-semibold mb-4">Add Event</h2>
-                        <form onSubmit={handleSubmit} className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium mb-1">Title</label>
-                                <input
-                                    type="text"
-                                    value={formData.title}
-                                    onChange={e => setFormData({ ...formData, title: e.target.value })}
-                                    className="w-full p-2 border rounded dark:bg-gray-700"
-                                    required
-                                />
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-medium mb-1">Date</label>
-                                    <input
-                                        type="date"
-                                        value={formData.date}
-                                        onChange={e => setFormData({ ...formData, date: e.target.value })}
-                                        className="w-full p-2 border rounded dark:bg-gray-700"
-                                        required
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium mb-1">Time</label>
-                                    <input
-                                        type="time"
-                                        value={formData.time}
-                                        onChange={e => setFormData({ ...formData, time: e.target.value })}
-                                        className="w-full p-2 border rounded dark:bg-gray-700"
-                                        required
-                                    />
-                                </div>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium mb-1">Location</label>
-                                <input
-                                    type="text"
-                                    value={formData.location}
-                                    onChange={e => setFormData({ ...formData, location: e.target.value })}
-                                    className="w-full p-2 border rounded dark:bg-gray-700"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium mb-1">Description</label>
-                                <textarea
-                                    value={formData.description}
-                                    onChange={e => setFormData({ ...formData, description: e.target.value })}
-                                    className="w-full p-2 border rounded dark:bg-gray-700 h-24"
-                                />
-                            </div>
-                            <button type="submit" className="w-full bg-black text-white py-2 rounded hover:bg-gray-800">
-                                Add Event
-                            </button>
-                        </form>
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
+                <form onSubmit={handleSubmit} className="card lg:col-span-2 space-y-4" noValidate>
+                    <h2 className="text-2xl">Add an event</h2>
+                    <div>
+                        <label htmlFor="event-title" className="label">Title</label>
+                        <input id="event-title" type="text" maxLength={100} placeholder="e.g. Presentation night" value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} className="field" required />
                     </div>
-                </div>
-
-                {/* List */}
-                <div className="lg:col-span-2">
-                    <div className="space-y-4">
-                        {events.map((event: any) => (
-                            <div key={event.id} className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 flex justify-between items-start">
-                                <div>
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <span className="text-sm font-bold text-brand uppercase">
-                                            {new Date(event.start_time).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                                        </span>
-                                        <span className="text-sm text-gray-500">
-                                            {new Date(event.start_time).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
-                                        </span>
-                                    </div>
-                                    <h3 className="font-semibold text-lg">{event.title}</h3>
-                                    {event.location && <p className="text-sm text-gray-500 mt-1">📍 {event.location}</p>}
-                                    {event.description && <p className="text-sm text-gray-600 mt-2">{event.description}</p>}
-
-                                    <div className="flex gap-4 mt-3 text-xs text-gray-500">
-                                        <span className="text-green-600 font-medium">✅ {event.rsvp_yes_count} Going</span>
-                                        <span className="text-red-600">❌ {event.rsvp_no_count} Not Going</span>
-                                        <span className="text-yellow-600">❓ {event.rsvp_maybe_count} Maybe</span>
-                                    </div>
-                                </div>
-                                <button
-                                    onClick={() => handleDelete(event.id)}
-                                    className="text-red-600 hover:text-red-900 ml-4"
-                                >
-                                    Delete
-                                </button>
-                            </div>
-                        ))}
-                        {events.length === 0 && (
-                            <div className="text-center text-gray-500 py-8">
-                                No events scheduled.
-                            </div>
-                        )}
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label htmlFor="event-date" className="label">Date</label>
+                            <input id="event-date" type="date" value={formData.date} onChange={(e) => setFormData({ ...formData, date: e.target.value })} className="field px-3" required />
+                        </div>
+                        <div>
+                            <label htmlFor="event-time" className="label">Time</label>
+                            <input id="event-time" type="time" value={formData.time} onChange={(e) => setFormData({ ...formData, time: e.target.value })} className="field px-3" required />
+                        </div>
                     </div>
-                </div>
+                    <div>
+                        <label htmlFor="event-location" className="label">Where (optional)</label>
+                        <input id="event-location" type="text" placeholder="e.g. Clubhouse" value={formData.location} onChange={(e) => setFormData({ ...formData, location: e.target.value })} className="field" />
+                    </div>
+                    <div>
+                        <label htmlFor="event-description" className="label">Details (optional)</label>
+                        <textarea id="event-description" rows={3} value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} className="field" />
+                    </div>
+                    {formError && <Notice tone="error">{formError}</Notice>}
+                    {formDone && <Notice tone="success">{formDone}</Notice>}
+                    <button type="submit" disabled={saving} className="btn btn-primary w-full">{saving ? 'Saving…' : 'Add event'}</button>
+                </form>
+
+                <section className="lg:col-span-3 space-y-3" aria-labelledby="events-title">
+                    <h2 id="events-title" className="text-2xl">Coming up</h2>
+                    {listError && <Notice tone="error">{listError}</Notice>}
+                    {loading ? (
+                        <LoadingBlock label="Loading events" />
+                    ) : loadError ? (
+                        <ErrorNote message={loadError} onRetry={() => { setLoading(true); loadEvents(); }} />
+                    ) : events.length === 0 ? (
+                        <EmptyNote icon="flag" title="No events yet">
+                            Add your first event with the form. Matches go on the Fixtures page instead.
+                        </EmptyNote>
+                    ) : (
+                        <ul className="space-y-2">
+                            {events.map((ev) => (
+                                <li key={ev.id} className="bg-surface border border-border chamfer-sm p-4 flex items-start gap-4">
+                                    <div className="w-14 shrink-0 text-center">
+                                        <p className="font-display text-3xl font-extrabold leading-none text-brand">{formatDate(ev.start_time, { day: 'numeric' })}</p>
+                                        <p className="text-xs text-muted uppercase tracking-wider">{formatDate(ev.start_time, { month: 'short' })}</p>
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                        <h3 className="text-xl">{ev.title}</h3>
+                                        <p className="text-sm text-muted flex flex-wrap gap-x-3">
+                                            <span>{formatTime(ev.start_time)}</span>
+                                            {ev.location && <span className="inline-flex items-center gap-1"><Icon name="flag" className="w-3.5 h-3.5" />{ev.location}</span>}
+                                        </p>
+                                        {ev.description && <p className="text-sm mt-2">{ev.description}</p>}
+                                        <p className="flex flex-wrap gap-3 mt-3 text-xs font-bold uppercase tracking-wider">
+                                            <span className="text-green-400">{ev.rsvp_yes_count ?? 0} going</span>
+                                            <span className="text-amber-300">{ev.rsvp_maybe_count ?? 0} maybe</span>
+                                            <span className="text-muted">{ev.rsvp_no_count ?? 0} can&apos;t</span>
+                                        </p>
+                                    </div>
+                                    <button type="button" onClick={() => handleDelete(ev)} className="p-2.5 text-muted hover:text-red-400" aria-label={`Delete ${ev.title}`}>
+                                        <Icon name="trash" className="w-5 h-5" />
+                                    </button>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </section>
             </div>
         </div>
     );

@@ -1,8 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { getSessionToken, apiFetch } from '@/lib/session';
+import { apiFetch, errorMessage } from '@/lib/session';
+import { clubInitials } from '@/lib/brand';
+import { PageHeader, EmptyNote } from '@/components/ui/Page';
+import { Icon } from '@/components/ui/Icon';
+import { Dialog, ErrorNote, LoadingBlock, Notice, bodyError } from '@/components/admin/AdminUi';
 
 interface Opponent {
     id: string;
@@ -20,346 +24,221 @@ export default function AdminOpponentsPage() {
     const tenantSlug = params.tenant as string;
     const [opponents, setOpponents] = useState<Opponent[]>([]);
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState('');
     const [selectedOpponent, setSelectedOpponent] = useState<Opponent | null>(null);
-    const [showApprovalModal, setShowApprovalModal] = useState(false);
     const [newTeamName, setNewTeamName] = useState('');
-    const [uploading, setUploading] = useState(false);
-    const [uploadError, setUploadError] = useState<string | null>(null);
+    const [uploading, setUploading] = useState<string | null>(null);
+    const [message, setMessage] = useState<{ tone: 'success' | 'error'; text: string } | null>(null);
 
-    useEffect(() => {
-        fetchOpponents();
-    }, []);
-
-    const fetchOpponents = async () => {
+    const fetchOpponents = useCallback(async () => {
+        setLoadError('');
         try {
-            const token = getSessionToken();
-            const res = await apiFetch(`/api/v1/opponents?tenant_id=${tenantSlug}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
+            const res = await apiFetch(`/api/v1/opponents?tenant_id=${encodeURIComponent(tenantSlug)}`);
+            if (!res.ok) throw new Error(await errorMessage(res, "We couldn't load your opponents."));
             const data = await res.json();
-            if (data.success) {
-                setOpponents(data.data);
-            }
-        } catch (error) {
-            console.error('Failed to fetch opponents:', error);
+            setOpponents(Array.isArray(data?.data) ? (data.data as Opponent[]) : []);
+        } catch (err) {
+            setLoadError(err instanceof Error && err.message ? err.message : "We couldn't load your opponents. Check your connection and try again.");
         } finally {
             setLoading(false);
         }
-    };
+    }, [tenantSlug]);
 
-    const handleConfirmBadge = async (action: 'confirm' | 'reject', customUrl?: string) => {
+    useEffect(() => {
+        fetchOpponents();
+    }, [fetchOpponents]);
+
+    const handleConfirmBadge = async (action: 'confirm' | 'reject') => {
         if (!selectedOpponent) return;
-
+        setMessage(null);
         try {
-            const token = getSessionToken();
             const res = await apiFetch(`/api/v1/opponents/${selectedOpponent.id}/confirm`, {
                 method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    action,
-                    custom_url: customUrl
-                })
+                body: JSON.stringify({ action }),
             });
-            const data = await res.json();
-            if (data.success) {
-                fetchOpponents();
-                setShowApprovalModal(false);
-                setSelectedOpponent(null);
-            }
-        } catch (error) {
-            console.error('Failed to confirm badge:', error);
+            const data = await res.json().catch(() => null);
+            if (!res.ok || !data?.success) throw new Error(bodyError(data, "That didn't save. Please try again."));
+            setMessage({ tone: 'success', text: action === 'confirm' ? `Badge saved for ${selectedOpponent.team_name}.` : `Suggestion removed. Upload ${selectedOpponent.team_name}'s badge yourself.` });
+            setSelectedOpponent(null);
+            fetchOpponents();
+        } catch (err) {
+            setMessage({ tone: 'error', text: err instanceof Error ? err.message : "That didn't save. Please try again." });
         }
     };
 
-    const handleAddOpponent = async () => {
+    const handleAddOpponent = async (e: React.FormEvent) => {
+        e.preventDefault();
         if (!newTeamName.trim()) return;
-
+        setMessage(null);
         try {
-            const token = getSessionToken();
             const res = await apiFetch('/api/v1/opponents', {
                 method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    tenant_id: tenantSlug,
-                    team_name: newTeamName.trim()
-                })
+                body: JSON.stringify({ tenant_id: tenantSlug, team_name: newTeamName.trim() }),
             });
-            const data = await res.json();
-            if (data.success) {
-                setNewTeamName('');
-                fetchOpponents();
-            }
-        } catch (error) {
-            console.error('Failed to add opponent:', error);
+            const data = await res.json().catch(() => null);
+            if (!res.ok || !data?.success) throw new Error(bodyError(data, "That team wasn't added. Please try again."));
+            setMessage({ tone: 'success', text: `${newTeamName.trim()} added.` });
+            setNewTeamName('');
+            fetchOpponents();
+        } catch (err) {
+            setMessage({ tone: 'error', text: err instanceof Error ? err.message : "That team wasn't added. Please try again." });
         }
     };
 
-    const handleUploadBadge = async (opponentId: string, file: File) => {
-        setUploading(true);
+    const handleUploadBadge = async (opponent: Opponent, file: File) => {
+        setUploading(opponent.id);
+        setMessage(null);
         try {
-            const token = getSessionToken();
-            const res = await apiFetch(`/api/v1/opponents/${opponentId}/upload-badge`, {
+            const res = await apiFetch(`/api/v1/opponents/${opponent.id}/upload-badge`, {
                 method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': file.type
-                },
-                body: await file.arrayBuffer()
+                headers: { 'Content-Type': file.type },
+                body: await file.arrayBuffer(),
             });
-            const data = await res.json();
-            if (data.success) {
-                setUploadError(null);
-                fetchOpponents();
-            } else {
-                setUploadError(data.error?.message ?? "We couldn't upload that badge.");
-            }
-        } catch {
-            setUploadError("We couldn't reach the server. Check your connection and try again.");
+            const data = await res.json().catch(() => null);
+            if (!res.ok || !data?.success) throw new Error(bodyError(data, "We couldn't upload that badge."));
+            setMessage({ tone: 'success', text: `Badge saved for ${opponent.team_name}.` });
+            fetchOpponents();
+        } catch (err) {
+            setMessage({ tone: 'error', text: err instanceof Error ? err.message : "We couldn't reach the server. Check your connection and try again." });
         } finally {
-            setUploading(false);
+            setUploading(null);
         }
     };
 
     const openGoogleSearch = (teamName: string) => {
         const query = encodeURIComponent(`${teamName} badge logo football`);
-        window.open(`https://www.google.com/search?q=${query}&tbm=isch`, '_blank');
+        window.open(`https://www.google.com/search?q=${query}&tbm=isch`, '_blank', 'noopener');
     };
 
-    const pendingApproval = opponents.filter(o => o.needs_approval);
-    const approved = opponents.filter(o => !o.needs_approval);
-
-    if (loading) {
-        return (
-            <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-            </div>
-        );
-    }
+    const pendingApproval = opponents.filter((o) => o.needs_approval);
 
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
-            <div className="max-w-6xl mx-auto">
-                {/* Header */}
-                <div className="mb-8">
-                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-                        Opponent Badges
-                    </h1>
-                    <p className="text-gray-600 dark:text-gray-400">
-                        Upload each opponent&apos;s badge once (PNG or JPG). It&apos;s used on every match graphic and social post; without one we show their initials. Teams are added here automatically when you play them.
-                    </p>
-                    {uploading && <p role="status" className="mt-2 text-sm text-gray-600 dark:text-gray-400">Uploading…</p>}
-                    {uploadError && <p role="alert" className="mt-2 text-sm text-red-600">{uploadError}</p>}
+        <div className="container py-8 md:py-10">
+            <PageHeader
+                eyebrow="Club admin"
+                title="Opponents"
+                subtitle="Upload each opponent's badge once (PNG or JPG) and it's used on every match graphic and post. Without one we show their initials. Teams are added here when you play them."
+            />
+
+            {message && <div className="mb-6"><Notice tone={message.tone}>{message.text}</Notice></div>}
+
+            <form onSubmit={handleAddOpponent} className="card mb-6">
+                <label htmlFor="new-opponent" className="label">Add a team</label>
+                <div className="flex flex-col sm:flex-row gap-3">
+                    <input id="new-opponent" type="text" value={newTeamName} onChange={(e) => setNewTeamName(e.target.value)} placeholder="e.g. Thurmaston Magpies" className="field flex-1" />
+                    <button type="submit" disabled={!newTeamName.trim()} className="btn btn-primary"><Icon name="plus" className="w-4 h-4" /> Add team</button>
                 </div>
+            </form>
 
-                {/* Add New Opponent */}
-                <div className="bg-white dark:bg-gray-800 rounded-xl p-6 mb-6 shadow-sm">
-                    <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                        Add Opponent
-                    </h2>
-                    <div className="flex gap-4">
-                        <input
-                            type="text"
-                            value={newTeamName}
-                            onChange={(e) => setNewTeamName(e.target.value)}
-                            placeholder="Enter team name (e.g. Thurmaston Magpies)"
-                            className="flex-1 px-4 py-3 bg-gray-100 dark:bg-gray-700 border-0 rounded-lg text-gray-900 dark:text-white placeholder-gray-500"
-                            onKeyDown={(e) => e.key === 'Enter' && handleAddOpponent()}
-                        />
-                        <button
-                            onClick={handleAddOpponent}
-                            className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
-                        >
-                            Add Team
-                        </button>
-                    </div>
+            {loading ? (
+                <LoadingBlock label="Loading opponents" />
+            ) : loadError ? (
+                <ErrorNote message={loadError} onRetry={() => { setLoading(true); fetchOpponents(); }} />
+            ) : (
+                <div className="space-y-6">
+                    {pendingApproval.length > 0 && (
+                        <section className="card border-amber-500/50" aria-labelledby="pending-title">
+                            <h2 id="pending-title" className="text-2xl flex items-center gap-2 mb-4">
+                                <Icon name="alert" className="w-5 h-5 text-amber-300" /> Badges to check ({pendingApproval.length})
+                            </h2>
+                            <ul className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+                                {pendingApproval.map((opponent) => (
+                                    <li key={opponent.id}>
+                                        <button type="button" onClick={() => setSelectedOpponent(opponent)} className="w-full text-left bg-surface-raised border border-border p-3 hover:border-amber-400 transition-colors">
+                                            <span className="aspect-square bg-background flex items-center justify-center overflow-hidden mb-2">
+                                                {opponent.pending_badge_url ? (
+                                                    // eslint-disable-next-line @next/next/no-img-element
+                                                    <img src={opponent.pending_badge_url} alt="" className="w-full h-full object-contain p-2" />
+                                                ) : (
+                                                    <span className="font-display text-3xl font-extrabold text-muted">{clubInitials(opponent.team_name)}</span>
+                                                )}
+                                            </span>
+                                            <span className="block text-sm font-semibold truncate">{opponent.team_name}</span>
+                                            <span className="block text-xs text-amber-300">Tap to check</span>
+                                        </button>
+                                    </li>
+                                ))}
+                            </ul>
+                        </section>
+                    )}
+
+                    {opponents.length === 0 ? (
+                        <EmptyNote icon="shield" title="No opponents yet">
+                            Teams appear here when you add fixtures or results against them. You can also add one above.
+                        </EmptyNote>
+                    ) : (
+                        <section className="card" aria-labelledby="all-title">
+                            <h2 id="all-title" className="text-2xl mb-4">All opponents ({opponents.length})</h2>
+                            <ul className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                                {opponents.map((opponent) => (
+                                    <li key={opponent.id} className="bg-surface-raised border border-border p-3 flex flex-col">
+                                        <span className="aspect-square bg-background flex items-center justify-center overflow-hidden">
+                                            {opponent.effective_badge_url ? (
+                                                // eslint-disable-next-line @next/next/no-img-element
+                                                <img src={opponent.effective_badge_url} alt={`${opponent.team_name} badge`} className="w-full h-full object-contain p-2" />
+                                            ) : (
+                                                <span className="font-display text-3xl font-extrabold text-muted">{clubInitials(opponent.team_name)}</span>
+                                            )}
+                                        </span>
+                                        <span className="text-sm font-semibold text-center mt-2 truncate">{opponent.team_name}</span>
+                                        <span className="flex justify-center gap-1 mt-2">
+                                            <label className={`p-2.5 text-muted hover:text-brand cursor-pointer ${uploading === opponent.id ? 'opacity-50 pointer-events-none' : ''}`} title="Upload badge">
+                                                <Icon name={uploading === opponent.id ? 'refresh' : 'upload'} className={`w-5 h-5 ${uploading === opponent.id ? 'animate-spin' : ''}`} />
+                                                <span className="sr-only">Upload {opponent.team_name}&apos;s badge</span>
+                                                <input
+                                                    type="file"
+                                                    accept="image/png,image/jpeg"
+                                                    className="sr-only"
+                                                    onChange={(e) => {
+                                                        const f = e.target.files?.[0];
+                                                        if (f) handleUploadBadge(opponent, f);
+                                                        e.target.value = '';
+                                                    }}
+                                                />
+                                            </label>
+                                            <button type="button" onClick={() => openGoogleSearch(opponent.team_name)} className="p-2.5 text-muted hover:text-brand" aria-label={`Search the web for ${opponent.team_name}'s badge`} title="Search for the badge">
+                                                <Icon name="search" className="w-5 h-5" />
+                                            </button>
+                                        </span>
+                                    </li>
+                                ))}
+                            </ul>
+                        </section>
+                    )}
                 </div>
+            )}
 
-                {/* Pending Approval Section */}
-                {pendingApproval.length > 0 && (
-                    <div className="bg-amber-50 dark:bg-amber-900/20 rounded-xl p-6 mb-6 border border-amber-200 dark:border-amber-800">
-                        <h2 className="text-lg font-semibold text-amber-800 dark:text-amber-200 mb-4 flex items-center gap-2">
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                            </svg>
-                            Badges Awaiting Approval ({pendingApproval.length})
-                        </h2>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                            {pendingApproval.map((opponent) => (
-                                <div
-                                    key={opponent.id}
-                                    onClick={() => {
-                                        setSelectedOpponent(opponent);
-                                        setShowApprovalModal(true);
-                                    }}
-                                    className="bg-white dark:bg-gray-800 rounded-lg p-4 cursor-pointer hover:ring-2 hover:ring-amber-400 transition-all"
-                                >
-                                    <div className="aspect-square bg-gray-100 dark:bg-gray-700 rounded-lg mb-3 flex items-center justify-center overflow-hidden">
-                                        {opponent.pending_badge_url ? (
-                                            <img
-                                                src={opponent.pending_badge_url}
-                                                alt={opponent.team_name}
-                                                className="w-full h-full object-contain p-2"
-                                            />
-                                        ) : (
-                                            <span className="text-3xl font-bold text-gray-400">
-                                                {opponent.team_name.charAt(0)}
-                                            </span>
-                                        )}
-                                    </div>
-                                    <p className="text-sm font-medium text-gray-900 dark:text-white text-center truncate">
-                                        {opponent.team_name}
-                                    </p>
-                                    <p className="text-xs text-amber-600 dark:text-amber-400 text-center mt-1">
-                                        Click to review
-                                    </p>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
-
-                {/* All Opponents Grid */}
-                <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm">
-                    <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                        All Opponents ({opponents.length})
-                    </h2>
-                    <div className="grid grid-cols-3 md:grid-cols-6 gap-4">
-                        {opponents.map((opponent) => (
-                            <div
-                                key={opponent.id}
-                                className="group relative"
-                            >
-                                <div className="aspect-square bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center overflow-hidden">
-                                    {opponent.effective_badge_url ? (
-                                        <img
-                                            src={opponent.effective_badge_url}
-                                            alt={opponent.team_name}
-                                            className="w-full h-full object-contain p-2"
-                                        />
-                                    ) : (
-                                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-200 to-gray-300 dark:from-gray-600 dark:to-gray-700">
-                                            <span className="text-2xl font-bold text-gray-500 dark:text-gray-400">
-                                                {opponent.team_name.split(' ').map(w => w[0]).join('').slice(0, 2)}
-                                            </span>
-                                        </div>
-                                    )}
-                                </div>
-                                <p className="text-xs font-medium text-gray-700 dark:text-gray-300 text-center mt-2 truncate">
-                                    {opponent.team_name}
-                                </p>
-
-                                {/* Hover actions */}
-                                <div className="absolute inset-0 bg-black/60 rounded-lg opacity-100 md:opacity-0 md:group-hover:opacity-100 md:focus-within:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                                    <label className="p-2 bg-white rounded-full cursor-pointer hover:bg-gray-100">
-                                        <svg className="w-4 h-4 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                                        </svg>
-                                        <input
-                                            type="file"
-                                            accept="image/png,image/jpeg"
-                                            className="hidden"
-                                            onChange={(e) => {
-                                                if (e.target.files?.[0]) {
-                                                    handleUploadBadge(opponent.id, e.target.files[0]);
-                                                }
-                                            }}
-                                        />
-                                    </label>
-                                    <button
-                                        onClick={() => openGoogleSearch(opponent.team_name)}
-                                        className="p-2 bg-white rounded-full hover:bg-gray-100"
-                                        title="Search Google Images"
-                                    >
-                                        <svg className="w-4 h-4 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                                        </svg>
-                                    </button>
-                                </div>
+            {selectedOpponent && (
+                <Dialog title="Is this the right badge?" onClose={() => setSelectedOpponent(null)}>
+                    <p className="text-muted mb-5">We found this badge for <strong className="text-foreground">{selectedOpponent.team_name}</strong>.</p>
+                    <div className="flex gap-4 mb-6">
+                        <div className="flex-1">
+                            <p className="label text-center">Suggested</p>
+                            <div className="aspect-square bg-background border border-border flex items-center justify-center overflow-hidden">
+                                {selectedOpponent.pending_badge_url ? (
+                                    // eslint-disable-next-line @next/next/no-img-element
+                                    <img src={selectedOpponent.pending_badge_url} alt="Suggested badge" className="w-full h-full object-contain p-4" />
+                                ) : (
+                                    <Icon name="info" className="w-10 h-10 text-muted" />
+                                )}
                             </div>
-                        ))}
-                    </div>
-                </div>
-            </div>
-
-            {/* Approval Modal */}
-            {showApprovalModal && selectedOpponent && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-md w-full p-6">
-                        <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-                            Is this correct?
-                        </h3>
-                        <p className="text-gray-600 dark:text-gray-400 mb-6">
-                            We found this badge for <strong>{selectedOpponent.team_name}</strong>
-                        </p>
-
-                        <div className="flex gap-4 mb-6">
+                        </div>
+                        {selectedOpponent.reference_badge_url && (
                             <div className="flex-1">
-                                <p className="text-xs text-center font-bold text-gray-500 mb-2 uppercase">Google Suggestion</p>
-                                <div className="aspect-square bg-gray-100 dark:bg-gray-700 rounded-xl flex items-center justify-center overflow-hidden">
-                                    {selectedOpponent.pending_badge_url ? (
-                                        <img
-                                            src={selectedOpponent.pending_badge_url}
-                                            alt={selectedOpponent.team_name}
-                                            className="w-full h-full object-contain p-4"
-                                        />
-                                    ) : (
-                                        <span className="text-6xl font-bold text-gray-400">?</span>
-                                    )}
+                                <p className="label text-center">From the FA</p>
+                                <div className="aspect-square bg-background border border-border flex items-center justify-center overflow-hidden">
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                    <img src={selectedOpponent.reference_badge_url} alt="Badge from the FA" className="w-full h-full object-contain p-4" />
                                 </div>
                             </div>
-
-                            {selectedOpponent.reference_badge_url && (
-                                <div className="flex-1">
-                                    <p className="text-xs text-center font-bold text-gray-500 mb-2 uppercase">FA Website</p>
-                                    <div className="aspect-square bg-blue-50 dark:bg-blue-900/20 rounded-xl flex items-center justify-center overflow-hidden border border-blue-100 dark:border-blue-800">
-                                        <img
-                                            src={selectedOpponent.reference_badge_url}
-                                            alt="FA Source"
-                                            className="w-full h-full object-contain p-4 opacity-80"
-                                        />
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-
-                        <div className="space-y-3">
-                            <button
-                                onClick={() => handleConfirmBadge('confirm')}
-                                className="w-full py-3 px-4 bg-green-600 hover:bg-green-700 text-white font-medium rounded-xl transition-colors"
-                            >
-                                ✓ Yes, this is correct
-                            </button>
-                            <button
-                                onClick={() => openGoogleSearch(selectedOpponent.team_name)}
-                                className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl transition-colors"
-                            >
-                                🔍 Pick the correct one
-                            </button>
-                            <button
-                                onClick={() => handleConfirmBadge('reject')}
-                                className="w-full py-3 px-4 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 font-medium rounded-xl transition-colors"
-                            >
-                                ✗ No, add manually
-                            </button>
-                        </div>
-
-                        <button
-                            onClick={() => {
-                                setShowApprovalModal(false);
-                                setSelectedOpponent(null);
-                            }}
-                            className="mt-4 w-full py-2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 text-sm"
-                        >
-                            Cancel
-                        </button>
+                        )}
                     </div>
-                </div>
+                    <div className="space-y-3">
+                        <button type="button" onClick={() => handleConfirmBadge('confirm')} className="btn btn-primary w-full"><Icon name="check" className="w-4 h-4" /> Yes, use this badge</button>
+                        <button type="button" onClick={() => openGoogleSearch(selectedOpponent.team_name)} className="btn btn-secondary w-full"><Icon name="search" className="w-4 h-4" /> Find the right one</button>
+                        <button type="button" onClick={() => handleConfirmBadge('reject')} className="btn btn-ghost w-full">No, I&apos;ll upload it myself</button>
+                    </div>
+                </Dialog>
             )}
         </div>
     );

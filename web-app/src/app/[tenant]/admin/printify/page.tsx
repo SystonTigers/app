@@ -1,16 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
-import { getSessionToken } from '@/lib/session';
+import { useCallback, useEffect, useState } from 'react';
 import { apiFetch } from '@/lib/session';
-
-interface PrintifyProduct {
-    id: string;
-    title: string;
-    description: string;
-    images: Array<{ src: string }>;
-}
+import { formatDate, formatMoney } from '@/lib/format';
+import { PageHeader, EmptyNote } from '@/components/ui/Page';
+import { Icon, type IconName } from '@/components/ui/Icon';
+import { Dialog, LoadingBlock, Notice, Pill, bodyError } from '@/components/admin/AdminUi';
 
 interface Blueprint {
     id: number;
@@ -23,7 +18,6 @@ interface Player {
     id: string;
     name: string;
     squadNumber: number | null;
-    headshotUrl: string | null;
 }
 
 /** Row shape returned by GET /api/v1/squad. */
@@ -31,7 +25,12 @@ interface SquadRow {
     id: string;
     name: string;
     squad_number?: number | null;
-    photo_url?: string | null;
+}
+
+interface OrderItem {
+    quantity: number;
+    title: string;
+    personalization?: { name?: string; number?: string | number };
 }
 
 interface ShopOrder {
@@ -41,467 +40,264 @@ interface ShopOrder {
     total_gbp: number;
     status: string;
     created_at: number;
-    items: any[];
+    items: OrderItem[];
 }
 
+type Tab = 'templates' | 'preview' | 'orders';
+
+const TABS: Array<{ id: Tab; label: string; icon: IconName }> = [
+    { id: 'templates', label: 'Products', icon: 'shirt' },
+    { id: 'preview', label: 'Name and number', icon: 'eye' },
+    { id: 'orders', label: 'Orders', icon: 'bag' },
+];
+
+const CATEGORIES = [
+    { id: 't-shirt', label: 'T-shirts' },
+    { id: 'hoodie', label: 'Hoodies' },
+    { id: 'hat', label: 'Hats' },
+    { id: 'mug', label: 'Mugs' },
+    { id: 'bag', label: 'Bags' },
+    { id: 'sticker', label: 'Stickers' },
+    { id: '', label: 'All' },
+];
+
+/**
+ * Club kit printed on demand (Printify). Until Boost Huddle connects the print
+ * partner the API answers 503 and the page says so; orders still show.
+ */
 export default function PrintifyAdminPage() {
-    const params = useParams();
-    const tenant = params?.tenant as string;
-    const [activeTab, setActiveTab] = useState<'templates' | 'preview' | 'orders'>('templates');
-    const [userShopId, setUserShopId] = useState<string>('');
+    const [activeTab, setActiveTab] = useState<Tab>('templates');
+    const [userShopId, setUserShopId] = useState('');
     const [searchQuery, setSearchQuery] = useState('t-shirt');
     const [catalog, setCatalog] = useState<Blueprint[]>([]);
-    const [products, setProducts] = useState<PrintifyProduct[]>([]);
     const [players, setPlayers] = useState<Player[]>([]);
     const [orders, setOrders] = useState<ShopOrder[]>([]);
     const [loading, setLoading] = useState(true);
-    const [selectedPlayer, setSelectedPlayer] = useState<string>('');
+    const [selectedPlayer, setSelectedPlayer] = useState('');
     const [previewImage, setPreviewImage] = useState<string | null>(null);
     const [addingProduct, setAddingProduct] = useState<Blueprint | null>(null);
     const [price, setPrice] = useState('20.00');
     const [isSaving, setIsSaving] = useState(false);
     const [notConnected, setNotConnected] = useState(false);
+    const [message, setMessage] = useState<{ tone: 'success' | 'error'; text: string } | null>(null);
 
-    const API_BASE = process.env.NEXT_PUBLIC_API_BASE || '';
-
-    useEffect(() => {
-        fetchData(searchQuery);
-    }, [searchQuery]);
-
-    const fetchData = async (query: string) => {
+    const fetchData = useCallback(async (query: string) => {
         setLoading(true);
         try {
-            const token = getSessionToken();
-            const init: RequestInit = {
-                headers: token ? { Authorization: `Bearer ${token}` } : {},
-            };
             const [catalogRes, playersRes, shopsRes, ordersRes] = await Promise.all([
-                apiFetch(`/api/v1/printify/catalog?category=${query}`, init),
-                apiFetch(`/api/v1/squad`, init),
-                apiFetch(`/api/v1/printify/shops`, init),
-                apiFetch(`/api/v1/shop/orders`, init),
+                apiFetch(`/api/v1/printify/catalog?category=${encodeURIComponent(query)}`),
+                apiFetch('/api/v1/squad'),
+                apiFetch('/api/v1/printify/shops'),
+                apiFetch('/api/v1/shop/orders'),
             ]);
-
-            const [catalogData, playersData, shopsData, ordersData] = await Promise.all([
-                catalogRes.json(),
-                playersRes.json(),
-                shopsRes.json(),
-                ordersRes.json(),
-            ]);
-
+            const [catalogData, playersData, shopsData, ordersData] = await Promise.all(
+                [catalogRes, playersRes, shopsRes, ordersRes].map((r) => r.json().catch(() => null)),
+            );
             // 503: Boost Huddle hasn't switched merchandise on yet (no Printify account set up)
             setNotConnected(catalogRes.status === 503 || shopsRes.status === 503);
-            if (catalogData.success) setCatalog(catalogData.data.slice(0, 20));
-            if (playersData.success && Array.isArray(playersData.data)) {
-                setPlayers(playersData.data.map((p: SquadRow) => ({
-                    id: p.id,
-                    name: p.name,
-                    squadNumber: p.squad_number ?? null,
-                    headshotUrl: p.photo_url ?? null,
-                })));
+            if (catalogData?.success) setCatalog((catalogData.data as Blueprint[]).slice(0, 20));
+            if (playersData?.success && Array.isArray(playersData.data)) {
+                setPlayers((playersData.data as SquadRow[]).map((p) => ({ id: p.id, name: p.name, squadNumber: p.squad_number ?? null })));
             }
-            if (shopsData.success && shopsData.data?.length > 0) {
-                setUserShopId(shopsData.data[0].id);
-            }
-            if (ordersData.success) setOrders(ordersData.data);
-        } catch (error) {
-            console.error('Failed to fetch data:', error);
+            if (shopsData?.success && shopsData.data?.length > 0) setUserShopId(String(shopsData.data[0].id));
+            if (ordersData?.success) setOrders(ordersData.data as ShopOrder[]);
+        } catch {
+            setMessage({ tone: 'error', text: "We couldn't load club kit. Check your connection and try again." });
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        fetchData(searchQuery);
+    }, [searchQuery, fetchData]);
 
     const handleGeneratePreview = async () => {
         if (!selectedPlayer) return;
-
+        setMessage(null);
         try {
-            const res = await apiFetch(`/api/v1/personalization/preview/${selectedPlayer}`, {
-            });
-            const data = await res.json();
-            if (data.success) {
-                setPreviewImage(data.data.preview);
-            }
-        } catch (error) {
-            console.error('Failed to generate preview:', error);
+            const res = await apiFetch(`/api/v1/personalization/preview/${encodeURIComponent(selectedPlayer)}`);
+            const data = await res.json().catch(() => null);
+            if (!res.ok || !data?.success) throw new Error(bodyError(data, "The preview didn't load. Please try again."));
+            setPreviewImage(data.data.preview as string);
+        } catch (err) {
+            setMessage({ tone: 'error', text: err instanceof Error ? err.message : "The preview didn't load. Please try again." });
         }
     };
 
     const handleAddProduct = async () => {
         if (!addingProduct || !price) return;
         setIsSaving(true);
-
+        setMessage(null);
         try {
-            // 1. Get providers
-            const providersRes = await apiFetch(`/api/v1/printify/catalog/${addingProduct.id}/providers`, { });
-            const providersData = await providersRes.json();
-            const providerId = providersData.data?.[0]?.id; // Pick first provider for MVP
-
-            if (!providerId) throw new Error('No print providers found');
-
-            // 2. Get variants
-            const variantsRes = await apiFetch(`/api/v1/printify/catalog/${addingProduct.id}/providers/${providerId}/variants`, { });
-            const variantsData = await variantsRes.json();
-            const variantId = variantsData.data?.[0]?.id; // Pick first variant (e.g. Small or One Size)
-
-            if (!variantId) throw new Error('No variants found');
-
-            // 3. Create product
-            const createRes = await apiFetch(`/api/v1/printify/products`, {
+            const providersRes = await apiFetch(`/api/v1/printify/catalog/${addingProduct.id}/providers`);
+            const providerId = (await providersRes.json())?.data?.[0]?.id;
+            if (!providerId) throw new Error('No printer offers this product at the moment. Try another one.');
+            const variantsRes = await apiFetch(`/api/v1/printify/catalog/${addingProduct.id}/providers/${providerId}/variants`);
+            const variantId = (await variantsRes.json())?.data?.[0]?.id;
+            if (!variantId) throw new Error('This product has no sizes available at the moment. Try another one.');
+            const createRes = await apiFetch('/api/v1/printify/products', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    // shopId: 'your-shop-id', // Removed duplicate
-                    // Checking backend: It expects shopId in body.
-                    // We need to fetch the shop ID first? Or hardcode if we know it?
-                    // Let's assume backend might fallback or we fetch it. 
-                    // Use a placeholder or fetch shops first.
-                    // Ideally we should list shops and pick one.
-                    // For now, let's fetch shops first in fetchData.
                     shopId: userShopId,
                     title: addingProduct.title,
                     description: addingProduct.description,
                     blueprintId: addingProduct.id,
                     printProviderId: providerId,
-                    variants: [{
-                        id: variantId,
-                        price: Math.round(parseFloat(price) * 100), // convert to cents/pence
-                        isEnabled: true
-                    }],
-                    printAreas: [] // Empty for now, personalization adds it later
-                })
+                    variants: [{ id: variantId, price: Math.round(parseFloat(price) * 100), isEnabled: true }],
+                    printAreas: [],
+                }),
             });
-
-            const createData = await createRes.json();
-            if (createData.success) {
-                setAddingProduct(null);
-                setPrice('20.00');
-                // Maybe refresh list or show success
-                alert('Product added to shop!');
-            } else {
-                alert('Failed to add product: ' + (createData.error?.message || 'Unknown error'));
-            }
-        } catch (error: any) {
-            console.error('Error adding product:', error);
-            alert('Error adding product: ' + error.message);
+            const createData = await createRes.json().catch(() => null);
+            if (!createRes.ok || !createData?.success) throw new Error(bodyError(createData, "The product wasn't added. Please try again."));
+            setMessage({ tone: 'success', text: `${addingProduct.title} added to your club shop.` });
+            setAddingProduct(null);
+            setPrice('20.00');
+        } catch (err) {
+            setMessage({ tone: 'error', text: err instanceof Error ? err.message : "The product wasn't added. Please try again." });
         } finally {
             setIsSaving(false);
         }
     };
 
-    const tabs = [
-        { id: 'templates', label: '🎨 Product Templates', icon: '🎨' },
-        { id: 'preview', label: '👁️ Personalization Preview', icon: '👁️' },
-        { id: 'orders', label: '📦 Orders', icon: '📦' },
-    ];
-
-    if (loading) {
-        return (
-            <div className="p-6">
-                <div className="animate-pulse space-y-4">
-                    <div className="h-8 bg-gray-200 rounded w-1/3"></div>
-                    <div className="h-48 bg-gray-200 rounded"></div>
-                </div>
-            </div>
-        );
-    }
-
     return (
-        <div className="p-6 max-w-6xl mx-auto">
-            <div className="mb-6">
-                <h1 className="text-2xl font-bold text-gray-900">Printify Integration</h1>
-                <p className="text-gray-600 mt-1">Manage print-on-demand merchandise</p>
-            </div>
+        <div className="container py-8 md:py-10">
+            <PageHeader eyebrow="Club admin" title="Club kit" subtitle="Printed-to-order kit with each player's name and number, sold through your club shop." />
 
-            {notConnected ? (
-                <div role="status" className="border border-amber-400/50 bg-amber-400/10 text-amber-200 rounded-xl p-4 mb-6 text-sm">
-                    Club merchandise isn&apos;t switched on yet. Once Boost Huddle connects the print partner, the product types will
-                    appear here and you can add personalised kit to your club shop.
-                </div>
-            ) : null}
+            {message && <div className="mb-6"><Notice tone={message.tone}>{message.text}</Notice></div>}
 
-            {/* Info Banner */}
-            <div className="bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl p-4 mb-6">
-                <div className="flex items-center gap-3">
-                    <span className="text-2xl">🖨️</span>
-                    <div>
-                        <h3 className="font-semibold">How Personalization Works</h3>
-                        <p className="text-sm opacity-90">
-                            When a parent orders, we auto-generate their child's name + number on the product.
-                            No need to create products for each player!
-                        </p>
-                    </div>
-                </div>
-            </div>
-
-            {/* Tabs */}
-            <div className="flex gap-2 mb-6">
-                {tabs.map((tab) => (
+            <div className="flex gap-1 overflow-x-auto scrollbar-none border-b border-border mb-6" role="tablist" aria-label="Club kit">
+                {TABS.map((tab) => (
                     <button
                         key={tab.id}
-                        onClick={() => setActiveTab(tab.id as any)}
-                        className={`px-4 py-2 rounded-lg font-medium ${activeTab === tab.id
-                            ? 'bg-purple-600 text-white'
-                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                            }`}
+                        type="button"
+                        role="tab"
+                        aria-selected={activeTab === tab.id}
+                        onClick={() => setActiveTab(tab.id)}
+                        className={`flex items-center gap-2 h-11 px-3 font-display text-[15px] font-bold uppercase tracking-wider whitespace-nowrap border-b-2 ${activeTab === tab.id ? 'text-brand border-brand' : 'text-gray-300 border-transparent hover:text-foreground'}`}
                     >
-                        {tab.label}
+                        <Icon name={tab.icon} className="w-4 h-4" /> {tab.label}
                     </button>
                 ))}
             </div>
 
-            {/* Templates Tab */}
-            {activeTab === 'templates' && (
-                <div className="space-y-6">
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                        <h2 className="font-semibold text-gray-900 mb-4">Available Product Types</h2>
-                        <p className="text-sm text-gray-500 mb-4">
-                            These are the base products from Printify that can be personalized with your club badge and player details.
-                        </p>
-
-                        <div className="flex flex-wrap gap-2 mb-6">
-                            {[
-                                { id: 't-shirt', label: '👕 T-Shirts' },
-                                { id: 'hoodie', label: '🧥 Hoodies' },
-                                { id: 'hat', label: '🧢 Hats' },
-                                { id: 'mug', label: '☕ Mugs' },
-                                { id: 'bag', label: '🎒 Bags' },
-                                { id: 'sticker', label: '🏷️ Stickers' },
-                                { id: 'baby', label: '👶 Baby' },
-                                { id: 'phone', label: '📱 Phone' },
-                                { id: 'all', label: '🔍 All' },
-                            ].map((cat) => (
-                                <button
-                                    key={cat.id}
-                                    onClick={() => setSearchQuery(cat.id === 'all' ? '' : cat.id)}
-                                    className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${searchQuery === cat.id || (cat.id === 'all' && searchQuery === '')
-                                        ? 'bg-purple-100 text-purple-700 border border-purple-200'
-                                        : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
-                                        }`}
-                                >
+            {loading ? (
+                <LoadingBlock label="Loading club kit" />
+            ) : activeTab === 'templates' ? (
+                notConnected ? (
+                    <EmptyNote icon="shirt" title="Club kit isn't switched on yet">
+                        Once Boost Huddle connects the print partner, products appear here and you can add personalised kit to your club shop.
+                    </EmptyNote>
+                ) : (
+                    <section className="card" aria-labelledby="catalog-title">
+                        <h2 id="catalog-title" className="text-2xl">Products you can sell</h2>
+                        <p className="text-sm text-muted mt-1 mb-4">When a parent orders, their child&apos;s name and number are added for them. You don&apos;t need a product per player.</p>
+                        <div className="flex flex-wrap gap-2 mb-5">
+                            {CATEGORIES.map((cat) => (
+                                <button key={cat.label} type="button" aria-pressed={searchQuery === cat.id} onClick={() => setSearchQuery(cat.id)}
+                                    className={`btn btn-sm ${searchQuery === cat.id ? 'btn-primary' : 'btn-secondary'}`}>
                                     {cat.label}
                                 </button>
                             ))}
                         </div>
-
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                            {catalog.map((blueprint) => (
-                                <div key={blueprint.id} className="border border-gray-200 rounded-lg p-3 hover:border-purple-300 transition-colors flex flex-col h-full">
-                                    <div className="aspect-square bg-gray-100 rounded-lg mb-2 flex items-center justify-center">
-                                        {blueprint.images?.[0] ? (
-                                            <img src={blueprint.images[0]} alt={blueprint.title} className="w-full h-full object-cover rounded-lg" />
-                                        ) : (
-                                            <span className="text-4xl">👕</span>
-                                        )}
-                                    </div>
-                                    <h3 className="font-medium text-sm text-gray-900 truncate mb-1">{blueprint.title}</h3>
-                                    <div className="mt-auto pt-2">
-                                        <button
-                                            onClick={() => setAddingProduct(blueprint)}
-                                            className="w-full py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded"
-                                        >
-                                            ➕ Add to Shop
+                        {catalog.length === 0 ? (
+                            <p className="text-muted">Nothing in this group. Try another one.</p>
+                        ) : (
+                            <ul className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                {catalog.map((bp) => (
+                                    <li key={bp.id} className="bg-surface-raised border border-border p-3 flex flex-col">
+                                        <div className="aspect-square bg-background mb-2 flex items-center justify-center overflow-hidden">
+                                            {bp.images?.[0] ? (
+                                                // eslint-disable-next-line @next/next/no-img-element
+                                                <img src={bp.images[0]} alt="" className="w-full h-full object-cover" />
+                                            ) : (
+                                                <Icon name="shirt" className="w-10 h-10 text-muted" />
+                                            )}
+                                        </div>
+                                        <h3 className="text-sm font-sans normal-case tracking-normal font-semibold truncate mb-2">{bp.title}</h3>
+                                        <button type="button" onClick={() => setAddingProduct(bp)} className="btn btn-sm btn-secondary mt-auto">
+                                            <Icon name="plus" className="w-4 h-4" /> Add to shop
                                         </button>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Add Product Modal */}
-            {addingProduct && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
-                        <div className="p-4 border-b border-gray-100 flex justify-between items-center">
-                            <h3 className="font-semibold text-lg">{addingProduct.title}</h3>
-                            <button onClick={() => setAddingProduct(null)} className="text-gray-400 hover:text-gray-600">✕</button>
-                        </div>
-                        <div className="p-6">
-                            <div className="flex justify-center mb-6">
-                                {addingProduct.images?.[0] && (
-                                    <img src={addingProduct.images[0]} className="h-32 rounded-lg object-contain bg-gray-50" />
-                                )}
-                            </div>
-
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Retail Price (£)
-                                <span className="text-xs font-normal text-gray-500 ml-2">What customers will pay</span>
-                            </label>
-                            <div className="relative mb-6">
-                                <span className="absolute left-3 top-2 text-gray-500">£</span>
-                                <input
-                                    type="number"
-                                    step="0.01"
-                                    value={price}
-                                    onChange={(e) => setPrice(e.target.value)}
-                                    className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none"
-                                />
-                            </div>
-
-                            <div className="bg-blue-50 text-blue-800 text-sm p-3 rounded-lg mb-6">
-                                ℹ️ This will add the "{addingProduct.title}" to your shop.
-                                Personalization (Name/Number) will be applied automatically when ordered.
-                            </div>
-
-                            <div className="flex gap-3">
-                                <button
-                                    onClick={() => setAddingProduct(null)}
-                                    className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    onClick={handleAddProduct}
-                                    disabled={isSaving}
-                                    className="flex-1 px-4 py-2 bg-purple-600 text-white font-medium rounded-lg hover:bg-purple-700 disabled:opacity-50 flex justify-center items-center gap-2"
-                                >
-                                    {isSaving ? (
-                                        <>
-                                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                                            Saving...
-                                        </>
-                                    ) : (
-                                        'Add to Shop'
-                                    )}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Preview Tab */}
-            {activeTab === 'preview' && (
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                    <h2 className="font-semibold text-gray-900 mb-4">Test Personalization</h2>
-                    <p className="text-sm text-gray-500 mb-4">
-                        Select a player to see how their personalized merchandise would look.
-                    </p>
-
-                    <div className="flex gap-4 mb-6">
-                        <select
-                            value={selectedPlayer}
-                            onChange={(e) => setSelectedPlayer(e.target.value)}
-                            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg"
-                        >
-                            <option value="">Select a player...</option>
-                            {players.map((player) => (
-                                <option key={player.id} value={player.id}>
-                                    {player.name} {player.squadNumber ? `#${player.squadNumber}` : ''}
-                                </option>
-                            ))}
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                    </section>
+                )
+            ) : activeTab === 'preview' ? (
+                <section className="card space-y-4" aria-labelledby="preview-title">
+                    <h2 id="preview-title" className="text-2xl">See a player&apos;s name and number</h2>
+                    <div className="flex flex-col sm:flex-row gap-3">
+                        <label htmlFor="preview-player" className="sr-only">Player</label>
+                        <select id="preview-player" value={selectedPlayer} onChange={(e) => { setSelectedPlayer(e.target.value); setPreviewImage(null); }} className="field flex-1">
+                            <option value="">Pick a player</option>
+                            {players.map((p) => <option key={p.id} value={p.id}>{p.name}{p.squadNumber ? ` #${p.squadNumber}` : ''}</option>)}
                         </select>
-                        <button
-                            onClick={handleGeneratePreview}
-                            disabled={!selectedPlayer}
-                            className="px-6 py-2 bg-purple-600 text-white rounded-lg disabled:opacity-50 hover:bg-purple-700"
-                        >
-                            Generate Preview
-                        </button>
+                        <button type="button" onClick={handleGeneratePreview} disabled={!selectedPlayer || notConnected} className="btn btn-primary">Show preview</button>
                     </div>
-
+                    {notConnected && <p className="text-sm text-muted">Previews work once club kit is switched on.</p>}
                     {previewImage && (
-                        <div className="grid md:grid-cols-2 gap-6">
-                            <div>
-                                <h3 className="font-medium text-gray-900 mb-2">Design Preview</h3>
-                                <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-                                    <img src={previewImage} alt="Preview" className="w-full max-w-xs mx-auto" />
-                                </div>
-                            </div>
-                            <div>
-                                <h3 className="font-medium text-gray-900 mb-2">How It Works</h3>
-                                <ol className="list-decimal list-inside space-y-2 text-sm text-gray-600">
-                                    <li>Parent/player opens your shop</li>
-                                    <li>They see products with their name + number pre-filled</li>
-                                    <li>They can customize if they want (different name, etc.)</li>
-                                    <li>They order → Design is generated → Sent to Printify</li>
-                                    <li>Printify prints and ships directly to them</li>
-                                    <li>You keep the profit margin! 💰</li>
-                                </ol>
-                            </div>
+                        <div className="bg-background border border-border p-4">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={previewImage} alt="Name and number preview" className="w-full max-w-xs mx-auto" />
                         </div>
                     )}
-
-                    {!previewImage && selectedPlayer && (
-                        <div className="text-center py-8 text-gray-500">
-                            <span className="text-4xl mb-2 block">👆</span>
-                            <p>Click "Generate Preview" to see the personalized design</p>
-                        </div>
-                    )}
+                </section>
+            ) : orders.length === 0 ? (
+                <EmptyNote icon="bag" title="No orders yet">Orders from your club shop will show here.</EmptyNote>
+            ) : (
+                <div className="card p-0">
+                    <div className="table-scroll relative">
+                        <table className="w-full min-w-[720px] text-left text-sm">
+                            <thead>
+                                <tr className="border-b border-border text-xs uppercase tracking-wider text-muted">
+                                    <th scope="col" className="px-4 py-3">Customer</th>
+                                    <th scope="col" className="px-4 py-3">Items</th>
+                                    <th scope="col" className="px-4 py-3">Total</th>
+                                    <th scope="col" className="px-4 py-3">Status</th>
+                                    <th scope="col" className="px-4 py-3">Date</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-border">
+                                {orders.map((order) => (
+                                    <tr key={order.id}>
+                                        <td className="px-4 py-3">
+                                            <div className="font-semibold">{order.customer_name}</div>
+                                            <div className="text-xs text-muted">{order.customer_email}</div>
+                                        </td>
+                                        <td className="px-4 py-3 space-y-1">
+                                            {order.items.map((item, idx) => (
+                                                <div key={idx} className="text-xs">
+                                                    {item.quantity} × {item.title}
+                                                    {item.personalization?.name && <span className="text-brand"> ({item.personalization.name} #{item.personalization.number})</span>}
+                                                </div>
+                                            ))}
+                                        </td>
+                                        <td className="px-4 py-3 font-semibold">{formatMoney(order.total_gbp)}</td>
+                                        <td className="px-4 py-3"><Pill tone={order.status === 'paid' ? 'success' : order.status === 'shipped' ? 'brand' : 'neutral'}>{order.status}</Pill></td>
+                                        <td className="px-4 py-3 text-muted">{formatDate(order.created_at * 1000)}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             )}
 
-            {/* Orders Tab */}
-            {activeTab === 'orders' && (
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                    <div className="p-4 border-b border-gray-100">
-                        <h2 className="font-semibold text-gray-900">Order History</h2>
-                    </div>
-                    {orders.length === 0 ? (
-                        <div className="text-center py-12 text-gray-500">
-                            <span className="text-4xl mb-2 block">📦</span>
-                            <p>No orders yet.</p>
-                        </div>
-                    ) : (
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left text-sm">
-                                <thead className="bg-gray-50 text-gray-600 border-b border-gray-200">
-                                    <tr>
-                                        <th className="px-4 py-3 font-medium">Order ID</th>
-                                        <th className="px-4 py-3 font-medium">Customer</th>
-                                        <th className="px-4 py-3 font-medium">Items</th>
-                                        <th className="px-4 py-3 font-medium">Total</th>
-                                        <th className="px-4 py-3 font-medium">Status</th>
-                                        <th className="px-4 py-3 font-medium">Date</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-100">
-                                    {orders.map((order) => (
-                                        <tr key={order.id} className="hover:bg-gray-50">
-                                            <td className="px-4 py-3 font-mono text-xs text-gray-500">
-                                                {order.id.substring(0, 8)}...
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                <div className="font-medium text-gray-900">{order.customer_name}</div>
-                                                <div className="text-xs text-gray-500">{order.customer_email}</div>
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                <div className="space-y-1">
-                                                    {order.items.map((item: any, idx: number) => (
-                                                        <div key={idx} className="flex items-center gap-1 text-xs">
-                                                            <span className="font-medium">{item.quantity}x</span>
-                                                            <span>{item.title}</span>
-                                                            {item.personalization?.name && (
-                                                                <span className="bg-purple-100 text-purple-700 px-1 rounded text-[10px]">
-                                                                    {item.personalization.name} #{item.personalization.number}
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </td>
-                                            <td className="px-4 py-3 font-medium">
-                                                £{(order.total_gbp / 100).toFixed(2)}
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                <span className={`px-2 py-1 rounded text-xs font-medium capitalize ${order.status === 'paid' ? 'bg-green-100 text-green-700' :
-                                                    order.status === 'shipped' ? 'bg-blue-100 text-blue-700' :
-                                                        'bg-gray-100 text-gray-700'
-                                                    }`}>
-                                                    {order.status}
-                                                </span>
-                                            </td>
-                                            <td className="px-4 py-3 text-gray-500">
-                                                {new Date(order.created_at * 1000).toLocaleDateString()}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
+            {addingProduct && (
+                <Dialog title={addingProduct.title} onClose={() => setAddingProduct(null)}>
+                    {addingProduct.images?.[0] && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={addingProduct.images[0]} alt="" className="h-32 mx-auto object-contain bg-background mb-5" />
                     )}
-                </div>
+                    <label htmlFor="kit-price" className="label">Price in the shop (£)</label>
+                    <input id="kit-price" type="number" inputMode="decimal" step="0.01" min="0" value={price} onChange={(e) => setPrice(e.target.value)} className="field mb-3" />
+                    <p className="text-sm text-muted mb-5">The name and number are added when someone orders.</p>
+                    <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
+                        <button type="button" onClick={() => setAddingProduct(null)} className="btn btn-ghost">Cancel</button>
+                        <button type="button" onClick={handleAddProduct} disabled={isSaving} className="btn btn-primary">{isSaving ? 'Adding…' : 'Add to shop'}</button>
+                    </div>
+                </Dialog>
             )}
         </div>
     );

@@ -4,6 +4,7 @@ import { Fragment, useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { API_BASE, errorMessage, getSessionToken } from '@/lib/session';
 import { GraphicsSettings, type GraphicsInfo } from './GraphicsSettings';
+import { Notice } from '@/components/admin/AdminUi';
 
 type NameStyle = 'full' | 'first_initial' | 'initial_last' | 'first' | 'last';
 type MatchKind = 'lineup' | 'goal' | 'opp_goal' | 'kick_off' | 'half_time' | 'second_half' | 'full_time' | 'yellow' | 'red' | 'sub' | 'motm' | 'correction';
@@ -145,6 +146,8 @@ export function SocialSettings() {
             }
             setSettings((s) => (s ? { ...s, photos } : s));
             setMessage({ text: 'Saved.', error: false });
+        } catch {
+            setMessage({ text: "We couldn't reach the server. Check your connection and try again.", error: true });
         } finally {
             setBusy(false);
         }
@@ -167,6 +170,8 @@ export function SocialSettings() {
                 return;
             }
             window.location.href = (await res.json()).data.url;
+        } catch {
+            setMessage({ text: "We couldn't reach the server. Check your connection and try again.", error: true });
         } finally {
             setBusy(false);
         }
@@ -198,30 +203,30 @@ export function SocialSettings() {
     };
 
     if (!settings || !events) {
-        return message ? <p role="alert" className="text-sm text-red-600">{message.text}</p> : null;
+        return message ? <div className="md:col-span-2"><Notice tone="error">{message.text}</Notice></div> : <div className="card md:col-span-2 h-40 animate-pulse" aria-busy="true" />;
     }
 
     const fb = settings.connections.facebook;
     const ig = settings.connections.instagram;
-    const card = 'bg-white dark:bg-gray-800 rounded-lg p-6 shadow';
-    const heading = 'font-semibold text-lg text-gray-900 dark:text-white';
-    const help = 'text-sm text-gray-500 dark:text-gray-400 mt-1';
+    const card = 'card';
+    const heading = 'text-2xl';
+    const help = 'text-sm text-muted mt-1';
 
     return (
         <div className="space-y-4 md:col-span-2">
             {message && (
-                <p role={message.error ? 'alert' : 'status'} className={`text-sm ${message.error ? 'text-red-600' : 'text-green-700 dark:text-green-400'}`}>{message.text}</p>
+                <Notice tone={message.error ? 'error' : 'success'}>{message.text}</Notice>
             )}
 
             <section className={card} aria-labelledby="names-title">
                 <h3 id="names-title" className={heading}>Players on your club page and social posts</h3>
                 <p className={help}>Anyone can see these. Only show full names or photos if parents have agreed. Parents and players in your app always see full names. Team managers can change the name style; only club admins can switch photos on.</p>
                 <fieldset className="mt-4">
-                    <legend className="text-sm font-medium text-gray-900 dark:text-white mb-2">Show names as</legend>
+                    <legend className="label">Show names as</legend>
                     <div className="flex flex-wrap gap-3">
                         {NAME_STYLES.map(([value, label]) => (
-                            <label key={value} className="flex items-center gap-2 text-sm text-gray-900 dark:text-white border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 cursor-pointer">
-                                <input id={`name-style-${value}`} type="radio" name="name-style" className="accent-brand" checked={settings.nameStyle === value} disabled={busy}
+                            <label key={value} className="flex items-center gap-2 min-h-[44px] text-sm text-foreground border border-border bg-background px-3 py-2 cursor-pointer has-[:checked]:border-brand has-[:checked]:bg-brand/10">
+                                <input id={`name-style-${value}`} type="radio" name="name-style" className="accent-[rgb(var(--brand-rgb))]" checked={settings.nameStyle === value} disabled={busy}
                                     onChange={() => saveNameStyle(value)} />
                                 {label}
                             </label>
@@ -229,9 +234,9 @@ export function SocialSettings() {
                     </div>
                 </fieldset>
                 <label className="mt-4 flex items-start gap-3 cursor-pointer">
-                    <input id="public-photos" type="checkbox" className="mt-1 h-5 w-5 accent-brand" checked={settings.photos} disabled={busy}
+                    <input id="public-photos" type="checkbox" className="mt-1 h-5 w-5 accent-[rgb(var(--brand-rgb))]" checked={settings.photos} disabled={busy}
                         onChange={(e) => savePhotos(e.target.checked)} />
-                    <span className="text-sm text-gray-900 dark:text-white">Show players&apos; photos (on goal graphics and the club page). Only players whose parents said yes in the app (Photo &amp; Video Consent) are shown.</span>
+                    <span className="text-sm text-foreground">Show players&apos; photos (on goal graphics and the club page). Only players whose parents said yes in the app (Photo &amp; Video Consent) are shown.</span>
                 </label>
             </section>
 
@@ -243,10 +248,10 @@ export function SocialSettings() {
                 {fb ? (
                     <>
                         <p className={help}>
-                            Posting to the Facebook Page <strong className="text-gray-900 dark:text-white">{fb.name ?? fb.id}</strong>
-                            {ig ? <> and Instagram <strong className="text-gray-900 dark:text-white">@{ig.name ?? ig.id}</strong></> : <>. No Instagram business account is linked to that Page, so nothing goes to Instagram.</>}
+                            Posting to the Facebook Page <strong className="text-foreground">{fb.name ?? fb.id}</strong>
+                            {ig ? <> and Instagram <strong className="text-foreground">@{ig.name ?? ig.id}</strong></> : <>. No Instagram business account is linked to that Page, so nothing goes to Instagram.</>}
                         </p>
-                        <button type="button" onClick={disconnect} disabled={busy} className="mt-4 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-semibold text-gray-900 dark:text-white disabled:opacity-50">
+                        <button type="button" onClick={disconnect} disabled={busy} className="btn btn-secondary mt-4">
                             Disconnect
                         </button>
                     </>
@@ -255,13 +260,13 @@ export function SocialSettings() {
                         <p className={help}>You run more than one Facebook Page. Choose your club&apos;s:</p>
                         <div className="mt-3 space-y-2">
                             {choices.map((c) => (
-                                <label key={c.id} className="flex items-center gap-2 text-sm text-gray-900 dark:text-white cursor-pointer">
-                                    <input id={`page-${c.id}`} type="radio" name="page" className="accent-brand" checked={chosenPage === c.id} onChange={() => setChosenPage(c.id)} />
+                                <label key={c.id} className="flex items-center gap-2 min-h-[40px] text-sm text-foreground cursor-pointer">
+                                    <input id={`page-${c.id}`} type="radio" name="page" className="accent-[rgb(var(--brand-rgb))]" checked={chosenPage === c.id} onChange={() => setChosenPage(c.id)} />
                                     {c.name}{c.instagram ? ` (Instagram @${c.instagram})` : ''}
                                 </label>
                             ))}
                         </div>
-                        <button type="button" onClick={choosePage} disabled={!chosenPage || busy} className="mt-4 px-4 py-2 bg-brand text-black rounded-lg text-sm font-bold disabled:opacity-50">
+                        <button type="button" onClick={choosePage} disabled={!chosenPage || busy} className="btn btn-primary mt-4">
                             Connect this Page
                         </button>
                     </>
@@ -271,11 +276,11 @@ export function SocialSettings() {
                             Connect your club&apos;s Facebook Page to post match updates automatically. If an Instagram business account is linked to the Page, posts go there too.
                         </p>
                         {settings.canConnect ? (
-                            <button type="button" onClick={connect} disabled={busy} className="mt-4 px-4 py-2 bg-brand text-black rounded-lg text-sm font-bold disabled:opacity-50">
+                            <button type="button" onClick={connect} disabled={busy} className="btn btn-primary mt-4">
                                 Connect Facebook and Instagram
                             </button>
                         ) : (
-                            <p className="mt-3 text-sm text-amber-700 dark:text-amber-400">Facebook and Instagram posting isn&apos;t switched on yet. Posts still go to your club app.</p>
+                            <p className="mt-3 text-sm text-amber-300">Facebook and Instagram posting isn&apos;t switched on yet. Posts still go to your club app.</p>
                         )}
                     </>
                 )}
@@ -285,17 +290,17 @@ export function SocialSettings() {
             <section className={card} aria-labelledby="posting-title">
                 <h3 id="posting-title" className={heading}>What gets posted</h3>
                 <label className="mt-3 flex items-start gap-3 cursor-pointer">
-                    <input id="undo-window" type="checkbox" className="mt-1 h-5 w-5 accent-brand" checked={settings.undoWindow} disabled={busy}
+                    <input id="undo-window" type="checkbox" className="mt-1 h-5 w-5 accent-[rgb(var(--brand-rgb))]" checked={settings.undoWindow} disabled={busy}
                         onChange={(e) => savePosting(e.target.checked)} />
-                    <span className="text-sm text-gray-900 dark:text-white">
+                    <span className="text-sm text-foreground">
                         Wait 1 minute before posting and sending match alerts, so a mistake can be undone in Match Centre
-                        <span className="block text-gray-500 dark:text-gray-400">Instagram doesn&apos;t let apps delete posts, so this is the only way to stop a wrong one there.</span>
+                        <span className="block text-muted">Instagram doesn&apos;t let apps delete posts, so this is the only way to stop a wrong one there.</span>
                     </span>
                 </label>
-                <div className="mt-4 overflow-x-auto">
+                <div className="mt-4 table-scroll relative">
                     <table className="w-full text-sm">
                         <thead>
-                            <tr className="text-left text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700">
+                            <tr className="text-left text-muted border-b border-border">
                                 <th className="py-2 font-medium">When</th>
                                 <th className="py-2 font-medium text-center">Club app</th>
                                 <th className="py-2 font-medium text-center">Facebook and Instagram</th>
@@ -304,16 +309,16 @@ export function SocialSettings() {
                         <tbody>
                             {([['During matches', MATCH_KINDS], ['Club posts', CLUB_KINDS]] as const).map(([group, kinds]) => (
                                 <Fragment key={group}>
-                                    <tr><th colSpan={3} scope="colgroup" className="pt-4 pb-1 text-left text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">{group}</th></tr>
+                                    <tr><th colSpan={3} scope="colgroup" className="pt-5 pb-1 text-left eyebrow text-xs">{group}</th></tr>
                                     {kinds.map(([kind, label]) => (
-                                        <tr key={kind} className="border-b border-gray-100 dark:border-gray-700 text-gray-900 dark:text-white">
+                                        <tr key={kind} className="border-b border-border text-foreground">
                                             <td className="py-2">{label}</td>
                                             {(['feed', 'social'] as const).map((where) => (
                                                 <td key={where} className="py-2 text-center">
                                                     <input
                                                         id={`post-${kind}-${where}`}
                                                         type="checkbox"
-                                                        className="h-5 w-5 accent-brand"
+                                                        className="h-5 w-5 accent-[rgb(var(--brand-rgb))]"
                                                         aria-label={`${label}: ${where === 'feed' ? 'club app' : 'Facebook and Instagram'}`}
                                                         checked={events[kind][where]}
                                                         onChange={(e) => setEvents({ ...events, [kind]: { ...events[kind], [where]: e.target.checked } })}
@@ -327,7 +332,7 @@ export function SocialSettings() {
                         </tbody>
                     </table>
                 </div>
-                <button type="button" onClick={() => savePosting(settings.undoWindow)} disabled={busy} className="mt-4 px-4 py-2 bg-brand text-black rounded-lg text-sm font-bold disabled:opacity-50">
+                <button type="button" onClick={() => savePosting(settings.undoWindow)} disabled={busy} className="btn btn-primary mt-4">
                     Save posting choices
                 </button>
             </section>

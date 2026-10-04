@@ -38,12 +38,10 @@ export function AdminGuard({ children }: AdminGuardProps) {
 
     if (checking) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-                <div className="animate-pulse text-gray-500">
-                    <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-gray-300 dark:bg-gray-700 rounded-full" />
-                        <div className="h-4 w-32 bg-gray-300 dark:bg-gray-700 rounded" />
-                    </div>
+            <div role="status" aria-live="polite" className="min-h-[60vh] flex items-center justify-center bg-background">
+                <div className="flex items-center gap-3 text-muted">
+                    <span className="w-8 h-8 hexagon bg-brand/20 animate-pulse" aria-hidden="true" />
+                    <span className="font-display uppercase tracking-wider">Checking you&apos;re club staff…</span>
                 </div>
             </div>
         );

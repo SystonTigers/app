@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { getPlayerCareerStats, CareerStatsResult } from '@/lib/sdk';
+import { Icon } from '@/components/ui/Icon';
+import { getSessionToken } from '@/lib/session';
 
 interface CareerHistoryProps {
     playerId: string;
@@ -15,11 +17,16 @@ export function CareerHistory({ playerId, playerName }: CareerHistoryProps) {
 
     useEffect(() => {
         async function loadCareerStats() {
+            // Career history needs a club login; visitors just don't see the card
+            if (!getSessionToken()) {
+                setLoading(false);
+                return;
+            }
             try {
                 const stats = await getPlayerCareerStats(playerId);
                 setCareerStats(stats);
-            } catch (err: any) {
-                // Career stats not available (player has no global profile)
+            } catch {
+                // Not every player has a history at other clubs (or the viewer isn't logged in)
                 setError('No career history available');
             } finally {
                 setLoading(false);
@@ -29,80 +36,54 @@ export function CareerHistory({ playerId, playerName }: CareerHistoryProps) {
     }, [playerId]);
 
     if (loading) {
-        return (
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700">
-                <div className="animate-pulse">
-                    <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mb-4"></div>
-                    <div className="h-20 bg-gray-200 dark:bg-gray-700 rounded"></div>
-                </div>
-            </div>
-        );
+        return <div className="card h-40 animate-pulse" aria-busy="true" aria-label="Loading career history" />;
     }
 
-    // Don't show anything if no career history  
+    // Nothing to show when the player has no history at other clubs
     if (error || !careerStats || !careerStats.hasCareerHistory) {
         return null;
     }
 
+    const totals = [
+        { label: 'Goals', value: careerStats.careerTotals.goals },
+        { label: 'Assists', value: careerStats.careerTotals.assists },
+        { label: 'Apps', value: careerStats.careerTotals.appearances },
+    ];
+
     return (
-        <div className="bg-gradient-to-br from-blue-900 to-blue-800 text-white p-6 rounded-3xl shadow-lg">
-            <div className="flex items-center gap-2 mb-4">
-                <span className="text-3xl">🌍</span>
-                <h3 className="text-lg font-black uppercase tracking-tight">Career History</h3>
-            </div>
+        <section className="card" aria-label={`${playerName}'s career`}>
+            <h3 className="text-xl mb-4 flex items-center gap-2">
+                <Icon name="history" className="w-5 h-5 text-brand" /> Career
+            </h3>
 
-            {/* Career Totals */}
-            <div className="grid grid-cols-3 gap-3 mb-6">
-                <div className="text-center p-3 bg-white/10 backdrop-blur-sm rounded-lg">
-                    <div className="text-3xl font-black">{careerStats.careerTotals.goals}</div>
-                    <div className="text-xs font-bold uppercase opacity-75">Goals</div>
-                </div>
-                <div className="text-center p-3 bg-white/10 backdrop-blur-sm rounded-lg">
-                    <div className="text-3xl font-black">{careerStats.careerTotals.assists}</div>
-                    <div className="text-xs font-bold uppercase opacity-75">Assists</div>
-                </div>
-                <div className="text-center p-3 bg-white/10 backdrop-blur-sm rounded-lg">
-                    <div className="text-3xl font-black">{careerStats.careerTotals.appearances}</div>
-                    <div className="text-xs font-bold uppercase opacity-75">Apps</div>
-                </div>
-            </div>
-
-            {/* By Club Breakdown */}
-            <div className="space-y-2">
-                <div className="text-xs font-bold uppercase tracking-wider opacity-75 mb-3">
-                    Club History ({careerStats.careerTotals.clubs} clubs)
-                </div>
-                {careerStats.clubHistory.map((club, index) => (
-                    <div
-                        key={index}
-                        className={`p-3 rounded-lg hover:bg-white/20 transition-colors ${club.isCurrent ? 'bg-white/20 border border-white/30' : 'bg-white/10'
-                            }`}
-                    >
-                        <div className="flex justify-between items-center mb-2">
-                            <span className="font-bold flex items-center gap-2">
-                                {club.club}
-                                {club.isCurrent && (
-                                    <span className="text-xs bg-green-500 px-2 py-0.5 rounded-full">Current</span>
-                                )}
-                            </span>
-                        </div>
-                        <div className="grid grid-cols-3 gap-2 text-center text-sm">
-                            <div>
-                                <span className="font-bold">{club.stats.goals}</span>
-                                <span className="text-white/60 ml-1">G</span>
-                            </div>
-                            <div>
-                                <span className="font-bold">{club.stats.assists}</span>
-                                <span className="text-white/60 ml-1">A</span>
-                            </div>
-                            <div>
-                                <span className="font-bold">{club.stats.appearances}</span>
-                                <span className="text-white/60 ml-1">Apps</span>
-                            </div>
-                        </div>
+            <dl className="grid grid-cols-3 gap-2 mb-6">
+                {totals.map((t) => (
+                    <div key={t.label} className="bg-surface-raised border border-border chamfer-sm p-3 text-center flex flex-col-reverse">
+                        <dt className="text-[11px] font-bold uppercase tracking-wider text-muted">{t.label}</dt>
+                        <dd className="font-display text-3xl font-extrabold">{t.value}</dd>
                     </div>
                 ))}
-            </div>
-        </div>
+            </dl>
+
+            <p className="text-xs font-bold uppercase tracking-wider text-muted mb-3">
+                Clubs ({careerStats.careerTotals.clubs})
+            </p>
+            <ul className="space-y-2">
+                {careerStats.clubHistory.map((club, index) => (
+                    <li
+                        key={`${club.club}-${index}`}
+                        className={`p-3 chamfer-sm border ${club.isCurrent ? 'border-brand/50 bg-brand/10' : 'border-border bg-surface-raised'}`}
+                    >
+                        <p className="font-bold flex items-center gap-2 mb-1">
+                            {club.club}
+                            {club.isCurrent && <span className="text-[11px] font-bold uppercase tracking-wider text-brand">Now</span>}
+                        </p>
+                        <p className="text-sm text-muted">
+                            {club.stats.goals} goals · {club.stats.assists} assists · {club.stats.appearances} apps
+                        </p>
+                    </li>
+                ))}
+            </ul>
+        </section>
     );
 }

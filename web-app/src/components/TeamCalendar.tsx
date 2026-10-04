@@ -1,220 +1,154 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
-import { apiFetch } from '@/lib/session';
+import { useCallback, useEffect, useState } from 'react';
+import { apiFetch, errorMessage } from '@/lib/session';
+import { formatDate, ukDay } from '@/lib/format';
+import { EmptyNote, PageHeader } from '@/components/ui/Page';
+import { Icon } from '@/components/ui/Icon';
 
+type Rsvp = 'yes' | 'no' | 'maybe';
+
+/** As GET /api/v1/events returns it (`date` yyyy-mm-dd and `time` HH:MM or "TBC", UK time) */
 interface CalendarEvent {
     id: string;
     title: string;
-    start_time: string;
-    end_time?: string;
-    location?: string;
-    description?: string;
+    date: string;
+    time: string;
+    location?: string | null;
+    description?: string | null;
     rsvp_yes_count: number;
     rsvp_no_count: number;
     rsvp_maybe_count: number;
-    user_rsvp?: 'yes' | 'no' | 'maybe';
 }
 
+const RSVP_LABEL: Record<Rsvp, string> = { yes: 'Going', maybe: 'Maybe', no: "Can't go" };
+
+/** The club's events (members only): what's on, and whether you're going. */
 export function TeamCalendar() {
-    const params = useParams();
-    const tenant = params.tenant as string;
     const [events, setEvents] = useState<CalendarEvent[]>([]);
+    const [mine, setMine] = useState<Record<string, Rsvp>>({});
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState('');
+    const [rsvpError, setRsvpError] = useState('');
     const [filter, setFilter] = useState<'upcoming' | 'past'>('upcoming');
 
+    const load = useCallback(async (quiet = false) => {
+        if (!quiet) setLoading(true);
+        setLoadError('');
+        try {
+            const res = await apiFetch('/api/v1/events');
+            if (!res.ok) {
+                setLoadError(await errorMessage(res, "We couldn't load the calendar. Please try again."));
+                return;
+            }
+            const data = await res.json();
+            setEvents(Array.isArray(data.data) ? data.data : []);
+        } catch (err) {
+            console.error('Failed to load events', err);
+            setLoadError("We couldn't load the calendar. Check your connection and try again.");
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
     useEffect(() => {
-        loadEvents();
-    }, [tenant, filter]);
+        load();
+    }, [load]);
 
-    const loadEvents = async () => {
+    async function rsvp(eventId: string, status: Rsvp) {
+        const before = mine[eventId];
+        setMine({ ...mine, [eventId]: status });
+        setRsvpError('');
         try {
-            // Fetch real events from the public API (or SDK if available for public)
-            // Since we are in a client component, we can use fetch directly to the public endpoint
-            // or use a public SDK method.
-            // Let's use the public endpoint we created: GET /api/v1/events?tenantId=...
-            // Wait, the route we made requires auth OR tenantId param.
-            // But we don't have a public SDK method for this yet that doesn't require auth?
-            // Actually, listEvents in SDK uses /api/v1/events.
-            // Let's assume for now we fetch from the public API if we had one, but we only made an admin one?
-            // Re-reading events.ts: "if (!targetTenantId) return 401".
-            // So we need to pass tenantId if not authenticated.
-
-            // Ideally we should have a public route for this like /public/:tenant/calendar
-            // But for now let's try to hit the API with the tenant param.
-
-            const res = await apiFetch(`/api/v1/events?tenantId=${tenant}`);
-            if (res.ok) {
-                const data = await res.json();
-                if (data.success) {
-                    setEvents(data.data);
-                }
-            }
-            setLoading(false);
-        } catch (error) {
-            console.error('Failed to load events', error);
-            setLoading(false);
-        }
-    };
-
-    const handleRsvp = async (eventId: string, status: 'yes' | 'no' | 'maybe') => {
-        // Optimistic update
-        setEvents(events.map(e => {
-            if (e.id === eventId) {
-                return { ...e, user_rsvp: status };
-            }
-            return e;
-        }));
-
-        try {
-            await apiFetch(`/api/v1/events/${eventId}/rsvp`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ status })
+            const res = await apiFetch(`/api/v1/events/${eventId}/rsvp`, { method: 'POST', body: JSON.stringify({ status }) });
+            if (!res.ok) throw new Error(`rsvp ${res.status}`);
+            await load(true);
+        } catch (err) {
+            console.error('RSVP failed', err);
+            setMine((m) => {
+                const next = { ...m };
+                if (before) next[eventId] = before;
+                else delete next[eventId];
+                return next;
             });
-            // Reload to get accurate counts
-            // loadEvents(); 
-        } catch (error) {
-            console.error('RSVP failed', error);
+            setRsvpError("Your answer didn't save. Please try again.");
         }
-    };
+    }
 
-    const formatDate = (isoString: string) => {
-        return new Date(isoString).toLocaleDateString(undefined, {
-            weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
-        });
-    };
+    const today = ukDay();
+    const shown = events
+        .filter((e) => (filter === 'upcoming' ? e.date >= today : e.date < today))
+        .sort((a, b) => (filter === 'upcoming' ? 1 : -1) * `${a.date}${a.time}`.localeCompare(`${b.date}${b.time}`));
 
     return (
-        <div className="flex flex-col h-full bg-white dark:bg-gray-900 rounded-3xl overflow-hidden shadow-2xl border border-gray-100 dark:border-gray-800">
-            {/* Header */}
-            <div className="bg-gray-900 text-white p-8 relative overflow-hidden flex-shrink-0">
-                <div className="absolute inset-0 bg-[url('/assets/pattern.png')] opacity-20" />
-                <div className="absolute inset-0 bg-gradient-to-br from-blue-900 to-gray-900 opacity-90" />
+        <div>
+            <PageHeader eyebrow="Club" title="Calendar" subtitle="Club events, socials and fixtures. Let the club know if you're going." />
 
-                <div className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-4">
-                    <div>
-                        <h2 className="text-3xl font-black uppercase italic tracking-tighter mb-1">Team Calendar</h2>
-                        <p className="text-blue-200 font-medium">Coordinate events, matches, and socials.</p>
-                    </div>
+            <div className="flex gap-2 mb-6" role="tablist" aria-label="Which events">
+                {(['upcoming', 'past'] as const).map((f) => (
+                    <button key={f} type="button" role="tab" aria-selected={filter === f} onClick={() => setFilter(f)} className={`btn btn-sm min-h-[40px] ${filter === f ? 'btn-primary' : 'btn-secondary'}`}>
+                        {f === 'upcoming' ? 'Coming up' : 'Past'}
+                    </button>
+                ))}
+            </div>
 
-                    <div className="flex bg-black/30 p-1 rounded-xl glass-panel">
-                        <button
-                            onClick={() => setFilter('upcoming')}
-                            className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${filter === 'upcoming'
-                                ? 'bg-white text-blue-900 shadow-md'
-                                : 'text-white/70 hover:text-white hover:bg-white/10'}`}
-                        >
-                            Upcoming
-                        </button>
-                        <button
-                            onClick={() => setFilter('past')}
-                            className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${filter === 'past'
-                                ? 'bg-white text-blue-900 shadow-md'
-                                : 'text-white/70 hover:text-white hover:bg-white/10'}`}
-                        >
-                            History
-                        </button>
-                    </div>
+            {rsvpError && <p className="card border-red-500/40 text-red-300 py-3 mb-6" role="alert">{rsvpError}</p>}
+
+            {loading ? (
+                <div className="space-y-4" aria-busy="true" aria-label="Loading the calendar">
+                    {[1, 2, 3].map((i) => <div key={i} className="h-32 card animate-pulse" />)}
                 </div>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-6 bg-gray-50 dark:bg-gray-950/50">
-                {loading ? (
-                    <div className="space-y-4">
-                        {[1, 2, 3].map(i => (
-                            <div key={i} className="h-32 bg-gray-200 dark:bg-gray-800 rounded-2xl animate-pulse" />
-                        ))}
-                    </div>
-                ) : (
-                    <div className="space-y-4">
-                        {events.length === 0 ? (
-                            <div className="text-center py-20 opacity-60">
-                                <div className="text-6xl mb-4">📅</div>
-                                <h3 className="text-xl font-bold text-gray-900 dark:text-white">No events found</h3>
-                                <p className="text-sm text-gray-500">Check back later for new schedules.</p>
+            ) : loadError ? (
+                <EmptyNote icon="alert" title="The calendar didn't load" action={<button type="button" onClick={() => load()} className="btn btn-primary">Try again</button>}>
+                    <p role="alert">{loadError}</p>
+                </EmptyNote>
+            ) : shown.length === 0 ? (
+                <EmptyNote icon="calendar" title={filter === 'upcoming' ? 'Nothing on yet' : 'No past events'}>
+                    {filter === 'upcoming' ? 'New club events show here as soon as staff add them.' : 'Events move here once they have happened.'}
+                </EmptyNote>
+            ) : (
+                <ul className="space-y-4">
+                    {shown.map((event) => (
+                        <li key={event.id} className="card p-4 md:p-5 flex flex-col sm:flex-row gap-4">
+                            <div className="shrink-0 sm:w-24 bg-surface-raised border border-border chamfer-sm flex sm:flex-col items-center justify-center gap-2 sm:gap-0 p-3">
+                                <span className="text-xs font-bold text-brand uppercase tracking-widest">{formatDate(event.date, { month: 'short' })}</span>
+                                <span className="font-display text-4xl font-extrabold leading-none">{formatDate(event.date, { day: 'numeric' })}</span>
+                                <span className="text-xs font-bold text-muted uppercase">{formatDate(event.date, { weekday: 'short' })}</span>
                             </div>
-                        ) : (
-                            events.map(event => (
-                                <div key={event.id} className="bg-white dark:bg-gray-800 rounded-2xl p-2 shadow-sm hover:shadow-lg transition-all border border-gray-100 dark:border-gray-700 group">
-                                    <div className="flex flex-col md:flex-row gap-4">
-                                        {/* Date Badge */}
-                                        <div className="flex-shrink-0 w-full md:w-32 bg-gray-50 dark:bg-gray-900/50 rounded-xl flex flex-col items-center justify-center p-4 border border-gray-100 dark:border-gray-700">
-                                            <span className="text-xs font-black text-brand uppercase tracking-widest mb-1">
-                                                {new Date(event.start_time).toLocaleDateString(undefined, { month: 'short' })}
-                                            </span>
-                                            <span className="text-4xl font-black text-gray-900 dark:text-white leading-none mb-1">
-                                                {new Date(event.start_time).getDate()}
-                                            </span>
-                                            <span className="text-xs font-bold text-gray-400 uppercase">
-                                                {new Date(event.start_time).toLocaleDateString(undefined, { weekday: 'short' })}
-                                            </span>
+
+                            <div className="flex-1 min-w-0">
+                                <h3 className="text-xl leading-tight mb-2 break-words">{event.title}</h3>
+                                <p className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted mb-3">
+                                    <span className="inline-flex items-center gap-1.5"><Icon name="calendar" className="w-4 h-4" />{event.time === 'TBC' ? 'Time to be confirmed' : event.time}</span>
+                                    {event.location && <span className="inline-flex items-center gap-1.5"><Icon name="flag" className="w-4 h-4" />{event.location}</span>}
+                                </p>
+                                {event.description && <p className="text-sm text-muted line-clamp-3 mb-3">{event.description}</p>}
+
+                                <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3">
+                                    <p className="text-xs font-bold text-muted uppercase tracking-wider">
+                                        {event.rsvp_yes_count} going · {event.rsvp_maybe_count} maybe
+                                    </p>
+                                    {filter === 'upcoming' && (
+                                        <div className="flex gap-2" role="group" aria-label={`Are you going to ${event.title}?`}>
+                                            {(['yes', 'maybe', 'no'] as const).map((status) => (
+                                                <button
+                                                    key={status}
+                                                    type="button"
+                                                    aria-pressed={mine[event.id] === status}
+                                                    onClick={() => rsvp(event.id, status)}
+                                                    className={`btn btn-sm min-h-[40px] px-3 ${mine[event.id] === status ? 'btn-primary' : 'btn-secondary'}`}
+                                                >
+                                                    {RSVP_LABEL[status]}
+                                                </button>
+                                            ))}
                                         </div>
-
-                                        {/* Event Details */}
-                                        <div className="flex-1 py-4 pr-4">
-                                            <h3 className="font-bold text-xl text-gray-900 dark:text-white mb-2 group-hover:text-brand transition-colors">
-                                                {event.title}
-                                            </h3>
-
-                                            <div className="flex flex-wrap gap-4 text-sm text-gray-500 mb-4">
-                                                <span className="flex items-center gap-1.5 font-medium">
-                                                    <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                                    {new Date(event.start_time).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
-                                                </span>
-                                                {event.location && (
-                                                    <span className="flex items-center gap-1.5 font-medium">
-                                                        <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                                                        {event.location}
-                                                    </span>
-                                                )}
-                                            </div>
-
-                                            {event.description && (
-                                                <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2 leading-relaxed mb-4">
-                                                    {event.description}
-                                                </p>
-                                            )}
-
-                                            <div className="flex items-center justify-between border-t border-gray-100 dark:border-gray-700 pt-3">
-                                                <div className="flex items-center gap-2 text-xs font-bold text-gray-500">
-                                                    <span className="flex items-center gap-1">
-                                                        <span className="w-2 h-2 rounded-full bg-green-500"></span>
-                                                        {event.rsvp_yes_count} Going
-                                                    </span>
-                                                    <span className="w-1 h-3 bg-gray-300 rounded-full"></span>
-                                                    <span className="flex items-center gap-1">
-                                                        <span className="w-2 h-2 rounded-full bg-yellow-500"></span>
-                                                        {event.rsvp_maybe_count} Maybe
-                                                    </span>
-                                                </div>
-
-                                                <div className="flex bg-gray-100 dark:bg-gray-900 p-1 rounded-lg">
-                                                    {(['yes', 'maybe', 'no'] as const).map((status) => (
-                                                        <button
-                                                            key={status}
-                                                            onClick={(e) => { e.stopPropagation(); handleRsvp(event.id, status); }}
-                                                            className={`
-                                                                px-4 py-1.5 text-xs font-bold rounded-md capitalize transition-all
-                                                                ${event.user_rsvp === status
-                                                                    ? status === 'yes' ? 'bg-green-600 text-white shadow-md' : status === 'no' ? 'bg-red-600 text-white shadow-md' : 'bg-yellow-500 text-white shadow-md'
-                                                                    : 'text-gray-500 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-white dark:hover:bg-gray-800'}
-                                                            `}
-                                                        >
-                                                            {status}
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
+                                    )}
                                 </div>
-                            ))
-                        )}
-                    </div>
-                )}
-            </div>
+                            </div>
+                        </li>
+                    ))}
+                </ul>
+            )}
         </div>
     );
 }

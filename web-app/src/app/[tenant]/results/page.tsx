@@ -1,210 +1,210 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { isClubTeam } from '@/lib/slug';
+import { use, useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { isClubTeam } from '@/lib/slug';
 import { PublicSeasonTabs } from '@/components/PublicSeasonTabs';
 import { FaFullTimeEmbed, useFaSnippets } from '@/components/FaFullTimeEmbed';
-import { apiFetch } from '@/lib/session';
+import { EmptyNote, PageHeader } from '@/components/ui/Page';
+import { Icon } from '@/components/ui/Icon';
+import { useUserRole } from '@/hooks/useUserRole';
+import { API_BASE, apiFetch, errorMessage } from '@/lib/session';
+import { formatDate } from '@/lib/format';
+
+interface Result {
+  id: string;
+  homeTeam: string;
+  awayTeam: string;
+  date: string;
+  competition?: string | null;
+  homeScore: number;
+  awayScore: number;
+  scorers?: string[];
+}
+
+interface DiscussionSummary {
+  id: string;
+  related_entity_id?: string | null;
+}
+
+type Outcome = 'win' | 'draw' | 'loss' | null;
+
+function outcomeFor(r: Result, tenant: string): Outcome {
+  const home = isClubTeam(r.homeTeam, tenant);
+  const away = isClubTeam(r.awayTeam, tenant);
+  if (!home && !away) return null;
+  if (r.homeScore === r.awayScore) return 'draw';
+  const weWon = home ? r.homeScore > r.awayScore : r.awayScore > r.homeScore;
+  return weWon ? 'win' : 'loss';
+}
+
+const OUTCOME: Record<Exclude<Outcome, null>, { label: string; className: string }> = {
+  win: { label: 'W', className: 'bg-brand text-brand-foreground' },
+  draw: { label: 'D', className: 'bg-surface-raised text-foreground border border-border' },
+  loss: { label: 'L', className: 'bg-red-500/15 text-red-400 border border-red-500/40' },
+};
+
+function ResultCard({ result, tenant, canTalk, busy, onTalk }: { result: Result; tenant: string; canTalk: boolean; busy: boolean; onTalk: (r: Result) => void }) {
+  const outcome = outcomeFor(result, tenant);
+  return (
+    <li className="card p-5 md:p-6">
+      <div className="flex items-center justify-between gap-3 mb-4 text-xs font-bold uppercase tracking-wider">
+        <span className="text-brand">{result.competition || 'Match'}</span>
+        <span className="text-muted">{formatDate(result.date)}</span>
+      </div>
+
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+        <h3 className="font-display text-lg md:text-2xl font-extrabold uppercase italic leading-tight text-right break-words">{result.homeTeam}</h3>
+        <div className="flex flex-col items-center">
+          <span className="font-display text-4xl md:text-5xl font-extrabold tabular-nums bg-surface-raised border border-border chamfer-sm px-4 py-1">
+            {result.homeScore}&ndash;{result.awayScore}
+          </span>
+          <span className="mt-1.5 text-[11px] font-bold uppercase tracking-widest text-muted">Full time</span>
+        </div>
+        <h3 className="font-display text-lg md:text-2xl font-extrabold uppercase italic leading-tight break-words">{result.awayTeam}</h3>
+      </div>
+
+      {(result.scorers?.length || outcome || canTalk) ? (
+        <div className="mt-5 pt-4 border-t border-border flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            {outcome && (
+              <span className={`w-8 h-8 shrink-0 hexagon flex items-center justify-center font-display font-extrabold ${OUTCOME[outcome].className}`} title={outcome === 'win' ? 'Won' : outcome === 'draw' ? 'Drew' : 'Lost'}>
+                {OUTCOME[outcome].label}
+              </span>
+            )}
+            {result.scorers && result.scorers.length > 0 && (
+              <p className="text-sm text-muted flex items-start gap-1.5 min-w-0">
+                <Icon name="ball" className="w-4 h-4 mt-0.5 text-brand" />
+                <span className="break-words"><span className="sr-only">Scorers: </span>{result.scorers.join(', ')}</span>
+              </p>
+            )}
+          </div>
+          {canTalk && (
+            <button type="button" onClick={() => onTalk(result)} disabled={busy} className="btn btn-secondary btn-sm min-h-[40px]">
+              <Icon name="chat" className="w-4 h-4" /> {busy ? 'Opening…' : 'Talk about it'}
+            </button>
+          )}
+        </div>
+      ) : null}
+    </li>
+  );
+}
 
 export default function ResultsPage({ params }: { params: Promise<{ tenant: string }> }) {
-  const [tenant, setTenant] = useState('');
+  const { tenant } = use(params);
+  const router = useRouter();
+  const { role, isLoggedIn } = useUserRole();
   const [seasonId, setSeasonId] = useState<string | null>(null);
-  const [results, setResults] = useState<any[]>([]);
+  const [results, setResults] = useState<Result[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [talkError, setTalkError] = useState('');
+  const [opening, setOpening] = useState<string | null>(null);
   const { snippets } = useFaSnippets(tenant);
 
-  useEffect(() => {
-    params.then(p => setTenant(p.tenant));
-  }, [params]);
+  // Match chats live in Team Talk, which fans can't use
+  const canTalk = isLoggedIn && role !== 'fan';
 
-  useEffect(() => {
-    if (!tenant) return;
-    loadResults();
-  }, [tenant, seasonId]);
-
-  async function loadResults() {
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError('');
     try {
-      setLoading(true);
-      const query = seasonId ? `?seasonId=${seasonId}` : '';
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE || ''}/public/${tenant}/fixtures?status=results${query}`);
-      const data = await res.json();
-      if (data.success && data.data) {
-        setResults(data.data);
-      }
+      const query = seasonId ? `&seasonId=${encodeURIComponent(seasonId)}` : '';
+      const res = await fetch(`${API_BASE}/public/${encodeURIComponent(tenant)}/fixtures?status=results${query}`, { cache: 'no-store' });
+      if (!res.ok) throw new Error(`results ${res.status}`);
+      const body = await res.json();
+      setResults(Array.isArray(body?.data) ? body.data : []);
     } catch (err) {
       console.error('Failed to load results:', err);
+      setError("We couldn't load the results. Check your connection and try again.");
     } finally {
       setLoading(false);
     }
-  }
+  }, [tenant, seasonId]);
 
+  useEffect(() => {
+    load();
+  }, [load]);
 
-  // Navigation for discussions
-  const router = useRouter();
-
-  // Sort results by date (newest first)
-  const sortedResults = [...results].sort((a, b) =>
-    new Date(b.date).getTime() - new Date(a.date).getTime()
-  );
-
-  function startDiscussion(result: any) {
-    const discussionData = {
-      title: `Match Analysis: ${result.homeTeam} vs ${result.awayTeam}`,
-      category: 'match-analysis',
-      related_entity_type: 'match',
-      related_entity_id: result.id
-    };
-
-    // We'll create the discussion via API or redirect to a creation page. 
-    // To match current patterns, we can create it immediately or redirect.
-    // Given TrainingTools pattern, we create it.
-    // However, ResultsPage doesn't have create logic yet.
-    // Simpler approach: Redirect to discussions page with query params to start one?
-    // OR just use same API pattern as TrainingTools. 
-
-    // Let's implement creating it directly here for consistency.
-    createDiscussion(discussionData);
-  }
-
-  async function createDiscussion(data: any) {
+  /** Open the match's chat in Team Talk, starting it if nobody has yet. */
+  async function talkAbout(result: Result) {
+    setOpening(result.id);
+    setTalkError('');
     try {
-      setLoading(true);
-      const res = await apiFetch(`/api/v1/discussions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
-        },
-        body: JSON.stringify(data)
-      });
-      const json = await res.json();
-      if (json.success) {
-        router.push(`/${tenant}/team/discussions/${json.data.id}`);
-      } else {
-        console.error('Failed to create discussion:', json.error);
+      const listRes = await apiFetch('/api/v1/discussions?category=match-analysis&limit=100');
+      if (listRes.ok) {
+        const body = await listRes.json();
+        const existing = (Array.isArray(body?.data) ? (body.data as DiscussionSummary[]) : []).find((d) => d.related_entity_id === result.id);
+        if (existing) {
+          router.push(`/${tenant}/team/discussions/${existing.id}`);
+          return;
+        }
       }
-    } catch (e) {
-      console.error(e);
+      const res = await apiFetch('/api/v1/discussions', {
+        method: 'POST',
+        body: JSON.stringify({
+          title: `${result.homeTeam} ${result.homeScore}-${result.awayScore} ${result.awayTeam}`,
+          category: 'match-analysis',
+          related_entity_type: 'match',
+          related_entity_id: result.id,
+        }),
+      });
+      if (!res.ok) {
+        setTalkError(await errorMessage(res, "We couldn't start the chat for that match. Please try again."));
+        return;
+      }
+      const body = await res.json();
+      router.push(`/${tenant}/team/discussions/${body.data.id}`);
+    } catch (err) {
+      console.error('Failed to open match chat:', err);
+      setTalkError("We couldn't start the chat for that match. Check your connection and try again.");
     } finally {
-      setLoading(false);
+      setOpening(null);
     }
   }
+
+  const sorted = [...results].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-black pb-20">
-      {/* Header */}
-      <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 py-12 px-6">
-        <div className="container">
-          <h1 className="text-4xl font-black uppercase tracking-tighter mb-2">Match Results</h1>
-          <p className="text-gray-500">Latest scores and reports from the season.</p>
+    <div className="container py-8 md:py-12">
+      <PageHeader eyebrow="Matches" title="Results" subtitle="Scores and goalscorers from every game this season." />
+
+      <PublicSeasonTabs tenant={tenant} onSeasonChange={setSeasonId} currentSeasonId={seasonId} />
+
+      {talkError && (
+        <p role="alert" className="card border-red-500/40 text-red-300 mb-6 py-4">{talkError}</p>
+      )}
+
+      {loading ? (
+        <div className="space-y-4" aria-busy="true" aria-label="Loading results">
+          {[1, 2, 3].map((i) => <div key={i} className="h-44 card animate-pulse" />)}
         </div>
-      </div>
-
-      <div className="container px-6 py-12">
-        {tenant && (
-          <PublicSeasonTabs
-            tenant={tenant}
-            onSeasonChange={setSeasonId}
-            currentSeasonId={seasonId}
-          />
-        )}
-
-        {loading ? (
-          <div className="grid gap-6">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="h-48 bg-gray-200 dark:bg-gray-700 chamfer-lg animate-pulse"></div>
-            ))}
-          </div>
-        ) : sortedResults.length === 0 && snippets.team ? (
-          <FaFullTimeEmbed code={snippets.team} title="Our Fixtures & Results" />
+      ) : error ? (
+        <EmptyNote icon="alert" title="Results didn't load" action={<button type="button" onClick={load} className="btn btn-primary">Try again</button>}>
+          <p role="alert">{error}</p>
+        </EmptyNote>
+      ) : sorted.length === 0 ? (
+        snippets.team ? (
+          <FaFullTimeEmbed code={snippets.team} title="Our fixtures and results" />
         ) : (
-          <div className="grid gap-6">
-            {sortedResults.map((result: any) => {
-              const isWin = (isClubTeam(result.homeTeam, tenant) && result.homeScore > result.awayScore) ||
-                (isClubTeam(result.awayTeam, tenant) && result.awayScore > result.homeScore);
-              const isDraw = result.homeScore === result.awayScore;
+          <EmptyNote icon="trophy" title="No results yet" action={<Link href={`/${tenant}/fixtures`} className="btn btn-secondary">See fixtures</Link>}>
+            Scores show here after each game, straight from the touchline.
+          </EmptyNote>
+        )
+      ) : (
+        <ul className="space-y-4">
+          {sorted.map((r) => (
+            <ResultCard key={r.id} result={r} tenant={tenant} canTalk={canTalk} busy={opening === r.id} onTalk={talkAbout} />
+          ))}
+        </ul>
+      )}
 
-              return (
-                <div key={result.id} className="bg-white dark:bg-gray-800 chamfer-lg overflow-hidden shadow-sm hover:shadow-lg transition-shadow border border-gray-100 dark:border-gray-700">
-                  <div className="flex flex-col md:flex-row">
-                    {/* Date & Competition Sidebar */}
-                    <div className="bg-gray-50 dark:bg-gray-900/50 p-6 flex flex-row md:flex-col items-center justify-between md:justify-center w-full md:w-48 text-center border-b md:border-b-0 md:border-r border-gray-100 dark:border-gray-700">
-                      <div>
-                        <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">{result.competition}</div>
-                        <div className="text-sm font-bold text-gray-900 dark:text-white">
-                          {new Date(result.date).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Score Section */}
-                    <div className="flex-1 p-8">
-                      <div className="flex items-center justify-between mb-6">
-                        {/* Home */}
-                        <div className="flex-1 flex flex-col items-center md:items-end text-center md:text-right">
-                          <h3 className="text-xl md:text-2xl font-black uppercase tracking-tight text-gray-900 dark:text-gray-100">
-                            {result.homeTeam}
-                          </h3>
-                        </div>
-
-                        {/* Score */}
-                        <div className="px-8 flex flex-col items-center">
-                          <div className="text-4xl md:text-5xl font-black text-gray-900 dark:text-white bg-gray-100 dark:bg-gray-700 px-6 py-2 chamfer-sm tracking-widest">
-                            {result.homeScore}-{result.awayScore}
-                          </div>
-                          <div className="mt-2 text-xs font-bold text-gray-400 uppercase">
-                            Full Time
-                          </div>
-                        </div>
-
-                        {/* Away */}
-                        <div className="flex-1 flex flex-col items-center md:items-start text-center md:text-left">
-                          <h3 className="text-xl md:text-2xl font-black uppercase tracking-tight text-gray-900 dark:text-gray-100">
-                            {result.awayTeam}
-                          </h3>
-                        </div>
-                      </div>
-
-                      {/* Scorers / Details */}
-                      {result.scorers && result.scorers.length > 0 && (
-                        <div className="mt-6 pt-6 border-t border-gray-100 dark:border-gray-700 flex justify-center">
-                          <div className="flex flex-wrap justify-center gap-4 text-sm text-gray-500">
-                            {result.scorers.map((scorer: string, idx: number) => (
-                              <span key={idx} className="flex items-center">
-                                <span className="mr-1">⚽</span> {scorer}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Action Button */}
-                    <div className="flex items-center justify-center p-4 md:p-8 bg-gray-50 dark:bg-gray-900/30 gap-2">
-                      <button className="w-full md:w-auto px-6 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 chamfer-sm text-sm font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-                        Report
-                      </button>
-                      <button
-                        onClick={() => startDiscussion(result)}
-                        className="w-full md:w-auto px-6 py-2 bg-brand text-white border border-transparent chamfer-sm text-sm font-bold hover:bg-brand-dark transition-colors flex items-center gap-1"
-                      >
-                        Chat
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {snippets.results && (
-          <div className="max-w-4xl mx-auto mt-12">
-            <FaFullTimeEmbed code={snippets.results} title="Around the League" highlight={tenant.split('-')[0]} />
-          </div>
-        )}
-      </div>
+      {snippets.results && (
+        <div className="mt-12">
+          <FaFullTimeEmbed code={snippets.results} title="Around the league" highlight={tenant.split('-')[0]} />
+        </div>
+      )}
     </div>
   );
 }

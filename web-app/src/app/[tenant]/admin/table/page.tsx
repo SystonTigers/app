@@ -1,7 +1,11 @@
 'use client';
 
-import { useState, useEffect, use } from 'react';
+import { useCallback, useEffect, useState, use } from 'react';
+import Link from 'next/link';
 import { createClientSDK, updateTable } from '@/lib/sdk';
+import { PageHeader } from '@/components/ui/Page';
+import { Icon } from '@/components/ui/Icon';
+import { ErrorNote, LoadingBlock, Notice, sdkErrorMessage } from '@/components/admin/AdminUi';
 
 interface PageProps {
     params: Promise<{ tenant: string }>;
@@ -19,177 +23,165 @@ interface TableRow {
     points: number;
 }
 
+type NumberField = Exclude<keyof TableRow, 'team' | 'position'>;
+
+const NUMBER_COLUMNS: Array<{ key: NumberField; short: string; long: string }> = [
+    { key: 'played', short: 'P', long: 'Played' },
+    { key: 'won', short: 'W', long: 'Won' },
+    { key: 'drawn', short: 'D', long: 'Drawn' },
+    { key: 'lost', short: 'L', long: 'Lost' },
+    { key: 'goalsFor', short: 'GF', long: 'Goals for' },
+    { key: 'goalsAgainst', short: 'GA', long: 'Goals against' },
+    { key: 'points', short: 'Pts', long: 'Points' },
+];
+
+const blankRow = (position: number): TableRow => ({ position, team: '', played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0 });
+
 export default function TableAdminPage({ params }: PageProps) {
     const { tenant } = use(params);
-    const sdk = createClientSDK(tenant);
     const [rows, setRows] = useState<TableRow[]>([]);
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState('');
     const [saving, setSaving] = useState(false);
     const [calculating, setCalculating] = useState(false);
-    const [calcMessage, setCalcMessage] = useState('');
+    const [message, setMessage] = useState<{ tone: 'success' | 'error'; text: string } | null>(null);
+
+    const loadTable = useCallback(async () => {
+        setLoadError('');
+        try {
+            const data: unknown = await createClientSDK(tenant).getLeagueTable();
+            const list = Array.isArray(data) ? (data as TableRow[]) : [];
+            // No table yet: give ten empty rows to fill in
+            setRows(list.length ? list : Array.from({ length: 10 }, (_, i) => blankRow(i + 1)));
+        } catch (err) {
+            setLoadError(sdkErrorMessage(err, "We couldn't load the league table. Check your connection and try again."));
+        } finally {
+            setLoading(false);
+        }
+    }, [tenant]);
+
+    useEffect(() => {
+        loadTable();
+    }, [loadTable]);
 
     async function handleAutoCalculate() {
         setCalculating(true);
-        setCalcMessage('');
+        setMessage(null);
         try {
-            const result = await sdk.autoCalculateTable();
-            if (result.success) {
-                setCalcMessage(`✅ ${result.message || 'Calculated!'} (${result.teams || 0} teams)`);
-                loadTable();
-            } else {
-                setCalcMessage(`❌ ${(result as any).error || 'Calculation failed'}`);
-            }
-        } catch (err: any) {
-            setCalcMessage(`❌ ${err.message || 'Calculation failed'}`);
+            const result = await createClientSDK(tenant).autoCalculateTable();
+            if (!result.success) throw new Error();
+            setMessage({ tone: 'success', text: `${result.message || 'Table worked out from your results.'}${result.teams ? ` (${result.teams} teams)` : ''}` });
+            loadTable();
+        } catch (err) {
+            setMessage({ tone: 'error', text: sdkErrorMessage(err, "We couldn't work out the table. Add some results first, then try again.") });
         } finally {
             setCalculating(false);
         }
     }
 
-    useEffect(() => {
-        loadTable();
-    }, [tenant]);
-
-    async function loadTable() {
-        try {
-            const sdk = createClientSDK(tenant);
-            const data = await sdk.getLeagueTable();
-            // API returns { success: true, data: [...] } usually for public endpoints
-            // But getLeagueTable in ClientSDK calls /public/.../table
-            // public.ts returns { success: true, data: [...] }
-            if ((data as any).success && Array.isArray((data as any).data)) {
-                setRows((data as any).data as TableRow[]);
-            } else if (Array.isArray(data)) {
-                setRows(data as unknown as TableRow[]);
-            } else {
-                // Default empty rows
-                setRows(Array.from({ length: 10 }, (_, i) => ({
-                    position: i + 1,
-                    team: '',
-                    played: 0,
-                    won: 0,
-                    drawn: 0,
-                    lost: 0,
-                    goalsFor: 0,
-                    goalsAgainst: 0,
-                    points: 0
-                })));
-            }
-        } catch (err) {
-            console.error(err);
-        } finally {
-            setLoading(false);
-        }
-    }
-
-    function updateRow(index: number, field: keyof TableRow, value: any) {
-        const newRows = [...rows];
-        newRows[index] = { ...newRows[index], [field]: value };
-        setRows(newRows);
+    function updateRow(index: number, field: keyof TableRow, value: string) {
+        setMessage(null);
+        const next = [...rows];
+        next[index] = { ...next[index], [field]: field === 'team' ? value : Math.max(0, parseInt(value, 10) || 0) };
+        setRows(next);
     }
 
     async function handleSave() {
         setSaving(true);
+        setMessage(null);
         try {
-            // Filter out empty rows
-            const validRows = rows.filter(r => r.team.trim() !== '');
-            await updateTable(validRows);
-            alert('Table saved successfully!');
+            await updateTable(rows.filter((r) => r.team.trim() !== ''));
+            setMessage({ tone: 'success', text: 'Table saved.' });
         } catch (err) {
-            alert('Failed to save table');
+            setMessage({ tone: 'error', text: sdkErrorMessage(err, "The table didn't save. Please try again.") });
         } finally {
             setSaving(false);
         }
     }
 
-    if (loading) return <div className="p-8">Loading...</div>;
+    async function resign(team: string) {
+        if (!confirm(`Has ${team} resigned from the league? Their fixtures and results will be deleted and the table worked out again.`)) return;
+        setMessage(null);
+        try {
+            await createClientSDK(tenant).resignTeam(team);
+            setMessage({ tone: 'success', text: `${team} removed from the league.` });
+            loadTable();
+        } catch (err) {
+            setMessage({ tone: 'error', text: sdkErrorMessage(err, `${team} wasn't removed. Please try again.`) });
+        }
+    }
 
     return (
-        <div className="container mx-auto py-8 px-4">
-            <div className="flex flex-wrap justify-between items-center gap-4 mb-8">
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">League Table Manager</h1>
-                <div className="flex items-center gap-4 flex-wrap">
-                    {calcMessage && <span className="text-sm">{calcMessage}</span>}
-                    <button
-                        onClick={handleAutoCalculate}
-                        disabled={calculating}
-                        className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition-colors disabled:opacity-50 flex items-center gap-2"
-                    >
-                        {calculating ? (
-                            <><span className="animate-spin">⏳</span> Calculating...</>
-                        ) : (
-                            <>🔄 Auto-Calculate from Results</>
-                        )}
-                    </button>
-                    <button
-                        onClick={handleSave}
-                        disabled={saving}
-                        className="bg-brand text-white px-6 py-2 rounded hover:bg-brand/90 transition-colors disabled:opacity-50"
-                    >
-                        {saving ? 'Saving...' : 'Save Changes'}
-                    </button>
-                </div>
-            </div>
+        <div className="container py-8 md:py-10">
+            <PageHeader
+                eyebrow="Club admin"
+                title="League table"
+                subtitle={<>The table usually looks after itself from your results and the league results you paste in <Link href={`/${tenant}/admin/settings/fa-sync`} className="text-brand underline">Settings</Link>. Change it by hand here if you need to.</>}
+                actions={
+                    <>
+                        <button type="button" onClick={handleAutoCalculate} disabled={calculating} className="btn btn-secondary">
+                            <Icon name="refresh" className={`w-4 h-4 ${calculating ? 'animate-spin' : ''}`} />
+                            {calculating ? 'Working it out…' : 'Work out from results'}
+                        </button>
+                        <button type="button" onClick={handleSave} disabled={saving || loading} className="btn btn-primary">
+                            {saving ? 'Saving…' : 'Save table'}
+                        </button>
+                    </>
+                }
+            />
 
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-x-auto">
-                <table className="w-full min-w-[800px]">
-                    <thead className="bg-gray-50 dark:bg-gray-700">
-                        <tr>
-                            <th className="px-4 py-2 text-center w-12">Pos</th>
-                            <th className="px-4 py-2 text-left">Team</th>
-                            <th className="px-2 py-2 text-center w-16">P</th>
-                            <th className="px-2 py-2 text-center w-16">W</th>
-                            <th className="px-2 py-2 text-center w-16">D</th>
-                            <th className="px-2 py-2 text-center w-16">L</th>
-                            <th className="px-2 py-2 text-center w-16">GF</th>
-                            <th className="px-2 py-2 text-center w-16">GA</th>
-                            <th className="px-2 py-2 text-center w-16">Pts</th>
-                            <th className="px-2 py-2 text-center">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                        {rows.map((row, i) => (
-                            <tr key={i}>
-                                <td className="px-2 py-2 text-center">{row.position}</td>
-                                <td className="px-2 py-2">
-                                    <input
-                                        type="text"
-                                        value={row.team}
-                                        onChange={e => updateRow(i, 'team', e.target.value)}
-                                        className="w-full p-1 border rounded dark:bg-gray-700"
-                                        placeholder="Team Name"
-                                    />
-                                </td>
-                                <td className="px-2 py-2"><input type="number" value={row.played} onChange={e => updateRow(i, 'played', parseInt(e.target.value))} className="w-full text-center p-1 border rounded dark:bg-gray-700" /></td>
-                                <td className="px-2 py-2"><input type="number" value={row.won} onChange={e => updateRow(i, 'won', parseInt(e.target.value))} className="w-full text-center p-1 border rounded dark:bg-gray-700" /></td>
-                                <td className="px-2 py-2"><input type="number" value={row.drawn} onChange={e => updateRow(i, 'drawn', parseInt(e.target.value))} className="w-full text-center p-1 border rounded dark:bg-gray-700" /></td>
-                                <td className="px-2 py-2"><input type="number" value={row.lost} onChange={e => updateRow(i, 'lost', parseInt(e.target.value))} className="w-full text-center p-1 border rounded dark:bg-gray-700" /></td>
-                                <td className="px-2 py-2"><input type="number" value={row.goalsFor} onChange={e => updateRow(i, 'goalsFor', parseInt(e.target.value))} className="w-full text-center p-1 border rounded dark:bg-gray-700" /></td>
-                                <td className="px-2 py-2"><input type="number" value={row.goalsAgainst} onChange={e => updateRow(i, 'goalsAgainst', parseInt(e.target.value))} className="w-full text-center p-1 border rounded dark:bg-gray-700" /></td>
-                                <td className="px-2 py-2"><input type="number" value={row.points} onChange={e => updateRow(i, 'points', parseInt(e.target.value))} className="w-full text-center p-1 border rounded dark:bg-gray-700 font-bold" /></td>
-                                <td className="px-2 py-2 text-center">
-                                    {row.team && (
-                                        <button
-                                            onClick={() => {
-                                                if (confirm(`Are you sure ${row.team} has resigned? This will delete all their fixtures and results.`)) {
-                                                    const sdk = createClientSDK(tenant);
-                                                    sdk.resignTeam(row.team).then(() => {
-                                                        alert(`${row.team} resigned.`);
-                                                        loadTable();
-                                                    });
-                                                }
-                                            }}
-                                            className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded hover:bg-red-200"
-                                        >
-                                            Resign
-                                        </button>
-                                    )}
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
+            {message && <div className="mb-4"><Notice tone={message.tone}>{message.text}</Notice></div>}
+
+            {loading ? (
+                <LoadingBlock label="Loading the table" />
+            ) : loadError ? (
+                <ErrorNote message={loadError} onRetry={() => { setLoading(true); loadTable(); }} />
+            ) : (
+                <div className="card p-0">
+                    <div className="table-scroll relative">
+                        <table className="w-full min-w-[760px] text-sm">
+                            <thead>
+                                <tr className="border-b border-border text-xs uppercase tracking-wider text-muted">
+                                    <th scope="col" className="px-3 py-3 text-center w-12">Pos</th>
+                                    <th scope="col" className="px-2 py-3 text-left">Team</th>
+                                    {NUMBER_COLUMNS.map((c) => <th key={c.key} scope="col" className="px-1 py-3 text-center w-16"><abbr title={c.long} className="no-underline">{c.short}</abbr></th>)}
+                                    <th scope="col" className="px-3 py-3 text-right"><span className="sr-only">Actions</span></th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-border">
+                                {rows.map((row, i) => (
+                                    <tr key={i}>
+                                        <td className="px-3 py-2 text-center font-display text-lg font-bold">{row.position}</td>
+                                        <td className="px-2 py-2">
+                                            <input type="text" aria-label={`Team in position ${row.position}`} value={row.team} onChange={(e) => updateRow(i, 'team', e.target.value)} className="field py-2 px-3" placeholder="Team name" />
+                                        </td>
+                                        {NUMBER_COLUMNS.map((c) => (
+                                            <td key={c.key} className="px-1 py-2">
+                                                <input
+                                                    type="number"
+                                                    inputMode="numeric"
+                                                    min={0}
+                                                    aria-label={`${c.long} for ${row.team || `position ${row.position}`}`}
+                                                    value={row[c.key]}
+                                                    onChange={(e) => updateRow(i, c.key, e.target.value)}
+                                                    className={`field py-2 px-1 text-center ${c.key === 'points' ? 'font-bold text-brand' : ''}`}
+                                                />
+                                            </td>
+                                        ))}
+                                        <td className="px-3 py-2 text-right">
+                                            {row.team && (
+                                                <button type="button" onClick={() => resign(row.team)} className="btn btn-sm btn-ghost hover:text-red-400" title="The team has left the league">
+                                                    Resigned
+                                                </button>
+                                            )}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

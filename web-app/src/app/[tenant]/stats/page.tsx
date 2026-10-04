@@ -1,204 +1,144 @@
+import Link from 'next/link';
+import type { ReactNode } from 'react';
 import { getServerSDK } from '@/lib/sdk';
 import { AnimatedCounter } from '@/components/ui';
 import { FunStatsCard } from '@/components/FunStatsCard';
+import { EmptyNote, PageHeader } from '@/components/ui/Page';
+import { Icon, type IconName } from '@/components/ui/Icon';
+
+interface RankedPlayer {
+  id?: string;
+  name?: string;
+  stats?: { goals?: unknown; assists?: unknown };
+}
+
+const num = (v: unknown): number => (typeof v === 'number' && !Number.isNaN(v) ? v : Number(v) || 0);
+
+function readTeamStats(raw: unknown) {
+  if (!raw || typeof raw !== 'object') return null;
+  const r = raw as Record<string, unknown>;
+  return {
+    played: num(r.played),
+    won: num(r.won),
+    drawn: num(r.drawn),
+    lost: num(r.lost),
+    goalsFor: num(r.goalsFor),
+    goalsAgainst: num(r.goalsAgainst),
+    cleanSheets: num(r.cleanSheets),
+  };
+}
+
+function rankedList(raw: unknown, key: 'goals' | 'assists'): RankedPlayer[] {
+  return (Array.isArray(raw) ? (raw as RankedPlayer[]) : []).filter((p) => p && p.name && num(p.stats?.[key]) > 0);
+}
 
 export default async function StatsPage({ params }: { params: Promise<{ tenant: string }> }) {
   const { tenant } = await params;
   const sdk = getServerSDK(tenant);
 
-  const [teamStatsRes, topScorersRes, topAssistsRes] = await Promise.allSettled([
+  const [rawStats, rawScorers, rawAssists] = await Promise.all([
     sdk.getTeamStats().catch(() => null),
     sdk.getTopScorers(10).catch(() => []),
     sdk.getTopAssists(10).catch(() => []),
   ]);
 
-  const rawStats = teamStatsRes.status === 'fulfilled' ? teamStatsRes.value : null;
-  const rawScorers = topScorersRes.status === 'fulfilled' ? topScorersRes.value : [];
-  const rawAssists = topAssistsRes.status === 'fulfilled' ? topAssistsRes.value : [];
-
-  const num = (v: unknown): number => (typeof v === 'number' && !Number.isNaN(v) ? v : Number(v) || 0);
-  const stats = rawStats && typeof rawStats === 'object'
-    ? {
-      played: num((rawStats as any).played),
-      won: num((rawStats as any).won),
-      drawn: num((rawStats as any).drawn),
-      lost: num((rawStats as any).lost),
-      goalsFor: num((rawStats as any).goalsFor),
-      goalsAgainst: num((rawStats as any).goalsAgainst),
-      cleanSheets: num((rawStats as any).cleanSheets),
-    }
-    : null;
+  const stats = readTeamStats(rawStats);
   const hasTeamStats = !!stats && stats.played > 0;
-
-  const scorers = (Array.isArray(rawScorers) ? rawScorers : [])
-    .filter((player: any) => player && player.name && num(player.stats?.goals) > 0);
-  const assisters = (Array.isArray(rawAssists) ? rawAssists : [])
-    .filter((player: any) => player && player.name && num(player.stats?.assists) > 0);
+  const scorers = rankedList(rawScorers, 'goals');
+  const assisters = rankedList(rawAssists, 'assists');
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-black pb-20">
-      {/* Header */}
-      <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 py-12 px-6">
-        <div className="container">
-          <h1 className="text-4xl font-black uppercase tracking-tighter mb-2">Team Statistics</h1>
-          <p className="text-gray-500">Comprehensive performance data and player rankings.</p>
-        </div>
-      </div>
+    <div className="container py-8 md:py-12 space-y-10">
+      <PageHeader eyebrow="Numbers" title="Stats" subtitle="How the season is going, and who's scoring and setting them up." />
 
-      <div className="container px-6 py-12 space-y-8">
-        {/* Fun Stats Card */}
-        <FunStatsCard tenant={tenant} />
-
-        {/* Team Overview Card - Full Width */}
-        <section className="bg-white dark:bg-gray-800 chamfer-lg shadow-sm border border-gray-100 dark:border-gray-700 p-8">
-          <h2 className="text-2xl font-black uppercase tracking-tight mb-8 text-brand">Season Overview</h2>
-
-          {hasTeamStats ? (
-            <>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-              <div className="p-4 bg-gray-50 dark:bg-gray-900 chamfer-sm text-center">
-                <div className="text-3xl font-black text-gray-900 dark:text-white">
-                  <AnimatedCounter value={stats!.played} />
+      <section aria-labelledby="season-overview">
+        <h2 id="season-overview" className="text-2xl italic mb-4">This season</h2>
+        {hasTeamStats && stats ? (
+          <div className="card">
+            <dl className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+              {[
+                { label: 'Played', value: stats.played },
+                { label: 'Won', value: stats.won, accent: true },
+                { label: 'Goals scored', value: stats.goalsFor },
+                { label: 'Clean sheets', value: stats.cleanSheets },
+              ].map((s) => (
+                <div key={s.label} className="bg-surface-raised border border-border chamfer-sm p-4 text-center flex flex-col-reverse">
+                  <dt className="text-xs font-bold text-muted uppercase tracking-wider">{s.label}</dt>
+                  <dd className={`font-display text-4xl font-extrabold ${s.accent ? 'text-brand' : ''}`}>
+                    <AnimatedCounter value={s.value} />
+                  </dd>
                 </div>
-                <div className="text-xs font-bold text-gray-400 uppercase tracking-wider">Matches</div>
-              </div>
-              <div className="p-4 bg-gray-50 dark:bg-gray-900 chamfer-sm text-center">
-                <div className="text-3xl font-black text-green-500">
-                  <AnimatedCounter value={stats!.won} />
+              ))}
+            </dl>
+            <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-8">
+              {[
+                { label: 'Drawn', value: String(stats.drawn) },
+                { label: 'Lost', value: String(stats.lost) },
+                { label: 'Goals conceded', value: String(stats.goalsAgainst) },
+                { label: 'Win rate', value: `${Math.round((stats.won / stats.played) * 100)}%` },
+              ].map((row) => (
+                <div key={row.label} className="flex items-center justify-between py-3 border-b border-border">
+                  <dt className="text-muted">{row.label}</dt>
+                  <dd className="font-bold">{row.value}</dd>
                 </div>
-                <div className="text-xs font-bold text-gray-400 uppercase tracking-wider">Wins</div>
-              </div>
-              <div className="p-4 bg-gray-50 dark:bg-gray-900 chamfer-sm text-center">
-                <div className="text-3xl font-black text-gray-900 dark:text-white">
-                  <AnimatedCounter value={stats!.goalsFor} />
-                </div>
-                <div className="text-xs font-bold text-gray-400 uppercase tracking-wider">Goals Scored</div>
-              </div>
-              <div className="p-4 bg-gray-50 dark:bg-gray-900 chamfer-sm text-center">
-                <div className="text-3xl font-black text-blue-500">
-                  <AnimatedCounter value={stats!.cleanSheets} />
-                </div>
-                <div className="text-xs font-bold text-gray-400 uppercase tracking-wider">Clean Sheets</div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="flex items-center justify-between p-3 border-b border-gray-100 dark:border-gray-700">
-                <span className="font-medium text-gray-600 dark:text-gray-300">Draws</span>
-                <span className="font-bold">{stats!.drawn}</span>
-              </div>
-              <div className="flex items-center justify-between p-3 border-b border-gray-100 dark:border-gray-700">
-                <span className="font-medium text-gray-600 dark:text-gray-300">Losses</span>
-                <span className="font-bold">{stats!.lost}</span>
-              </div>
-              <div className="flex items-center justify-between p-3 border-b border-gray-100 dark:border-gray-700">
-                <span className="font-medium text-gray-600 dark:text-gray-300">Goals Conceded</span>
-                <span className="font-bold">{stats!.goalsAgainst}</span>
-              </div>
-              <div className="flex items-center justify-between p-3 border-b border-gray-100 dark:border-gray-700">
-                <span className="font-medium text-gray-600 dark:text-gray-300">Win Rate</span>
-                <span className="font-bold">{Math.round((stats!.won / stats!.played) * 100)}%</span>
-              </div>
-            </div>
-            </>
-          ) : (
-            <p className="text-gray-500 dark:text-gray-400 font-medium">Stats will appear once results are added.</p>
-          )}
-        </section>
-
-        {/* Player Statistics */}
-        {scorers.length > 0 || assisters.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-8">
-            {/* Top Scorers */}
-            <StatCard title="Top Scorers ⚽" icon="⚽">
-              {scorers.length ? scorers.map((player: any, index: number) => (
-                <PlayerStatRow
-                  key={player.id ?? player.name}
-                  rank={index + 1}
-                  name={player.name}
-                  stat={num(player.stats?.goals)}
-                  isTop={index === 0}
-                />
-              )) : <p className="text-gray-500 dark:text-gray-400 font-medium">No goals recorded yet.</p>}
-            </StatCard>
-
-            {/* Top Assists */}
-            <StatCard title="Top Assists" icon="🎯">
-              {assisters.length ? assisters.map((player: any, index: number) => (
-                <PlayerStatRow
-                  key={player.id ?? player.name}
-                  rank={index + 1}
-                  name={player.name}
-                  stat={num(player.stats?.assists)}
-                  isTop={index === 0}
-                />
-              )) : <p className="text-gray-500 dark:text-gray-400 font-medium">No assists recorded yet.</p>}
-            </StatCard>
+              ))}
+            </dl>
           </div>
         ) : (
-          <section className="bg-white dark:bg-gray-800 chamfer-lg shadow-sm border border-gray-100 dark:border-gray-700 p-8">
-            <h2 className="text-2xl font-black uppercase tracking-tight mb-4 text-brand">Player Rankings</h2>
-            <p className="text-gray-500 dark:text-gray-400 font-medium">Player rankings aren't available yet.</p>
-          </section>
+          <EmptyNote icon="chart" title="No stats yet" action={<Link href={`/${tenant}/fixtures`} className="btn btn-secondary">See fixtures</Link>}>
+            The season&apos;s numbers show here after the first result is in.
+          </EmptyNote>
         )}
-      </div>
+      </section>
+
+      <FunStatsCard tenant={tenant} />
+
+      {(scorers.length > 0 || assisters.length > 0) && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Leaderboard title="Top scorers" icon="ball" empty="No goals recorded yet.">
+            {scorers.map((p, i) => (
+              <PlayerStatRow key={p.id ?? p.name} tenant={tenant} id={p.id} rank={i + 1} name={String(p.name)} stat={num(p.stats?.goals)} unit="goals" />
+            ))}
+          </Leaderboard>
+          <Leaderboard title="Most assists" icon="target" empty="No assists recorded yet.">
+            {assisters.map((p, i) => (
+              <PlayerStatRow key={p.id ?? p.name} tenant={tenant} id={p.id} rank={i + 1} name={String(p.name)} stat={num(p.stats?.assists)} unit="assists" />
+            ))}
+          </Leaderboard>
+        </div>
+      )}
     </div>
   );
 }
 
-// Reusable StatCard Component
-function StatCard({ title, icon, children }: { title: string; icon: string; children: React.ReactNode }) {
+function Leaderboard({ title, icon, empty, children }: { title: string; icon: IconName; empty: string; children: ReactNode[] }) {
   return (
-    <section className="bg-white dark:bg-gray-800 chamfer-lg shadow-sm border border-gray-100 dark:border-gray-700 p-8">
-      <h2 className="text-2xl font-black uppercase tracking-tight mb-6 flex items-center gap-3">
-        <span className="text-brand">{title.replace(/[⚽🅰️👕⏱️🟨🟥🎯]/g, '').trim()}</span>
-        <span className="text-2xl">{icon}</span>
+    <section className="card">
+      <h2 className="text-2xl italic mb-4 flex items-center gap-2">
+        <Icon name={icon} className="w-6 h-6 text-brand" /> {title}
       </h2>
-      <div className="space-y-3">
-        {children}
-      </div>
+      {children.length ? <ol className="space-y-2">{children}</ol> : <p className="text-muted">{empty}</p>}
     </section>
   );
 }
 
-// Reusable PlayerStatRow Component
-function PlayerStatRow({
-  rank,
-  name,
-  stat,
-  suffix = '',
-  isTop = false,
-}: {
-  rank: number;
-  name: string;
-  stat: number;
-  suffix?: string;
-  isTop?: boolean;
-}) {
+function PlayerStatRow({ tenant, id, rank, name, stat, unit }: { tenant: string; id?: string; rank: number; name: string; stat: number; unit: string }) {
+  const top = rank === 1;
+  const body = (
+    <>
+      <span className={`w-9 h-9 shrink-0 hexagon flex items-center justify-center font-display text-lg font-extrabold ${top ? 'bg-brand-foreground text-brand' : 'bg-background text-muted'}`}>
+        {rank}
+      </span>
+      <span className="flex-1 font-bold min-w-0 break-words">{name}</span>
+      <span className="font-display text-2xl font-extrabold tabular-nums">
+        {stat}<span className="sr-only"> {unit}</span>
+      </span>
+    </>
+  );
+  const className = `flex items-center gap-3 p-3 chamfer-sm min-h-[48px] transition-colors ${top ? 'bg-brand text-brand-foreground' : 'bg-surface-raised hover:text-brand'}`;
   return (
-    <div
-      className={`
-        flex items-center gap-4 p-4 chamfer-sm transition-all
-        ${isTop
-          ? 'bg-brand text-brand-foreground shadow-lg transform scale-105'
-          : 'bg-gray-50 dark:bg-gray-900 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800'
-        }
-      `}
-    >
-      <div className={`
-        w-10 h-10 rotate-45 flex items-center justify-center font-black text-lg
-        ${isTop ? 'bg-white text-brand' : 'bg-gray-200 dark:bg-gray-700 text-gray-500'}
-      `}>
-        <span className="-rotate-45">{rank}</span>
-      </div>
-
-      <div className="flex-1 font-bold text-lg">
-        {name}
-      </div>
-
-      <div className="font-black text-2xl">
-        {stat}{suffix}
-      </div>
-    </div>
+    <li>
+      {id ? <Link href={`/${tenant}/squad/${id}`} className={className}>{body}</Link> : <div className={className}>{body}</div>}
+    </li>
   );
 }

@@ -14,6 +14,8 @@ export const viewport: Viewport = {
   themeColor: '#0B0D0F',
   width: 'device-width',
   initialScale: 1,
+  // The installed app draws under the phone's home bar; the shell pads by the safe area
+  viewportFit: 'cover',
 };
 
 export default function OwnerLayout({ children }: { children: React.ReactNode }) {

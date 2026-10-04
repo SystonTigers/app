@@ -1,18 +1,26 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import { apiFetch } from '@/lib/session';
+import { apiFetch, errorMessage } from '@/lib/session';
+import { formatLongDate } from '@/lib/format';
+import { canAccessAdmin, useUserRole } from '@/hooks/useUserRole';
+import { EmptyNote, PageHeader } from '@/components/ui/Page';
+import { Icon } from '@/components/ui/Icon';
 
+/** As GET /api/v1/training/sessions returns it */
 interface TrainingSession {
     id: string;
     session_date: string;
     session_time: string;
     team: string;
     focus: string;
+    location?: string | null;
     status: string;
+    attendance?: { present: number; marked: number };
 }
 
+/** As GET /api/v1/training/drills returns it */
 interface Drill {
     id: string;
     name: string;
@@ -22,898 +30,481 @@ interface Drill {
     description: string;
 }
 
-interface PerformanceRecord {
-    id: string;
-    playerId: string;
-    playerName: string;
-    drillType: 'Sprint (40m)' | 'Bleep Test' | 'Parachute Run' | 'Agility Test';
-    value: string;
-    date: string;
-    trend: 'up' | 'down' | 'neutral';
-}
+type Level = 'low' | 'medium' | 'high';
 
 interface TacticsConfig {
     formation: string;
     playingStyle: string;
-    pressingIntensity: 'low' | 'medium' | 'high';
+    pressingIntensity: Level;
     buildUpPlay: 'short' | 'mixed' | 'direct';
     defensiveLine: 'deep' | 'medium' | 'high';
     width: 'narrow' | 'normal' | 'wide';
     setPlayFocus: string[];
     phases?: {
-        attacking?: any;
-        defensive?: any;
+        attacking?: { width?: string; tempo?: string };
+        defensive?: { width?: string; aggression?: string };
     };
 }
 
-interface TacticalReview {
-    id: string;
-    videoId: string;
-    videoName: string;
-    formation: string;
-    status: 'pending' | 'analyzing' | 'complete';
-    score: number | null;
-    insights: string[];
-    date: string;
-}
+/** The server's drill categories (services/drills.ts) */
+const DRILL_CATEGORIES = ['Warm-up', 'Passing', 'Shooting', 'Dribbling', 'Defending', 'Tactical', 'Fitness', 'Cool-down', 'Goalkeeping', 'Technical'];
+const FORMATIONS = ['4-4-2', '4-3-3', '3-5-2', '4-2-3-1', '5-3-2', '4-1-4-1', '3-4-2-1', '3-4-3', '4-1-2-1-2', '2-3-1', '3-2-1', '2-3-2-1', '3-3-2'];
+const STYLES = ['Balanced', 'Possession', 'Counter-Attack', 'High Press', 'Direct Play'];
+
+const DEFAULT_TACTICS: TacticsConfig = {
+    formation: '4-4-2',
+    playingStyle: 'Balanced',
+    pressingIntensity: 'medium',
+    buildUpPlay: 'mixed',
+    defensiveLine: 'medium',
+    width: 'normal',
+    setPlayFocus: ['corners', 'free-kicks'],
+    phases: { attacking: { width: 'wide', tempo: 'high' }, defensive: { width: 'narrow', aggression: 'medium' } },
+};
+
+const today = () => new Date().toISOString().slice(0, 10);
+const blankSession = () => ({ date: today(), time: '18:30', team: '', location: '', focus: '' });
+const blankDrill = () => ({ name: '', category: 'Passing', duration: '15', difficulty: 'intermediate', description: '' });
+
+type View = 'sessions' | 'drills' | 'tactics';
 
 interface TrainingToolsProps {
     tenant: string;
 }
 
+/** Choice buttons for one setting (radio-style). */
+function Choice<T extends string>({ label, options, value, onChange, disabled }: { label: string; options: readonly T[]; value: T | undefined; onChange: (v: T) => void; disabled?: boolean }) {
+    return (
+        <fieldset>
+            <legend className="label">{label}</legend>
+            <div className="flex gap-2">
+                {options.map((o) => (
+                    <button
+                        key={o}
+                        type="button"
+                        aria-pressed={value === o}
+                        disabled={disabled}
+                        onClick={() => onChange(o)}
+                        className={`btn btn-sm flex-1 min-h-[40px] px-2 disabled:opacity-100 disabled:cursor-default ${value === o ? 'btn-primary' : 'btn-secondary'}`}
+                    >
+                        {o}
+                    </button>
+                ))}
+            </div>
+        </fieldset>
+    );
+}
 
+function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
+    useEffect(() => {
+        const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+    }, [onClose]);
+    return (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-background/80 backdrop-blur-sm p-4" role="dialog" aria-modal="true" aria-label={title}>
+            <div className="card w-full max-w-md max-h-[90vh] overflow-y-auto">
+                <h2 className="text-2xl italic mb-5">{title}</h2>
+                {children}
+            </div>
+        </div>
+    );
+}
 
+/** Training: sessions, the club's drills and the team's tactics. Staff plan and edit; members see the plan. */
 export function TrainingTools({ tenant }: TrainingToolsProps) {
+    const router = useRouter();
+    const { role } = useUserRole();
+    const isStaff = canAccessAdmin(role);
+    const [view, setView] = useState<View>('sessions');
     const [sessions, setSessions] = useState<TrainingSession[]>([]);
     const [drills, setDrills] = useState<Drill[]>([]);
-    const [showNewDrillModal, setShowNewDrillModal] = useState(false);
-    const [newDrill, setNewDrill] = useState<Partial<Drill>>({
-        name: '', category: 'Technical', duration: '15 min', difficulty: 'intermediate', description: ''
-    });
-    const [selectedSession, setSelectedSession] = useState<TrainingSession | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [view, setView] = useState<'sessions' | 'drills' | 'performance' | 'tactics'>('sessions');
-    const router = useRouter();
-
-    const [showNewSessionModal, setShowNewSessionModal] = useState(false);
-    const [newSession, setNewSession] = useState({
-        date: new Date().toISOString().split('T')[0],
-        time: '19:00',
-        team: 'First Team',
-        focus: ''
-    });
-
-    // Performance records (none are stored yet, so this starts empty)
-    const [records, setRecords] = useState<PerformanceRecord[]>([]);
-
-    // Tactics configuration state
-    // Tactics configuration state
+    const [tactics, setTactics] = useState<TacticsConfig>(DEFAULT_TACTICS);
+    const [tacticsSaved, setTacticsSaved] = useState(false);
     const [phase, setPhase] = useState<'attacking' | 'defensive'>('attacking');
-    const [tactics, setTactics] = useState<TacticsConfig>({
-        formation: '4-4-2',
-        playingStyle: 'Balanced',
-        pressingIntensity: 'medium',
-        buildUpPlay: 'mixed',
-        defensiveLine: 'medium',
-        width: 'normal',
-        setPlayFocus: ['corners', 'free-kicks'],
-        phases: {
-            attacking: { width: 'wide', tempo: 'fast' },
-            defensive: { width: 'narrow', aggression: 'medium' }
-        }
-    });
+    const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState('');
+    const [notice, setNotice] = useState('');
+    const [error, setError] = useState('');
+    const [busy, setBusy] = useState(false);
+    const [sessionForm, setSessionForm] = useState<ReturnType<typeof blankSession> | null>(null);
+    const [drillForm, setDrillForm] = useState<ReturnType<typeof blankDrill> | null>(null);
+    const [formError, setFormError] = useState('');
 
-    // Tactical AI reviews
-    const [tacticalReviews, setTacticalReviews] = useState<TacticalReview[]>([]);
-
-    const [analyzingTactics, setAnalyzingTactics] = useState(false);
-
-    useEffect(() => {
-        loadSessions();
-        loadDrills();
-        loadTactics();
-    }, [tenant]);
-
-    const loadTactics = async () => {
+    const load = useCallback(async () => {
+        setLoading(true);
+        setLoadError('');
         try {
-            const token = localStorage.getItem('token');
-            const res = await apiFetch('/api/v1/tactics', {
-                headers: { Authorization: `Bearer ${token}` },
-            });
-            const data = await res.json();
-            if (data.success && data.data) {
-                setTactics(data.data);
+            const [sRes, dRes, tRes] = await Promise.all([
+                apiFetch('/api/v1/training/sessions'),
+                apiFetch('/api/v1/training/drills'),
+                apiFetch('/api/v1/tactics'),
+            ]);
+            if (!sRes.ok) {
+                setLoadError(await errorMessage(sRes, "We couldn't load training. Please try again."));
+                return;
             }
-        } catch (error) {
-            console.error('Failed to load tactics:', error);
-        }
-    };
-
-    const saveTactics = async () => {
-        try {
-            const token = localStorage.getItem('token');
-            const res = await apiFetch('/api/v1/tactics', {
-                method: 'POST',
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(tactics)
-            });
-            const data = await res.json();
-            if (data.success) {
-                alert('Tactics saved successfully!');
-            } else {
-                alert('Failed to save tactics');
+            const s = await sRes.json();
+            setSessions(Array.isArray(s.data) ? s.data : []);
+            if (dRes.ok) {
+                const d = await dRes.json();
+                setDrills(Array.isArray(d.data) ? d.data : []);
             }
-        } catch (error) {
-            console.error('Failed to save tactics:', error);
-            alert('Error saving tactics');
-        }
-    };
-
-    const createDrill = async () => {
-        try {
-            const token = localStorage.getItem('token');
-            const res = await apiFetch('/api/v1/training/drills', {
-                method: 'POST',
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    items: [], // Mocking required field equipment/players for now if needed, or update backend to be optional
-                    ...newDrill,
-                    players: '10+',
-                    equipment: ['Cones', 'Bibs'],
-                    focus: ['Skill']
-                })
-            });
-            const data = await res.json();
-            if (data.success) {
-                loadDrills();
-                setShowNewDrillModal(false);
-                setNewDrill({ name: '', category: 'Technical', duration: '15 min', difficulty: 'intermediate', description: '' });
+            if (tRes.ok) {
+                const t = await tRes.json();
+                if (t.data && typeof t.data === 'object') {
+                    setTactics({ ...DEFAULT_TACTICS, ...t.data });
+                    setTacticsSaved(true);
+                }
             }
-        } catch (error) {
-            console.error('Failed to create drill:', error);
-        }
-    };
-
-    const createSession = async () => {
-        try {
-            const token = localStorage.getItem('token');
-            const res = await apiFetch('/api/v1/training/sessions', {
-                method: 'POST',
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(newSession)
-            });
-            const data = await res.json();
-            if (data.success) {
-                loadSessions();
-                setShowNewSessionModal(false);
-                setNewSession({ date: new Date().toISOString().split('T')[0], time: '19:00', team: 'First Team', focus: '' });
-            }
-        } catch (error) {
-            console.error('Failed to create session:', error);
-        }
-    };
-
-    const startDiscussion = async (type: 'drill' | 'plan', item: any) => {
-        try {
-            const token = localStorage.getItem('token');
-            const res = await apiFetch('/api/v1/discussions', {
-                method: 'POST',
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    category: 'training',
-                    title: `Discussing: ${type === 'drill' ? item.name : item.focus}`,
-                    video_id: type === 'drill' ? item.demo_video_url : null,
-                    related_entity_type: type,
-                    related_entity_id: item.id
-                })
-            });
-            const data = await res.json();
-            if (data.success) {
-                router.push(`/${tenant}/team/discussions/${data.data.id}`);
-            }
-        } catch (error) {
-            console.error('Failed to start discussion:', error);
-        }
-    };
-
-    const loadSessions = async () => {
-        try {
-            const token = localStorage.getItem('token');
-            const res = await apiFetch('/api/v1/training/sessions', {
-                headers: { Authorization: `Bearer ${token}` },
-            });
-            const data = await res.json();
-            if (data.success) {
-                setSessions(data.data || []);
-            }
-        } catch (error) {
-            console.error('Failed to load sessions:', error);
+        } catch (err) {
+            console.error('Failed to load training:', err);
+            setLoadError("We couldn't load training. Check your connection and try again.");
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
-    const loadDrills = async () => {
+    useEffect(() => {
+        load();
+    }, [load, tenant]);
+
+    const closeSessionForm = useCallback(() => setSessionForm(null), []);
+    const closeDrillForm = useCallback(() => setDrillForm(null), []);
+
+    async function createSession(e: FormEvent) {
+        e.preventDefault();
+        if (!sessionForm) return;
+        setBusy(true);
+        setFormError('');
         try {
-            const token = localStorage.getItem('token');
-            const res = await apiFetch('/api/v1/training/drills', {
-                headers: { Authorization: `Bearer ${token}` },
+            const res = await apiFetch('/api/v1/training/sessions', {
+                method: 'POST',
+                body: JSON.stringify({
+                    date: sessionForm.date,
+                    time: sessionForm.time,
+                    focus: sessionForm.focus,
+                    ...(sessionForm.team.trim() ? { team: sessionForm.team } : {}),
+                    ...(sessionForm.location.trim() ? { location: sessionForm.location } : {}),
+                }),
             });
-            const data = await res.json();
-            if (data.success) {
-                setDrills(data.data || []);
+            if (!res.ok) {
+                setFormError(await errorMessage(res, "That session didn't save. Please try again."));
+                return;
             }
-        } catch (error) {
-            console.error('Failed to load drills:', error);
+            setSessionForm(null);
+            setNotice('Session planned.');
+            await load();
+        } catch {
+            setFormError("That session didn't save. Check your connection and try again.");
+        } finally {
+            setBusy(false);
         }
-    };
-
-    const getDifficultyColor = (difficulty: string) => {
-        switch (difficulty) {
-            case 'beginner': return 'bg-green-100 text-green-800';
-            case 'intermediate': return 'bg-yellow-100 text-yellow-800';
-            case 'advanced': return 'bg-red-100 text-red-800';
-            default: return 'bg-gray-100 text-gray-800';
-        }
-    };
-
-    if (loading) {
-        return <div className="p-8">Loading training tools...</div>;
     }
 
+    async function createDrill(e: FormEvent) {
+        e.preventDefault();
+        if (!drillForm) return;
+        setBusy(true);
+        setFormError('');
+        try {
+            const res = await apiFetch('/api/v1/training/drills', {
+                method: 'POST',
+                body: JSON.stringify({
+                    name: drillForm.name,
+                    category: drillForm.category,
+                    durationMinutes: Number(drillForm.duration),
+                    difficulty: drillForm.difficulty,
+                    description: drillForm.description,
+                }),
+            });
+            if (!res.ok) {
+                setFormError(await errorMessage(res, "That drill didn't save. Please try again."));
+                return;
+            }
+            setDrillForm(null);
+            setNotice('Drill added to the library.');
+            await load();
+        } catch {
+            setFormError("That drill didn't save. Check your connection and try again.");
+        } finally {
+            setBusy(false);
+        }
+    }
+
+    async function saveTactics() {
+        setBusy(true);
+        setError('');
+        setNotice('');
+        try {
+            const res = await apiFetch('/api/v1/tactics', { method: 'POST', body: JSON.stringify(tactics) });
+            if (!res.ok) {
+                setError(await errorMessage(res, "The tactics didn't save. Please try again."));
+                return;
+            }
+            setTacticsSaved(true);
+            setNotice('Tactics saved.');
+        } catch {
+            setError("The tactics didn't save. Check your connection and try again.");
+        } finally {
+            setBusy(false);
+        }
+    }
+
+    async function discuss(type: 'drill' | 'plan', id: string, title: string) {
+        setError('');
+        try {
+            const res = await apiFetch('/api/v1/discussions', {
+                method: 'POST',
+                body: JSON.stringify({ category: 'training', title: `Discussing: ${title}`, related_entity_type: type, related_entity_id: id }),
+            });
+            if (!res.ok) {
+                setError(await errorMessage(res, "We couldn't start the chat. Please try again."));
+                return;
+            }
+            const data = await res.json();
+            router.push(`/${tenant}/team/discussions/${data.data.id}`);
+        } catch {
+            setError("We couldn't start the chat. Check your connection and try again.");
+        }
+    }
+
+    const setPhaseValue = (key: 'width' | 'tempo' | 'aggression', value: string) =>
+        setTactics({ ...tactics, phases: { ...tactics.phases, [phase]: { ...tactics.phases?.[phase], [key]: value } } });
+
+    const tabs: Array<{ id: View; label: string }> = [
+        { id: 'sessions', label: 'Sessions' },
+        { id: 'drills', label: 'Drill library' },
+        { id: 'tactics', label: 'Tactics' },
+    ];
+
+    const action = isStaff && view === 'sessions'
+        ? <button type="button" onClick={() => { setFormError(''); setSessionForm(blankSession()); }} className="btn btn-primary"><Icon name="plus" className="w-5 h-5" /> Plan a session</button>
+        : isStaff && view === 'drills'
+            ? <button type="button" onClick={() => { setFormError(''); setDrillForm(blankDrill()); }} className="btn btn-primary"><Icon name="plus" className="w-5 h-5" /> Add a drill</button>
+            : undefined;
+
     return (
-        <div className="flex flex-col h-full bg-white dark:bg-gray-900 rounded-3xl overflow-hidden shadow-2xl border border-gray-100 dark:border-gray-800">
-            <div className="bg-gray-900 text-white p-8 relative overflow-hidden flex-shrink-0">
-                <div className="absolute inset-0 bg-[url('/assets/pattern.png')] opacity-20 mix-blend-overlay" />
-                <div className="absolute inset-0 bg-gradient-to-r from-green-900 to-gray-900 opacity-90" />
+        <div>
+            <PageHeader eyebrow="Club" title="Training" subtitle={isStaff ? 'Plan sessions, build your drill library and set your tactics.' : "What's coming up at training, the drills we use and how we play."} actions={action} />
 
-                <div className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-4">
-                    <div>
-                        <h2 className="text-3xl font-black uppercase italic tracking-tighter mb-1">Training Centre</h2>
-                        <p className="text-green-100 font-medium">Plan sessions, manage drills, and track progress.</p>
-                    </div>
+            <div className="flex gap-2 overflow-x-auto scrollbar-none mb-6" role="tablist" aria-label="Training">
+                {tabs.map((t) => (
+                    <button key={t.id} type="button" role="tab" aria-selected={view === t.id} onClick={() => { setView(t.id); setNotice(''); setError(''); }} className={`btn btn-sm min-h-[40px] shrink-0 ${view === t.id ? 'btn-primary' : 'btn-secondary'}`}>
+                        {t.label}
+                    </button>
+                ))}
+            </div>
 
-                    <div className="flex gap-2">
-                        {view === 'sessions' && (
-                            <button
-                                onClick={() => setShowNewSessionModal(true)}
-                                className="px-6 py-2 bg-brand text-white rounded-xl font-bold hover:bg-brand/90 shadow-lg flex items-center gap-2 transition-all"
-                            >
-                                <span>+</span> Plan Session
-                            </button>
-                        )}
+            {notice && <p className="card border-brand/40 py-3 mb-6 flex items-center gap-2" role="status"><Icon name="check" className="w-5 h-5 text-brand" />{notice}</p>}
+            {error && <p className="card border-red-500/40 text-red-300 py-3 mb-6" role="alert">{error}</p>}
 
-                        <div className="flex bg-black/30 p-1 rounded-xl glass-panel">
-                            <button
-                                onClick={() => setView('sessions')}
-                                className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${view === 'sessions'
-                                    ? 'bg-white text-green-900 shadow-md'
-                                    : 'text-white/70 hover:text-white hover:bg-white/10'}`}
-                            >
-                                Sessions
-                            </button>
-                            <button
-                                onClick={() => setView('drills')}
-                                className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${view === 'drills'
-                                    ? 'bg-white text-green-900 shadow-md'
-                                    : 'text-white/70 hover:text-white hover:bg-white/10'}`}
-                            >
-                                Drill Library
-                            </button>
-                            <button
-                                onClick={() => setView('performance')}
-                                className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${view === 'performance'
-                                    ? 'bg-white text-green-900 shadow-md'
-                                    : 'text-white/70 hover:text-white hover:bg-white/10'}`}
-                            >
-                                Records
-                            </button>
-                            <button
-                                onClick={() => setView('tactics')}
-                                className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${view === 'tactics'
-                                    ? 'bg-white text-green-900 shadow-md'
-                                    : 'text-white/70 hover:text-white hover:bg-white/10'}`}
-                            >
-                                ⚽ Tactics
-                            </button>
-                        </div>
-                    </div>
+            {loading ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" aria-busy="true" aria-label="Loading training">
+                    {[1, 2, 3].map((i) => <div key={i} className="h-36 card animate-pulse" />)}
                 </div>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-6 bg-gray-50 dark:bg-gray-950/50">
-                {view === 'sessions' ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {sessions.length === 0 ? (
-                            <div className="col-span-full flex flex-col items-center justify-center py-20 text-center opacity-60">
-                                <div className="text-6xl mb-4">📋</div>
-                                <h3 className="text-xl font-bold">No sessions planned</h3>
-                                <p className="text-sm">Create a new training session to get started.</p>
-                                <button
-                                    onClick={() => setShowNewSessionModal(true)}
-                                    className="mt-4 px-6 py-2 bg-brand text-white rounded-lg font-bold hover:bg-brand/90"
-                                >
-                                    Create Session
-                                </button>
-                            </div>
-                        ) : (
-                            sessions.map((session) => (
-                                <div
-                                    key={session.id}
-                                    className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm hover:shadow-lg transition-all border border-gray-100 dark:border-gray-700 group relative overflow-hidden"
-                                >
-                                    <div className="absolute top-0 right-0 p-4">
-                                        <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${session.status === 'completed' ? 'bg-green-100 text-green-700' :
-                                            session.status === 'cancelled' ? 'bg-red-100 text-red-700' :
-                                                'bg-blue-100 text-blue-700'
-                                            }`}>
-                                            {session.status}
-                                        </span>
-                                    </div>
-
-                                    <div className="mb-4">
-                                        <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">
-                                            {new Date(session.session_date).toLocaleDateString(undefined, { weekday: 'long' })}
-                                        </div>
-                                        <div className="text-2xl font-black text-gray-900 dark:text-white mb-1">
-                                            {session.focus}
-                                        </div>
-                                        <div className="text-sm font-medium text-brand">
-                                            {session.session_time}
-                                        </div>
-                                    </div>
-
-                                    <div className="flex items-center gap-2 text-sm text-gray-500 border-t border-gray-100 dark:border-gray-700 pt-4 mt-2">
-                                        <span className="flex items-center gap-1">
-                                            👥 {session.team}
-                                        </span>
-                                    </div>
-
-                                    <div className="mt-4 pt-2 opacity-0 group-hover:opacity-100 transition-opacity flex justify-end gap-2">
-                                        <button
-                                            onClick={() => startDiscussion('plan', session)}
-                                            className="text-sm font-bold text-gray-900 hover:text-brand flex items-center gap-1 px-3 py-1 bg-gray-100 dark:bg-gray-900 rounded-lg hover:bg-gray-200"
-                                        >
-                                            💬 Discuss
-                                        </button>
-                                        <button className="text-sm font-bold text-gray-900 hover:text-brand flex items-center gap-1">
-                                            View Plan &rarr;
-                                        </button>
-                                    </div>
-                                </div>
-                            ))
-                        )}
-
-                        {showNewSessionModal && (
-                            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-                                <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 w-full max-w-md shadow-2xl">
-                                    <h3 className="text-2xl font-black uppercase text-gray-900 dark:text-white mb-4">Plan Session</h3>
-                                    <div className="space-y-4">
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div>
-                                                <label className="block text-sm font-bold text-gray-500 mb-1">Date</label>
-                                                <input
-                                                    type="date"
-                                                    value={newSession.date}
-                                                    onChange={e => setNewSession({ ...newSession, date: e.target.value })}
-                                                    className="w-full p-3 rounded-xl bg-gray-50 dark:bg-gray-800 border-none font-bold"
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="block text-sm font-bold text-gray-500 mb-1">Time</label>
-                                                <input
-                                                    type="time"
-                                                    value={newSession.time}
-                                                    onChange={e => setNewSession({ ...newSession, time: e.target.value })}
-                                                    className="w-full p-3 rounded-xl bg-gray-50 dark:bg-gray-800 border-none font-bold"
-                                                />
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-bold text-gray-500 mb-1">Team</label>
-                                            <select
-                                                value={newSession.team}
-                                                onChange={e => setNewSession({ ...newSession, team: e.target.value })}
-                                                className="w-full p-3 rounded-xl bg-gray-50 dark:bg-gray-800 border-none font-bold"
-                                            >
-                                                <option>First Team</option>
-                                                <option>Reserves</option>
-                                                <option>U18s</option>
-                                                <option>U16s</option>
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-bold text-gray-500 mb-1">Session Focus</label>
-                                            <input
-                                                value={newSession.focus}
-                                                onChange={e => setNewSession({ ...newSession, focus: e.target.value })}
-                                                placeholder="e.g. Defensive Shape"
-                                                className="w-full p-3 rounded-xl bg-gray-50 dark:bg-gray-800 border-none font-bold"
-                                            />
-                                        </div>
-                                        <div className="flex gap-2 pt-2">
-                                            <button
-                                                onClick={() => setShowNewSessionModal(false)}
-                                                className="flex-1 py-3 rounded-xl font-bold bg-gray-100 hover:bg-gray-200"
-                                            >
-                                                Cancel
-                                            </button>
-                                            <button
-                                                onClick={createSession}
-                                                className="flex-1 py-3 rounded-xl font-bold bg-brand text-white hover:bg-green-600"
-                                            >
-                                                Save Session
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                ) : view === 'performance' ? (
-                    <div className="space-y-8">
-                        {/* Stats Summary Row */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl p-6 shadow-sm flex flex-col justify-center items-center text-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors">
-                                <div className="w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-2 text-2xl font-black">+</div>
-                                <h3 className="font-bold text-gray-900 dark:text-white">Log New Record</h3>
-                                <p className="text-xs text-gray-500">Record a player's achievement</p>
-                            </div>
-                        </div>
-
-                        {/* Records Table */}
-                        <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700 overflow-hidden shadow-sm">
-                            <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
-                                <h3 className="font-black text-xl uppercase tracking-tight">Recent Benchmarks</h3>
-                            </div>
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-left text-sm">
-                                    <thead className="bg-gray-50 dark:bg-gray-900/50 text-xs font-bold uppercase text-gray-500 tracking-wider">
-                                        <tr>
-                                            <th className="px-6 py-4">Player</th>
-                                            <th className="px-6 py-4">Drill / Test</th>
-                                            <th className="px-6 py-4">Result</th>
-                                            <th className="px-6 py-4">Date</th>
-                                            <th className="px-6 py-4 text-center">Trend</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                                        {records.length === 0 && (
-                                            <tr>
-                                                <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
-                                                    No benchmarks recorded yet.
-                                                </td>
-                                            </tr>
-                                        )}
-                                        {records.map((record) => (
-                                            <tr key={record.id} className="hover:bg-gray-50 dark:hover:bg-black/20 transition-colors group">
-                                                <td className="px-6 py-4 font-bold text-gray-900 dark:text-white">
-                                                    {record.playerName}
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <span className="px-3 py-1 rounded-full bg-gray-100 dark:bg-gray-700 text-xs font-bold text-gray-600 dark:text-gray-300">
-                                                        {record.drillType}
-                                                    </span>
-                                                </td>
-                                                <td className="px-6 py-4 font-black font-mono text-base">
-                                                    {record.value}
-                                                </td>
-                                                <td className="px-6 py-4 text-gray-500">
-                                                    {new Date(record.date).toLocaleDateString()}
-                                                </td>
-                                                <td className="px-6 py-4 text-center">
-                                                    <span className={`inline-block w-6 h-6 rounded-full flex items-center justify-center text-xs ${record.trend === 'up' ? 'text-green-500 bg-green-100' :
-                                                        record.trend === 'down' ? 'text-red-500 bg-red-100' :
-                                                            'text-gray-400 bg-gray-100'
-                                                        }`}>
-                                                        {record.trend === 'up' ? '▲' : record.trend === 'down' ? '▼' : '–'}
-                                                    </span>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                ) : view === 'tactics' ? (
-                    <div className="space-y-8">
-                        {/* Formation & Tactics Configuration */}
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            {/* Formation Selector */}
-                            <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700 overflow-hidden shadow-sm">
-                                <div className="p-6 border-b border-gray-100 dark:border-gray-700 bg-gradient-to-r from-brand to-brand/80">
-                                    <h3 className="font-black text-xl uppercase tracking-tight text-white">Formation</h3>
-                                </div>
-                                <div className="p-6">
-                                    <div className="grid grid-cols-3 gap-3 mb-6">
-                                        {['4-4-2', '4-3-3', '3-5-2', '4-2-3-1', '5-3-2', '4-1-4-1', '3-4-2-1', '3-4-3', '4-1-2-1-2'].map((f) => (
-                                            <button
-                                                key={f}
-                                                onClick={() => setTactics({ ...tactics, formation: f })}
-                                                className={`p-4 rounded-xl font-black text-sm transition-all ${tactics.formation === f
-                                                    ? 'bg-brand text-white shadow-lg scale-105'
-                                                    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-                                                    }`}
-                                            >
-                                                {f}
-                                            </button>
-                                        ))}
-                                    </div>
-
-                                    {/* Mini Pitch Visualization */}
-                                    <div className="aspect-[3/4] bg-gradient-to-b from-green-600 to-green-700 rounded-2xl p-4 relative border-4 border-white dark:border-gray-700 shadow-inner">
-                                        <div className="absolute inset-x-4 top-1/2 h-px bg-white/40" />
-                                        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 rounded-full border-2 border-white/40" />
-                                        <div className="absolute inset-x-4 bottom-4 h-16 border-2 border-white/40 rounded-t-lg" />
-                                        <div className="absolute inset-x-4 top-4 h-16 border-2 border-white/40 rounded-b-lg" />
-
-                                        {/* Formation dots */}
-                                        <div className="absolute inset-0 flex flex-col justify-around items-center py-8">
-                                            <div className="text-white font-black text-2xl drop-shadow-lg">{tactics.formation}</div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Tactics Configuration */}
-                            <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700 overflow-hidden shadow-sm">
-                                <div className="p-6 border-b border-gray-100 dark:border-gray-700 bg-gray-900">
-                                    <h3 className="font-black text-xl uppercase tracking-tight text-white">Tactical Setup</h3>
-                                </div>
-                                <div className="p-6 space-y-6">
-                                    {/* Playing Style */}
-                                    <div>
-                                        <label className="text-sm font-bold text-gray-500 uppercase tracking-wider block mb-2">Playing Style</label>
-                                        <select
-                                            value={tactics.playingStyle}
-                                            onChange={(e) => setTactics({ ...tactics, playingStyle: e.target.value })}
-                                            className="w-full p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 font-bold"
-                                        >
-                                            <option>Balanced</option>
-                                            <option>Possession</option>
-                                            <option>Counter-Attack</option>
-                                            <option>High Press</option>
-                                            <option>Direct Play</option>
-                                        </select>
-                                    </div>
-
-                                    {/* Pressing Intensity */}
-                                    <div>
-                                        <label className="text-sm font-bold text-gray-500 uppercase tracking-wider block mb-2">Pressing Intensity</label>
-                                        <div className="flex gap-2">
-                                            {(['low', 'medium', 'high'] as const).map((level) => (
-                                                <button
-                                                    key={level}
-                                                    onClick={() => setTactics({ ...tactics, pressingIntensity: level })}
-                                                    className={`flex-1 py-3 rounded-xl font-bold uppercase text-sm transition-all ${tactics.pressingIntensity === level
-                                                        ? level === 'high' ? 'bg-red-500 text-white' : level === 'medium' ? 'bg-yellow-500 text-white' : 'bg-green-500 text-white'
-                                                        : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
-                                                        }`}
-                                                >
-                                                    {level}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-
-                                    {/* Build Up Play */}
-                                    <div>
-                                        <label className="text-sm font-bold text-gray-500 uppercase tracking-wider block mb-2">Build-Up Play</label>
-                                        <div className="flex gap-2">
-                                            {(['short', 'mixed', 'direct'] as const).map((style) => (
-                                                <button
-                                                    key={style}
-                                                    onClick={() => setTactics({ ...tactics, buildUpPlay: style })}
-                                                    className={`flex-1 py-3 rounded-xl font-bold uppercase text-sm transition-all ${tactics.buildUpPlay === style
-                                                        ? 'bg-brand text-white'
-                                                        : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
-                                                        }`}
-                                                >
-                                                    {style}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-
-                                    {/* Defensive Line */}
-                                    <div>
-                                        <label className="text-sm font-bold text-gray-500 uppercase tracking-wider block mb-2">Defensive Line</label>
-                                        <div className="flex gap-2">
-                                            {(['deep', 'medium', 'high'] as const).map((line) => (
-                                                <button
-                                                    key={line}
-                                                    onClick={() => setTactics({ ...tactics, defensiveLine: line })}
-                                                    className={`flex-1 py-3 rounded-xl font-bold uppercase text-sm transition-all ${tactics.defensiveLine === line
-                                                        ? 'bg-blue-600 text-white'
-                                                        : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
-                                                        }`}
-                                                >
-                                                    {line}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-
-                                    <button
-                                        onClick={saveTactics}
-                                        className="w-full py-4 bg-gradient-to-r from-brand to-green-600 text-white font-black uppercase tracking-wider rounded-xl hover:scale-[1.02] transition-transform shadow-lg"
-                                    >
-                                        Save Tactics
-                                    </button>
-                                </div>
-                            </div>
-
-                            {/* Phase Configuration */}
-                            <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700 overflow-hidden shadow-sm">
-                                <div className="p-6 border-b border-gray-100 dark:border-gray-700 bg-gray-900 flex justify-between items-center">
-                                    <h3 className="font-black text-xl uppercase tracking-tight text-white">Phase Specific Instructions</h3>
-                                    <div className="flex bg-white/10 p-1 rounded-lg">
-                                        <button
-                                            onClick={() => setPhase('attacking')}
-                                            className={`px-4 py-1 rounded-md text-sm font-bold transition-all ${phase === 'attacking' ? 'bg-brand text-white' : 'text-white/70'}`}
-                                        >
-                                            Attacking
-                                        </button>
-                                        <button
-                                            onClick={() => setPhase('defensive')}
-                                            className={`px-4 py-1 rounded-md text-sm font-bold transition-all ${phase === 'defensive' ? 'bg-red-500 text-white' : 'text-white/70'}`}
-                                        >
-                                            Defensive
-                                        </button>
-                                    </div>
-                                </div>
-                                <div className="p-6">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <div>
-                                            <label className="text-sm font-bold text-gray-500 uppercase tracking-wider block mb-2">
-                                                {phase === 'attacking' ? 'Attacking Width' : 'Defensive Width'}
-                                            </label>
-                                            <div className="flex gap-2">
-                                                {['narrow', 'normal', 'wide'].map((w) => (
-                                                    <button
-                                                        key={w}
-                                                        onClick={() => setTactics({
-                                                            ...tactics,
-                                                            phases: {
-                                                                ...tactics.phases,
-                                                                [phase]: { ...tactics.phases?.[phase], width: w }
-                                                            }
-                                                        })}
-                                                        className={`flex-1 py-3 rounded-xl font-bold uppercase text-xs transition-all ${tactics.phases?.[phase]?.width === w
-                                                            ? 'bg-brand text-white'
-                                                            : 'bg-gray-100 dark:bg-gray-700'
-                                                            }`}
-                                                    >
-                                                        {w}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <label className="text-sm font-bold text-gray-500 uppercase tracking-wider block mb-2">
-                                                {phase === 'attacking' ? 'Tempo' : 'Aggression'}
-                                            </label>
-                                            <div className="flex gap-2">
-                                                {['low', 'medium', 'high'].map((l) => (
-                                                    <button
-                                                        key={l}
-                                                        onClick={() => setTactics({
-                                                            ...tactics,
-                                                            phases: {
-                                                                ...tactics.phases,
-                                                                [phase]: {
-                                                                    ...tactics.phases?.[phase],
-                                                                    [phase === 'attacking' ? 'tempo' : 'aggression']: l
-                                                                }
-                                                            }
-                                                        })}
-                                                        className={`flex-1 py-3 rounded-xl font-bold uppercase text-xs transition-all ${(phase === 'attacking' ? tactics.phases?.attacking?.tempo : tactics.phases?.defensive?.aggression) === l
-                                                            ? 'bg-brand text-white'
-                                                            : 'bg-gray-100 dark:bg-gray-700'
-                                                            }`}
-                                                    >
-                                                        {l}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* AI Tactical Analysis */}
-                        <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700 overflow-hidden shadow-sm">
-                            <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gradient-to-r from-purple-600 to-indigo-600">
-                                <div>
-                                    <h3 className="font-black text-xl uppercase tracking-tight text-white">🤖 AI Tactical Analysis</h3>
-                                    <p className="text-purple-200 text-sm">Auto-evaluate your tactics from match footage</p>
-                                </div>
-                                <button
-                                    onClick={() => {
-                                        setAnalyzingTactics(true);
-                                        setTimeout(() => setAnalyzingTactics(false), 3000);
-                                    }}
-                                    disabled={analyzingTactics}
-                                    className="px-6 py-3 bg-white text-purple-700 font-bold rounded-xl hover:bg-purple-50 transition-colors disabled:opacity-50"
-                                >
-                                    {analyzingTactics ? '⏳ Analyzing...' : '📹 Analyze Match'}
-                                </button>
-                            </div>
-
-                            <div className="p-6">
-                                {tacticalReviews.length === 0 ? (
-                                    <div className="text-center py-12 opacity-60">
-                                        <div className="text-6xl mb-4">🎬</div>
-                                        <h3 className="text-xl font-bold">No tactical reviews yet</h3>
-                                        <p className="text-sm">Upload match footage and run AI analysis</p>
-                                    </div>
-                                ) : (
-                                    <div className="space-y-4">
-                                        {tacticalReviews.map((review) => (
-                                            <div key={review.id} className="p-5 rounded-2xl border border-gray-100 dark:border-gray-700 hover:shadow-md transition-shadow bg-gray-50 dark:bg-gray-900/50">
-                                                <div className="flex items-start justify-between mb-4">
-                                                    <div>
-                                                        <h4 className="font-bold text-lg">{review.videoName}</h4>
-                                                        <div className="flex items-center gap-3 mt-1 text-sm text-gray-500">
-                                                            <span className="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded font-bold">{review.formation}</span>
-                                                            <span>{new Date(review.date).toLocaleDateString()}</span>
-                                                        </div>
-                                                    </div>
-                                                    <div className={`text-4xl font-black ${review.score! >= 75 ? 'text-green-500' :
-                                                        review.score! >= 50 ? 'text-yellow-500' : 'text-red-500'
-                                                        }`}>
-                                                        {review.score}
-                                                    </div>
-                                                </div>
-                                                <div className="flex flex-wrap gap-2">
-                                                    {review.insights.map((insight, i) => (
-                                                        <span key={i} className="px-3 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-full text-xs font-medium">
-                                                            {insight}
-                                                        </span>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </div>
+            ) : loadError ? (
+                <EmptyNote icon="alert" title="Training didn't load" action={<button type="button" onClick={load} className="btn btn-primary">Try again</button>}>
+                    <p role="alert">{loadError}</p>
+                </EmptyNote>
+            ) : view === 'sessions' ? (
+                sessions.length === 0 ? (
+                    <EmptyNote icon="clipboard" title="No sessions planned">
+                        {isStaff ? 'Plan the next session with the button above, and everyone at the club will see it.' : 'Sessions show here once the coaches plan them.'}
+                    </EmptyNote>
                 ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                        <div
-                            onClick={() => setShowNewDrillModal(true)}
-                            className="bg-white dark:bg-gray-800 rounded-2xl border-2 border-dashed border-gray-300 dark:border-gray-700 flex flex-col items-center justify-center p-6 cursor-pointer hover:border-brand hover:bg-brand/5 transition-all min-h-[200px]"
-                        >
-                            <div className="w-12 h-12 rounded-full bg-brand/10 text-brand flex items-center justify-center text-3xl mb-2">+</div>
-                            <h3 className="font-bold text-gray-900 dark:text-white">Create Custom Drill</h3>
+                    <ul className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {sessions.map((s) => (
+                            <li key={s.id} className="card flex flex-col">
+                                <div className="flex items-start justify-between gap-3 mb-2">
+                                    <p className="text-xs font-bold uppercase tracking-wider text-muted">{formatLongDate(s.session_date)}</p>
+                                    <span className={`text-[11px] font-bold uppercase tracking-wider ${s.status === 'cancelled' ? 'text-red-400' : 'text-brand'}`}>
+                                        {s.status === 'planned' ? 'Planned' : s.status}
+                                    </span>
+                                </div>
+                                <h3 className="text-2xl leading-tight mb-1 break-words">{s.focus}</h3>
+                                {s.session_time && <p className="font-display text-lg font-bold text-brand">{s.session_time}</p>}
+                                <div className="mt-3 pt-3 border-t border-border text-sm text-muted flex flex-wrap gap-x-4 gap-y-1">
+                                    {s.team && <span className="inline-flex items-center gap-1.5"><Icon name="users" className="w-4 h-4" />{s.team}</span>}
+                                    {s.location && <span className="inline-flex items-center gap-1.5"><Icon name="flag" className="w-4 h-4" />{s.location}</span>}
+                                    {isStaff && s.attendance && s.attendance.marked > 0 && (
+                                        <span className="inline-flex items-center gap-1.5"><Icon name="check" className="w-4 h-4" />{s.attendance.present} came</span>
+                                    )}
+                                </div>
+                                {isStaff && (
+                                    <button type="button" onClick={() => discuss('plan', s.id, s.focus)} className="btn btn-ghost btn-sm min-h-[40px] mt-3 self-start -ml-4">
+                                        <Icon name="chat" className="w-4 h-4" /> Discuss with coaches
+                                    </button>
+                                )}
+                            </li>
+                        ))}
+                    </ul>
+                )
+            ) : view === 'drills' ? (
+                drills.length === 0 ? (
+                    <EmptyNote icon="target" title="No club drills yet">
+                        {isStaff ? "Add the drills your coaches use, so everyone runs them the same way. The app's Drill Library has plenty more to start from." : "The club's own drills show here once the coaches add them."}
+                    </EmptyNote>
+                ) : (
+                    <ul className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                        {drills.map((d) => (
+                            <li key={d.id} className="card flex flex-col">
+                                <div className="flex justify-between items-start gap-3 mb-2 text-xs font-bold uppercase tracking-wider">
+                                    <span className="text-brand">{d.category}</span>
+                                    <span className="text-muted">{d.difficulty}</span>
+                                </div>
+                                <h3 className="text-xl leading-tight mb-2 break-words">{d.name}</h3>
+                                <p className="text-sm text-muted mb-4 flex-1 line-clamp-4">{d.description}</p>
+                                <div className="flex items-center justify-between gap-2">
+                                    <span className="text-sm font-bold text-muted inline-flex items-center gap-1.5"><Icon name="history" className="w-4 h-4" />{d.duration}</span>
+                                    {isStaff && (
+                                        <button type="button" onClick={() => discuss('drill', d.id, d.name)} className="btn btn-ghost btn-sm min-h-[40px]">
+                                            <Icon name="chat" className="w-4 h-4" /> Discuss
+                                        </button>
+                                    )}
+                                </div>
+                            </li>
+                        ))}
+                    </ul>
+                )
+            ) : !isStaff && !tacticsSaved ? (
+                <EmptyNote icon="clipboard" title="No tactics set yet">The coaches haven&apos;t set the team&apos;s shape yet.</EmptyNote>
+            ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <section className="card">
+                        <h2 className="text-2xl italic mb-4">Formation</h2>
+                        {isStaff && (
+                            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 mb-6" role="group" aria-label="Formation">
+                                {FORMATIONS.map((f) => (
+                                    <button key={f} type="button" aria-pressed={tactics.formation === f} onClick={() => setTactics({ ...tactics, formation: f })} className={`btn btn-sm min-h-[40px] px-2 ${tactics.formation === f ? 'btn-primary' : 'btn-secondary'}`}>
+                                        {f}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                        <div className="aspect-[3/4] max-h-[420px] mx-auto bg-surface-raised border border-border chamfer-lg relative hex-grid">
+                            <div className="absolute inset-x-4 top-1/2 h-px bg-brand/30" />
+                            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 rounded-full border border-brand/30" />
+                            <div className="absolute left-1/4 right-1/4 bottom-4 h-14 border border-brand/30 border-b-0" />
+                            <div className="absolute left-1/4 right-1/4 top-4 h-14 border border-brand/30 border-t-0" />
+                            <p className="absolute inset-0 flex items-center justify-center font-display text-5xl font-extrabold text-brand">{tactics.formation}</p>
                         </div>
+                    </section>
 
-                        {showNewDrillModal && (
-                            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-                                <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 w-full max-w-md shadow-2xl">
-                                    <h3 className="text-2xl font-black uppercase text-gray-900 dark:text-white mb-4">New Drill</h3>
-                                    <div className="space-y-4">
-                                        <div>
-                                            <label className="block text-sm font-bold text-gray-500 mb-1">Name</label>
-                                            <input
-                                                value={newDrill.name}
-                                                onChange={e => setNewDrill({ ...newDrill, name: e.target.value })}
-                                                className="w-full p-3 rounded-xl bg-gray-50 dark:bg-gray-800 border-none font-bold"
-                                                placeholder="e.g. Triangle Passing"
-                                            />
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div>
-                                                <label className="block text-sm font-bold text-gray-500 mb-1">Category</label>
-                                                <select
-                                                    value={newDrill.category}
-                                                    onChange={e => setNewDrill({ ...newDrill, category: e.target.value })}
-                                                    className="w-full p-3 rounded-xl bg-gray-50 dark:bg-gray-800 border-none font-bold"
-                                                >
-                                                    <option>Technical</option>
-                                                    <option>Physical</option>
-                                                    <option>Tactical</option>
-                                                </select>
-                                            </div>
-                                            <div>
-                                                <label className="block text-sm font-bold text-gray-500 mb-1">Duration</label>
-                                                <input
-                                                    value={newDrill.duration}
-                                                    onChange={e => setNewDrill({ ...newDrill, duration: e.target.value })}
-                                                    className="w-full p-3 rounded-xl bg-gray-50 dark:bg-gray-800 border-none font-bold"
-                                                />
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-bold text-gray-500 mb-1">Description</label>
-                                            <textarea
-                                                value={newDrill.description}
-                                                onChange={e => setNewDrill({ ...newDrill, description: e.target.value })}
-                                                className="w-full p-3 rounded-xl bg-gray-50 dark:bg-gray-800 border-none font-bold h-24"
-                                                placeholder="Drill instructions..."
-                                            />
-                                        </div>
-                                        <div className="flex gap-2 pt-2">
-                                            <button
-                                                onClick={() => setShowNewDrillModal(false)}
-                                                className="flex-1 py-3 rounded-xl font-bold bg-gray-100 hover:bg-gray-200"
-                                            >
-                                                Cancel
-                                            </button>
-                                            <button
-                                                onClick={createDrill}
-                                                className="flex-1 py-3 rounded-xl font-bold bg-brand text-white hover:bg-green-600"
-                                            >
-                                                Create Drill
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
+                    <section className="card space-y-5">
+                        <h2 className="text-2xl italic">How we play</h2>
+                        <div>
+                            <label htmlFor="playing-style" className="label">Playing style</label>
+                            <select id="playing-style" value={tactics.playingStyle} disabled={!isStaff} onChange={(e) => setTactics({ ...tactics, playingStyle: e.target.value })} className="field disabled:opacity-100">
+                                {STYLES.map((s) => <option key={s}>{s}</option>)}
+                            </select>
+                        </div>
+                        <Choice label="Pressing" options={['low', 'medium', 'high'] as const} value={tactics.pressingIntensity} disabled={!isStaff} onChange={(v) => setTactics({ ...tactics, pressingIntensity: v })} />
+                        <Choice label="Build-up play" options={['short', 'mixed', 'direct'] as const} value={tactics.buildUpPlay} disabled={!isStaff} onChange={(v) => setTactics({ ...tactics, buildUpPlay: v })} />
+                        <Choice label="Defensive line" options={['deep', 'medium', 'high'] as const} value={tactics.defensiveLine} disabled={!isStaff} onChange={(v) => setTactics({ ...tactics, defensiveLine: v })} />
+                    </section>
+
+                    <section className="card lg:col-span-2">
+                        <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
+                            <h2 className="text-2xl italic">In and out of possession</h2>
+                            <div className="flex gap-2" role="tablist" aria-label="Phase">
+                                {(['attacking', 'defensive'] as const).map((p) => (
+                                    <button key={p} type="button" role="tab" aria-selected={phase === p} onClick={() => setPhase(p)} className={`btn btn-sm min-h-[40px] ${phase === p ? 'btn-primary' : 'btn-secondary'}`}>
+                                        {p === 'attacking' ? 'With the ball' : 'Without the ball'}
+                                    </button>
+                                ))}
                             </div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <Choice label="Width" options={['narrow', 'normal', 'wide'] as const} value={tactics.phases?.[phase]?.width as 'narrow' | 'normal' | 'wide' | undefined} disabled={!isStaff} onChange={(v) => setPhaseValue('width', v)} />
+                            {phase === 'attacking' ? (
+                                <Choice label="Tempo" options={['low', 'medium', 'high'] as const} value={tactics.phases?.attacking?.tempo as Level | undefined} disabled={!isStaff} onChange={(v) => setPhaseValue('tempo', v)} />
+                            ) : (
+                                <Choice label="Aggression" options={['low', 'medium', 'high'] as const} value={tactics.phases?.defensive?.aggression as Level | undefined} disabled={!isStaff} onChange={(v) => setPhaseValue('aggression', v)} />
+                            )}
+                        </div>
+                        {isStaff && (
+                            <button type="button" onClick={saveTactics} disabled={busy} className="btn btn-primary mt-6 w-full sm:w-auto">
+                                <Icon name="check" className="w-5 h-5" /> {busy ? 'Saving…' : 'Save tactics'}
+                            </button>
                         )}
+                    </section>
+                </div>
+            )}
 
-                        {drills.length === 0 ? (
-                            <div className="col-span-full flex flex-col items-center justify-center py-20 text-center opacity-60">
-                                <div className="text-6xl mb-4">🏃</div>
-                                <h3 className="text-xl font-bold">Library is empty</h3>
-                                <p className="text-sm">Add drills to build your coaching database.</p>
+            {sessionForm && (
+                <Modal title="Plan a session" onClose={closeSessionForm}>
+                    <form onSubmit={createSession} className="space-y-4">
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <label htmlFor="session-date" className="label">Date</label>
+                                <input id="session-date" type="date" required value={sessionForm.date} onChange={(e) => setSessionForm({ ...sessionForm, date: e.target.value })} className="field" />
                             </div>
-                        ) : (
-                            drills.map((drill) => (
-                                <div
-                                    key={drill.id}
-                                    className="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all border border-gray-100 dark:border-gray-700 flex flex-col group"
-                                >
-                                    <div className={`h-2 w-full ${getDifficultyColor(drill.difficulty).replace('text-', 'bg-').split(' ')[0]}`} />
-                                    <div className="p-6 flex-1 flex flex-col">
-                                        <div className="flex justify-between items-start mb-2">
-                                            <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">{drill.category}</span>
-                                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${getDifficultyColor(drill.difficulty)}`}>
-                                                {drill.difficulty}
-                                            </span>
-                                        </div>
+                            <div>
+                                <label htmlFor="session-time" className="label">Time</label>
+                                <input id="session-time" type="time" value={sessionForm.time} onChange={(e) => setSessionForm({ ...sessionForm, time: e.target.value })} className="field" />
+                            </div>
+                        </div>
+                        <div>
+                            <label htmlFor="session-focus" className="label">Focus</label>
+                            <input id="session-focus" required maxLength={80} value={sessionForm.focus} onChange={(e) => setSessionForm({ ...sessionForm, focus: e.target.value })} placeholder="e.g. Passing and moving" className="field" />
+                        </div>
+                        <div>
+                            <label htmlFor="session-team" className="label">Team (optional)</label>
+                            <input id="session-team" maxLength={60} value={sessionForm.team} onChange={(e) => setSessionForm({ ...sessionForm, team: e.target.value })} placeholder="e.g. U12s" className="field" />
+                        </div>
+                        <div>
+                            <label htmlFor="session-location" className="label">Where (optional)</label>
+                            <input id="session-location" maxLength={120} value={sessionForm.location} onChange={(e) => setSessionForm({ ...sessionForm, location: e.target.value })} placeholder="e.g. Back pitch" className="field" />
+                        </div>
+                        {formError && <p role="alert" className="text-sm text-red-400">{formError}</p>}
+                        <div className="flex gap-3 pt-2">
+                            <button type="button" onClick={closeSessionForm} className="btn btn-secondary flex-1">Cancel</button>
+                            <button type="submit" disabled={busy} className="btn btn-primary flex-1">{busy ? 'Saving…' : 'Save session'}</button>
+                        </div>
+                    </form>
+                </Modal>
+            )}
 
-                                        <h3 className="font-bold text-lg text-gray-900 dark:text-white mb-2">{drill.name}</h3>
-                                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 flex-1 line-clamp-3 leading-relaxed">
-                                            {drill.description}
-                                        </p>
-
-                                        <div className="flex items-center justify-between mt-4">
-                                            <div className="flex items-center gap-2 text-xs font-bold text-gray-500 bg-gray-50 dark:bg-gray-900/50 p-2 rounded-lg w-fit">
-                                                <span>⏱️ {drill.duration}</span>
-                                            </div>
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    startDiscussion('drill', drill);
-                                                }}
-                                                className="px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-700 text-xs font-bold text-gray-600 dark:text-gray-300 hover:bg-brand hover:text-white transition-colors flex items-center gap-1 opacity-0 group-hover:opacity-100"
-                                            >
-                                                💬 Discuss
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))
-                        )}
-                    </div>
-                )}
-            </div>
-        </div >
+            {drillForm && (
+                <Modal title="Add a drill" onClose={closeDrillForm}>
+                    <form onSubmit={createDrill} className="space-y-4">
+                        <div>
+                            <label htmlFor="drill-name" className="label">Name</label>
+                            <input id="drill-name" required maxLength={80} value={drillForm.name} onChange={(e) => setDrillForm({ ...drillForm, name: e.target.value })} placeholder="e.g. Triangle passing" className="field" />
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <label htmlFor="drill-category" className="label">Type</label>
+                                <select id="drill-category" value={drillForm.category} onChange={(e) => setDrillForm({ ...drillForm, category: e.target.value })} className="field">
+                                    {DRILL_CATEGORIES.map((c) => <option key={c}>{c}</option>)}
+                                </select>
+                            </div>
+                            <div>
+                                <label htmlFor="drill-duration" className="label">Minutes</label>
+                                <input id="drill-duration" type="number" min={1} max={180} required value={drillForm.duration} onChange={(e) => setDrillForm({ ...drillForm, duration: e.target.value })} className="field" />
+                            </div>
+                        </div>
+                        <div>
+                            <label htmlFor="drill-difficulty" className="label">Level</label>
+                            <select id="drill-difficulty" value={drillForm.difficulty} onChange={(e) => setDrillForm({ ...drillForm, difficulty: e.target.value })} className="field">
+                                <option value="beginner">Beginner</option>
+                                <option value="intermediate">Intermediate</option>
+                                <option value="advanced">Advanced</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label htmlFor="drill-description" className="label">How it runs</label>
+                            <textarea id="drill-description" required maxLength={600} rows={4} value={drillForm.description} onChange={(e) => setDrillForm({ ...drillForm, description: e.target.value })} placeholder="Set-up, what players do and what to look for" className="field" />
+                        </div>
+                        {formError && <p role="alert" className="text-sm text-red-400">{formError}</p>}
+                        <div className="flex gap-3 pt-2">
+                            <button type="button" onClick={closeDrillForm} className="btn btn-secondary flex-1">Cancel</button>
+                            <button type="submit" disabled={busy} className="btn btn-primary flex-1">{busy ? 'Saving…' : 'Add drill'}</button>
+                        </div>
+                    </form>
+                </Modal>
+            )}
+        </div>
     );
 }

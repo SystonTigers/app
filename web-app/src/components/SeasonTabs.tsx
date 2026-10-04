@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { apiFetch } from '@/lib/session';
+import { Icon } from '@/components/ui/Icon';
 
 interface Season {
     id: string;
@@ -15,9 +16,11 @@ interface SeasonTabsProps {
     currentSeasonId?: string;
     onSeasonChange: (seasonId: string | null) => void;
     seasons?: Season[];
+    /** Offer an "All time" tab (default yes) */
+    allTime?: boolean;
 }
 
-export function SeasonTabs({ tenant, currentSeasonId, onSeasonChange, seasons: initialSeasons }: SeasonTabsProps) {
+export function SeasonTabs({ tenant, currentSeasonId, onSeasonChange, seasons: initialSeasons, allTime = true }: SeasonTabsProps) {
     const [seasons, setSeasons] = useState<Season[]>(initialSeasons || []);
     const [loading, setLoading] = useState(!initialSeasons);
     const [selectedId, setSelectedId] = useState<string | null>(currentSeasonId || null);
@@ -33,10 +36,7 @@ export function SeasonTabs({ tenant, currentSeasonId, onSeasonChange, seasons: i
 
     async function loadSeasons() {
         try {
-            const token = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
-            const res = await apiFetch(`/api/v1/seasons`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const res = await apiFetch('/api/v1/seasons');
             const data = await res.json();
             if (data.success && data.data) {
                 setSeasons(data.data);
@@ -52,7 +52,7 @@ export function SeasonTabs({ tenant, currentSeasonId, onSeasonChange, seasons: i
         } catch (err) {
             console.error('Failed to load seasons:', err);
         } finally {
-            setLoading(false); // Make sure to set loading false in all cases
+            setLoading(false);
         }
     }
 
@@ -64,8 +64,8 @@ export function SeasonTabs({ tenant, currentSeasonId, onSeasonChange, seasons: i
     if (loading) {
         return (
             <div className="flex gap-2 mb-6">
-                <div className="h-10 w-24 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
-                <div className="h-10 w-24 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                <div className="h-10 w-24 bg-surface-raised chamfer-sm animate-pulse" />
+                <div className="h-10 w-24 bg-surface-raised chamfer-sm animate-pulse" />
             </div>
         );
     }
@@ -75,39 +75,31 @@ export function SeasonTabs({ tenant, currentSeasonId, onSeasonChange, seasons: i
     }
 
     return (
-        <div className="flex flex-wrap gap-2 mb-6" role="tablist">
-            {/* All-time option */}
-            <button
-                role="tab"
-                aria-selected={!selectedId}
-                onClick={() => handleSelect(null)}
-                className={`px-4 py-2 rounded-lg font-medium transition-all ${!selectedId
-                    ? 'bg-brand text-white shadow-lg'
-                    : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
-                    }`}
-            >
-                All-Time
-            </button>
+        <div className="flex flex-wrap gap-2 mb-6" role="tablist" aria-label="Season">
+            {allTime && (
+                <button
+                    type="button"
+                    role="tab"
+                    aria-selected={!selectedId}
+                    onClick={() => handleSelect(null)}
+                    className={`btn btn-sm min-h-[40px] ${!selectedId ? 'btn-primary' : 'btn-secondary'}`}
+                >
+                    All time
+                </button>
+            )}
 
-            {/* Season tabs */}
             {seasons.map((season) => (
                 <button
                     key={season.id}
+                    type="button"
                     role="tab"
                     aria-selected={selectedId === season.id}
                     onClick={() => handleSelect(season.id)}
-                    className={`px-4 py-2 rounded-lg font-medium transition-all flex items-center gap-2 ${selectedId === season.id
-                        ? 'bg-brand text-white shadow-lg'
-                        : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
-                        }`}
+                    className={`btn btn-sm min-h-[40px] ${selectedId === season.id ? 'btn-primary' : 'btn-secondary'}`}
                 >
                     {season.name}
-                    {season.is_current === 1 && (
-                        <span className="text-xs bg-white/20 px-1.5 py-0.5 rounded">Current</span>
-                    )}
-                    {season.status === 'archived' && (
-                        <span className="text-xs opacity-70">📦</span>
-                    )}
+                    {season.is_current === 1 && <span className="text-[10px] tracking-widest opacity-80">Now</span>}
+                    {season.status === 'archived' && <Icon name="history" className="w-3.5 h-3.5 opacity-70" />}
                 </button>
             ))}
         </div>

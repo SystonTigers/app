@@ -1,158 +1,124 @@
 import { useState } from 'react';
 import { createClientSDK } from '@/lib/sdk';
+import { formatMoney } from '@/lib/format';
+import { Icon } from '@/components/ui/Icon';
 import { ProductPreview } from './ProductPreview';
-
-interface Product {
-    id: string;
-    title: string;
-    description: string;
-    image_url: string;
-    variants: any[];
-}
+import { readCartId, writeCartId, type Product } from './types';
 
 interface ProductDetailProps {
     tenantId: string;
     product: Product;
     onBack: () => void;
-    onAddToCart: () => void; // Callback to refresh cart count or open cart
+    /** Opens the cart once the item is in it */
+    onAddToCart: () => void;
 }
 
 export function ProductDetail({ tenantId, product, onBack, onAddToCart }: ProductDetailProps) {
-    const [selectedVariantId, setSelectedVariantId] = useState<string>(
-        product.variants && product.variants.length > 0 ? product.variants[0].id : ''
-    );
+    const variants = product.variants ?? [];
+    const [selectedVariantId, setSelectedVariantId] = useState<string>(variants[0]?.id ?? '');
     const [isAdding, setIsAdding] = useState(false);
-    const [personalization, setPersonalization] = useState({
-        playerName: '',
-        playerNumber: ''
-    });
+    const [error, setError] = useState('');
+    const [personalization, setPersonalization] = useState({ playerName: '', playerNumber: '' });
 
-    const selectedVariant = product.variants.find(v => v.id === selectedVariantId);
-    const price = selectedVariant ? selectedVariant.price_gbp : 0;
+    const selectedVariant = variants.find((v) => v.id === selectedVariantId);
+    const price = selectedVariant?.price_gbp ?? product.price_gbp ?? 0;
+    const preview = product.personalization && (personalization.playerName || personalization.playerNumber)
+        ? { ...product.personalization, ...personalization }
+        : product.personalization;
 
-    const handleAddToCart = async () => {
+    async function addToCart() {
         if (!selectedVariantId) return;
         setIsAdding(true);
+        setError('');
+        const sdk = createClientSDK(tenantId);
         try {
-            const sdk = createClientSDK(tenantId);
-            // Ensure cart exists. 
-            // In a real app we might store cartId in localStorage.
-            // For simplicity, let's look for cartId in localStorage or create a new one.
-            let cartId = localStorage.getItem(`cart_${tenantId}`);
-
+            let cartId = readCartId(tenantId);
             if (!cartId) {
                 const res = await sdk.createCart();
-                if (res.success && res.cart) {
-                    cartId = res.cart.id;
-                    if (cartId) {
-                        localStorage.setItem(`cart_${tenantId}`, cartId);
-                    }
-                } else {
-                    throw new Error('Failed to create cart');
-                }
+                cartId = res.success ? (res.cart as { id?: string } | null)?.id ?? null : null;
+                if (!cartId) throw new Error('No cart id');
+                writeCartId(tenantId, cartId);
             }
-
-            if (!cartId) {
-                throw new Error('Cart ID is missing');
-            }
-
-            // Use state personalization
             await sdk.addToCart(cartId, selectedVariantId, 1, personalization);
             onAddToCart();
         } catch (e) {
             console.error('Add to cart failed', e);
-            // If cart not found (expired), detailed logic would create a new one and retry.
-            // For now, simple error logging.
-            alert('Failed to add to cart. Please try again.');
-            localStorage.removeItem(`cart_${tenantId}`); // Clear invalid cart
+            // A cart that has expired is forgotten, so the next try starts a new one
+            writeCartId(tenantId, null);
+            setError("That didn't go in your basket. Please try again.");
         } finally {
             setIsAdding(false);
         }
-    };
+    }
 
     return (
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-4xl mx-auto shadow-lg">
-            <button
-                onClick={onBack}
-                className="mb-4 text-brand hover:underline flex items-center gap-2"
-            >
-                ← Back to Shop
+        <div>
+            <button type="button" onClick={onBack} className="btn btn-ghost btn-sm min-h-[40px] -ml-4 mb-4">
+                <Icon name="arrowLeft" className="w-4 h-4" /> All products
             </button>
 
-            <div className="grid md:grid-cols-2 gap-8">
-                <div className="bg-gray-100 rounded-lg overflow-hidden aspect-square relative">
+            <div className="grid md:grid-cols-2 gap-6 md:gap-10">
+                <div className="card p-0 overflow-hidden aspect-square bg-surface-raised">
                     {product.image_url ? (
-                        <ProductPreview
-                            imageUrl={product.image_url}
-                            productTitle={product.title}
-                            personalization={personalization.playerName || personalization.playerNumber ? personalization : (product as any).personalization}
-                        />
+                        <ProductPreview imageUrl={product.image_url} productTitle={product.title} personalization={preview} />
                     ) : (
-                        <div className="flex items-center justify-center h-full text-4xl">🛍️</div>
+                        <div className="flex items-center justify-center h-full text-muted"><Icon name="shirt" className="w-16 h-16" /></div>
                     )}
                 </div>
 
                 <div>
-                    <h1 className="text-3xl font-bold mb-2">{product.title}</h1>
-                    <p className="text-2xl font-bold text-brand mb-4">
-                        £{(price / 100).toFixed(2)}
-                    </p>
+                    <h1 className="page-title text-4xl mb-2 break-words">{product.title}</h1>
+                    <p className="font-display text-3xl font-extrabold text-brand mb-4">{formatMoney(price)}</p>
+                    {product.description && <p className="text-muted mb-6 whitespace-pre-line">{product.description}</p>}
 
-                    <div className="prose dark:prose-invert mb-6 text-gray-600 dark:text-gray-300">
-                        {product.description}
-                    </div>
-
-                    {product.variants && product.variants.length > 0 && (
-                        <div className="mb-6">
-                            <label className="block text-sm font-medium mb-2">Select Option</label>
+                    {variants.length > 1 && (
+                        <fieldset className="mb-6">
+                            <legend className="label">Size or option</legend>
                             <div className="flex flex-wrap gap-2">
-                                {product.variants.map((variant: any) => (
+                                {variants.map((v) => (
                                     <button
-                                        key={variant.id}
-                                        onClick={() => setSelectedVariantId(variant.id)}
-                                        className={`px-4 py-2 rounded border ${selectedVariantId === variant.id
-                                            ? 'bg-brand text-white border-brand'
-                                            : 'bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600'
-                                            }`}
+                                        key={v.id}
+                                        type="button"
+                                        aria-pressed={selectedVariantId === v.id}
+                                        onClick={() => setSelectedVariantId(v.id)}
+                                        className={`btn btn-sm min-h-[40px] ${selectedVariantId === v.id ? 'btn-primary' : 'btn-secondary'}`}
                                     >
-                                        {variant.title} - £{(variant.price_gbp / 100).toFixed(2)}
+                                        {v.title}
                                     </button>
                                 ))}
                             </div>
-                        </div>
+                        </fieldset>
                     )}
 
-                    <div className="mb-6 grid grid-cols-2 gap-4">
+                    <div className="mb-6 grid grid-cols-[1fr_6rem] gap-3">
                         <div>
-                            <label className="block text-sm font-medium mb-1">Name</label>
+                            <label htmlFor="print-name" className="label">Name on the back (optional)</label>
                             <input
-                                type="text"
+                                id="print-name"
                                 value={personalization.playerName}
                                 onChange={(e) => setPersonalization({ ...personalization, playerName: e.target.value.toUpperCase() })}
-                                className="w-full px-3 py-2 rounded border bg-transparent dark:border-gray-600"
-                                placeholder="YOUR NAME"
+                                className="field uppercase"
+                                placeholder="SMITH"
                                 maxLength={12}
                             />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium mb-1">Number</label>
+                            <label htmlFor="print-number" className="label">Number</label>
                             <input
-                                type="text"
+                                id="print-number"
+                                inputMode="numeric"
                                 value={personalization.playerNumber}
-                                onChange={(e) => setPersonalization({ ...personalization, playerNumber: e.target.value })}
-                                className="w-full px-3 py-2 rounded border bg-transparent dark:border-gray-600"
+                                onChange={(e) => setPersonalization({ ...personalization, playerNumber: e.target.value.replace(/\D/g, '') })}
+                                className="field"
                                 placeholder="10"
                                 maxLength={3}
                             />
                         </div>
                     </div>
 
-                    <button
-                        onClick={handleAddToCart}
-                        disabled={isAdding || !selectedVariantId}
-                        className="w-full py-3 px-6 bg-brand text-white font-bold rounded-lg hover:bg-brand/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                    >
-                        {isAdding ? 'Adding...' : 'Add to Cart'}
+                    {error && <p role="alert" className="text-sm text-red-400 mb-3">{error}</p>}
+                    <button type="button" onClick={addToCart} disabled={isAdding || !selectedVariantId} className="btn btn-primary w-full">
+                        <Icon name="bag" className="w-5 h-5" /> {isAdding ? 'Adding…' : 'Add to basket'}
                     </button>
                 </div>
             </div>

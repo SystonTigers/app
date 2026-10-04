@@ -1,48 +1,61 @@
-import { getClubInfo } from '@/lib/club';
 import Link from 'next/link';
+import { getClubInfo } from '@/lib/club';
 import OnboardingChecklist from '@/components/OnboardingChecklist';
+import { PageHeader } from '@/components/ui/Page';
+import { Icon, type IconName } from '@/components/ui/Icon';
 
 interface DashboardPageProps {
     params: Promise<{ tenant: string }>;
 }
 
+interface Tile {
+    href: string;
+    icon: IconName;
+    title: string;
+    text: string;
+}
+
 export default async function DashboardPage({ params }: DashboardPageProps) {
     const { tenant } = await params;
     const club = await getClubInfo(tenant);
+    const a = `/${tenant}/admin`;
+
+    const tiles: Tile[] = [
+        { href: `${a}/fixtures`, icon: 'calendar', title: 'Fixtures', text: 'Add matches, read them from a photo and write match reports.' },
+        { href: `${a}/results`, icon: 'trophy', title: 'Results', text: 'Add scores and pick who scored. The table updates itself.' },
+        { href: `${a}/squad`, icon: 'users', title: 'Squad', text: 'Sign players, edit names and numbers, and share login codes.' },
+        { href: `${a}/feed`, icon: 'news', title: 'News', text: 'Post club news to the website and the app.' },
+        { href: `${a}/table`, icon: 'table', title: 'League table', text: 'Check the table or work it out again from your results.' },
+        { href: `${a}/settings`, icon: 'settings', title: 'Settings', text: 'Club badge, league table, automatic posts and live video.' },
+    ];
 
     return (
-        <div className="container mx-auto px-4 py-8">
-            <h1 className="text-3xl font-black uppercase italic text-gray-900 dark:text-white mb-8">
-                {club.name} <span className="text-brand not-italic">Console</span>
-            </h1>
+        <div className="container py-8 md:py-10">
+            <PageHeader
+                eyebrow="Manager dashboard"
+                title={club.name}
+                subtitle="Everything you need to run the club's website and app, in one place."
+            />
 
             <OnboardingChecklist tenantSlug={tenant} />
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {/* Quick Actions */}
-                <div className="bg-white dark:bg-gray-800 p-6 chamfer-lg shadow-sm border border-gray-200 dark:border-gray-700 relative group">
-                    <div className="absolute top-0 right-0 p-2 opacity-50 text-6xl font-black text-gray-100 dark:text-gray-900/50 -rotate-12 select-none group-hover:text-brand/10 transition-colors">
-                        01
-                    </div>
-                    <h3 className="font-bold text-lg mb-2 uppercase tracking-tight text-gray-900 dark:text-white">Next Match</h3>
-                    <Link href={`/${tenant}/admin/fixtures`} className="text-gray-500 hover:text-brand transition-colors relative z-10">Manage fixtures &rarr;</Link>
-                </div>
-
-                <div className="bg-white dark:bg-gray-800 p-6 chamfer-lg shadow-sm border border-gray-200 dark:border-gray-700 relative group">
-                    <div className="absolute top-0 right-0 p-2 opacity-50 text-6xl font-black text-gray-100 dark:text-gray-900/50 -rotate-12 select-none group-hover:text-brand/10 transition-colors">
-                        02
-                    </div>
-                    <h3 className="font-bold text-lg mb-2 uppercase tracking-tight text-gray-900 dark:text-white">Recent Results</h3>
-                    <Link href={`/${tenant}/admin/results`} className="text-gray-500 hover:text-brand transition-colors relative z-10">Manage results &rarr;</Link>
-                </div>
-
-                <div className="bg-white dark:bg-gray-800 p-6 chamfer-lg shadow-sm border border-gray-200 dark:border-gray-700 relative group">
-                    <div className="absolute top-0 right-0 p-2 opacity-50 text-6xl font-black text-gray-100 dark:text-gray-900/50 -rotate-12 select-none group-hover:text-brand/10 transition-colors">
-                        03
-                    </div>
-                    <h3 className="font-bold text-lg mb-2 uppercase tracking-tight text-gray-900 dark:text-white">Squad Status</h3>
-                    <Link href={`/${tenant}/admin/squad`} className="text-gray-500 hover:text-brand transition-colors relative z-10">Manage squad &rarr;</Link>
-                </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {tiles.map((tile) => (
+                    <Link key={tile.href} href={tile.href} className="card group block transition-colors hover:border-brand/60">
+                        <div className="flex items-start gap-4">
+                            <span className="w-12 h-12 hexagon bg-brand/15 text-brand flex items-center justify-center shrink-0 transition-colors group-hover:bg-brand group-hover:text-brand-foreground">
+                                <Icon name={tile.icon} className="w-6 h-6" />
+                            </span>
+                            <span className="min-w-0">
+                                <span className="flex items-center gap-1 font-display text-2xl font-extrabold uppercase tracking-wide text-foreground">
+                                    {tile.title}
+                                    <Icon name="chevronRight" className="w-5 h-5 text-brand transition-transform group-hover:translate-x-1" />
+                                </span>
+                                <span className="block text-sm text-muted mt-1">{tile.text}</span>
+                            </span>
+                        </div>
+                    </Link>
+                ))}
             </div>
         </div>
     );

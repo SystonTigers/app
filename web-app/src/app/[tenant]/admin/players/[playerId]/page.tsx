@@ -1,16 +1,18 @@
 'use client';
 
-import { useState, useEffect, use } from 'react';
-import { fullName, namePartsOf } from '@/lib/playerNames';
-import { createClientSDK } from '@/lib/sdk';
+import { useCallback, useEffect, useState, use } from 'react';
 import Link from 'next/link';
-import { apiFetch, API_BASE } from '@/lib/session';
+import { fullName, namePartsOf } from '@/lib/playerNames';
+import { apiFetch, errorMessage } from '@/lib/session';
+import { PageHeader, EmptyNote } from '@/components/ui/Page';
+import { Icon } from '@/components/ui/Icon';
+import { ErrorNote, LoadingBlock, Notice, bodyError } from '@/components/admin/AdminUi';
 
 const CONTACT_RELATIONSHIPS = [
     { value: 'mum', label: 'Mum' },
     { value: 'dad', label: 'Dad' },
-    { value: 'step-mum', label: 'Step-Mum' },
-    { value: 'step-dad', label: 'Step-Dad' },
+    { value: 'step-mum', label: 'Step-mum' },
+    { value: 'step-dad', label: 'Step-dad' },
     { value: 'grandparent', label: 'Grandparent' },
     { value: 'guardian', label: 'Guardian' },
     { value: 'other', label: 'Other' },
@@ -20,244 +22,225 @@ interface PageProps {
     params: Promise<{ tenant: string; playerId: string }>;
 }
 
-interface Contact {
-    relationship: string;
-    name: string;
-    phone: string;
-    email: string;
-}
+type ContactNo = 1 | 2 | 3;
+type ContactField = 'relationship' | 'name' | 'phone' | 'email';
+type ContactKey = `contact${ContactNo}_${ContactField}`;
 
-interface PlayerDetails {
+type PlayerDetails = {
     id: string;
     name: string;
     first_name: string;
     last_name: string;
-    number?: number;
-    position?: string;
-    dob?: string;
-    login_code?: string;
-    contact1_relationship?: string;
-    contact1_name?: string;
-    contact1_phone?: string;
-    contact1_email?: string;
-    contact2_relationship?: string;
-    contact2_name?: string;
-    contact2_phone?: string;
-    contact2_email?: string;
-    contact3_relationship?: string;
-    contact3_name?: string;
-    contact3_phone?: string;
-    contact3_email?: string;
+    number?: number | null;
+    position?: string | null;
+    dob?: string | null;
+    login_code?: string | null;
+} & Partial<Record<ContactKey, string | null>>;
+
+type EditableField = 'first_name' | 'last_name' | 'number' | 'position' | 'dob' | ContactKey;
+
+const CONTACTS: ContactNo[] = [1, 2, 3];
+
+function dateValue(dob: string | null | undefined): string {
+    if (!dob) return '';
+    const d = new Date(dob);
+    return Number.isNaN(d.getTime()) ? '' : d.toISOString().split('T')[0];
 }
 
 export default function PlayerDetailsPage({ params }: PageProps) {
     const { tenant, playerId } = use(params);
     const [player, setPlayer] = useState<PlayerDetails | null>(null);
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState('');
+    const [notFound, setNotFound] = useState(false);
     const [saving, setSaving] = useState(false);
     const [codeCopied, setCodeCopied] = useState(false);
     const [regenerating, setRegenerating] = useState(false);
+    const [message, setMessage] = useState<{ tone: 'success' | 'error'; text: string } | null>(null);
 
-    useEffect(() => {
-        loadPlayer();
-    }, [tenant, playerId]);
-
-    async function loadPlayer() {
+    const loadPlayer = useCallback(async () => {
+        setLoadError('');
         try {
-            const sdk = createClientSDK(tenant);
-            const data = await sdk.getPlayer(playerId);
-            if (data) {
-                const loaded = data as unknown as PlayerDetails;
-                setPlayer({ ...loaded, ...namePartsOf(loaded) });
+            // Staff view: first name and surname, contacts and the login code
+            const res = await apiFetch(`/api/v1/squad/${encodeURIComponent(playerId)}`);
+            if (res.status === 404) {
+                setNotFound(true);
+                return;
             }
+            if (!res.ok) throw new Error(await errorMessage(res, "We couldn't load this player."));
+            const body = await res.json();
+            const loaded = body?.data as PlayerDetails | undefined;
+            if (!loaded) {
+                setNotFound(true);
+                return;
+            }
+            setPlayer({ ...loaded, ...namePartsOf(loaded) });
         } catch (err) {
-            console.error('Failed to load player', err);
+            setLoadError(err instanceof Error && err.message ? err.message : "We couldn't load this player. Check your connection and try again.");
         } finally {
             setLoading(false);
         }
-    }
+    }, [playerId]);
 
-    function updateField(field: keyof PlayerDetails, value: any) {
+    useEffect(() => {
+        loadPlayer();
+    }, [tenant, loadPlayer]);
+
+    function updateField(field: EditableField, value: string | number | null) {
         if (!player) return;
+        setMessage(null);
         const next = { ...player, [field]: value };
         setPlayer(field === 'first_name' || field === 'last_name' ? { ...next, name: fullName(next.first_name, next.last_name) } : next);
     }
 
-    async function handleSave() {
+    async function handleSave(e: React.FormEvent) {
+        e.preventDefault();
         if (!player) return;
+        if (!player.first_name.trim()) {
+            setMessage({ tone: 'error', text: "Enter the player's first name." });
+            return;
+        }
         setSaving(true);
+        setMessage(null);
         try {
-            const token = localStorage.getItem('admin_token');
-            const response = await apiFetch(`/api/v1/players/${playerId}`, {
+            const response = await apiFetch(`/api/v1/players/${encodeURIComponent(playerId)}`, {
                 method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
                 body: JSON.stringify(player),
             });
-            if (!response.ok) throw new Error('Failed to save');
-            alert('Player saved successfully!');
+            const body = await response.json().catch(() => null);
+            if (!response.ok || body?.success === false) throw new Error(bodyError(body, "The changes didn't save. Please try again."));
+            setMessage({ tone: 'success', text: `${player.name} saved.` });
         } catch (err) {
-            console.error('Failed to save player', err);
-            alert('Failed to save player');
+            setMessage({ tone: 'error', text: err instanceof Error ? err.message : "The changes didn't save. Please try again." });
         } finally {
             setSaving(false);
         }
     }
 
     async function regenerateCode() {
+        if (player?.login_code && !confirm('Make a new login code? The old one will stop working.')) return;
         setRegenerating(true);
+        setMessage(null);
         try {
-            const token = localStorage.getItem('admin_token');
-            const response = await apiFetch(`/api/v1/players/${playerId}/regenerate-code`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                },
-            });
-            if (!response.ok) throw new Error('Failed to regenerate code');
-            const data = await response.json();
-            setPlayer(prev => prev ? { ...prev, login_code: data.code } : null);
+            const response = await apiFetch(`/api/v1/players/${encodeURIComponent(playerId)}/regenerate-code`, { method: 'POST' });
+            const body = await response.json().catch(() => null);
+            if (!response.ok || !body?.code) throw new Error(bodyError(body, "A new code wasn't made. Please try again."));
+            setPlayer((prev) => (prev ? { ...prev, login_code: body.code as string } : null));
         } catch (err) {
-            console.error('Failed to regenerate code', err);
-            alert('Failed to regenerate code');
+            setMessage({ tone: 'error', text: err instanceof Error ? err.message : "A new code wasn't made. Please try again." });
         } finally {
             setRegenerating(false);
         }
     }
 
-    function copyCode() {
-        if (player?.login_code) {
-            navigator.clipboard.writeText(player.login_code);
+    async function copyCode() {
+        if (!player?.login_code) return;
+        try {
+            await navigator.clipboard.writeText(player.login_code);
             setCodeCopied(true);
             setTimeout(() => setCodeCopied(false), 2000);
+        } catch {
+            window.prompt('Copy this login code:', player.login_code);
         }
     }
 
-    if (loading) {
-        return <div className="container mx-auto py-8 px-4">Loading...</div>;
-    }
+    const back = (
+        <Link href={`/${tenant}/admin/squad`} className="inline-flex items-center gap-2 text-sm font-semibold text-muted hover:text-brand mb-4 min-h-[40px]">
+            <Icon name="arrowLeft" className="w-4 h-4" /> Squad
+        </Link>
+    );
 
-    if (!player) {
-        return <div className="container mx-auto py-8 px-4">Player not found</div>;
+    if (loading) {
+        return <div className="container py-8 md:py-10 max-w-4xl">{back}<LoadingBlock label="Loading the player" /></div>;
+    }
+    if (loadError) {
+        return <div className="container py-8 md:py-10 max-w-4xl">{back}<ErrorNote message={loadError} onRetry={() => { setLoading(true); loadPlayer(); }} /></div>;
+    }
+    if (notFound || !player) {
+        return (
+            <div className="container py-8 md:py-10 max-w-4xl">
+                {back}
+                <EmptyNote icon="users" title="Player not found" action={<Link href={`/${tenant}/admin/squad`} className="btn btn-primary">Back to the squad</Link>}>
+                    They may have been removed from the squad.
+                </EmptyNote>
+            </div>
+        );
     }
 
     return (
-        <div className="container mx-auto py-8 px-4 max-w-4xl">
-            {/* Header */}
-            <div className="flex items-center justify-between mb-8">
-                <div className="flex items-center gap-4">
-                    <Link
-                        href={`/${tenant}/admin/squad`}
-                        className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-                    >
-                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                        </svg>
-                    </Link>
-                    <div>
-                        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{player.name}</h1>
-                        <p className="text-gray-500 dark:text-gray-400">Player Details</p>
-                    </div>
-                </div>
-                <button
-                    onClick={handleSave}
-                    disabled={saving}
-                    className="bg-black dark:bg-white text-white dark:text-black px-6 py-2 rounded-lg font-medium hover:bg-gray-800 dark:hover:bg-gray-100 disabled:opacity-50 transition-colors"
-                >
-                    {saving ? 'Saving...' : 'Save Changes'}
-                </button>
-            </div>
+        <form onSubmit={handleSave} className="container py-8 md:py-10 max-w-4xl" noValidate>
+            {back}
+            <PageHeader
+                eyebrow="Player details"
+                title={player.name || 'New player'}
+                subtitle="Their name, number and who to contact. Only club staff see contacts."
+                actions={
+                    <button type="submit" disabled={saving} className="btn btn-primary">
+                        {saving ? 'Saving…' : 'Save changes'}
+                    </button>
+                }
+            />
 
-            <div className="space-y-8">
-                {/* Login Code Section */}
-                <section className="bg-gradient-to-r from-blue-600 to-blue-800 rounded-2xl p-6 text-white">
-                    <h2 className="text-lg font-bold mb-2 flex items-center gap-2">
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-                        </svg>
-                        Login Code
+            {message && <div className="mb-6"><Notice tone={message.tone}>{message.text}</Notice></div>}
+
+            <div className="space-y-6">
+                {/* Login code */}
+                <section className="card border-brand/40" aria-labelledby="login-code-title">
+                    <h2 id="login-code-title" className="text-2xl flex items-center gap-2">
+                        <Icon name="lock" className="w-5 h-5 text-brand" /> Login code
                     </h2>
-                    <p className="text-blue-100 text-sm mb-4">
-                        Share this code with the player and their parents to allow them to log in and manage attendance.
+                    <p className="text-sm text-muted mt-1 mb-4">
+                        Give this code to the player and their parents so they can log in to the club app.
                     </p>
-                    <div className="flex items-center gap-3">
-                        <div className="bg-white/10 backdrop-blur-sm px-6 py-3 rounded-xl font-mono text-2xl tracking-widest">
-                            {player.login_code || 'No code generated'}
+                    <div className="flex flex-wrap items-center gap-3">
+                        <div className="bg-background border border-border px-5 py-3 font-mono text-2xl tracking-[0.2em] text-brand min-w-[12rem] text-center">
+                            {player.login_code || <span className="text-base tracking-normal font-sans text-muted">No code yet</span>}
                         </div>
-                        <button
-                            onClick={copyCode}
-                            className="p-3 bg-white/20 hover:bg-white/30 rounded-xl transition-colors"
-                            title="Copy code"
-                        >
-                            {codeCopied ? (
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                </svg>
-                            ) : (
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                                </svg>
-                            )}
-                        </button>
-                        <button
-                            onClick={regenerateCode}
-                            disabled={regenerating}
-                            className="p-3 bg-white/20 hover:bg-white/30 rounded-xl transition-colors disabled:opacity-50"
-                            title="Regenerate code"
-                        >
-                            <svg className={`w-5 h-5 ${regenerating ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                            </svg>
+                        {player.login_code && (
+                            <button type="button" onClick={copyCode} className="btn btn-secondary">
+                                <Icon name={codeCopied ? 'check' : 'copy'} className="w-4 h-4" /> {codeCopied ? 'Copied' : 'Copy'}
+                            </button>
+                        )}
+                        <button type="button" onClick={regenerateCode} disabled={regenerating} className="btn btn-secondary">
+                            <Icon name="refresh" className={`w-4 h-4 ${regenerating ? 'animate-spin' : ''}`} />
+                            {player.login_code ? 'New code' : 'Make a code'}
                         </button>
                     </div>
                 </section>
 
-                {/* Basic Info */}
-                <section className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
-                    <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Basic Information</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Basic info */}
+                <section className="card" aria-labelledby="basics-title">
+                    <h2 id="basics-title" className="text-2xl mb-4">About the player</h2>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                            <label htmlFor="first-name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">First name</label>
-                            <input
-                                id="first-name"
-                                type="text"
-                                maxLength={40}
-                                value={player.first_name}
-                                onChange={(e) => updateField('first_name', e.target.value)}
-                                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            />
+                            <label htmlFor="first-name" className="label">First name</label>
+                            <input id="first-name" type="text" maxLength={40} autoComplete="off" value={player.first_name} onChange={(e) => updateField('first_name', e.target.value)} className="field" required />
                         </div>
                         <div>
-                            <label htmlFor="last-name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Surname</label>
-                            <input
-                                id="last-name"
-                                type="text"
-                                maxLength={40}
-                                value={player.last_name}
-                                onChange={(e) => updateField('last_name', e.target.value)}
-                                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            />
+                            <label htmlFor="last-name" className="label">Surname</label>
+                            <input id="last-name" type="text" maxLength={40} autoComplete="off" value={player.last_name} onChange={(e) => updateField('last_name', e.target.value)} className="field" />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Squad Number</label>
+                            <label htmlFor="squad-number" className="label">Squad number</label>
                             <input
+                                id="squad-number"
                                 type="number"
-                                value={player.number || ''}
-                                onChange={(e) => updateField('number', parseInt(e.target.value) || undefined)}
-                                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                inputMode="numeric"
+                                min={1}
+                                max={99}
+                                value={player.number ?? ''}
+                                onChange={(e) => {
+                                    const n = parseInt(e.target.value, 10);
+                                    updateField('number', Number.isNaN(n) ? null : n);
+                                }}
+                                className="field"
                                 placeholder="#"
                             />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Position</label>
-                            <select
-                                value={player.position || ''}
-                                onChange={(e) => updateField('position', e.target.value)}
-                                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            >
-                                <option value="">Select position</option>
+                            <label htmlFor="position" className="label">Position</label>
+                            <select id="position" value={player.position ?? ''} onChange={(e) => updateField('position', e.target.value)} className="field">
+                                <option value="">Choose a position</option>
                                 <option value="Goalkeeper">Goalkeeper</option>
                                 <option value="Defender">Defender</option>
                                 <option value="Midfielder">Midfielder</option>
@@ -265,147 +248,58 @@ export default function PlayerDetailsPage({ params }: PageProps) {
                             </select>
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Date of Birth</label>
-                            <input
-                                type="date"
-                                value={player.dob ? new Date(player.dob).toISOString().split('T')[0] : ''}
-                                onChange={(e) => updateField('dob', e.target.value)}
-                                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            />
+                            <label htmlFor="dob" className="label">Date of birth</label>
+                            <input id="dob" type="date" value={dateValue(player.dob)} onChange={(e) => updateField('dob', e.target.value)} className="field" />
                         </div>
                     </div>
                 </section>
 
-                {/* Contacts Section */}
-                <section className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
-                    <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Contacts</h2>
-                    <p className="text-gray-500 dark:text-gray-400 text-sm mb-6">
-                        Add up to 3 emergency contacts for this player.
-                    </p>
-
-                    <div className="space-y-6">
-                        {/* Contact 1 */}
-                        <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
-                            <div className="flex items-center gap-3 mb-4">
-                                <span className="w-8 h-8 bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 rounded-full flex items-center justify-center font-bold text-sm">1</span>
-                                <select
-                                    value={player.contact1_relationship || ''}
-                                    onChange={(e) => updateField('contact1_relationship', e.target.value)}
-                                    className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                >
-                                    <option value="">Select relationship</option>
-                                    {CONTACT_RELATIONSHIPS.map(r => (
-                                        <option key={r.value} value={r.value}>{r.label}</option>
-                                    ))}
-                                </select>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                                <input
-                                    type="text"
-                                    value={player.contact1_name || ''}
-                                    onChange={(e) => updateField('contact1_name', e.target.value)}
-                                    placeholder="Name"
-                                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                />
-                                <input
-                                    type="tel"
-                                    value={player.contact1_phone || ''}
-                                    onChange={(e) => updateField('contact1_phone', e.target.value)}
-                                    placeholder="Phone number"
-                                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                />
-                                <input
-                                    type="email"
-                                    value={player.contact1_email || ''}
-                                    onChange={(e) => updateField('contact1_email', e.target.value)}
-                                    placeholder="Email address"
-                                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                />
-                            </div>
-                        </div>
-
-                        {/* Contact 2 */}
-                        <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
-                            <div className="flex items-center gap-3 mb-4">
-                                <span className="w-8 h-8 bg-gray-100 dark:bg-gray-600 text-gray-600 dark:text-gray-300 rounded-full flex items-center justify-center font-bold text-sm">2</span>
-                                <select
-                                    value={player.contact2_relationship || ''}
-                                    onChange={(e) => updateField('contact2_relationship', e.target.value)}
-                                    className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                >
-                                    <option value="">Select relationship</option>
-                                    {CONTACT_RELATIONSHIPS.map(r => (
-                                        <option key={r.value} value={r.value}>{r.label}</option>
-                                    ))}
-                                </select>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                                <input
-                                    type="text"
-                                    value={player.contact2_name || ''}
-                                    onChange={(e) => updateField('contact2_name', e.target.value)}
-                                    placeholder="Name"
-                                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                />
-                                <input
-                                    type="tel"
-                                    value={player.contact2_phone || ''}
-                                    onChange={(e) => updateField('contact2_phone', e.target.value)}
-                                    placeholder="Phone number"
-                                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                />
-                                <input
-                                    type="email"
-                                    value={player.contact2_email || ''}
-                                    onChange={(e) => updateField('contact2_email', e.target.value)}
-                                    placeholder="Email address"
-                                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                />
-                            </div>
-                        </div>
-
-                        {/* Contact 3 */}
-                        <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
-                            <div className="flex items-center gap-3 mb-4">
-                                <span className="w-8 h-8 bg-gray-100 dark:bg-gray-600 text-gray-600 dark:text-gray-300 rounded-full flex items-center justify-center font-bold text-sm">3</span>
-                                <select
-                                    value={player.contact3_relationship || ''}
-                                    onChange={(e) => updateField('contact3_relationship', e.target.value)}
-                                    className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                >
-                                    <option value="">Select relationship</option>
-                                    {CONTACT_RELATIONSHIPS.map(r => (
-                                        <option key={r.value} value={r.value}>{r.label}</option>
-                                    ))}
-                                </select>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                                <input
-                                    type="text"
-                                    value={player.contact3_name || ''}
-                                    onChange={(e) => updateField('contact3_name', e.target.value)}
-                                    placeholder="Name"
-                                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                />
-                                <input
-                                    type="tel"
-                                    value={player.contact3_phone || ''}
-                                    onChange={(e) => updateField('contact3_phone', e.target.value)}
-                                    placeholder="Phone number"
-                                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                />
-                                <input
-                                    type="email"
-                                    value={player.contact3_email || ''}
-                                    onChange={(e) => updateField('contact3_email', e.target.value)}
-                                    placeholder="Email address"
-                                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                />
-                            </div>
-                        </div>
+                {/* Contacts */}
+                <section className="card" aria-labelledby="contacts-title">
+                    <h2 id="contacts-title" className="text-2xl">Contacts</h2>
+                    <p className="text-sm text-muted mt-1 mb-5">Up to three people to call in an emergency.</p>
+                    <div className="space-y-4">
+                        {CONTACTS.map((n) => (
+                            <fieldset key={n} className="bg-surface-raised border border-border p-4 chamfer-sm">
+                                <legend className="sr-only">Contact {n}</legend>
+                                <div className="flex items-center gap-3 mb-3">
+                                    <span className="w-8 h-8 hexagon bg-brand/15 text-brand font-display font-extrabold flex items-center justify-center" aria-hidden="true">{n}</span>
+                                    <label htmlFor={`contact${n}-relationship`} className="sr-only">Contact {n}: who they are</label>
+                                    <select
+                                        id={`contact${n}-relationship`}
+                                        value={player[`contact${n}_relationship`] ?? ''}
+                                        onChange={(e) => updateField(`contact${n}_relationship`, e.target.value)}
+                                        className="field max-w-[14rem]"
+                                    >
+                                        <option value="">Who are they?</option>
+                                        {CONTACT_RELATIONSHIPS.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
+                                    </select>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                    <div>
+                                        <label htmlFor={`contact${n}-name`} className="label">Name</label>
+                                        <input id={`contact${n}-name`} type="text" autoComplete="off" value={player[`contact${n}_name`] ?? ''} onChange={(e) => updateField(`contact${n}_name`, e.target.value)} className="field" />
+                                    </div>
+                                    <div>
+                                        <label htmlFor={`contact${n}-phone`} className="label">Phone</label>
+                                        <input id={`contact${n}-phone`} type="tel" autoComplete="off" value={player[`contact${n}_phone`] ?? ''} onChange={(e) => updateField(`contact${n}_phone`, e.target.value)} className="field" />
+                                    </div>
+                                    <div>
+                                        <label htmlFor={`contact${n}-email`} className="label">Email</label>
+                                        <input id={`contact${n}-email`} type="email" autoComplete="off" value={player[`contact${n}_email`] ?? ''} onChange={(e) => updateField(`contact${n}_email`, e.target.value)} className="field" />
+                                    </div>
+                                </div>
+                            </fieldset>
+                        ))}
                     </div>
                 </section>
+
+                <div className="flex justify-end">
+                    <button type="submit" disabled={saving} className="btn btn-primary w-full sm:w-auto">
+                        {saving ? 'Saving…' : 'Save changes'}
+                    </button>
+                </div>
             </div>
-        </div>
+        </form>
     );
 }

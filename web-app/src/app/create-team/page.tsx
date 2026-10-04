@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { API_BASE, clearSession, errorMessage, getSessionToken, saveSession } from '@/lib/session';
 import { slugify } from '@/lib/slug';
+import { AuthError, AuthField, AuthShell } from '@/components/ui/AuthShell';
 
 const TRIAL_DAYS = 14;
 const LEGAL_BASE = 'https://boosthuddle-legal.pages.dev';
@@ -11,10 +12,6 @@ const LEGAL_BASE = 'https://boosthuddle-legal.pages.dev';
 const PLACEHOLDER_SLUG = /^club-[0-9a-f]{8}$/;
 
 type Step = 'loading' | 'account' | 'club';
-
-const inputClass =
-  'w-full px-4 py-3 bg-black/50 border border-gray-700 text-white placeholder-gray-600 focus:border-brand focus:ring-1 focus:ring-brand focus:bg-black/80 transition-all chamfer-sm outline-none';
-const labelClass = 'block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1';
 
 function CreateTeamContent() {
   const [step, setStep] = useState<Step>('loading');
@@ -133,139 +130,115 @@ function CreateTeamContent() {
   };
 
   if (step === 'loading') {
-    return <Shell><p className="text-center text-gray-400">Loading…</p></Shell>;
+    return <LoadingShell />;
   }
 
+  const legalLinks = (
+    <p className="text-xs text-muted text-center">
+      By signing up you agree to our{' '}
+      <a href={`${LEGAL_BASE}/terms`} target="_blank" rel="noreferrer" className="underline hover:text-brand">Terms</a> and{' '}
+      <a href={`${LEGAL_BASE}/privacy`} target="_blank" rel="noreferrer" className="underline hover:text-brand">Privacy Policy</a>.
+    </p>
+  );
+
   return (
-    <Shell>
-      <div className="text-center mb-8">
-        <h1 className="text-4xl font-black italic uppercase text-white mb-2">
-          {step === 'account' ? 'Start your club' : 'Set up your club'}
-        </h1>
-        <p className="text-gray-400">
+    <AuthShell
+      title={step === 'account' ? 'Start your club' : 'Set up your club'}
+      subtitle={
+        <>
           {step === 'account'
             ? `Free for ${TRIAL_DAYS} days. No card needed.`
             : 'Choose your club web address and colours. You can change these later.'}
-        </p>
-        <p className="mt-3 text-xs font-bold uppercase tracking-widest text-gray-500">
-          Step {step === 'account' ? 1 : 2} of 2
-        </p>
-      </div>
-
-      <div className="bg-gray-900/60 chamfer-lg border border-gray-800 p-8 backdrop-blur-xl shadow-2xl">
-        {error && (
-          <div role="alert" className="mb-6 p-4 bg-red-900/20 border border-red-500/50 text-red-300 text-sm font-bold text-center chamfer-sm">
-            {error}
-          </div>
-        )}
+          <span className="block mt-2 eyebrow text-xs">Step {step === 'account' ? 1 : 2} of 2</span>
+        </>
+      }
+      footer={step === 'account' ? (
+        <>
+          <p>Already have an account? <Link href="/login" className="text-brand font-bold hover:underline">Log in</Link></p>
+          <p>Joining a club? <Link href="/signup" className="text-brand font-bold hover:underline">Create an account</Link></p>
+        </>
+      ) : undefined}
+    >
+      <div className="space-y-5">
+        <AuthError>{error}</AuthError>
 
         {step === 'account' ? (
           <form onSubmit={createAccount} className="space-y-5">
-            <Field label="Club name" id="clubName">
-              <input id="clubName" required minLength={2} maxLength={80} className={inputClass} placeholder="e.g. Riverside Rovers FC"
-                value={account.clubName} onChange={(e) => setAccount({ ...account, clubName: e.target.value })} />
-            </Field>
-            <Field label="Your name" id="name">
-              <input id="name" required autoComplete="name" className={inputClass}
-                value={account.name} onChange={(e) => setAccount({ ...account, name: e.target.value })} />
-            </Field>
-            <Field label="Email" id="email">
-              <input id="email" type="email" required autoComplete="email" className={inputClass}
-                value={account.email} onChange={(e) => setAccount({ ...account, email: e.target.value })} />
-            </Field>
-            <Field label="Password (8+ characters)" id="password">
-              <input id="password" type="password" required minLength={8} autoComplete="new-password" className={inputClass}
-                value={account.password} onChange={(e) => setAccount({ ...account, password: e.target.value })} />
-            </Field>
+            <AuthField id="clubName" label="Club name" required minLength={2} maxLength={80} placeholder="e.g. Riverside Rovers FC"
+              value={account.clubName} onChange={(e) => setAccount({ ...account, clubName: e.target.value })} />
+            <AuthField id="name" label="Your name" required autoComplete="name"
+              value={account.name} onChange={(e) => setAccount({ ...account, name: e.target.value })} />
+            <AuthField id="email" label="Email" type="email" required autoComplete="email" placeholder="you@example.com"
+              value={account.email} onChange={(e) => setAccount({ ...account, email: e.target.value })} />
+            <AuthField id="password" label="Password (8+ characters)" type="password" required minLength={8} autoComplete="new-password"
+              value={account.password} onChange={(e) => setAccount({ ...account, password: e.target.value })} />
 
-            <SubmitButton busy={busy} label="Create my club" busyLabel="Creating your club…" />
-
-            <p className="text-xs text-gray-500 text-center">
-              By signing up you agree to our{' '}
-              <a href={`${LEGAL_BASE}/terms`} target="_blank" rel="noreferrer" className="underline hover:text-brand">Terms</a> and{' '}
-              <a href={`${LEGAL_BASE}/privacy`} target="_blank" rel="noreferrer" className="underline hover:text-brand">Privacy Policy</a>.
-            </p>
-            <p className="text-sm text-gray-400 text-center border-t border-gray-800 pt-5">
-              Already have an account?{' '}
-              <Link href="/login" className="text-brand font-bold hover:text-white">Log in</Link>
-            </p>
+            <button type="submit" disabled={busy} className="btn btn-primary w-full">
+              {busy ? 'Creating your club…' : 'Create my club'}
+            </button>
+            {legalLinks}
           </form>
         ) : (
           <form onSubmit={finishSetup} className="space-y-5">
-            <Field label="Club name" id="setupName">
-              <input id="setupName" required minLength={2} maxLength={80} className={inputClass}
-                value={club.name}
-                onChange={(e) => setClub({ ...club, name: e.target.value, slug: slugEdited ? club.slug : slugify(e.target.value) })} />
-            </Field>
-            <Field label="Club web address" id="slug">
+            <AuthField id="setupName" label="Club name" required minLength={2} maxLength={80}
+              value={club.name}
+              onChange={(e) => setClub({ ...club, name: e.target.value, slug: slugEdited ? club.slug : slugify(e.target.value) })} />
+            <div>
+              <label htmlFor="slug" className="label">Club web address</label>
               <div className="flex items-stretch">
-                <span className="px-3 flex items-center bg-black/70 border border-r-0 border-gray-700 text-gray-500 text-sm chamfer-sm">
+                <span className="px-3 flex items-center bg-surface-raised border border-r-0 border-border text-muted text-sm" aria-hidden="true">
                   …/
                 </span>
                 <input id="slug" required minLength={3} maxLength={40} pattern="[a-z0-9]+(-[a-z0-9]+)*"
-                  title="Lowercase letters, numbers and single dashes" className={`${inputClass} font-mono`}
+                  aria-describedby="slug-hint"
+                  title="Lowercase letters, numbers and single dashes" className="field font-mono min-w-0"
                   value={club.slug}
                   onChange={(e) => { setSlugEdited(true); setClub({ ...club, slug: slugify(e.target.value) }); }} />
               </div>
-            </Field>
+              <p id="slug-hint" className="mt-1.5 text-xs text-muted">Lowercase letters, numbers and dashes. This is the link you share with families.</p>
+            </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <ColourField label="Main colour" value={club.primaryColor} onChange={(v) => setClub({ ...club, primaryColor: v })} />
-              <ColourField label="Second colour" value={club.secondaryColor} onChange={(v) => setClub({ ...club, secondaryColor: v })} />
+              <ColourField id="primaryColor" label="Main colour" value={club.primaryColor} onChange={(v) => setClub({ ...club, primaryColor: v })} />
+              <ColourField id="secondaryColor" label="Second colour" value={club.secondaryColor} onChange={(v) => setClub({ ...club, secondaryColor: v })} />
             </div>
 
             <div className="chamfer-sm p-6 text-center" style={{ backgroundColor: club.primaryColor, color: club.secondaryColor }}>
-              <p className="font-black text-xl uppercase italic">{club.name || 'Your club'}</p>
+              <p className="font-display font-extrabold text-2xl uppercase italic break-words">{club.name || 'Your club'}</p>
               <p className="text-xs opacity-80 mt-1">Official club app</p>
             </div>
 
-            <SubmitButton busy={busy} label="Finish and open my dashboard" busyLabel="Saving…" />
+            <button type="submit" disabled={busy} className="btn btn-primary w-full">
+              {busy ? 'Saving…' : 'Finish and open my dashboard'}
+            </button>
           </form>
         )}
       </div>
-    </Shell>
+    </AuthShell>
   );
 }
 
-function Shell({ children }: { children: React.ReactNode }) {
+function LoadingShell() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#0B0D0F] py-12">
-      <div className="max-w-md w-full px-4">{children}</div>
-    </div>
+    <AuthShell title="Start your club">
+      <p className="text-center text-muted" role="status">Loading…</p>
+    </AuthShell>
   );
 }
 
-function Field({ label, id, children }: { label: string; id: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <label htmlFor={id} className={labelClass}>{label}</label>
-      {children}
-    </div>
-  );
-}
-
-function ColourField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+function ColourField({ id, label, value, onChange }: { id: string; label: string; value: string; onChange: (v: string) => void }) {
   return (
     <div>
-      <span className={labelClass}>{label}</span>
-      <input type="color" aria-label={label} value={value} onChange={(e) => onChange(e.target.value.toUpperCase())}
-        className="h-12 w-full cursor-pointer bg-black/50 border border-gray-700 chamfer-sm" />
+      <label htmlFor={id} className="label">{label}</label>
+      <input id={id} type="color" value={value} onChange={(e) => onChange(e.target.value.toUpperCase())}
+        className="h-12 w-full cursor-pointer bg-background border border-border chamfer-sm" />
     </div>
-  );
-}
-
-function SubmitButton({ busy, label, busyLabel }: { busy: boolean; label: string; busyLabel: string }) {
-  return (
-    <button type="submit" disabled={busy}
-      className="w-full py-4 px-6 bg-brand text-black font-black uppercase italic tracking-wider chamfer-sm hover:bg-white transition-all disabled:opacity-50 disabled:cursor-not-allowed">
-      {busy ? busyLabel : label}
-    </button>
   );
 }
 
 export default function CreateTeamPage() {
   return (
-    <Suspense fallback={<Shell><p className="text-center text-gray-400">Loading…</p></Shell>}>
+    <Suspense fallback={<LoadingShell />}>
       <CreateTeamContent />
     </Suspense>
   );

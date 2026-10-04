@@ -2,6 +2,8 @@
 
 import { useRef, useState } from 'react';
 import { apiFetch, errorMessage } from '@/lib/session';
+import { Icon } from '@/components/ui/Icon';
+import { Notice, Pill } from '@/components/admin/AdminUi';
 
 /** A fixture read from the picture (POST /api/v1/club/fixtures/from-image) */
 interface PhotoFixture {
@@ -121,61 +123,64 @@ export function FixturePhotoImport({ onAdded }: { onAdded: () => void }) {
     const count = found.filter((f, i) => ticked[i] && f.us).length;
 
     return (
-        <section className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 space-y-4">
+        <section className="card space-y-4" aria-labelledby="photo-import-title">
             <div>
-                <h2 className="text-xl font-semibold">Add fixtures from a photo</h2>
-                <p className="text-sm text-gray-500 mt-1">
-                    Upload a photo or screenshot of a fixture or fixture list (an FA email, Full-Time or a poster) and we&apos;ll read it for you. Nothing is added until you tick it, and the picture isn&apos;t kept.
+                <h2 id="photo-import-title" className="text-2xl flex items-center gap-2">
+                    <Icon name="image" className="w-5 h-5 text-brand" /> Add fixtures from a photo
+                </h2>
+                <p className="text-sm text-muted mt-1">
+                    Upload a photo or screenshot of a fixture list (an FA email, Full-Time or a poster) and we&apos;ll read it for you. Nothing is added until you tick it, and the picture isn&apos;t kept.
                 </p>
             </div>
-            <p className="text-sm rounded p-3 bg-amber-50 text-amber-900 dark:bg-amber-900/30 dark:text-amber-100">
-                Works best with a clear, straight-on photo in good light, or a screenshot. Blurry, dark or angled pictures may be read wrongly, so always check the details before adding.
+            <p className="text-xs text-muted border-l-2 border-amber-500/60 pl-3">
+                Works best with a clear, straight-on photo in good light, or a screenshot. Always check the details before adding.
             </p>
-            {error && <div role="alert" className="p-3 rounded text-sm bg-red-50 text-red-800 dark:bg-red-900/30 dark:text-red-200">{error}</div>}
-            {done && <p role="status" className="text-sm font-semibold text-green-700 dark:text-green-400">{done}</p>}
+            {error && <Notice tone="error">{error}</Notice>}
+            {done && <Notice tone="success">{done}</Notice>}
 
             {!found.length && (
-                <label className={`inline-block px-5 py-2 bg-brand text-white font-bold rounded cursor-pointer ${busy ? 'opacity-50 pointer-events-none' : ''}`}>
+                <label className={`btn btn-primary w-full sm:w-auto ${busy ? 'opacity-50 pointer-events-none' : ''}`}>
+                    <Icon name="upload" className="w-4 h-4" />
                     {busy === 'reading' ? 'Reading the picture…' : 'Choose a photo or screenshot'}
-                    <input ref={input} type="file" accept="image/jpeg,image/png,image/*" className="hidden" disabled={!!busy} onChange={(e) => read(e.target.files?.[0])} />
+                    <input ref={input} type="file" accept="image/jpeg,image/png,image/*" className="sr-only" disabled={!!busy} onChange={(e) => read(e.target.files?.[0])} />
                 </label>
             )}
 
             {found.length > 0 && (
                 <div className="space-y-3">
-                    <p className="text-sm text-gray-600 dark:text-gray-300">We found {found.length} {found.length === 1 ? 'fixture' : 'fixtures'}. Check them and untick any you don&apos;t want.</p>
-                    <ul className="divide-y divide-gray-100 dark:divide-gray-700">
+                    <p className="text-sm text-muted">We found {found.length} {found.length === 1 ? 'fixture' : 'fixtures'}. Check them and untick any you don&apos;t want.</p>
+                    <ul className="divide-y divide-border border-y border-border">
                         {found.map((f, i) => (
-                            <li key={`${f.date}-${f.home}-${f.away}-${i}`} className="py-2 space-y-1">
-                                <label className="flex items-start gap-3">
+                            <li key={`${f.date}-${f.home}-${f.away}-${i}`} className="py-3 space-y-2">
+                                <label className="flex items-start gap-3 cursor-pointer">
                                     <input
                                         type="checkbox"
-                                        className="mt-1"
+                                        className="mt-1 w-5 h-5 accent-[rgb(var(--brand-rgb))]"
                                         checked={!!(ticked[i] && f.us)}
                                         disabled={!f.us}
                                         onChange={() => setTicked((t) => t.map((v, j) => (j === i ? !v : v)))}
                                     />
-                                    <span>
-                                        <span className="font-medium">{f.home} v {f.away}</span>
-                                        <span className="block text-xs text-gray-500">
+                                    <span className="min-w-0">
+                                        <span className="font-semibold">{f.home} v {f.away}</span>
+                                        <span className="block text-xs text-muted">
                                             {when(f)}{f.venue ? ` · ${f.venue}` : ''}{f.competition ? ` · ${f.competition}` : ''}
-                                            {f.status !== 'scheduled' && <span className="ml-2 font-bold uppercase text-amber-600">{f.status}</span>}
                                         </span>
+                                        {f.status !== 'scheduled' && <span className="inline-block mt-1"><Pill tone="warning">{f.status}</Pill></span>}
                                     </span>
                                 </label>
                                 {!f.us && (
-                                    <div className="flex flex-wrap items-center gap-2 ml-7 text-xs">
-                                        <span className="text-gray-500">Which team are you?</span>
-                                        <button type="button" onClick={() => chooseSide(i, 'home')} className="px-2 py-1 rounded-full border border-brand text-brand">{f.home}</button>
-                                        <button type="button" onClick={() => chooseSide(i, 'away')} className="px-2 py-1 rounded-full border border-brand text-brand">{f.away}</button>
+                                    <div className="flex flex-wrap items-center gap-2 ml-8 text-sm">
+                                        <span className="text-muted">Which team are you?</span>
+                                        <button type="button" onClick={() => chooseSide(i, 'home')} className="btn btn-sm btn-outline">{f.home}</button>
+                                        <button type="button" onClick={() => chooseSide(i, 'away')} className="btn btn-sm btn-outline">{f.away}</button>
                                     </div>
                                 )}
                             </li>
                         ))}
                     </ul>
-                    <div className="flex flex-wrap justify-end gap-3">
-                        <button type="button" onClick={() => setFound([])} disabled={!!busy} className="px-4 py-2 rounded border">Cancel</button>
-                        <button type="button" onClick={add} disabled={!count || !!busy} className="px-5 py-2 bg-brand text-white font-bold rounded disabled:opacity-50">
+                    <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
+                        <button type="button" onClick={() => setFound([])} disabled={!!busy} className="btn btn-ghost">Cancel</button>
+                        <button type="button" onClick={add} disabled={!count || !!busy} className="btn btn-primary">
                             {busy === 'adding' ? 'Adding…' : `Add ${count} ${count === 1 ? 'fixture' : 'fixtures'}`}
                         </button>
                     </div>

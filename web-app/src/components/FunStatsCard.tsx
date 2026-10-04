@@ -1,13 +1,14 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { API_BASE } from '@/lib/session';
+import { Icon, type IconName } from '@/components/ui/Icon';
 
 interface FunStat {
     key: string;
     label: string;
     value: string | number;
     description: string;
-    icon?: string;
 }
 
 interface FunStatsCardProps {
@@ -15,83 +16,103 @@ interface FunStatsCardProps {
     seasonId?: string | null;
 }
 
+/** Our icons for the server's fun stats (it sends emoji, which the website doesn't use). */
+const ICONS: Record<string, IconName> = {
+    avg_goals_per_match: 'chart',
+    biggest_win: 'trophy',
+    clean_sheets: 'shield',
+    comeback_wins: 'refresh',
+    different_scorers: 'users',
+    disciplinary_record: 'whistle',
+    goals_first_15: 'sparkles',
+    hattrick_count: 'ball',
+    home_win_pct: 'home',
+    overall_win_pct: 'chart',
+    scoring_streak_best: 'ball',
+    unbeaten_streak_best: 'shield',
+    win_streak_best: 'trophy',
+};
+
+const CARD_COLOURS: Record<string, { label: string; className: string }> = {
+    '🟨': { label: 'yellow', className: 'bg-yellow-400' },
+    '🟥': { label: 'red', className: 'bg-red-500' },
+};
+
+/** "2🟨 1🟥" becomes 2 [yellow card] 1 [red card]; other values show as they are. */
+function StatValue({ value }: { value: string | number }): ReactNode {
+    const text = String(value);
+    if (!/[🟨🟥]/u.test(text)) return text;
+    return (
+        <span className="inline-flex items-center gap-3">
+            {text.split(/\s+/).filter(Boolean).map((part) => {
+                const card = Object.keys(CARD_COLOURS).find((c) => part.includes(c));
+                if (!card) return <span key={part}>{part}</span>;
+                const count = part.replace(card, '');
+                return (
+                    <span key={part} className="inline-flex items-center gap-1.5">
+                        {count}
+                        <span className={`inline-block w-3.5 h-5 rounded-[2px] ${CARD_COLOURS[card].className}`} aria-hidden="true" />
+                        <span className="sr-only">{CARD_COLOURS[card].label}</span>
+                    </span>
+                );
+            })}
+        </span>
+    );
+}
+
 export function FunStatsCard({ tenant, seasonId }: FunStatsCardProps) {
     const [stats, setStats] = useState<FunStat[]>([]);
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        loadStats();
-    }, [tenant, seasonId]);
-
-    async function loadStats() {
+    const load = useCallback(async () => {
+        setLoading(true);
         try {
-            setLoading(true);
-            const query = seasonId ? `?seasonId=${seasonId}` : '';
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE || ''}/public/${tenant}/stats/fun${query}`);
+            const query = seasonId ? `?seasonId=${encodeURIComponent(seasonId)}` : '';
+            const res = await fetch(`${API_BASE}/public/${encodeURIComponent(tenant)}/stats/fun${query}`, { cache: 'no-store' });
             const data = await res.json();
-            if (data.success && Array.isArray(data.data)) {
-                setStats(data.data);
-            }
+            if (data.success && Array.isArray(data.data)) setStats(data.data);
         } catch (err) {
             console.error('Failed to load fun stats:', err);
         } finally {
             setLoading(false);
         }
-    }
+    }, [tenant, seasonId]);
+
+    useEffect(() => {
+        load();
+    }, [load]);
 
     if (loading) {
         return (
-            <section className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 p-8">
-                <h2 className="text-2xl font-black uppercase tracking-tight mb-6 text-brand">Fun Stats</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {[1, 2, 3, 4, 5, 6].map((i) => (
-                        <div key={i} className="h-24 bg-gray-200 dark:bg-gray-700 rounded-xl animate-pulse"></div>
-                    ))}
+            <section aria-busy="true" aria-label="Loading fun stats">
+                <h2 className="text-2xl italic mb-4">Fun stats</h2>
+                <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+                    {[1, 2, 3, 4, 5, 6].map((i) => <div key={i} className="h-32 card animate-pulse" />)}
                 </div>
             </section>
         );
     }
 
-    if (stats.length === 0) {
-        return null;
-    }
+    // Extras only: nothing to show is fine (the season numbers below still show)
+    if (stats.length === 0) return null;
 
     return (
-        <section className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 p-8">
-            <h2 className="text-2xl font-black uppercase tracking-tight mb-6 flex items-center gap-3">
-                <span className="text-brand">Fun Stats</span>
-                <span className="text-2xl">🎯</span>
-            </h2>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <section aria-labelledby="fun-stats">
+            <h2 id="fun-stats" className="text-2xl italic mb-4">Fun stats</h2>
+            <ul className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
                 {stats.map((stat) => (
-                    <div
-                        key={stat.key}
-                        className="group p-6 rounded-xl bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 hover:from-brand/10 hover:to-brand/5 border border-gray-200 dark:border-gray-700 hover:border-brand/30 transition-all duration-200 hover:scale-[1.02]"
-                    >
-                        <div className="flex items-start justify-between mb-3">
-                            <h3 className="text-sm font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
-                                {stat.label}
-                            </h3>
-                            {stat.icon && (
-                                <span className="text-2xl group-hover:scale-110 transition-transform">
-                                    {stat.icon}
-                                </span>
-                            )}
+                    <li key={stat.key} className="card p-4 md:p-5 flex flex-col">
+                        <div className="flex items-start justify-between gap-2 mb-2">
+                            <h3 className="text-xs md:text-sm font-sans font-bold text-muted uppercase tracking-wider leading-snug">{stat.label}</h3>
+                            <Icon name={ICONS[stat.key] ?? 'star'} className="w-5 h-5 text-brand" />
                         </div>
-
-                        <div className="text-3xl font-black text-brand mb-2">
-                            {stat.value}
-                        </div>
-
-                        {stat.description && (
-                            <p className="text-xs text-gray-500 dark:text-gray-400">
-                                {stat.description}
-                            </p>
-                        )}
-                    </div>
+                        <p className="font-display text-3xl md:text-4xl font-extrabold text-foreground mb-1">
+                            <StatValue value={stat.value} />
+                        </p>
+                        {stat.description && <p className="text-xs text-muted mt-auto">{stat.description}</p>}
+                    </li>
                 ))}
-            </div>
+            </ul>
         </section>
     );
 }

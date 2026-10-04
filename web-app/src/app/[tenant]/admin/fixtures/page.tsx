@@ -1,203 +1,239 @@
 'use client';
 
-import { useState, useEffect, use } from 'react';
-import { createClientSDK, createFixture, deleteFixture } from '@/lib/sdk';
+import { useCallback, useEffect, useState, use } from 'react';
 import Link from 'next/link';
+import { createFixture, deleteFixture } from '@/lib/sdk';
+import { apiFetch, errorMessage } from '@/lib/session';
+import { formatDate, ukDay } from '@/lib/format';
 import { FixturePhotoImport } from '@/components/FixturePhotoImport';
+import { PageHeader, EmptyNote } from '@/components/ui/Page';
+import { Icon } from '@/components/ui/Icon';
+import { ErrorNote, LoadingBlock, Notice, Pill, sdkErrorMessage } from '@/components/admin/AdminUi';
 
 interface PageProps {
     params: Promise<{ tenant: string }>;
 }
 
+/** A row from GET /api/v1/fixtures. */
+interface FixtureRow {
+    id: string;
+    opponent: string | null;
+    homeTeam: string;
+    awayTeam: string;
+    date: string;
+    time: string | null;
+    venue: string | null;
+    competition: string | null;
+    homeScore: number | null;
+    awayScore: number | null;
+    status: string;
+}
+
+const STATUS: Record<string, { label: string; tone: 'success' | 'warning' | 'danger' | 'brand' }> = {
+    completed: { label: 'Played', tone: 'success' },
+    live: { label: 'Live', tone: 'brand' },
+    postponed: { label: 'Postponed', tone: 'warning' },
+    cancelled: { label: 'Cancelled', tone: 'danger' },
+};
+
 export default function FixturesAdminPage({ params }: PageProps) {
     const { tenant } = use(params);
-    const [fixtures, setFixtures] = useState<any[]>([]);
+    const [fixtures, setFixtures] = useState<FixtureRow[]>([]);
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState('');
+    const [formError, setFormError] = useState('');
+    const [formDone, setFormDone] = useState('');
+    const [listError, setListError] = useState('');
+    const [saving, setSaving] = useState(false);
+    const [exporting, setExporting] = useState(false);
     const [formData, setFormData] = useState({
         date: '',
         time: '',
         opponent: '',
         venue: 'Home',
-        competition: 'League'
+        competition: 'League',
     });
 
-    useEffect(() => {
-        loadFixtures();
-    }, [tenant]);
-    async function loadFixtures() {
+    const loadFixtures = useCallback(async () => {
+        setLoadError('');
         try {
-            const sdk = createClientSDK(tenant);
-            const data = await sdk.listFixtures();
-            // The API answers { success, data: [...] }; older builds sent the list itself
-            if ((data as any).success && Array.isArray((data as any).data)) {
-                setFixtures((data as any).data);
-            } else if (Array.isArray(data)) {
-                setFixtures(data);
-            } else {
-                setFixtures([]);
-            }
+            const res = await apiFetch('/api/v1/fixtures');
+            if (!res.ok) throw new Error(await errorMessage(res, "We couldn't load your fixtures."));
+            const body = await res.json();
+            setFixtures(Array.isArray(body?.data) ? (body.data as FixtureRow[]) : []);
         } catch (err) {
-            console.error(err);
+            setLoadError(err instanceof Error && err.message ? err.message : "We couldn't load your fixtures. Check your connection and try again.");
         } finally {
             setLoading(false);
         }
-    }
+    }, []);
+
+    useEffect(() => {
+        loadFixtures();
+    }, [tenant, loadFixtures]);
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
-        if (!formData.date || !formData.opponent) return;
-
+        setFormDone('');
+        if (!formData.date || !formData.opponent.trim()) {
+            setFormError('Enter the date and who you are playing.');
+            return;
+        }
+        setFormError('');
+        setSaving(true);
         try {
-            await createFixture(formData);
-            setFormData({ ...formData, opponent: '' }); // Reset some fields
+            await createFixture({ ...formData, opponent: formData.opponent.trim() });
+            setFormDone(`Added: ${formData.opponent.trim()} on ${formatDate(formData.date)}.`);
+            setFormData({ ...formData, opponent: '' });
             loadFixtures();
         } catch (err) {
-            alert('Failed to create fixture');
+            setFormError(sdkErrorMessage(err, "The fixture didn't save. Please try again."));
+        } finally {
+            setSaving(false);
         }
     }
 
-    async function handleDelete(id: string) {
-        if (!confirm('Delete this fixture?')) return;
+    async function handleDelete(f: FixtureRow) {
+        if (!confirm(`Delete the fixture against ${opponentOf(f)}?`)) return;
+        setListError('');
         try {
-            await deleteFixture(id);
+            await deleteFixture(f.id);
             loadFixtures();
-        } catch (err) {
-            alert('Failed to delete fixture');
+        } catch {
+            setListError("That fixture wasn't deleted. Please try again.");
         }
     }
 
-    if (loading) return <div className="p-8">Loading...</div>;
+    // The calendar file needs the login token, so it's fetched and saved rather than linked
+    async function exportCalendar() {
+        setExporting(true);
+        setListError('');
+        try {
+            const res = await apiFetch('/api/v1/calendar/export');
+            if (!res.ok) throw new Error();
+            const url = URL.createObjectURL(await res.blob());
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${tenant}-fixtures.ics`;
+            a.click();
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+        } catch {
+            setListError("The calendar file didn't download. Please try again.");
+        } finally {
+            setExporting(false);
+        }
+    }
+
+    const opponentOf = (f: FixtureRow) => f.opponent || (f.awayTeam === 'Opponent' ? f.homeTeam : f.awayTeam);
+    const today = ukDay();
+    const upcoming = fixtures.filter((f) => f.status !== 'completed' && f.date.slice(0, 10) >= today);
+    const past = fixtures.filter((f) => !upcoming.includes(f)).reverse();
+
+    const renderRow = (f: FixtureRow) => {
+        const status = STATUS[f.status];
+        const played = f.homeScore != null && f.awayScore != null;
+        return (
+            <li key={f.id} className="bg-surface border border-border chamfer-sm px-4 py-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+                <div className="w-14 shrink-0 text-center">
+                    <p className="font-display text-2xl font-extrabold leading-none">{formatDate(f.date, { day: 'numeric' })}</p>
+                    <p className="text-xs text-muted uppercase tracking-wider">{formatDate(f.date, { month: 'short' })}</p>
+                </div>
+                <div className="min-w-0 flex-1">
+                    <p className="font-semibold truncate">vs {opponentOf(f)}</p>
+                    <p className="text-xs text-muted uppercase tracking-wider">
+                        {[f.time, f.venue, f.competition].filter(Boolean).join(' · ')}
+                    </p>
+                    {status && <div className="mt-1"><Pill tone={status.tone}>{status.label}</Pill></div>}
+                </div>
+                {played && <span className="font-display text-2xl font-extrabold tabular-nums">{f.homeScore}–{f.awayScore}</span>}
+                <div className="flex items-center gap-1 ml-auto">
+                    <Link href={`/${tenant}/admin/fixtures/${f.id}/report`} className="btn btn-sm btn-secondary">
+                        <Icon name="clipboard" className="w-4 h-4" /> Report
+                    </Link>
+                    <button type="button" onClick={() => handleDelete(f)} className="p-2.5 text-muted hover:text-red-400" aria-label={`Delete the fixture against ${opponentOf(f)}`}>
+                        <Icon name="trash" className="w-5 h-5" />
+                    </button>
+                </div>
+            </li>
+        );
+    };
 
     return (
-        <div className="container mx-auto py-8 px-4">
-            <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Fixtures Manager</h1>
-                <div className="flex items-center gap-4">
-                    <a
-                        href={`${process.env.NEXT_PUBLIC_API_BASE || ''}/api/v1/calendar/export`}
-                        className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center gap-2"
-                    >
-                        📅 Export Calendar
-                    </a>
-                </div>
-            </div>
+        <div className="container py-8 md:py-10">
+            <PageHeader
+                eyebrow="Club admin"
+                title="Fixtures"
+                subtitle="Add your matches by hand or from a photo. After a match, write the report to save the score and who played."
+                actions={
+                    <button type="button" onClick={exportCalendar} disabled={exporting} className="btn btn-secondary">
+                        <Icon name="download" className="w-4 h-4" /> {exporting ? 'Getting the file…' : 'Calendar file'}
+                    </button>
+                }
+            />
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Form */}
-                <div className="lg:col-span-1 space-y-8">
-                    <FixturePhotoImport onAdded={loadFixtures} />
-                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                        <h2 className="text-xl font-semibold mb-4">Add Fixture</h2>
-                        <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
+                <div className="lg:col-span-2 space-y-6">
+                    <form onSubmit={handleSubmit} className="card space-y-4" noValidate>
+                        <h2 className="text-2xl">Add a fixture</h2>
+                        <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-medium mb-1">Date</label>
-                                <input
-                                    type="date"
-                                    value={formData.date}
-                                    onChange={e => setFormData({ ...formData, date: e.target.value })}
-                                    className="w-full p-2 border rounded dark:bg-gray-700"
-                                    required
-                                />
+                                <label htmlFor="fixture-date" className="label">Date</label>
+                                <input id="fixture-date" type="date" value={formData.date} onChange={(e) => setFormData({ ...formData, date: e.target.value })} className="field px-3" required />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium mb-1">Time</label>
-                                <input
-                                    type="time"
-                                    value={formData.time}
-                                    onChange={e => setFormData({ ...formData, time: e.target.value })}
-                                    className="w-full p-2 border rounded dark:bg-gray-700"
-                                />
+                                <label htmlFor="fixture-time" className="label">Kick-off</label>
+                                <input id="fixture-time" type="time" value={formData.time} onChange={(e) => setFormData({ ...formData, time: e.target.value })} className="field px-3" />
                             </div>
+                        </div>
+                        <div>
+                            <label htmlFor="fixture-opponent" className="label">Opponent</label>
+                            <input id="fixture-opponent" type="text" maxLength={80} autoComplete="off" placeholder="e.g. Oadby Town" value={formData.opponent} onChange={(e) => setFormData({ ...formData, opponent: e.target.value })} className="field" required />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-medium mb-1">Opponent</label>
-                                <input
-                                    type="text"
-                                    value={formData.opponent}
-                                    onChange={e => setFormData({ ...formData, opponent: e.target.value })}
-                                    className="w-full p-2 border rounded dark:bg-gray-700"
-                                    required
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium mb-1">Venue</label>
-                                <select
-                                    value={formData.venue}
-                                    onChange={e => setFormData({ ...formData, venue: e.target.value })}
-                                    className="w-full p-2 border rounded dark:bg-gray-700"
-                                >
+                                <label htmlFor="fixture-venue" className="label">Home or away</label>
+                                <select id="fixture-venue" value={formData.venue} onChange={(e) => setFormData({ ...formData, venue: e.target.value })} className="field">
                                     <option value="Home">Home</option>
                                     <option value="Away">Away</option>
                                     <option value="Neutral">Neutral</option>
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium mb-1">Competition</label>
-                                <input
-                                    type="text"
-                                    value={formData.competition}
-                                    onChange={e => setFormData({ ...formData, competition: e.target.value })}
-                                    className="w-full p-2 border rounded dark:bg-gray-700"
-                                />
+                                <label htmlFor="fixture-competition" className="label">Competition</label>
+                                <input id="fixture-competition" type="text" value={formData.competition} onChange={(e) => setFormData({ ...formData, competition: e.target.value })} className="field" />
                             </div>
-                            <button type="submit" className="w-full bg-black text-white py-2 rounded hover:bg-gray-800">
-                                Add Fixture
-                            </button>
-                        </form>
-                    </div>
+                        </div>
+                        {formError && <Notice tone="error">{formError}</Notice>}
+                        {formDone && <Notice tone="success">{formDone}</Notice>}
+                        <button type="submit" disabled={saving} className="btn btn-primary w-full">{saving ? 'Saving…' : 'Add fixture'}</button>
+                    </form>
+                    <FixturePhotoImport onAdded={loadFixtures} />
                 </div>
 
-                {/* List */}
-                <div className="lg:col-span-2">
-                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
-                        <table className="w-full">
-                            <thead className="bg-gray-50 dark:bg-gray-700">
-                                <tr>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Opponent</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Venue</th>
-                                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                                {fixtures.map((fixture: any) => (
-                                    <tr key={fixture.id}>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            {new Date(fixture.date).toLocaleDateString()} {fixture.time}
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap font-medium">
-                                            {fixture.awayTeam === 'Opponent' ? fixture.homeTeam : fixture.awayTeam}
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <span className={`px-2 py-1 rounded text-xs ${fixture.venue === 'Home' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
-                                                {fixture.venue || 'Home'}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-right">
-                                            <Link
-                                                href={`/${tenant}/admin/fixtures/${fixture.id}/report`}
-                                                className="text-blue-600 hover:text-blue-900 mr-4 font-medium"
-                                            >
-                                                Report
-                                            </Link>
-                                            <button
-                                                onClick={() => handleDelete(fixture.id)}
-                                                className="text-red-600 hover:text-red-900"
-                                            >
-                                                Delete
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))}
-                                {fixtures.length === 0 && (
-                                    <tr>
-                                        <td colSpan={4} className="px-6 py-8 text-center text-gray-500">
-                                            No upcoming fixtures found.
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
+                <div className="lg:col-span-3 space-y-6">
+                    {listError && <Notice tone="error">{listError}</Notice>}
+                    {loading ? (
+                        <LoadingBlock label="Loading fixtures" />
+                    ) : loadError ? (
+                        <ErrorNote message={loadError} onRetry={() => { setLoading(true); loadFixtures(); }} />
+                    ) : fixtures.length === 0 ? (
+                        <EmptyNote icon="calendar" title="No fixtures yet">
+                            Add your next match with the form, or read a whole fixture list from a photo. FA fixture emails can be pasted in Settings.
+                        </EmptyNote>
+                    ) : (
+                        <>
+                            <section aria-labelledby="upcoming-title" className="space-y-3">
+                                <h2 id="upcoming-title" className="text-2xl">Coming up</h2>
+                                {upcoming.length ? <ul className="space-y-2">{upcoming.map(renderRow)}</ul> : <p className="text-muted">Nothing coming up. Add your next match.</p>}
+                            </section>
+                            {past.length > 0 && (
+                                <section aria-labelledby="past-title" className="space-y-3">
+                                    <h2 id="past-title" className="text-2xl">Played and past</h2>
+                                    <ul className="space-y-2">{past.map(renderRow)}</ul>
+                                </section>
+                            )}
+                        </>
+                    )}
                 </div>
             </div>
         </div>

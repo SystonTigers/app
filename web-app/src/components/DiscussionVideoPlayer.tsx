@@ -1,6 +1,14 @@
 'use client';
 
 import { useRef, useState, useEffect } from 'react';
+import { Icon } from '@/components/ui/Icon';
+
+/** Comment timestamps ("[12:34]") call this to jump the video. */
+declare global {
+    interface Window {
+        __discussionVideoSeek?: (seconds: number) => void;
+    }
+}
 
 interface DiscussionVideoPlayerProps {
     videoUrl: string;
@@ -81,68 +89,52 @@ export function DiscussionVideoPlayer({
 
     // Expose seekTo function globally for timestamp links
     useEffect(() => {
-        (window as any).__discussionVideoSeek = seekTo;
+        window.__discussionVideoSeek = seekTo;
         return () => {
-            delete (window as any).__discussionVideoSeek;
+            delete window.__discussionVideoSeek;
         };
     }, []);
 
     if (isCollapsed) {
         return (
-            <div className="bg-gray-100 dark:bg-gray-800 rounded-xl p-4 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                    <span className="text-2xl">🎬</span>
-                    <span className="font-medium text-gray-700 dark:text-gray-300">Match Video</span>
-                </div>
-                <button
-                    onClick={() => setIsCollapsed(false)}
-                    className="px-4 py-2 bg-brand text-white rounded-lg text-sm font-bold hover:bg-brand/90 transition-colors"
-                >
-                    Show Video
+            <div className="card p-4 flex items-center justify-between gap-3">
+                <span className="inline-flex items-center gap-2 font-display font-bold uppercase">
+                    <Icon name="video" className="w-5 h-5 text-brand" /> Match video
+                </span>
+                <button type="button" onClick={() => setIsCollapsed(false)} className="btn btn-secondary btn-sm min-h-[40px]">
+                    Show video
                 </button>
             </div>
         );
     }
 
     return (
-        <div className="bg-gray-900 rounded-2xl overflow-hidden shadow-2xl">
-            <div className="relative aspect-video">
-                <video
-                    ref={videoRef}
-                    src={videoUrl}
-                    className="w-full h-full"
-                    controls
-                    playsInline
-                />
+        <div className="card p-0 overflow-hidden">
+            <div className="relative aspect-video bg-background">
+                <video ref={videoRef} src={videoUrl} className="w-full h-full" controls playsInline />
             </div>
 
-            <div className="p-4 bg-gray-800">
-                <div className="flex items-center justify-between mb-2">
+            <div className="p-3 border-t border-border">
+                <div className="flex items-center justify-between gap-3 mb-2">
                     <div className="flex items-center gap-3">
                         <button
+                            type="button"
                             onClick={togglePlayPause}
-                            className="w-10 h-10 bg-brand rounded-full flex items-center justify-center text-white hover:bg-brand/90 transition-colors"
+                            className="btn btn-primary btn-sm min-h-[40px]"
+                            aria-label={isPlaying ? 'Pause' : 'Play'}
                         >
-                            {isPlaying ? '⏸' : '▶'}
+                            {isPlaying ? 'Pause' : <><Icon name="play" className="w-4 h-4" /> Play</>}
                         </button>
-                        <span className="text-white font-mono text-sm">
+                        <span className="font-mono text-sm text-muted tabular-nums">
                             {formatTime(currentTime)} / {formatTime(duration)}
                         </span>
                     </div>
-
-                    <button
-                        onClick={() => setIsCollapsed(true)}
-                        className="text-gray-400 hover:text-white transition-colors text-sm"
-                    >
-                        Minimize
+                    <button type="button" onClick={() => setIsCollapsed(true)} className="btn btn-ghost btn-sm min-h-[40px]">
+                        Hide
                     </button>
                 </div>
-
-                <div className="w-full h-1 bg-gray-700 rounded-full overflow-hidden">
-                    <div
-                        className="h-full bg-brand transition-all"
-                        style={{ width: `${(currentTime / duration) * 100}%` }}
-                    />
+                <div className="w-full h-1 bg-surface-raised overflow-hidden">
+                    <div className="h-full bg-brand transition-all" style={{ width: `${duration ? (currentTime / duration) * 100 : 0}%` }} />
                 </div>
             </div>
         </div>
@@ -151,8 +143,6 @@ export function DiscussionVideoPlayer({
 
 // Helper function to get current video time
 export function getCurrentVideoTime(): number | null {
-    const seek = (window as any).__discussionVideoSeek;
-    // Video element should have currentTime
     const video = document.querySelector('video');
     return video ? video.currentTime : null;
 }

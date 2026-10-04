@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { createClientSDK } from '@/lib/sdk';
+import { useEffect, useState } from 'react';
 import { apiFetch } from '@/lib/session';
+import { ukDay } from '@/lib/format';
+import { Dialog, Notice, bodyError } from '@/components/admin/AdminUi';
 
 interface StartSeasonModalProps {
     isOpen: boolean;
@@ -11,36 +12,41 @@ interface StartSeasonModalProps {
     tenantId: string;
 }
 
+interface SquadPlayer {
+    id: string;
+    name: string;
+    position: string | null;
+}
+
+/** Start a new season, carrying over the players who are staying. */
 export function StartSeasonModal({ isOpen, onClose, onSuccess, tenantId }: StartSeasonModalProps) {
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
     const [name, setName] = useState('');
-    const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
+    const [startDate, setStartDate] = useState(ukDay());
     const [copySquad, setCopySquad] = useState(true);
-    const [squad, setSquad] = useState<any[]>([]);
+    const [squad, setSquad] = useState<SquadPlayer[]>([]);
     const [selectedPlayers, setSelectedPlayers] = useState<Set<string>>(new Set());
 
     useEffect(() => {
-        if (isOpen) {
-            loadCurrentSquad();
-        }
+        if (!isOpen) return;
+        apiFetch('/api/v1/squad')
+            .then((res) => (res.ok ? res.json() : null))
+            .then((body) => {
+                const rows: Array<{ id: unknown; name?: unknown; position?: unknown }> = Array.isArray(body?.data) ? body.data : [];
+                const list = rows.map((r) => ({ id: String(r.id), name: String(r.name ?? ''), position: r.position ? String(r.position) : null }));
+                setSquad(list);
+                setSelectedPlayers(new Set(list.map((p) => p.id)));
+            })
+            .catch(() => setSquad([]));
     }, [isOpen, tenantId]);
 
-    async function loadCurrentSquad() {
-        const sdk = createClientSDK(tenantId);
-        try {
-            const data = await sdk.getSquad();
-            let list: any[] = [];
-            if (Array.isArray(data)) list = data;
-            else if ((data as any).data) list = (data as any).data;
-
-            setSquad(list);
-            // Default select all
-            setSelectedPlayers(new Set(list.map(p => p.id)));
-        } catch (err) {
-            console.error(err);
-        }
-    }
+    const close = () => {
+        setStep(1);
+        setError('');
+        onClose();
+    };
 
     const handleTogglePlayer = (id: string) => {
         const next = new Set(selectedPlayers);
@@ -51,30 +57,18 @@ export function StartSeasonModal({ isOpen, onClose, onSuccess, tenantId }: Start
 
     const handleStartSeason = async () => {
         setLoading(true);
+        setError('');
         try {
-            const token = localStorage.getItem('token');
-            const res = await apiFetch(`/api/v1/seasons/start-new`, {
+            const res = await apiFetch('/api/v1/seasons/start-new', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`
-                },
-                body: JSON.stringify({
-                    name,
-                    startDate,
-                    copySquad,
-                    playerIds: copySquad ? Array.from(selectedPlayers) : []
-                })
+                body: JSON.stringify({ name: name.trim(), startDate, copySquad, playerIds: copySquad ? Array.from(selectedPlayers) : [] }),
             });
-            const data = await res.json();
-            if (data.success) {
-                onSuccess();
-                onClose();
-            } else {
-                alert(data.error || 'Failed to start season');
-            }
+            const data = await res.json().catch(() => null);
+            if (!res.ok || !data?.success) throw new Error(bodyError(data, "The season didn't start. Please try again."));
+            onSuccess();
+            close();
         } catch (err) {
-            alert('Error starting season');
+            setError(err instanceof Error ? err.message : "The season didn't start. Please try again.");
         } finally {
             setLoading(false);
         }
@@ -83,102 +77,64 @@ export function StartSeasonModal({ isOpen, onClose, onSuccess, tenantId }: Start
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden">
-                <div className="p-6 border-b dark:border-gray-700">
-                    <h2 className="text-xl font-bold dark:text-white">Start New Season</h2>
-                </div>
-
-                <div className="p-6">
-                    {step === 1 && (
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium mb-1 dark:text-gray-300">Season Name</label>
-                                <input
-                                    type="text"
-                                    value={name}
-                                    onChange={e => setName(e.target.value)}
-                                    placeholder="e.g. 2025/2026"
-                                    className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium mb-1 dark:text-gray-300">Start Date</label>
-                                <input
-                                    type="date"
-                                    value={startDate}
-                                    onChange={e => setStartDate(e.target.value)}
-                                    className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                                />
-                            </div>
-
-                            {squad.length > 0 && (
-                                <div className="mt-6 border-t pt-4 dark:border-gray-700">
-                                    <div className="flex items-center gap-2 mb-2">
-                                        <input
-                                            type="checkbox"
-                                            id="copySquad"
-                                            checked={copySquad}
-                                            onChange={e => setCopySquad(e.target.checked)}
-                                            className="w-4 h-4"
-                                        />
-                                        <label htmlFor="copySquad" className="font-medium dark:text-gray-300">Carry over current squad?</label>
-                                    </div>
-                                    <p className="text-sm text-gray-500 dark:text-gray-400 ml-6">
-                                        Active players will be linked to the new season automatically.
-                                    </p>
-                                </div>
-                            )}
-
-                            <div className="flex justify-end gap-3 mt-8">
-                                <button onClick={onClose} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded dark:text-gray-300 dark:hover:bg-gray-700">Cancel</button>
-                                <button
-                                    onClick={() => copySquad ? setStep(2) : handleStartSeason()}
-                                    disabled={!name || !startDate}
-                                    className="px-4 py-2 bg-brand text-white rounded hover:bg-brand/90 disabled:opacity-50"
-                                >
-                                    {copySquad ? 'Next: Review Squad' : 'Start Season'}
-                                </button>
-                            </div>
-                        </div>
+        <Dialog title="Start a new season" onClose={close} wide>
+            {step === 1 && (
+                <div className="space-y-4">
+                    <div>
+                        <label htmlFor="season-name" className="label">Season name</label>
+                        <input id="season-name" type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. 2026-27" className="field" />
+                    </div>
+                    <div>
+                        <label htmlFor="season-start" className="label">Starts on</label>
+                        <input id="season-start" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="field" />
+                    </div>
+                    {squad.length > 0 && (
+                        <label htmlFor="copySquad" className="flex items-start gap-3 min-h-[40px] cursor-pointer pt-2">
+                            <input type="checkbox" id="copySquad" checked={copySquad} onChange={(e) => setCopySquad(e.target.checked)} className="mt-1 w-5 h-5 accent-[rgb(var(--brand-rgb))]" />
+                            <span>
+                                <span className="font-semibold">Carry over the squad</span>
+                                <span className="block text-sm text-muted">Players who are staying are added to the new season.</span>
+                            </span>
+                        </label>
                     )}
-
-                    {step === 2 && (
-                        <div className="space-y-4">
-                            <h3 className="font-semibold dark:text-white">Review Squad List</h3>
-                            <p className="text-sm text-gray-500">Uncheck players who have left the club.</p>
-
-                            <div className="max-h-60 overflow-y-auto border rounded dark:border-gray-700 divide-y dark:divide-gray-700">
-                                {squad.map(p => (
-                                    <div key={p.id} className="p-3 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                                        <div className="flex items-center gap-3">
-                                            <input
-                                                type="checkbox"
-                                                checked={selectedPlayers.has(p.id)}
-                                                onChange={() => handleTogglePlayer(p.id)}
-                                                className="w-4 h-4"
-                                            />
-                                            <span className="dark:text-white">{p.name}</span>
-                                            <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded dark:bg-gray-700 dark:text-gray-300">{p.position}</span>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-
-                            <div className="flex justify-end gap-3 mt-8">
-                                <button onClick={() => setStep(1)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded dark:text-gray-300 dark:hover:bg-gray-700">Back</button>
-                                <button
-                                    onClick={handleStartSeason}
-                                    disabled={loading}
-                                    className="px-4 py-2 bg-brand text-white rounded hover:bg-brand/90 disabled:opacity-50"
-                                >
-                                    {loading ? 'Starting...' : `Start Season (${selectedPlayers.size} Players)`}
-                                </button>
-                            </div>
-                        </div>
-                    )}
+                    {error && <Notice tone="error">{error}</Notice>}
+                    <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-2">
+                        <button type="button" onClick={close} className="btn btn-ghost">Cancel</button>
+                        <button
+                            type="button"
+                            onClick={() => (copySquad && squad.length ? setStep(2) : handleStartSeason())}
+                            disabled={!name.trim() || !startDate || loading}
+                            className="btn btn-primary"
+                        >
+                            {copySquad && squad.length ? 'Next: check the squad' : loading ? 'Starting…' : 'Start season'}
+                        </button>
+                    </div>
                 </div>
-            </div>
-        </div>
+            )}
+
+            {step === 2 && (
+                <div className="space-y-4">
+                    <p className="text-muted">Untick anyone who has left the club.</p>
+                    <ul className="max-h-72 overflow-y-auto border border-border divide-y divide-border">
+                        {squad.map((p) => (
+                            <li key={p.id}>
+                                <label className="flex items-center gap-3 px-3 py-2.5 min-h-[44px] cursor-pointer hover:bg-surface-raised">
+                                    <input type="checkbox" checked={selectedPlayers.has(p.id)} onChange={() => handleTogglePlayer(p.id)} className="w-5 h-5 accent-[rgb(var(--brand-rgb))]" />
+                                    <span className="flex-1">{p.name}</span>
+                                    {p.position && <span className="text-xs text-muted uppercase tracking-wider">{p.position}</span>}
+                                </label>
+                            </li>
+                        ))}
+                    </ul>
+                    {error && <Notice tone="error">{error}</Notice>}
+                    <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-2">
+                        <button type="button" onClick={() => setStep(1)} className="btn btn-ghost">Back</button>
+                        <button type="button" onClick={handleStartSeason} disabled={loading} className="btn btn-primary">
+                            {loading ? 'Starting…' : `Start season (${selectedPlayers.size} ${selectedPlayers.size === 1 ? 'player' : 'players'})`}
+                        </button>
+                    </div>
+                </div>
+            )}
+        </Dialog>
     );
 }

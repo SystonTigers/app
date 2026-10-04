@@ -1,20 +1,7 @@
-/** Display helpers for the owner panel (UK formats). */
+/** Display helpers for the owner panel (UK formats; dates and money go through lib/format). */
+import { formatDate } from '@/lib/format';
 
-export function pounds(pence: number): string {
-  return new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP', minimumFractionDigits: pence % 100 ? 2 : 0 }).format(pence / 100);
-}
-
-export function shortDate(ms: number | null | undefined): string {
-  if (!ms) return '—';
-  return new Date(ms).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
-}
-
-export function dateTime(ms: number | null | undefined): string {
-  if (!ms) return '—';
-  return new Date(ms).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-}
-
-/** "just now", "5 min ago", "3 days ago", or the date when older than a month. */
+/** "Just now", "5 min ago", "3 days ago", or the date when older than a month. */
 export function ago(ms: number | null | undefined, now = Date.now()): string {
   if (!ms) return 'Never';
   const s = Math.max(0, Math.round((now - ms) / 1000));
@@ -25,7 +12,7 @@ export function ago(ms: number | null | undefined, now = Date.now()): string {
   if (h < 24) return `${h} hour${h === 1 ? '' : 's'} ago`;
   const d = Math.round(h / 24);
   if (d < 31) return `${d} day${d === 1 ? '' : 's'} ago`;
-  return shortDate(ms);
+  return formatDate(ms);
 }
 
 export function trialText(daysLeft: number | null): string {
@@ -36,10 +23,38 @@ export function trialText(daysLeft: number | null): string {
 }
 
 const ROLE_NAMES: Record<string, string> = {
-  owner: 'Owner', tenant_admin: 'Admin', admin: 'Admin', manager: 'Manager', coach: 'Coach', parent: 'Parent', player: 'Player', member: 'Member',
+  owner: 'Owner',
+  tenant_admin: 'Admin',
+  admin: 'Admin',
+  manager: 'Manager',
+  coach: 'Coach',
+  parent: 'Parent',
+  player: 'Player',
+  supporter: 'Supporter',
+  member: 'Member',
 };
 
+/** "Owner, Admin". tenant_member is every account's base role, so it only shows when there's nothing else. */
 export function rolesText(roles: string[]): string {
-  const names = Array.from(new Set(roles.map((r) => ROLE_NAMES[r] ?? r)));
+  const names = Array.from(new Set(roles.filter((r) => r !== 'tenant_member').map((r) => ROLE_NAMES[r] ?? r)));
   return names.join(', ') || 'Member';
+}
+
+const PAYMENT_STATUS: Record<string, string> = {
+  trialing: 'On trial',
+  trial: 'On trial',
+  active: 'Paying',
+  past_due: 'Payment overdue',
+  unpaid: 'Unpaid',
+  canceled: 'Cancelled',
+  cancelled: 'Cancelled',
+  incomplete: 'Not finished',
+  incomplete_expired: 'Never finished',
+  paused: 'Paused',
+};
+
+/** The billing status in words ("trialing" -> "On trial"). */
+export function paymentText(status: string | null): string {
+  if (!status) return 'Not set up';
+  return PAYMENT_STATUS[status] ?? status.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase());
 }
