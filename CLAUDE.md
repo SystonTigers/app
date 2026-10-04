@@ -163,6 +163,24 @@ with personal data.
   kick-off). mediabunny is only loaded when making a video (its own chunk).
   `node test/highlightsVideo.test.js some.mp4` cuts a real file.
 
+## Goal of the Month
+
+- Staff run it on the website (Admin → Goal of the Month): pick a month
+  (defaults to last month), tick 2 to 10 of the month's goals from Match
+  Centre and match reports (`GET /api/v1/gotm/goals?month=YYYY-MM`; ones with
+  a match clip are marked) or type goals in with an optional video link, then
+  open voting (`POST /gotm/start`; one open vote at a time). Members watch
+  the clips and vote once in the app (Highlights → Goal of the Month,
+  `components/gotm/GotmPanel`; `POST /gotm/vote`, a unique index stops double
+  votes). Counts are hidden from members until it closes; staff see them.
+- Closing (`POST /gotm/close`) picks the winner (joint winners share it) and
+  queues one `gotm` post (`source_id gotm:<votingId>`, person layout; set in
+  Club Settings). `GET /gotm` returns the open vote with my vote and the last
+  six winners. Code: `routes/gotm.ts`, `services/gotm/` (`rules.ts` pure,
+  `store.ts` database); nominations point at their goal (`event_id`,
+  migration 0026) so clips come from the same helper as player pages
+  (`playerProfile/clips.ts` `fixtureGoalClips`), with video consent applied.
+
 ## Social graphics and club posts
 
 - The server draws every graphic (`services/graphics/`): SVG layouts in a

@@ -155,3 +155,41 @@ export function clipsLength(clips: Array<{ start: number; end: number }>): numbe
   }
   return total;
 }
+
+/** A video staff uploaded on the website (GET /api/v1/videos). */
+export interface ClubVideo {
+  id: string;
+  title: string;
+  description: string | null;
+  type: string;
+  videoUrl: string | null;
+  youtubeUrl: string | null;
+  uploadedAt: string | null;
+}
+
+const VIDEO_TYPES: Record<string, string> = { goal: 'Goal', save: 'Save', skill: 'Great play', highlights: 'Highlights', 'full-match': 'Full match' };
+
+/** The server's rows, checked; videos with nothing to play are left out. */
+export function readClubVideos(raw: unknown): ClubVideo[] {
+  if (!Array.isArray(raw)) return [];
+  const text = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : null);
+  return raw
+    .filter((r): r is Record<string, unknown> => !!r && typeof r === 'object' && typeof (r as { id?: unknown }).id === 'string')
+    .map((r) => ({
+      id: r.id as string,
+      title: text(r.title) ?? 'Club video',
+      description: text(r.description),
+      type: text(r.type) ?? 'highlights',
+      videoUrl: text(r.video_url),
+      youtubeUrl: text(r.youtube_url),
+      uploadedAt: text(r.uploaded_at),
+    }))
+    .filter((v) => !!(v.videoUrl || v.youtubeUrl));
+}
+
+/** "Goal · 3 Oct 2026" */
+export function clubVideoLine(v: Pick<ClubVideo, 'type' | 'uploadedAt'>): string {
+  const d = v.uploadedAt ? new Date(v.uploadedAt.includes('T') ? v.uploadedAt : `${v.uploadedAt.replace(' ', 'T')}Z`) : null;
+  const when = d && !Number.isNaN(d.getTime()) ? d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Europe/London' }) : '';
+  return [VIDEO_TYPES[v.type] ?? 'Video', when].filter(Boolean).join(' · ');
+}

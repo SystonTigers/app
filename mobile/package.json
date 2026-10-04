@@ -10,7 +10,7 @@
     "web": "expo start --web",
     "lint": "eslint . --ext .ts,.tsx",
     "test:snapshots": "node test/theme.snapshot.test.js",
-    "test": "npm run test:snapshots && node test/webAlert.test.js && node test/liveMatch.test.js && node test/consent.test.js && node test/home.test.js && node test/members.test.js && node test/faFullTime.test.js && node test/matchDay.test.js && node test/highlights.test.js && node test/highlightsOverlay.test.js && node test/highlightsVideo.test.js && node test/fixturePhoto.test.js && node test/motmVote.test.js && node test/results.test.js && node test/gallery.test.js && node test/training.test.js && node test/clubSettings.test.js && node test/leagueTable.test.js && node test/drills.test.js && node test/playerPage.test.js && node test/playerNames.test.js && node test/stats.test.js && node test/roles.test.js",
+    "test": "npm run test:snapshots && node test/webAlert.test.js && node test/liveMatch.test.js && node test/consent.test.js && node test/home.test.js && node test/members.test.js && node test/faFullTime.test.js && node test/matchDay.test.js && node test/highlights.test.js && node test/highlightsOverlay.test.js && node test/highlightsVideo.test.js && node test/fixturePhoto.test.js && node test/motmVote.test.js && node test/results.test.js && node test/gallery.test.js && node test/training.test.js && node test/clubSettings.test.js && node test/leagueTable.test.js && node test/drills.test.js && node test/playerPage.test.js && node test/playerNames.test.js && node test/stats.test.js && node test/roles.test.js && node test/gotm.test.js",
     "web:build": "node scripts/build-web.mjs",
     "web:deploy": "node scripts/build-web.mjs && npx wrangler@4 deploy -c wrangler.web.jsonc"
   },

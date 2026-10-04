@@ -46,3 +46,20 @@ assert.equal(matchDate('2026-09-27'), 'Sun 27 Sept'.replace('Sept', new Date(Dat
 assert.equal(matchDate('rubbish'), 'rubbish');
 
 console.log('highlights tests passed');
+
+// Uploaded club videos
+{
+  const { readClubVideos, clubVideoLine } = require('../src/utils/highlights.ts');
+  const vids = readClubVideos([
+    { id: 'a', title: 'Cup final', type: 'full-match', video_url: 'https://x/v.mp4', uploaded_at: '2026-10-03 18:00:00' },
+    { id: 'b', title: '', type: 'goal', youtube_url: 'https://youtu.be/q' },
+    { id: 'c', title: 'Nothing to play', video_url: '' },
+    null,
+  ]);
+  assert.deepEqual(vids.map((v) => v.id), ['a', 'b']);
+  assert.equal(vids[1].title, 'Club video');
+  assert.equal(clubVideoLine(vids[0]), 'Full match · 3 Oct 2026');
+  assert.equal(clubVideoLine(vids[1]), 'Goal');
+  assert.deepEqual(readClubVideos({}), []);
+  console.log('club video tests passed');
+}

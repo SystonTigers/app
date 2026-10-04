@@ -9,6 +9,7 @@ import { AUTH_STORAGE_KEYS, authStorage, type AuthStorageKey } from './authStora
 import { getTenantId } from './club';
 import { appendPhoto } from './photoUpload';
 import type { LeagueSnapshot } from '../utils/leagueTable';
+import { readGotm, type GotmData } from '../utils/gotm';
 import type { MyPlayer, PlayerProfile } from '../utils/playerPage';
 
 // Re-exported for existing imports
@@ -674,15 +675,6 @@ export const playerImagesApi = {
   },
 };
 
-export interface GotmVotingResponse {
-  success: boolean;
-  data?: {
-    voting: { id: string; month: string; year: number; status: string } | null;
-    candidates: Array<Record<string, any>>;
-  };
-  error?: string;
-}
-
 /** Push notification token registration (backend: /api/v1/push/register). */
 export const pushApi = {
   /** An Expo push token (phone app) or the browser's push subscription as JSON (web app). */
@@ -735,26 +727,18 @@ export const matchDayApi = {
   },
 };
 
-/** Goal of the Month voting (backend: /api/v1/gotm). */
+/** Goal of the Month (backend: /api/v1/gotm). */
 export const gotmApi = {
-  // Current open voting (or a specific one) with its candidates
-  getVoting: async (votingId?: string): Promise<GotmVotingResponse> => {
-    const response = await api.get('/api/v1/gotm', {
-      params: votingId ? { votingId } : undefined,
-    });
-    const body = response.data || {};
-    // Backend returns { success, voting, candidates } at the top level
-    return {
-      success: !!body.success,
-      data: { voting: body.voting ?? null, candidates: body.candidates ?? [] },
-      error: body.error,
-    };
+  /** The open vote (with my vote) and recent winners */
+  get: async (): Promise<GotmData> => {
+    const response = await api.get('/api/v1/gotm');
+    return readGotm(response.data?.data);
   },
 
-  // Cast a vote for a candidate
-  castVote: async (votingId: string, candidateId: string): Promise<{ success: boolean; error?: string }> => {
+  /** One vote each; returns the vote with mine marked */
+  castVote: async (votingId: string, candidateId: string): Promise<GotmData> => {
     const response = await api.post('/api/v1/gotm/vote', { votingId, candidateId });
-    return response.data;
+    return readGotm(response.data?.data);
   },
 };
 

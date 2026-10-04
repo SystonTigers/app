@@ -1,6 +1,6 @@
 # Roadmap: what's built and what's left
 
-Updated 3 October 2026. Keep this short and current: when something here is
+Updated 4 October 2026. Keep this short and current: when something here is
 done, move it to "Built" (one line) and update `CLAUDE.md`.
 
 ## Built (the detail is in CLAUDE.md)
@@ -17,8 +17,10 @@ done, move it to "Built" (one line) and update `CLAUDE.md`.
   player of the week/month, milestones, throwback, quotes, monthly results,
   fixtures and top scorers round-ups). Club Settings in
   the app and on the website decide what goes where.
-- **Highlights:** clips of the match video from Match Centre taps (free), and
-  a phone-first video maker with scoreboard and captions.
+- **Highlights:** clips of the match video from Match Centre taps (free), a
+  phone-first video maker with scoreboard and captions, and Goal of the Month
+  (staff pick the month's goals on the website, members watch and vote in the
+  app, the winner is posted).
 - **League and fixtures:** our own table sorted by goal difference (pasted
   results or table), FA Full-Time snippets, fixtures from FA emails (pasted or
   forwarded) and from photos.
@@ -41,11 +43,10 @@ done, move it to "Built" (one line) and update `CLAUDE.md`.
    (`routes/billing.ts` PLANS). Under discussion: per-team pricing, no free
    tier, multi-team discounts. Once decided: update PLANS and Stripe prices,
    flip the switch, update the landing page.
-3. **Goal of the Month:** check it end to end (`routes/gotm.ts`).
-4. **Gallery tagging:** tag players in gallery photos so they appear on
+3. **Gallery tagging:** tag players in gallery photos so they appear on
    player pages (today player pages show Player Images only).
-5. **XbotGo scoreboard:** push the live score to the camera's overlay.
-6. **TikTok posting:** waiting on TikTok's app review; managers use Share.
+4. **XbotGo scoreboard:** push the live score to the camera's overlay.
+5. **TikTok posting:** waiting on TikTok's app review; managers use Share.
 
 ## Switched off until they're ready
 

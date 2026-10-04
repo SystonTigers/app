@@ -154,6 +154,24 @@ export function playerOfPeriodPost(brand: Brand, policy: PublicNamePolicy, perio
   };
 }
 
+/**
+ * Goal of the Month winner (joint winners share the graphic, without photos).
+ * `detail` is the goal: "v Rovers, 23'".
+ */
+export function gotmWinnerPost(brand: Brand, policy: PublicNamePolicy, winners: Array<PersonFacts & { detail: string | null }>, monthLabel: string, votes: number): Built {
+  const people = winners.map((w) => ({ ...person(policy, w), detail: w.detail }));
+  const names = people.map((p) => p.name).join(" & ");
+  const detail = people.length === 1 ? people[0].detail : null;
+  const voteText = `${votes} vote${votes === 1 ? "" : "s"}`;
+  return {
+    caption: `🏆 Goal of the Month for ${monthLabel}: ${names}${detail ? ` (${detail})` : ""}! ${people.length > 1 ? "Joint winners with" : "Voted for by the club with"} ${voteText}${people.length > 1 ? " each" : ""}.`,
+    graphic: {
+      ...base(brand, "gotm", "GOAL OF THE MONTH"), layout: "person", playerName: names,
+      photoUrl: people.length === 1 ? people[0].photo : null, stat: detail, secondary: `${monthLabel} · ${voteText}`,
+    },
+  };
+}
+
 export interface LeaderFacts { name: string; goals: number; assists: number; appearances: number }
 
 /**

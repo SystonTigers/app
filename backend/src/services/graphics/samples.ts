@@ -58,6 +58,7 @@ export function sampleGraphics(brand: Brand = DEFAULT_BRAND): Record<string, Gra
     potw: { ...base, layout: "person", kind: "player_of_week", headline: "PLAYER OF THE WEEK", playerName: "Sam S.", photoUrl: "sample:photo", stat: "3 goals · 1 assist", secondary: null },
     milestone: { ...base, layout: "person", kind: "milestone", headline: "MILESTONE", playerName: "Will J.", photoUrl: null, stat: "50 appearances", secondary: "What a servant to the club" },
     motm: { ...base, layout: "person", kind: "motm", headline: "MAN OF THE MATCH", playerName: "Sam S.", photoUrl: "sample:photo", stat: null, secondary: "vs Hillside Rangers · voted by parents" },
+    gotm: { ...base, layout: "person", kind: "gotm", headline: "GOAL OF THE MONTH", playerName: "Sam S.", photoUrl: "sample:photo", stat: "v Hillside Rangers, 23'", secondary: "September 2026 · 14 votes" },
     quote: { ...base, layout: "quote", kind: "quote", headline: "Quote of the week", text: "Hard work beats talent when talent doesn't work hard.", author: "Tim Notke" },
     throwback: { ...base, layout: "photo", kind: "throwback", headline: "THROWBACK THURSDAY", photoUrl: "sample:photo", caption: "Cup final day, May 2025" },
   };

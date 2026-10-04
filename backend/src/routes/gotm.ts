@@ -1,165 +1,107 @@
+/**
+ * Goal of the Month: staff nominate goals from a month, members vote once,
+ * staff close the vote and the winner is posted.
+ *
+ *   GET  /api/v1/gotm[?votingId=]        members: the open vote (or the given one) and recent winners
+ *   GET  /api/v1/gotm/goals?month=       staff: the month's goals to nominate (YYYY-MM)
+ *   POST /api/v1/gotm/start              staff: open a vote { month: "YYYY-MM", goals: [...] }
+ *   POST /api/v1/gotm/vote               members: { votingId, candidateId }, one vote each
+ *   POST /api/v1/gotm/close              staff: { votingId }, queues the winner post
+ */
 import { json } from "../services/util";
-import { requireJWT } from "../services/auth";
+import { requireStaff, requireTenantJWT, type TenantClaims } from "../services/auth";
+import { readMonth, readNewVote } from "../services/gotm/rules";
+import { castVote, closeVote, loadVotes, monthGoals, openVote, voterId, winnerFacts } from "../services/gotm/store";
+import { gotmWinnerPost } from "../services/social/clubPosts";
+import { queueClubPost } from "../services/social/jobs";
+import type { SocialEnv } from "../services/social/club";
 
-// Types
-interface GoalCandidate {
-    id: string;
-    playerId: string;
-    matchId: string;
-    description: string;
-    videoUrl?: string;
-    votes: number;
+type Env = SocialEnv;
+
+function fail(corsHdrs: Headers, status: number, code: string, message: string): Response {
+  return json({ success: false, error: { code, message } }, status, corsHdrs);
 }
 
-// Start GOTM voting for a month
-export async function handleStartGOTMVoting(req: Request, env: any, corsHdrs: Headers) {
-    try {
-        const claims = await requireJWT(req, env);
-        const body = await req.json() as { month: string; year: number; goals: any[] };
-
-        const votingId = crypto.randomUUID();
-
-        // Create voting session
-        await env.DB.prepare(
-            `INSERT INTO gotm_voting (id, tenant_id, month, year, status, created_at)
-             VALUES (?, ?, ?, ?, 'open', ?)`
-        ).bind(votingId, claims.tenantId, body.month, body.year, Date.now()).run();
-
-        // Add goal candidates
-        for (const goal of body.goals) {
-            const candidateId = crypto.randomUUID();
-            await env.DB.prepare(
-                `INSERT INTO gotm_candidates (id, voting_id, tenant_id, player_id, match_id, description, video_url, votes)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, 0)`
-            ).bind(candidateId, votingId, claims.tenantId, goal.playerId, goal.matchId, goal.description, goal.videoUrl || null).run();
-        }
-
-        return json({ success: true, votingId }, 200, corsHdrs);
-    } catch (err) {
-        console.error('Start GOTM error:', err);
-        return json({ success: false, error: "Failed to start voting" }, 500, corsHdrs);
-    }
+async function who(req: Request, env: Env, corsHdrs: Headers, staff: boolean): Promise<TenantClaims | Response> {
+  try {
+    return staff ? await requireStaff(req, env) : await requireTenantJWT(req, env);
+  } catch (err) {
+    const status = err instanceof Response ? err.status : 401;
+    return status === 403 ? fail(corsHdrs, 403, "FORBIDDEN", "Only club staff can run Goal of the Month.") : fail(corsHdrs, 401, "UNAUTHORIZED", "Please log in again.");
+  }
 }
 
-// Get current/active GOTM voting
-export async function handleGetGOTMVoting(req: Request, env: any, corsHdrs: Headers) {
-    try {
-        const claims = await requireJWT(req, env);
-        const url = new URL(req.url);
-        const votingId = url.searchParams.get('votingId');
-
-        let voting;
-        if (votingId) {
-            voting = await env.DB.prepare(
-                "SELECT * FROM gotm_voting WHERE id = ? AND tenant_id = ?"
-            ).bind(votingId, claims.tenantId).first();
-        } else {
-            // Get latest open voting
-            voting = await env.DB.prepare(
-                "SELECT * FROM gotm_voting WHERE tenant_id = ? AND status = 'open' ORDER BY created_at DESC LIMIT 1"
-            ).bind(claims.tenantId).first();
-        }
-
-        if (!voting) {
-            return json({ success: true, voting: null, candidates: [] }, 200, corsHdrs);
-        }
-
-        // Get candidates - SECURITY: Include tenant_id filter
-        const candidates = await env.DB.prepare(
-            "SELECT * FROM gotm_candidates WHERE voting_id = ? AND tenant_id = ? ORDER BY votes DESC"
-        ).bind(voting.id, claims.tenantId).all();
-
-        return json({
-            success: true,
-            voting,
-            candidates: candidates.results || []
-        }, 200, corsHdrs);
-    } catch (err) {
-        console.error('Get GOTM error:', err);
-        return json({ success: false, error: "Failed to get voting" }, 500, corsHdrs);
-    }
+async function body(req: Request): Promise<Record<string, unknown>> {
+  const parsed = await req.json().catch(() => null);
+  return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? (parsed as Record<string, unknown>) : {};
 }
 
-// Cast vote for a goal
-// SECURITY: Validates tenant ownership before allowing vote
-export async function handleCastGOTMVote(req: Request, env: any, corsHdrs: Headers) {
-    try {
-        const claims = await requireJWT(req, env);
-        const body = await req.json() as { candidateId: string; votingId: string };
-
-        // SECURITY: Check if voting is open AND belongs to user's tenant
-        const voting = await env.DB.prepare(
-            "SELECT * FROM gotm_voting WHERE id = ? AND tenant_id = ? AND status = 'open'"
-        ).bind(body.votingId, claims.tenantId).first();
-
-        if (!voting) {
-            return json({ success: false, error: "Voting is closed or not found" }, 400, corsHdrs);
-        }
-
-        // SECURITY: Verify candidate belongs to this voting session (and thus tenant)
-        const candidate = await env.DB.prepare(
-            "SELECT id FROM gotm_candidates WHERE id = ? AND voting_id = ? AND tenant_id = ?"
-        ).bind(body.candidateId, body.votingId, claims.tenantId).first();
-
-        if (!candidate) {
-            return json({ success: false, error: "Candidate not found" }, 404, corsHdrs);
-        }
-
-        // Check if user already voted
-        const existingVote = await env.DB.prepare(
-            "SELECT * FROM gotm_votes WHERE voting_id = ? AND user_id = ?"
-        ).bind(body.votingId, claims.sub).first();
-
-        if (existingVote) {
-            return json({ success: false, error: "Already voted" }, 400, corsHdrs);
-        }
-
-        // Record vote
-        await env.DB.prepare(
-            "INSERT INTO gotm_votes (id, voting_id, candidate_id, user_id, created_at) VALUES (?, ?, ?, ?, ?)"
-        ).bind(crypto.randomUUID(), body.votingId, body.candidateId, claims.sub, Date.now()).run();
-
-        // Increment vote count - SECURITY: Include tenant_id filter
-        await env.DB.prepare(
-            "UPDATE gotm_candidates SET votes = votes + 1 WHERE id = ? AND tenant_id = ?"
-        ).bind(body.candidateId, claims.tenantId).run();
-
-        return json({ success: true }, 200, corsHdrs);
-    } catch (err) {
-        console.error('Cast GOTM vote error:', err);
-        return json({ success: false, error: "Failed to cast vote" }, 500, corsHdrs);
-    }
+function log(outcome: string, tenant: string, extra: Record<string, unknown> = {}) {
+  console.log(JSON.stringify({ event: "gotm", outcome, tenant, ...extra }));
 }
 
-// Close voting and determine winner
-// SECURITY: Validates tenant ownership before closing voting
-export async function handleCloseGOTMVoting(req: Request, env: any, corsHdrs: Headers) {
-    try {
-        const claims = await requireJWT(req, env);
-        const body = await req.json() as { votingId: string };
+export async function handleGetGOTMVoting(req: Request, env: Env, corsHdrs: Headers): Promise<Response> {
+  const claims = await who(req, env, corsHdrs, false);
+  if (claims instanceof Response) return claims;
+  const votingId = new URL(req.url).searchParams.get("votingId");
+  return json({ success: true, data: await loadVotes(env, claims, votingId && votingId.length <= 100 ? votingId : null) }, 200, corsHdrs);
+}
 
-        // SECURITY: Verify voting belongs to tenant before closing
-        const voting = await env.DB.prepare(
-            "SELECT id FROM gotm_voting WHERE id = ? AND tenant_id = ?"
-        ).bind(body.votingId, claims.tenantId).first();
+export async function handleGOTMGoals(req: Request, env: Env, corsHdrs: Headers): Promise<Response> {
+  const claims = await who(req, env, corsHdrs, true);
+  if (claims instanceof Response) return claims;
+  const when = readMonth(new URL(req.url).searchParams.get("month"), null);
+  if (!when) return fail(corsHdrs, 400, "VALIDATION", "Choose a month (YYYY-MM).");
+  return json({ success: true, data: { goals: await monthGoals(env, claims.tenantId, when.month, when.year) } }, 200, corsHdrs);
+}
 
-        if (!voting) {
-            return json({ success: false, error: "Voting not found" }, 404, corsHdrs);
-        }
+export async function handleStartGOTMVoting(req: Request, env: Env, corsHdrs: Headers): Promise<Response> {
+  const claims = await who(req, env, corsHdrs, true);
+  if (claims instanceof Response) return claims;
+  const vote = readNewVote(await body(req));
+  if (typeof vote === "string") return fail(corsHdrs, 400, "VALIDATION", vote);
+  const opened = await openVote(env, claims.tenantId, vote);
+  if ("problem" in opened) return fail(corsHdrs, 409, "NOT_NOW", opened.problem);
+  log("opened", claims.tenantId, { votingId: opened.id, goals: vote.goals.length });
+  return json({ success: true, data: { votingId: opened.id } }, 201, corsHdrs);
+}
 
-        // Close voting
-        await env.DB.prepare(
-            "UPDATE gotm_voting SET status = 'closed' WHERE id = ? AND tenant_id = ?"
-        ).bind(body.votingId, claims.tenantId).run();
+export async function handleCastGOTMVote(req: Request, env: Env, corsHdrs: Headers): Promise<Response> {
+  const claims = await who(req, env, corsHdrs, false);
+  if (claims instanceof Response) return claims;
+  const b = await body(req);
+  const votingId = typeof b.votingId === "string" ? b.votingId : "";
+  const candidateId = typeof b.candidateId === "string" ? b.candidateId : "";
+  const voter = voterId(claims);
+  if (!votingId || !candidateId || !voter) return fail(corsHdrs, 400, "VALIDATION", "Choose a goal to vote for.");
+  const outcome = await castVote(env, claims.tenantId, voter, votingId, candidateId);
+  if (outcome === "not_found") return fail(corsHdrs, 404, "NOT_FOUND", "That vote has gone. Pull down to refresh.");
+  if (outcome === "closed") return fail(corsHdrs, 409, "CLOSED", "Voting has closed.");
+  if (outcome === "already_voted") return fail(corsHdrs, 409, "ALREADY_VOTED", "You've already voted this month.");
+  return json({ success: true, data: await loadVotes(env, claims, votingId) }, 200, corsHdrs);
+}
 
-        // Get winner - SECURITY: Include tenant_id filter
-        const winner = await env.DB.prepare(
-            "SELECT * FROM gotm_candidates WHERE voting_id = ? AND tenant_id = ? ORDER BY votes DESC LIMIT 1"
-        ).bind(body.votingId, claims.tenantId).first();
+export async function handleCloseGOTMVoting(req: Request, env: Env, corsHdrs: Headers): Promise<Response> {
+  const claims = await who(req, env, corsHdrs, true);
+  if (claims instanceof Response) return claims;
+  const votingId = (await body(req)).votingId;
+  if (typeof votingId !== "string" || !votingId) return fail(corsHdrs, 400, "VALIDATION", "Choose the vote to close.");
+  const closed = await closeVote(env, claims.tenantId, votingId);
+  if (!closed) return fail(corsHdrs, 404, "NOT_FOUND", "That vote has gone. Refresh the page.");
 
-        return json({ success: true, winner }, 200, corsHdrs);
-    } catch (err) {
-        console.error('Close GOTM error:', err);
-        return json({ success: false, error: "Failed to close voting" }, 500, corsHdrs);
-    }
+  const facts = await winnerFacts(env, claims.tenantId, closed.winners);
+  let posted = false;
+  if (facts.length) {
+    // One post per vote (source id), so closing twice never posts twice
+    const job = await queueClubPost(env, {
+      tenantId: claims.tenantId, kind: "gotm", sourceId: `gotm:${votingId}`,
+      build: (club, policy) => gotmWinnerPost(club.brand, policy, facts, closed.label, closed.winners[0].votes),
+    });
+    posted = !!job;
+  }
+  if (closed.justClosed) log("closed", claims.tenantId, { votingId, winners: facts.length, posted });
+  return json({
+    success: true,
+    data: { winners: facts.map((f) => ({ name: f.name, detail: f.detail })), votes: closed.winners[0]?.votes ?? 0, posted },
+  }, 200, corsHdrs);
 }

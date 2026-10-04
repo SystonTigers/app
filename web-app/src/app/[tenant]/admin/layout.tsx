@@ -30,7 +30,7 @@ export default async function TenantAdminLayout({ children, params }: TenantAdmi
                     </div>
                 </div>
 
-                <main className="flex-1">{children}</main>
+                <div className="flex-1">{children}</div>
             </div>
         </AdminGuard>
     );

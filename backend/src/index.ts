@@ -1062,9 +1062,10 @@ router.post("/api/:v/table/resign", (req, env, corsHdrs) => handleResignTeam(req
 router.post("/api/:v/table/auto-calculate", (req, env, corsHdrs) => handleAutoCalculateTable(req, env, corsHdrs));
 
 // GOTM Voting Routes
-import { handleStartGOTMVoting, handleGetGOTMVoting, handleCastGOTMVote, handleCloseGOTMVoting } from "./routes/gotm";
+import { handleStartGOTMVoting, handleGetGOTMVoting, handleGOTMGoals, handleCastGOTMVote, handleCloseGOTMVoting } from "./routes/gotm";
 router.post("/api/:v/gotm/start", staffOnly((req, env, corsHdrs) => handleStartGOTMVoting(req, env, corsHdrs)));
 router.get("/api/:v/gotm", (req, env, corsHdrs) => handleGetGOTMVoting(req, env, corsHdrs));
+router.get("/api/:v/gotm/goals", staffOnly((req, env, corsHdrs) => handleGOTMGoals(req, env, corsHdrs)));
 router.post("/api/:v/gotm/vote", (req, env, corsHdrs) => handleCastGOTMVote(req, env, corsHdrs));
 router.post("/api/:v/gotm/close", staffOnly((req, env, corsHdrs) => handleCloseGOTMVoting(req, env, corsHdrs)));
 

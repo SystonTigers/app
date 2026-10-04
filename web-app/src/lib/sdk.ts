@@ -355,33 +355,6 @@ export class ClientSDK {
     );
   }
 
-  // GOTM Voting
-  async startGOTMVoting(month: string, year: number, goals: any[]) {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
-    return http<{ success: boolean; votingId?: string }>(
-      `${API_BASE}/api/v1/gotm/start`,
-      { method: 'POST', body: JSON.stringify({ month, year, goals }), headers: { Authorization: `Bearer ${token}` } }
-    );
-  }
-
-  async getGOTMVoting(votingId?: string) {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
-    const url = votingId ? `${API_BASE}/api/v1/gotm?votingId=${votingId}` : `${API_BASE}/api/v1/gotm`;
-    return http<{ success: boolean; voting: any; candidates: any[] }>(
-      url,
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
-  }
-
-
-  async closeGOTMVoting(votingId: string) {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
-    return http<{ success: boolean; winner?: any }>(
-      `${API_BASE}/api/v1/gotm/close`,
-      { method: 'POST', body: JSON.stringify({ votingId }), headers: { Authorization: `Bearer ${token}` } }
-    );
-  }
-
   // LMS Game
   async getLMSGames(status?: 'active' | 'completed') {
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : '';

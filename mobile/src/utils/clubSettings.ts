@@ -8,7 +8,7 @@ export type NameStyle = 'full' | 'first_initial' | 'initial_last' | 'first' | 'l
 export type PostKind =
   | 'lineup' | 'goal' | 'opp_goal' | 'kick_off' | 'half_time' | 'second_half' | 'full_time' | 'yellow' | 'red' | 'sub' | 'motm' | 'correction'
   | 'countdown' | 'matchday' | 'fixtures' | 'results' | 'table' | 'postponed' | 'birthday' | 'player_of_week' | 'player_of_month' | 'milestone' | 'throwback' | 'quote'
-  | 'month_fixtures' | 'month_results' | 'stats_roundup';
+  | 'month_fixtures' | 'month_results' | 'stats_roundup' | 'gotm';
 export type PostWhere = 'feed' | 'social';
 export type PostEvents = Record<PostKind, Record<PostWhere, boolean>>;
 export type SnippetKind = 'table' | 'fixtures' | 'results' | 'team';
@@ -41,6 +41,7 @@ export const CLUB_POSTS: Array<[PostKind, string]> = [
   ['month_results', "Last month's results (1st, 11am)"],
   ['stats_roundup', 'Top scorers so far this season (1st, 12pm)'],
   ['month_fixtures', "This month's fixtures (1st, 5pm)"],
+  ['gotm', 'Goal of the Month winner (when staff close the vote)'],
   ['milestone', 'Milestones: 10, 25, 50... apps or goals (7pm)'],
   ['birthday', 'Player birthdays (8am, no age shown)'],
   ['throwback', 'Throwback Thursday photo (6pm)'],
