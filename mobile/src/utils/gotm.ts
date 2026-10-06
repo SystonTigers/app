@@ -109,3 +109,62 @@ export function totalVotes(vote: GotmVote): number | null {
   if (vote.candidates.some((c) => c.votes === null)) return null;
   return vote.candidates.reduce((sum, c) => sum + (c.votes ?? 0), 0);
 }
+
+// Staff: running a vote (same rules as the website's Admin → Goal of the Month)
+
+export const MIN_GOALS = 2;
+export const MAX_GOALS = 10;
+
+/** A goal from the month, from Match Centre or a match report (GET /gotm/goals). */
+export interface GoalOption {
+  eventId: string;
+  playerId: string;
+  playerName: string;
+  fixtureId: string;
+  opponent: string;
+  date: string;
+  minute: number | null;
+  hasClip: boolean;
+}
+
+/** A goal typed in by staff (not recorded in Match Centre or a report). */
+export interface ManualGoal { playerId: string; playerName: string; description: string; videoUrl: string }
+
+/** "YYYY-MM" for the last `count` months, most recent first, starting with last month. */
+export function recentMonths(now: Date = new Date(), count = 6): string[] {
+  return Array.from({ length: count }, (_, i) => {
+    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1 - i, 1));
+    return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+  });
+}
+
+/** "September 2026" from "2026-09". */
+export function monthLabel(month: string): string {
+  const [y, m] = month.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString('en-GB', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+}
+
+/** "v Page Rovers · 23' · 20 Sept" */
+export function goalSummary(g: { opponent: string | null; minute: number | null; date: string | null }): string {
+  const day = g.date ? new Date(`${g.date.slice(0, 10)}T12:00:00Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' }) : '';
+  return [g.opponent ? `v ${g.opponent}` : '', g.minute !== null ? `${g.minute}'` : '', day].filter(Boolean).join(' · ');
+}
+
+/** The body for POST /api/v1/gotm/start. */
+export function newVoteBody(month: string, picked: GoalOption[], manual: ManualGoal[]) {
+  return {
+    month,
+    goals: [
+      ...picked.map((g) => ({ eventId: g.eventId, playerId: g.playerId, fixtureId: g.fixtureId })),
+      ...manual.map((g) => ({ playerId: g.playerId, description: g.description.trim(), videoUrl: g.videoUrl.trim() || undefined })),
+    ],
+  };
+}
+
+/** Why the vote can't open yet, or null. */
+export function newVoteProblem(month: string, count: number): string | null {
+  if (!/^\d{4}-\d{2}$/.test(month)) return 'Choose the month the goals were scored in.';
+  if (count < MIN_GOALS) return `Pick at least ${MIN_GOALS} goals so there's something to vote on.`;
+  if (count > MAX_GOALS) return `Pick up to ${MAX_GOALS} goals.`;
+  return null;
+}

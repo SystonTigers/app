@@ -7,6 +7,7 @@ import SocialAccountsCard from '../components/clubSettings/SocialAccountsCard';
 import PostingCard from '../components/clubSettings/PostingCard';
 import GraphicsCard from '../components/clubSettings/GraphicsCard';
 import FaSnippetsCard from '../components/clubSettings/FaSnippetsCard';
+import LeagueTableCard from '../components/clubSettings/LeagueTableCard';
 import FixtureEmailCard from '../components/clubSettings/FixtureEmailCard';
 import MatchStatsCard from '../components/clubSettings/MatchStatsCard';
 import SettingsCard, { useCardStyles } from '../components/clubSettings/SettingsCard';
@@ -92,6 +93,7 @@ export default function ClubSettingsScreen() {
         <PostingCard settings={settings} onSaved={setSettings} onMessage={say} />
         <GraphicsCard settings={settings} onSaved={setSettings} onMessage={say} />
         <MatchStatsCard canManage={settings.canManage} onMessage={say} />
+        <LeagueTableCard canManage={settings.canManage} onMessage={say} />
         <FaSnippetsCard canManage={settings.canManage} onMessage={say} />
         <FixtureEmailCard onMessage={say} />
         {club?.slug ? (

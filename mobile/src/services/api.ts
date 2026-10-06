@@ -9,7 +9,7 @@ import { AUTH_STORAGE_KEYS, authStorage, type AuthStorageKey } from './authStora
 import { getTenantId } from './club';
 import { appendPhoto } from './photoUpload';
 import type { LeagueSnapshot } from '../utils/leagueTable';
-import { readGotm, type GotmData } from '../utils/gotm';
+import { readGotm, type GoalOption, type GotmData, type newVoteBody } from '../utils/gotm';
 import type { MyPlayer, PlayerProfile } from '../utils/playerPage';
 
 // Re-exported for existing imports
@@ -747,6 +747,14 @@ export const gotmApi = {
     const response = await api.post('/api/v1/gotm/vote', { votingId, candidateId });
     return readGotm(response.data?.data);
   },
+
+  /** Staff: the goals scored in a month ("YYYY-MM"), to pick from */
+  goals: async (month: string): Promise<GoalOption[]> => ((await api.get('/api/v1/gotm/goals', { params: { month } })).data?.data?.goals ?? []) as GoalOption[],
+  /** Staff: open voting (2 to 10 goals) */
+  start: async (body: ReturnType<typeof newVoteBody>) => (await api.post('/api/v1/gotm/start', body)).data,
+  /** Staff: close voting; returns the winners and whether the post was queued */
+  close: async (votingId: string): Promise<{ winners?: Array<{ name: string }>; votes?: number; posted?: boolean }> =>
+    (await api.post('/api/v1/gotm/close', { votingId })).data?.data ?? {},
 };
 
 export interface MotmNominee {
@@ -1113,6 +1121,61 @@ export interface ResultsImportPlan {
 }
 
 export interface ResultsImportSaved { added: number; updated: number; unchanged: number; exists: number; skipped: number; unmatchedNames: Array<{ name: string; goals: number }> }
+
+/** A club season (Seasons screen; GET /seasons). */
+export interface ClubSeason { id: string; name: string; is_current: number; status: string; start_date: string; end_date?: string | null; archived_at?: number | null }
+
+export interface SeasonPreview {
+  summary: { played: number; won: number; drawn: number; lost: number; goalsFor: number; goalsAgainst: number; points: number; cleanSheets: number };
+  topScorer: { playerId: string; name: string; goals: number } | null;
+  topAssister: { playerId: string; name: string; assists: number } | null;
+  mostAppearances: { playerId: string; name: string; appearances: number } | null;
+  motmLeader: { playerId: string; name: string; count: number } | null;
+  warnings: string[];
+}
+
+/** The club's own league table (Settings → League Table on both app and website; /club/league). */
+export interface LeagueOverview {
+  settings: { competition: string; ourTeam: string | null; detectedTeam: string | null; seasonStart: string; mode: 'results' | 'table' };
+  teams: string[];
+  resultsSaved: number;
+  table: Array<{ position: number; team: string; played: number; won: number; drawn: number; lost: number; goalsFor: number | null; goalsAgainst: number | null; goalDifference: number; points: number }>;
+}
+export type LeaguePasteResult = LeagueOverview & { kind: 'results' | 'table'; found?: number; added?: number; skipped?: number; olderThanSeason?: number; rowsFound?: number };
+
+export const leagueAdminApi = {
+  get: async (): Promise<LeagueOverview> => (await api.get('/api/v1/club/league')).data.data as LeagueOverview,
+  paste: async (text: string): Promise<LeaguePasteResult> => (await api.post('/api/v1/club/league/paste', { text }, { timeout: 30000 })).data.data as LeaguePasteResult,
+  update: async (patch: { competition?: string; seasonStart?: string; ourTeam?: string }): Promise<LeagueOverview> => (await api.put('/api/v1/club/league', patch)).data.data as LeagueOverview,
+  clearResults: async (): Promise<LeagueOverview> => (await api.delete('/api/v1/club/league/results')).data.data as LeagueOverview,
+};
+
+/** A team we've played or will play, with its badge (Opponents screen; /opponents). */
+export interface Opponent {
+  id: string;
+  team_name: string;
+  status: 'pending' | 'approved' | 'custom';
+  effective_badge_url: string | null;
+  pending_badge_url: string | null;
+  needs_approval: boolean;
+}
+
+export const opponentsApi = {
+  list: async (): Promise<Opponent[]> => ((await api.get('/api/v1/opponents')).data?.data ?? []) as Opponent[],
+  add: async (teamName: string) => (await api.post('/api/v1/opponents', { team_name: teamName })).data,
+  confirm: async (id: string, action: 'confirm' | 'reject') => (await api.post(`/api/v1/opponents/${encodeURIComponent(id)}/confirm`, { action })).data,
+  remove: async (id: string) => (await api.delete(`/api/v1/opponents/${encodeURIComponent(id)}`)).data,
+};
+
+export const seasonsApi = {
+  list: async (): Promise<ClubSeason[]> => ((await api.get('/api/v1/seasons')).data?.data ?? []) as ClubSeason[],
+  startNew: async (input: { name: string; startDate: string; copySquad: boolean; playerIds: string[] }) => (await api.post('/api/v1/seasons/start-new', input)).data,
+  setCurrent: async (seasonId: string) => (await api.post('/api/v1/seasons/set-current', { seasonId })).data,
+  reopen: async (seasonId: string) => (await api.post(`/api/v1/seasons/${encodeURIComponent(seasonId)}/reopen`, {})).data,
+  preview: async (seasonId: string): Promise<SeasonPreview> => (await api.get(`/api/v1/seasons/${encodeURIComponent(seasonId)}/end-preview`)).data.data as SeasonPreview,
+  end: async (seasonId: string, awards: Array<{ awardType: string; customName: string; playerId: string }>) =>
+    (await api.post(`/api/v1/seasons/${encodeURIComponent(seasonId)}/end`, { awards })).data,
+};
 
 export const resultsApi = {
   headToHead: async (opponent: string): Promise<{ success: boolean; data: HeadToHead }> =>

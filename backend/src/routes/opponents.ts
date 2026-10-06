@@ -323,9 +323,20 @@ export async function handleUploadBadge(req: Request, env: any, corsHdrs: Header
         const url = new URL(req.url);
         const opponentId = url.pathname.split('/').slice(-2)[0];
 
+        // The picture as the request body (website) or a form field "badge" (app, like the club badge)
         const contentType = req.headers.get('content-type') || '';
-        if (!contentType.includes('image/')) {
-            return json({ success: false, error: { message: 'Must be an image file' } }, 400, corsHdrs);
+        let body: ArrayBuffer;
+        if (contentType.includes('multipart/form-data')) {
+            const form = await req.formData();
+            const file = form.get('badge') ?? form.get('file');
+            if (!file || typeof file === 'string') {
+                return json({ success: false, error: { message: 'Choose a PNG or JPG badge.' } }, 400, corsHdrs);
+            }
+            body = await file.arrayBuffer();
+        } else if (contentType.includes('image/')) {
+            body = await req.arrayBuffer();
+        } else {
+            return json({ success: false, error: { message: 'Choose a PNG or JPG badge.' } }, 400, corsHdrs);
         }
 
         // SECURITY: Verify opponent belongs to this tenant
@@ -338,7 +349,7 @@ export async function handleUploadBadge(req: Request, env: any, corsHdrs: Header
         }
 
         // Upload to R2 - uses tenant's folder for isolation. PNG/JPG only: the graphics renderer can't draw WebP.
-        const fileBuffer = new Uint8Array(await req.arrayBuffer());
+        const fileBuffer = new Uint8Array(body);
         const mime = imageMime(fileBuffer);
         if (!fileBuffer.length || fileBuffer.length > 2 * 1024 * 1024 || (mime !== 'image/png' && mime !== 'image/jpeg')) {
             return json({ success: false, error: { message: 'Please upload the badge as a PNG or JPG under 2 MB.' } }, 400, corsHdrs);

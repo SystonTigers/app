@@ -40,7 +40,7 @@ export function footballSeason(startYear: number, today: string): SeasonOption {
   };
 }
 
-interface SeasonRow { id: string; name: string; start_date: string; end_date: string | null; is_current: number | null }
+export interface SeasonRow { id: string; name: string; start_date: string; end_date: string | null; is_current: number | null }
 
 async function clubSeasons(env: DB, tenantId: string): Promise<SeasonRow[]> {
   const { results } = await env.DB.prepare(
@@ -53,15 +53,6 @@ async function clubSeasons(env: DB, tenantId: string): Promise<SeasonRow[]> {
 export async function seasonOptions(env: DB, tenantId: string, now = new Date()): Promise<SeasonOption[]> {
   const today = now.toISOString().slice(0, 10);
   const rows = await clubSeasons(env, tenantId);
-  if (rows.length) {
-    const anyCurrent = rows.some((r) => r.is_current === 1);
-    return rows.map((r, i) => {
-      const from = r.start_date.slice(0, 10);
-      // An open season runs until the next one starts (or for good)
-      const to = (r.end_date ?? "").slice(0, 10) || (i > 0 ? previousDay(rows[i - 1].start_date.slice(0, 10)) : "9999-12-31");
-      return { id: r.id, label: r.name, from, to, current: anyCurrent ? r.is_current === 1 : i === 0 };
-    });
-  }
   const first = await env.DB.prepare(
     `SELECT MIN(d) AS d FROM (
        SELECT MIN(substr(match_date, 1, 10)) AS d FROM team_results WHERE tenant_id = ?
@@ -72,9 +63,33 @@ export async function seasonOptions(env: DB, tenantId: string, now = new Date())
   // Always offer a few past seasons, so clubs can fill in their history
   const seeded = first?.d && /^\d{4}-\d{2}/.test(first.d) ? footballYear(first.d) : thisYear;
   const firstYear = Math.max(Math.min(seeded, thisYear - PAST_SEASONS), thisYear - 15);
+  if (rows.length) return withClubSeasons(rows, firstYear, today);
   const out: SeasonOption[] = [];
   for (let y = Math.max(thisYear, firstYear); y >= Math.min(firstYear, thisYear); y--) out.push(footballSeason(y, today));
   return out;
+}
+
+/**
+ * The club's own seasons, newest first, then the football years before the
+ * first of them, so starting a season never hides older results and stats
+ * (a year running into the first club season stops the day before it).
+ */
+export function withClubSeasons(rows: SeasonRow[], firstYear: number, today: string): SeasonOption[] {
+  const anyCurrent = rows.some((r) => r.is_current === 1);
+  const club = rows.map((r, i) => {
+    const from = r.start_date.slice(0, 10);
+    // An open season runs until the next one starts (or for good)
+    const to = (r.end_date ?? "").slice(0, 10) || (i > 0 ? previousDay(rows[i - 1].start_date.slice(0, 10)) : "9999-12-31");
+    return { id: r.id, label: r.name, from, to, current: anyCurrent ? r.is_current === 1 : i === 0 };
+  });
+  const earliest = club.reduce((m, o) => (o.from < m ? o.from : m), club[0].from);
+  const older: SeasonOption[] = [];
+  for (let y = footballYear(earliest); y >= firstYear; y--) {
+    const year = { ...footballSeason(y, today), current: false };
+    // A year that runs into the first club season stops the day before it
+    if (year.from < earliest) older.push(year.to < earliest ? year : { ...year, to: previousDay(earliest) });
+  }
+  return [...club, ...older];
 }
 
 function previousDay(date: string): string {
