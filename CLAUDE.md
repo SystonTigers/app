@@ -2,7 +2,11 @@
 
 Read `START_HERE.md` first: it covers running, testing and deploying. Then
 `docs/CONVENTIONS.md` (how code is written here) and `docs/ROADMAP.md`
-(what's next). Other AI tools read `AGENTS.md`, which points to the same files.
+(what's next). For any screen or page, use the project skills in
+`.claude/skills/`: `boost-huddle-design` (the look and the words),
+`interface-checklist` (what to check before finishing) and `browser-check`
+(`cd mobile && npm run browser-check`: signs in on a local test copy and
+screenshots each screen at phone size). Other AI tools read `AGENTS.md`, which points to the same files.
 The code is the source of truth; old plans and status reports are in
 `archive/` for history only. When a doc disagrees with the code, trust the
 code, and fix the doc. Checked against the code on 4 October 2026.

@@ -116,8 +116,11 @@ how to write it.
   (see `services/drillsStore.ts`), not a new library.
 - Staff checks use `utils/roles.ts` (`isStaffRole`). The server still checks
   everything; the app only hides what people can't use.
-- Check it: `npx tsc --noEmit && npm test`. For anything visual, build the
-  web app against a local backend and look at it at phone width (390 px).
+- Check it: `npx tsc --noEmit && npm test`. For anything visual, run
+  `npm run browser-check -- <paths>` (signs in on a local test copy and
+  screenshots each screen at phone size; `.claude/skills/browser-check`).
+  How things should look: `.claude/skills/boost-huddle-design`; what to
+  check before finishing: `.claude/skills/interface-checklist`.
 
 ## Website (`web-app/`, Next.js on Cloudflare via OpenNext)
 

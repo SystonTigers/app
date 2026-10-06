@@ -68,7 +68,12 @@ consent, the owner panel and the security checks (forged tokens, self-made
 admins, members refused staff actions). `src/__tests__/tenantGuard.test.ts`
 fails if a new query on club data has no `tenant_id` filter.
 
-To look at the app in a browser against a local backend: run the backend as
+To look at the app in a browser in one go: `cd mobile && npm run
+browser-check` builds a local test copy, signs in as a test admin and saves
+a phone-size screenshot of each screen in `mobile/.browser-check/` (first
+time: `cd web-app && npx playwright install chromium`).
+
+To do it by hand instead: run the backend as
 above, then in `mobile/` run `EXPO_PUBLIC_API_BASE=http://127.0.0.1:8787 npx
 expo export --platform web` and serve `dist/` (any static server that falls
 back to `index.html`), and set `CORS_ALLOWED` on `wrangler dev` to that
