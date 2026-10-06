@@ -1078,8 +1078,10 @@ router.post("/api/:v/lms/predictions", (req, env, corsHdrs) => handleSubmitLMSPr
 router.post("/api/:v/lms/rounds/:id/process", (req, env, corsHdrs) => handleProcessLMSRound(req, env, corsHdrs));
 
 // Calendar Routes
-import { handleExportCalendarICS } from "./routes/calendar";
+import { handleExportCalendarICS, handleCalendarLink, handleCalendarFeed } from "./routes/calendar";
 router.get("/api/:v/calendar/export", (req, env, corsHdrs) => handleExportCalendarICS(req, env, corsHdrs));
+router.get("/api/:v/calendar/link", (req, env, corsHdrs) => handleCalendarLink(req, env, corsHdrs));
+router.get("/api/:v/calendar/feed/:token", (req, env, corsHdrs) => handleCalendarFeed(req, env, corsHdrs, ((req as any).params || {}).token));
 
 // Seasons Routes
 import {

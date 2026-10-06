@@ -364,12 +364,6 @@ export async function handlePublicTenantRequest(
             }, 200, corsHdrs);
         }
 
-        // The club's fixtures for phone calendars to subscribe to (webcal://…/calendar.ics)
-        if (resource === "calendar.ics") {
-            const { calendarFixtures, calendarResponse } = await import("./calendar");
-            return calendarResponse(tenant.name ?? tenant.slug, await calendarFixtures(env, tenant.id), url.host, corsHdrs, false);
-        }
-
         if (resource === "fixtures" && segments[3] && segments[3] !== "next") {
             const fixtureId = segments[3];
 

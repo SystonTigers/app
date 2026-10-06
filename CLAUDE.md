@@ -587,12 +587,16 @@ with personal data.
   staff run it in Manager zone → Last Man Standing (`ManageLmsScreen`,
   `utils/lms.ts`) or on the website. Processing a round needs every score
   and claims the round once, so a double tap can't count twice.
-- Fixtures calendar: `/public/:club/calendar.ics` (anyone; fixtures are
-  public) and `GET /api/v1/calendar/export` (members, a download), built by
-  `services/calendarIcs.ts` (UK times with TZID, home/away from the teams,
-  untimed games all day, postponed and cancelled marked). The app's Fixtures
-  screen → "Add fixtures to my calendar" (`components/fixtures/CalendarSubscribe`)
-  subscribes Apple (webcal://) or Google Calendar, or shares the link.
+- Fixtures calendar: match times and grounds are never public. Each member
+  gets a private feed (`GET /api/v1/calendar/link` → `/api/v1/calendar/feed/<token>.ics`;
+  the token is an HMAC of club + account with `JWT_SECRET`,
+  `services/calendarToken.ts`, and the feed only works while the account is
+  in the club). `GET /api/v1/calendar/export` (members) is a download. Both
+  are built by `services/calendarIcs.ts` (UK times with TZID, home/away from
+  the teams, untimed games all day, postponed and cancelled marked). The
+  app's Fixtures screen → "Add fixtures to my calendar"
+  (`components/fixtures/CalendarSubscribe`) subscribes Apple (webcal://) or
+  Google Calendar with that private link.
 - Staff delete club posts from Home (bin on a Club News card,
   `DELETE /api/v1/feed/:id`).
 - Tactics (app Training & stats → Tactics, `TacticsScreen`, `utils/tactics.ts`;

@@ -1,12 +1,8 @@
 /**
- * Links for subscribing to the club's fixtures calendar (the server's
- * /public/:club/calendar.ics). Subscribing keeps it up to date: new and
- * moved fixtures appear by themselves. No react-native imports.
+ * Links for subscribing to the club's fixtures calendar (each member's private
+ * feed from GET /api/v1/calendar/link). Subscribing keeps it up to date: new
+ * and moved fixtures appear by themselves. No react-native imports.
  */
-
-export function calendarUrl(apiBase: string, clubSlug: string): string {
-  return `${apiBase.replace(/\/+$/, '')}/public/${encodeURIComponent(clubSlug)}/calendar.ics`;
-}
 
 /** iPhone, iPad and Mac calendars open webcal:// links as a subscription. */
 export function webcalUrl(httpsUrl: string): string {

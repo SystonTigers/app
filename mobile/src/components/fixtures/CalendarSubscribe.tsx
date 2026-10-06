@@ -1,23 +1,39 @@
 import React, { useState } from 'react';
-import { Linking, Platform, Pressable, Share, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, Platform, Pressable, Share, Text, View } from 'react-native';
 import { Button, Modal, Portal } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { themedStyles, useBrandColors } from '../../theme/brand';
 import { FONTS } from '../../theme/brandFonts';
-import { API_BASE_URL } from '../../config';
-import { calendarUrl, googleCalendarUrl, webcalUrl } from '../../utils/calendarLink';
+import { apiClient, apiErrorMessage } from '../../services/api';
+import { googleCalendarUrl, webcalUrl } from '../../utils/calendarLink';
 
 /**
  * "Add fixtures to my calendar": subscribes the phone's calendar (Apple or
  * Google) to the club's fixtures, so new and moved games appear by
- * themselves. Or share the link to paste into another calendar.
+ * themselves. The link is private to the person (GET /calendar/link) and
+ * stops working if they leave the club.
  */
-export default function CalendarSubscribe({ clubSlug }: { clubSlug: string }) {
+export default function CalendarSubscribe() {
   const c = useBrandColors();
   const styles = useStyles();
   const [open, setOpen] = useState(false);
   const [note, setNote] = useState('');
-  const url = calendarUrl(API_BASE_URL, clubSlug);
+  const [url, setUrl] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  // Each person has their own private link (match times and grounds aren't public)
+  const show = async () => {
+    setNote(''); setOpen(true);
+    if (url) return;
+    setLoading(true);
+    try {
+      setUrl((await apiClient.get('/api/v1/calendar/link')).data.data.url as string);
+    } catch (err) {
+      setNote(apiErrorMessage(err, "Your calendar link didn't load. Please try again."));
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const go = (link: string) => { setOpen(false); Linking.openURL(link).catch(() => setNote("Your phone couldn't open that. Try sharing the link instead.")); };
   const share = async () => {
@@ -46,14 +62,18 @@ export default function CalendarSubscribe({ clubSlug }: { clubSlug: string }) {
 
   return (
     <>
-      <Button mode="outlined" icon="calendar-sync" onPress={() => { setNote(''); setOpen(true); }} style={styles.button}>Add fixtures to my calendar</Button>
+      <Button mode="outlined" icon="calendar-sync" onPress={show} style={styles.button}>Add fixtures to my calendar</Button>
       <Portal>
         <Modal visible={open} onDismiss={() => setOpen(false)} contentContainerStyle={styles.modal}>
           <Text style={styles.title}>ADD FIXTURES TO YOUR CALENDAR</Text>
-          <Text style={styles.body}>Every fixture goes in your calendar, and new or moved games update by themselves.</Text>
-          <Option icon="apple" title="iPhone, iPad or Mac" text="Opens your Calendar app to subscribe" onPress={() => go(webcalUrl(url))} />
-          <Option icon="google" title="Google Calendar" text="Android phones and Gmail. Tap Add on the page that opens" onPress={() => go(googleCalendarUrl(url))} />
-          <Option icon="link-variant" title={Platform.OS === 'web' ? 'Copy the link' : 'Share the link'} text="For Outlook or another calendar" onPress={share} />
+          <Text style={styles.body}>Every fixture goes in your calendar, and new or moved games update by themselves. The link is just for you, so please don&apos;t share it.</Text>
+          {url ? (
+            <>
+              <Option icon="apple" title="iPhone, iPad or Mac" text="Opens your Calendar app to subscribe" onPress={() => go(webcalUrl(url))} />
+              <Option icon="google" title="Google Calendar" text="Android phones and Gmail. Tap Add on the page that opens" onPress={() => go(googleCalendarUrl(url))} />
+              <Option icon="link-variant" title={Platform.OS === 'web' ? 'Copy the link' : 'Copy to another calendar'} text="For Outlook or another calendar of yours" onPress={share} />
+            </>
+          ) : loading ? <ActivityIndicator color={c.primary} /> : null}
           {note ? <Text style={styles.note} selectable>{note}</Text> : null}
           <Button mode="text" onPress={() => setOpen(false)}>Close</Button>
         </Modal>
