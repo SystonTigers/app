@@ -109,6 +109,8 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 export default function FixturesPage({ params }: { params: Promise<{ tenant: string }> }) {
   const { tenant } = use(params);
   const [seasonId, setSeasonId] = useState<string | null>(null);
+  // FA Full-Time snippets only show the season happening now (null = All time)
+  const [faApplies, setFaApplies] = useState(true);
   const [fixtures, setFixtures] = useState<PublicFixture[]>([]);
   const [live, setLive] = useState<LiveMatch[]>([]);
   const [loading, setLoading] = useState(true);
@@ -159,7 +161,7 @@ export default function FixturesPage({ params }: { params: Promise<{ tenant: str
         subtitle="Every game coming up, with kick-off times and where we're playing."
       />
 
-      <PublicSeasonTabs tenant={tenant} onSeasonChange={setSeasonId} currentSeasonId={seasonId} />
+      <PublicSeasonTabs tenant={tenant} onSeasonChange={(id, isCurrent) => { setSeasonId(id); setFaApplies(id === null || isCurrent); }} currentSeasonId={seasonId} />
 
       {loading ? (
         <div className="space-y-4" aria-busy="true" aria-label="Loading fixtures">
@@ -198,7 +200,7 @@ export default function FixturesPage({ params }: { params: Promise<{ tenant: str
             </Section>
           )}
 
-          {nothing && (snippets.team ? (
+          {nothing && (faApplies && snippets.team ? (
             <FaFullTimeEmbed code={snippets.team} title="Our fixtures and results" />
           ) : (
             <EmptyNote
@@ -216,7 +218,7 @@ export default function FixturesPage({ params }: { params: Promise<{ tenant: str
         </>
       )}
 
-      {snippets.fixtures && (
+      {faApplies && snippets.fixtures && (
         <div className="mt-12">
           <FaFullTimeEmbed code={snippets.fixtures} title="Around the league" highlight={tenant.split('-')[0]} />
         </div>

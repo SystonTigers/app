@@ -44,4 +44,10 @@ assert.match(checkResultForm({ ...emptyResultForm(today), opponent: '', ourScore
 assert.match(checkResultForm({ ...emptyResultForm(today), opponent: 'X', ourScore: '1', theirScore: '' }, today), /both scores/);
 assert.match(checkResultForm({ ...emptyResultForm(today), opponent: 'X', ourScore: '-1', theirScore: '2' }, today), /both scores/);
 assert.match(checkResultForm({ ...emptyResultForm(today), date: '2025/13/40', opponent: 'X', ourScore: '1', theirScore: '2' }, today), /match date/);
+// FA snippets are this season only: never under a past season
+const { showsFaSnippets } = mod.exports;
+assert.strictEqual(showsFaSnippets('2026-27', true), true);
+assert.strictEqual(showsFaSnippets('2024-25', false), false);
+assert.strictEqual(showsFaSnippets('all', false), true);
+assert.strictEqual(showsFaSnippets(null, false), true);
 console.log('results tests passed');

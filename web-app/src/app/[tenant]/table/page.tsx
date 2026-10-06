@@ -34,6 +34,8 @@ const COLUMNS: Array<{ key: keyof TableRow; label: string; title: string; hide?:
 export default function TablePage({ params }: { params: Promise<{ tenant: string }> }) {
   const { tenant } = use(params);
   const [seasonId, setSeasonId] = useState<string | null>(null);
+  // FA Full-Time snippets only show the season happening now (null = All time)
+  const [faApplies, setFaApplies] = useState(true);
   const [table, setTable] = useState<TableRow[]>([]);
   const [source, setSource] = useState('manual');
   const [loading, setLoading] = useState(true);
@@ -62,7 +64,7 @@ export default function TablePage({ params }: { params: Promise<{ tenant: string
     load();
   }, [load]);
 
-  const faOnly = !loading && !error && table.length === 0 && faLoaded && !!snippets.table;
+  const faOnly = !loading && !error && table.length === 0 && faLoaded && faApplies && !!snippets.table;
 
   return (
     <div className="container py-8 md:py-12">
@@ -70,7 +72,7 @@ export default function TablePage({ params }: { params: Promise<{ tenant: string
 
       {!faOnly && (
         <>
-          <PublicSeasonTabs tenant={tenant} onSeasonChange={setSeasonId} currentSeasonId={seasonId} />
+          <PublicSeasonTabs tenant={tenant} onSeasonChange={(id, isCurrent) => { setSeasonId(id); setFaApplies(id === null || isCurrent); }} currentSeasonId={seasonId} />
 
           {loading ? (
             <div className="card space-y-3" aria-busy="true" aria-label="Loading the table">
@@ -134,7 +136,7 @@ export default function TablePage({ params }: { params: Promise<{ tenant: string
         </>
       )}
 
-      {faLoaded && snippets.table && (
+      {faLoaded && faApplies && snippets.table && (
         <div className="mt-12">
           <FaFullTimeEmbed code={snippets.table} title="Official league table" highlight={tenant.split('-')[0]} />
         </div>
