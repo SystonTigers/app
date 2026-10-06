@@ -46,10 +46,14 @@ landing page, pricing, club sign-up, billing and the owner panel.
   posts" were never sent anywhere, and automatic posts are in Club Settings.
 - Also done: Club history (everyone), match reports, Friendlies, Last Man
   Standing admin, deleting club posts, fixtures calendar subscription.
-- Next (managers): live stream/YouTube settings, tactics board,
-  registration. Waiting on decisions: shop admin (Printify and Stripe
-  accounts), organisation/teams (pricing), the website's old video
-  uploader (Highlights in the app does this from YouTube; keep or drop?).
+- Also done: live match video (connect YouTube from Club Settings) and
+  Tactics (everyone sees it; coaches set it).
+- Waiting on decisions: shop admin (Printify and Stripe accounts),
+  signing-on plans/fees/documents (Stripe; nothing can set them up yet),
+  organisation/teams (pricing), the website's old video uploader
+  (Highlights in the app does this from YouTube; keep or drop?), and
+  what the public club pages become once the app has everything (the web
+  app needs a sign-in, so visitors without an account can't use it).
 - Then (families on the website until the switch): voting, live match,
   highlights, consent and linking a child, predictions, attendance, drills.
 

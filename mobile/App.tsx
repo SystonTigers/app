@@ -42,6 +42,7 @@ import LiveMatchInputScreen from './src/screens/LiveMatchInputScreen';
 import GalleryScreen from './src/screens/GalleryScreen';
 import TeamTalkScreen from './src/screens/TeamTalkScreen';
 import ClubHistoryScreen from './src/screens/ClubHistoryScreen';
+import TacticsScreen from './src/screens/TacticsScreen';
 import TeamTalkThreadScreen from './src/screens/TeamTalkThreadScreen';
 import HighlightsScreen from './src/screens/HighlightsScreen';
 import MatchHighlightsScreen from './src/screens/MatchHighlightsScreen';
@@ -281,6 +282,7 @@ function MainDrawer() {
       <Drawer.Screen name="Results" component={ResultsScreen} options={{ title: 'Results' }} />
       <Drawer.Screen name="Stats" component={StatsScreen} options={{ title: 'Stats' }} />
       <Drawer.Screen name="ClubHistory" component={ClubHistoryScreen} options={{ title: 'Club history' }} />
+      <Drawer.Screen name="Tactics" component={TacticsScreen} options={{ title: 'Tactics' }} />
       <Drawer.Screen name="LeagueTable" component={LeagueTableScreen} options={{ title: 'League Table' }} />
 
       {/* My Club Group */}

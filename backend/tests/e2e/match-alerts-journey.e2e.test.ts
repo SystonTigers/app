@@ -190,6 +190,15 @@ describe("Match day journey", () => {
     const start = await call("/api/v1/stream/youtube/start", { method: "POST", token: coach.token, body: {} });
     expect(start.data.data.url).toContain("accounts.google.com");
     expect(start.data.data.url).toContain("youtube.readonly");
+    // Started from the app: Google lands on a "go back to the app" page, not the website
+    const fromApp = await call("/api/v1/stream/youtube/start", { method: "POST", token: coach.token, body: { from: "app" } });
+    const appState = new URL(fromApp.data.data.url).searchParams.get("state");
+    const cancelled = await call(`/api/v1/stream/youtube/callback?state=${appState}`);
+    expect(cancelled.status).toBe(200);
+    expect(cancelled.res.headers.get("content-type")).toContain("text/html");
+    expect(String(cancelled.data)).toContain("Connecting was cancelled");
+    const fromSite = await call(`/api/v1/stream/youtube/callback?state=${new URL(start.data.data.url).searchParams.get("state")}`);
+    expect(fromSite.status).toBe(302);
 
     await env.DB.prepare(
       `INSERT OR REPLACE INTO social_connections (tenant_id, platform, account_id, account_name, access_token_enc, connected_by, created_at)
