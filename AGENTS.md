@@ -15,5 +15,8 @@ reads `CLAUDE.md`. Both say the same thing:
 5. Before finishing: `npm test` and `npx tsc --noEmit` in `backend/`,
    `npx tsc --noEmit` and `npm test` in `mobile/`, `npx tsc --noEmit` in
    `web-app/`. Update `CLAUDE.md` / `docs/ROADMAP.md` in the same commit.
+   For screens and pages, also follow `.claude/skills/boost-huddle-design/SKILL.md`
+   and `.claude/skills/interface-checklist/SKILL.md`, and run
+   `cd mobile && npm run browser-check -- <paths>` (`.claude/skills/browser-check/SKILL.md`).
 6. Never deploy, run a production migration or push to `main` without the
    owner agreeing.

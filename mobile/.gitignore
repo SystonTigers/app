@@ -8,6 +8,7 @@ node_modules/
 dist/
 dist-tests/
 web-build/
+.browser-check/
 expo-env.d.ts
 
 # Native
