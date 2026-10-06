@@ -56,6 +56,7 @@ const MENU_GROUPS: { id: string; title: string; icon: string; protected?: boolea
         items: [
             { label: 'People & roles', screen: 'TeamMembers', icon: 'account-group', roles: STAFF },
             { label: 'Gallery', screen: 'Gallery', icon: 'image-multiple', roles: ALL },
+            { label: 'Team Talk', screen: 'TeamTalk', icon: 'forum-outline', roles: ALL },
         ]
     },
     {
@@ -75,6 +76,8 @@ const MENU_GROUPS: { id: string; title: string; icon: string; protected?: boolea
             { label: 'Opponents', screen: 'Opponents', icon: 'shield-half-full', roles: MANAGERS },
             { label: 'Goal of the Month', screen: 'ManageGotm', icon: 'soccer', roles: MANAGERS },
             { label: 'Seasons', screen: 'ManageSeasons', icon: 'calendar-range', roles: MANAGERS },
+            { label: 'Subs and fees', screen: 'Dues', icon: 'cash-multiple', roles: MANAGERS },
+            { label: 'Reports', screen: 'Reports', icon: 'flag-outline', roles: STAFF },
             { label: 'Player images', screen: 'ManagePlayerImages', icon: 'camera-account', roles: MANAGERS },
             { label: 'Import data', screen: 'ImportData', icon: 'file-upload-outline', roles: MANAGERS },
             { label: 'Club settings', screen: 'ClubSettings', icon: 'cog-outline', roles: MANAGERS },

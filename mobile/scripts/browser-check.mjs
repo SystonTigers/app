@@ -47,8 +47,8 @@ const WIN = process.platform === 'win32';
 /** Screens checked by default: what members open most, then the staff zone. Paths from navigation/linking.ts. */
 const SCREENS = [
   '', 'matches', 'squad', 'videos', 'results', 'table', 'stats', 'live', 'man-of-the-match',
-  'training', 'drills', 'gallery', 'highlights', 'people', 'profile', 'consent', 'settings',
-  'manage', 'manage/squad', 'manage/fixtures', 'manage/club-settings', 'match-centre',
+  'training', 'drills', 'gallery', 'team-talk', 'highlights', 'people', 'profile', 'consent', 'settings',
+  'manage', 'manage/squad', 'manage/fixtures', 'manage/club-settings', 'match-centre', 'manage/reports', 'manage/subs',
 ];
 
 const args = process.argv.slice(2);

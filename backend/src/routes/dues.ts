@@ -400,22 +400,30 @@ export async function handleSendReminder(req: Request, env: any, corsHdrs: Heade
             'SELECT name, parent_email FROM squad WHERE tenant_id = ? AND parent_email IS NOT NULL'
         ).bind(tenantId).all();
 
-        const unpaidEmails = (players || [])
-            .map((p: any) => p.parent_email)
-            .filter((email: string) => email && !paidSet.has(email));
+        // One email per parent, even with two children at the club
+        const byEmail = new Map<string, string>();
+        for (const p of (players || []) as Array<{ name?: string; parent_email?: string }>) {
+            const email = (p.parent_email || '').trim();
+            if (email && !paidSet.has(email) && !byEmail.has(email.toLowerCase())) byEmail.set(email.toLowerCase(), p.name || '');
+        }
+        const unpaidEmails = [...byEmail.keys()];
 
-        // Send reminders
-        for (const email of unpaidEmails) {
-            const player = players.find((p: any) => p.parent_email === email);
+        const club = await env.DB.prepare('SELECT name FROM tenants WHERE id = ?').bind(tenantId).first() as { name?: string } | null;
+        const clubName = club?.name || 'your club';
+        const due = request.due_date
+            ? new Date(request.due_date * 1000).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/London' })
+            : '';
 
+        // Paying online isn't switched on for clubs yet, so there's no pay link
+        for (const [email, playerName] of byEmail) {
             await sendPaymentReminderEmail(
                 email,
-                player?.name ? `Parent of ${player.name}` : 'Member',
+                playerName ? `Parent of ${playerName}` : 'there',
                 request.title,
                 `£${(request.amount_gbp / 100).toFixed(2)}`,
-                request.due_date ? new Date(request.due_date * 1000).toLocaleDateString((claims as any).locale || 'en-GB') : '',
-                `https://${(claims as any).tenant}.syston.app/payments/${request.id}`, // TODO: dynamic domain
-                (claims as any).tenant, // TODO: get real club name from config
+                due,
+                null,
+                clubName,
                 env
             );
         }
