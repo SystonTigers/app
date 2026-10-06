@@ -96,6 +96,8 @@ export default function ResultsPage({ params }: { params: Promise<{ tenant: stri
   const router = useRouter();
   const { role, isLoggedIn } = useUserRole();
   const [seasonId, setSeasonId] = useState<string | null>(null);
+  // FA Full-Time snippets only show the season happening now (null = All time)
+  const [faApplies, setFaApplies] = useState(true);
   const [results, setResults] = useState<Result[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -170,7 +172,7 @@ export default function ResultsPage({ params }: { params: Promise<{ tenant: stri
     <div className="container py-8 md:py-12">
       <PageHeader eyebrow="Matches" title="Results" subtitle="Scores and goalscorers from every game this season." />
 
-      <PublicSeasonTabs tenant={tenant} onSeasonChange={setSeasonId} currentSeasonId={seasonId} />
+      <PublicSeasonTabs tenant={tenant} onSeasonChange={(id, isCurrent) => { setSeasonId(id); setFaApplies(id === null || isCurrent); }} currentSeasonId={seasonId} />
 
       {talkError && (
         <p role="alert" className="card border-red-500/40 text-red-300 mb-6 py-4">{talkError}</p>
@@ -185,7 +187,7 @@ export default function ResultsPage({ params }: { params: Promise<{ tenant: stri
           <p role="alert">{error}</p>
         </EmptyNote>
       ) : sorted.length === 0 ? (
-        snippets.team ? (
+        faApplies && snippets.team ? (
           <FaFullTimeEmbed code={snippets.team} title="Our fixtures and results" />
         ) : (
           <EmptyNote icon="trophy" title="No results yet" action={<Link href={`/${tenant}/fixtures`} className="btn btn-secondary">See fixtures</Link>}>
@@ -200,7 +202,7 @@ export default function ResultsPage({ params }: { params: Promise<{ tenant: stri
         </ul>
       )}
 
-      {snippets.results && (
+      {faApplies && snippets.results && (
         <div className="mt-12">
           <FaFullTimeEmbed code={snippets.results} title="Around the league" highlight={tenant.split('-')[0]} />
         </div>

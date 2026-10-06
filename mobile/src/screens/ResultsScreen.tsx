@@ -10,7 +10,7 @@ import SeasonPicker from '../components/seasons/SeasonPicker';
 import ResultFormModal from '../components/results/ResultFormModal';
 import FaSnippetCard from '../components/faFullTime/FaSnippetCard';
 import { useFaSnippets } from '../components/faFullTime/useFaSnippets';
-import { outcome, resultDate, seasonSummary } from '../utils/results';
+import { outcome, resultDate, seasonSummary, showsFaSnippets } from '../utils/results';
 
 /**
  * Results season by season. Everyone can look back; staff add old results,
@@ -22,6 +22,7 @@ export default function ResultsScreen() {
   const { user } = useAuth();
   const isStaff = isStaffRole(user?.role);
   const [season, setSeason] = useState<string | null>(null);
+  const [seasonIsCurrent, setSeasonIsCurrent] = useState(false);
   const [results, setResults] = useState<ClubResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -53,6 +54,8 @@ export default function ResultsScreen() {
   }, [season, load]);
 
   const summary = useMemo(() => seasonSummary(results), [results]);
+  // The FA snippets are always this season's, so they'd mislabel a past season
+  const faApplies = showsFaSnippets(season, seasonIsCurrent);
 
   const openAdd = () => { setEditing(null); setFormOpen(true); };
   const openEdit = (r: ClubResult) => { setEditing(r); setFormOpen(true); };
@@ -81,7 +84,7 @@ export default function ResultsScreen() {
 
   return (
     <View style={styles.container}>
-      <SeasonPicker value={season} refreshKey={seasonsVersion} onChange={(id) => { setNotice(''); setSeason(id); }} />
+      <SeasonPicker value={season} refreshKey={seasonsVersion} onChange={(id, option) => { setNotice(''); setSeasonIsCurrent(Boolean(option?.current)); setSeason(id); }} />
       <ScrollView
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { if (season) { setRefreshing(true); load(season); } }} tintColor={COLORS.primary} />}
@@ -110,8 +113,12 @@ export default function ResultsScreen() {
             <Text style={styles.emptyTitle}>No results for this season yet</Text>
             <Text style={styles.emptyText}>
               {isStaff
-                ? 'Results from Match Centre appear here automatically. Add older results with the button below.'
-                : 'Results appear here after each match.'}
+                ? faApplies
+                  ? 'Results from Match Centre appear here automatically. Add older results with the button below.'
+                  : 'Nothing added for this season. Tap Add result and enter each match date to fill it in.'
+                : faApplies
+                  ? 'Results appear here after each match.'
+                  : 'No results were added for this season.'}
             </Text>
           </View>
         ) : (
@@ -141,8 +148,8 @@ export default function ResultsScreen() {
           })
         )}
         {/* Until the club adds its own results, its FA Full-Time snippets fill in (as on the website) */}
-        {!loading && results.length === 0 && !error && snippets.team ? <FaSnippetCard flush code={snippets.team} title="OUR FIXTURES AND RESULTS" /> : null}
-        {!loading && snippets.results ? <FaSnippetCard flush code={snippets.results} title="AROUND THE LEAGUE" /> : null}
+        {!loading && faApplies && results.length === 0 && !error && snippets.team ? <FaSnippetCard flush code={snippets.team} title="OUR FIXTURES AND RESULTS" /> : null}
+        {!loading && faApplies && snippets.results ? <FaSnippetCard flush code={snippets.results} title="AROUND THE LEAGUE" /> : null}
         {isStaff ? (
           <Text style={styles.hint}>Filling in an old season? Tap Add result and enter the match date; choose that season above to check them.</Text>
         ) : null}

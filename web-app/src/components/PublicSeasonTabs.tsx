@@ -12,7 +12,8 @@ interface Season {
 
 interface PublicSeasonTabsProps {
     tenant: string;
-    onSeasonChange: (seasonId: string | null) => void;
+    /** seasonId null = All time; isCurrent is true only for the season happening now */
+    onSeasonChange: (seasonId: string | null, isCurrent: boolean) => void;
     currentSeasonId?: string | null;
 }
 
@@ -36,7 +37,7 @@ export function PublicSeasonTabs({ tenant, onSeasonChange, currentSeasonId }: Pu
                     const current = data.data.find((s: Season) => s.isCurrent);
                     if (current) {
                         setSelectedId(current.id);
-                        onSeasonChange(current.id);
+                        onSeasonChange(current.id, true);
                     }
                 }
             }
@@ -49,7 +50,7 @@ export function PublicSeasonTabs({ tenant, onSeasonChange, currentSeasonId }: Pu
 
     function handleSelect(seasonId: string | null) {
         setSelectedId(seasonId);
-        onSeasonChange(seasonId);
+        onSeasonChange(seasonId, seasons.some((s) => s.id === seasonId && s.isCurrent));
     }
 
     if (loading) {

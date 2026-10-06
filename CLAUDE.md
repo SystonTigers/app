@@ -230,7 +230,9 @@ with personal data.
   show the club's `team` snippet as "Our fixtures and results" until it has
   added matches of its own, and the league's fixtures/results snippets as
   "Around the league" (app: `components/faFullTime/FaSnippetCard`,
-  `useFaSnippets`). The website's frame reports what happened (FA
+  `useFaSnippets`). The FA's snippets only cover the season happening now,
+  so they're hidden under a past season's tab (`showsFaSnippets` in the app,
+  `PublicSeasonTabs`' `isCurrent` on the website). The website's frame reports what happened (FA
   unreachable, `cs1.html` blocked by the FA's security check, or loaded) so
   the card says why when it can't show the table.
 - Our own results, scorers and points come from Match Centre, match reports

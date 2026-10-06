@@ -36,6 +36,15 @@ export function seasonSummary(results: ResultLike[]): SeasonSummary {
   return s;
 }
 
+/**
+ * FA Full-Time code snippets only ever show the league's current season, so they
+ * belong under the current season (or All time). Under a past season they would
+ * show this season's games as if they were that season's.
+ */
+export function showsFaSnippets(seasonId: string | null, isCurrent: boolean): boolean {
+  return seasonId === null || seasonId === 'all' || isCurrent;
+}
+
 export type Outcome = 'W' | 'D' | 'L';
 
 export function outcome(us: number, them: number): Outcome {
