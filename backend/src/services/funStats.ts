@@ -14,10 +14,11 @@ interface FunStat {
  * (team_results: our score first), player events (match_events) and, for
  * half-time situations, the Match Centre timeline (live_match_events).
  */
-export async function computeFunStats(db: D1Database, tenantId: string, seasonId?: string | null): Promise<FunStat[]> {
+export async function computeFunStats(db: D1Database, tenantId: string, range?: { from: string; to: string } | null): Promise<FunStat[]> {
     const stats: FunStat[] = [];
-    const seasonWhere = seasonId ? 'AND r.season_id = ?' : '';
-    const binds = seasonId ? [tenantId, seasonId] : [tenantId];
+    // A season is its dates (club seasons and football years alike), not the old season_id column
+    const seasonWhere = range ? 'AND substr(r.match_date, 1, 10) BETWEEN ? AND ?' : '';
+    const binds = range ? [tenantId, range.from, range.to] : [tenantId];
 
     const { results: rows } = await db.prepare(
         `SELECT r.match_date, r.our_score, r.their_score, r.fixture_id,
@@ -83,8 +84,12 @@ export async function computeFunStats(db: D1Database, tenantId: string, seasonId
         stats.push({ key: 'comeback_wins', label: 'Comeback Victories', value: comebacks, description: 'Wins from behind at half time', icon: '💪' });
     }
 
-    const seasonJoin = seasonId ? 'JOIN team_results r ON r.fixture_id = me.fixture_id AND r.tenant_id = me.tenant_id AND r.season_id = ?' : '';
-    const evBinds = seasonId ? [seasonId, tenantId] : [tenantId];
+    // Player events belong to a result's fixture, or to the result itself (goals added with a result)
+    const seasonJoin = range
+        ? `JOIN team_results r ON r.tenant_id = me.tenant_id AND me.fixture_id = COALESCE(r.fixture_id, CAST(r.id AS TEXT))
+              AND substr(r.match_date, 1, 10) BETWEEN ? AND ?`
+        : '';
+    const evBinds = range ? [range.from, range.to, tenantId] : [tenantId];
     const events = await db.prepare(
         `SELECT
             SUM(CASE WHEN me.event_type = 'goal' AND me.minute <= 15 THEN 1 ELSE 0 END) AS early,

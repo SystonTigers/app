@@ -44,9 +44,12 @@ landing page, pricing, club sign-up, billing and the owner panel.
   Team Talk (with Report and Delete on messages), Reports, Subs and fees.
   The website's Social media page needs nothing in the app: its "saved
   posts" were never sent anywhere, and automatic posts are in Club Settings.
-- Next (managers): live stream/YouTube settings, shop admin, videos and
-  clips, tactics board, friendlies, registration, organisation/teams,
-  calendar export.
+- Also done: Club history (everyone), match reports, Friendlies, Last Man
+  Standing admin, deleting club posts, fixtures calendar subscription.
+- Next (managers): live stream/YouTube settings, tactics board,
+  registration. Waiting on decisions: shop admin (Printify and Stripe
+  accounts), organisation/teams (pricing), the website's old video
+  uploader (Highlights in the app does this from YouTube; keep or drop?).
 - Then (families on the website until the switch): voting, live match,
   highlights, consent and linking a child, predictions, attendance, drills.
 

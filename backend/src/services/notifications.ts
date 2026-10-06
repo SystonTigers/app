@@ -1,3 +1,4 @@
+import { STAFF_ROLES } from "./auth";
 /**
  * Notification Service
  * Centralized helper for sending push notifications across the app
@@ -49,13 +50,13 @@ export async function notifyTenantAdmins(
 ): Promise<{ sent: number }> {
     try {
         // Get devices for admin users in this tenant
+        // Every member of staff (coaches and managers too), not only admins
         const { results } = await env.DB.prepare(`
-            SELECT d.token 
+            SELECT d.token
             FROM devices d
-            JOIN auth_users u ON d.user_id = u.id
-            WHERE d.tenant_id = ?
-            AND u.roles LIKE '%admin%'
-        `).bind(tenantId).all();
+            JOIN auth_users u ON d.user_id = u.id AND u.tenant_id = d.tenant_id
+            WHERE d.tenant_id = ? AND ${STAFF_SQL}
+        `).bind(tenantId, ...STAFF_ROLES).all();
 
         if (!results || results.length === 0) {
             return { sent: 0 };
@@ -83,21 +84,24 @@ export async function createInAppNotification(
     body: string,
     data?: Record<string, any>
 ): Promise<void> {
-    const id = crypto.randomUUID();
-
-    await env.DB.prepare(`
+    // No one named: the club's staff each get it (a notification always belongs to someone)
+    let userIds: string[] = userId ? [userId] : [];
+    if (!userId) {
+        const { results } = await env.DB.prepare(
+            `SELECT u.id FROM auth_users u WHERE u.tenant_id = ? AND ${STAFF_SQL}`,
+        ).bind(tenantId, ...STAFF_ROLES).all();
+        userIds = (results ?? []).map((r: { id: string }) => r.id);
+    }
+    if (!userIds.length) return;
+    const payload = JSON.stringify(data || {});
+    await env.DB.batch(userIds.map((uid) => env.DB.prepare(`
         INSERT INTO notifications (id, tenant_id, user_id, type, title, body, data, read, created_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, 0, unixepoch())
-    `).bind(
-        id,
-        tenantId,
-        userId,
-        type,
-        title,
-        body,
-        JSON.stringify(data || {})
-    ).run();
+    `).bind(crypto.randomUUID(), tenantId, uid, type, title, body, payload)));
 }
+
+/** Staff accounts: a role in the user's roles list (a JSON array) is a staff role. */
+const STAFF_SQL = `EXISTS (SELECT 1 FROM json_each(CASE WHEN json_valid(u.roles) THEN u.roles ELSE '[]' END) r WHERE r.value IN (${STAFF_ROLES.map(() => '?').join(', ')}))`;
 
 /** Send one notification to these device tokens. */
 async function sendFCM(

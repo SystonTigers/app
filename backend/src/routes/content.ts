@@ -235,6 +235,9 @@ export async function handleDeletePost(req: Request, env: any, corsHdrs: Headers
             .bind(id, claims.tenantId).run();
         return json({ success: true }, 200, corsHdrs);
     } catch (err) {
+        if (err instanceof Response) {
+            return json({ success: false, error: err.status === 401 ? "Please log in again." : "Only club staff can delete posts." }, err.status, corsHdrs);
+        }
         return json({ success: false, error: "Failed to delete post" }, 500, corsHdrs);
     }
 }

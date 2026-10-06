@@ -193,7 +193,7 @@ export default function LastManStandingScreen() {
                 {/* Games List */}
                 {games.length === 0 ? (
                     <View style={styles.section}>
-                        <Text style={styles.emptyText}>No Predictions game running yet. Club staff start one on the club website, under Admin, Predictions.</Text>
+                        <Text style={styles.emptyText}>No Predictions game running yet. Club staff start one in Manager zone, Last Man Standing.</Text>
                     </View>
                 ) : (
                     <View style={styles.section}>

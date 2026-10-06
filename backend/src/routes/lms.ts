@@ -631,7 +631,14 @@ export async function handleProcessLMSRound(req: Request, env: any, corsHdrs: He
 
         // Parse fixtures and update with results
         const fixtures: Fixture[] = JSON.parse(round.fixtures_json || '[]');
-        const resultsMap = new Map(body.fixtures.map(f => [f.id, f]));
+        const sent = Array.isArray(body?.fixtures) ? body.fixtures : [];
+        const resultsMap = new Map(sent.map(f => [f.id, f]));
+        // Every match needs a score: a missing one would knock out everyone who picked it
+        const score = (v: unknown) => typeof v === 'number' && Number.isInteger(v) && v >= 0 && v <= 99;
+        const missing = fixtures.filter((f) => { const r = resultsMap.get(f.id); return !r || !score(r.homeScore) || !score(r.awayScore); });
+        if (missing.length) {
+            return json({ success: false, error: `Enter the score for ${missing.map((f) => `${f.home} v ${f.away}`).join(', ')}.` }, 400, corsHdrs);
+        }
 
         // Determine winners for each fixture
         const fixtureWinners = new Map<string, string | null>();
@@ -654,10 +661,13 @@ export async function handleProcessLMSRound(req: Request, env: any, corsHdrs: He
             }
         }
 
-        // Update fixtures in round
-        await env.DB.prepare(
-            "UPDATE lms_rounds SET fixtures_json = ?, status = 'processed', processed_at = ? WHERE id = ? AND tenant_id = ?"
+        // Claim the round: a second (or simultaneous) submit finds it already done
+        const claimed = await env.DB.prepare(
+            "UPDATE lms_rounds SET fixtures_json = ?, status = 'processed', processed_at = ? WHERE id = ? AND tenant_id = ? AND status != 'processed'"
         ).bind(JSON.stringify(fixtures), Date.now(), roundId, claims.tenantId).run();
+        if (!claimed.meta?.changes) {
+            return json({ success: false, error: "Round already processed" }, 400, corsHdrs);
+        }
 
         // Get all predictions for this round
         const predictions = await env.DB.prepare(

@@ -22,7 +22,9 @@ export async function handleListFriendlyRequests(req: Request, env: any, corsHdr
         const location = url.searchParams.get('location');
 
         let query = `
-            SELECT fr.*, t.name as team_display_name, tb.badge_url, tb.primary_color
+            SELECT fr.id, fr.tenant_id, fr.team_name, fr.location_pref, fr.age_group, fr.kit_colors,
+                fr.max_travel_miles, fr.pitch_type, fr.notes, fr.status, fr.created_at,
+                t.name as team_display_name, tb.badge_url, tb.primary_color
             FROM friendly_requests fr
             LEFT JOIN tenants t ON fr.tenant_id = t.id
             LEFT JOIN tenant_brand tb ON fr.tenant_id = tb.tenant_id
@@ -196,6 +198,18 @@ export async function handleRequestMatch(req: Request, env: any, corsHdrs: Heade
             return json({ success: false, error: { message: 'Cannot request your own listing' } }, 400, corsHdrs);
         }
 
+        const proposedDate = typeof body.proposed_date === 'string' && body.proposed_date ? body.proposed_date.slice(0, 10) : null;
+        if (proposedDate && !isDay(proposedDate)) {
+            return json({ success: false, error: { message: 'Pick a date for the game.' } }, 400, corsHdrs);
+        }
+        // One waiting offer per club per post (a second tap doesn't send another)
+        const already = await env.DB.prepare(
+            `SELECT id FROM friendly_matches WHERE request_id = ? AND requester_tenant_id = ? AND status = 'pending' LIMIT 1`
+        ).bind(requestId, requesterTenantId).first();
+        if (already) {
+            return json({ success: true, data: { id: already.id, message: 'You have already offered them a game.' } }, 200, corsHdrs);
+        }
+
         // Get requester team name
         const requesterTenant = await env.DB.prepare(
             'SELECT name FROM tenants WHERE id = ?'
@@ -214,15 +228,16 @@ export async function handleRequestMatch(req: Request, env: any, corsHdrs: Heade
             requesterTenantId,
             requesterTenant?.name || 'Unknown Team',
             friendlyRequest.tenant_id,
-            body.proposed_date || null,
-            body.proposed_venue || null,
-            body.proposed_kickoff || null,
-            body.message || null
+            proposedDate,
+            typeof body.proposed_venue === 'string' ? body.proposed_venue.slice(0, 120) : null,
+            typeof body.proposed_kickoff === 'string' && /^\d{1,2}:\d{2}$/.test(body.proposed_kickoff) ? body.proposed_kickoff : null,
+            typeof body.message === 'string' ? body.message.slice(0, 500) : null
         ).run();
 
         // Send notification to host team
         const notification = NotificationTemplates.friendlyMatchRequest(requesterTenant?.name || 'A team');
-        await notifyTenantAdmins(env, friendlyRequest.tenant_id, notification);
+        // Telling them is a bonus: the offer is saved either way
+        await notifyTenantAdmins(env, friendlyRequest.tenant_id, notification).catch(() => undefined);
         await createInAppNotification(
             env,
             friendlyRequest.tenant_id,
@@ -231,7 +246,7 @@ export async function handleRequestMatch(req: Request, env: any, corsHdrs: Heade
             notification.title,
             notification.body,
             { matchId, requestId, requesterTeam: requesterTenant?.name }
-        );
+        ).catch((err: unknown) => console.error('[Friendlies] notify failed', err));
 
         return json({
             success: true,
@@ -282,16 +297,16 @@ export async function handleRespondToMatch(req: Request, env: any, corsHdrs: Hea
 
         const url = new URL(req.url);
         const matchId = url.pathname.split('/').slice(-2)[0];
-        const body = await req.json() as any;
+        const body = await req.json().catch(() => ({})) as any;
         const { action, confirmed_date, confirmed_venue, confirmed_kickoff } = body;
 
         if (!['accept', 'decline'].includes(action)) {
             return json({ success: false, error: { message: 'Action must be accept or decline' } }, 400, corsHdrs);
         }
 
-        // Get the match and verify ownership
+        // Only the club that posted can answer, and only a waiting offer
         const match = await env.DB.prepare(`
-            SELECT fm.*, fr.tenant_id as host_tenant_id, fr.team_name as host_team_name
+            SELECT fm.*, fr.tenant_id as host_tenant_id, fr.team_name as host_team_name, fr.location_pref
             FROM friendly_matches fm
             JOIN friendly_requests fr ON fm.request_id = fr.id
             WHERE fm.id = ? AND fr.tenant_id = ?
@@ -300,88 +315,90 @@ export async function handleRespondToMatch(req: Request, env: any, corsHdrs: Hea
         if (!match) {
             return json({ success: false, error: { message: 'Match not found' } }, 404, corsHdrs);
         }
+        if (match.status !== 'pending') {
+            // Answering twice (a double tap or a retry) changes nothing
+            return json({ success: true, message: `Already ${match.status}.`, data: { status: match.status } }, 200, corsHdrs);
+        }
 
-        if (action === 'accept') {
-            // Update match status
+        if (action === 'decline') {
             await env.DB.prepare(`
-                UPDATE friendly_matches 
-                SET status = 'accepted', updated_at = unixepoch()
-                WHERE id = ?
-            `).bind(matchId).run();
-
-            // Update request status to matched
-            await env.DB.prepare(`
-                UPDATE friendly_requests 
-                SET status = 'matched', updated_at = unixepoch()
-                WHERE id = ? AND tenant_id = ?
-            `).bind(match.request_id, tenantId).run();
-
-            // Auto-create fixture for BOTH teams
-            const fixtureDate = confirmed_date || match.proposed_date;
-            const fixtureVenue = confirmed_venue || match.proposed_venue || 'TBC';
-            const fixtureKickoff = confirmed_kickoff || match.proposed_kickoff || '15:00';
-
-            // Create fixture for host team
-            const hostFixtureId = crypto.randomUUID();
-            await env.DB.prepare(`
-                INSERT INTO fixtures (id, tenant_id, fixture_date, opponent, venue, kick_off_time, competition, status)
-                VALUES (?, ?, ?, ?, ?, ?, 'Friendly', 'scheduled')
-            `).bind(
-                hostFixtureId,
-                tenantId,
-                fixtureDate,
-                match.requester_team_name,
-                fixtureVenue,
-                fixtureKickoff
-            ).run();
-
-            // Create fixture for requester team
-            const requesterFixtureId = crypto.randomUUID();
-            await env.DB.prepare(`
-                INSERT INTO fixtures (id, tenant_id, fixture_date, opponent, venue, kick_off_time, competition, status)
-                VALUES (?, ?, ?, ?, ?, ?, 'Friendly', 'scheduled')
-            `).bind(
-                requesterFixtureId,
-                match.requester_tenant_id,
-                fixtureDate,
-                match.host_team_name,
-                fixtureVenue,
-                fixtureKickoff
-            ).run();
-
-            // Send notification to requester team
-            const notification = NotificationTemplates.friendlyMatchAccepted(match.host_team_name, fixtureDate);
-            await notifyTenantAdmins(env, match.requester_tenant_id, notification);
-            await createInAppNotification(
-                env,
-                match.requester_tenant_id,
-                null,
-                'friendly_accepted',
-                notification.title,
-                notification.body,
-                { matchId, fixtureId: requesterFixtureId, hostTeam: match.host_team_name }
-            );
-
-            return json({
-                success: true,
-                message: 'Match accepted! Fixture created for both teams.',
-                data: { fixture_id: hostFixtureId }
-            }, 200, corsHdrs);
-        } else {
-            // Decline
-            await env.DB.prepare(`
-                UPDATE friendly_matches 
-                SET status = 'declined', updated_at = unixepoch()
-                WHERE id = ?
-            `).bind(matchId).run();
-
+                UPDATE friendly_matches SET status = 'declined', updated_at = unixepoch()
+                WHERE id = ? AND host_tenant_id = ? AND status = 'pending'
+            `).bind(matchId, tenantId).run();
             return json({ success: true, message: 'Match declined' }, 200, corsHdrs);
         }
+
+        const fixtureDate = String(confirmed_date || match.proposed_date || '').slice(0, 10);
+        if (!isDay(fixtureDate)) {
+            return json({ success: false, error: { code: 'DATE_NEEDED', message: 'They didn\'t suggest a date. Agree one with them, then pick it here.' } }, 400, corsHdrs);
+        }
+        const kickoff = typeof confirmed_kickoff === 'string' && /^\d{1,2}:\d{2}$/.test(confirmed_kickoff) ? confirmed_kickoff : (match.proposed_kickoff || '15:00');
+        const venue = (typeof confirmed_venue === 'string' && confirmed_venue.trim() ? confirmed_venue.trim().slice(0, 120) : null) || match.proposed_venue || 'TBC';
+
+        const hostTenant = await env.DB.prepare('SELECT name FROM tenants WHERE id = ?').bind(tenantId).first() as { name?: string } | null;
+        const hostName = hostTenant?.name || match.host_team_name;
+        const requesterName = match.requester_team_name;
+        // The club that posted plays at home unless it asked to play away
+        const hostAway = match.location_pref === 'away';
+        const home = hostAway ? requesterName : hostName;
+        const away = hostAway ? hostName : requesterName;
+
+        // Claim the offer first, so a second accept can't make the fixtures twice
+        const claimed = await env.DB.prepare(`
+            UPDATE friendly_matches SET status = 'accepted', proposed_date = ?, updated_at = unixepoch()
+            WHERE id = ? AND host_tenant_id = ? AND status = 'pending'
+        `).bind(fixtureDate, matchId, tenantId).run();
+        if (!claimed.meta?.changes) {
+            return json({ success: true, message: 'Already answered.' }, 200, corsHdrs);
+        }
+
+        const hostFixtureId = crypto.randomUUID();
+        const requesterFixtureId = crypto.randomUUID();
+        const insert = (id: string, club: string, opponent: string) => env.DB.prepare(`
+            INSERT INTO fixtures (id, tenant_id, fixture_date, kick_off_time, opponent, venue, competition, status, home_team, away_team, source)
+            VALUES (?, ?, ?, ?, ?, ?, 'Friendly', 'scheduled', ?, ?, 'friendly')
+            ON CONFLICT(tenant_id, fixture_date, home_team, away_team) DO NOTHING
+        `).bind(id, club, fixtureDate, kickoff, opponent, venue, home, away);
+        await env.DB.batch([
+            env.DB.prepare(`UPDATE friendly_requests SET status = 'matched', updated_at = unixepoch() WHERE id = ? AND tenant_id = ?`)
+                .bind(match.request_id, tenantId),
+            // Other clubs' offers for the same post are answered too
+            env.DB.prepare(`UPDATE friendly_matches SET status = 'declined', updated_at = unixepoch() WHERE request_id = ? AND host_tenant_id = ? AND id != ? AND status = 'pending'`)
+                .bind(match.request_id, tenantId, matchId),
+            insert(hostFixtureId, String(tenantId), requesterName),
+            insert(requesterFixtureId, match.requester_tenant_id, hostName),
+        ]);
+
+        const notification = NotificationTemplates.friendlyMatchAccepted(hostName, fixtureDate);
+        await notifyTenantAdmins(env, match.requester_tenant_id, notification).catch(() => undefined);
+        await createInAppNotification(
+            env,
+            match.requester_tenant_id,
+            null,
+            'friendly_accepted',
+            notification.title,
+            notification.body,
+            { matchId, fixtureId: requesterFixtureId, hostTeam: hostName }
+        ).catch(() => undefined);
+
+        console.log(JSON.stringify({ event: 'friendly_accepted', tenant: tenantId, matchId, date: fixtureDate }));
+        return json({
+            success: true,
+            message: 'Match accepted! Fixture created for both teams.',
+            data: { fixture_id: hostFixtureId }
+        }, 200, corsHdrs);
     } catch (error: any) {
         if (error instanceof Response) {throw error;}
         console.error('[Friendlies] Respond error:', error);
-        return json({ success: false, error: { message: error.message } }, 500, corsHdrs);
+        return json({ success: false, error: { message: "That reply didn't save. Please try again." } }, 500, corsHdrs);
     }
+}
+
+/** A real calendar day as YYYY-MM-DD. */
+function isDay(value: string): boolean {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+    const d = new Date(`${value}T12:00:00Z`);
+    return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === value;
 }
 
 // ===========================================

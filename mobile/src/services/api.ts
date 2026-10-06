@@ -13,6 +13,9 @@ import { readGotm, type GoalOption, type GotmData, type newVoteBody } from '../u
 import type { Discussion, DiscussionSummary } from '../utils/teamTalk';
 import type { ContentReport, ReportType } from '../utils/reports';
 import type { PaymentRequest } from '../utils/dues';
+import type { FunStat, SeasonAward } from '../utils/history';
+import type { ReportEvent } from '../utils/matchReport';
+import type { LmsEntry, LmsGame, LmsRound } from '../utils/lms';
 import type { MyPlayer, PlayerProfile } from '../utils/playerPage';
 
 // Re-exported for existing imports
@@ -446,6 +449,9 @@ export const feedApi = {
     });
     return response.data;
   },
+
+  /** Staff: take a club post down */
+  deletePost: async (id: string) => (await api.delete(`/api/v1/feed/${encodeURIComponent(id)}`)).data,
 
   // Create new post
   createPost: async (content: string, channels: any, media?: string[]) => {
@@ -1201,6 +1207,48 @@ export const teamTalkApi = {
   /** People to @mention (name search) */
   searchMembers: async (q: string): Promise<Array<{ id: string; name: string }>> =>
     ((await api.get('/api/v1/members/search', { params: { q } })).data?.data ?? []) as Array<{ id: string; name: string }>,
+};
+
+export const matchReportApi = {
+  get: async (fixtureId: string): Promise<Array<Record<string, unknown>>> =>
+    ((await api.get(`/api/v1/matches/${encodeURIComponent(fixtureId)}/report`)).data?.events ?? []) as Array<Record<string, unknown>>,
+  save: async (fixtureId: string, report: { homeScore: number; awayScore: number; events: ReportEvent[]; lineup: { starters: string[]; subs: string[] } }) =>
+    (await api.post(`/api/v1/matches/${encodeURIComponent(fixtureId)}/report`, report)).data,
+};
+
+const FRIENDLY_PATHS = { browse: '/api/v1/friendlies', mine: '/api/v1/friendlies/mine', inbox: '/api/v1/friendlies/inbox', sent: '/api/v1/friendlies/sent' } as const;
+
+export const friendliesApi = {
+  list: async (tab: keyof typeof FRIENDLY_PATHS): Promise<unknown[]> =>
+    ((await api.get(FRIENDLY_PATHS[tab])).data?.data ?? []) as unknown[],
+  post: async (body: Record<string, unknown>) => (await api.post('/api/v1/friendlies', body)).data,
+  remove: async (id: string) => (await api.delete(`/api/v1/friendlies/${encodeURIComponent(id)}`)).data,
+  offer: async (id: string, input: { proposed_date: string; message: string }) =>
+    (await api.post(`/api/v1/friendlies/${encodeURIComponent(id)}/request`, input)).data,
+  respond: async (matchId: string, action: 'accept' | 'decline', confirmedDate?: string) =>
+    (await api.post(`/api/v1/friendlies/match/${encodeURIComponent(matchId)}/respond`, { action, ...(confirmedDate ? { confirmed_date: confirmedDate } : {}) })).data,
+};
+
+export const lmsAdminApi = {
+  games: async (): Promise<LmsGame[]> => ((await api.get('/api/v1/lms/games')).data?.games ?? []) as LmsGame[],
+  game: async (id: string): Promise<{ game: LmsGame; standings: LmsEntry[]; currentRound: LmsRound | null }> => {
+    const d = (await api.get(`/api/v1/lms/games/${encodeURIComponent(id)}`)).data;
+    return { game: d.game as LmsGame, standings: (d.standings ?? []) as LmsEntry[], currentRound: (d.currentRound ?? null) as LmsRound | null };
+  },
+  create: async (name: string, competition: string) => (await api.post('/api/v1/lms/games', { name, sport: 'football', ...(competition ? { competition } : {}) })).data,
+  newRound: async (gameId: string, input: { name?: string; deadline?: number; fixtures: Array<{ home: string; away: string }> }) =>
+    (await api.post('/api/v1/lms/rounds', { game_id: gameId, ...input })).data,
+  process: async (roundId: string, fixtures: Array<{ id: string; homeScore: number; awayScore: number }>) =>
+    (await api.post(`/api/v1/lms/rounds/${encodeURIComponent(roundId)}/process`, { fixtures })).data,
+  reset: async (gameId: string) => (await api.post(`/api/v1/lms/games/${encodeURIComponent(gameId)}/reset`, {})).data,
+};
+
+export const historyApi = {
+  /** Team fun stats for a season id ("all" = all time) */
+  funStats: async (season: string): Promise<FunStat[]> =>
+    ((await api.get('/api/v1/stats/fun', { params: season && season !== 'all' ? { season } : {} })).data?.data ?? []) as FunStat[],
+  awards: async (seasonId: string): Promise<SeasonAward[]> =>
+    ((await api.get(`/api/v1/seasons/${encodeURIComponent(seasonId)}/awards`)).data?.data ?? []) as SeasonAward[],
 };
 
 export const seasonsApi = {

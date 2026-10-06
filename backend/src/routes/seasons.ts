@@ -493,9 +493,9 @@ export async function handleGetSeasonAwards(req: Request, env: any, corsHdrs: He
         const claims = await requireJWT(req, env);
 
         const awards = await env.DB.prepare(
-            `SELECT sa.*, s.name as player_name, s.photo_url as player_photo
+            `SELECT sa.*, s.name as player_name
              FROM season_awards sa
-             LEFT JOIN squad s ON sa.player_id = s.id
+             LEFT JOIN squad s ON sa.player_id = s.id AND s.tenant_id = sa.tenant_id
              WHERE sa.season_id = ? AND sa.tenant_id = ?
              ORDER BY sa.created_at ASC`
         ).bind(seasonId, claims.tenantId).all();
@@ -617,74 +617,12 @@ export async function handleMarkPlayerDeparted(req: Request, env: any, corsHdrs:
 }
 
 
-async function calculateSeasonStats(env: any, seasonId: string, tenantId: string, season: any) {
-    let matchQuery = "SELECT * FROM matches WHERE team_id = ? AND status IN ('completed', 'final')";
-    const params: any[] = [tenantId];
-
-    if (season.start_date) {
-        matchQuery += " AND date_utc >= ?";
-        params.push(season.start_date);
-    }
-    matchQuery += " AND season_id = ?";
-    params.push(seasonId);
-
-    const matches = await env.DB.prepare(matchQuery).bind(...params).all();
-    const matchResults = matches.results || [];
-
-    const stats = { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, goalDifference: 0, points: 0, cleanSheets: 0 };
-
-    for (const match of matchResults as any[]) {
-        const matchData: any = await env.KV.get(`match:${tenantId}:${match.id}`, 'json');
-        if (matchData && matchData.home_score !== undefined && matchData.away_score !== undefined) {
-            stats.played++;
-            stats.goalsFor += matchData.home_score;
-            stats.goalsAgainst += matchData.away_score;
-
-            if (matchData.home_score > matchData.away_score) {
-                stats.won++;
-                stats.points += 3;
-            } else if (matchData.home_score === matchData.away_score) {
-                stats.drawn++;
-                stats.points += 1;
-            } else {
-                stats.lost++;
-            }
-
-            if (matchData.away_score === 0) { stats.cleanSheets++; }
-        }
-    }
-    stats.goalDifference = stats.goalsFor - stats.goalsAgainst;
-
-    const events = await env.DB.prepare(`
-        SELECT e.player_id, e.type, p.name
-        FROM events e
-        JOIN matches m ON e.match_id = m.id
-        LEFT JOIN squad p ON e.player_id = p.id AND p.tenant_id = ?
-        WHERE m.season_id = ? AND m.team_id = ?
-    `).bind(tenantId, seasonId, tenantId).all();
-
-    const playerStats = new Map<string, { name: string, goals: number, assists: number }>();
-    const eventList = events.results || [];
-    for (const ev of eventList as any[]) {
-        if (!ev.player_id) { continue; }
-        if (!playerStats.has(ev.player_id)) {
-            playerStats.set(ev.player_id, { name: ev.name || 'Unknown', goals: 0, assists: 0 });
-        }
-        const ps = playerStats.get(ev.player_id)!;
-        if (ev.type === 'goal') { ps.goals++; }
-        if (ev.type === 'assist') { ps.assists++; }
-    }
-
-    const players = Array.from(playerStats.values());
-    const topScorer = [...players].sort((a, b) => b.goals - a.goals)[0] || null;
-    const topAssister = [...players].sort((a, b) => b.assists - a.assists)[0] || null;
-
-    return {
-        summary: stats,
-        topScorer,
-        topAssister,
-        matchCount: matchResults.length
-    };
+/** A live season's numbers: results and stats by its dates, as everywhere else. */
+async function calculateSeasonStats(env: any, seasonId: string, tenantId: string) {
+    const range = await resolveSeason(env, tenantId, seasonId);
+    if (!range) return { summary: null, topScorer: null, topAssister: null, matchCount: 0 };
+    const { summary, topScorer, topAssister } = await seasonReview(env, tenantId, range);
+    return { summary, topScorer, topAssister, matchCount: summary.played };
 }
 
 export async function handleGetSeasonStats(req: Request, env: any, corsHdrs: Headers, seasonId: string) {
@@ -716,7 +654,7 @@ export async function handleGetSeasonStats(req: Request, env: any, corsHdrs: Hea
             }
         }
 
-        const stats = await calculateSeasonStats(env, seasonId, tenantId || '', season);
+        const stats = await calculateSeasonStats(env, seasonId, tenantId || '');
         return json({
             success: true,
             season,

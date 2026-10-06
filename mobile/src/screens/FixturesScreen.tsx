@@ -7,6 +7,7 @@ import ScreenIntro from '../components/brand/ScreenIntro';
 import SectionTitle from '../components/home/SectionTitle';
 import MatchRow, { opponentSide, type Side } from '../components/fixtures/MatchRow';
 import FaSnippetCard from '../components/faFullTime/FaSnippetCard';
+import CalendarSubscribe from '../components/fixtures/CalendarSubscribe';
 import { useFaSnippets } from '../components/faFullTime/useFaSnippets';
 import { useClub } from '../context/ClubContext';
 import { isStaffRole } from '../utils/roles';
@@ -83,6 +84,7 @@ export default function FixturesScreen() {
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={c.primary} />}
     >
       <ScreenIntro title="Fixtures" subtitle="Upcoming matches and recent results" />
+      {club?.slug ? <View style={styles.calendar}><CalendarSubscribe clubSlug={club.slug} /></View> : null}
 
       {error ? (
         <View style={styles.errorCard}>
@@ -189,6 +191,7 @@ const useStyles = themedStyles((c) => ({
   container: { flex: 1, backgroundColor: c.background },
   center: { justifyContent: 'center', alignItems: 'center' },
   content: { paddingBottom: 32 },
+  calendar: { paddingHorizontal: 16, marginBottom: 4 },
   errorCard: { marginHorizontal: 16, marginTop: 8, padding: 14, borderRadius: 18, borderWidth: 1, borderColor: c.error, gap: 6 },
   errorText: { color: c.text },
   link: { fontWeight: '800' },
