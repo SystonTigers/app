@@ -595,6 +595,14 @@ with personal data.
   subscribes Apple (webcal://) or Google Calendar, or shares the link.
 - Staff delete club posts from Home (bin on a Club News card,
   `DELETE /api/v1/feed/:id`).
+- Tactics (app Training & stats → Tactics, `TacticsScreen`, `utils/tactics.ts`;
+  website Training → Tactics; `routes/tactics.ts`, `team_tactics`): formation
+  drawn on a pitch plus style, pressing, build-up, line, and in/out of
+  possession. Everyone at the club sees it; staff save it.
+- Live match video in the app: Club Settings → Live match video
+  (`LiveVideoCard`) connects YouTube with `from: "app"`, so Google lands on a
+  "go back to the app" page (`routes/stream.ts` `appReturnPage`) instead of
+  the website; the card refreshes when the app comes back into view.
 
 ## Access rules worth knowing
 

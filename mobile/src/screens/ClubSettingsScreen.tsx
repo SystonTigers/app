@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, AppState, Linking, RefreshControl, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, AppState, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { Button, Snackbar } from 'react-native-paper';
 import { useFocusEffect } from '@react-navigation/native';
 import ClubBadgeCard from '../components/clubSettings/ClubBadgeCard';
@@ -10,11 +10,9 @@ import FaSnippetsCard from '../components/clubSettings/FaSnippetsCard';
 import LeagueTableCard from '../components/clubSettings/LeagueTableCard';
 import FixtureEmailCard from '../components/clubSettings/FixtureEmailCard';
 import MatchStatsCard from '../components/clubSettings/MatchStatsCard';
-import SettingsCard, { useCardStyles } from '../components/clubSettings/SettingsCard';
+import LiveVideoCard from '../components/clubSettings/LiveVideoCard';
 import { apiErrorMessage } from '../services/api';
 import { clubSettingsApi, type SocialSettings } from '../services/clubSettingsApi';
-import { useClub } from '../context/ClubContext';
-import { WEBSITE_URL } from '../config';
 import { themedStyles, useBrandColors } from '../theme/brand';
 
 /**
@@ -28,8 +26,6 @@ import { themedStyles, useBrandColors } from '../theme/brand';
 export default function ClubSettingsScreen() {
   const c = useBrandColors();
   const styles = useStyles();
-  const card = useCardStyles();
-  const { club } = useClub();
   const [settings, setSettings] = useState<SocialSettings | null>(null);
   const [loadError, setLoadError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
@@ -86,7 +82,7 @@ export default function ClubSettingsScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => load(true)} tintColor={c.primary} />}
       >
         <Text style={styles.intro}>
-          Your badge, social media, what gets posted where, graphics, match stats, FA snippets and email forwarding. Changes here also show on the website.
+          Your badge, social media, what gets posted where, graphics, match stats, FA snippets, email forwarding and live video. Changes here also show on the website.
         </Text>
         <ClubBadgeCard canManage={settings.canManage} onMessage={say} />
         <SocialAccountsCard settings={settings} onSaved={setSettings} onMessage={say} />
@@ -96,13 +92,7 @@ export default function ClubSettingsScreen() {
         <LeagueTableCard canManage={settings.canManage} onMessage={say} />
         <FaSnippetsCard canManage={settings.canManage} onMessage={say} />
         <FixtureEmailCard onMessage={say} />
-        {club?.slug ? (
-          <SettingsCard icon="web" title="More on the website" help="Live match video (YouTube) is set up on the website's settings for now.">
-            <View style={card.buttons}>
-              <Button mode="outlined" compact icon="open-in-new" onPress={() => Linking.openURL(`${WEBSITE_URL}/${club.slug}/admin/settings`)}>Website settings</Button>
-            </View>
-          </SettingsCard>
-        ) : null}
+        <LiveVideoCard onMessage={say} />
       </ScrollView>
       <Snackbar
         visible={!!message}

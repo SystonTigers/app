@@ -44,6 +44,7 @@ const MENU_GROUPS: { id: string; title: string; icon: string; protected?: boolea
         items: [
             { label: 'Training centre', screen: 'Training', icon: 'run', roles: ['admin', 'manager', 'coach', 'player'] },
             { label: 'Drill library', screen: 'DrillLibrary', icon: 'clipboard-list', roles: ['admin', 'manager', 'coach', 'player'] },
+            { label: 'Tactics', screen: 'Tactics', icon: 'strategy', roles: ['admin', 'manager', 'coach', 'player'] },
             { label: 'Results', screen: 'Results', icon: 'scoreboard-outline', roles: ALL },
             { label: 'Stats', screen: 'Stats', icon: 'chart-bar', roles: ALL },
             { label: 'League table', screen: 'LeagueTable', icon: 'format-list-numbered', roles: ALL },

@@ -7,13 +7,13 @@ import { parse } from "../lib/validate";
 import { rateLimitWithTenant } from "../middleware/rateLimit";
 
 const TacticsSchema = z.object({
-    formation: z.string(),
-    playingStyle: z.string(),
+    formation: z.string().regex(/^\d(-\d){1,4}$/, 'Pick a formation'),
+    playingStyle: z.string().max(40),
     pressingIntensity: z.enum(['low', 'medium', 'high']),
     buildUpPlay: z.enum(['short', 'mixed', 'direct']),
     defensiveLine: z.enum(['deep', 'medium', 'high']),
     width: z.enum(['narrow', 'normal', 'wide']).optional(),
-    setPlayFocus: z.array(z.string()).optional(),
+    setPlayFocus: z.array(z.string().max(40)).max(10).optional(),
     phases: z.object({
         attacking: z.any().optional(),
         defensive: z.any().optional(),

@@ -3,7 +3,8 @@
  * automatically (read-only access: we only look for what's live).
  *
  *   GET    /api/v1/stream/settings           staff: { youtube: { connected, channelName, needsReconnect }, canConnect }
- *   POST   /api/v1/stream/youtube/start      club admins -> { url } to send them to Google
+ *   POST   /api/v1/stream/youtube/start      club admins: { from?: "app" } -> { url } to send them to Google
+ *     (from the app, Google lands on a plain "go back to the app" page instead of the website)
  *   GET    /api/v1/stream/youtube/callback   Google sends them back here
  *   DELETE /api/v1/stream/youtube            club admins
  */
@@ -44,6 +45,23 @@ async function settingsPage(env: Env, tenantId: string, result: string): Promise
   return `${base}/${row?.slug ?? ""}/admin/settings?${new URLSearchParams({ youtube: result })}`;
 }
 
+const APP_MESSAGES: Record<string, { title: string; body: string }> = {
+  connected: { title: "YouTube is connected", body: "Go back to the app. Streams on your channel now show in the app on match days." },
+  cancelled: { title: "Connecting was cancelled", body: "Nothing was changed. Go back to the app if you want to try again." },
+  no_channel: { title: "No YouTube channel found", body: "That Google account doesn't have a YouTube channel. Go back to the app and connect with the account that owns your club's channel." },
+  failed: { title: "We couldn't connect to YouTube", body: "Go back to the app and try again." },
+};
+
+/** The page Google lands on when the app started connecting. Fixed text only. */
+function appReturnPage(result: string): Response {
+  const { title, body } = APP_MESSAGES[result] ?? APP_MESSAGES.failed;
+  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${title}</title><style>body{margin:0;font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:#07090C;color:#F2F5F7;display:flex;min-height:100vh;align-items:center;justify-content:center;padding:24px;box-sizing:border-box}
+main{max-width:420px;text-align:center}h1{font-size:24px;margin:0 0 12px}p{color:rgba(242,245,247,.72);line-height:1.5;margin:0}</style></head>
+<body><main><h1>${title}</h1><p>${body}</p><p style="margin-top:16px">You can close this page.</p></main></body></html>`;
+  return new Response(html, { status: 200, headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "x-robots-tag": "noindex" } });
+}
+
 export async function handleGetStreamSettings(req: Request, env: Env, corsHdrs: Headers): Promise<Response> {
   const claims = await staff(req, env, corsHdrs);
   if (claims instanceof Response) return claims;
@@ -60,8 +78,9 @@ export async function handleStartYouTubeConnect(req: Request, env: Env, corsHdrs
   const claims = await staff(req, env, corsHdrs, true);
   if (claims instanceof Response) return claims;
   if (!youtubeConfigured(env)) return fail(corsHdrs, 503, "NOT_SET_UP", "Connecting YouTube isn't set up on the server yet.");
+  const body = await req.json().catch(() => ({})) as { from?: unknown };
   const state = crypto.randomUUID();
-  await env.KV_IDEMP.put(`yt_state:${state}`, JSON.stringify({ tenantId: claims.tenantId, userId: claims.userId ?? null }), { expirationTtl: 600 });
+  await env.KV_IDEMP.put(`yt_state:${state}`, JSON.stringify({ tenantId: claims.tenantId, userId: claims.userId ?? null, fromApp: body?.from === "app" }), { expirationTtl: 600 });
   return json({ success: true, data: { url: consentUrl(env, callbackUrl(env), state) } }, 200, corsHdrs);
 }
 
@@ -69,11 +88,11 @@ export async function handleStartYouTubeConnect(req: Request, env: Env, corsHdrs
 export async function handleYouTubeCallback(req: Request, env: Env): Promise<Response> {
   const url = new URL(req.url);
   const state = url.searchParams.get("state") ?? "";
-  const saved = state ? (await env.KV_IDEMP.get(`yt_state:${state}`, "json")) as { tenantId: string; userId: string | null } | null : null;
+  const saved = state ? (await env.KV_IDEMP.get(`yt_state:${state}`, "json")) as { tenantId: string; userId: string | null; fromApp?: boolean } | null : null;
   if (!saved) return new Response("This link has expired. Go back to your club settings and click Connect YouTube again.", { status: 400 });
   await env.KV_IDEMP.delete(`yt_state:${state}`);
 
-  const back = async (result: string) => Response.redirect(await settingsPage(env, saved.tenantId, result), 302);
+  const back = async (result: string) => saved.fromApp ? appReturnPage(result) : Response.redirect(await settingsPage(env, saved.tenantId, result), 302);
   const code = url.searchParams.get("code");
   if (!code) return back("cancelled");
 

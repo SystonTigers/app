@@ -42,6 +42,7 @@ const DRAWER_PATHS: Record<string, string> = {
   CreatePost: 'new-post',
   Gallery: 'gallery',
   ClubHistory: 'history',
+  Tactics: 'tactics',
   TeamTalk: 'team-talk',
   TeamTalkThread: 'team-talk/conversation',
   Highlights: 'highlights',
