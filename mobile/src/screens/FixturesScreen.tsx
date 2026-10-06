@@ -84,7 +84,7 @@ export default function FixturesScreen() {
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={c.primary} />}
     >
       <ScreenIntro title="Fixtures" subtitle="Upcoming matches and recent results" />
-      {club?.slug ? <View style={styles.calendar}><CalendarSubscribe clubSlug={club.slug} /></View> : null}
+      {user ? <View style={styles.calendar}><CalendarSubscribe /></View> : null}
 
       {error ? (
         <View style={styles.errorCard}>
