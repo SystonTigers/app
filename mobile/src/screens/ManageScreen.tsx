@@ -62,6 +62,24 @@ const managementCards: ManagementCard[] = [
     screen: 'ManageMOTM',
   },
   {
+    title: 'Opponents',
+    description: 'Teams you play and their badges for match graphics',
+    icon: 'shield-half-full',
+    screen: 'Opponents',
+  },
+  {
+    title: 'Goal of the Month',
+    description: 'Pick the best goals, open the vote, post the winner',
+    icon: 'soccer',
+    screen: 'ManageGotm',
+  },
+  {
+    title: 'Seasons',
+    description: 'Start a new season, end the old one with its awards',
+    icon: 'calendar-range',
+    screen: 'ManageSeasons',
+  },
+  {
     title: 'Club settings',
     description: 'Badge, social media, what gets posted, graphics, FA snippets, email forwarding',
     icon: 'cog-outline',

@@ -169,7 +169,8 @@ with personal data.
 
 ## Goal of the Month
 
-- Staff run it on the website (Admin → Goal of the Month): pick a month
+- Staff run it in the app (Manager Zone → Goal of the Month,
+  `ManageGotmScreen`) or on the website (Admin → Goal of the Month): pick a month
   (defaults to last month), tick 2 to 10 of the month's goals from Match
   Centre and match reports (`GET /api/v1/gotm/goals?month=YYYY-MM`; ones with
   a match clip are marked) or type goals in with an optional video link, then
@@ -199,7 +200,9 @@ with personal data.
 - The club badge is uploaded in Club Settings (`POST /api/v1/club/badge`,
   PNG/JPG under 3 MB, `tenant_brand.badge_url`); graphics, the app and club
   pages all read it from there.
-- Opponent badges come from the website's Opponents page (`opponent_teams`);
+- Opponent badges come from the Opponents page (website Admin → Opponents,
+  app Manager Zone → Opponents `OpponentsScreen`; `opponent_teams`; the
+  upload takes the picture as the body or a form field `badge`);
   opponents are added there automatically when a post mentions them. PNG/JPG
   only: the renderer can't draw WebP or SVG (initials are shown instead).
 - Scheduled club posts (`services/social/scheduler.ts`, 5-minute cron, UK time):
@@ -278,7 +281,8 @@ with personal data.
 - Leagues don't offer open data feeds (FA Full-Time, FAW COMET, GotSport and
   the rest), so the club's table is worked out by us (`services/league/`):
   managers paste the league's results page, or its table, copied from any
-  site (Settings → League Table; `POST /api/v1/club/league/paste`).
+  site (website Settings → League Table, app Club Settings → League table
+  `LeagueTableCard`; `POST /api/v1/club/league/paste`).
   `parse.ts` reads tab/space separated rows, dd/mm and US m/d dates and date
   headings; postponed games are skipped. Results are kept in `league_results`
   (repeat pastes are ignored) and settings in `league_settings`.
@@ -338,7 +342,15 @@ with personal data.
 ## Results, seasons and gallery
 
 - Seasons are football years (1 Aug to 31 Jul, id `2025-26`) unless the club
-  has rows in `seasons` (`services/seasons/range.ts`). `GET /api/v1/results/seasons`
+  has rows in `seasons` (`services/seasons/range.ts`); then its own seasons
+  come first and the football years before the first one stay
+  (`withClubSeasons`), so starting a season never hides older history.
+- Season admin (app Manager Zone → Seasons, `ManageSeasonsScreen`; website
+  Admin → Seasons): start a season (carry the squad over), end it with awards,
+  make another current, reopen within a day. The end of season review and
+  snapshots use the season's dates (`services/seasons/review.ts`), not the
+  old per-row `season_id`; awards are read in the app's or website's shape
+  (`readAwards`). `GET /api/v1/results/seasons`
   lists them; `?season=` filters `GET /results` and `GET /stats/players`.
 - App Results screen (menu: Results, and Manage Results for managers): season
   chips (`components/seasons/SeasonPicker`), summary, and staff add/edit/remove

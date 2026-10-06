@@ -58,6 +58,9 @@ import ManageSquadScreen from './src/screens/ManageSquadScreen';
 import ManageFixturesScreen from './src/screens/ManageFixturesScreen';
 import ManageEventsScreen from './src/screens/ManageEventsScreen';
 import ManageMOTMScreen from './src/screens/ManageMOTMScreen';
+import OpponentsScreen from './src/screens/OpponentsScreen';
+import ManageGotmScreen from './src/screens/ManageGotmScreen';
+import ManageSeasonsScreen from './src/screens/ManageSeasonsScreen';
 import ManagePlayerImagesScreen from './src/screens/ManagePlayerImagesScreen';
 import ClubSettingsScreen from './src/screens/ClubSettingsScreen';
 import ImportDataScreen from './src/screens/ImportDataScreen';
@@ -92,6 +95,9 @@ const StaffManageFixtures = staffScreen(ManageFixturesScreen);
 const StaffManageEvents = staffScreen(ManageEventsScreen);
 const StaffMatchCentre = staffScreen(LiveMatchInputScreen);
 const StaffManageMOTM = staffScreen(ManageMOTMScreen);
+const StaffOpponents = staffScreen(OpponentsScreen);
+const StaffManageGotm = staffScreen(ManageGotmScreen);
+const StaffManageSeasons = staffScreen(ManageSeasonsScreen);
 const StaffManagePlayerImages = staffScreen(ManagePlayerImagesScreen);
 const StaffClubSettings = staffScreen(ClubSettingsScreen);
 const AdminPushNotificationsSetup = staffScreen(PushNotificationsSetupScreen, 'admin');
@@ -273,6 +279,9 @@ function MainDrawer() {
       <Drawer.Screen name="ManageEvents" component={StaffManageEvents} options={{ title: 'Manage Events' }} />
       <Drawer.Screen name="MatchCentre" component={StaffMatchCentre} options={{ title: 'Match Centre' }} />
       <Drawer.Screen name="ManageMOTM" component={StaffManageMOTM} options={{ title: 'Manage MOTM' }} />
+      <Drawer.Screen name="Opponents" component={StaffOpponents} options={{ title: 'Opponents' }} />
+      <Drawer.Screen name="ManageGotm" component={StaffManageGotm} options={{ title: 'Goal of the Month' }} />
+      <Drawer.Screen name="ManageSeasons" component={StaffManageSeasons} options={{ title: 'Seasons' }} />
       <Drawer.Screen name="ManagePlayerImages" component={StaffManagePlayerImages} options={{ title: 'Player Images' }} />
       <Drawer.Screen name="ClubSettings" component={StaffClubSettings} options={{ title: 'Club Settings' }} />
       <Drawer.Screen

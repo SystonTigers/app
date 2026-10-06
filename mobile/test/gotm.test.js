@@ -45,4 +45,13 @@ assert.equal(g.watchable(data.vote.candidates[1]), 'clip');
 assert.equal(g.watchable({ clip: null, videoUrl: null }), null);
 assert.equal(g.totalVotes(data.vote), null, 'hidden while open for members');
 assert.equal(g.totalVotes(data.past[0]), 9);
+// Staff: running a vote
+assert.deepEqual(g.recentMonths(new Date('2026-10-06T12:00:00Z'), 3), ['2026-09', '2026-08', '2026-07']);
+assert.equal(g.monthLabel('2026-09'), 'September 2026');
+assert.match(g.goalSummary({ opponent: 'Page Rovers', minute: 23, date: '2026-09-20' }), /^v Page Rovers · 23' · 20 Sept?$/);
+assert.equal(g.newVoteProblem('2026-09', 1), "Pick at least 2 goals so there's something to vote on.");
+assert.equal(g.newVoteProblem('2026-09', 11), 'Pick up to 10 goals.');
+assert.equal(g.newVoteProblem('2026-09', 3), null);
+assert.deepEqual(g.newVoteBody('2026-09', [{ eventId: 'e1', playerId: 'p1', fixtureId: 'f1' }], [{ playerId: 'p2', playerName: 'Sam', description: ' Volley ', videoUrl: ' ' }]),
+  { month: '2026-09', goals: [{ eventId: 'e1', playerId: 'p1', fixtureId: 'f1' }, { playerId: 'p2', description: 'Volley', videoUrl: undefined }] });
 console.log('gotm tests passed');

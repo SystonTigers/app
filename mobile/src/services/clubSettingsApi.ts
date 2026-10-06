@@ -76,6 +76,13 @@ export const clubSettingsApi = {
     (await apiClient.post('/api/v1/social/meta/select', { key, pageId })).data.data,
   disconnectFacebook: async (): Promise<SocialSettings> => (await apiClient.delete('/api/v1/social/connections/meta')).data.data,
 
+  /** An opponent's badge (Opponents screen), sent the same way as the club badge */
+  uploadOpponentBadge: async (opponentId: string, image: PickedImage): Promise<void> => {
+    await apiClient.post(`/api/v1/opponents/${encodeURIComponent(opponentId)}/upload-badge`, await imageForm('badge', image), {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: UPLOAD_TIMEOUT,
+    });
+  },
   uploadBadge: async (image: PickedImage): Promise<string> => (await upload<{ badgeUrl: string }>('/api/v1/club/badge', 'badge', image)).badgeUrl,
   removeBadge: async (): Promise<void> => {
     await apiClient.delete('/api/v1/club/badge');

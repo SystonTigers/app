@@ -1,6 +1,6 @@
 # Roadmap: what's built and what's left
 
-Updated 4 October 2026. Keep this short and current: when something here is
+Updated 6 October 2026. Keep this short and current: when something here is
 done, move it to "Built" (one line) and update `CLAUDE.md`.
 
 ## Built (the detail is in CLAUDE.md)
@@ -32,6 +32,20 @@ done, move it to "Built" (one line) and update `CLAUDE.md`.
   People & Roles, parent invite codes, photo/video consent with reminders.
 - **Business:** club sign-up with a 14-day trial, Starter/Pro plans (Stripe,
   switched on by secrets), owner panel (clubs, trials, plans, suspensions).
+
+## One app (in progress, agreed October 2026)
+
+The club experience becomes one app on phones and PCs (the Expo app, which is
+also the web app). Website-only club features move into the app in batches;
+then the website's club pages open the web app, and the website keeps only the
+landing page, pricing, club sign-up, billing and the owner panel.
+
+- Done: Seasons, Goal of the Month admin, League table paste, Opponents.
+- Next (managers): Team Talk, dues, reported posts, social post history,
+  live stream/YouTube settings, shop admin, videos and clips, tactics board,
+  friendlies, registration, organisation/teams, calendar export.
+- Then (families on the website until the switch): voting, live match,
+  highlights, consent and linking a child, predictions, attendance, drills.
 
 ## Next, in order
 
