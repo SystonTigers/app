@@ -201,7 +201,7 @@ test("registers a tenant member and allows login", async () => {
   const loginJson: any = await loginResponse.json();
   expect(loginJson.success).toBe(true);
   expect(loginJson.data.token).toBeTypeOf("string");
-  expect(loginJson.data.user.roles).toContain("tenant_member");
+  expect(loginJson.data.user.roles).toEqual(["pending"]); // waits for the coaches to let them in
 });
 
 test("returns cached response on idempotent retry", async () => {

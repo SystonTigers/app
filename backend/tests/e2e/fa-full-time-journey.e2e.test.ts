@@ -31,8 +31,11 @@ describe("FA Full-Time snippets", () => {
     expect(saved.status).toBe(200);
     expect(saved.data.data).toEqual({ table: "995652226", results: "464806132", fixtures: "728979873", team: "238564734" });
 
+    // The FA's fixture lists show times and grounds: signed out, only the table and results
     const pub = await call("/public/syston/fa-full-time");
-    expect(pub.data.data).toEqual({ table: "995652226", results: "464806132", fixtures: "728979873", team: "238564734" });
+    expect(pub.data.data).toEqual({ table: "995652226", results: "464806132" });
+    const signedIn = await call("/public/syston/fa-full-time", { token: admin.token });
+    expect(signedIn.data.data).toEqual({ table: "995652226", results: "464806132", fixtures: "728979873", team: "238564734" });
 
     // Clearing one box removes just that one
     await call("/api/v1/club/fa-full-time", { method: "PUT", token: admin.token, body: { team: "" } });

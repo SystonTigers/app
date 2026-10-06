@@ -24,6 +24,8 @@ export interface ClubSocial {
   chosenPack: string;
   unlockedPacks: string[];
   undoWindow: boolean;
+  /** Leave the ground and kick-off time out of posts (tenants.social_hide_match_details) */
+  hideMatchDetails: boolean;
   settings: EventSettings;
   connections: { facebook: { id: string; name: string | null } | null; instagram: { id: string; name: string | null } | null };
 }
@@ -32,6 +34,7 @@ interface ClubRow {
   name: string;
   plan: string | null;
   social_undo_window: number;
+  social_hide_match_details: number | null;
   social_events: string | null;
   graphics_pack: string | null;
   sponsor_name: string | null;
@@ -44,7 +47,7 @@ interface ClubRow {
 export async function loadClubSocial(env: SocialEnv, tenantId: string): Promise<ClubSocial> {
   const [club, conns, unlocks] = await Promise.all([
     env.DB.prepare(
-      `SELECT t.name, t.plan, t.social_undo_window, t.social_events, t.graphics_pack, t.sponsor_name, t.sponsor_logo_url,
+      `SELECT t.name, t.plan, t.social_undo_window, t.social_hide_match_details, t.social_events, t.graphics_pack, t.sponsor_name, t.sponsor_logo_url,
               b.badge_url, b.primary_color, b.secondary_color
        FROM tenants t LEFT JOIN tenant_brand b ON b.tenant_id = t.id WHERE t.id = ?`,
     ).bind(tenantId).first<ClubRow>(),
@@ -76,6 +79,7 @@ export async function loadClubSocial(env: SocialEnv, tenantId: string): Promise<
     chosenPack,
     unlockedPacks,
     undoWindow: club?.social_undo_window !== 0,
+    hideMatchDetails: club?.social_hide_match_details === 1,
     settings: parseEventSettings(club?.social_events),
     connections: { facebook: find("facebook"), instagram: find("instagram") },
   };
@@ -88,4 +92,9 @@ export async function postPerson(env: SocialEnv, tenantId: string, playerId: str
     .bind(tenantId, playerId).first<{ name: string; photo: string | null }>();
   if (!row) return fallbackName ? { name: fallbackName, photoUrl: null } : null;
   return { name: row.name, photoUrl: row.photo };
+}
+
+/** A fixture as it may appear in the club's posts: no ground or kick-off time if the club has chosen that. */
+export function forPosting<T extends { time?: string | null; venue?: string | null }>(club: Pick<ClubSocial, "hideMatchDetails">, f: T): T {
+  return club.hideMatchDetails ? { ...f, time: null, venue: null } : f;
 }

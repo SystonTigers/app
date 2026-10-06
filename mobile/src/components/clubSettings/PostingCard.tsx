@@ -48,6 +48,7 @@ export default function PostingCard({ settings, onSaved, onMessage }: {
     onSaved({ ...settings, photos: on });
   }, on ? 'Photos switched on (only players with consent).' : 'Photos switched off.', "That didn't save.");
   const undoWindow = (on: boolean) => save('undo', () => clubSettingsApi.saveSocial({ undoWindow: on }), on ? 'Posts now wait 1 minute.' : 'Posts now go out straight away.', "That didn't save.");
+  const hideDetails = (on: boolean) => save('details', () => clubSettingsApi.saveSocial({ hideMatchDetails: on }), on ? 'Posts now leave out the ground and kick-off time.' : 'Posts now show the ground and kick-off time.', "That didn't save.");
   const saveEvents = () => save('events', () => clubSettingsApi.saveSocial({ events: draft }), 'Posting choices saved.', "Your posting choices didn't save.");
 
   const group = (title: string, kinds: typeof MATCH_POSTS) => (
@@ -98,6 +99,13 @@ export default function PostingCard({ settings, onSaved, onMessage }: {
           <Text style={card.muted}>So a mistake can be undone in Match Centre. Instagram doesn&apos;t let apps delete posts.</Text>
         </View>
         <Switch value={settings.undoWindow} disabled={!admin || !!busy} onValueChange={undoWindow} accessibilityLabel="Wait 1 minute before posting" />
+      </View>
+      <View style={styles.toggle}>
+        <View style={{ flex: 1 }}>
+          <Text style={card.body}>Leave the ground and kick-off time out of posts</Text>
+          <Text style={card.muted}>Match day, countdown, fixtures and team news posts won&apos;t say where or when you play. People in your app still see it.</Text>
+        </View>
+        <Switch value={!!settings.hideMatchDetails} disabled={!admin || !!busy} onValueChange={hideDetails} accessibilityLabel="Leave the ground and kick-off time out of posts" />
       </View>
 
       <View style={[styles.line, styles.header]}>

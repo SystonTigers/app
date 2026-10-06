@@ -5,8 +5,8 @@ import { MotmWinnerCard } from '@/components/MotmWinnerCard';
 import { LiveScoreCard } from '@/components/LiveScoreCard';
 import { clubAppLink } from '@/lib/app-link';
 import { isClubTeam } from '@/lib/slug';
-import { kickOffText, nextFixture, upcomingFixtures, type PublicFixture } from '@/lib/fixtures';
-import { formatDate, formatLongDate, formatShortDate } from '@/lib/format';
+import { HomeComingUp, HomeNextMatch } from '@/components/HomeFixtures';
+import { formatDate } from '@/lib/format';
 import { Icon } from '@/components/ui/Icon';
 import { EmptyNote } from '@/components/ui/Page';
 
@@ -29,51 +29,6 @@ interface FeedPost {
   title?: string;
   timestamp?: string;
   media?: string[];
-}
-
-function NextMatch({ fixture, tenant, clubName }: { fixture: PublicFixture | null; tenant: string; clubName: string }) {
-  if (!fixture) {
-    return (
-      <section className="card hex-grid mb-8 text-center py-12">
-        <p className="eyebrow mb-3">Next match</p>
-        <h2 className="text-3xl md:text-4xl italic mb-2">No games booked yet</h2>
-        <p className="text-muted max-w-md mx-auto">
-          {clubName}&apos;s next fixture will show here as soon as the club adds it.
-        </p>
-      </section>
-    );
-  }
-
-  const time = kickOffText(fixture);
-  return (
-    <section className="card hex-grid mb-8 p-0 overflow-hidden" aria-labelledby="next-match">
-      <div className="p-6 md:p-10 flex flex-col md:flex-row md:items-center md:justify-between gap-8">
-        <div className="text-center md:text-left min-w-0">
-          <p id="next-match" className="inline-flex items-center gap-2 px-3 py-1 bg-brand text-brand-foreground chamfer-sm font-display text-sm font-bold uppercase tracking-wider mb-5">
-            Next match{fixture.competition ? ` · ${fixture.competition}` : ''}
-          </p>
-          <h2 className="text-3xl md:text-5xl italic leading-none break-words">{fixture.homeTeam}</h2>
-          <p className="font-display text-xl text-muted my-1 uppercase">v</p>
-          <h2 className="text-3xl md:text-5xl italic leading-none break-words">{fixture.awayTeam}</h2>
-          <div className="mt-6 flex flex-wrap gap-3 justify-center md:justify-start">
-            <Link href={`/${tenant}/fixtures`} className="btn btn-primary">
-              All fixtures <Icon name="arrowRight" className="w-4 h-4" />
-            </Link>
-          </div>
-        </div>
-
-        <div className="bg-surface-raised border border-border chamfer-lg p-6 text-center md:min-w-[220px]">
-          <p className="text-sm uppercase tracking-widest text-muted mb-2">{formatLongDate(fixture.date)}</p>
-          <p className="font-display text-4xl font-extrabold">{time ? `${time} KO` : 'Kick-off TBC'}</p>
-          {fixture.venue && (
-            <p className="mt-3 text-sm text-muted inline-flex items-center gap-1.5">
-              <Icon name="flag" className="w-4 h-4" /> {fixture.venue}
-            </p>
-          )}
-        </div>
-      </div>
-    </section>
-  );
 }
 
 function QuickStats({ row }: { row: TableRow }) {
@@ -177,33 +132,6 @@ function MiniTable({ table, tenant }: { table: TableRow[]; tenant: string }) {
   );
 }
 
-function ComingUp({ fixtures, tenant }: { fixtures: PublicFixture[]; tenant: string }) {
-  return (
-    <section className="card">
-      <h3 className="text-xl mb-4">Coming up</h3>
-      {fixtures.length === 0 ? (
-        <p className="text-muted text-sm">No more games booked yet.</p>
-      ) : (
-        <ul className="divide-y divide-border">
-          {fixtures.map((f) => {
-            const time = kickOffText(f);
-            return (
-              <li key={f.id}>
-                <Link href={`/${tenant}/fixtures`} className="block py-3 group">
-                  <span className="flex items-center justify-between text-xs mb-1">
-                    <span className="font-bold uppercase text-brand">{formatShortDate(f.date)}{time ? ` · ${time}` : ''}</span>
-                    {f.competition && <span className="text-muted">{f.competition}</span>}
-                  </span>
-                  <span className="block font-bold group-hover:text-brand transition-colors">{f.homeTeam} v {f.awayTeam}</span>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-    </section>
-  );
-}
 
 /** The API's list, or an empty one if it sent something else. */
 function asList<T>(value: unknown): T[] {
@@ -213,16 +141,13 @@ function asList<T>(value: unknown): T[] {
 export default async function TenantHomePage({ params }: HomePageProps) {
   const { tenant } = await params;
   const sdk = getServerSDK(tenant);
-  const [club, motm, fixtures, posts, table] = await Promise.all([
+  const [club, motm, posts, table] = await Promise.all([
     getClubInfo(tenant),
     getLatestMotm(tenant),
-    sdk.listFixtures().then((r) => asList<PublicFixture>(r)).catch(() => [] as PublicFixture[]),
     sdk.listFeed(1, 6).then((r) => asList<FeedPost>(r)).catch(() => [] as FeedPost[]),
     sdk.getLeagueTable().then((r) => asList<TableRow>(r)).catch(() => [] as TableRow[]),
   ]);
 
-  const next = nextFixture(fixtures);
-  const later = upcomingFixtures(fixtures).filter((f) => f.id !== next?.id).slice(0, 3);
   const ourRow = table.find((r) => isClubTeam(r.team, tenant));
 
   return (
@@ -241,7 +166,7 @@ export default async function TenantHomePage({ params }: HomePageProps) {
 
       <LiveScoreCard tenant={tenant} clubName={club.name} />
 
-      <NextMatch fixture={next} tenant={tenant} clubName={club.name} />
+      <HomeNextMatch tenant={tenant} clubName={club.name} />
 
       {ourRow && <QuickStats row={ourRow} />}
 
@@ -254,7 +179,7 @@ export default async function TenantHomePage({ params }: HomePageProps) {
         <aside className="space-y-6 min-w-0">
           {motm && <MotmWinnerCard motm={motm} />}
           <MiniTable table={table} tenant={tenant} />
-          <ComingUp fixtures={later} tenant={tenant} />
+          <HomeComingUp tenant={tenant} />
         </aside>
       </div>
     </div>

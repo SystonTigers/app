@@ -14,7 +14,7 @@ require.extensions['.ts'] = (module, filename) => {
   module._compile(outputText, filename);
 };
 
-const { filterMembers, sortMembers, lastSeen, initialsOf, linkedLabel, ROLE_INFO, ASSIGNABLE_ROLES } = require('../src/utils/members.ts');
+const { filterMembers, sortMembers, lastSeen, signedUpLabel, initialsOf, linkedLabel, ROLE_INFO, ASSIGNABLE_ROLES } = require('../src/utils/members.ts');
 
 const people = [
   { name: 'Pat Parent', email: 'pat@example.com', role: 'parent' },
@@ -36,6 +36,9 @@ assert.equal(lastSeen(null, now), 'Never signed in');
 assert.equal(lastSeen(now - 3600_000, now), 'Signed in today');
 assert.equal(lastSeen(now - 86400_000 - 1000, now), 'Signed in yesterday');
 assert.equal(lastSeen(now - 5 * 86400_000, now), 'Signed in 5 days ago');
+assert.equal(signedUpLabel(now - 3600_000, now), 'Signed up today');
+assert.equal(signedUpLabel(now - 5 * 86400_000, now), 'Signed up 5 days ago');
+assert.equal(signedUpLabel(null, now), 'Just signed up');
 assert.equal(initialsOf('Jo Manager'), 'JM');
 assert.equal(initialsOf(''), '?');
 

@@ -15,11 +15,12 @@ export function isSnippetCode(code: unknown): code is string {
   return typeof code === 'string' && CODE.test(code);
 }
 
-/** The club's snippet codes from GET /public/:club/fa-full-time ({} when none or offline). */
-export async function fetchFaSnippets(club: string): Promise<FaSnippets> {
+/** The club's snippet codes from GET /public/:club/fa-full-time ({} when none or offline). The FA's fixture lists only come back to members (`token`). */
+export async function fetchFaSnippets(club: string, token?: string | null): Promise<FaSnippets> {
   if (!club) return {};
   try {
-    const res = await fetch(`${API_BASE_URL}/public/${encodeURIComponent(club)}/fa-full-time`);
+    // Signed in, so the FA's fixture lists (times and grounds) come back too
+    const res = await fetch(`${API_BASE_URL}/public/${encodeURIComponent(club)}/fa-full-time`, token ? { headers: { Authorization: `Bearer ${token}` } } : undefined);
     if (!res.ok) return {};
     const body = await res.json();
     return body?.success && body.data ? (body.data as FaSnippets) : {};

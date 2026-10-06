@@ -33,7 +33,11 @@ describe("Player pages", () => {
     // Not linked yet: can't write the bio
     expect((await call(`/api/v1/players/${pat}/bio`, { method: "PUT", token: player.token, body: { bio: "Hi" } })).status).toBe(403);
     const code = (await call(`/api/v1/players/${pat}/parent-invite`, { method: "POST", token: coach.token, body: {} })).data.data.code;
-    expect((await call("/api/v1/link-child", { token: player.token, body: { code } })).status).toBe(200);
+    // The coach's code lets the waiting player straight in, with a new sign-in
+    const linked = await call("/api/v1/link-child", { token: player.token, body: { code } });
+    expect(linked.status).toBe(200);
+    expect(linked.data.data.letIn).toBe(true);
+    player.token = linked.data.data.token;
     expect((await call("/api/v1/me/players", { token: player.token })).data.data).toEqual([{ id: pat, name: "Pat Player", isMe: true, hasBio: false }]);
 
     const unsafe = await call(`/api/v1/players/${pat}/bio`, { method: "PUT", token: player.token, body: { bio: "Add me on insta @pat9" } });

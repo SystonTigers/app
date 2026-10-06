@@ -50,13 +50,15 @@ describe("Mobile app club journey", () => {
       headers: { "Idempotency-Key": `reg-${email}`, ...ip() },
     });
     expect(reg.status).toBe(201);
-    expect(reg.data.data.user.roles).toEqual(["tenant_member"]);
+    // They wait for the club to let them in, but can see their own profile
+    expect(reg.data.data.user.roles).toEqual(["pending"]);
 
     const me = await call("/api/v1/users/me", { token: reg.data.data.token });
     expect(me.status).toBe(200);
     expect(me.data.user).toEqual(expect.objectContaining({
-      email, firstName: "Sam", lastName: "Parent", tenant_slug: slug, roles: ["tenant_member"],
+      email, firstName: "Sam", lastName: "Parent", tenant_slug: slug, roles: ["pending"],
     }));
+    expect((await call("/api/v1/membership", { token: reg.data.data.token })).data.data.status).toBe("pending");
 
     // Logging in to that club by its web address works too
     const login = await call("/api/v1/auth/login", { body: { tenant_id: slug, email, password: "ParentPass123" }, headers: ip() });

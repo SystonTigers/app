@@ -4,6 +4,7 @@ import { themedStyles, useBrandColors } from '../../theme/brand';
 import { FONTS } from '../../theme/brandFonts';
 import { apiErrorMessage, parentLinkApi } from '../../services/api';
 import { clearPendingInvite, pendingInvite } from '../../services/inviteLink';
+import { useAuth } from '../../context/AuthContext';
 
 /**
  * Parent: enter the code from the manager to link your account to your child.
@@ -18,6 +19,7 @@ export default function LinkChildCard({ prominent, onLinked, forSelf = false }: 
   const [error, setError] = useState('');
   const [done, setDone] = useState('');
   const [open, setOpen] = useState(prominent);
+  const { adoptMemberToken } = useAuth();
 
   useEffect(() => {
     pendingInvite().then((c) => {
@@ -37,6 +39,8 @@ export default function LinkChildCard({ prominent, onLinked, forSelf = false }: 
       await clearPendingInvite();
       setCode('');
       setDone(res.data.alreadyLinked ? `You're already linked to ${res.data.name}.` : `Linked to ${res.data.name}.`);
+      // A new account waiting to join: the coach's code lets it straight in
+      if (res.data.letIn && res.data.token) await adoptMemberToken(res.data.token, res.data.roles ?? []);
       onLinked(res.data.name);
     } catch (err) {
       setError(apiErrorMessage(err, "That didn't work. Please try again."));

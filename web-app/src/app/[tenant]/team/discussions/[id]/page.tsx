@@ -163,7 +163,7 @@ function DiscussionDetail({ tenant, discussionId }: { tenant: string; discussion
             try {
                 let found: Related | null = null;
                 if (type === 'match') {
-                    const res = await fetch(`${API_BASE}/public/${encodeURIComponent(tenant)}/fixtures/${encodeURIComponent(id)}`);
+                    const res = await apiFetch(`/public/${encodeURIComponent(tenant)}/fixtures/${encodeURIComponent(id)}`);
                     const m = res.ok ? (await res.json()).data : null;
                     if (m) {
                         const score = m.homeScore != null && m.awayScore != null ? ` ${m.homeScore}-${m.awayScore} ` : ' v ';

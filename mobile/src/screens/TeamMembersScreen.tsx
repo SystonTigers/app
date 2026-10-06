@@ -1,12 +1,20 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, TextInput, View } from 'react-native';
-import { Modal, Portal } from 'react-native-paper';
+import { Button, Modal, Portal } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { themedStyles, useBrandColors } from '../theme/brand';
 import { FONTS } from '../theme/brandFonts';
 import { apiErrorMessage, clubMembersApi, type ClubMember, type ClubRole } from '../services/api';
 import { isStaffRole } from '../utils/roles';
-import { ASSIGNABLE_ROLES, filterMembers, initialsOf, lastSeen, linkedLabel, ROLE_INFO, sortMembers, type MemberFilter } from '../utils/members';
+import { ASSIGNABLE_ROLES, filterMembers, initialsOf, lastSeen, linkedLabel, ROLE_INFO, signedUpLabel, sortMembers, type MemberFilter } from '../utils/members';
+
+/** What a waiting sign-up said they are */
+function joinAsLabel(joinAs: ClubMember['joinAs']): string {
+  if (joinAs === 'coach') return 'Says they are a coach (joins as a supporter until you make them one)';
+  if (joinAs === 'player') return 'Player';
+  if (joinAs === 'supporter') return 'Supporter';
+  return 'Parent';
+}
 
 const FILTERS: Array<{ id: MemberFilter; label: string }> = [
   { id: 'all', label: 'Everyone' },
@@ -52,8 +60,33 @@ export default function TeamMembersScreen() {
 
   useEffect(() => { load(); }, [load]);
 
-  const shown = useMemo(() => sortMembers(filterMembers(members, filter, query)), [members, filter, query]);
-  const counts = useMemo(() => Object.fromEntries(FILTERS.map((f) => [f.id, filterMembers(members, f.id, '').length])), [members]);
+  // New sign-ups waiting to be let in are listed on their own, above everyone else
+  const waiting = useMemo(() => members.filter((m) => m.role === 'pending'), [members]);
+  const joined = useMemo(() => members.filter((m): m is ClubMember & { role: ClubRole | 'owner' } => m.role !== 'pending'), [members]);
+  const shown = useMemo(() => sortMembers(filterMembers(joined, filter, query)), [joined, filter, query]);
+  const counts = useMemo(() => Object.fromEntries(FILTERS.map((f) => [f.id, filterMembers(joined, f.id, '').length])), [joined]);
+  const [deciding, setDeciding] = useState('');
+
+  const decide = async (member: ClubMember, letIn: boolean) => {
+    setDeciding(member.id);
+    setError('');
+    setMessage('');
+    try {
+      if (letIn) {
+        const updated = await clubMembersApi.approve(member.id);
+        setMembers((list) => list.map((m) => (m.id === updated.id ? updated : m)));
+        setMessage(`${member.name} is in. They'll see everything next time they open the app.`);
+      } else {
+        await clubMembersApi.decline(member.id);
+        setMembers((list) => list.filter((m) => m.id !== member.id));
+        setMessage(`${member.name} was turned away and their account removed.`);
+      }
+    } catch (err) {
+      setError(apiErrorMessage(err, "That didn't save. Please try again."));
+    } finally {
+      setDeciding('');
+    }
+  };
 
   const changeRole = async (member: ClubMember, role: ClubRole) => {
     // Same role and nothing to answer: nothing to do (choosing it still answers a coach request)
@@ -81,7 +114,7 @@ export default function TeamMembersScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={c.primary} />}
       >
         <Text style={styles.intro}>
-          {members.length} {members.length === 1 ? 'person has' : 'people have'} an account at the club.
+          {joined.length} {joined.length === 1 ? 'person has' : 'people have'} an account at the club.
           {canChange ? ' Tap someone to change what they can do.' : ''}
         </Text>
 
@@ -114,6 +147,26 @@ export default function TeamMembersScreen() {
         {message ? <Text style={styles.message} accessibilityRole="alert">{message}</Text> : null}
         {error ? <Text style={styles.error} accessibilityRole="alert">{error}</Text> : null}
 
+        {waiting.length ? (
+          <View style={[styles.waitingBox, { borderColor: c.primary }]} testID="waiting-to-join">
+            <Text style={styles.waitingTitle}>WAITING TO JOIN ({waiting.length})</Text>
+            <Text style={styles.small}>Only let in people you know: once in, they can see fixtures, training, grounds and times.</Text>
+            {waiting.map((m) => (
+              <View key={m.id} style={styles.waitingRow}>
+                <View style={styles.rowBody}>
+                  <Text style={styles.name} numberOfLines={1}>{m.name}</Text>
+                  <Text style={styles.small} numberOfLines={1}>{m.email}</Text>
+                  <Text style={styles.small}>{joinAsLabel(m.joinAs)} · {signedUpLabel(m.joinedAt)}</Text>
+                </View>
+                <View style={styles.waitingButtons}>
+                  <Button mode="contained" compact onPress={() => decide(m, true)} disabled={!!deciding} loading={deciding === m.id} accessibilityLabel={`Let ${m.name} in`}>Let in</Button>
+                  <Button mode="text" compact onPress={() => decide(m, false)} disabled={!!deciding} accessibilityLabel={`Turn ${m.name} away`}>Turn away</Button>
+                </View>
+              </View>
+            ))}
+          </View>
+        ) : null}
+
         {shown.map((m) => {
           const editable = canChange && m.role !== 'owner' && m.id !== me;
           return (
@@ -145,7 +198,7 @@ export default function TeamMembersScreen() {
             </Pressable>
           );
         })}
-        {!shown.length ? <Text style={styles.empty}>{members.length ? 'Nobody matches.' : 'Nobody has signed up yet. Share the club link so families can join.'}</Text> : null}
+        {!shown.length ? <Text style={styles.empty}>{joined.length ? 'Nobody matches.' : 'Nobody has signed up yet. Share the club link so families can join.'}</Text> : null}
       </ScrollView>
 
       <Portal>
@@ -203,6 +256,10 @@ const useStyles = themedStyles((c) => ({
   small: { color: c.textLight, fontSize: 12, marginTop: 1 },
   rolePill: { borderRadius: 999, borderWidth: 1, borderColor: c.border, paddingHorizontal: 10, paddingVertical: 3 },
   roleText: { color: c.textLight, fontSize: 11, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5 },
+  waitingBox: { backgroundColor: c.surface, borderWidth: 1, borderRadius: 18, padding: 12, gap: 8 },
+  waitingTitle: { color: c.text, fontFamily: FONTS.display, fontSize: 20, letterSpacing: 1 },
+  waitingRow: { flexDirection: 'row', alignItems: 'center', gap: 8, borderTopWidth: 1, borderTopColor: c.border, paddingTop: 8 },
+  waitingButtons: { alignItems: 'flex-end' },
   empty: { color: c.textLight, textAlign: 'center', paddingVertical: 24 },
   modal: { backgroundColor: c.surface, margin: 16, borderRadius: 18, borderWidth: 1, borderColor: c.border, padding: 16, gap: 8 },
   modalTitle: { color: c.text, fontFamily: FONTS.display, fontSize: 24, textTransform: 'uppercase', letterSpacing: 0.5 },

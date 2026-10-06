@@ -7,7 +7,7 @@
  */
 import { describe, it, expect } from "vitest";
 import { env } from "cloudflare:test";
-import { call, registerAdmin } from "./helpers";
+import { call, registerAdmin, registerMember } from "./helpers";
 import { addDays, scheduleClub, ukTime } from "../../src/services/social/scheduler";
 
 const MONDAY_EVENING = new Date("2026-10-05T17:30:00Z"); // 18:30 in the UK (BST)
@@ -123,5 +123,58 @@ describe("Scheduled club posts", () => {
     // Not the 1st: nothing more
     await scheduleClub(env as any, "syston", new Date("2026-10-02T16:30:00Z"));
     expect(await jobsFor("month_")).toHaveLength(2);
+  });
+  it("leaves the ground and kick-off time out of posts when the club asks", async () => {
+    const coach = await registerAdmin("sched-private");
+    const monday = new Date("2026-11-02T18:30:00Z"); // 18:30 in the UK (GMT)
+    const fixture = (opponent: string, date: string) => call("/api/v1/admin/fixtures", {
+      token: coach.token, body: { opponent, date, time: "09:45", venue: "Secret Ground", competition: "Sched League", homeAway: "home" },
+    }).then((r) => r.data.id as string);
+    const thursday = await fixture("Quiet United", "2026-11-05");
+    await fixture("Hush Athletic", "2026-11-07");
+
+    const set = await call("/api/v1/social/settings", { method: "PUT", token: coach.token, body: { hideMatchDetails: true } });
+    expect(set.status).toBe(200);
+    expect(set.data.data.hideMatchDetails).toBe(true);
+    expect((await call("/api/v1/social/settings", { method: "PUT", token: coach.token, body: { hideMatchDetails: "yes" } })).status).toBe(400);
+    try {
+      await scheduleClub(env as any, "syston", monday);
+      const week = await jobsFor("fixtures:2026-11-02");
+      expect(week[0].caption).toContain("SAT 7 NOV: Syston Tigers (test) v Hush Athletic");
+      const countdown = await jobsFor(`countdown:${thursday}`);
+      for (const job of [...week, ...countdown]) {
+        expect(job.caption).not.toContain("Secret Ground");
+        expect(job.caption).not.toContain("09:45");
+        expect(job.graphic).not.toContain("Secret Ground");
+        expect(job.graphic).not.toContain("09:45");
+      }
+      expect(JSON.parse(countdown[0].graphic)).toMatchObject({ time: null, venue: null, countdown: 3 });
+    } finally {
+      await call("/api/v1/social/settings", { method: "PUT", token: coach.token, body: { hideMatchDetails: false } });
+    }
+  });
+  it("keeps posts that say where and when we play off the public club page", async () => {
+    const coach = await registerAdmin("sched-feed");
+    const parent = await registerMember("sched-feed-parent");
+    const now = Date.now();
+    const jobs = [["feedjob-matchday", "matchday", "MATCH DAY at Secret Ground"], ["feedjob-goal", "goal", "GOAL! Quiet Q."]];
+    for (const [id, kind, caption] of jobs) {
+      await env.DB.prepare(`INSERT INTO social_jobs (id, tenant_id, source_type, source_id, kind, caption, graphic, targets, status, post_after, created_at, updated_at)
+        VALUES (?, 'syston', 'club', ?, ?, ?, '{}', '["feed"]', 'done', ?, ?, ?)`).bind(id, `test:${id}`, kind, caption, now, now, now).run();
+      await env.DB.prepare(`INSERT INTO feed_posts (id, tenant_id, title, content, author, image_url, post_type, created_at, updated_at)
+        VALUES (?, 'syston', ?, ?, 'Club', NULL, 'live', ?, ?)`).bind(`social-${id}`, kind, caption, now, now).run();
+    }
+    const ids = async (token?: string) => ((await call("/public/syston/feed?limit=50", token ? { token } : {})).data.data as any[]).map((p) => p.id);
+    expect(await ids()).toContain("social-feedjob-goal");
+    expect(await ids()).not.toContain("social-feedjob-matchday");
+    expect(await ids(parent.token)).toContain("social-feedjob-matchday");
+
+    // Once the club leaves the details out of posts, the match day post can be public
+    await call("/api/v1/social/settings", { method: "PUT", token: coach.token, body: { hideMatchDetails: true } });
+    try {
+      expect(await ids()).toContain("social-feedjob-matchday");
+    } finally {
+      await call("/api/v1/social/settings", { method: "PUT", token: coach.token, body: { hideMatchDetails: false } });
+    }
   });
 });

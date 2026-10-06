@@ -7,6 +7,7 @@ import { handleGetMedia } from "./services/media";
 import { processDueJobs } from "./services/social/jobs";
 import { processDueAlerts } from "./services/matchAlerts/queue";
 import { trialGate } from "./services/trialLock";
+import { membershipGate } from "./services/membershipGate";
 import { sendConsentReminders } from "./services/consentReminders";
 import { receiveFixtureEmail } from "./services/faEmail/inbound";
 import { detectStreams } from "./services/stream/detect";
@@ -538,9 +539,12 @@ router.get("/api/:v/owner/clubs/:id", (req, env, corsHdrs) => handleOwnerGet(req
 router.post("/api/:v/owner/clubs/:id/actions", (req, env, corsHdrs) => handleOwnerAction(req, env, corsHdrs, ((req as any).params || {}).id));
 
 // The club's people and their roles (routes/clubMembers.ts)
-import { handleListClubMembers, handleSetMemberRole } from "./routes/clubMembers";
+import { handleApproveMember, handleDeclineMember, handleListClubMembers, handleMembership, handleSetMemberRole } from "./routes/clubMembers";
 router.get("/api/:v/club/members", staffOnly((req, env, corsHdrs) => handleListClubMembers(req, env, corsHdrs)));
 router.put("/api/:v/club/members/:id/role", staffOnly((req, env, corsHdrs) => handleSetMemberRole(req, env, corsHdrs, ((req as any).params || {}).id)));
+router.post("/api/:v/club/members/:id/approve", staffOnly((req, env, corsHdrs) => handleApproveMember(req, env, corsHdrs, ((req as any).params || {}).id)));
+router.post("/api/:v/club/members/:id/decline", staffOnly((req, env, corsHdrs) => handleDeclineMember(req, env, corsHdrs, ((req as any).params || {}).id)));
+router.get("/api/:v/membership", (req, env, corsHdrs) => handleMembership(req, env, corsHdrs));
 
 // Linking parents to their children with an invite code (routes/parentLinks.ts)
 import { handleCreateParentInvite, handleLinkChild, handleListParents, handleUnlinkParent } from "./routes/parentLinks";
@@ -1251,6 +1255,9 @@ export default {
 
         try {
             // A club whose free trial has ended may be read-only for staff (TRIAL_END_MODE)
+            // Sign-ups waiting for approval can only reach their own account
+            const waiting = membershipGate(req, corsHdrs);
+            if (waiting) return respondWithCors(waiting, corsHdrs);
             const paused = await trialGate(req, env, corsHdrs);
             if (paused) return respondWithCors(paused, corsHdrs);
             const response = await router.handle(req, env, corsHdrs, requestId, ctx);

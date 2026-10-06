@@ -12,7 +12,7 @@
 import { tracksAssists } from "../clubOptions";
 import { resolveSeason } from "../seasons/range";
 import { squadStats } from "../squadStats";
-import type { SocialEnv } from "./club";
+import { forPosting, type SocialEnv } from "./club";
 import { fixturesPost, resultsPost, statsRoundupPost } from "./clubPosts";
 import type { Queue } from "./scheduler";
 import { addDays, fixtureFacts, fixturesBetween, monthEnd, monthLabel, resultsBetween, type UkTime } from "./scheduleData";
@@ -47,7 +47,7 @@ export async function queueRoundups(env: SocialEnv, tenantId: string, t: UkTime,
       if (!rows.length) return null;
       const facts = await Promise.all(rows.map((r) => fixtureFacts(env, tenantId, r)));
       const label = monthLabel(thisMonth);
-      return fixturesPost(club.brand, facts, label, `${label.split(" ")[0]}'s fixtures`);
+      return fixturesPost(club.brand, facts.map((f) => forPosting(club, f)), label, `${label.split(" ")[0]}'s fixtures`);
     });
   }
 }

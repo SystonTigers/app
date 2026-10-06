@@ -421,9 +421,22 @@ export const onUnauthorized = (listener: UnauthorizedListener): (() => void) => 
   };
 };
 
+const waitingListeners = new Set<UnauthorizedListener>();
+
+/** Subscribe to "the coaches haven't let this account in yet" (403 WAITING_FOR_APPROVAL). */
+export const onWaitingForApproval = (listener: UnauthorizedListener): (() => void) => {
+  waitingListeners.add(listener);
+  return () => {
+    waitingListeners.delete(listener);
+  };
+};
+
 api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
+    if (error.response?.status === 403 && (error.response.data as { code?: string } | undefined)?.code === 'WAITING_FOR_APPROVAL') {
+      waitingListeners.forEach((listener) => listener());
+    }
     const sentToken = Boolean((error.config?.headers as Record<string, unknown> | undefined)?.Authorization);
     if (error.response?.status === 401 && sentToken) {
       try {
@@ -1392,6 +1405,23 @@ export interface PlayerConsent {
 
 export interface LinkedParent { userId: string; email: string; linkedAt: number | null }
 
+export type Membership =
+  | { status: 'pending' }
+  | { status: 'member'; roles: string[]; token?: string }
+  | { status: 'removed' };
+
+/** Whether the coaches have let this account in yet (GET /membership). */
+export const membershipApi = {
+  get: async (): Promise<Membership> => {
+    try {
+      return (await api.get('/api/v1/membership')).data.data as Membership;
+    } catch (err) {
+      if ((err as AxiosError)?.response?.status === 404) return { status: 'removed' };
+      throw err;
+    }
+  },
+};
+
 /** Linking parents to their children with a code from the manager */
 export const parentLinkApi = {
   /** Staff: a new code for this player's family (the old one stops working) */
@@ -1407,8 +1437,8 @@ export const parentLinkApi = {
     const response = await api.delete(`/api/v1/players/${encodeURIComponent(playerId)}/parents/${encodeURIComponent(userId)}`);
     return response.data;
   },
-  /** Parent: enter the code */
-  link: async (code: string): Promise<{ success: boolean; data: { playerId: string; name: string; alreadyLinked: boolean } }> => {
+  /** Parent: enter the code. A new account waiting to join is let in by it (`letIn`, with a new token). */
+  link: async (code: string): Promise<{ success: boolean; data: { playerId: string; name: string; alreadyLinked: boolean; letIn?: boolean; token?: string; roles?: string[] } }> => {
     const response = await api.post('/api/v1/link-child', { code });
     return response.data;
   },
@@ -1431,8 +1461,11 @@ export interface ClubMember {
   id: string;
   name: string;
   email: string;
-  role: ClubRole | 'owner';
+  /** 'pending': a new sign-up waiting for staff to let them in */
+  role: ClubRole | 'owner' | 'pending';
   roles: string[];
+  /** What a waiting sign-up said they are */
+  joinAs?: 'parent' | 'player' | 'supporter' | 'coach' | null;
   joinedAt: number | null;
   lastLoginAt: number | null;
   linkedPlayers: number;
@@ -1449,6 +1482,13 @@ export const clubMembersApi = {
   setRole: async (memberId: string, role: ClubRole): Promise<{ success: boolean; data: ClubMember }> => {
     const response = await api.put(`/api/v1/club/members/${encodeURIComponent(memberId)}/role`, { role });
     return response.data;
+  },
+  /** Staff: let a waiting sign-up in, as what they said they are */
+  approve: async (memberId: string): Promise<ClubMember> =>
+    (await api.post(`/api/v1/club/members/${encodeURIComponent(memberId)}/approve`)).data.data,
+  /** Staff: turn a waiting sign-up away (their account is removed) */
+  decline: async (memberId: string): Promise<void> => {
+    await api.post(`/api/v1/club/members/${encodeURIComponent(memberId)}/decline`);
   },
 };
 

@@ -12,7 +12,7 @@
 import { buildPost, displayDate, isPostKind, type PostInput, type PostKind } from "./content";
 import { getPublicNamePolicy, type PublicNamePolicy } from "../publicNames";
 import { opponentBadgeUrl } from "../opponentBadges";
-import { loadClubSocial, type ClubSocial, type SocialEnv } from "./club";
+import { forPosting, loadClubSocial, type ClubSocial, type SocialEnv } from "./club";
 import type { Graphic } from "../graphics/types";
 import { storeJobImage } from "./publish";
 
@@ -126,14 +126,14 @@ export async function queuePost(env: SocialEnv, args: {
   if (!targets.length) return null;
 
   const [policy, badge] = await Promise.all([getPublicNamePolicy(env, args.tenantId), opponentBadgeUrl(env, args.tenantId, args.match.opponent)]);
+  const match = forPosting(club, { ...args.match, time: args.match.time ?? null, venue: args.match.venue ?? null });
+  const input = club.hideMatchDetails && args.input.lineup ? { ...args.input, lineup: { ...args.input.lineup, kickOff: null, venue: null } } : args.input;
   const { caption, graphic } = buildPost(policy, {
-    ...args.match,
+    ...match,
     brand: club.brand,
     opponentBadgeUrl: badge,
     date: displayDate(args.match.date),
-    time: args.match.time ?? null,
-    venue: args.match.venue ?? null,
-  }, args.input);
+  }, input);
 
   const now = args.now ?? Date.now();
   return insertJob(env, {

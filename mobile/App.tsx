@@ -88,6 +88,7 @@ import ProfileScreen from './src/screens/ProfileScreen';
 import { captureInviteFromLink } from './src/services/inviteLink';
 import { staffScreen } from './src/components/StaffOnly';
 import BrandSplash from './src/components/brand/BrandSplash';
+import WaitingForApprovalScreen from './src/screens/WaitingForApprovalScreen';
 import { useBrandFonts } from './src/theme/brandFonts';
 import { useTheme } from './src/theme/useTheme';
 import { INK, TEXT, TEXT_MUTED, useBrandColors } from './src/theme/brand';
@@ -355,7 +356,7 @@ function RootNavigator() {
     const t = setTimeout(() => setSplashShown(true), 1200);
     return () => clearTimeout(t);
   }, []);
-  const { isAuthenticated, isLoading: authLoading, logout } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, logout, waiting } = useAuth();
   const { club, isLoading: clubLoading, isLocked, chooseClub } = useClub();
 
   // Signed in from an older version that didn't remember the club: ask the server which club the account is in
@@ -392,6 +393,8 @@ function RootNavigator() {
   if (authLoading || clubLoading || !fontsReady || !splashShown) return <Splash />;
   if (!isAuthenticated) return <AuthNavigator />;
   if (!club && !isLocked) return <Splash />;
+  // New sign-ups wait until the club's coaches let them in
+  if (waiting) return <WaitingForApprovalScreen />;
   return (
     <MatchDayProvider>
       <MainDrawer />

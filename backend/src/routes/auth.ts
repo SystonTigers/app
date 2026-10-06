@@ -8,7 +8,23 @@ import { issueTenantAdminJWT, issueTenantMemberJWT } from "../services/jwt";
 import { sendVerificationEmail, sendPasswordResetEmail } from "../lib/email";
 import { rateLimit } from "../middleware/rateLimit";
 import { requireJWT } from "../services/auth";
-import { rolesForSignUp } from "../services/clubMembers";
+import { rolesForSignUp, type SignUpAs } from "../services/clubMembers";
+import { createInAppNotification, notifyTenantAdmins } from "../services/notifications";
+
+/** A new sign-up is waiting: tell the club's staff (in the app and by push). Never fails the sign-up. */
+async function tellStaffSomeoneIsWaiting(env: any, tenantId: string, profile: Record<string, unknown>, joinAs: SignUpAs): Promise<void> {
+  const name = typeof profile.name === "string" && profile.name.trim()
+    ? profile.name.trim().slice(0, 60)
+    : [profile.firstName, profile.lastName].filter((x) => typeof x === "string" && x).join(" ").slice(0, 60) || "Someone";
+  const title = "Someone wants to join";
+  const body = `${name} signed up as a ${joinAs}. Approve them in People & roles.`;
+  try {
+    await createInAppNotification(env, tenantId, null, "member_waiting", title, body, { screen: "TeamMembers" });
+    await notifyTenantAdmins(env, tenantId, { title, body, data: { screen: "TeamMembers" } });
+  } catch (err) {
+    console.error(JSON.stringify({ level: "error", msg: "member_waiting_notify_failed", tenantId, error: err instanceof Error ? err.message : String(err) }));
+  }
+}
 
 /**
  * The signed-in account, looked up by the token's user id and club. Emails
@@ -100,9 +116,11 @@ export async function handleAuthRegister(req: Request, env: any, corsHdrs: Heade
     // supporter). Roles sent by the client are ignored; asking to be a coach
     // (profile.requestedRole) is recorded for a club admin to approve.
     // Admins are created by signup/provisioning or promoted by an admin.
+    // Everyone who signs themselves up waits for the club's staff to let them in
+    // (a coach's code for their child lets a parent straight in: /link-child).
     const { profile: given = {} } = data;
     const signUp = rolesForSignUp(given.requestedRole);
-    const { pendingRole: _ignored, ...cleanProfile } = given as Record<string, unknown>;
+    const { pendingRole: _ignored, joinAs: _alsoIgnored, approvedAt: _a, approvedBy: _b, ...cleanProfile } = given as Record<string, unknown>;
     const registration = await registerUser(env, {
       tenantId: data.tenant_id,
       email: data.email,
@@ -110,7 +128,7 @@ export async function handleAuthRegister(req: Request, env: any, corsHdrs: Heade
       roles: signUp.roles,
       profile: {
         ...cleanProfile,
-        ...(signUp.requestedRole ? { pendingRole: signUp.requestedRole } : {}),
+        joinAs: signUp.joinAs,
         ageConfirmedAt: new Date().toISOString(),
       }
     });
@@ -134,6 +152,7 @@ export async function handleAuthRegister(req: Request, env: any, corsHdrs: Heade
     };
 
     await idem.store(responseBody);
+    if (!isAdmin) await tellStaffSomeoneIsWaiting(env, user.tenant_id, cleanProfile, signUp.joinAs);
 
     return json(responseBody, 201, corsHdrs);
   } catch (err: any) {

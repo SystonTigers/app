@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { API_BASE } from '@/lib/session';
+import { apiFetch } from '@/lib/session';
 import { Icon } from '@/components/ui/Icon';
 
 interface PublicLiveMatch {
@@ -33,7 +33,8 @@ export function LiveScoreCard({ tenant, clubName }: { tenant: string; clubName: 
         let stopped = false;
         const load = async () => {
             try {
-                const res = await fetch(`${API_BASE}/public/${encodeURIComponent(tenant)}/live`, { cache: 'no-store' });
+                // Members only: signed out, the list is empty and nothing shows
+                const res = await apiFetch(`/public/${encodeURIComponent(tenant)}/live`, { cache: 'no-store' });
                 if (!res.ok) return;
                 const body = await res.json();
                 if (!stopped && Array.isArray(body?.data)) setMatches(body.data);

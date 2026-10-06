@@ -74,6 +74,8 @@ export async function handleGetSocialSettings(req: Request, env: Env, corsHdrs: 
       nameStyle: policy.style,
       photos: policy.photos,
       undoWindow: club.undoWindow,
+      /** Posts leave out the ground and kick-off time */
+      hideMatchDetails: club.hideMatchDetails,
       events: club.settings,
       connections: club.connections,
       canConnect: metaConfigured(env) && !!env.SOCIAL_TOKEN_KEY,
@@ -91,13 +93,14 @@ export async function handleGetSocialSettings(req: Request, env: Env, corsHdrs: 
 export async function handlePutSocialSettings(req: Request, env: Env, corsHdrs: Headers): Promise<Response> {
   const claims = await staff(req, env, corsHdrs);
   if (claims instanceof Response) return claims;
-  const body = (await req.json().catch(() => ({}))) as { undoWindow?: unknown; events?: unknown; pack?: unknown; sponsorName?: unknown; nameStyle?: unknown };
+  const body = (await req.json().catch(() => ({}))) as { undoWindow?: unknown; hideMatchDetails?: unknown; events?: unknown; pack?: unknown; sponsorName?: unknown; nameStyle?: unknown };
   const onlyNameStyle = Object.keys(body).every((k) => k === "nameStyle");
   if (!hasAnyRole(claims, onlyNameStyle ? NAME_STYLE_ROLES : ADMIN_ROLES)) {
     return fail(corsHdrs, 403, "FORBIDDEN", onlyNameStyle ? "Only managers and club admins can change how names appear." : "Only the club's owner or admins can change this.");
   }
   if (body.nameStyle !== undefined && !isNameStyle(body.nameStyle)) return fail(corsHdrs, 400, "VALIDATION", "Pick one of the name styles.");
   if (body.undoWindow !== undefined && typeof body.undoWindow !== "boolean") return fail(corsHdrs, 400, "VALIDATION", "undoWindow must be true or false.");
+  if (body.hideMatchDetails !== undefined && typeof body.hideMatchDetails !== "boolean") return fail(corsHdrs, 400, "VALIDATION", "hideMatchDetails must be true or false.");
   if (body.pack !== undefined && (typeof body.pack !== "string" || !PACKS.some((p) => p.id === body.pack))) {
     return fail(corsHdrs, 400, "VALIDATION", "Pick one of the graphics styles.");
   }
@@ -134,8 +137,9 @@ export async function handlePutSocialSettings(req: Request, env: Env, corsHdrs: 
     await env.DB.prepare(`UPDATE tenants SET sponsor_name = ? WHERE id = ?`).bind(name || null, claims.tenantId).run();
   }
   const merged = { ...club.settings, ...events };
-  await env.DB.prepare(`UPDATE tenants SET social_undo_window = ?, social_events = ? WHERE id = ?`).bind(
+  await env.DB.prepare(`UPDATE tenants SET social_undo_window = ?, social_hide_match_details = ?, social_events = ? WHERE id = ?`).bind(
     (body.undoWindow ?? club.undoWindow) ? 1 : 0,
+    (body.hideMatchDetails ?? club.hideMatchDetails) ? 1 : 0,
     JSON.stringify(Object.fromEntries(POST_KINDS.map((k) => [k, merged[k]]))),
     claims.tenantId,
   ).run();

@@ -1,4 +1,4 @@
-import { API_BASE } from './session';
+import { API_BASE, apiFetch } from './session';
 
 export interface ClubInfo {
   slug: string;
@@ -51,7 +51,8 @@ export interface LiveMatch {
 /** Live and just-finished matches (from Match Centre). Never throws. */
 export async function getLiveMatches(slug: string): Promise<LiveMatch[]> {
   try {
-    const res = await fetch(`${API_BASE}/public/${encodeURIComponent(slug)}/live`, { cache: 'no-store' });
+    // Live matches are for signed-in members (they show where the game is)
+    const res = await apiFetch(`/public/${encodeURIComponent(slug)}/live`, { cache: 'no-store' });
     if (!res.ok) return [];
     const body = await res.json();
     return Array.isArray(body?.data) ? (body.data as LiveMatch[]) : [];

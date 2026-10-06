@@ -8,7 +8,7 @@ import { CountdownTimer } from '@/components/ui/CountdownTimer';
 import { EmptyNote, PageHeader } from '@/components/ui/Page';
 import { Icon } from '@/components/ui/Icon';
 import { getLiveMatches, type LiveMatch } from '@/lib/club';
-import { API_BASE } from '@/lib/session';
+import { apiFetch } from '@/lib/session';
 import { formatDate, formatLongDate } from '@/lib/format';
 import { fixtureState, kickOffText, liveMatchFor, type FixtureState, type PublicFixture } from '@/lib/fixtures';
 
@@ -114,6 +114,8 @@ export default function FixturesPage({ params }: { params: Promise<{ tenant: str
   const [fixtures, setFixtures] = useState<PublicFixture[]>([]);
   const [live, setLive] = useState<LiveMatch[]>([]);
   const [loading, setLoading] = useState(true);
+  // Signed out (or not let in yet): upcoming games, times and grounds are hidden
+  const [membersOnly, setMembersOnly] = useState(false);
   const [error, setError] = useState('');
   const { snippets } = useFaSnippets(tenant);
 
@@ -123,12 +125,13 @@ export default function FixturesPage({ params }: { params: Promise<{ tenant: str
     try {
       const query = seasonId ? `?seasonId=${encodeURIComponent(seasonId)}` : '';
       const [res, liveMatches] = await Promise.all([
-        fetch(`${API_BASE}/public/${encodeURIComponent(tenant)}/fixtures${query}`, { cache: 'no-store' }),
+        apiFetch(`/public/${encodeURIComponent(tenant)}/fixtures${query}`, { cache: 'no-store' }),
         getLiveMatches(tenant),
       ]);
       if (!res.ok) throw new Error(`fixtures ${res.status}`);
       const body = await res.json();
       setFixtures(Array.isArray(body?.data) ? body.data : []);
+      setMembersOnly(body?.meta?.membersOnly === true);
       setLive(liveMatches);
     } catch (err) {
       console.error('Failed to load fixtures:', err);
@@ -158,7 +161,7 @@ export default function FixturesPage({ params }: { params: Promise<{ tenant: str
       <PageHeader
         eyebrow="Matches"
         title="Fixtures"
-        subtitle="Every game coming up, with kick-off times and where we're playing."
+        subtitle={membersOnly ? 'Our games coming up. Kick-off times and grounds are for club members.' : "Every game coming up, with kick-off times and where we're playing."}
       />
 
       <PublicSeasonTabs tenant={tenant} onSeasonChange={(id, isCurrent) => { setSeasonId(id); setFaApplies(id === null || isCurrent); }} currentSeasonId={seasonId} />
@@ -200,7 +203,17 @@ export default function FixturesPage({ params }: { params: Promise<{ tenant: str
             </Section>
           )}
 
-          {nothing && (faApplies && snippets.team ? (
+          {membersOnly && (
+            <EmptyNote
+              icon="lock"
+              title="Fixtures are for club members"
+              action={<Link href={`/${tenant}/login`} className="btn btn-primary">Log in</Link>}
+            >
+              To keep our players safe, kick-off times and grounds are only shown to parents, players and supporters the club has let in. Log in, or get the club app and ask the coaches to let you in.
+            </EmptyNote>
+          )}
+
+          {nothing && !membersOnly && (faApplies && snippets.team ? (
             <FaFullTimeEmbed code={snippets.team} title="Our fixtures and results" />
           ) : (
             <EmptyNote

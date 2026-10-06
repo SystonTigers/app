@@ -16,6 +16,7 @@ interface Settings {
     nameStyle: NameStyle;
     photos: boolean;
     undoWindow: boolean;
+    hideMatchDetails?: boolean;
     events: Events;
     connections: { facebook: { id: string; name: string | null } | null; instagram: { id: string; name: string | null } | null };
     canConnect: boolean;
@@ -198,8 +199,8 @@ export function SocialSettings() {
         }
     };
 
-    const savePosting = async (undoWindow: boolean) => {
-        const data = await request('/api/v1/social/settings', { method: 'PUT', body: JSON.stringify({ undoWindow, events }) }, "We couldn't save your posting choices.");
+    const savePosting = async (undoWindow: boolean, hideMatchDetails = !!settings?.hideMatchDetails) => {
+        const data = await request('/api/v1/social/settings', { method: 'PUT', body: JSON.stringify({ undoWindow, hideMatchDetails, events }) }, "We couldn't save your posting choices.");
         if (data) {
             apply(data);
             setMessage({ text: 'Posting choices saved.', error: false });
@@ -299,6 +300,14 @@ export function SocialSettings() {
                     <span className="text-sm text-foreground">
                         Wait 1 minute before posting and sending match alerts, so a mistake can be undone in Match Centre
                         <span className="block text-muted">Instagram doesn&apos;t let apps delete posts, so this is the only way to stop a wrong one there.</span>
+                    </span>
+                </label>
+                <label className="mt-3 flex items-start gap-3 cursor-pointer">
+                    <input id="hide-match-details" type="checkbox" className="mt-1 h-5 w-5 accent-[rgb(var(--brand-rgb))]" checked={!!settings.hideMatchDetails} disabled={busy}
+                        onChange={(e) => savePosting(settings.undoWindow, e.target.checked)} />
+                    <span className="text-sm text-foreground">
+                        Leave the ground and kick-off time out of posts
+                        <span className="block text-muted">Match day, countdown, fixtures and team news posts won&apos;t say where or when you play. People in your club app still see it.</span>
                     </span>
                 </label>
                 <div className="mt-4 table-scroll relative">

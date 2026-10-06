@@ -1,5 +1,6 @@
 'use client';
 
+import { apiFetch } from '@/lib/session';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 export type FaSnippetKind = 'table' | 'fixtures' | 'results' | 'team';
@@ -15,7 +16,8 @@ export function useFaSnippets(tenant: string): { snippets: FaSnippets; loaded: b
   useEffect(() => {
     if (!tenant) return;
     let cancelled = false;
-    fetch(`${process.env.NEXT_PUBLIC_API_BASE || ''}/public/${tenant}/fa-full-time`)
+    // Signed in, so the FA's fixture lists (times and grounds) come back too
+    apiFetch(`/public/${tenant}/fa-full-time`)
       .then((res) => (res.ok ? res.json() : null))
       .then((body) => {
         if (!cancelled && body?.success && body.data) setSnippets(body.data as FaSnippets);
