@@ -127,7 +127,7 @@ describe("Contract: Authentication API", () => {
 
   describe("Protected endpoints (requires authentication)", () => {
     it("returns 401 or 404 when accessing protected routes without auth", async () => {
-      const request = new Request("https://example.com/api/v1/videos");
+      const request = new Request("https://example.com/api/v1/gallery/albums");
 
       const response = await worker.fetch(request, env, mockCtx);
 

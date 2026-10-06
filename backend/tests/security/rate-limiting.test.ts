@@ -84,9 +84,9 @@ describe("Security: Rate Limiting", () => {
     });
   });
 
-  describe("Video Upload Rate Limiting", () => {
+  describe("Photo Upload Rate Limiting", () => {
     it("requires authentication before rate limiting check", async () => {
-      const request = new Request("https://example.com/api/v1/videos/upload", {
+      const request = new Request("https://example.com/api/v1/gallery/upload", {
         method: "POST",
         headers: {
           "CF-Connecting-IP": "192.168.1.4",

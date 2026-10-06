@@ -5,7 +5,7 @@ import { Icon, type IconName } from '@/components/ui/Icon';
 export const metadata = {
   title: 'Boost Huddle – run your grassroots football club in one place',
   description:
-    'Fixtures, results, league table, squad, news and match videos for grassroots football clubs. Free for 14 days, no card needed.',
+    'Fixtures, results, league table, squad, news and match highlights for grassroots football clubs. Free for 14 days, no card needed.',
 };
 
 const features: { icon: IconName; title: string; body: string }[] = [

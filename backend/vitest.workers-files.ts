@@ -8,7 +8,6 @@ export const E2E_TEST_FILES = ["tests/e2e/**/*.test.ts"];
 
 export const WORKERS_TEST_FILES = [
   "tests/**/*.test.ts",
-  "src/routes/__tests__/coaching.test.ts",
   "src/routes/__tests__/events.test.ts",
   "src/routes/__tests__/gallery.test.ts",
   "src/routes/__tests__/health.test.ts",
@@ -20,5 +19,4 @@ export const WORKERS_TEST_FILES = [
   "src/routes/__tests__/social.test.ts",
   "src/routes/__tests__/training.test.ts",
   "src/routes/__tests__/usage.test.ts",
-  "src/routes/__tests__/videos.test.ts",
 ];

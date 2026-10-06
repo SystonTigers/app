@@ -48,10 +48,12 @@ landing page, pricing, club sign-up, billing and the owner panel.
   Standing admin, deleting club posts, fixtures calendar subscription.
 - Also done: live match video (connect YouTube from Club Settings) and
   Tactics (everyone sees it; coaches set it).
+- Dropped: the website's old video uploader (uploads to R2, hand-marked
+  clips and the "AI assistant coach"), removed in October 2026 because it
+  didn't really work. Highlights in the app does this from YouTube.
 - Waiting on decisions: shop admin (Printify and Stripe accounts),
   signing-on plans/fees/documents (Stripe; nothing can set them up yet),
-  organisation/teams (pricing), the website's old video uploader
-  (Highlights in the app does this from YouTube; keep or drop?), and
+  organisation/teams (pricing), and
   what the public club pages become once the app has everything (the web
   app needs a sign-in, so visitors without an account can't use it).
 - Then (families on the website until the switch): voting, live match,

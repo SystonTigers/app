@@ -23,7 +23,6 @@ export function clubNav(tenant: string, signedIn: boolean): { main: NavItem[]; m
     const more: NavItem[] = signedIn
         ? [
             { label: 'Gallery', href: `${t}/gallery`, icon: 'image' },
-            { label: 'Videos', href: `${t}/videos`, icon: 'video' },
             { label: 'Training', href: `${t}/training`, icon: 'clipboard' },
             { label: 'Team talk', href: `${t}/team`, icon: 'chat' },
             { label: 'Calendar', href: `${t}/calendar`, icon: 'calendar' },

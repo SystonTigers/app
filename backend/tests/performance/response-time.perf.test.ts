@@ -51,7 +51,7 @@ describe("Performance: Response Time", () => {
   it("unauthorized request responds within 100ms", async () => {
     const start = performance.now();
 
-    const request = new Request("https://example.com/api/v1/videos");
+    const request = new Request("https://example.com/api/v1/gallery/albums");
     const response = await worker.fetch(request, env, mockCtx);
 
     const duration = performance.now() - start;
@@ -79,7 +79,7 @@ describe("Performance: Response Time", () => {
   it("CORS preflight responds within 50ms", async () => {
     const start = performance.now();
 
-    const request = new Request("https://example.com/api/v1/videos", {
+    const request = new Request("https://example.com/api/v1/gallery/albums", {
       method: "OPTIONS",
       headers: {
         "origin": "https://example.com",

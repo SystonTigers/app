@@ -38,7 +38,7 @@ Worker, sends a verification email and then saves the club's details.
   review are in `tests/tenant-guard-baseline.json` (only ever shrink it).
 - Roles are never taken from a client request; admins are created with
   `npm run admin:password[:prod]`.
-- Storage: D1 `DB` (data), R2 `R2_MEDIA` (videos, images), KV (cache,
+- Storage: D1 `DB` (data), R2 `R2_MEDIA` (photos, badges, graphics), KV (cache,
   idempotency, rate limits), queues for background work. No Durable Objects
   (the old ones were deleted in October 2026, `wrangler.toml` migration v6;
   never reuse their class names).
@@ -166,6 +166,11 @@ with personal data.
   Clip times come from `momentsFromKickOff` (staff only, seconds from
   kick-off). mediabunny is only loaded when making a video (its own chunk).
   `node test/highlightsVideo.test.js some.mp4` cuts a real file.
+- The website's old video uploader (upload a file to R2, hand-marked clips,
+  the "AI assistant coach" and `/api/v1/videos*`, `/api/v1/coaching/*`) was
+  removed in October 2026. Its `videos` and `video_clips` tables are left in
+  the database unused; files it stored under `videos/` in R2 still play where
+  a Team Talk conversation links one.
 
 ## Goal of the Month
 

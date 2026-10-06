@@ -44,7 +44,7 @@ describe("Performance: Concurrency", () => {
     const start = performance.now();
 
     const requests = Array.from({ length: 50 }, () =>
-      worker.fetch(new Request("https://example.com/api/v1/videos"), env, mockCtx)
+      worker.fetch(new Request("https://example.com/api/v1/gallery/albums"), env, mockCtx)
     );
 
     const responses = await Promise.all(requests);
@@ -67,7 +67,7 @@ describe("Performance: Concurrency", () => {
       // Mix of different endpoints
       const endpoints = [
         "https://example.com/health",
-        "https://example.com/api/v1/videos",
+        "https://example.com/api/v1/gallery/albums",
         "https://example.com/api/v1/public/clubs",
         "https://example.com/api/v1/events",
       ];
@@ -120,7 +120,7 @@ describe("Performance: Concurrency", () => {
 
     const postRequests = Array.from({ length: 10 }, () =>
       worker.fetch(
-        new Request("https://example.com/api/v1/videos", {
+        new Request("https://example.com/api/v1/gallery/albums", {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ test: true }),
@@ -132,7 +132,7 @@ describe("Performance: Concurrency", () => {
 
     const optionsRequests = Array.from({ length: 10 }, () =>
       worker.fetch(
-        new Request("https://example.com/api/v1/videos", {
+        new Request("https://example.com/api/v1/gallery/albums", {
           method: "OPTIONS",
           headers: {
             "origin": "https://example.com",

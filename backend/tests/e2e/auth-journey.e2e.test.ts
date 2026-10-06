@@ -140,7 +140,7 @@ describe("E2E: Authentication Journey", () => {
   });
 
   it("rejects access without authentication token", async () => {
-    const request = new Request("https://example.com/api/v1/videos", {
+    const request = new Request("https://example.com/api/v1/gallery/albums", {
       method: "GET",
     });
 
@@ -167,7 +167,7 @@ describe("E2E: Authentication Journey", () => {
   it("rejects a forged token", async () => {
     const b64 = (o: unknown) => btoa(JSON.stringify(o)).replace(/=+$/, "").replace(/\+/g, "-").replace(/\//g, "_");
     const forged = `${b64({ alg: "HS256", typ: "JWT" })}.${b64({ sub: "x", tenant_id: "syston", roles: ["tenant_admin"] })}.not-a-signature`;
-    expect((await call("/api/v1/videos", { token: forged })).status).toBe(401);
+    expect((await call("/api/v1/gallery/albums", { token: forged })).status).toBe(401);
     expect((await call("/api/v1/feed", { token: forged })).status).toBe(401);
   });
 

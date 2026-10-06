@@ -42,8 +42,8 @@ const SLIDES: Slide[] = [
   {
     id: '4',
     icon: 'video',
-    title: 'Record & Share Highlights',
-    description: 'Capture match moments right from the app. Upload videos, create highlights, and share with the team.',
+    title: 'Match Highlights',
+    description: 'Staff tap the big moments in Match Centre and each one becomes a clip of the match video, ready to watch and share.',
   },
   {
     id: '5',
