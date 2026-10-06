@@ -45,3 +45,11 @@ assert.equal(p.initials('  Cher '), 'C');
 assert.equal(p.initials(''), '?');
 
 console.log('playerPage tests passed');
+
+// Headline rows: this season, and since their first season with us
+const season = (id, current, apps) => ({ id, label: id.replace('-', '/'), current, appearances: apps, goals: 0, assists: 0, motm: 0, yellowCards: 0, redCards: 0, sinBins: 0, minutes: 0 });
+const ten = [season('2026-27', true, 3), ...Array.from({ length: 9 }, (_, i) => season(`${2025 - i}-${String(26 - i).padStart(2, '0')}`, false, 20)), season('2015-16', false, 0)];
+assert.deepEqual(p.headlineRows(ten).careerTitle, 'Since 2017/18 · 10 seasons');
+assert.equal(p.headlineRows(ten).thisSeason.id, '2026-27');
+assert.equal(p.headlineRows([season('2026-27', true, 3)]).showCareer, false);
+assert.deepEqual(p.headlineRows([season('2025-26', false, 5)]), { thisSeason: null, careerTitle: 'All time', showCareer: true });

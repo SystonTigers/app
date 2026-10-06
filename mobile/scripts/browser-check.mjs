@@ -4,6 +4,8 @@
 //   npm run browser-check                      # every screen in SCREENS below
 //   npm run browser-check -- results stats     # just these (paths from linking.ts)
 //   npm run browser-check -- --skip-build      # reuse the last web build
+//   npm run browser-check -- --keep-data       # don't re-seed the test club (keeps squad
+//                                              # and results you added to the local copy)
 //
 // Everything runs on this computer against a throwaway copy of the club:
 //   1. builds the local database (backend/: migrations + the syston-tigers seed)
@@ -51,6 +53,8 @@ const SCREENS = [
 
 const args = process.argv.slice(2);
 const skipBuild = args.includes('--skip-build');
+// Re-seeding replaces the club's row, which takes its squad with it (ON DELETE CASCADE)
+const keepData = args.includes('--keep-data');
 const picked = args.filter((a) => !a.startsWith('--'));
 const screens = picked.length ? picked.map((p) => p.replace(/^\/+/, '')) : SCREENS;
 
@@ -117,7 +121,7 @@ function loadPlaywright() {
 // 1-2. Local database with the test club and a test admin
 const password = randomBytes(18).toString('base64url');
 run('Building the local database', 'npx', ['wrangler', 'd1', 'migrations', 'apply', 'DB', '--local'], backend);
-run('Adding the test club', 'npx', ['wrangler', 'd1', 'execute', 'DB', '--local', '--file=./scripts/seed-syston.sql'], backend);
+if (!keepData) run('Adding the test club', 'npx', ['wrangler', 'd1', 'execute', 'DB', '--local', '--file=./scripts/seed-syston.sql'], backend);
 run('Creating the test admin', 'node', ['scripts/set-admin-password.mjs'], backend, { SYSTON_ADMIN_EMAIL: EMAIL, SYSTON_ADMIN_PASSWORD: password, SYSTON_TENANT_SLUG: CLUB });
 
 // 3. Backend and web app

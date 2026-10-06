@@ -68,6 +68,24 @@ export function careerTiles(c: StatLine, withAssists = true): Array<{ label: str
   ];
 }
 
+const active = (s: SeasonLine) => !!(s.appearances || s.goals || s.assists || s.motm || s.yellowCards || s.redCards || s.sinBins || s.minutes);
+
+/**
+ * The two headline rows: this season, and everything since their first
+ * season with us ("Since 2016/17 · 10 seasons"). Seasons come newest first.
+ */
+export function headlineRows(seasons: SeasonLine[]): { thisSeason: SeasonLine | null; careerTitle: string; showCareer: boolean } {
+  const thisSeason = seasons.find((s) => s.current) ?? null;
+  const played = seasons.filter(active);
+  const first = played[played.length - 1];
+  // Only worth a second row when they've played in more than this season
+  const showCareer = played.some((s) => !s.current);
+  const careerTitle = first && played.length > 1
+    ? `Since ${first.label} · ${played.length} seasons`
+    : 'All time';
+  return { thisSeason, careerTitle: showCareer ? careerTitle : 'All time', showCareer: showCareer || !thisSeason };
+}
+
 /** "2 yellow, 1 red, 1 sin bin" or null when clean. */
 export function cardsText(s: Pick<StatLine, 'yellowCards' | 'redCards' | 'sinBins'>): string | null {
   const bins = s.sinBins ?? 0;
