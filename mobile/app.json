@@ -112,7 +112,6 @@
       "expo-localization",
       "expo-secure-store",
       "expo-notifications",
-      "expo-av",
       "expo-image-picker",
       [
         "expo-location",

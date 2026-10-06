@@ -1037,22 +1037,6 @@ export const trainingApi = {
   },
 };
 
-// ===== Videos API =====
-export const videosApi = {
-  list: async () => {
-    const response = await api.get('/api/v1/videos');
-    return response.data;
-  },
-  get: async (id: string) => {
-    const response = await api.get(`/api/v1/videos/${id}`);
-    return response.data;
-  },
-  delete: async (id: string) => {
-    const response = await api.delete(`/api/v1/videos/${id}`);
-    return response.data;
-  },
-};
-
 // ===== Stats API =====
 export const statsApi = {
   /** Player stats; `season` is a season id from resultsApi.seasons() ("all" or nothing = all time) */

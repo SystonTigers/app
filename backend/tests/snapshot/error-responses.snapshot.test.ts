@@ -20,7 +20,7 @@ const mockCtx = {
  */
 describe("Snapshot: Error Responses", () => {
   it("snapshots 401 Unauthorized response", async () => {
-    const request = new Request("https://example.com/api/v1/videos");
+    const request = new Request("https://example.com/api/v1/gallery/albums");
     const response = await worker.fetch(request, env, mockCtx);
 
     expect(response.status).toBe(401);
@@ -98,7 +98,7 @@ describe("Snapshot: Error Responses", () => {
   });
 
   it("snapshots CORS headers on error responses", async () => {
-    const request = new Request("https://example.com/api/v1/videos", {
+    const request = new Request("https://example.com/api/v1/gallery/albums", {
       headers: {
         "origin": "https://example.com",
       },
@@ -119,7 +119,7 @@ describe("Snapshot: Error Responses", () => {
   });
 
   it("snapshots OPTIONS preflight response", async () => {
-    const request = new Request("https://example.com/api/v1/videos", {
+    const request = new Request("https://example.com/api/v1/gallery/albums", {
       method: "OPTIONS",
       headers: {
         "origin": "https://example.com",

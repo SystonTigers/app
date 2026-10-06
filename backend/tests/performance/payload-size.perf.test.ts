@@ -24,7 +24,7 @@ describe("Performance: Payload Size", () => {
     const smallPayload = { data: "x".repeat(1000) };
     const start = performance.now();
 
-    const request = new Request("https://example.com/api/v1/videos", {
+    const request = new Request("https://example.com/api/v1/gallery/albums", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(smallPayload),
@@ -43,7 +43,7 @@ describe("Performance: Payload Size", () => {
     const mediumPayload = { data: "x".repeat(50000) };
     const start = performance.now();
 
-    const request = new Request("https://example.com/api/v1/videos", {
+    const request = new Request("https://example.com/api/v1/gallery/albums", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(mediumPayload),
@@ -62,7 +62,7 @@ describe("Performance: Payload Size", () => {
     const largePayload = { data: "x".repeat(500000) };
     const start = performance.now();
 
-    const request = new Request("https://example.com/api/v1/videos", {
+    const request = new Request("https://example.com/api/v1/gallery/albums", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(largePayload),
@@ -104,7 +104,7 @@ describe("Performance: Payload Size", () => {
     const start = performance.now();
 
     const request = new Request(
-      `https://example.com/api/v1/videos?${longQuery}`
+      `https://example.com/api/v1/gallery/albums?${longQuery}`
     );
     const response = await worker.fetch(request, env, mockCtx);
 
@@ -122,7 +122,7 @@ describe("Performance: Payload Size", () => {
 
     const requests = Array.from({ length: 10 }, () =>
       worker.fetch(
-        new Request("https://example.com/api/v1/videos", {
+        new Request("https://example.com/api/v1/gallery/albums", {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify(largePayload),

@@ -110,7 +110,7 @@ describe("Security: HTTP Security Headers", () => {
   });
 
   it("includes security headers on authenticated endpoints", async () => {
-    const request = new Request("https://example.com/api/v1/videos");
+    const request = new Request("https://example.com/api/v1/gallery/albums");
     const response = await worker.fetch(request, env, mockCtx);
 
     expect(response.status).toBe(401);
@@ -122,7 +122,7 @@ describe("Security: HTTP Security Headers", () => {
   });
 
   it("includes security headers on OPTIONS preflight requests", async () => {
-    const request = new Request("https://example.com/api/v1/videos", {
+    const request = new Request("https://example.com/api/v1/gallery/albums", {
       method: "OPTIONS",
       headers: {
         "origin": "https://example.com",

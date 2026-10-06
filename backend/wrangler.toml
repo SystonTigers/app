@@ -74,7 +74,6 @@ CORS_ALLOWED = "https://boost-huddle.team-platform-2025.workers.dev,https://boos
 # Environment-specific vars
 WORKER_BASE_URL = "https://app-production.team-platform-2025.workers.dev"
 ENVIRONMENT = "production"
-PYTHON_COACHING_SERVICE_URL = "http://localhost:8000"
 DRY_RUN = "false"
 
 [[env.production.kv_namespaces]]
@@ -105,24 +104,12 @@ database_name = "syston-db"
 database_id = "3031c292-6290-4906-947d-ab9a145538ed"
 
 [[env.production.queues.producers]]
-binding = "HIGHLIGHTS_QUEUE"
-queue = "highlights-queue"
-
-[[env.production.queues.producers]]
 binding = "DLQ"
 queue = "dead-letter"
 
 [[env.production.r2_buckets]]
 binding = "R2_MEDIA"
 bucket_name = "syston-media"
-
-[[env.production.r2_buckets]]
-binding = "VIDEOS_BUCKET"
-bucket_name = "oa-videos"
-
-[[env.production.r2_buckets]]
-binding = "HIGHLIGHTS_BUCKET"
-bucket_name = "oa-highlights"
 
 # ─────────────────────────────────────────────────────────
 # PREVIEW ENVIRONMENT
@@ -148,7 +135,6 @@ RESEND_FROM_EMAIL = "onboarding@syston.app"
 # Environment-specific vars
 WORKER_BASE_URL = "https://app-preview.team-platform-2025.workers.dev"
 ENVIRONMENT = "preview"
-PYTHON_COACHING_SERVICE_URL = "http://localhost:8000"
 DRY_RUN = "true"
 
 [[env.preview.kv_namespaces]]
@@ -169,24 +155,12 @@ database_name = "syston-db"
 database_id = "3031c292-6290-4906-947d-ab9a145538ed"
 
 [[env.preview.queues.producers]]
-binding = "HIGHLIGHTS_QUEUE"
-queue = "highlights-queue"
-
-[[env.preview.queues.producers]]
 binding = "DLQ"
 queue = "dead-letter"
 
 [[env.preview.r2_buckets]]
 binding = "R2_MEDIA"
 bucket_name = "syston-media"
-
-[[env.preview.r2_buckets]]
-binding = "VIDEOS_BUCKET"
-bucket_name = "oa-videos"
-
-[[env.preview.r2_buckets]]
-binding = "HIGHLIGHTS_BUCKET"
-bucket_name = "oa-highlights"
 
 # ─────────────────────────────────────────────────────────
 # DURABLE OBJECT MIGRATIONS (Global)

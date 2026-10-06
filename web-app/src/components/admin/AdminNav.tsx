@@ -26,7 +26,6 @@ const LINKS: AdminLink[] = [
     { label: 'Table', path: '/table', icon: 'table' },
     { label: 'Events', path: '/calendar', icon: 'flag' },
     { label: 'News', path: '/feed', icon: 'news' },
-    { label: 'Videos', path: '/videos', icon: 'video' },
     { label: 'Goal of the Month', path: '/gotm', icon: 'star' },
     { label: 'Predictions', path: '/lms', icon: 'vote' },
     { label: 'Seasons', path: '/seasons', icon: 'history' },

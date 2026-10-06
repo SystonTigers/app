@@ -6,21 +6,14 @@
  * GET /api/v1/media/<key>, which works with a private bucket and no extra setup.
  */
 
-/** Key prefixes the public media route will serve. Anything else is 404. */
+/**
+ * Key prefixes the public media route will serve. Anything else is 404.
+ * `videos/` holds files from the old website video uploader (removed in
+ * October 2026); they stay playable where a Team Talk conversation links one.
+ */
 export const PUBLIC_MEDIA_PREFIXES = ["gallery/", "headshots/", "players/", "badges/", "sponsors/", "products/", "videos/", "social/", "drills/"] as const;
 
 export const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // 10 MB
-
-// Cloudflare caps request bodies at 100 MB on Free/Pro plans
-export const MAX_VIDEO_BYTES = 100 * 1024 * 1024;
-
-const VIDEO_TYPES: Record<string, string> = {
-  "video/mp4": "mp4",
-  "video/quicktime": "mov",
-  "video/webm": "webm",
-  "video/3gpp": "3gp",
-  "video/x-m4v": "m4v",
-};
 
 const IMAGE_TYPES: Record<string, string> = {
   "image/jpeg": "jpg",
@@ -67,28 +60,6 @@ export function validateImage(file: unknown): { file: File; ext: string } {
   }
   if (f.size === 0) {
     throw new MediaError("Image file is empty", 400);
-  }
-  return { file: f, ext };
-}
-
-/**
- * Validate an uploaded video and return its canonical file extension.
- * Throws MediaError(400/413) for missing, non-video or oversized files.
- */
-export function validateVideo(file: unknown): { file: File; ext: string } {
-  if (!file || typeof file === "string" || typeof (file as File).arrayBuffer !== "function") {
-    throw new MediaError("No video file provided", 400);
-  }
-  const f = file as File;
-  const ext = VIDEO_TYPES[(f.type || "").toLowerCase()];
-  if (!ext) {
-    throw new MediaError("Unsupported video type (use MP4, MOV or WebM)", 400);
-  }
-  if (f.size > MAX_VIDEO_BYTES) {
-    throw new MediaError("Video is too large (max 100 MB)", 413);
-  }
-  if (f.size === 0) {
-    throw new MediaError("Video file is empty", 400);
   }
   return { file: f, ext };
 }
