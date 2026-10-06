@@ -8,7 +8,7 @@ import PlayerBio from '../components/player/PlayerBio';
 import PlayerPhotos from '../components/player/PlayerPhotos';
 import GoalClips from '../components/player/GoalClips';
 import { apiErrorMessage, playerPageApi } from '../services/api';
-import { allTimeText, careerTiles, initials, type PlayerProfile } from '../utils/playerPage';
+import { allTimeText, careerTiles, headlineRows, initials, type PlayerProfile } from '../utils/playerPage';
 import { playerInitials, shirtNumber } from '../utils/playerNames';
 import { useTracksAssists } from '../context/ClubContext';
 
@@ -59,6 +59,7 @@ export default function PlayerScreen({ navigation, route }: { navigation: any; r
 
   const { player } = profile;
   const firstName = player.firstName || player.name;
+  const headline = headlineRows(profile.seasons);
 
   return (
     <View style={styles.container}>
@@ -81,15 +82,34 @@ export default function PlayerScreen({ navigation, route }: { navigation: any; r
           </View>
         </View>
 
-        <View style={styles.tiles}>
-          {careerTiles(profile.career, withAssists).map((t) => (
-            <View key={t.label} style={styles.tile}>
-              <Text style={[styles.tileValue, { color: c.primary }]}>{t.value}</Text>
-              <Text style={styles.tileLabel}>{t.label}</Text>
+        {headline.thisSeason ? (
+          <>
+            <Text style={styles.rowTitle}>THIS SEASON · {headline.thisSeason.label}</Text>
+            <View style={styles.tiles} accessible accessibilityLabel={`This season: ${careerTiles(headline.thisSeason, withAssists).map((t) => `${t.value} ${t.label.toLowerCase()}`).join(', ')}`}>
+              {careerTiles(headline.thisSeason, withAssists).map((t) => (
+                <View key={t.label} style={styles.tile}>
+                  <Text style={[styles.tileValue, { color: c.primary }]}>{t.value}</Text>
+                  <Text style={styles.tileLabel}>{t.label}</Text>
+                </View>
+              ))}
             </View>
-          ))}
-        </View>
-        <Text style={styles.allTime}>{allTimeText(profile.career)}</Text>
+          </>
+        ) : null}
+        {headline.showCareer ? (
+          <>
+            <Text style={styles.rowTitle}>{headline.careerTitle.toUpperCase()}</Text>
+            <View style={styles.tiles} accessible accessibilityLabel={`${headline.careerTitle}: ${careerTiles(profile.career, withAssists).map((t) => `${t.value} ${t.label.toLowerCase()}`).join(', ')}`}>
+              {careerTiles(profile.career, withAssists).map((t) => (
+                <View key={t.label} style={[styles.tile, styles.tileCareer]}>
+                  <Text style={styles.tileValueCareer}>{t.value}</Text>
+                  <Text style={styles.tileLabel}>{t.label}</Text>
+                </View>
+              ))}
+            </View>
+          </>
+        ) : null}
+        {/* Minutes and cards; just "All time" adds nothing under the headings */}
+        {allTimeText(profile.career) !== 'All time' ? <Text style={styles.allTime}>{allTimeText(profile.career)}</Text> : null}
 
         <Section title={profile.canEditBio ? 'About me' : `About ${firstName}`}>
           <PlayerBio
@@ -167,9 +187,12 @@ const useStyles = themedStyles((c) => ({
   number: { fontFamily: FONTS.display, fontSize: 22, lineHeight: 24 },
   name: { color: c.text, fontFamily: FONTS.display, fontSize: 32, lineHeight: 36, letterSpacing: 0.4 },
   position: { color: c.textLight, fontSize: 12, fontWeight: '800', letterSpacing: 1, marginTop: 2 },
-  tiles: { flexDirection: 'row', gap: 8, marginTop: 18 },
+  rowTitle: { color: c.textLight, fontFamily: FONTS.displaySemi, fontSize: 14, letterSpacing: 1.5, marginTop: 18 },
+  tiles: { flexDirection: 'row', gap: 8, marginTop: 8 },
+  tileCareer: { backgroundColor: c.surfaceRaised },
+  tileValueCareer: { color: c.text, fontFamily: FONTS.display, fontSize: 30, lineHeight: 32, fontVariant: ['tabular-nums'] },
   tile: { flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 14, backgroundColor: c.surface, borderWidth: 1, borderColor: c.border },
-  tileValue: { fontFamily: FONTS.display, fontSize: 30, lineHeight: 32 },
+  tileValue: { fontFamily: FONTS.display, fontSize: 30, lineHeight: 32, fontVariant: ['tabular-nums'] },
   tileLabel: { color: c.textLight, fontSize: 10, fontWeight: '800', letterSpacing: 1 },
   allTime: { color: c.textLight, fontSize: 12, marginTop: 6, textAlign: 'center' },
   section: { marginTop: 18, padding: 14, borderRadius: 16, backgroundColor: c.surface, borderWidth: 1, borderColor: c.border },

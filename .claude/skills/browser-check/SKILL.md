@@ -27,7 +27,13 @@ cd mobile
 npm run browser-check                          # the default list of 22 screens
 npm run browser-check -- results stats         # only these (paths from linking.ts; "" is Home)
 npm run browser-check -- --skip-build results  # reuse the last web build (after backend-only changes)
+npm run browser-check -- --keep-data players/player?id=x  # keep test data you added locally
 ```
+
+Seeding the test club replaces its row, which deletes its squad (the table
+cascades). To look at a page with your own test players or results, add
+them to the local copy (`npx wrangler d1 execute DB --local --file=...` in
+`backend/`) and run with `--keep-data`.
 
 Rebuild (no `--skip-build`) after changing anything in `mobile/`. The build
 takes a minute or two; the backend and screens take about a minute more.

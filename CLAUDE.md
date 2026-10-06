@@ -304,6 +304,12 @@ with personal data.
   per-season stats (`services/squadStats.ts`, shared with the Stats screen),
   photos (`player_images` plus gallery photos they're tagged in) and goal clips (Match Centre goal taps in matches
   with a lined-up YouTube video, same clips as Highlights, hidden ones left out).
+- The top of the page shows this season's apps, goals, assists and MOTM and,
+  once they've played more than one season, the career totals "Since
+  2017/18 · 10 seasons" (first season with any stats; `headlineRows` in
+  `utils/playerPage.ts`). Past seasons come from Match Centre, match reports,
+  uploaded or added results (goals) and Manage Squad → Season stats (apps,
+  assists, MOTM for years before the app).
 - Only the player writes their bio (`PUT /players/:id/bio`): an account with
   the `player` role linked to that squad entry (`auth_user_players`, linked
   with the manager's code). Staff can only remove a bio. Bios can't contain
