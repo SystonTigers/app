@@ -372,9 +372,16 @@ export async function handleDeleteDiscussion(req: Request, env: any, corsHdrs: H
             return json({ success: false, error: 'Unauthorized to delete this discussion' }, 403, corsHdrs);
         }
 
-        await env.DB.prepare(`
-            DELETE FROM discussions WHERE id = ? AND tenant_id = ?
-        `).bind(discussionId, claims.tenantId).run();
+        // Its comments go with it (they have no tenant of their own)
+        await env.DB.batch([
+            env.DB.prepare(`
+                DELETE FROM discussion_comments
+                WHERE discussion_id IN (SELECT id FROM discussions WHERE id = ? AND tenant_id = ?)
+            `).bind(discussionId, claims.tenantId),
+            env.DB.prepare(`
+                DELETE FROM discussions WHERE id = ? AND tenant_id = ?
+            `).bind(discussionId, claims.tenantId),
+        ]);
 
         return json({ success: true }, 200, corsHdrs);
     } catch (err) {

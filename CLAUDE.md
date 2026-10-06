@@ -9,7 +9,7 @@ Read `START_HERE.md` first: it covers running, testing and deploying. Then
 screenshots each screen at phone size). Other AI tools read `AGENTS.md`, which points to the same files.
 The code is the source of truth; old plans and status reports are in
 `archive/` for history only. When a doc disagrees with the code, trust the
-code, and fix the doc. Checked against the code on 4 October 2026.
+code, and fix the doc. Checked against the code on 6 October 2026.
 
 ## What this is
 
@@ -540,6 +540,27 @@ with personal data.
 - The old consoles (`owner-admin/`, `admin/`, the website's root `/admin`,
   `/api/v1/admin/tenants|promo-codes|stats|users`, magic links, `/dev/*`,
   `/owner-api/*`) were removed in September 2026.
+
+## Team Talk, reports and subs
+
+- Team Talk (`routes/discussions.ts`; app `TeamTalkScreen` → `TeamTalkThreadScreen`,
+  menu: My club; website Team talk): conversations in General and Match chat
+  for players and parents, plus Training and Tactics for staff only.
+  Supporters can't join in. Comments take replies, @mentions (they get a
+  notification) and video moments like [12:34]. Staff pin, close and delete;
+  authors delete their own. Deleting a conversation deletes its comments.
+- Reporting (`routes/content-moderation.ts`): members tap Report on a
+  comment or conversation (`components/reports/ReportSheet`, `POST
+  /api/v1/content/report`, signed in, the club comes from the token; types
+  `post` feed post, `comment`, `message` = conversation). Staff review in
+  Manager zone → Reports (website Admin → Reports). "Remove it" really
+  deletes it (a comment takes its replies) and closes every waiting report
+  about it; Warn and Dismiss leave it.
+- Subs and fees (`routes/dues.ts`; app Manager zone → Subs and fees,
+  `DuesScreen`; website Admin → Subs and fees): payment requests and
+  reminder emails (one per parent email, with the club's name). Paying
+  online needs Stripe, so until then the email says to pay the club the
+  usual way and has no pay link.
 
 ## Access rules worth knowing
 

@@ -40,6 +40,8 @@ import MOTMVotingScreen from './src/screens/MOTMVotingScreen';
 import LiveMatchWatchScreen from './src/screens/LiveMatchWatchScreen';
 import LiveMatchInputScreen from './src/screens/LiveMatchInputScreen';
 import GalleryScreen from './src/screens/GalleryScreen';
+import TeamTalkScreen from './src/screens/TeamTalkScreen';
+import TeamTalkThreadScreen from './src/screens/TeamTalkThreadScreen';
 import HighlightsScreen from './src/screens/HighlightsScreen';
 import MatchHighlightsScreen from './src/screens/MatchHighlightsScreen';
 import MediaConsentScreen from './src/screens/MediaConsentScreen';
@@ -61,6 +63,8 @@ import ManageMOTMScreen from './src/screens/ManageMOTMScreen';
 import OpponentsScreen from './src/screens/OpponentsScreen';
 import ManageGotmScreen from './src/screens/ManageGotmScreen';
 import ManageSeasonsScreen from './src/screens/ManageSeasonsScreen';
+import ReportsScreen from './src/screens/ReportsScreen';
+import DuesScreen from './src/screens/DuesScreen';
 import ManagePlayerImagesScreen from './src/screens/ManagePlayerImagesScreen';
 import ClubSettingsScreen from './src/screens/ClubSettingsScreen';
 import ImportDataScreen from './src/screens/ImportDataScreen';
@@ -98,6 +102,8 @@ const StaffManageMOTM = staffScreen(ManageMOTMScreen);
 const StaffOpponents = staffScreen(OpponentsScreen);
 const StaffManageGotm = staffScreen(ManageGotmScreen);
 const StaffManageSeasons = staffScreen(ManageSeasonsScreen);
+const StaffReports = staffScreen(ReportsScreen);
+const StaffDues = staffScreen(DuesScreen);
 const StaffManagePlayerImages = staffScreen(ManagePlayerImagesScreen);
 const StaffClubSettings = staffScreen(ClubSettingsScreen);
 const AdminPushNotificationsSetup = staffScreen(PushNotificationsSetupScreen, 'admin');
@@ -282,6 +288,8 @@ function MainDrawer() {
       <Drawer.Screen name="Opponents" component={StaffOpponents} options={{ title: 'Opponents' }} />
       <Drawer.Screen name="ManageGotm" component={StaffManageGotm} options={{ title: 'Goal of the Month' }} />
       <Drawer.Screen name="ManageSeasons" component={StaffManageSeasons} options={{ title: 'Seasons' }} />
+      <Drawer.Screen name="Reports" component={StaffReports} options={{ title: 'Reports' }} />
+      <Drawer.Screen name="Dues" component={StaffDues} options={{ title: 'Subs and fees' }} />
       <Drawer.Screen name="ManagePlayerImages" component={StaffManagePlayerImages} options={{ title: 'Player Images' }} />
       <Drawer.Screen name="ClubSettings" component={StaffClubSettings} options={{ title: 'Club Settings' }} />
       <Drawer.Screen
@@ -303,6 +311,8 @@ function MainDrawer() {
       {/* Other/Hidden Screens */}
       <Drawer.Screen name="CreatePost" component={StaffCreatePost} options={{ title: 'New club post' }} />
       <Drawer.Screen name="Gallery" component={GalleryScreen} options={{ title: 'Gallery' }} />
+      <Drawer.Screen name="TeamTalk" component={TeamTalkScreen} options={{ title: 'Team Talk' }} />
+      <Drawer.Screen name="TeamTalkThread" component={TeamTalkThreadScreen} options={{ title: 'Conversation' }} />
       <Drawer.Screen name="Highlights" component={HighlightsScreen} />
       <Drawer.Screen name="MatchHighlights" component={MatchHighlightsScreen} options={{ title: 'Match Highlights' }} />
       <Drawer.Screen name="Manage" component={StaffManage} options={{ title: 'Team Admin' }} />

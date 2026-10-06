@@ -10,6 +10,9 @@ import { getTenantId } from './club';
 import { appendPhoto } from './photoUpload';
 import type { LeagueSnapshot } from '../utils/leagueTable';
 import { readGotm, type GoalOption, type GotmData, type newVoteBody } from '../utils/gotm';
+import type { Discussion, DiscussionSummary } from '../utils/teamTalk';
+import type { ContentReport, ReportType } from '../utils/reports';
+import type { PaymentRequest } from '../utils/dues';
 import type { MyPlayer, PlayerProfile } from '../utils/playerPage';
 
 // Re-exported for existing imports
@@ -456,17 +459,31 @@ export const feedApi = {
   },
 };
 
-// Content Moderation API
+// Content Moderation API: members report; staff review (Manager zone → Reports)
 export const reportContent = async (params: {
-  contentType: 'post' | 'comment' | 'message';
+  contentType: ReportType;
   contentId: string;
   reason: string;
+  details?: string;
 }) => {
-  const response = await api.post('/api/v1/content/report', {
-    tenant: getTenantId(),
-    ...params,
-  });
+  const response = await api.post('/api/v1/content/report', params);
   return response.data;
+};
+
+export const reportsApi = {
+  list: async (status: string): Promise<ContentReport[]> =>
+    ((await api.get('/api/v1/content/reports', { params: { status } })).data?.data?.reports ?? []) as ContentReport[],
+  /** action: removed (takes it down), warned, no_action */
+  update: async (id: string, status: 'actioned' | 'dismissed', action: 'removed' | 'warned' | 'no_action') =>
+    (await api.put(`/api/v1/content/reports/${encodeURIComponent(id)}`, { status, action, notes: `${action} in the app` })).data,
+};
+
+export const duesApi = {
+  list: async (): Promise<PaymentRequest[]> => ((await api.get('/api/v1/dues/requests')).data?.data ?? []) as PaymentRequest[],
+  create: async (input: { title: string; amount: number; description?: string; dueDate?: string }) =>
+    (await api.post('/api/v1/dues/requests', input)).data,
+  remind: async (requestId: string): Promise<number> =>
+    Number((await api.post('/api/v1/dues/remind', { requestId })).data?.data?.remindersSent ?? 0),
 };
 
 export const eventsApi = {
@@ -1165,6 +1182,25 @@ export const opponentsApi = {
   add: async (teamName: string) => (await api.post('/api/v1/opponents', { team_name: teamName })).data,
   confirm: async (id: string, action: 'confirm' | 'reject') => (await api.post(`/api/v1/opponents/${encodeURIComponent(id)}/confirm`, { action })).data,
   remove: async (id: string) => (await api.delete(`/api/v1/opponents/${encodeURIComponent(id)}`)).data,
+};
+
+/** Team talk: club conversations (/discussions), the same ones as on the website. */
+export const teamTalkApi = {
+  list: async (category: string | null): Promise<DiscussionSummary[]> =>
+    ((await api.get('/api/v1/discussions', { params: category ? { category } : {} })).data?.data ?? []) as DiscussionSummary[],
+  get: async (id: string): Promise<Discussion> => {
+    const d = (await api.get(`/api/v1/discussions/${encodeURIComponent(id)}`)).data.data as Discussion;
+    return { ...d, comments: Array.isArray(d?.comments) ? d.comments : [] };
+  },
+  start: async (category: string, title: string): Promise<{ id: string }> => (await api.post('/api/v1/discussions', { category, title })).data.data as { id: string },
+  comment: async (id: string, content: string, parentId: string | null, mentions: string[]) =>
+    (await api.post(`/api/v1/discussions/${encodeURIComponent(id)}/comments`, { content, parent_comment_id: parentId, mentions })).data,
+  update: async (id: string, patch: { pinned?: boolean; locked?: boolean; title?: string }) => (await api.patch(`/api/v1/discussions/${encodeURIComponent(id)}`, patch)).data,
+  remove: async (id: string) => (await api.delete(`/api/v1/discussions/${encodeURIComponent(id)}`)).data,
+  removeComment: async (commentId: string) => (await api.delete(`/api/v1/comments/${encodeURIComponent(commentId)}`)).data,
+  /** People to @mention (name search) */
+  searchMembers: async (q: string): Promise<Array<{ id: string; name: string }>> =>
+    ((await api.get('/api/v1/members/search', { params: { q } })).data?.data ?? []) as Array<{ id: string; name: string }>,
 };
 
 export const seasonsApi = {

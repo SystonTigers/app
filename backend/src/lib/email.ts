@@ -211,19 +211,24 @@ export async function sendPaymentReminderEmail(
   title: string,
   amount: string,
   dueDate: string,
-  link: string,
+  /** Where to pay online; null until online payments are switched on */
+  link: string | null,
   clubName: string,
   env: EmailEnv,
 ): Promise<EmailResult> {
   return send(env, email, `Payment reminder: ${title}`, {
     heading: "Payment reminder",
-    paragraphs: [`Hi ${name},`, `This is a reminder about a payment for ${clubName}.`],
+    paragraphs: [
+      `Hi ${name},`,
+      `This is a reminder about a payment for ${clubName}.`,
+      ...(link ? [] : ["Please pay the club the usual way. If you're not sure how, ask your coach."]),
+    ],
     details: [
       ["For", title],
       ["Amount", amount],
       ["Due", dueDate || "As soon as possible"],
     ],
-    button: { label: "Pay now", url: link },
+    ...(link ? { button: { label: "Pay now", url: link } } : {}),
     signOff: clubName,
   });
 }

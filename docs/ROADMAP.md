@@ -40,10 +40,13 @@ also the web app). Website-only club features move into the app in batches;
 then the website's club pages open the web app, and the website keeps only the
 landing page, pricing, club sign-up, billing and the owner panel.
 
-- Done: Seasons, Goal of the Month admin, League table paste, Opponents.
-- Next (managers): Team Talk, dues, reported posts, social post history,
-  live stream/YouTube settings, shop admin, videos and clips, tactics board,
-  friendlies, registration, organisation/teams, calendar export.
+- Done: Seasons, Goal of the Month admin, League table paste, Opponents,
+  Team Talk (with Report and Delete on messages), Reports, Subs and fees.
+  The website's Social media page needs nothing in the app: its "saved
+  posts" were never sent anywhere, and automatic posts are in Club Settings.
+- Next (managers): live stream/YouTube settings, shop admin, videos and
+  clips, tactics board, friendlies, registration, organisation/teams,
+  calendar export.
 - Then (families on the website until the switch): voting, live match,
   highlights, consent and linking a child, predictions, attendance, drills.
 
