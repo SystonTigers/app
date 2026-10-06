@@ -16,7 +16,8 @@ import {
 import { themedStyles, useBrandColors } from '../theme/brand';
 import { FONTS } from '../theme/brandFonts';
 import { fixturesApi } from '../services/api';
-import { resultDate } from '../utils/results';
+import { localDay, resultDate } from '../utils/results';
+import { useNavigation } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useClubName } from '../context/ClubContext';
 import FaEmailPaste from '../components/FaEmailPaste';
@@ -40,6 +41,8 @@ export default function ManageFixturesScreen() {
   const COLORS = useBrandColors();
   const styles = useStyles();
   const clubName = useClubName();
+  const navigation = useNavigation<any>();
+  const today = localDay(new Date());
   const [fixtures, setFixtures] = useState<Fixture[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -242,6 +245,16 @@ export default function ManageFixturesScreen() {
                   </View>
 
                   <View style={styles.actions}>
+                    {fixture.date && fixture.date.slice(0, 10) <= today ? (
+                      <Button
+                        mode="contained"
+                        icon="clipboard-text-outline"
+                        onPress={() => navigation.navigate('MatchReport', { fixtureId: fixture.id, opponent: fixture.opponent, date: fixture.date.slice(0, 10), ourScore: fixture.homeScore, theirScore: fixture.awayScore })}
+                        style={styles.actionButton}
+                      >
+                        Report
+                      </Button>
+                    ) : null}
                     <Button
                       mode="outlined"
                       onPress={() => openEditModal(fixture)}

@@ -47,6 +47,7 @@ const MENU_GROUPS: { id: string; title: string; icon: string; protected?: boolea
             { label: 'Results', screen: 'Results', icon: 'scoreboard-outline', roles: ALL },
             { label: 'Stats', screen: 'Stats', icon: 'chart-bar', roles: ALL },
             { label: 'League table', screen: 'LeagueTable', icon: 'format-list-numbered', roles: ALL },
+            { label: 'Club history', screen: 'ClubHistory', icon: 'history', roles: ALL },
         ]
     },
     {
@@ -70,11 +71,13 @@ const MENU_GROUPS: { id: string; title: string; icon: string; protected?: boolea
             { label: 'New club post', screen: 'CreatePost', icon: 'pencil-plus', roles: STAFF },
             { label: 'Manage squad', screen: 'ManageSquad', icon: 'account-cog', roles: STAFF },
             { label: 'Manage fixtures', screen: 'ManageFixtures', icon: 'calendar-edit', roles: MANAGERS },
+            { label: 'Friendlies', screen: 'Friendlies', icon: 'handshake-outline', roles: MANAGERS },
             { label: 'Manage results', screen: 'Results', icon: 'scoreboard-outline', roles: MANAGERS },
             { label: 'Manage events', screen: 'ManageEvents', icon: 'calendar-clock', roles: MANAGERS },
             { label: 'Man of the Match votes', screen: 'ManageMOTM', icon: 'star-cog', roles: MANAGERS },
             { label: 'Opponents', screen: 'Opponents', icon: 'shield-half-full', roles: MANAGERS },
             { label: 'Goal of the Month', screen: 'ManageGotm', icon: 'soccer', roles: MANAGERS },
+            { label: 'Last Man Standing', screen: 'ManageLms', icon: 'crystal-ball', roles: MANAGERS },
             { label: 'Seasons', screen: 'ManageSeasons', icon: 'calendar-range', roles: MANAGERS },
             { label: 'Subs and fees', screen: 'Dues', icon: 'cash-multiple', roles: MANAGERS },
             { label: 'Reports', screen: 'Reports', icon: 'flag-outline', roles: STAFF },

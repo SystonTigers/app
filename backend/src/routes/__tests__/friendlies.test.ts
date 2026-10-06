@@ -29,6 +29,7 @@ const mockClaims = {
 // Mock requireJWT
 vi.mock('../../services/auth', () => ({
     requireJWT: vi.fn(() => Promise.resolve(mockClaims)),
+    STAFF_ROLES: ["admin", "tenant_admin", "owner", "platform_admin", "manager", "coach"],
 }));
 
 // Import handlers
@@ -162,6 +163,7 @@ describe('Friendly Matchmaking Routes', () => {
                     first: vi.fn(() => {
                         callCount++;
                         if (callCount === 1) {return mockFriendlyRequest;}
+                        if (callCount === 2) {return null;} // no offer from this club waiting yet
                         return { name: 'Requester Team' };
                     }),
                     run: vi.fn(() => ({ meta: { changes: 1 } })),
@@ -220,6 +222,8 @@ describe('Friendly Matchmaking Routes', () => {
                 host_tenant_id: 'test-tenant-123',
                 host_team_name: 'Host Team',
                 proposed_date: '2024-01-20',
+                status: 'pending',
+                location_pref: 'home',
             };
 
             mockEnv.DB.prepare = vi.fn(() => ({
@@ -229,6 +233,7 @@ describe('Friendly Matchmaking Routes', () => {
                     all: vi.fn(() => ({ results: [] })),
                 })),
             }));
+            mockEnv.DB.batch = vi.fn(() => Promise.resolve([]));
 
             const req = new Request('https://api.test/api/v1/friendlies/match/match-123/respond', {
                 method: 'POST',

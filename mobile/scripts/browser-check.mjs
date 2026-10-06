@@ -48,7 +48,7 @@ const WIN = process.platform === 'win32';
 const SCREENS = [
   '', 'matches', 'squad', 'videos', 'results', 'table', 'stats', 'live', 'man-of-the-match',
   'training', 'drills', 'gallery', 'team-talk', 'highlights', 'people', 'profile', 'consent', 'settings',
-  'manage', 'manage/squad', 'manage/fixtures', 'manage/club-settings', 'match-centre', 'manage/reports', 'manage/subs',
+  'manage', 'manage/squad', 'manage/fixtures', 'manage/club-settings', 'match-centre', 'manage/reports', 'manage/subs', 'history', 'manage/friendlies', 'manage/last-man-standing',
 ];
 
 const args = process.argv.slice(2);

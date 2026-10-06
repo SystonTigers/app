@@ -186,6 +186,7 @@ function Friendlies() {
     async function ask(e: FormEvent) {
         e.preventDefault();
         if (!asking) return;
+        if (!askForm.date) { setFormError('Pick a date for the game.'); return; }
         setBusy(true);
         setFormError('');
         try {
@@ -415,7 +416,7 @@ function Friendlies() {
                     <form onSubmit={ask} className="space-y-4">
                         <div>
                             <label htmlFor="a-date" className="label">Date</label>
-                            <input id="a-date" type="date" value={askForm.date} onChange={(e) => setAskForm({ ...askForm, date: e.target.value })} className="field" />
+                            <input id="a-date" type="date" required value={askForm.date} onChange={(e) => setAskForm({ ...askForm, date: e.target.value })} className="field" />
                         </div>
                         <div>
                             <label htmlFor="a-message" className="label">Message (optional)</label>

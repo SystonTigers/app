@@ -418,9 +418,13 @@ with personal data.
   `routes/playerStatEntries.ts`, `PUT /api/v1/players/:id/season-stats/:season`),
   added on top in `GET /stats/players`. Seasons always offer at least three
   past football years.
-- The website's match report (`POST /api/v1/matches/:id/report`) takes the
-  starting line-up and subs (starters and subs count as appearances), saves
-  the result with scorers' names and rebuilds the league table.
+- Match reports (website fixtures admin → Report; app Manage Fixtures →
+  Report on a past match, `MatchReportScreen`, `utils/matchReport.ts`;
+  `POST /api/v1/matches/:id/report`) take the score, starters and subs and
+  each goal, assist, card, sub and MOTM; starters and subs who came on count
+  as appearances. Saving replaces the match's events (Match Centre's too: the
+  app warns when the match was recorded there), saves the result with
+  scorers' names and rebuilds the league table.
 - Sign-up: people choose Parent, Player or Supporter and get that role;
   choosing Coach makes them a Supporter with a pending request admins see in
   People & Roles (`rolesForSignUp`, `profile.pendingRole`). Nobody can make
@@ -561,6 +565,36 @@ with personal data.
   reminder emails (one per parent email, with the club's name). Paying
   online needs Stripe, so until then the email says to pay the club the
   usual way and has no pay link.
+
+## Club history, friendlies, Last Man Standing and the calendar
+
+- Club history (app menu: Training & stats → Club history, `ClubHistoryScreen`;
+  website History): season chips, the record, top three scorers / assists /
+  MOTM / appearances, the season's awards (club seasons only) and fun stats.
+  Fun stats (`services/funStats.ts`; members `GET /api/v1/stats/fun?season=`,
+  public `/public/:club/stats/fun?seasonId=`) and a club season's stats
+  (`GET /seasons/:id/stats`, `seasonReview`) use the season's dates, never
+  the old `season_id` columns. Award lists don't include player photos.
+- Friendlies (app Manager zone → Friendlies, `FriendliesScreen`; website
+  Friendlies; `routes/friendlies.ts`): a board shared by every club. Posts
+  never send `contact_info`. An offer needs a date (one waiting offer per
+  club per post); accepting is claimed once (`status = 'pending'`), adds a
+  Friendly fixture for both clubs with home/away teams (the poster is at
+  home unless it asked to play away) and declines the post's other offers.
+  Staff are told in the app (`notifications`, one row per staff member) and
+  by push (every staff role, not only admins).
+- Last Man Standing: members play on Predictions (`LastManStandingScreen`);
+  staff run it in Manager zone → Last Man Standing (`ManageLmsScreen`,
+  `utils/lms.ts`) or on the website. Processing a round needs every score
+  and claims the round once, so a double tap can't count twice.
+- Fixtures calendar: `/public/:club/calendar.ics` (anyone; fixtures are
+  public) and `GET /api/v1/calendar/export` (members, a download), built by
+  `services/calendarIcs.ts` (UK times with TZID, home/away from the teams,
+  untimed games all day, postponed and cancelled marked). The app's Fixtures
+  screen → "Add fixtures to my calendar" (`components/fixtures/CalendarSubscribe`)
+  subscribes Apple (webcal://) or Google Calendar, or shares the link.
+- Staff delete club posts from Home (bin on a Club News card,
+  `DELETE /api/v1/feed/:id`).
 
 ## Access rules worth knowing
 

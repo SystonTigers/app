@@ -364,6 +364,12 @@ export async function handlePublicTenantRequest(
             }, 200, corsHdrs);
         }
 
+        // The club's fixtures for phone calendars to subscribe to (webcal://…/calendar.ics)
+        if (resource === "calendar.ics") {
+            const { calendarFixtures, calendarResponse } = await import("./calendar");
+            return calendarResponse(tenant.name ?? tenant.slug, await calendarFixtures(env, tenant.id), url.host, corsHdrs, false);
+        }
+
         if (resource === "fixtures" && segments[3] && segments[3] !== "next") {
             const fixtureId = segments[3];
 
@@ -594,14 +600,18 @@ export async function handlePublicTenantRequest(
         if (resource === "stats" && segments[3] === "fun") {
             // Import fun stats service
             const { getCachedFunStats, computeFunStats, cacheFunStats } = await import("../services/funStats");
-            const seasonId = url.searchParams.get("seasonId") || undefined;
+            const { resolveSeason } = await import("../services/seasons/range");
+            // No season asked for = all time (as before); otherwise the season's dates
+            const asked = url.searchParams.get("seasonId") || url.searchParams.get("season");
+            const season = asked ? await resolveSeason(env, tenant.id, asked) : null;
+            const cacheKey = season ? season.id : null;
 
-            let stats = await getCachedFunStats(env.DB, tenant.id, seasonId);
+            let stats = await getCachedFunStats(env.DB, tenant.id, cacheKey);
 
             // If no cache, compute
             if (stats.length === 0) {
-                stats = await computeFunStats(env.DB, tenant.id, seasonId);
-                await cacheFunStats(env.DB, tenant.id, seasonId || null, stats);
+                stats = await computeFunStats(env.DB, tenant.id, season);
+                await cacheFunStats(env.DB, tenant.id, cacheKey, stats);
             }
 
             return json({ success: true, data: stats }, 200, corsHdrs);

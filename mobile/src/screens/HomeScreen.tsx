@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, ScrollView, StyleSheet, RefreshControl } from 'react-native';
-import { Text } from 'react-native-paper';
+import { View, ScrollView, StyleSheet, RefreshControl, Alert } from 'react-native';
+import { IconButton, Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../theme/useTheme';
@@ -271,7 +271,26 @@ export default function HomeScreen({ navigation }: any) {
         ) : null}
 
         {newsPosts.map((post) => (
-          <FeedCard key={post.id} title="CLUB NEWS">
+          <FeedCard
+            key={post.id}
+            title="CLUB NEWS"
+            headerRight={staff ? (
+              <IconButton
+                icon="delete-outline"
+                size={18}
+                iconColor={colors.textSecondary}
+                accessibilityLabel="Delete this post"
+                onPress={() => Alert.alert('Delete this post?', 'It comes off the app for everyone.', [
+                  { text: 'Cancel', style: 'cancel' },
+                  { text: 'Delete', style: 'destructive', onPress: () => {
+                    feedApi.deletePost(String(post.id))
+                      .then(() => setNewsPosts((list) => list.filter((p) => p.id !== post.id)))
+                      .catch(() => Alert.alert("That post wasn't deleted", 'Check your signal and try again.'));
+                  } },
+                ])}
+              />
+            ) : undefined}
+          >
             <View style={{ padding: 16 }}>
               <Text style={{ color: colors.text, fontSize: 14, lineHeight: 20 }}>{post.content}</Text>
               <View style={{ flexDirection: 'row', marginTop: 12, alignItems: 'center' }}>

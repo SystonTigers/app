@@ -1,5 +1,7 @@
 import { json } from "../services/util";
-import { requireJWT } from "../services/auth";
+import { requireJWT, requireTenantJWT } from "../services/auth";
+import { computeFunStats } from "../services/funStats";
+import { resolveSeason } from "../services/seasons/range";
 import { tracksAssists } from "../services/clubOptions";
 
 /**
@@ -15,19 +17,27 @@ interface FunStat {
     icon?: string;
 }
 
-// Get team fun stats for a season (or all-time if no season specified)
+/**
+ * Team fun stats for members (the app's Club history). Same numbers as the
+ * club page (`/public/:club/stats/fun`, services/funStats.ts).
+ * GET /api/v1/stats/fun?season=<id|2025-26|all> (no season = all time)
+ */
 export async function handleGetTeamFunStats(req: Request, env: any, corsHdrs: Headers) {
+    let tenantId: string;
     try {
-        const claims = await requireJWT(req, env);
+        tenantId = (await requireTenantJWT(req, env)).tenantId;
+    } catch {
+        return json({ success: false, error: "Please log in again." }, 401, corsHdrs);
+    }
+    try {
         const url = new URL(req.url);
-        const seasonId = url.searchParams.get('seasonId');
-
-        const stats = await calculateTeamFunStats(env, claims.tenantId || '', seasonId);
-
-        return json({ success: true, data: stats }, 200, corsHdrs);
+        const asked = url.searchParams.get('season') || url.searchParams.get('seasonId');
+        const season = asked ? await resolveSeason(env, tenantId, asked) : null;
+        const stats = await computeFunStats(env.DB, tenantId, season);
+        return json({ success: true, data: stats, season: season ? { id: season.id, label: season.label } : null }, 200, corsHdrs);
     } catch (err) {
         console.error('Get team fun stats error:', err);
-        return json({ success: false, error: "Failed to get stats" }, 500, corsHdrs);
+        return json({ success: false, error: "Fun stats didn't load. Please try again." }, 500, corsHdrs);
     }
 }
 
@@ -47,83 +57,13 @@ export async function handleGetPlayerFunStats(req: Request, env: any, corsHdrs: 
     }
 }
 
-// Calculate team fun stats
-async function calculateTeamFunStats(env: any, tenantId: string, seasonId: string | null): Promise<FunStat[]> {
-    const stats: FunStat[] = [];
-
-    // Build season filter
-    const seasonFilter = seasonId ? "AND season_id = ?" : "";
-    const bindParams = seasonId ? [tenantId, seasonId] : [tenantId];
-
-    const results = await env.DB.prepare(
-        `SELECT * FROM team_results WHERE tenant_id = ? ${seasonFilter} ORDER BY match_date DESC`
-    ).bind(...bindParams).all();
-
-    const matches = results.results || [];
-
-    if (matches.length === 0) {
-        return [{ key: 'no_data', title: 'No Data', value: 'No matches recorded yet', icon: '📊' }];
-    }
-
-    let wins = 0, draws = 0, losses = 0, goalsFor = 0, goalsAgainst = 0;
-    let longestWinStreak = 0, longestUnbeatenStreak = 0;
-    let tempWinStreak = 0, tempUnbeatenStreak = 0, cleanSheets = 0;
-
-    for (const match of matches as any[]) {
-        const gf = match.goals_for || 0;
-        const ga = match.goals_against || 0;
-        goalsFor += gf;
-        goalsAgainst += ga;
-        if (ga === 0) {cleanSheets++;}
-
-        if (gf > ga) {
-            wins++;
-            tempWinStreak++;
-            tempUnbeatenStreak++;
-        } else if (gf === ga) {
-            draws++;
-            tempWinStreak = 0;
-            tempUnbeatenStreak++;
-        } else {
-            losses++;
-            tempWinStreak = 0;
-            tempUnbeatenStreak = 0;
-        }
-
-        longestWinStreak = Math.max(longestWinStreak, tempWinStreak);
-        longestUnbeatenStreak = Math.max(longestUnbeatenStreak, tempUnbeatenStreak);
-    }
-
-    const played = wins + draws + losses;
-    const points = wins * 3 + draws;
-    const winPct = played > 0 ? Math.round((wins / played) * 100) : 0;
-    const cleanSheetPct = played > 0 ? Math.round((cleanSheets / played) * 100) : 0;
-    const goalsPerGame = played > 0 ? (goalsFor / played).toFixed(1) : '0';
-    const gd = goalsFor - goalsAgainst;
-
-    stats.push({ key: 'record', title: 'Record', value: `${wins}W ${draws}D ${losses}L`, icon: '📈' });
-    stats.push({ key: 'points', title: 'Points', value: points, icon: '🏆' });
-    stats.push({ key: 'win_pct', title: 'Win Rate', value: `${winPct}%`, icon: '✅' });
-    stats.push({ key: 'goals_per_game', title: 'Goals/Game', value: goalsPerGame, icon: '⚽' });
-    stats.push({ key: 'clean_sheet_pct', title: 'Clean Sheet %', value: `${cleanSheetPct}%`, icon: '🧤' });
-    stats.push({ key: 'goal_diff', title: 'Goal Difference', value: gd >= 0 ? `+${gd}` : `${gd}`, icon: gd >= 0 ? '📊' : '📉' });
-
-    if (longestWinStreak > 1) {
-        stats.push({ key: 'longest_win_streak', title: 'Longest Win Streak', value: `${longestWinStreak} games`, icon: '🔥' });
-    }
-    if (longestUnbeatenStreak > 2) {
-        stats.push({ key: 'longest_unbeaten', title: 'Longest Unbeaten Run', value: `${longestUnbeatenStreak} games`, icon: '💪' });
-    }
-
-    return stats;
-}
-
 // Calculate player fun stats
 async function calculatePlayerFunStats(env: any, tenantId: string, playerId: string, seasonId: string | null): Promise<FunStat[]> {
     const stats: FunStat[] = [];
 
-    const seasonFilter = seasonId ? "AND f.season_id = ?" : "";
-    const bindParams = seasonId ? [tenantId, playerId, seasonId] : [tenantId, playerId];
+    const season = seasonId ? await resolveSeason(env, tenantId, seasonId) : null;
+    const seasonFilter = season ? "AND substr(f.fixture_date, 1, 10) BETWEEN ? AND ?" : "";
+    const bindParams = season ? [tenantId, playerId, season.from, season.to] : [tenantId, playerId];
 
     const events = await env.DB.prepare(
         `SELECT me.*, f.fixture_date FROM match_events me

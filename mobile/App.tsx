@@ -41,6 +41,7 @@ import LiveMatchWatchScreen from './src/screens/LiveMatchWatchScreen';
 import LiveMatchInputScreen from './src/screens/LiveMatchInputScreen';
 import GalleryScreen from './src/screens/GalleryScreen';
 import TeamTalkScreen from './src/screens/TeamTalkScreen';
+import ClubHistoryScreen from './src/screens/ClubHistoryScreen';
 import TeamTalkThreadScreen from './src/screens/TeamTalkThreadScreen';
 import HighlightsScreen from './src/screens/HighlightsScreen';
 import MatchHighlightsScreen from './src/screens/MatchHighlightsScreen';
@@ -64,6 +65,9 @@ import OpponentsScreen from './src/screens/OpponentsScreen';
 import ManageGotmScreen from './src/screens/ManageGotmScreen';
 import ManageSeasonsScreen from './src/screens/ManageSeasonsScreen';
 import ReportsScreen from './src/screens/ReportsScreen';
+import MatchReportScreen from './src/screens/MatchReportScreen';
+import FriendliesScreen from './src/screens/FriendliesScreen';
+import ManageLmsScreen from './src/screens/ManageLmsScreen';
 import DuesScreen from './src/screens/DuesScreen';
 import ManagePlayerImagesScreen from './src/screens/ManagePlayerImagesScreen';
 import ClubSettingsScreen from './src/screens/ClubSettingsScreen';
@@ -103,6 +107,9 @@ const StaffOpponents = staffScreen(OpponentsScreen);
 const StaffManageGotm = staffScreen(ManageGotmScreen);
 const StaffManageSeasons = staffScreen(ManageSeasonsScreen);
 const StaffReports = staffScreen(ReportsScreen);
+const StaffMatchReport = staffScreen(MatchReportScreen);
+const StaffFriendlies = staffScreen(FriendliesScreen);
+const StaffManageLms = staffScreen(ManageLmsScreen);
 const StaffDues = staffScreen(DuesScreen);
 const StaffManagePlayerImages = staffScreen(ManagePlayerImagesScreen);
 const StaffClubSettings = staffScreen(ClubSettingsScreen);
@@ -273,6 +280,7 @@ function MainDrawer() {
       <Drawer.Screen name="Player" component={PlayerScreen} options={{ title: 'Player' }} />
       <Drawer.Screen name="Results" component={ResultsScreen} options={{ title: 'Results' }} />
       <Drawer.Screen name="Stats" component={StatsScreen} options={{ title: 'Stats' }} />
+      <Drawer.Screen name="ClubHistory" component={ClubHistoryScreen} options={{ title: 'Club history' }} />
       <Drawer.Screen name="LeagueTable" component={LeagueTableScreen} options={{ title: 'League Table' }} />
 
       {/* My Club Group */}
@@ -289,6 +297,9 @@ function MainDrawer() {
       <Drawer.Screen name="ManageGotm" component={StaffManageGotm} options={{ title: 'Goal of the Month' }} />
       <Drawer.Screen name="ManageSeasons" component={StaffManageSeasons} options={{ title: 'Seasons' }} />
       <Drawer.Screen name="Reports" component={StaffReports} options={{ title: 'Reports' }} />
+      <Drawer.Screen name="MatchReport" component={StaffMatchReport} options={{ title: 'Match report' }} />
+      <Drawer.Screen name="Friendlies" component={StaffFriendlies} options={{ title: 'Friendlies' }} />
+      <Drawer.Screen name="ManageLms" component={StaffManageLms} options={{ title: 'Last Man Standing' }} />
       <Drawer.Screen name="Dues" component={StaffDues} options={{ title: 'Subs and fees' }} />
       <Drawer.Screen name="ManagePlayerImages" component={StaffManagePlayerImages} options={{ title: 'Player Images' }} />
       <Drawer.Screen name="ClubSettings" component={StaffClubSettings} options={{ title: 'Club Settings' }} />
