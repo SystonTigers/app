@@ -14,10 +14,10 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { themedStyles, useBrandColors } from '../theme/brand';
 import { FONTS } from '../theme/brandFonts';
 import { parseCSV, validateHeaders } from '../utils/csvParser';
+import ResultsImportModal from '../components/results/ResultsImportModal';
 import {
     importPlayers,
     importFixtures,
-    importResults,
     importMatchEvents,
     getImportStatus,
     getTemplateUrl,
@@ -52,7 +52,7 @@ const importOptions: ImportOption[] = [
         value: 'results',
         label: 'Match results',
         icon: 'scoreboard-outline',
-        description: 'Past results with scores',
+        description: 'Past results with scores and goalscorers (Excel or CSV)',
     },
     {
         value: 'match-events',
@@ -74,6 +74,7 @@ export default function ImportDataScreen() {
     const [counts, setCounts] = useState<ImportCounts | null>(null);
     const [seasons, setSeasons] = useState<any[]>([]);
     const [selectedSeasonId, setSelectedSeasonId] = useState('');
+    const [resultsUploadOpen, setResultsUploadOpen] = useState(false);
 
     useEffect(() => {
         loadSeasons();
@@ -155,9 +156,6 @@ export default function ImportDataScreen() {
                     break;
                 case 'fixtures':
                     importResult = await importFixtures(csvContent, seasonParam);
-                    break;
-                case 'results':
-                    importResult = await importResults(csvContent, seasonParam);
                     break;
                 case 'match-events':
                     importResult = await importMatchEvents(csvContent, seasonParam);
@@ -291,6 +289,17 @@ export default function ImportDataScreen() {
                         ))}
                     </RadioButton.Group>
 
+                    {importType === 'results' ? (
+                        <View style={styles.resultsUpload}>
+                            <Paragraph style={styles.seasonHint}>
+                                Results have their own upload: it reads Excel or CSV in any column order, every season's sheet at once, and gives goals to players in the squad. You see it all before anything is saved.
+                            </Paragraph>
+                            <Button mode="contained" icon="file-upload-outline" onPress={() => setResultsUploadOpen(true)}>
+                                Upload results spreadsheet
+                            </Button>
+                        </View>
+                    ) : (
+                    <>
                     <Button
                         mode="text"
                         onPress={handleDownloadTemplate}
@@ -422,8 +431,19 @@ export default function ImportDataScreen() {
                             Reset
                         </Button>
                     </View>
+                    </>
+                    )}
                 </Card.Content>
             </Card>
+            <ResultsImportModal
+                visible={resultsUploadOpen}
+                onClose={() => setResultsUploadOpen(false)}
+                onSaved={(message) => {
+                    setResultsUploadOpen(false);
+                    loadCounts();
+                    Alert.alert('Results uploaded', message);
+                }}
+            />
         </ScrollView>
     );
 }
@@ -534,6 +554,10 @@ const useStyles = themedStyles((COLORS) => ({
     optionDescription: {
         fontSize: 11,
         color: COLORS.textLight,
+    },
+    resultsUpload: {
+        gap: 12,
+        marginTop: 12,
     },
     templateButton: {
         alignSelf: 'flex-start',

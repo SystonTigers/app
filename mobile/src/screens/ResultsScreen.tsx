@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, RefreshControl, ScrollView, Text, View } from 'react-native';
-import { FAB, IconButton } from 'react-native-paper';
+import { Button, FAB, IconButton } from 'react-native-paper';
 import { themedStyles, useBrandColors } from '../theme/brand';
 import { FONTS } from '../theme/brandFonts';
 import { useAuth } from '../context/AuthContext';
@@ -8,6 +8,7 @@ import { isStaffRole } from '../utils/roles';
 import { apiErrorMessage, resultsApi, type ClubResult } from '../services/api';
 import SeasonPicker from '../components/seasons/SeasonPicker';
 import ResultFormModal from '../components/results/ResultFormModal';
+import ResultsImportModal from '../components/results/ResultsImportModal';
 import FaSnippetCard from '../components/faFullTime/FaSnippetCard';
 import { useFaSnippets } from '../components/faFullTime/useFaSnippets';
 import { outcome, resultDate, seasonSummary, showsFaSnippets } from '../utils/results';
@@ -31,6 +32,7 @@ export default function ResultsScreen() {
   const snippets = useFaSnippets();
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<ClubResult | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
   const [seasonsVersion, setSeasonsVersion] = useState(0);
 
   const load = useCallback(async (chosen: string) => {
@@ -151,11 +153,26 @@ export default function ResultsScreen() {
         {!loading && faApplies && results.length === 0 && !error && snippets.team ? <FaSnippetCard flush code={snippets.team} title="OUR FIXTURES AND RESULTS" /> : null}
         {!loading && faApplies && snippets.results ? <FaSnippetCard flush code={snippets.results} title="AROUND THE LEAGUE" /> : null}
         {isStaff ? (
-          <Text style={styles.hint}>Filling in an old season? Tap Add result and enter the match date; choose that season above to check them.</Text>
+          <View style={styles.importBox}>
+            <Text style={styles.hint}>Filling in old seasons? Upload the manager&apos;s spreadsheet to add them all at once, or tap Add result for one match.</Text>
+            <Button mode="outlined" icon="file-upload-outline" onPress={() => setImportOpen(true)} accessibilityLabel="Upload a results spreadsheet">
+              Upload spreadsheet
+            </Button>
+          </View>
         ) : null}
       </ScrollView>
 
       {isStaff ? <FAB icon="plus" label="Add result" style={styles.fab} color={COLORS.onPrimary} onPress={openAdd} /> : null}
+      <ResultsImportModal
+        visible={importOpen}
+        onClose={() => setImportOpen(false)}
+        onSaved={(message) => {
+          setImportOpen(false);
+          setNotice(message);
+          setSeasonsVersion((v) => v + 1);
+          if (season) load(season);
+        }}
+      />
       <ResultFormModal
         visible={formOpen}
         editing={editing}
@@ -194,5 +211,6 @@ const useStyles = themedStyles((c) => ({
   score: { color: c.text, fontFamily: FONTS.display, fontSize: 26, minWidth: 54, textAlign: 'right', paddingRight: 8 },
   actions: { flexDirection: 'row' },
   hint: { color: c.textLight, fontSize: 12, textAlign: 'center', paddingVertical: 8 },
+  importBox: { gap: 4, alignItems: 'center', paddingTop: 4 },
   fab: { position: 'absolute', right: 16, bottom: 16, backgroundColor: c.primary },
 }));

@@ -59,17 +59,6 @@ export async function importFixtures(csvContent: string, seasonId?: string): Pro
 }
 
 /**
- * Import results from CSV
- */
-export async function importResults(csvContent: string, seasonId?: string): Promise<ImportResult> {
-    const url = seasonId ? `/api/v1/import/results?seasonId=${seasonId}` : '/api/v1/import/results';
-    const response = await apiClient.post(url, csvContent, {
-        headers: { 'Content-Type': 'text/csv' },
-    });
-    return response.data;
-}
-
-/**
  * Import match events from CSV
  */
 export async function importMatchEvents(csvContent: string, seasonId?: string): Promise<ImportResult> {

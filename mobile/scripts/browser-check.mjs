@@ -21,7 +21,7 @@
 
 import { spawn, spawnSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
-import { createReadStream, existsSync, mkdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { createReadStream, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { createRequire } from 'node:module';
 import path from 'node:path';
@@ -132,8 +132,13 @@ await waitFor(`${API}/healthz`, 'The backend');
 
 if (!skipBuild || !existsSync(path.join(webOut, 'index.html'))) {
   rmSync(webOut, { recursive: true, force: true });
-  run('Building the web app (takes a minute or two)', 'npx', ['expo', 'export', '--platform', 'web', '--output-dir', path.relative(mobile, webOut)], mobile,
+  run('Building the web app (takes a minute or two)', 'npx', ['expo', 'export', '--platform', 'web', '--clear', '--output-dir', path.relative(mobile, webOut)], mobile,
     { EXPO_PUBLIC_API_BASE: API, EXPO_PUBLIC_TENANT_ID: CLUB, EXPO_PUBLIC_E2E: '1', EXPO_PUBLIC_SENTRY_DSN: '' });
+}
+// A build cached from a release would talk to the live API; refuse to go on with one
+if (!readFileSync(path.join(webOut, 'index.html'), 'utf8') || !readdirSync(path.join(webOut, '_expo', 'static', 'js', 'web'))
+  .some((f) => f.startsWith('index-') && readFileSync(path.join(webOut, '_expo', 'static', 'js', 'web', f), 'utf8').includes(API))) {
+  fail('The web build is not pointing at the local test copy. Run again without --skip-build.');
 }
 const web = await serveWeb();
 
@@ -180,7 +185,7 @@ for (const screen of screens) {
   problems = [];
   await page.goto(`${WEB}/${screen}`);
   await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => problems.push('still loading after 15s'));
-  await page.waitForTimeout(800);
+  await page.waitForTimeout(Number(process.env.BROWSER_CHECK_SETTLE_MS || 2500));
   const file = `${name.replace(/\//g, '-')}.png`;
   await page.screenshot({ path: path.join(shotsDir, file), fullPage: true });
   const unique = [...new Set(problems)];

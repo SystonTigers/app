@@ -156,3 +156,26 @@ export function removeOneGoal(picks: GoalPicks, id: string): GoalPicks {
   const i = picks.scorerIds.lastIndexOf(id);
   return i < 0 ? picks : { ...picks, scorerIds: [...picks.scorerIds.slice(0, i), ...picks.scorerIds.slice(i + 1)] };
 }
+
+/** "Sep 2024" from "2024-09-08", for the head-to-head list. */
+export function shortMonthYear(iso: string): string {
+  const m = /^(\d{4})-(\d{2})/.exec(iso || '');
+  if (!m) return iso;
+  return new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, 1)).toLocaleDateString('en-GB', { month: 'short', year: 'numeric', timeZone: 'UTC' });
+}
+
+/** One line for a head-to-head record: "Played 3 · Won 2 · Drawn 0 · Lost 1". */
+export function recordLine(h: { played: number; won: number; drawn: number; lost: number }): string {
+  return `Played ${h.played} · Won ${h.won} · Drawn ${h.drawn} · Lost ${h.lost}`;
+}
+
+/** What a results upload will do, in a sentence for the preview. */
+export function importSummary(c: { new: number; update: number; unchanged: number; exists: number; skipped: number }): string {
+  const parts: string[] = [];
+  if (c.new) parts.push(`${c.new} new result${c.new === 1 ? '' : 's'} to add`);
+  if (c.update) parts.push(`${c.update} to update from an earlier upload`);
+  if (c.unchanged) parts.push(`${c.unchanged} already added`);
+  if (c.exists) parts.push(`${c.exists} already in the app (left as they are)`);
+  if (c.skipped) parts.push(`${c.skipped} row${c.skipped === 1 ? '' : 's'} skipped`);
+  return parts.length ? `${parts.join(', ')}.` : 'Nothing to add.';
+}

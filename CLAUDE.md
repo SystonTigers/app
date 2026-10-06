@@ -338,6 +338,27 @@ with personal data.
   chips (`components/seasons/SeasonPicker`), summary, and staff add/edit/remove
   (`routes/results.ts`, `POST/PUT /api/v1/results`) for any past date, so old
   seasons can be filled in. Stats has the same season chips.
+- Spreadsheet upload (app Results screen → Upload spreadsheet, or Import data →
+  Match results; `POST /api/v1/results/import`, staff; `?preview=1` saves
+  nothing): Excel .xlsx (every sheet, read without a library by
+  `services/resultsImport/sheet.ts`) or CSV. `columns.ts` works out the
+  columns from header names and cell contents (date, opponent or home/away
+  team names, H/A, score as "3-1"/"W 3-1" or for/against or home/away scores,
+  competition, venue, scorers), UK or US dates, Excel day numbers and
+  year-less dates from a sheet named like "2024-25". `rows.ts` reads scorers
+  ("Smith 2, J. Brown x2, OG") and matches them to the squad (full name,
+  unique surname, initial + surname, unique first name; never a guess).
+  `store.ts` adds rows as `source = 'import'` with goals as `res-<id>-<n>`
+  events; rows already in the app from anywhere else are never changed, and
+  uploading again only updates earlier imports, so adding an old player to
+  the squad and re-uploading fills in their goals. The old CSV route
+  `/api/v1/import/results` uses the same code.
+- Head to head (`GET /api/v1/results/head-to-head?opponent=`, members,
+  `services/headToHead.ts`): our record and last five scores against a team.
+  `sameOpponent` ignores age groups and FC/Juniors and lets one name be the
+  other plus a side's suffix, so the FA's "Thurmaston Magpies U18 Thunder"
+  matches a spreadsheet's "Thurmaston Magpies" but not "... Lightning". The
+  app's Home shows it under the next match (`components/home/HeadToHead.tsx`).
 - Scorers on added results are picked from the squad (app
   `ResultFormModal` with `PlayerPicker`, website results admin): `scorerIds`
   (one squad id per goal) and `ownGoals`. They're saved as `match_events`

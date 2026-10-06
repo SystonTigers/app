@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../theme/useTheme';
 import { Fixture, getUpcomingFixtures, formatFixtureDate, formatKickOffTime } from '../services/fixturesApi';
-import { feedApi, fixturesApi, liveApi } from '../services/api';
+import { feedApi, fixturesApi, liveApi, resultsApi, type HeadToHead as HeadToHeadRecord } from '../services/api';
 import { scoreline, statusLabel, type LiveMatchView } from '../utils/liveMatch';
 import { useClub } from '../context/ClubContext';
 import { useMatchDay } from '../context/MatchDayContext';
@@ -19,6 +19,7 @@ import InstallPrompt from '../components/InstallPrompt';
 import ConsentPrompt from '../components/ConsentPrompt';
 import HomeHeader from '../components/home/HomeHeader';
 import NextMatchCard from '../components/home/NextMatchCard';
+import HeadToHead from '../components/home/HeadToHead';
 import LeagueStrip from '../components/home/LeagueStrip';
 import LiveCard from '../components/home/LiveCard';
 import QuickActions, { type QuickAction } from '../components/home/QuickActions';
@@ -59,6 +60,7 @@ export default function HomeScreen({ navigation }: any) {
   const [feedItems, setFeedItems] = useState<any[]>([]);
   const [league, setLeague] = useState<LeagueSnapshot | null>(null);
   const [liveMatches, setLiveMatches] = useState<LiveMatchView[]>([]);
+  const [h2h, setH2h] = useState<{ opponent: string; record: HeadToHeadRecord } | null>(null);
 
   const loadData = useCallback(async () => {
     setFixturesLoading(true);
@@ -89,6 +91,17 @@ export default function HomeScreen({ navigation }: any) {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // Our record against the next opponent; optional, so a failure just hides it
+  const nextOpponent = nextFixture?.opponent ?? null;
+  useEffect(() => {
+    if (!nextOpponent) { setH2h(null); return undefined; }
+    let cancelled = false;
+    resultsApi.headToHead(nextOpponent)
+      .then((res) => { if (!cancelled) setH2h({ opponent: nextOpponent, record: res.data }); })
+      .catch(() => { if (!cancelled) setH2h(null); });
+    return () => { cancelled = true; };
+  }, [nextOpponent]);
 
   // During a match: keep the live score and "as it stands" table fresh while Home is open
   const anyLive = liveMatches.length > 0;
@@ -208,6 +221,9 @@ export default function HomeScreen({ navigation }: any) {
             competition={nextFixture.competition || null}
             onPress={() => navigation.navigate('Matches')}
           />
+          {h2h && h2h.opponent === nextFixture.opponent ? (
+            <HeadToHead opponent={h2h.opponent} record={h2h.record} onPress={() => navigation.navigate('Results')} />
+          ) : null}
         </>
       ) : null}
 

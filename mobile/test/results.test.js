@@ -50,4 +50,10 @@ assert.strictEqual(showsFaSnippets('2026-27', true), true);
 assert.strictEqual(showsFaSnippets('2024-25', false), false);
 assert.strictEqual(showsFaSnippets('all', false), true);
 assert.strictEqual(showsFaSnippets(null, false), true);
+// Head to head and upload wording
+const { shortMonthYear, recordLine, importSummary } = mod.exports;
+assert.match(shortMonthYear('2024-09-08'), /^Sept? 2024$/);
+assert.strictEqual(recordLine({ played: 3, won: 2, drawn: 0, lost: 1 }), 'Played 3 · Won 2 · Drawn 0 · Lost 1');
+assert.strictEqual(importSummary({ new: 3, update: 0, unchanged: 0, exists: 1, skipped: 1 }), '3 new results to add, 1 already in the app (left as they are), 1 row skipped.');
+assert.strictEqual(importSummary({ new: 0, update: 0, unchanged: 0, exists: 0, skipped: 0 }), 'Nothing to add.');
 console.log('results tests passed');
