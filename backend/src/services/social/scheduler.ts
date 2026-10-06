@@ -13,7 +13,7 @@
 import { normalizeTeamName } from "../opponentBadges";
 import { publicPhotoSql } from "../consent";
 import { guessOurTeam } from "../league/table";
-import type { SocialEnv } from "./club";
+import { forPosting, type SocialEnv } from "./club";
 import {
   birthdayPost, countdownPost, fixturesPost, matchdayPost, milestonePost, playerOfPeriodPost, postponedPost, QUOTES, quotePost,
   resultsPost, tablePost, throwbackPost,
@@ -42,14 +42,14 @@ export async function scheduleClub(env: SocialEnv, tenantId: string, now: Date):
   // Postponements, whenever a fixture in the next month is marked postponed
   for (const r of await fixturesBetween(env, tenantId, t.date, addDays(t.date, 31), "postponed")) {
     const f = await fixtureFacts(env, tenantId, r);
-    await queue("postponed", `postponed:${r.id}`, (club) => postponedPost(club.brand, f), { fixtureId: r.id });
+    await queue("postponed", `postponed:${r.id}`, (club) => postponedPost(club.brand, forPosting(club, f)), { fixtureId: r.id });
   }
   if (t.hour >= 8) {
     for (const r of await fixturesBetween(env, tenantId, t.date, t.date, "live")) {
       const ko = r.kick_off_time && /^\d{1,2}:\d{2}/.test(r.kick_off_time) ? r.kick_off_time : null;
       if (ko && `${String(t.hour).padStart(2, "0")}:${String(t.minute).padStart(2, "0")}` >= ko.padStart(5, "0")) continue; // too late
       const f = await fixtureFacts(env, tenantId, r);
-      await queue("matchday", `matchday:${r.id}`, (club) => matchdayPost(club.brand, f), { fixtureId: r.id });
+      await queue("matchday", `matchday:${r.id}`, (club) => matchdayPost(club.brand, forPosting(club, f)), { fixtureId: r.id });
     }
     // Birthdays (no age shown)
     const { results: birthdays } = await env.DB.prepare(
@@ -62,7 +62,7 @@ export async function scheduleClub(env: SocialEnv, tenantId: string, now: Date):
   if (t.hour >= 18) {
     for (const r of await fixturesBetween(env, tenantId, addDays(t.date, 3), addDays(t.date, 3), "live")) {
       const f = await fixtureFacts(env, tenantId, r);
-      await queue("countdown", `countdown:${r.id}:3`, (club) => countdownPost(club.brand, f, 3), { fixtureId: r.id });
+      await queue("countdown", `countdown:${r.id}:3`, (club) => countdownPost(club.brand, forPosting(club, f), 3), { fixtureId: r.id });
     }
   }
   if (t.weekday === 1 && t.hour >= 18) {
@@ -71,7 +71,7 @@ export async function scheduleClub(env: SocialEnv, tenantId: string, now: Date):
       const rows = await fixturesBetween(env, tenantId, t.date, end, "live");
       if (!rows.length) return null;
       const facts = await Promise.all(rows.map((r) => fixtureFacts(env, tenantId, r)));
-      return fixturesPost(club.brand, facts, `${displayDate(t.date)} – ${displayDate(end)}`);
+      return fixturesPost(club.brand, facts.map((f) => forPosting(club, f)), `${displayDate(t.date)} – ${displayDate(end)}`);
     });
   }
   if (t.weekday === 0 && t.hour >= 19) {

@@ -80,8 +80,9 @@ describe("Live match journey", () => {
     expect(match).toMatchObject({ status: "live", period: 2, ourScore: 2, theirScore: 1 });
     expect(match.events[0]).toMatchObject({ type: "note", text: "Great save from our keeper" });
 
-    // Public page: score and goals, first name and initial, no staff notes
-    const pub = (await call("/public/syston/live")).data.data.find((m: any) => m.opponent === "Live Rovers");
+    // The club page's live card: members only (signed out it's empty), no staff notes
+    expect((await call("/public/syston/live")).data.data).toEqual([]);
+    const pub = (await call("/public/syston/live", { token: parent.token })).data.data.find((m: any) => m.opponent === "Live Rovers");
     expect(pub).toMatchObject({ status: "live", ourScore: 2, theirScore: 1 });
     expect(pub.events.some((e: any) => e.type === "note")).toBe(false);
     expect(pub.events.find((e: any) => e.type === "goal").player).toBe("Sam S.");

@@ -40,11 +40,24 @@ export async function call(
 let counter = 0;
 const unique = (prefix: string) => `${prefix}-${Date.now()}-${++counter}@example.com`;
 
-/** Register a parent/player account through the public API and return its token. */
+/**
+ * Register a parent account through the public API, then let them in as a
+ * member of staff would (sign-ups wait for approval) and sign in again.
+ * Use registerWaiting for an account that hasn't been approved.
+ */
 export async function registerMember(prefix = "member"): Promise<{ token: string; userId: string; email: string }> {
+  const waiting = await registerWaiting(prefix);
+  await env.DB.prepare(`UPDATE auth_users SET roles = '["tenant_member"]' WHERE id = ?`).bind(waiting.userId).run();
+  const { status, data } = await call("/api/v1/auth/login", { body: { tenant_id: TENANT, email: waiting.email, password: "SecurePass123!" } });
+  if (status !== 200) throw new Error(`member login failed ${status}: ${JSON.stringify(data)}`);
+  return { token: data.data.token, userId: waiting.userId, email: waiting.email };
+}
+
+/** Sign up through the public API and stay waiting for approval. */
+export async function registerWaiting(prefix = "member", profile: Record<string, unknown> = {}): Promise<{ token: string; userId: string; email: string }> {
   const email = unique(prefix);
   const { status, data } = await call("/api/v1/auth/register", {
-    body: { ageConfirmed: true, tenant_id: TENANT, email, password: "SecurePass123!", profile: { name: prefix } },
+    body: { ageConfirmed: true, tenant_id: TENANT, email, password: "SecurePass123!", profile: { name: prefix, ...profile } },
     headers: { "Idempotency-Key": `reg-${email}` },
   });
   if (status !== 201) throw new Error(`register failed ${status}: ${JSON.stringify(data)}`);

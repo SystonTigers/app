@@ -425,10 +425,30 @@ with personal data.
   as appearances. Saving replaces the match's events (Match Centre's too: the
   app warns when the match was recorded there), saves the result with
   scorers' names and rebuilds the league table.
-- Sign-up: people choose Parent, Player or Supporter and get that role;
-  choosing Coach makes them a Supporter with a pending request admins see in
-  People & Roles (`rolesForSignUp`, `profile.pendingRole`). Nobody can make
-  themselves staff. Supporters see what parents see, without children.
+- Sign-up: new accounts wait to be let in (roles `["pending"]`,
+  `profile.joinAs` = what they chose; `rolesForSignUp`). Staff get an in-app
+  notification and push, and approve or turn them away in People & Roles
+  ("Waiting to join"; `POST /api/v1/club/members/:id/approve|decline`).
+  Approving gives the chosen role; Coach becomes a Supporter with a pending
+  coach request (`profile.pendingRole`). A parent's code from staff
+  (`link-child`) lets a waiting account straight in and returns a new token
+  (`letIn`). Until then `services/membershipGate.ts` refuses everything but
+  sign-in, profile, push, `link-child` and `GET /membership` with 403
+  `WAITING_FOR_APPROVAL`; the app shows `WaitingForApprovalScreen`, which
+  polls `GET /api/v1/membership` (it hands back a member token once let in).
+  Nobody can make themselves staff. Supporters see what parents see, without children.
+- Match details are members only: signed out (or still waiting),
+  `/public/:club/fixtures` gives no upcoming games (`meta.membersOnly`),
+  `fixtures/next` is null, `live` is empty, an unplayed fixture is 404, the
+  FA snippets leave out `fixtures`/`team`, and the public feed leaves out
+  posts that show grounds or times (`MATCH_DETAIL_KINDS` in `routes/public.ts`)
+  unless the club hides those in posts. Results stay public. The website
+  sends the sign-in (`apiFetch`; home page `components/HomeFixtures.tsx`).
+- Club Settings → What gets posted → "Leave the ground and kick-off time out
+  of posts" (`tenants.social_hide_match_details`, migration 0029, off by
+  default; `PUT /social/settings {hideMatchDetails}`): `forPosting()` in
+  `services/social/club.ts` blanks them for match day, countdown, postponed,
+  fixture lists, team news and kick-off posts.
   App staff checks use `utils/roles.ts` (`isStaffRole`, `menuRole`).
 - Training Centre (`TrainingScreen`, `routes/trainingSessions.ts`): staff plan
   sessions (date, time, place, focus, drills as `lib:<id>`/`club:<id>` refs in

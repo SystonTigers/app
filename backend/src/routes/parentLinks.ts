@@ -10,6 +10,8 @@ import { json } from "../services/util";
 import { requireStaff, requireTenantJWT, type TenantClaims } from "../services/auth";
 import { createInvite, linkedParents, ParentLinkError, redeemInvite, unlinkParent } from "../services/parentLinks";
 import { rateLimit } from "../middleware/rateLimit";
+import { admitWithCode } from "../services/clubMembers";
+import { issueTenantMemberJWT } from "../services/jwt";
 
 type Env = { DB: D1Database; [key: string]: unknown };
 
@@ -72,7 +74,11 @@ export async function handleLinkChild(req: Request, env: Env, corsHdrs: Headers)
   const body = (await req.json().catch(() => null)) as { code?: unknown } | null;
   if (typeof body?.code !== "string" || !body.code.trim()) return fail(corsHdrs, 400, "VALIDATION", "Enter the code from the manager.");
   try {
-    return json({ success: true, data: await redeemInvite(env, claims, body.code) }, 200, corsHdrs);
+    const linked = await redeemInvite(env, claims, body.code);
+    // A code from the coach lets someone still waiting to join straight in
+    const roles = claims.userId ? await admitWithCode(env, claims.tenantId, claims.userId) : null;
+    const token = roles ? await issueTenantMemberJWT(env, { tenant_id: claims.tenantId, user_id: claims.userId!, roles, ttlMinutes: 60 * 24 * 30 }) : null;
+    return json({ success: true, data: { ...linked, ...(token ? { letIn: true, token, roles } : {}) } }, 200, corsHdrs);
   } catch (err) {
     return handled(corsHdrs, "redeem", err);
   }

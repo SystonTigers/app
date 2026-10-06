@@ -1,4 +1,25 @@
 import { json } from "../services/util";
+import { requireTenantJWT } from "../services/auth";
+import { isPendingRoles } from "../services/clubMembers";
+
+/**
+ * Upcoming and live matches (dates, kick-off times, grounds) are for the
+ * club's own approved members only: the request has to carry their sign-in.
+ * Finished results stay public.
+ */
+async function isApprovedMember(req: Request, env: any, tenantId: string): Promise<boolean> {
+    if (!(req.headers.get("authorization") || "").startsWith("Bearer ")) return false;
+    try {
+        const claims = await requireTenantJWT(req, env);
+        return claims.tenantId === tenantId && !isPendingRoles(claims.roles);
+    } catch {
+        return false;
+    }
+}
+
+/** Post kinds that can show the ground or kick-off time */
+const MATCH_DETAIL_KINDS = ["countdown", "matchday", "postponed", "fixtures", "month_fixtures", "lineup", "kick_off"];
+const MEMBERS_ONLY = { membersOnly: true, message: "Sign in to the club app to see fixtures." };
 import { publicPhotoSql } from "../services/consent";
 import { loadFaSnippets } from "../services/faFullTime";
 import { tracksAssists } from "../services/clubOptions";
@@ -339,7 +360,13 @@ export async function handlePublicTenantRequest(
     try {
         // FA Full-Time snippet codes: the pages load the FA's own script with these
         if (resource === "fa-full-time") {
-            return json({ success: true, data: await loadFaSnippets(env.DB, tenant.id) }, 200, corsHdrs);
+            const snippets = await loadFaSnippets(env.DB, tenant.id);
+            // The FA's fixture lists show kick-off times and grounds: members only, like ours
+            if (!(await isApprovedMember(req, env, tenant.id))) {
+                delete snippets.fixtures;
+                delete snippets.team;
+            }
+            return json({ success: true, data: snippets }, 200, corsHdrs);
         }
 
         // Club name and colours for the club's public pages
@@ -380,6 +407,10 @@ export async function handlePublicTenantRequest(
             if (!fixtureRow && !resultRow) {
                 return json({ success: false, error: "Match not found" }, 404, corsHdrs);
             }
+            // A match that hasn't been played yet is for members only
+            if (!resultRow && !(await isApprovedMember(req, env, tenant.id))) {
+                return json({ success: false, error: "Match not found" }, 404, corsHdrs);
+            }
 
             // Prefer result data if available (completed match), otherwise fixture data
             if (resultRow) {
@@ -394,6 +425,7 @@ export async function handlePublicTenantRequest(
         }
 
         if (resource === "fixtures" && segments[3] === "next") {
+            if (!(await isApprovedMember(req, env, tenant.id))) return json({ success: true, data: null, meta: MEMBERS_ONLY }, 200, corsHdrs);
             const row = await env.DB.prepare(
                 `SELECT
             id,
@@ -449,6 +481,8 @@ export async function handlePublicTenantRequest(
                 return json({ success: true, data: mapped }, 200, corsHdrs);
             }
 
+            // Upcoming fixtures (dates, kick-off times, grounds) are for members only
+            if (!(await isApprovedMember(req, env, tenant.id))) return json({ success: true, data: [], meta: MEMBERS_ONLY }, 200, corsHdrs);
             const seasonWhere = seasonId ? `AND f.season_id = ?` : '';
             const binds = seasonId ? [tenant.id, seasonId, limit] : [tenant.id, limit];
 
@@ -484,14 +518,20 @@ export async function handlePublicTenantRequest(
             const page = Math.max(parseInt(url.searchParams.get("page") || "1", 10) || 1, 1);
             const pageSize = Math.min(parseInt(url.searchParams.get("pageSize") || url.searchParams.get("limit") || "10", 10) || 10, 50);
             const offset = (page - 1) * pageSize;
+            // Posts that say where and when we play are for members, unless the club left those details out
+            const member = await isApprovedMember(req, env, tenant.id);
+            const hideMatchPosts = member ? "" : `AND NOT EXISTS (
+             SELECT 1 FROM social_jobs j JOIN tenants t ON t.id = j.tenant_id
+             WHERE j.tenant_id = feed_posts.tenant_id AND feed_posts.id = 'social-' || j.id
+               AND j.kind IN (${MATCH_DETAIL_KINDS.map(() => "?").join(", ")}) AND COALESCE(t.social_hide_match_details, 0) = 0)`;
             const rows = await env.DB.prepare(
                 `SELECT id, tenant_id, title, content, author, image_url, created_at
            FROM feed_posts
-           WHERE tenant_id = ?
+           WHERE tenant_id = ? ${hideMatchPosts}
            ORDER BY created_at DESC
            LIMIT ? OFFSET ?`
             )
-                .bind(tenant.id, pageSize, offset)
+                .bind(tenant.id, ...(member ? [] : MATCH_DETAIL_KINDS), pageSize, offset)
                 .all();
 
             const posts = (rows.results || []).map((row: any) => mapFeedRow(row));
@@ -614,6 +654,7 @@ export async function handlePublicTenantRequest(
         // Live and just-finished matches for the club page. Goals and match
         // phases only (no staff notes); player names follow the club's setting.
         if (resource === "live") {
+            if (!(await isApprovedMember(req, env, tenant.id))) return json({ success: true, data: [], meta: MEMBERS_ONLY }, 200, corsHdrs);
             const policy = await getPublicNamePolicy(env, tenant.id);
             const shown = new Set(["kick_off", "half_time", "second_half", "full_time", "goal", "opp_goal"]);
             const matches = [];

@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { usersApi, authApi, onUnauthorized, type AuthResult } from '../services/api';
+import { usersApi, authApi, membershipApi, onUnauthorized, onWaitingForApproval, roleFromRoles, type AuthResult } from '../services/api';
 import { fetchClubInfo, getTenantId, setCurrentClub } from '../services/club';
 import { AUTH_STORAGE_KEYS, authStorage, type AuthStorageKey } from '../services/authStorage';
 import { setCrashReportingUser } from '../services/crashReporting';
@@ -25,6 +25,12 @@ interface AuthContextType {
   signIn: (result: AuthResult) => Promise<void>;
   logout: () => Promise<void>;
   register: (userId: string, role: string, token: string) => Promise<void>;
+  /** New account the club's coaches haven't let in yet: the app shows the waiting screen */
+  waiting: boolean;
+  /** Ask the server again; true once the account has been let in */
+  checkMembership: () => Promise<boolean>;
+  /** The server let this account in and sent a new sign-in (a code from the coach) */
+  adoptMemberToken: (token: string, roles: string[]) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -32,6 +38,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [waiting, setWaiting] = useState(false);
 
   // Check for stored auth token on app startup
   useEffect(() => {
@@ -39,7 +46,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   // Token expired or revoked server-side: drop back to signed-out state
-  useEffect(() => onUnauthorized(() => setUser(null)), []);
+  useEffect(() => onUnauthorized(() => { setUser(null); setWaiting(false); }), []);
+  // Any call refused because the coaches haven't let this account in yet
+  useEffect(() => onWaitingForApproval(() => setWaiting(true)), []);
 
   // Tag crash reports with the user id only (no names/emails)
   useEffect(() => {
@@ -166,6 +175,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await login(userId, role, token);
   };
 
+  const adoptMemberToken = async (token: string, roles: string[]) => {
+    const userId = user?.userId ?? (await authStorage.getItem(AUTH_STORAGE_KEYS.userId));
+    if (!userId) return;
+    await login(userId, roleFromRoles(roles) ?? 'parent', token);
+    setWaiting(false);
+  };
+
+  const checkMembership = async (): Promise<boolean> => {
+    const m = await membershipApi.get();
+    if (m.status === 'removed') {
+      await logout();
+      return false;
+    }
+    if (m.status === 'pending') {
+      setWaiting(true);
+      return false;
+    }
+    if (m.token) await adoptMemberToken(m.token, m.roles);
+    setWaiting(false);
+    return true;
+  };
+
+  // Each sign-in (and each start of the app): has the club let this account in?
+  const signedInAs = user?.userId;
+  useEffect(() => {
+    if (!signedInAs) return;
+    checkMembership().catch(() => undefined); // offline: the app works as before and asks again next time
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [signedInAs]);
+
   const logout = async () => {
     try {
       // Revoke on the server first, while we still have the token to authenticate with
@@ -179,6 +218,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await authStorage.clear();
 
       setUser(null);
+      setWaiting(false);
     } catch (error) {
       console.error('Error during logout:', error);
       throw error;
@@ -195,6 +235,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         signIn,
         logout,
         register,
+        waiting,
+        checkMembership,
+        adoptMemberToken,
       }}
     >
       {children}

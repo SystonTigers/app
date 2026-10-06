@@ -70,8 +70,18 @@ describe("E2E: Authentication Journey", () => {
 
     authToken = loginData.data.token;
 
-    // Step 3: Access protected resource with token
-    const protectedRequest = new Request("https://example.com/api/v1/videos", {
+    // Step 3: a new sign-up waits for the club to let them in
+    const waiting = await worker.fetch(new Request("https://example.com/api/v1/squad", { headers: { authorization: `Bearer ${authToken}` } }), env, mockCtx);
+    expect(waiting.status).toBe(403);
+    expect(((await waiting.json()) as any).error.code).toBe("WAITING_FOR_APPROVAL");
+    await env.DB.prepare(`UPDATE auth_users SET roles = '["tenant_member"]' WHERE email = ? AND tenant_id = 'syston'`).bind(testEmail).run();
+    const status = await worker.fetch(new Request("https://example.com/api/v1/membership", { headers: { authorization: `Bearer ${authToken}` } }), env, mockCtx);
+    const statusData = await status.json() as any;
+    expect(statusData.data.status).toBe("member");
+    authToken = statusData.data.token;
+
+    // Step 4: Access protected resource with the new token
+    const protectedRequest = new Request("https://example.com/api/v1/squad", {
       method: "GET",
       headers: {
         "authorization": `Bearer ${authToken}`,
@@ -84,8 +94,8 @@ describe("E2E: Authentication Journey", () => {
     const protectedData = await protectedResponse.json() as any;
     expect(protectedData.success).toBe(true);
 
-    // Step 4: Verify token cannot access other tenant's resources
-    const otherTenantRequest = new Request("https://example.com/api/v1/videos?tenant=other-tenant", {
+    // Step 5: Verify token cannot access other tenant's resources
+    const otherTenantRequest = new Request("https://example.com/api/v1/squad?tenant=other-tenant", {
       method: "GET",
       headers: {
         "authorization": `Bearer ${authToken}`,
@@ -145,7 +155,7 @@ describe("E2E: Authentication Journey", () => {
       headers: { "Idempotency-Key": `sneaky-${email}` },
     });
     expect(reg.status).toBe(201);
-    expect(reg.data.data.user.roles).toEqual(["tenant_member"]);
+    expect(reg.data.data.user.roles).toEqual(["pending"]);
 
     const attempt = await call("/api/v1/admin/fixtures", {
       token: reg.data.data.token,

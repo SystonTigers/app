@@ -63,3 +63,8 @@ export function linkedLabel(role: MemberRole, count: number): string {
 export function initialsOf(name: string): string {
   return name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? '').join('') || '?';
 }
+
+/** "Signed up today" / "Signed up 3 days ago", for people waiting to join. */
+export function signedUpLabel(ms: number | null, now = Date.now()): string {
+  return lastSeen(ms, now).replace(/^Signed in/, 'Signed up').replace(/^Never signed in$/, 'Just signed up');
+}

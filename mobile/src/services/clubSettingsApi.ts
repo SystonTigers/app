@@ -15,6 +15,8 @@ export interface SocialSettings {
   nameStyle: NameStyle;
   photos: boolean;
   undoWindow: boolean;
+  /** Posts leave out the ground and kick-off time */
+  hideMatchDetails: boolean;
   events: PostEvents;
   connections: { facebook: { id: string; name: string | null } | null; instagram: { id: string; name: string | null } | null };
   /** False until Facebook posting is switched on for Boost Huddle */
@@ -62,7 +64,7 @@ export const clubSettingsApi = {
   social: async (): Promise<SocialSettings> => (await apiClient.get('/api/v1/social/settings')).data.data,
 
   /** Club admins: anything; managers: { nameStyle } only. Returns the saved settings. */
-  saveSocial: async (body: Partial<{ nameStyle: NameStyle; undoWindow: boolean; events: Partial<PostEvents>; pack: string; sponsorName: string | null }>): Promise<SocialSettings> =>
+  saveSocial: async (body: Partial<{ nameStyle: NameStyle; undoWindow: boolean; hideMatchDetails: boolean; events: Partial<PostEvents>; pack: string; sponsorName: string | null }>): Promise<SocialSettings> =>
     (await apiClient.put('/api/v1/social/settings', body)).data.data,
 
   /** Club admins: show players' photos publicly (only those with consent). */
