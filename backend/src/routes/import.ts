@@ -4,7 +4,8 @@ import { requireTenantJWT as requireJWT } from "../services/auth";
 
 /**
  * CSV Import API endpoints
- * Supports importing: fixtures, results, players, match_events
+ * Supports importing: fixtures, players, match_events (results: routes/results.ts
+ * handleImportResults, which also reads Excel files and matches scorers)
  */
 
 /**
@@ -133,87 +134,6 @@ export async function handleImportFixtures(req: Request, env: any, corsHdrs: Hea
                     row.competition || 'League',
                     row.time || row.kick_off_time || row.kick_off || '15:00',
                     Date.now()
-                ).run();
-
-                imported++;
-            } catch (err: any) {
-                errors.push(`Row ${i + 2}: ${err.message}`);
-            }
-        }
-
-        return json({
-            success: imported > 0 || errors.length === 0,
-            imported,
-            total: rows.length,
-            errors: errors.length > 0 ? errors.slice(0, 10) : undefined
-        }, 200, corsHdrs);
-
-    } catch (err: any) {
-        return json({ success: false, error: err.message }, 500, corsHdrs);
-    }
-}
-
-// POST /api/v1/import/results
-export async function handleImportResults(req: Request, env: any, corsHdrs: Headers) {
-    try {
-        const claims = await requireJWT(req, env);
-        const tenant = claims.tenantId;
-
-        const body = await readCsvBody(req);
-        if (body === null) {
-            return json(NO_FILE, 400, corsHdrs);
-        }
-        const rows = parseCSV(body);
-
-        if (rows.length === 0) {
-            return json(NO_DATA, 400, corsHdrs);
-        }
-
-        let imported = 0;
-        const errors: string[] = [];
-
-        for (let i = 0; i < rows.length; i++) {
-            const row = rows[i];
-            const missing = missingFields(row, [['date', 'date', 'match_date'], ['opponent', 'opponent', 'team']]);
-            if (missing) {
-                errors.push(`Row ${i + 2}: ${missing}`);
-                continue;
-            }
-            try {
-                const matchDate = row.date || row.match_date;
-
-                let homeScore = parseInt(row.home_score || row.score_home || row.our_score || row.score_for || row.our_goals || '0');
-                let awayScore = parseInt(row.away_score || row.score_away || row.their_score || row.score_against || row.their_goals || '0');
-
-                if (row.score && row.score.includes('-')) {
-                    const [h, a] = row.score.split('-').map((s: string) => parseInt(s.trim()));
-                    homeScore = h;
-                    awayScore = a;
-                }
-
-                if (Number.isNaN(homeScore) || Number.isNaN(awayScore)) {
-                    errors.push(`Row ${i + 2}: scores must be numbers`);
-                    continue;
-                }
-
-                // Upsert so re-importing the same CSV doesn't duplicate results
-                await env.DB.prepare(`
-                    INSERT INTO results (tenant_id, match_date, opponent, home_score, away_score, venue, competition)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
-                    ON CONFLICT(tenant_id, match_date, opponent) DO UPDATE SET
-                        home_score = excluded.home_score,
-                        away_score = excluded.away_score,
-                        venue = excluded.venue,
-                        competition = excluded.competition,
-                        updated_at = CURRENT_TIMESTAMP
-                `).bind(
-                    tenant,
-                    matchDate,
-                    row.opponent || row.team,
-                    homeScore,
-                    awayScore,
-                    row.venue || 'Home',
-                    row.competition || 'League'
                 ).run();
 
                 imported++;
@@ -436,7 +356,7 @@ export async function handleImportMatchEvents(req: Request, env: any, corsHdrs: 
 export async function handleGetImportTemplate(req: Request, env: any, corsHdrs: Headers, type: string) {
     const templates: { [key: string]: string } = {
         fixtures: 'date,opponent,venue,competition,time\n2024-01-15,Rovers FC,Home,League,14:00\n2024-01-22,United,Away,Cup,15:00',
-        results: 'date,opponent,home_score,away_score,venue,competition\n2024-01-08,City FC,3,1,Home,League\n2024-01-01,Town,2,2,Away,League',
+        results: 'Date,Opponent,H/A,For,Against,Competition,Scorers\n14/09/2024,City FC,H,3,1,League,"Sam Smith 2, Alex Jones"\n21/09/2024,Town,A,2,2,Cup,"Sam Smith, OG"',
         players: 'first_name,last_name,number,position,dob,previous_club\nJohn,Smith,9,Forward,1998-05-15,Academy FC\nMary Jane,Van Dijk,4,Defender,1995-08-22,United Reserves',
         'match-events': 'date,player,event_type,minute\n2024-01-08,John Smith,goal,23\n2024-01-08,Dave Jones,assist,23\n2024-01-08,John Smith,goal,67',
     };
@@ -461,7 +381,7 @@ export async function handleGetImportStatus(req: Request, env: any, corsHdrs: He
 
         const [fixturesCount, matchesCount, playersCount, eventsCount] = await Promise.all([
             env.DB.prepare(`SELECT COUNT(*) as count FROM fixtures WHERE tenant_id = ?`).bind(tenant).first(),
-            env.DB.prepare(`SELECT COUNT(*) as count FROM results WHERE tenant_id = ?`).bind(tenant).first(),
+            env.DB.prepare(`SELECT COUNT(*) as count FROM team_results WHERE tenant_id = ?`).bind(tenant).first(),
             env.DB.prepare(`SELECT COUNT(*) as count FROM squad WHERE tenant_id = ?`).bind(tenant).first(),
             env.DB.prepare(`SELECT COUNT(*) as count FROM match_events WHERE tenant_id = ?`).bind(tenant).first(),
         ]);

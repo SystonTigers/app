@@ -2,6 +2,8 @@
  * The club's results, season by season.
  *
  *   GET    /api/v1/results/seasons       seasons to look back at (newest first) and which is current
+ *   GET    /api/v1/results/head-to-head?opponent=   our record against a team (Home's next match card)
+ *   POST   /api/v1/results/import         staff: add many past results at once (spreadsheet upload)
  *   GET    /api/v1/results?season=        (in content.ts) results, optionally for one season
  *   POST   /api/v1/results                staff: add a result (any date, so past seasons too)
  *   PUT    /api/v1/results/:id            staff: change a result
@@ -20,6 +22,10 @@ import { requireStaff, requireTenantJWT } from "../services/auth";
 import { outcomeFromScores } from "../services/results";
 import { refreshLeagueTable } from "../services/league/store";
 import { seasonOptions } from "../services/seasons/range";
+import { headToHead, opponentWords, type PastMeeting } from "../services/headToHead";
+import { parseCsv, parseXlsx, type Sheet } from "../services/resultsImport/sheet";
+import { parseSheets } from "../services/resultsImport/rows";
+import { applyImport, planImport } from "../services/resultsImport/store";
 import { lockedResultIds, readGoalPicks, replaceResultGoals, scorersText, squadNames, type GoalPicks } from "../services/resultGoals";
 
 type Env = { DB: D1Database; [key: string]: unknown };
@@ -90,6 +96,44 @@ export async function handleResultSeasons(req: Request, env: Env, corsHdrs: Head
   }
   const options = await seasonOptions(env, tenantId);
   return json({ success: true, data: options }, 200, corsHdrs);
+}
+
+export async function handleHeadToHead(req: Request, env: Env, corsHdrs: Headers): Promise<Response> {
+  let tenantId: string;
+  try {
+    tenantId = (await requireTenantJWT(req, env)).tenantId;
+  } catch {
+    return fail(corsHdrs, 401, "UNAUTHORIZED", "Please log in again.");
+  }
+  const opponent = (new URL(req.url).searchParams.get("opponent") ?? "").trim().slice(0, 120);
+  const words = opponentWords(opponent);
+  if (!words.length) return fail(corsHdrs, 400, "VALIDATION", "Say which team.");
+  // Narrow by the team's most telling word, then match properly in headToHead
+  const anchor = [...words].sort((a, b) => b.length - a.length)[0];
+  const { results } = await env.DB.prepare(
+    `SELECT r.id, r.match_date, r.opponent, r.competition, r.our_score, r.their_score, r.scorers,
+            CASE
+              WHEN f.id IS NOT NULL AND f.home_team = r.opponent AND IFNULL(f.away_team, '') != r.opponent THEN 'away'
+              WHEN f.id IS NOT NULL THEN 'home'
+              WHEN lower(r.venue) = 'away' THEN 'away'
+              WHEN lower(r.venue) = 'home' THEN 'home'
+              ELSE NULL
+            END AS home_away
+     FROM team_results r LEFT JOIN fixtures f ON f.id = r.fixture_id AND f.tenant_id = r.tenant_id
+     WHERE r.tenant_id = ? AND lower(r.opponent) LIKE ?
+     ORDER BY r.match_date DESC LIMIT 200`,
+  ).bind(tenantId, `%${anchor}%`).all<{ id: number; match_date: string; opponent: string; competition: string | null; our_score: number; their_score: number; scorers: string | null; home_away: "home" | "away" | null }>();
+  const rows: PastMeeting[] = (results ?? []).map((r) => ({
+    id: r.id,
+    date: String(r.match_date).slice(0, 10),
+    opponent: r.opponent,
+    ourScore: Number(r.our_score),
+    theirScore: Number(r.their_score),
+    competition: r.competition,
+    scorers: r.scorers,
+    homeAway: r.home_away,
+  }));
+  return json({ success: true, data: headToHead(opponent, rows) }, 200, corsHdrs);
 }
 
 export async function handleAddResult(req: Request, env: Env, corsHdrs: Headers): Promise<Response> {
@@ -167,4 +211,63 @@ export async function handleEditResult(req: Request, env: Env, corsHdrs: Headers
   if (picks) await replaceResultGoals(env, tenantId, row, picks);
   await refreshLeagueTable(env as never, tenantId);
   return json({ success: true }, 200, corsHdrs);
+}
+
+const MAX_FILE_BYTES = 3_000_000;
+const MAX_ROWS = 2000;
+
+/** The uploaded spreadsheet as sheets of text: JSON {fileName, data: base64} or a raw CSV body. */
+async function readSpreadsheet(req: Request): Promise<Sheet[] | string> {
+  const type = req.headers.get("Content-Type") ?? "";
+  if (!type.includes("application/json")) {
+    const text = await req.text();
+    if (text.length > MAX_FILE_BYTES) return "That file is too big. Split it into a few smaller files.";
+    return [{ name: "Sheet1", rows: parseCsv(text) }];
+  }
+  const body = (await req.json().catch(() => null)) as { fileName?: unknown; data?: unknown } | null;
+  if (!body || typeof body.data !== "string" || !body.data) return "Choose a spreadsheet to upload.";
+  if (body.data.length > MAX_FILE_BYTES * 1.4) return "That file is too big. Split it into a few smaller files.";
+  const name = typeof body.fileName === "string" ? body.fileName.toLowerCase() : "";
+  let bytes: Uint8Array;
+  try {
+    bytes = Uint8Array.from(atob(body.data), (c) => c.charCodeAt(0));
+  } catch {
+    return "Couldn't read that file. Please try again.";
+  }
+  const isZip = bytes[0] === 0x50 && bytes[1] === 0x4b;
+  if (name.endsWith(".xls") && !isZip) return "That's an old Excel file (.xls). Open it in Excel and Save As .xlsx or .csv, then upload it again.";
+  if (name.endsWith(".numbers") || name.endsWith(".ods")) return "Save it from your spreadsheet app as .xlsx or .csv, then upload it again.";
+  if (isZip) {
+    try {
+      return await parseXlsx(bytes);
+    } catch {
+      return "Couldn't open that Excel file. Save it as .xlsx or .csv and try again.";
+    }
+  }
+  return [{ name: "Sheet1", rows: parseCsv(new TextDecoder().decode(bytes)) }];
+}
+
+/**
+ * POST /api/v1/results/import (staff). Send the spreadsheet with ?preview=1
+ * to see what would happen, then again without it to save. Rows already in
+ * the app (from Match Centre or added by hand) are never changed.
+ */
+export async function handleImportResults(req: Request, env: Env, corsHdrs: Headers): Promise<Response> {
+  const tenantId = await staffTenant(req, env, corsHdrs);
+  if (tenantId instanceof Response) return tenantId;
+  const preview = new URL(req.url).searchParams.get("preview") === "1";
+  const sheets = await readSpreadsheet(req);
+  if (typeof sheets === "string") return fail(corsHdrs, 400, "VALIDATION", sheets);
+  if (sheets.reduce((n, s) => n + s.rows.length, 0) > MAX_ROWS) return fail(corsHdrs, 400, "VALIDATION", `That's more than ${MAX_ROWS} rows. Split it into a few smaller files.`);
+  const club = await env.DB.prepare(`SELECT name FROM tenants WHERE id = ?`).bind(tenantId).first<{ name: string }>();
+  const parsed = parseSheets(sheets, { clubName: club?.name ?? "", today: new Date().toISOString().slice(0, 10) });
+  if (!parsed.results.length && !parsed.skipped.length) {
+    const why = parsed.ignoredSheets[0]?.reason ?? "It looks empty.";
+    return fail(corsHdrs, 400, "NO_RESULTS", `No results found in that file. ${why} It needs columns for the date, who you played and the score.`);
+  }
+  const plan = await planImport(env, tenantId, parsed);
+  if (preview) return json({ success: true, data: plan }, 200, corsHdrs);
+  const saved = await applyImport(env, tenantId, plan);
+  if (saved.added || saved.updated) await refreshLeagueTable(env as never, tenantId);
+  return json({ success: true, data: { ...saved, unchanged: plan.counts.unchanged, exists: plan.counts.exists, skipped: plan.counts.skipped, unmatchedNames: plan.unmatchedNames } }, 200, corsHdrs);
 }

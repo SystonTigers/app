@@ -152,7 +152,6 @@ import {
 } from "./routes/coaching";
 import {
     handleImportFixtures,
-    handleImportResults,
     handleImportPlayers,
     handleImportMatchEvents,
     handleGetImportTemplate,
@@ -524,7 +523,7 @@ router.delete("/api/:v/fixtures/:id/stream", staffOnly((req, env, corsHdrs) => h
 router.put("/api/:v/fixtures/:id/venue", staffOnly((req, env, corsHdrs) => handlePutVenue(req, env, corsHdrs, ((req as any).params || {}).id)));
 
 // Platform owner panel (routes/owner.ts); the website's /owner pages call these through their own server
-import { handleAddResult, handleEditResult, handleResultSeasons } from "./routes/results";
+import { handleAddResult, handleEditResult, handleHeadToHead, handleImportResults, handleResultSeasons } from "./routes/results";
 import { handleApplyFixtureImage, handleReadFixtureImage } from "./routes/fixtureImage";
 import { handleOwnerAction, handleOwnerGet, handleOwnerLogin, handleOwnerLogout } from "./routes/owner";
 import { handleGetAlertPrefs, handleSetAlertPrefs } from "./routes/alertPrefs";
@@ -1011,6 +1010,7 @@ router.get("/api/:v/me/players", (req, env, corsHdrs) => handleMyPlayers(req, en
 router.get("/api/:v/players/:id/season-stats", (req, env, corsHdrs) => handleGetPlayerSeasonStats(req, env as never, corsHdrs, (req as any).params?.id));
 router.put("/api/:v/players/:id/season-stats/:season", staffOnly((req, env, corsHdrs) => handleSetPlayerSeasonStats(req, env as never, corsHdrs, (req as any).params?.id, decodeURIComponent((req as any).params?.season ?? ""))));
 router.get("/api/:v/results/seasons", (req, env, corsHdrs) => handleResultSeasons(req, env as never, corsHdrs));
+router.get("/api/:v/results/head-to-head", (req, env, corsHdrs) => handleHeadToHead(req, env as never, corsHdrs));
 router.get("/api/:v/results", (req, env, corsHdrs) => handleListResults(req, env, corsHdrs));
 router.get("/api/:v/table", (req, env, corsHdrs) => handleGetLeagueTable(req, env, corsHdrs));
 
@@ -1028,6 +1028,7 @@ router.delete("/api/:v/fixtures/:id", (req, env, corsHdrs) => {
     return handleDeleteFixture(req, env, corsHdrs, params.id);
 });
 
+router.post("/api/:v/results/import", staffOnly((req, env, corsHdrs) => handleImportResults(req, env as never, corsHdrs)));
 router.post("/api/:v/results", staffOnly((req, env, corsHdrs) => handleAddResult(req, env as never, corsHdrs)));
 router.put("/api/:v/results/:id", staffOnly((req, env, corsHdrs) => handleEditResult(req, env as never, corsHdrs, ((req as any).params || {}).id)));
 router.delete("/api/:v/results/:id", staffOnly((req, env, corsHdrs) => {
@@ -1188,7 +1189,7 @@ router.delete("/api/:v/shop/cart/:id/items", (req, env, corsHdrs) => handleRemov
 
 // CSV Import Routes
 router.post("/api/:v/import/fixtures", staffOnly((req, env, corsHdrs) => handleImportFixtures(req, env, corsHdrs)));
-router.post("/api/:v/import/results", staffOnly((req, env, corsHdrs) => handleImportResults(req, env, corsHdrs)));
+router.post("/api/:v/import/results", staffOnly((req, env, corsHdrs) => handleImportResults(req, env as never, corsHdrs)));
 router.post("/api/:v/import/players", staffOnly((req, env, corsHdrs) => handleImportPlayers(req, env, corsHdrs)));
 router.post("/api/:v/import/match-events", staffOnly((req, env, corsHdrs) => handleImportMatchEvents(req, env, corsHdrs)));
 router.get("/api/:v/import/template/:type", (req, env, corsHdrs) => {

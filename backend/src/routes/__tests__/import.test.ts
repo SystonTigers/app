@@ -1,7 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import {
     handleImportFixtures,
-    handleImportResults,
     handleImportPlayers,
     handleImportMatchEvents,
     handleGetImportTemplate,
@@ -156,49 +155,6 @@ describe("Import Routes", () => {
             expect(body.imported).toBe(1);
             expect(body.errors).toBeDefined();
             expect(body.errors.length).toBeGreaterThan(0);
-        });
-    });
-
-    describe("handleImportResults", () => {
-        it("imports valid results CSV", async () => {
-            const env = createMockEnv();
-            const corsHdrs = createCorsHeaders();
-
-            const csv = `date,opponent,our_score,their_score,venue,competition,scorers
-2024-01-08,Old Rivals,3,1,Home Ground,League,John Smith (2); Mike Jones
-2024-01-01,United,2,2,Away Field,Cup,`;
-
-            const formData = createCSVFormData(csv);
-            const req = new Request("https://api.test.com/import/results", {
-                method: "POST",
-                body: formData,
-            });
-
-            const response = await handleImportResults(req, env, corsHdrs);
-            const body = await response.json() as any;
-
-            expect(body.success).toBe(true);
-            expect(body.imported).toBe(2);
-        });
-
-        it("handles alternative column names", async () => {
-            const env = createMockEnv();
-            const corsHdrs = createCorsHeaders();
-
-            const csv = `date,opponent,score_for,score_against
-2024-01-08,Rivals,3,1`;
-
-            const formData = createCSVFormData(csv);
-            const req = new Request("https://api.test.com/import/results", {
-                method: "POST",
-                body: formData,
-            });
-
-            const response = await handleImportResults(req, env, corsHdrs);
-            const body = await response.json() as any;
-
-            expect(body.success).toBe(true);
-            expect(body.imported).toBe(1);
         });
     });
 
@@ -384,7 +340,7 @@ fix123,player456,,45`;
             const response = await handleGetImportTemplate(req, env, corsHdrs, "results");
 
             const text = await response.text();
-            expect(text).toContain("home_score,away_score");
+            expect(text).toContain("Date,Opponent,H/A,For,Against,Competition,Scorers");
         });
 
         it("returns players template", async () => {

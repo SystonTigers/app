@@ -1086,7 +1086,41 @@ export const playerStatsApi = {
     (await api.put(`/api/v1/players/${encodeURIComponent(playerId)}/season-stats/${encodeURIComponent(seasonId)}`, numbers)).data.data,
 };
 
+/** Our record against one team (GET /results/head-to-head), for Home's next match card. */
+export interface HeadToHead {
+  played: number;
+  won: number;
+  drawn: number;
+  lost: number;
+  goalsFor: number;
+  goalsAgainst: number;
+  meetings: Array<{ id: number; date: string; opponent: string; ourScore: number; theirScore: number; competition: string | null; scorers: string | null; homeAway: 'home' | 'away' | null }>;
+}
+
+export type ImportStatus = 'new' | 'update' | 'unchanged' | 'exists';
+
+/** What uploading a results spreadsheet would do (POST /results/import?preview=1). */
+export interface ResultsImportPlan {
+  results: Array<{
+    where: string; date: string; opponent: string; ourScore: number; theirScore: number;
+    homeAway: 'home' | 'away' | null; competition: string; scorersText: string | null;
+    status: ImportStatus; unmatched: Array<{ name: string; goals: number }>; tooMany: boolean;
+  }>;
+  skipped: Array<{ where: string; reason: string }>;
+  ignoredSheets: Array<{ name: string; reason: string }>;
+  unmatchedNames: Array<{ name: string; goals: number }>;
+  counts: { new: number; update: number; unchanged: number; exists: number; skipped: number };
+}
+
+export interface ResultsImportSaved { added: number; updated: number; unchanged: number; exists: number; skipped: number; unmatchedNames: Array<{ name: string; goals: number }> }
+
 export const resultsApi = {
+  headToHead: async (opponent: string): Promise<{ success: boolean; data: HeadToHead }> =>
+    (await api.get('/api/v1/results/head-to-head', { params: { opponent } })).data,
+  previewImport: async (file: { fileName: string; data: string }): Promise<{ success: boolean; data: ResultsImportPlan }> =>
+    (await api.post('/api/v1/results/import?preview=1', file, { timeout: 60000 })).data,
+  saveImport: async (file: { fileName: string; data: string }): Promise<{ success: boolean; data: ResultsImportSaved }> =>
+    (await api.post('/api/v1/results/import', file, { timeout: 120000 })).data,
   seasons: async (): Promise<{ success: boolean; data: SeasonOption[] }> => (await api.get('/api/v1/results/seasons')).data,
   list: async (season: string): Promise<{ success: boolean; data: ClubResult[] }> =>
     (await api.get('/api/v1/results', { params: { season, limit: 200 } })).data,
