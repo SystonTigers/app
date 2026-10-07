@@ -198,6 +198,15 @@ with personal data.
   npm package's file; refresh with `npm run graphics:wasm`) with bundled OFL
   fonts (`fonts/`, widths in `fonts/metrics.ts` from `scripts/font-metrics.py`).
   `npm run graphics:preview -- <dir>` draws every layout in every pack.
+- Matchday (`studio/`, `pack.studio`): layouts rebuilt from the club's Canva
+  set (bold posters with dry-brush strokes, torn edges, halftone dots and a
+  crest watermark; a drawn floodlit stadium for match day, kick-off,
+  countdown, line-ups and quotes). Everything takes the club's own colours
+  (`clubColours`) and crest, goals show the scorer's shirt number
+  (`shirtNumber`, from `squad.number`), and photos are duotoned in the
+  club's colours. Brushes and torn edges are drawn as shapes, not filters, so
+  each post renders in about a second. `npx tsx scripts/studio-dev.ts <dir>
+  [photo.jpg]` draws every layout for three clubs, as posts and stories.
 - Packs: Touchline and Floodlights (free, small "Made with Boost Huddle"
   credit) and Elite (premium: included with Pro, otherwise unlocked per club
   in `graphics_unlocks` from the owner panel; no purchase flow until Stripe

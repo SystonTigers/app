@@ -5,6 +5,7 @@
 import { footer, header, type DrawContext } from "./layouts/common";
 import { drawLeaders, drawList, drawPerson, drawPhoto, drawQuote, drawTable } from "./layouts/club";
 import { drawFixture, drawLineup, drawMoment, drawScore } from "./layouts/match";
+import { drawStudio } from "./studio";
 import { createCanvas, svgDocument } from "./svg";
 import type { Theme } from "./theme";
 import { elite } from "./themes/elite";
@@ -18,9 +19,12 @@ export interface Pack {
   description: string;
   premium: boolean;
   theme: Theme;
+  /** Drawn by the Studio layouts (studio/) instead of the theme's shared layouts */
+  studio?: boolean;
 }
 
 export const PACKS: Pack[] = [
+  { id: "matchday", name: "Matchday", description: "Bold posters and a floodlit stadium in your club's colours and crest, with the scorer's shirt number.", premium: false, theme: touchline, studio: true },
   { id: "touchline", name: "Touchline", description: "Black with torn brush edges and halftone dots in your club colour.", premium: false, theme: touchline },
   { id: "floodlights", name: "Floodlights", description: "A floodlit stadium at night with glowing headlines.", premium: false, theme: floodlights },
   { id: "elite", name: "Elite", description: "Bold diagonal split in your colours with stacked outline headlines. No Boost Huddle credit.", premium: true, theme: elite },
@@ -46,6 +50,7 @@ function pill(g: Graphic): string | null {
 /** Build the SVG for a graphic in a pack. Images must already be loaded into `images`. */
 export function drawGraphic(pack: Pack, g: Graphic, images: ImageMap): string {
   const c = createCanvas(images);
+  if (pack.studio) return svgDocument(GRAPHIC_WIDTH, GRAPHIC_HEIGHT, c, drawStudio(c, g, { w: GRAPHIC_WIDTH, h: GRAPHIC_HEIGHT, credit: !pack.premium }));
   const t = pack.theme;
   const p = t.palette(g.brand);
   const d: DrawContext = { c, t, p, watermark: !pack.premium };

@@ -85,13 +85,13 @@ export async function loadClubSocial(env: SocialEnv, tenantId: string): Promise<
   };
 }
 
-/** Squad name and photo for a player (the photo is only used if the club allows photos). */
-export async function postPerson(env: SocialEnv, tenantId: string, playerId: string | null, fallbackName: string | null): Promise<{ name: string; photoUrl: string | null } | null> {
-  if (!playerId) return fallbackName ? { name: fallbackName, photoUrl: null } : null;
-  const row = await env.DB.prepare(`SELECT name, ${publicPhotoSql()} AS photo FROM squad WHERE tenant_id = ? AND id = ?`)
-    .bind(tenantId, playerId).first<{ name: string; photo: string | null }>();
-  if (!row) return fallbackName ? { name: fallbackName, photoUrl: null } : null;
-  return { name: row.name, photoUrl: row.photo };
+/** Squad name, shirt number and photo for a player (the photo is only used if the club allows photos). */
+export async function postPerson(env: SocialEnv, tenantId: string, playerId: string | null, fallbackName: string | null): Promise<{ name: string; photoUrl: string | null; number: number | null } | null> {
+  if (!playerId) return fallbackName ? { name: fallbackName, photoUrl: null, number: null } : null;
+  const row = await env.DB.prepare(`SELECT name, number, ${publicPhotoSql()} AS photo FROM squad WHERE tenant_id = ? AND id = ?`)
+    .bind(tenantId, playerId).first<{ name: string; number: number | null; photo: string | null }>();
+  if (!row) return fallbackName ? { name: fallbackName, photoUrl: null, number: null } : null;
+  return { name: row.name, photoUrl: row.photo, number: typeof row.number === "number" ? row.number : null };
 }
 
 /** A fixture as it may appear in the club's posts: no ground or kick-off time if the club has chosen that. */

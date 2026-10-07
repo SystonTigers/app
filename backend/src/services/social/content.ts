@@ -73,7 +73,7 @@ export interface MatchContext {
   venue: string | null;
 }
 
-export interface PostPerson { name: string; photoUrl: string | null }
+export interface PostPerson { name: string; photoUrl: string | null; number?: number | null }
 export interface LineupPerson { name: string; number: number | null }
 
 export interface PostInput {
@@ -169,7 +169,7 @@ export function buildPost(policy: PublicNamePolicy, match: MatchContext, input: 
       const milestone = goalMilestone(goalCount ?? 1);
       return {
         caption: `${milestone.lead} ${name ?? match.brand.clubName}${at}${name2 ? ` (assist ${name2})` : ""}${goalCount ? ` – ${goalCount} goals today!` : ""}\n${score}`,
-        graphic: { ...moment, headline: milestone.headline, playerName: name, secondary: name2 ? `Assist: ${name2}` : null, photoUrl: photo(input.player), ...(goalCount ? { goalCount } : {}) },
+        graphic: { ...moment, headline: milestone.headline, playerName: name, secondary: name2 ? `Assist: ${name2}` : null, photoUrl: photo(input.player), shirtNumber: input.player?.number ?? null, ...(goalCount ? { goalCount } : {}) },
       };
     }
     case "opp_goal":
