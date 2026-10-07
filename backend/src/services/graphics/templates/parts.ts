@@ -2,7 +2,8 @@
 import { badge, containImage, hasImage, r, text, type Canvas } from "../svg";
 import type { FontName } from "../text";
 import type { Brand } from "../types";
-import { duotoneFilter, fadeMask, shadowFilter } from "../studio/kit";
+import { shadowFilter } from "../studio/kit";
+export { isCutOut, playerPhoto } from "../studio/kit";
 
 export const NAME_FONT: FontName = "Barlow Condensed ExtraBold";
 export const NUMBER_FONT: FontName = "Anton";
@@ -36,29 +37,6 @@ export function sponsorBox(c: Canvas, brand: Brand, x: number, y: number, w: num
       text(brand.sponsorName.toUpperCase(), x + w / 2, y + h * 0.72, { font: NAME_FONT, size: h * 0.26, fill: "#0B0B0C", anchor: "middle", maxWidth: w - 12, minSize: 10 });
   }
   return "";
-}
-
-/**
- * A player's photo. A cut-out (PNG with the background removed) stands in
- * the design like the Canva set; an ordinary photo is tinted and faded in so
- * it never sits as a hard rectangle.
- */
-export function playerPhoto(c: Canvas, url: string | null, x: number, y: number, w: number, h: number, tint: { dark: string; light: string }): string {
-  const data = url ? c.images.get(url) : null;
-  if (!data) return "";
-  if (isCutOut(data)) {
-    return `<image href="${data}" x="${r(x)}" y="${r(y)}" width="${r(w)}" height="${r(h)}" preserveAspectRatio="xMidYMax meet"/>`;
-  }
-  const duo = duotoneFilter(c, tint.dark, tint.light);
-  const m = fadeMask(c, x, y, w, h, { left: 0.3, top: 0.1, bottom: 0.3, right: 0.05 });
-  return `<g mask="url(#${m})"><g filter="url(#${duo})"><image href="${data}" x="${r(x)}" y="${r(y)}" width="${r(w)}" height="${r(h)}" preserveAspectRatio="xMidYMid slice"/></g></g>`;
-}
-
-/** A PNG with see-through parts (colour type 4 or 6): a cut-out, not an ordinary photo. */
-export function isCutOut(dataUri: string): boolean {
-  if (!dataUri.startsWith("data:image/png;base64,")) return false;
-  const head = atob(dataUri.slice(22, 22 + 44));
-  return head.length > 25 && (head.charCodeAt(25) === 4 || head.charCodeAt(25) === 6);
 }
 
 /** "SAT 4 OCT" → ["SAT", "4 OCT"]. */

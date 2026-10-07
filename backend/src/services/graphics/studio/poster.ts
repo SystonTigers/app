@@ -8,7 +8,7 @@ import { measure } from "../text";
 import type { MomentGraphic, TeamSide } from "../types";
 import {
   ball, brushStroke, chevrons, clubColours, crestDisc, duotoneFilter, fadeMask, ghosted, grain, halftone, letters, mix,
-  randomFor, shadowFilter, tornPanel, vignette, type ClubColours,
+  isCutOut, playerPhoto, randomFor, shadowFilter, tornPanel, vignette, type ClubColours,
 } from "./kit";
 
 export interface Frame {
@@ -85,8 +85,13 @@ export function posterGoal(c: Canvas, g: MomentGraphic, f: Frame): string {
 
   // The player in the club's colours, fading into the page behind the headline
   const centreY = h * (story ? 0.47 : 0.5);
-  const photo = Boolean(g.photoUrl && c.images.get(g.photoUrl));
-  if (photo) {
+  const photoData = g.photoUrl ? c.images.get(g.photoUrl) : undefined;
+  const photo = Boolean(photoData);
+  if (photoData && isCutOut(photoData)) {
+    // A cut-out stands on the bottom edge, full colour, behind the headline
+    const sid = shadowFilter(c, 18, 0.45, 8);
+    out += `<g filter="url(#${sid})">${playerPhoto(c, g.photoUrl, w * 0.36, h * (story ? 0.2 : 0.1), w * 0.64, h * (story ? 0.8 : 0.9), { dark: k.dark, light: ground })}</g>`;
+  } else if (photo) {
     const duo = duotoneFilter(c, k.dark, mix(ground, "#FFFFFF", 0.45));
     const pw = w * 0.78;
     const ph = h * (story ? 0.62 : 0.74);

@@ -75,4 +75,25 @@ describe("a club's own designs", () => {
     expect(isCutOut(png(2))).toBe(false);
     expect(isCutOut("data:image/jpeg;base64,/9j/")).toBe(false);
   });
+
+  it("stands a cut-out in the goal and player posts, and tints an ordinary photo", () => {
+    const bytes = new Uint8Array(33);
+    bytes.set([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13, 0x49, 0x48, 0x44, 0x52], 0);
+    bytes[25] = 6;
+    const cutout = `data:image/png;base64,${btoa(String.fromCharCode(...bytes))}`;
+    const photo = "data:image/jpeg;base64,/9j/AAAA";
+    const matchday = getPack("matchday");
+    for (const g of [samples.goal, samples.potw, samples.motm]) {
+      // Our own designs (goal) and Matchday (player of the week, MOTM)
+      const p = g === samples.goal ? pack : matchday;
+      const images = (data: string) => new Map([...withBackgrounds(g), ["sample:photo", data]]);
+      const standing = drawGraphic(p, { ...g, photoUrl: "sample:photo" } as Graphic, images(cutout));
+      expect(standing).toContain(`href="${cutout}"`);
+      expect(standing).toMatch(/preserveAspectRatio="xMidYMax meet"/);
+      const tinted = drawGraphic(p, { ...g, photoUrl: "sample:photo" } as Graphic, images(photo));
+      expect(tinted).toContain(`href="${photo}"`);
+      expect(standing).not.toContain('id="duo');
+      expect(tinted).toContain('id="duo');
+    }
+  });
 });

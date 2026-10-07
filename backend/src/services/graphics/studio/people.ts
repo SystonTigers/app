@@ -8,7 +8,7 @@ import { measure, wrap } from "../text";
 import type { LineupGraphic, MomentGraphic, PersonGraphic, PhotoGraphic, QuoteGraphic } from "../types";
 import {
   brushStroke, chevrons, clubColours, crestDisc, duotoneFilter, fadeMask, ghosted, grain, halftone, letters, mix,
-  randomFor, shadowFilter, tornPanel, vignette,
+  isCutOut, playerPhoto, randomFor, shadowFilter, tornPanel, vignette,
 } from "./kit";
 import { posterFooter, scoreBar, type Frame } from "./poster";
 import { darkScene, stadiumScene } from "./scenes";
@@ -64,7 +64,12 @@ export function studioPerson(c: Canvas, g: PersonGraphic, f: Frame): string {
   let out = rect(0, 0, w, h, k.main);
   out += halftone(w, 0, -1, 1, 520, mix(k.main, "#000000", 0.3), 0.45) + halftone(0, h, 1, -1, 460, mix(k.main, "#000000", 0.3), 0.45);
   out += tornPanel(c, -60, h * 0.55, 230, h * 0.6, k.dark, Math.floor(rand() * 90), `transform="rotate(-4 0 ${r(h)})"`);
-  if (g.photoUrl && c.images.get(g.photoUrl)) {
+  const personData = g.photoUrl ? c.images.get(g.photoUrl) : undefined;
+  if (personData && isCutOut(personData)) {
+    // A cut-out stands on the bottom edge, full colour, like the club's own designs
+    const sid = shadowFilter(c, 18, 0.45, 8);
+    out += `<g filter="url(#${sid})">${playerPhoto(c, g.photoUrl, w * 0.3, h * 0.2, w * 0.7, h * 0.8, { dark: k.dark, light: k.main })}</g>`;
+  } else if (personData) {
     const duo = duotoneFilter(c, k.dark, mix(k.main, "#FFFFFF", 0.45));
     const px = w * 0.18;
     const py = h * 0.12;

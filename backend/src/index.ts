@@ -523,6 +523,9 @@ router.get("/api/:v/membership", (req, env, corsHdrs) => handleMembership(req, e
 
 // Linking parents to their children with an invite code (routes/parentLinks.ts)
 import { handleCreateParentInvite, handleLinkChild, handleListParents, handleUnlinkParent } from "./routes/parentLinks";
+router.get("/api/:v/squad/cutouts", staffOnly((req, env, corsHdrs) => handleListCutouts(req, env, corsHdrs)));
+router.put("/api/:v/players/:id/cutout", staffOnly((req, env, corsHdrs) => handleSaveCutout(req, env, corsHdrs, ((req as any).params || {}).id)));
+router.delete("/api/:v/players/:id/cutout", staffOnly((req, env, corsHdrs) => handleRemoveCutout(req, env, corsHdrs, ((req as any).params || {}).id)));
 router.post("/api/:v/players/:id/parent-invite", staffOnly((req, env, corsHdrs) => handleCreateParentInvite(req, env, corsHdrs, ((req as any).params || {}).id)));
 router.get("/api/:v/players/:id/parents", staffOnly((req, env, corsHdrs) => handleListParents(req, env, corsHdrs, ((req as any).params || {}).id)));
 router.delete("/api/:v/players/:id/parents/:userId", staffOnly((req, env, corsHdrs) => handleUnlinkParent(req, env, corsHdrs, ((req as any).params || {}).id, ((req as any).params || {}).userId)));
@@ -533,6 +536,7 @@ import { handleGetConsent, handleSetConsent } from "./routes/consent";
 router.get("/api/:v/consent", (req, env, corsHdrs) => handleGetConsent(req, env, corsHdrs));
 router.put("/api/:v/players/:id/consent", (req, env, corsHdrs) => handleSetConsent(req, env, corsHdrs, ((req as any).params || {}).id));
 import { handleGetSigningOn, handleGetSigningOnEntry, handleMarkSigningOnPaid, handleSaveSigningOnForm, handleSubmitSigningOn } from "./routes/signingOn";
+import { handleListCutouts, handleRemoveCutout, handleSaveCutout } from "./routes/playerCutouts";
 // Signing on (club extra; moduleGate refuses these when it's switched off)
 router.get("/api/:v/signing-on", (req, env, corsHdrs) => handleGetSigningOn(req, env, corsHdrs));
 router.put("/api/:v/signing-on/form", staffOnly((req, env, corsHdrs) => handleSaveSigningOnForm(req, env, corsHdrs)));

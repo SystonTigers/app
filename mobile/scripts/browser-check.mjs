@@ -26,6 +26,7 @@
 import { spawn, spawnSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { createReadStream, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { copyMediapipe } from './copy-mediapipe.mjs';
 import { createServer } from 'node:http';
 import { createRequire } from 'node:module';
 import path from 'node:path';
@@ -108,7 +109,7 @@ async function waitFor(url, label, seconds = 90) {
 
 /** Serve the exported app; unknown paths get index.html so /results etc. open directly. */
 function serveWeb() {
-  const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml', '.ttf': 'font/ttf', '.ico': 'image/x-icon', '.webmanifest': 'application/manifest+json' };
+  const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml', '.ttf': 'font/ttf', '.ico': 'image/x-icon', '.webmanifest': 'application/manifest+json', '.mjs': 'text/javascript', '.wasm': 'application/wasm' };
   const server = createServer((req, res) => {
     const clean = decodeURIComponent(new URL(req.url || '/', WEB).pathname);
     let file = path.join(webOut, path.normalize(clean));
@@ -152,6 +153,7 @@ if (!skipBuild || !existsSync(path.join(webOut, 'index.html'))) {
   rmSync(webOut, { recursive: true, force: true });
   run('Building the web app (takes a minute or two)', 'npx', ['expo', 'export', '--platform', 'web', '--clear', '--output-dir', path.relative(mobile, webOut)], mobile,
     { EXPO_PUBLIC_API_BASE: API, EXPO_PUBLIC_TENANT_ID: CLUB, EXPO_PUBLIC_E2E: '1', EXPO_PUBLIC_SENTRY_DSN: '' });
+  copyMediapipe(webOut);
 }
 // A build cached from a release would talk to the live API; refuse to go on with one
 if (!readFileSync(path.join(webOut, 'index.html'), 'utf8') || !readdirSync(path.join(webOut, '_expo', 'static', 'js', 'web'))

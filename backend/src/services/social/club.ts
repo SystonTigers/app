@@ -1,6 +1,6 @@
 /** A club's posting setup: branding, design pack, connections and choices. */
 import { DEFAULT_PACK, getPack, packsIncludedWith, type Pack } from "../graphics/packs";
-import { publicPhotoSql } from "../consent";
+import { graphicPhotoSql } from "../consent";
 import { safeColor } from "../graphics/text";
 import type { Brand } from "../graphics/types";
 import { parseEventSettings, type EventSettings } from "./content";
@@ -95,7 +95,7 @@ export async function loadClubSocial(env: SocialEnv, tenantId: string): Promise<
 /** Squad name, shirt number and photo for a player (the photo is only used if the club allows photos). */
 export async function postPerson(env: SocialEnv, tenantId: string, playerId: string | null, fallbackName: string | null): Promise<{ name: string; photoUrl: string | null; number: number | null } | null> {
   if (!playerId) return fallbackName ? { name: fallbackName, photoUrl: null, number: null } : null;
-  const row = await env.DB.prepare(`SELECT name, number, ${publicPhotoSql()} AS photo FROM squad WHERE tenant_id = ? AND id = ?`)
+  const row = await env.DB.prepare(`SELECT name, number, ${graphicPhotoSql()} AS photo FROM squad WHERE tenant_id = ? AND id = ?`)
     .bind(tenantId, playerId).first<{ name: string; number: number | null; photo: string | null }>();
   if (!row) return fallbackName ? { name: fallbackName, photoUrl: null, number: null } : null;
   return { name: row.name, photoUrl: row.photo, number: typeof row.number === "number" ? row.number : null };

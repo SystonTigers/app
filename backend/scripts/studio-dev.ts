@@ -28,7 +28,7 @@ async function main() {
   const { Resvg } = await import("@resvg/resvg-wasm");
   await svgToJpeg("<svg xmlns='http://www.w3.org/2000/svg' width='1' height='1'/>", { wasm, fonts });
   const images = await sampleImages(async (svg) => `data:image/png;base64,${Buffer.from(new Resvg(svg, { font: { fontBuffers: fonts, loadSystemFonts: false } }).render().asPng()).toString("base64")}`);
-  if (photoPath) images.set("sample:photo", `data:image/jpeg;base64,${readFileSync(photoPath).toString("base64")}`);
+  if (photoPath) images.set("sample:photo", `data:image/${photoPath.toLowerCase().endsWith(".png") ? "png" : "jpeg"};base64,${readFileSync(photoPath).toString("base64")}`);
   for (const [id, over] of CLUBS) {
     const base = sampleGraphics();
     const brand: Brand = { ...base.goal.brand, ...over };

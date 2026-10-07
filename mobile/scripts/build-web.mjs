@@ -11,6 +11,7 @@ import { spawnSync } from 'node:child_process';
 import { cpSync, existsSync, readFileSync, readdirSync, renameSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { copyMediapipe } from './copy-mediapipe.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const dist = path.join(root, 'dist');
@@ -53,6 +54,8 @@ if (existsSync(assetsDir)) {
 for (const item of ['manifest.webmanifest', '_headers', 'icons', 'splash', 'fonts']) {
   cpSync(path.join(webDir, item), path.join(dist, item), { recursive: true });
 }
+
+copyMediapipe(dist);
 
 const buildId = Date.now().toString(36);
 writeFileSync(path.join(dist, 'sw.js'), readFileSync(path.join(webDir, 'sw.js'), 'utf8').replaceAll('__BUILD_ID__', buildId));

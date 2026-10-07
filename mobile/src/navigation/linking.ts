@@ -34,6 +34,7 @@ const DRAWER_PATHS: Record<string, string> = {
   ManageLms: 'manage/last-man-standing',
   Dues: 'manage/subs',
   ManagePlayerImages: 'manage/player-images',
+  PlayerCutouts: 'manage/player-cutouts',
   ClubSettings: 'manage/club-settings',
   PushNotificationsSetup: 'manage/notifications',
   Profile: 'profile',
