@@ -28,6 +28,7 @@ npm run browser-check                          # the default list of 22 screens
 npm run browser-check -- results stats         # only these (paths from linking.ts; "" is Home)
 npm run browser-check -- --skip-build results  # reuse the last web build (after backend-only changes)
 npm run browser-check -- --keep-data players/player?id=x  # keep test data you added locally
+npm run browser-check -- --as=parent --menu ""    # as a parent (player, supporter, coach, manager), with the open menu (menu.png, menu-end.png)
 ```
 
 Seeding the test club replaces its row, which deletes its squad (the table
