@@ -219,6 +219,21 @@ with personal data.
   a see-through PNG is used as a cut-out (`isCutOut`); other photos are faded
   in. `npx tsx scripts/templates-dev.ts syston-canva <bg dir> <out> [cutout.png]`
   draws every post on local copies of the backgrounds.
+- Player cut-outs (app Coach zone → Competitions & photos → Player cut-outs,
+  `PlayerCutoutsScreen`; `GET /api/v1/squad/cutouts`, `PUT|DELETE
+  /api/v1/players/:id/cutout`, staff; `services/playerCutouts.ts`,
+  `squad.cutout_url`, migration 0033): a see-through PNG of each player that
+  stands in goal, player-of-the-week, MOTM and birthday graphics (Matchday and
+  the club's own designs) instead of a tinted photo. In the web app the coach
+  picks any photo and the background is taken out on the phone
+  (`services/cutout.web.ts`: MediaPipe's multi-class selfie model, then
+  `utils/cutoutMask.ts` keeps the biggest person and snaps the edge with a
+  guided filter); nothing is uploaded until they save. The library, its
+  WebAssembly and the model (about 28 MB, only fetched when making one) are
+  copied to `/mediapipe/` by `scripts/copy-mediapipe.mjs` in both web builds.
+  The phone build takes a ready-made PNG. The server only accepts PNGs with
+  see-through pixels (4 MB). Graphics read photos through `graphicPhotoSql()`
+  (cut-out, then headshot, then photo), so only with photo consent.
 - Packs: Touchline and Floodlights (free, small "Made with Boost Huddle"
   credit) and Elite (premium: included with Pro, otherwise unlocked per club
   in `graphics_unlocks` from the owner panel; no purchase flow until Stripe

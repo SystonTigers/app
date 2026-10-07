@@ -1444,6 +1444,35 @@ export const signingOnApi = {
     (await api.put(`/api/v1/signing-on/players/${encodeURIComponent(playerId)}/paid`, { paid })).data.data,
 };
 
+export interface CutoutPlayer {
+  playerId: string;
+  name: string;
+  number: number | null;
+  cutoutUrl: string | null;
+  /** Their ordinary photo, if they have one */
+  photoUrl: string | null;
+  /** Graphics only use the cut-out once the family has said yes */
+  photoConsent: boolean | null;
+}
+
+/** Players' cut-out photos for the club's goal graphics (staff). */
+export const cutoutsApi = {
+  list: async (): Promise<CutoutPlayer[]> => (await api.get('/api/v1/squad/cutouts')).data.data,
+  /** A see-through PNG: a Blob on the web, a picked file's address in the phone app */
+  save: async (playerId: string, png: Blob | { uri: string }): Promise<string> => {
+    const url = `/api/v1/players/${encodeURIComponent(playerId)}/cutout`;
+    if (png instanceof Blob) {
+      return (await api.put(url, png, { headers: { 'Content-Type': 'image/png' }, timeout: 60000, transformRequest: [(data) => data] })).data.data.cutoutUrl;
+    }
+    const form = new FormData();
+    form.append('cutout', { uri: png.uri, name: 'cutout.png', type: 'image/png' } as unknown as Blob);
+    return (await api.put(url, form, { headers: { 'Content-Type': 'multipart/form-data' }, timeout: 60000 })).data.data.cutoutUrl;
+  },
+  remove: async (playerId: string): Promise<void> => {
+    await api.delete(`/api/v1/players/${encodeURIComponent(playerId)}/cutout`);
+  },
+};
+
 /** Player pages: bio (written by the player), stats by season, photos and goal clips. */
 export const playerPageApi = {
   profile: async (playerId: string): Promise<PlayerProfile> =>

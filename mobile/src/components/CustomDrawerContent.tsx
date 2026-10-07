@@ -104,6 +104,7 @@ const STAFF_GROUPS: MenuGroup[] = [
         id: 'staff_fun', title: 'Competitions & photos', icon: 'trophy-variant-outline', items: [
             { label: 'Goal of the Month', screen: 'ManageGotm', icon: 'soccer', roles: MANAGERS },
             { label: 'Last Man Standing', screen: 'ManageLms', icon: 'crystal-ball', roles: MANAGERS },
+            { label: 'Player cut-outs', screen: 'PlayerCutouts', icon: 'account-box-outline', roles: STAFF },
             { label: 'Player images', screen: 'ManagePlayerImages', icon: 'camera-account', roles: MANAGERS },
         ],
     },

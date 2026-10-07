@@ -72,6 +72,7 @@ import FriendliesScreen from './src/screens/FriendliesScreen';
 import ManageLmsScreen from './src/screens/ManageLmsScreen';
 import DuesScreen from './src/screens/DuesScreen';
 import ManagePlayerImagesScreen from './src/screens/ManagePlayerImagesScreen';
+import PlayerCutoutsScreen from './src/screens/PlayerCutoutsScreen';
 import ClubSettingsScreen from './src/screens/ClubSettingsScreen';
 import ImportDataScreen from './src/screens/ImportDataScreen';
 import PushNotificationsSetupScreen from './src/screens/PushNotificationsSetupScreen';
@@ -115,6 +116,7 @@ const StaffFriendlies = staffScreen(FriendliesScreen);
 const StaffManageLms = staffScreen(ManageLmsScreen);
 const StaffDues = staffScreen(DuesScreen);
 const StaffManagePlayerImages = staffScreen(ManagePlayerImagesScreen);
+const StaffPlayerCutouts = staffScreen(PlayerCutoutsScreen);
 const StaffClubSettings = staffScreen(ClubSettingsScreen);
 const AdminPushNotificationsSetup = staffScreen(PushNotificationsSetupScreen, 'admin');
 const StaffCreatePost = staffScreen(CreatePostScreen);
@@ -306,6 +308,7 @@ function MainDrawer() {
       <Drawer.Screen name="ManageLms" component={StaffManageLms} options={{ title: 'Last Man Standing' }} />
       <Drawer.Screen name="Dues" component={StaffDues} options={{ title: 'Subs and fees' }} />
       <Drawer.Screen name="ManagePlayerImages" component={StaffManagePlayerImages} options={{ title: 'Player Images' }} />
+      <Drawer.Screen name="PlayerCutouts" component={StaffPlayerCutouts} options={{ title: 'Player cut-outs' }} />
       <Drawer.Screen name="ClubSettings" component={StaffClubSettings} options={{ title: 'Club Settings' }} />
       <Drawer.Screen
         name="PushNotificationsSetup"

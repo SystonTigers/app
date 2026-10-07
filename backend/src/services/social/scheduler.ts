@@ -11,7 +11,7 @@
  * monthly round-ups on the 1st (roundups.ts).
  */
 import { normalizeTeamName } from "../opponentBadges";
-import { publicPhotoSql } from "../consent";
+import { graphicPhotoSql } from "../consent";
 import { guessOurTeam } from "../league/table";
 import { forPosting, type SocialEnv } from "./club";
 import {
@@ -53,7 +53,7 @@ export async function scheduleClub(env: SocialEnv, tenantId: string, now: Date):
     }
     // Birthdays (no age shown)
     const { results: birthdays } = await env.DB.prepare(
-      `SELECT id, name, ${publicPhotoSql()} AS photo FROM squad WHERE tenant_id = ? AND dob IS NOT NULL AND substr(dob, 6, 5) = ?`,
+      `SELECT id, name, ${graphicPhotoSql()} AS photo FROM squad WHERE tenant_id = ? AND dob IS NOT NULL AND substr(dob, 6, 5) = ?`,
     ).bind(tenantId, t.date.slice(5)).all<{ id: string; name: string; photo: string | null }>();
     for (const b of birthdays || []) {
       await queue("birthday", `birthday:${b.id}:${t.date.slice(0, 4)}`, (club, policy) => birthdayPost(club.brand, policy, { name: b.name, photoUrl: b.photo }));

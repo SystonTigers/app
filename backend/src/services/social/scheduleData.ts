@@ -4,7 +4,7 @@
  * weekly schedule (scheduler.ts) and the monthly round-ups (roundups.ts).
  */
 import { opponentBadgeUrl } from "../opponentBadges";
-import { publicPhotoSql } from "../consent";
+import { graphicPhotoSql } from "../consent";
 import { tracksAssists } from "../clubOptions";
 import type { SocialEnv } from "./club";
 import type { FixtureFacts, ResultFacts } from "./clubPosts";
@@ -65,7 +65,7 @@ export async function fixturesBetween(env: SocialEnv, tenantId: string, from: st
 }
 
 export async function person(env: SocialEnv, tenantId: string, playerId: string): Promise<{ name: string; photoUrl: string | null } | null> {
-  const row = await env.DB.prepare(`SELECT name, ${publicPhotoSql()} AS photo FROM squad WHERE tenant_id = ? AND id = ?`)
+  const row = await env.DB.prepare(`SELECT name, ${graphicPhotoSql()} AS photo FROM squad WHERE tenant_id = ? AND id = ?`)
     .bind(tenantId, playerId).first<{ name: string; photo: string | null }>();
   return row ? { name: row.name, photoUrl: row.photo } : null;
 }

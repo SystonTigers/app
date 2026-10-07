@@ -14,6 +14,12 @@ export function publicPhotoSql(alias = ""): string {
   return `CASE WHEN ${a}photo_consent = 1 THEN COALESCE(${a}headshot_url, ${a}photo_url) END`;
 }
 
+/** Like publicPhotoSql(), preferring the player's cut-out (see services/playerCutouts.ts): for post graphics. */
+export function graphicPhotoSql(alias = ""): string {
+  const a = alias ? `${alias}.` : "";
+  return `CASE WHEN ${a}photo_consent = 1 THEN COALESCE(${a}cutout_url, ${a}headshot_url, ${a}photo_url) END`;
+}
+
 /** true = yes, false = no, null = not asked yet */
 export type ConsentAnswer = boolean | null;
 

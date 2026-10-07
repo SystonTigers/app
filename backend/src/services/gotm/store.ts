@@ -7,7 +7,7 @@
  * `event_id` = the goal), gotm_votes (unique per vote and person).
  */
 import { hasAnyRole, STAFF_ROLES, type TenantClaims } from "../auth";
-import { publicPhotoSql } from "../consent";
+import { graphicPhotoSql } from "../consent";
 import { linkedPlayerIds } from "../playerPrivacy";
 import { fixtureGoalClips, type GoalClip } from "../playerProfile/clips";
 import { monthLabel, monthRange, MONTHS, winnersOf, type NewVote } from "./rules";
@@ -241,7 +241,7 @@ export async function winnerFacts(env: Env, tenantId: string, winners: Candidate
   const out = [];
   for (const w of winners) {
     const [p, f, live, report] = await Promise.all([
-      env.DB.prepare(`SELECT name, ${publicPhotoSql()} AS photo FROM squad WHERE tenant_id = ? AND id = ?`).bind(tenantId, w.player_id).first<{ name: string; photo: string | null }>(),
+      env.DB.prepare(`SELECT name, ${graphicPhotoSql()} AS photo FROM squad WHERE tenant_id = ? AND id = ?`).bind(tenantId, w.player_id).first<{ name: string; photo: string | null }>(),
       w.match_id ? env.DB.prepare(`SELECT opponent FROM fixtures WHERE tenant_id = ? AND id = ?`).bind(tenantId, w.match_id).first<{ opponent: string }>() : null,
       w.event_id ? env.DB.prepare(`SELECT minute FROM live_match_events WHERE tenant_id = ? AND id = ?`).bind(tenantId, w.event_id).first<{ minute: number | null }>() : null,
       w.event_id ? env.DB.prepare(`SELECT minute FROM match_events WHERE tenant_id = ? AND id = ?`).bind(tenantId, w.event_id).first<{ minute: number | null }>() : null,
