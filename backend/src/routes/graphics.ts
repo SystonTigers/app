@@ -11,7 +11,7 @@
 import { json } from "../services/util";
 import { hasAnyRole, requireAdmin, requireStaff, type TenantClaims } from "../services/auth";
 import { loadClubSocial, type SocialEnv } from "../services/social/club";
-import { PACKS, packsIncludedWith } from "../services/graphics/packs";
+import { PACKS, packsFor, packsIncludedWith } from "../services/graphics/packs";
 import { sampleGraphics } from "../services/graphics/samples";
 import { imageMime } from "../services/graphics/images";
 import { deleteMedia, keyFromMediaUrl, mediaUrl, putMedia } from "../services/media";
@@ -48,10 +48,11 @@ async function sha(text: string): Promise<string> {
 export async function handleGraphicPreview(req: Request, env: Env, corsHdrs: Headers, packId: string, sample: string): Promise<Response> {
   const claims = await staff(req, env, corsHdrs);
   if (claims instanceof Response) return claims;
-  const pack = PACKS.find((p) => p.id === packId);
+  const club = await loadClubSocial(env, claims.tenantId);
+  // Only packs this club can use (another club's own designs stay private)
+  const pack = packsFor(club.templateSet).find((p) => p.id === packId);
   const name = sample.replace(/\.jpg$/, "");
   if (!pack || !(PREVIEW_SAMPLES as readonly string[]).includes(name)) return fail(corsHdrs, 404, "NOT_FOUND", "No such preview.");
-  const club = await loadClubSocial(env, claims.tenantId);
   const graphic = sampleGraphics({ ...club.brand })[name];
   const key = `social/previews/${claims.tenantId}/${pack.id}-${name}-${await sha(JSON.stringify(club.brand))}.jpg`;
   const headers = new Headers(corsHdrs);
@@ -109,7 +110,7 @@ export async function handleGetTenantGraphics(req: Request, env: Env, corsHdrs: 
   const included = packsIncludedWith(plan?.plan);
   return json({
     success: true,
-    data: PACKS.map((p) => ({
+    data: PACKS.filter((p) => !p.templates).map((p) => ({
       id: p.id, name: p.name, premium: p.premium,
       unlocked: !p.premium || unlocks.has(p.id) || included.includes(p.id),
       source: unlocks.get(p.id)?.source ?? (included.includes(p.id) ? "plan" : null),

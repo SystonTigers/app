@@ -16,6 +16,7 @@ FONTS = {
     "Barlow Condensed SemiBold": "BarlowCondensed-SemiBold.ttf",
     "Barlow Condensed ExtraBold": "BarlowCondensed-ExtraBold.ttf",
     "Bebas Neue": "BebasNeue-Regular.ttf",
+    "Archivo Black": "ArchivoBlack-Regular.ttf",
 }
 
 

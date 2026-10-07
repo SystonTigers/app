@@ -46,6 +46,8 @@ export interface MomentGraphic extends Base {
   away: TeamSide;
   /** Goals: the scorer's goals so far this match when 2 or more */
   goalCount?: number;
+  /** The player's shirt number, drawn big behind them in some packs */
+  shirtNumber?: number | null;
   /** Colour accent for cards: "yellow" | "red" */
   card?: "yellow" | "red";
 }
@@ -119,6 +121,9 @@ export interface TableRow {
   goalDifference: number;
   points: number;
   isUs: boolean;
+  /** For designs with GF and GA columns */
+  goalsFor?: number;
+  goalsAgainst?: number;
 }
 
 export interface TableGraphic extends Base {

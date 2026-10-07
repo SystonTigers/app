@@ -16,7 +16,7 @@ const fontDir = path.join(path.dirname(new URL(import.meta.url).pathname), "../s
 async function main() {
   mkdirSync(outDir, { recursive: true });
   const wasm = readFileSync(path.join(fontDir, "../resvg.wasm"));
-  const fonts = ["Anton-Regular", "BarlowCondensed-SemiBold", "BarlowCondensed-ExtraBold", "BebasNeue-Regular"]
+  const fonts = ["Anton-Regular", "BarlowCondensed-SemiBold", "BarlowCondensed-ExtraBold", "BebasNeue-Regular", "ArchivoBlack-Regular"]
     .map((f) => new Uint8Array(readFileSync(path.join(fontDir, `${f}.ttf`))));
   const images = await sampleImages((svg) => svgToPng(svg, wasm, fonts));
   for (const pack of PACKS.filter((p) => !onlyPack || p.id === onlyPack)) {

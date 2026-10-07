@@ -99,6 +99,7 @@ export async function scheduleClub(env: SocialEnv, tenantId: string, now: Date):
       return tablePost(club.brand, competition, rows.map((r, i) => ({
         position: r.position ?? i + 1, team: r.team_name, played: Number(r.played), won: Number(r.won), drawn: Number(r.drawn), lost: Number(r.lost),
         goalDifference: r.goal_difference ?? Number(r.goals_for) - Number(r.goals_against), points: Number(r.points), isUs: normalizeTeamName(r.team_name) === ours,
+        goalsFor: Number(r.goals_for), goalsAgainst: Number(r.goals_against),
       })));
     });
   }

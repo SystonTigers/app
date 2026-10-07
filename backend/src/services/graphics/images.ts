@@ -32,6 +32,15 @@ export function toDataUri(bytes: Uint8Array, mime: string): string {
 }
 
 async function readBytes(env: ImageEnv, url: string, fetchImpl: typeof fetch): Promise<Uint8Array | null> {
+  // "r2:<key>": a club's design backgrounds, which aren't public. Nothing else can be read this way.
+  if (url.startsWith("r2:")) {
+    const own = url.slice(3);
+    if (!/^graphics\/templates\/[a-z0-9-]+\/[a-z0-9-]+\.(jpg|png)$/.test(own)) return null;
+    if (!env.R2_MEDIA) return null;
+    const obj = await env.R2_MEDIA.get(own);
+    if (!obj || obj.size > MAX_BYTES) return null;
+    return new Uint8Array(await obj.arrayBuffer());
+  }
   const key = keyFromMediaUrl(env, url);
   if (key && env.R2_MEDIA) {
     const obj = await env.R2_MEDIA.get(key);
