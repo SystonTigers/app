@@ -1,3 +1,4 @@
+import type { ClubModule } from '../services/club';
 import React from 'react';
 import { menuRole, roleLabel } from '../utils/roles';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -22,6 +23,8 @@ interface MenuItem {
     roles: string[];
     /** Hidden for these roles, before supporters are treated as parents */
     hiddenFor?: string[];
+    /** A club extra: shown only when the club has switched it on */
+    module?: ClubModule;
 }
 
 const MENU_GROUPS: { id: string; title: string; icon: string; protected?: boolean; roles?: string[]; items: MenuItem[] }[] = [
@@ -59,6 +62,7 @@ const MENU_GROUPS: { id: string; title: string; icon: string; protected?: boolea
             { label: 'People & roles', screen: 'TeamMembers', icon: 'account-group', roles: STAFF },
             { label: 'Gallery', screen: 'Gallery', icon: 'image-multiple', roles: ALL },
             { label: 'Team Talk', screen: 'TeamTalk', icon: 'forum-outline', roles: ALL },
+            { label: 'Club shop', screen: 'Shop', icon: 'shopping-outline', roles: ALL, module: 'shop' },
         ]
     },
     {
@@ -80,7 +84,7 @@ const MENU_GROUPS: { id: string; title: string; icon: string; protected?: boolea
             { label: 'Goal of the Month', screen: 'ManageGotm', icon: 'soccer', roles: MANAGERS },
             { label: 'Last Man Standing', screen: 'ManageLms', icon: 'crystal-ball', roles: MANAGERS },
             { label: 'Seasons', screen: 'ManageSeasons', icon: 'calendar-range', roles: MANAGERS },
-            { label: 'Subs and fees', screen: 'Dues', icon: 'cash-multiple', roles: MANAGERS },
+            { label: 'Subs and fees', screen: 'Dues', icon: 'cash-multiple', roles: MANAGERS, module: 'subs' },
             { label: 'Reports', screen: 'Reports', icon: 'flag-outline', roles: STAFF },
             { label: 'Player images', screen: 'ManagePlayerImages', icon: 'camera-account', roles: MANAGERS },
             { label: 'Import data', screen: 'ImportData', icon: 'file-upload-outline', roles: MANAGERS },
@@ -95,6 +99,7 @@ const MENU_GROUPS: { id: string; title: string; icon: string; protected?: boolea
         items: [
             { label: 'My profile', screen: 'Profile', icon: 'account-circle', roles: ALL },
             { label: 'Photo & video consent', screen: 'MediaConsent', icon: 'camera-lock', roles: ALL, hiddenFor: ['supporter'] },
+            { label: 'Signing on', screen: 'SigningOn', icon: 'clipboard-check-outline', roles: ALL, hiddenFor: ['supporter'], module: 'signingOn' },
             { label: 'App settings', screen: 'Settings', icon: 'tune', roles: ALL },
         ]
     }
@@ -110,7 +115,7 @@ export default function CustomDrawerContent(props: any) {
     const current: string | undefined = props.state?.routes?.[props.state.index]?.name;
 
     const hasAccess = (allowedRoles?: string[]) => !allowedRoles || allowedRoles.includes(menuRole(userRole));
-    const shows = (item: MenuItem) => hasAccess(item.roles) && !item.hiddenFor?.includes(userRole);
+    const shows = (item: MenuItem) => hasAccess(item.roles) && !item.hiddenFor?.includes(userRole) && (!item.module || club?.modules?.[item.module] === true);
     const name = user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : 'Welcome';
 
     const handleLogout = async () => {

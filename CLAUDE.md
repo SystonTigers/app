@@ -590,6 +590,24 @@ with personal data.
   reminder emails (one per parent email, with the club's name). Paying
   online needs Stripe, so until then the email says to pay the club the
   usual way and has no pay link.
+- Club extras (`services/clubModules.ts`, `tenants.modules` JSON, migration
+  0030): Subs and fees (`subs`), Signing on (`signingOn`) and the Shop
+  (`shop`) are off until a club admin switches them on (app Club Settings →
+  Club extras `ClubExtrasCard`; website Admin → Settings `ClubExtrasSettings`;
+  `PATCH /tenants/me {modules}`). `moduleGate` in `index.ts` refuses their
+  routes (`dues`, `registration`, `signing-on`, `shop`, `printify`,
+  `personalization`) with 403 `MODULE_OFF`; `/public/:club/info` returns
+  `modules` so menus hide them (app drawer `module`, website
+  `ClubExtraGate`/`useClubModules`). For clubs on TeamFeePay and the like.
+- Signing on (`routes/signingOn.ts`, `services/signingOn/`, migration 0031):
+  each season a linked parent (or staff, from a paper form) fills in the
+  child's date of birth, address, school, medical notes, allergies, up to
+  three emergency contacts, photo/video consent and the code of conduct
+  (`signing_on_entries`); it also updates the squad row and consent. Staff
+  set the fee, how to pay and the code of conduct (`signing_on_forms`), see
+  who has signed on and mark fees paid. App `SigningOnScreen` (menu: My club →
+  Signing on); website Admin → Signing on (`admin/registration`). Medical
+  notes are only shown to staff and the child's family.
 
 ## Club history, friendlies, Last Man Standing and the calendar
 

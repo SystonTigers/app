@@ -8,6 +8,23 @@ export interface ClubInfo {
   badgeUrl: string | null;
   /** false: the club doesn't record assists (top goalscorers only) */
   trackAssists?: boolean;
+  /** Club extras the club has switched on (all off unless it has). */
+  modules: ClubModules;
+}
+
+/** Club extras each club switches on for itself (Admin, Settings, Club extras). */
+export type ClubModule = 'subs' | 'signingOn' | 'shop';
+export type ClubModules = Record<ClubModule, boolean>;
+
+export const CLUB_MODULES: ClubModule[] = ['subs', 'signingOn', 'shop'];
+
+/** Everything off: what a club has until it switches an extra on. */
+export const NO_MODULES: ClubModules = { subs: false, signingOn: false, shop: false };
+
+/** The API's `modules` as switches: anything missing or not `true` is off. */
+export function readModules(raw: unknown): ClubModules {
+  const value = raw && typeof raw === 'object' && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
+  return { subs: value.subs === true, signingOn: value.signingOn === true, shop: value.shop === true };
 }
 
 /** "riverside-rovers" -> "Riverside Rovers" (used if the club can't be loaded). */
@@ -21,13 +38,13 @@ export function nameFromSlug(slug: string): string {
  * page still works, named from the URL.
  */
 export async function findClub(slug: string): Promise<ClubInfo | null> {
-  const fallback: ClubInfo = { slug, name: nameFromSlug(slug), primaryColor: null, secondaryColor: null, badgeUrl: null };
+  const fallback: ClubInfo = { slug, name: nameFromSlug(slug), primaryColor: null, secondaryColor: null, badgeUrl: null, modules: NO_MODULES };
   try {
     const res = await fetch(`${API_BASE}/public/${encodeURIComponent(slug)}/info`, { cache: 'no-store' });
     if (res.status === 404) return null;
     if (!res.ok) return fallback;
     const body = await res.json();
-    return body?.data?.name ? { ...fallback, ...body.data } : fallback;
+    return body?.data?.name ? { ...fallback, ...body.data, modules: readModules(body.data.modules) } : fallback;
   } catch {
     return fallback;
   }
@@ -35,7 +52,7 @@ export async function findClub(slug: string): Promise<ClubInfo | null> {
 
 /** The club's display name and colours. Never throws: falls back to the URL. */
 export async function getClubInfo(slug: string): Promise<ClubInfo> {
-  return (await findClub(slug)) ?? { slug, name: nameFromSlug(slug), primaryColor: null, secondaryColor: null, badgeUrl: null };
+  return (await findClub(slug)) ?? { slug, name: nameFromSlug(slug), primaryColor: null, secondaryColor: null, badgeUrl: null, modules: NO_MODULES };
 }
 
 export interface LiveMatch {

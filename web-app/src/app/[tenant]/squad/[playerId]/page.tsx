@@ -36,7 +36,10 @@ export default async function PlayerBioPage({ params }: { params: Promise<{ tena
 
   const hasNumber = player.number !== undefined && player.number !== null;
   // Clubs that don't record assists don't show them
-  const withAssists = (await findClub(tenant))?.trackAssists !== false;
+  const club = await findClub(tenant);
+  const withAssists = club?.trackAssists !== false;
+  // The shop card only shows when the club has switched its shop on
+  const hasShop = club?.modules.shop === true;
   const tiles = TILES
     .filter((t) => withAssists || t.key !== 'assists')
     .map((t) => ({ ...t, value: player.stats?.[t.key] }))
@@ -96,14 +99,16 @@ export default async function PlayerBioPage({ params }: { params: Promise<{ tena
 
         <aside className="space-y-6">
           <CareerHistory playerId={playerId} playerName={player.name} />
-          <Link href={`/${tenant}/shop`} className="card block group hover:border-brand/60 transition-colors">
-            <Icon name="shirt" className="w-8 h-8 text-brand mb-3" />
-            <h3 className="text-xl mb-1">Club shop</h3>
-            <p className="text-muted text-sm mb-4">Kit, training wear and club gear.</p>
-            <span className="inline-flex items-center gap-1.5 text-sm font-bold text-brand">
-              Visit the shop <Icon name="arrowRight" className="w-4 h-4" />
-            </span>
-          </Link>
+          {hasShop && (
+            <Link href={`/${tenant}/shop`} className="card block group hover:border-brand/60 transition-colors">
+              <Icon name="shirt" className="w-8 h-8 text-brand mb-3" />
+              <h3 className="text-xl mb-1">Club shop</h3>
+              <p className="text-muted text-sm mb-4">Kit, training wear and club gear.</p>
+              <span className="inline-flex items-center gap-1.5 text-sm font-bold text-brand">
+                Visit the shop <Icon name="arrowRight" className="w-4 h-4" />
+              </span>
+            </Link>
+          )}
         </aside>
       </div>
     </div>

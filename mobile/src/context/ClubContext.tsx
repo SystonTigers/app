@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import {
   Club,
+  type ClubModule,
   LOCKED_CLUB_SLUG,
   getCurrentClub,
   loadStoredClub,
@@ -55,6 +56,11 @@ export function useClub(): ClubContextType {
 /** Whether the club records assists (some only want top goalscorers). */
 export function useTracksAssists(): boolean {
   return useClub().club?.trackAssists !== false;
+}
+
+/** Whether the club has switched on an extra (Subs and fees, Signing on, Shop). Off when unknown. */
+export function useClubModule(module: ClubModule): boolean {
+  return useClub().club?.modules?.[module] === true;
 }
 
 /** The club's display name, with a neutral fallback. */

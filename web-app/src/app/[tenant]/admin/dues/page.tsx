@@ -6,6 +6,7 @@ import { formatDate } from '@/lib/format';
 import { PageHeader, EmptyNote } from '@/components/ui/Page';
 import { Icon } from '@/components/ui/Icon';
 import { Dialog, ErrorNote, LoadingBlock, Notice, bodyError } from '@/components/admin/AdminUi';
+import { ClubExtraGate } from '@/components/ClubExtraGate';
 
 interface PaymentRequest {
     id: string;
@@ -26,7 +27,7 @@ const EMPTY = { title: '', amount: '', description: '', dueDate: '' };
  * Subs and match fees. Members pay online through Stripe, which isn't
  * switched on for clubs yet, so the page says so up front.
  */
-export default function DuesPage() {
+function DuesPageContent() {
     const [requests, setRequests] = useState<PaymentRequest[]>([]);
     const [loading, setLoading] = useState(true);
     const [loadError, setLoadError] = useState('');
@@ -174,5 +175,14 @@ export default function DuesPage() {
                 </Dialog>
             )}
         </div>
+    );
+}
+
+/** Only for clubs that have switched this extra on (Settings, Club extras). */
+export default function DuesPage() {
+    return (
+        <ClubExtraGate module="subs">
+            <DuesPageContent />
+        </ClubExtraGate>
     );
 }

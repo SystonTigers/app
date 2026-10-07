@@ -12,6 +12,8 @@ describe("Subs and fees", () => {
   it("makes a request and reminds each parent once", async () => {
     const coach = await registerAdmin("dues-coach", "coach");
     const parent = await registerMember("dues-parent");
+    // Subs and fees is a club extra, off until a club admin switches it on
+    await env.DB.prepare(`UPDATE tenants SET modules = '{"subs":true}' WHERE id = ?`).bind(TENANT).run();
 
     expect((await call("/api/v1/dues/requests", { token: parent.token, body: { title: "Nope", amount: 5 } })).status).toBe(403);
     expect((await call("/api/v1/dues/requests", { token: coach.token, body: { title: "", amount: 5 } })).status).toBe(400);
