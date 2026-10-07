@@ -5,6 +5,7 @@ import { apiFetch } from '@/lib/session';
 import { PageHeader } from '@/components/ui/Page';
 import { Icon } from '@/components/ui/Icon';
 import { Dialog, ErrorNote, LoadingBlock, Notice, bodyError } from '@/components/admin/AdminUi';
+import { ClubExtraGate } from '@/components/ClubExtraGate';
 
 interface Phrase {
     id: string;
@@ -35,7 +36,7 @@ const PHRASE_TYPES: Array<{ value: PhraseType; label: string }> = [
 const pounds = (n: number) => n.toLocaleString('en-GB', { style: 'currency', currency: 'GBP' });
 
 /** Words for printed kit and the club's own products, for the club shop. */
-export default function ShopSettingsPage() {
+function ShopSettingsPageContent() {
     const [phrases, setPhrases] = useState<Phrase[]>([]);
     const [products, setProducts] = useState<ClubProduct[]>([]);
     const [loading, setLoading] = useState(true);
@@ -113,7 +114,7 @@ export default function ShopSettingsPage() {
         <div className="container py-8 md:py-10 max-w-4xl">
             <PageHeader eyebrow="Club admin" title="Shop settings" subtitle="Phrases for printed kit and your club's own products." />
             <div className="mb-6">
-                <Notice tone="info">These are used by your club shop, which opens once club kit is switched on for your club. You can get them ready now.</Notice>
+                <Notice tone="info">These are used by your club shop. You can get them ready before anything goes on sale.</Notice>
             </div>
             {message && <div className="mb-6"><Notice tone={message.tone}>{message.text}</Notice></div>}
 
@@ -234,5 +235,14 @@ export default function ShopSettingsPage() {
                 </Dialog>
             )}
         </div>
+    );
+}
+
+/** Only for clubs that have switched this extra on (Settings, Club extras). */
+export default function ShopSettingsPage() {
+    return (
+        <ClubExtraGate module="shop">
+            <ShopSettingsPageContent />
+        </ClubExtraGate>
     );
 }

@@ -26,8 +26,12 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
         { href: `${a}/squad`, icon: 'users', title: 'Squad', text: 'Sign players, edit names and numbers, and share login codes.' },
         { href: `${a}/feed`, icon: 'news', title: 'News', text: 'Post club news to the website and the app.' },
         { href: `${a}/table`, icon: 'table', title: 'League table', text: 'Check the table or work it out again from your results.' },
-        { href: `${a}/settings`, icon: 'settings', title: 'Settings', text: 'Club badge, league table, automatic posts and live video.' },
+        { href: `${a}/settings`, icon: 'settings', title: 'Settings', text: 'Club badge, league table, automatic posts, live video and club extras.' },
     ];
+    // Club extras only show once the club has switched them on (Settings, Club extras)
+    if (club.modules.subs) tiles.push({ href: `${a}/dues`, icon: 'money', title: 'Subs and fees', text: 'Ask families for subs and send reminders.' });
+    if (club.modules.signingOn) tiles.push({ href: `${a}/registration`, icon: 'clipboard', title: 'Signing on', text: "See who's signed on, read their answers and mark fees paid." });
+    if (club.modules.shop) tiles.push({ href: `${a}/shop-settings`, icon: 'shirt', title: 'Shop', text: 'Club kit and personalised gifts.' });
 
     return (
         <div className="container py-8 md:py-10">

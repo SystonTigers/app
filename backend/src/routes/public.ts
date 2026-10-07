@@ -1,3 +1,4 @@
+import { clubModules } from "../services/clubModules";
 import { json } from "../services/util";
 import { requireTenantJWT } from "../services/auth";
 import { isPendingRoles } from "../services/clubMembers";
@@ -371,11 +372,12 @@ export async function handlePublicTenantRequest(
 
         // Club name and colours for the club's public pages
         if (resource === "info") {
-            const [brand, trackAssists] = await Promise.all([
+            const [brand, trackAssists, modules] = await Promise.all([
                 env.DB.prepare(
                     `SELECT primary_color, secondary_color, badge_url FROM tenant_brand WHERE tenant_id = ?`
                 ).bind(tenant.id).first() as Promise<{ primary_color?: string; secondary_color?: string; badge_url?: string } | null>,
                 tracksAssists(env, tenant.id),
+                clubModules(env, tenant.id),
             ]);
             return json({
                 success: true,
@@ -387,6 +389,8 @@ export async function handlePublicTenantRequest(
                     badgeUrl: brand?.badge_url ?? null,
                     // false: the club doesn't record assists (top goalscorers only)
                     trackAssists,
+                    // Club extras switched on: { subs, signingOn, shop }
+                    modules,
                 },
             }, 200, corsHdrs);
         }

@@ -6,6 +6,7 @@ import { SocialSettings } from '@/components/SocialSettings';
 import { LiveVideoSettings } from '@/components/LiveVideoSettings';
 import { ClubBadgeSettings } from '@/components/ClubBadgeSettings';
 import { MatchStatsSettings } from '@/components/MatchStatsSettings';
+import { ClubExtrasSettings } from '@/components/ClubExtrasSettings';
 import { PageHeader } from '@/components/ui/Page';
 import { Icon } from '@/components/ui/Icon';
 
@@ -15,7 +16,7 @@ interface PageProps {
 
 /**
  * Club settings hub: the club badge, FA Full-Time snippets (league table, fixtures, results), how players appear
- * publicly, the Facebook/Instagram connection, automatic posting, live match video and match stats (assists on/off).
+ * publicly, the Facebook/Instagram connection, automatic posting, live match video, match stats (assists on/off) and club extras (subs, signing on, shop).
  */
 export default function SettingsPage({ params }: PageProps) {
     const { tenant } = use(params);
@@ -25,7 +26,7 @@ export default function SettingsPage({ params }: PageProps) {
             <PageHeader
                 eyebrow="Club admin"
                 title="Settings"
-                subtitle="Badge, league table, privacy, automatic posts and live video for your club. Also in the app: Manager Zone, then Club Settings."
+                subtitle="Badge, league table, privacy, automatic posts, live video and club extras for your club. Also in the app: Manager Zone, then Club Settings."
             />
 
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2 [&>*]:min-w-0">
@@ -53,6 +54,7 @@ export default function SettingsPage({ params }: PageProps) {
                     <LiveVideoSettings />
                 </Suspense>
                 <MatchStatsSettings />
+                <ClubExtrasSettings />
             </div>
         </div>
     );

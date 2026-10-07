@@ -47,6 +47,7 @@ import TeamTalkThreadScreen from './src/screens/TeamTalkThreadScreen';
 import HighlightsScreen from './src/screens/HighlightsScreen';
 import MatchHighlightsScreen from './src/screens/MatchHighlightsScreen';
 import MediaConsentScreen from './src/screens/MediaConsentScreen';
+import SigningOnScreen from './src/screens/SigningOnScreen';
 import TrainingScreen from './src/screens/TrainingScreen';
 import DrillLibraryScreen from './src/screens/DrillLibraryScreen';
 import DrillScreen from './src/screens/DrillScreen';
@@ -320,6 +321,7 @@ function MainDrawer() {
       {/* Settings Group */}
       <Drawer.Screen name="Profile" component={ProfileScreen} options={{ title: 'My Profile' }} />
       <Drawer.Screen name="MediaConsent" component={MediaConsentScreen} options={{ title: 'Photo & Video Consent' }} />
+      <Drawer.Screen name="SigningOn" component={SigningOnScreen} options={{ title: 'Signing on' }} />
       <Drawer.Screen name="Settings" component={SettingsScreen} options={{ title: 'Settings' }} />
 
       {/* Other/Hidden Screens */}

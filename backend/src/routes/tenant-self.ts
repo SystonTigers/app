@@ -1,4 +1,5 @@
 
+import { setModules } from "../services/clubModules";
 import { z } from "zod";
 import { json } from "../services/util";
 import { parse, isValidationError } from "../lib/validate";
@@ -46,6 +47,8 @@ export async function updateTenantMe(req: Request, env: any, corsHdrs: Headers):
             publicPhotos: z.boolean().optional(),
             // false = the club doesn't record assists (top goalscorers only)
             trackAssists: z.boolean().optional(),
+            // Club extras: Subs and fees, Signing on, Shop (off unless switched on)
+            modules: z.object({ subs: z.boolean().optional(), signingOn: z.boolean().optional(), shop: z.boolean().optional() }).strict().optional(),
             // Older single switch: full names and photos on/off
             publicFullNames: z.boolean().optional()
             // Status is deliberately not editable here: it's set by sign-up (trial) and billing (active).
@@ -85,6 +88,11 @@ export async function updateTenantMe(req: Request, env: any, corsHdrs: Headers):
             updates.push("track_assists = ?");
             params.push(data.trackAssists ? 1 : 0);
             logJSON({ level: "info", msg: "club_track_assists", tenantId, on: data.trackAssists });
+        }
+
+        if (data.modules && Object.keys(data.modules).length > 0) {
+            const now = await setModules(env, tenantId, data.modules);
+            logJSON({ level: "info", msg: "club_modules", tenantId, ...now });
         }
 
         if (updates.length > 0) {

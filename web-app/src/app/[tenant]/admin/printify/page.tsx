@@ -6,6 +6,7 @@ import { formatDate, formatMoney } from '@/lib/format';
 import { PageHeader, EmptyNote } from '@/components/ui/Page';
 import { Icon, type IconName } from '@/components/ui/Icon';
 import { Dialog, LoadingBlock, Notice, Pill, bodyError } from '@/components/admin/AdminUi';
+import { ClubExtraGate } from '@/components/ClubExtraGate';
 
 interface Blueprint {
     id: number;
@@ -65,7 +66,7 @@ const CATEGORIES = [
  * Club kit printed on demand (Printify). Until Boost Huddle connects the print
  * partner the API answers 503 and the page says so; orders still show.
  */
-export default function PrintifyAdminPage() {
+function PrintifyAdminPageContent() {
     const [activeTab, setActiveTab] = useState<Tab>('templates');
     const [userShopId, setUserShopId] = useState('');
     const [searchQuery, setSearchQuery] = useState('t-shirt');
@@ -300,5 +301,14 @@ export default function PrintifyAdminPage() {
                 </Dialog>
             )}
         </div>
+    );
+}
+
+/** Only for clubs that have switched this extra on (Settings, Club extras). */
+export default function PrintifyAdminPage() {
+    return (
+        <ClubExtraGate module="shop">
+            <PrintifyAdminPageContent />
+        </ClubExtraGate>
     );
 }

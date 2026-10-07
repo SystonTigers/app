@@ -9,6 +9,8 @@ import { useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Icon, type IconName } from '@/components/ui/Icon';
+import { useClubModules } from '@/lib/clubModules';
+import type { ClubModule } from '@/lib/club';
 
 interface AdminLink {
     label: string;
@@ -16,6 +18,8 @@ interface AdminLink {
     icon: IconName;
     /** Other admin pages that belong under this link (e.g. a player's page under Squad). */
     also?: string[];
+    /** A club extra: the link only shows once the club has switched it on. */
+    module?: ClubModule;
 }
 
 const LINKS: AdminLink[] = [
@@ -31,6 +35,9 @@ const LINKS: AdminLink[] = [
     { label: 'Seasons', path: '/seasons', icon: 'history' },
     { label: 'Opponents', path: '/opponents', icon: 'shield' },
     { label: 'Import', path: '/import', icon: 'upload' },
+    { label: 'Subs and fees', path: '/dues', icon: 'money', module: 'subs' },
+    { label: 'Signing on', path: '/registration', icon: 'clipboard', module: 'signingOn' },
+    { label: 'Shop', path: '/shop-settings', icon: 'shirt', also: ['/printify'], module: 'shop' },
     { label: 'Settings', path: '/settings', icon: 'settings' },
     { label: 'Billing', path: '/billing', icon: 'card' },
 ];
@@ -39,6 +46,8 @@ export function AdminNav({ tenant }: { tenant: string }) {
     const pathname = usePathname() ?? '';
     const base = `/${tenant}/admin`;
     const activeRef = useRef<HTMLAnchorElement>(null);
+    const modules = useClubModules(tenant);
+    const links = LINKS.filter((link) => !link.module || modules?.[link.module] === true);
 
     const isActive = (link: AdminLink) => {
         if (!link.path) return pathname === base || pathname === `${base}/`;
@@ -53,7 +62,7 @@ export function AdminNav({ tenant }: { tenant: string }) {
     return (
         <nav aria-label="Club admin" className="relative">
             <ul className="flex gap-1 overflow-x-auto scrollbar-none -mx-4 px-4 sm:mx-0 sm:px-0">
-                {LINKS.map((link) => {
+                {links.map((link) => {
                     const active = isActive(link);
                     return (
                         <li key={link.label} className="shrink-0">

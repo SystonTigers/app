@@ -12,6 +12,10 @@ import { API_BASE_URL, TENANT_ID as BUILD_CLUB_SLUG } from '../config';
  * AsyncStorage so the app reopens on the same club. It isn't secret.
  */
 
+/** Club extras each club switches on for itself (Club Settings → Club extras). */
+export interface ClubModules { subs: boolean; signingOn: boolean; shop: boolean }
+export type ClubModule = keyof ClubModules;
+
 export interface Club {
   slug: string;
   name: string;
@@ -20,6 +24,8 @@ export interface Club {
   badgeUrl: string | null;
   /** false: the club doesn't record assists (top goalscorers only). Missing means yes. */
   trackAssists?: boolean;
+  /** Club extras the club has switched on (off when missing) */
+  modules?: ClubModules;
 }
 
 export type ClubSummary = Pick<Club, 'slug' | 'name' | 'primaryColor' | 'badgeUrl'>;
@@ -83,6 +89,11 @@ export async function fetchClubInfo(slug: string): Promise<Club | null> {
     secondaryColor: data.secondaryColor ?? null,
     badgeUrl: data.badgeUrl ?? null,
     trackAssists: data.trackAssists !== false,
+    modules: {
+      subs: data.modules?.subs === true,
+      signingOn: data.modules?.signingOn === true,
+      shop: data.modules?.shop === true,
+    },
   };
 }
 

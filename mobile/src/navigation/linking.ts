@@ -38,6 +38,7 @@ const DRAWER_PATHS: Record<string, string> = {
   PushNotificationsSetup: 'manage/notifications',
   Profile: 'profile',
   MediaConsent: 'consent',
+  SigningOn: 'signing-on',
   Settings: 'settings',
   CreatePost: 'new-post',
   Gallery: 'gallery',

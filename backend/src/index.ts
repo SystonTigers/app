@@ -8,6 +8,7 @@ import { processDueJobs } from "./services/social/jobs";
 import { processDueAlerts } from "./services/matchAlerts/queue";
 import { trialGate } from "./services/trialLock";
 import { membershipGate } from "./services/membershipGate";
+import { moduleGate } from "./services/clubModules";
 import { sendConsentReminders } from "./services/consentReminders";
 import { receiveFixtureEmail } from "./services/faEmail/inbound";
 import { detectStreams } from "./services/stream/detect";
@@ -531,6 +532,13 @@ router.post("/api/:v/link-child", (req, env, corsHdrs) => handleLinkChild(req, e
 import { handleGetConsent, handleSetConsent } from "./routes/consent";
 router.get("/api/:v/consent", (req, env, corsHdrs) => handleGetConsent(req, env, corsHdrs));
 router.put("/api/:v/players/:id/consent", (req, env, corsHdrs) => handleSetConsent(req, env, corsHdrs, ((req as any).params || {}).id));
+import { handleGetSigningOn, handleGetSigningOnEntry, handleMarkSigningOnPaid, handleSaveSigningOnForm, handleSubmitSigningOn } from "./routes/signingOn";
+// Signing on (club extra; moduleGate refuses these when it's switched off)
+router.get("/api/:v/signing-on", (req, env, corsHdrs) => handleGetSigningOn(req, env, corsHdrs));
+router.put("/api/:v/signing-on/form", staffOnly((req, env, corsHdrs) => handleSaveSigningOnForm(req, env, corsHdrs)));
+router.get("/api/:v/signing-on/players/:id", (req, env, corsHdrs) => handleGetSigningOnEntry(req, env, corsHdrs, ((req as any).params || {}).id));
+router.put("/api/:v/signing-on/players/:id/paid", staffOnly((req, env, corsHdrs) => handleMarkSigningOnPaid(req, env, corsHdrs, ((req as any).params || {}).id)));
+router.put("/api/:v/signing-on/players/:id", (req, env, corsHdrs) => handleSubmitSigningOn(req, env, corsHdrs, ((req as any).params || {}).id));
 
 // Match highlights from the match's YouTube video and the Match Centre taps (routes/highlights.ts)
 import { handleGetHighlights, handleListHighlights, handlePutHighlights } from "./routes/highlights";
@@ -1152,6 +1160,9 @@ export default {
             if (waiting) return respondWithCors(waiting, corsHdrs);
             const paused = await trialGate(req, env, corsHdrs);
             if (paused) return respondWithCors(paused, corsHdrs);
+            // Club extras (Subs and fees, Signing on, Shop) the club has switched off
+            const off = await moduleGate(req, env, corsHdrs);
+            if (off) return respondWithCors(off, corsHdrs);
             const response = await router.handle(req, env, corsHdrs, requestId, ctx);
             if (response instanceof Response) {
                 // A handler swallowed a failed auth check and returned a generic 5xx

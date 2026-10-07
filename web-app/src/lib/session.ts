@@ -75,6 +75,21 @@ export function clearSession(): void {
   }
 }
 
+const CLUB_ADMIN_ROLES = ['owner', 'tenant_admin', 'admin'];
+
+/**
+ * Whether the signed-in user is a club admin (owner or admin), from the roles
+ * saved at sign-in. Only for hiding what they can't use: the server checks.
+ */
+export function isClubAdmin(): boolean {
+  try {
+    const user = JSON.parse(localStorage.getItem('user_data') || 'null') as SessionUser | null;
+    return !!user?.roles?.some((r) => CLUB_ADMIN_ROLES.includes(r));
+  } catch {
+    return false;
+  }
+}
+
 /** Where a signed-in user should land. */
 export function homeFor(user: SessionUser): string {
   if (!user.tenant_slug) return '/join';

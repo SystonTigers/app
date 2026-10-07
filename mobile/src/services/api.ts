@@ -6,6 +6,7 @@ import { Platform } from 'react-native';
 import { API_BASE_URL } from '../config';
 
 import { AUTH_STORAGE_KEYS, authStorage, type AuthStorageKey } from './authStorage';
+import type { answersFrom, SigningOnEntry, SigningOnForm, SigningOnOverview } from '../utils/signingOn';
 import { getTenantId } from './club';
 import { appendPhoto } from './photoUpload';
 import type { LeagueSnapshot } from '../utils/leagueTable';
@@ -768,6 +769,10 @@ export const clubOptionsApi = {
   setTrackAssists: async (on: boolean): Promise<void> => {
     await api.patch('/api/v1/tenants/me', { trackAssists: on });
   },
+  /** Club admins: switch club extras on or off */
+  setModules: async (modules: Partial<Record<'subs' | 'signingOn' | 'shop', boolean>>): Promise<void> => {
+    await api.patch('/api/v1/tenants/me', { modules });
+  },
 };
 
 /** Goal of the Month (backend: /api/v1/gotm). */
@@ -1426,6 +1431,17 @@ export const parentLinkApi = {
     const response = await api.post('/api/v1/link-child', { code });
     return response.data;
   },
+};
+
+/** Signing on (a club extra). Families sign their linked children on; staff see the squad and mark fees paid. */
+export const signingOnApi = {
+  overview: async (): Promise<SigningOnOverview> => (await api.get('/api/v1/signing-on')).data.data,
+  saveForm: async (form: SigningOnForm): Promise<SigningOnForm> => (await api.put('/api/v1/signing-on/form', form)).data.data,
+  entry: async (playerId: string): Promise<SigningOnEntry | null> => (await api.get(`/api/v1/signing-on/players/${encodeURIComponent(playerId)}`)).data.data,
+  submit: async (playerId: string, answers: ReturnType<typeof answersFrom>): Promise<SigningOnEntry> =>
+    (await api.put(`/api/v1/signing-on/players/${encodeURIComponent(playerId)}`, answers)).data.data,
+  markPaid: async (playerId: string, paid: boolean): Promise<SigningOnEntry> =>
+    (await api.put(`/api/v1/signing-on/players/${encodeURIComponent(playerId)}/paid`, { paid })).data.data,
 };
 
 /** Player pages: bio (written by the player), stats by season, photos and goal clips. */
