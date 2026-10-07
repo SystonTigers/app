@@ -543,7 +543,11 @@ with personal data.
   so screenshot scripts can open any screen.
 - Home (`screens/HomeScreen.tsx`, `components/home/`): header with crest,
   live cards, next match, league snapshot, quick links, latest feed. The menu
-  (`CustomDrawerContent.tsx`) shows every section open, staff zone boxed.
+  (`CustomDrawerContent.tsx`) leaves out the bottom tabs (Home, Matches,
+  Players, Highlights). Families get short groups (Match day, Training for
+  players, Team, Club, Me; supporters without Team Talk, consent or signing
+  on); staff get a boxed Coach zone first, in folding sections (one open at a
+  time, the one you're in).
 
 ## Owner panel
 

@@ -4,6 +4,8 @@
 //   npm run browser-check                      # every screen in SCREENS below
 //   npm run browser-check -- results stats     # just these (paths from linking.ts)
 //   npm run browser-check -- --skip-build      # reuse the last web build
+//   npm run browser-check -- --as=parent        # sign in as a parent (player, supporter, coach, manager)
+//   npm run browser-check -- --menu             # also screenshot the open menu (menu.png)
 //   npm run browser-check -- --keep-data       # don't re-seed the test club (keeps squad
 //                                              # and results you added to the local copy)
 //
@@ -56,6 +58,13 @@ const skipBuild = args.includes('--skip-build');
 // Re-seeding replaces the club's row, which takes its squad with it (ON DELETE CASCADE)
 const keepData = args.includes('--keep-data');
 const picked = args.filter((a) => !a.startsWith('--'));
+const showMenu = args.includes('--menu');
+const AS_ROLES = { coach: 'coach', manager: 'manager', parent: 'parent', player: 'player', supporter: 'supporter' };
+const asRole = (args.find((a) => a.startsWith('--as=')) || '').slice(5) || null;
+if (asRole && !AS_ROLES[asRole]) {
+  console.error(`✗ --as must be one of: ${Object.keys(AS_ROLES).join(', ')}`);
+  process.exit(1);
+}
 const screens = picked.length ? picked.map((p) => p.replace(/^\/+/, '')) : SCREENS;
 
 const children = [];
@@ -123,6 +132,11 @@ const password = randomBytes(18).toString('base64url');
 run('Building the local database', 'npx', ['wrangler', 'd1', 'migrations', 'apply', 'DB', '--local'], backend);
 if (!keepData) run('Adding the test club', 'npx', ['wrangler', 'd1', 'execute', 'DB', '--local', '--file=./scripts/seed-syston.sql'], backend);
 run('Creating the test admin', 'node', ['scripts/set-admin-password.mjs'], backend, { SYSTON_ADMIN_EMAIL: EMAIL, SYSTON_ADMIN_PASSWORD: password, SYSTON_TENANT_SLUG: CLUB });
+if (asRole) {
+  // Same test account, other role: to see the app as a parent, player or supporter would
+  run(`Making the test account a ${asRole}`, 'npx', ['wrangler', 'd1', 'execute', 'DB', '--local',
+    `--command=UPDATE auth_users SET roles = '["${AS_ROLES[asRole]}"]' WHERE email = '${EMAIL}'`], backend);
+}
 
 // 3. Backend and web app
 console.log('• Starting the backend…');
@@ -197,6 +211,23 @@ for (const screen of screens) {
   console.log(unique.length ? `✗ ${unique.length} problem(s)` : '✓');
 }
 
+if (showMenu) {
+  // The open menu on Home, scrolled to show all of it
+  process.stdout.write('  menu ');
+  await page.goto(`${WEB}/`);
+  await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => undefined);
+  await page.waitForTimeout(1500);
+  await page.getByLabel('Open menu').first().click();
+  await page.waitForTimeout(900);
+  await page.screenshot({ path: path.join(shotsDir, 'menu.png') });
+  // Long menus scroll: grab the rest too
+  await page.mouse.move(150, 600);
+  await page.mouse.wheel(0, 2000);
+  await page.waitForTimeout(500);
+  await page.screenshot({ path: path.join(shotsDir, 'menu-end.png') });
+  console.log('✓');
+}
+
 await browser.close();
 web.close();
 stopAll();
@@ -205,7 +236,7 @@ const bad = results.filter((r) => r.problems.length);
 const report = [
   `# Browser check`,
   '',
-  `${results.length} screens at phone size (412×915), signed in as a club admin on a local test copy.`,
+  `${results.length} screens at phone size (412×915), signed in as a ${asRole ?? 'club admin'} on a local test copy.`,
   `${bad.length ? `${bad.length} with problems.` : 'No problems found.'} Screenshots: \`screens/\`.`,
   '',
   '| Screen | Screenshot | Problems |',
