@@ -22,6 +22,8 @@ export interface ClubSocial {
   pack: Pack;
   /** What the club picked, even if it's a locked premium pack */
   chosenPack: string;
+  /** The club's own designs, if it has some (tenants.graphics_templates) */
+  templateSet: string | null;
   unlockedPacks: string[];
   undoWindow: boolean;
   /** Leave the ground and kick-off time out of posts (tenants.social_hide_match_details) */
@@ -37,6 +39,7 @@ interface ClubRow {
   social_hide_match_details: number | null;
   social_events: string | null;
   graphics_pack: string | null;
+  graphics_templates: string | null;
   sponsor_name: string | null;
   sponsor_logo_url: string | null;
   badge_url: string | null;
@@ -47,7 +50,7 @@ interface ClubRow {
 export async function loadClubSocial(env: SocialEnv, tenantId: string): Promise<ClubSocial> {
   const [club, conns, unlocks] = await Promise.all([
     env.DB.prepare(
-      `SELECT t.name, t.plan, t.social_undo_window, t.social_hide_match_details, t.social_events, t.graphics_pack, t.sponsor_name, t.sponsor_logo_url,
+      `SELECT t.name, t.plan, t.social_undo_window, t.social_hide_match_details, t.social_events, t.graphics_pack, t.graphics_templates, t.sponsor_name, t.sponsor_logo_url,
               b.badge_url, b.primary_color, b.secondary_color
        FROM tenants t LEFT JOIN tenant_brand b ON b.tenant_id = t.id WHERE t.id = ?`,
     ).bind(tenantId).first<ClubRow>(),
@@ -63,7 +66,10 @@ export async function loadClubSocial(env: SocialEnv, tenantId: string): Promise<
   const unlockedPacks = [...new Set([...(unlocks.results || []).map((u) => u.pack_id), ...packsIncludedWith(club?.plan)])];
   const chosenPack = club?.graphics_pack || DEFAULT_PACK;
   const chosen = getPack(chosenPack);
-  const pack = chosen.premium && !unlockedPacks.includes(chosen.id) ? getPack(DEFAULT_PACK) : chosen;
+  const templateSet = club?.graphics_templates ?? null;
+  // Locked premium packs and other clubs' own designs fall back to the default
+  const notOurs = chosen.templates && chosen.templates.id !== templateSet;
+  const pack = (chosen.premium && !unlockedPacks.includes(chosen.id)) || notOurs ? getPack(DEFAULT_PACK) : chosen;
   const clubName = club?.name ?? "Our club";
   return {
     clubName,
@@ -77,6 +83,7 @@ export async function loadClubSocial(env: SocialEnv, tenantId: string): Promise<
     },
     pack,
     chosenPack,
+    templateSet,
     unlockedPacks,
     undoWindow: club?.social_undo_window !== 0,
     hideMatchDetails: club?.social_hide_match_details === 1,

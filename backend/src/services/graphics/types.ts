@@ -121,6 +121,9 @@ export interface TableRow {
   goalDifference: number;
   points: number;
   isUs: boolean;
+  /** For designs with GF and GA columns */
+  goalsFor?: number;
+  goalsAgainst?: number;
 }
 
 export interface TableGraphic extends Base {

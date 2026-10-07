@@ -189,7 +189,7 @@ describe("Automatic social posts", () => {
     await env.DB.prepare(`UPDATE tenants SET plan = 'starter' WHERE id = 'syston'`).run();
     const settings = await call("/api/v1/social/settings", { token: admin.token });
     expect(settings.data.data.graphics).toMatchObject({ pack: "touchline", activePack: "touchline", sponsorName: null });
-    expect(settings.data.data.graphics.packs.map((p: any) => [p.id, p.unlocked])).toEqual([["touchline", true], ["floodlights", true], ["elite", false]]);
+    expect(settings.data.data.graphics.packs.map((p: any) => [p.id, p.unlocked])).toEqual([["matchday", true], ["touchline", true], ["floodlights", true], ["elite", false]]);
 
     expect((await call("/api/v1/social/settings", { method: "PUT", token: admin.token, body: { pack: "elite" } })).status).toBe(402);
     const chosen = await call("/api/v1/social/settings", { method: "PUT", token: admin.token, body: { pack: "floodlights", sponsorName: "Cherry Tree Nursery" } });

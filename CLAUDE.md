@@ -207,6 +207,18 @@ with personal data.
   club's colours. Brushes and torn edges are drawn as shapes, not filters, so
   each post renders in about a second. `npx tsx scripts/studio-dev.ts <dir>
   [photo.jpg]` draws every layout for three clubs, as posts and stories.
+- A club's own designs (`templates/`, pack `templates`): background artwork
+  exported from the club's Canva set with the placeholders removed (copies in
+  Canva's "App backgrounds (copies)" folder; originals untouched), stored in
+  R2 at `graphics/templates/<set id>/<file>.jpg` and read with `r2:` URLs
+  (only that folder can be read that way). Each design's layout draws the
+  live details where the placeholders were (`templates/syston.ts`,
+  `systonBoards.ts`). Only clubs whose `tenants.graphics_templates` names the
+  set see it (migration 0032; `packsFor`); post types without a design fall
+  back to Matchday, and there's no Boost Huddle credit. A player photo that's
+  a see-through PNG is used as a cut-out (`isCutOut`); other photos are faded
+  in. `npx tsx scripts/templates-dev.ts syston-canva <bg dir> <out> [cutout.png]`
+  draws every post on local copies of the backgrounds.
 - Packs: Touchline and Floodlights (free, small "Made with Boost Huddle"
   credit) and Elite (premium: included with Pro, otherwise unlocked per club
   in `graphics_unlocks` from the owner panel; no purchase flow until Stripe

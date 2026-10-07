@@ -12,15 +12,15 @@ import barlowExtra from "./fonts/BarlowCondensed-ExtraBold.ttf";
 import bebas from "./fonts/BebasNeue-Regular.ttf";
 import archivo from "./fonts/ArchivoBlack-Regular.ttf";
 import { loadImages, type ImageEnv } from "./images";
-import { drawGraphic, type Pack } from "./packs";
+import { drawGraphic, packImageUrls, type Pack } from "./packs";
 import { svgToJpeg } from "./renderer";
-import { imageUrls, type Graphic } from "./types";
+import type { Graphic } from "./types";
 
 const FONTS = [anton, barlowSemi, barlowExtra, bebas, archivo].map((f) => new Uint8Array(f));
 
 /** Render a graphic in a pack to JPEG bytes. */
 export async function renderGraphic(env: ImageEnv, pack: Pack, graphic: Graphic, fetchImpl: typeof fetch = fetch): Promise<Uint8Array<ArrayBuffer>> {
-  const images = await loadImages(env, imageUrls(graphic), fetchImpl);
+  const images = await loadImages(env, packImageUrls(pack, graphic), fetchImpl);
   const svg = drawGraphic(pack, graphic, images);
   return svgToJpeg(svg, { wasm: resvgWasm, fonts: FONTS });
 }

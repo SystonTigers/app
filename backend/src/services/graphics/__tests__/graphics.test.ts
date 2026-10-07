@@ -47,8 +47,8 @@ describe("design packs", () => {
         expect(svg, `${pack.id}/${name}`).not.toMatch(/undefined|NaN/);
         // Some designs stack the headline one word per line
         for (const word of graphic.headline.toUpperCase().replace(/'/g, "&apos;").split(" ")) expect(svg, `${pack.id}/${name}`).toContain(word);
-        // Free packs carry the credit; premium ones don't
-        expect(svg.includes("MADE WITH BOOST HUDDLE"), `${pack.id}/${name}`).toBe(!pack.premium);
+        // Free packs carry the credit; premium packs and a club's own designs don't
+        expect(svg.includes("MADE WITH BOOST HUDDLE"), `${pack.id}/${name}`).toBe(!pack.premium && !pack.templates);
       }
     }
   });

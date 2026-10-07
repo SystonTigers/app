@@ -18,7 +18,7 @@ import { exchangeCode, listPages, loginUrl, metaConfigured, type MetaPage } from
 import { isPostKind, POST_KINDS, type EventSettings } from "../services/social/content";
 import { attachImage, loadClubSocial, processDueJobs, type SocialEnv } from "../services/social/jobs";
 import { getPublicNamePolicy, isNameStyle } from "../services/publicNames";
-import { getPack, PACKS } from "../services/graphics/packs";
+import { getPack, packsFor } from "../services/graphics/packs";
 import { appReturnPage, clearPendingChoice, loadPendingChoice, savePendingChoice, type ConnectOutcome } from "../services/social/metaAppReturn";
 
 type Env = SocialEnv & { KV_IDEMP: KVNamespace; APP_BASE_URL?: string; FRONTEND_URL?: string; [key: string]: unknown };
@@ -82,7 +82,7 @@ export async function handleGetSocialSettings(req: Request, env: Env, corsHdrs: 
       graphics: {
         pack: club.chosenPack,
         activePack: club.pack.id,
-        packs: PACKS.map((p) => ({ id: p.id, name: p.name, description: p.description, premium: p.premium, unlocked: !p.premium || club.unlockedPacks.includes(p.id) })),
+        packs: packsFor(club.templateSet).map((p) => ({ id: p.id, name: p.name, description: p.description, premium: p.premium, unlocked: !p.premium || club.unlockedPacks.includes(p.id) })),
         sponsorName: club.brand.sponsorName,
         sponsorLogoUrl: club.brand.sponsorLogoUrl,
       },
@@ -101,7 +101,7 @@ export async function handlePutSocialSettings(req: Request, env: Env, corsHdrs: 
   if (body.nameStyle !== undefined && !isNameStyle(body.nameStyle)) return fail(corsHdrs, 400, "VALIDATION", "Pick one of the name styles.");
   if (body.undoWindow !== undefined && typeof body.undoWindow !== "boolean") return fail(corsHdrs, 400, "VALIDATION", "undoWindow must be true or false.");
   if (body.hideMatchDetails !== undefined && typeof body.hideMatchDetails !== "boolean") return fail(corsHdrs, 400, "VALIDATION", "hideMatchDetails must be true or false.");
-  if (body.pack !== undefined && (typeof body.pack !== "string" || !PACKS.some((p) => p.id === body.pack))) {
+  if (body.pack !== undefined && typeof body.pack !== "string") {
     return fail(corsHdrs, 400, "VALIDATION", "Pick one of the graphics styles.");
   }
   if (body.sponsorName !== undefined && body.sponsorName !== null && (typeof body.sponsorName !== "string" || body.sponsorName.trim().length > 60)) {
@@ -122,6 +122,9 @@ export async function handlePutSocialSettings(req: Request, env: Env, corsHdrs: 
   }
 
   const club = await loadClubSocial(env, claims.tenantId);
+  if (typeof body.pack === "string" && !packsFor(club.templateSet).some((p) => p.id === body.pack)) {
+    return fail(corsHdrs, 400, "VALIDATION", "Pick one of the graphics styles.");
+  }
   if (isNameStyle(body.nameStyle)) {
     await env.DB.prepare(`UPDATE tenants SET public_name_style = ? WHERE id = ?`).bind(body.nameStyle, claims.tenantId).run();
   }
