@@ -3,7 +3,8 @@
  * with a YouTube video lined up, as a clip of that video (the same clip as
  * the match's Highlights, so staff trims and hidden clips apply).
  */
-import { buildHighlights, kickoffFromStreamStart, parseEdits } from "../highlights";
+import { buildHighlights, parseEdits, partsPlacer } from "../highlights";
+import { loadParts, withLegacyKickoff } from "../stream/parts";
 import { loadEvents, loadFixture } from "../liveMatch";
 import { streamView } from "../matchDay";
 
@@ -46,14 +47,15 @@ export async function fixtureGoalClips(env: Env, tenantId: string, fixtureId: st
   ]);
   const video = row ? streamView(row) : null;
   if (!fixture || !row || !video) return clips;
-  const kickoff = row.video_kickoff_sec ?? (row.stream_source === "youtube" ? kickoffFromStreamStart(events, row.stream_started_at) : null);
-  if (kickoff === null) return clips;
+  const parts = withLegacyKickoff(await loadParts(env, tenantId, fixtureId), row.video_kickoff_sec, events);
   const goals = new Set(events.filter((e) => e.type === "goal").map((e) => e.id));
-  for (const m of buildHighlights(events, kickoff, fixture.opponent, parseEdits(row.highlight_edits))) {
+  for (const m of buildHighlights(events, partsPlacer(parts), fixture.opponent, parseEdits(row.highlight_edits))) {
     if (!goals.has(m.id) || m.hidden) continue;
+    const part = parts.find((p) => p.videoId === m.videoId);
+    const watchUrl = `https://www.youtube.com/watch?v=${m.videoId}`;
     clips.set(m.id, {
       id: m.id, fixtureId, opponent: fixture.opponent, date: fixture.date.slice(0, 10), minute: m.minute, title: m.title, detail: m.detail,
-      videoId: video.videoId, start: m.start, end: m.end, embeddable: video.embeddable, watchUrl: `${video.watchUrl}&t=${m.start}s`,
+      videoId: m.videoId, start: m.start, end: m.end, embeddable: part?.embeddable ?? video.embeddable, watchUrl: `${watchUrl}&t=${m.start}s`,
     });
   }
   return clips;

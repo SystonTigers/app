@@ -36,7 +36,7 @@ describe("Match highlights", () => {
     // Staff can make a video from the camera's recording without YouTube: clip times from kick-off
     const staffView = (await call(`/api/v1/fixtures/${fixtureId}/highlights`, { token: coach.token })).data.data;
     expect(staffView.momentsFromKickOff.map((m: any) => [m.type, m.start, m.end, m.tapAt])).toEqual([
-      ["goal", 150 - 20, 150 + 6, 150], ["chance", 330 - 15, 330 + 4, 330], ["save", 450 - 12, 450 + 4, 450], ["chance", 500 - 15, 500 + 4, 500],
+      ["goal", 150 - 30, 150 + 8, 150], ["chance", 330 - 20, 330 + 5, 330], ["save", 450 - 15, 450 + 5, 450], ["chance", 500 - 20, 500 + 5, 500],
     ]);
 
     // The manager adds the match video (a pasted link, so the video isn't lined up yet)
@@ -50,10 +50,10 @@ describe("Match highlights", () => {
     view = (await call(`/api/v1/fixtures/${fixtureId}/highlights`, { method: "PUT", token: coach.token, body: { kickoffSec: 60 } })).data.data;
     expect(view.lineUp).toBe("manual");
     expect(view.moments.map((m: any) => [m.type, m.start, m.end])).toEqual([
-      ["goal", 60 + 150 - 20, 60 + 150 + 6],
-      ["chance", 60 + 330 - 15, 60 + 330 + 4],
-      ["save", 60 + 450 - 12, 60 + 450 + 4],
-      ["chance", 60 + 500 - 15, 60 + 500 + 4],
+      ["goal", 60 + 150 - 30, 60 + 150 + 8],
+      ["chance", 60 + 330 - 20, 60 + 330 + 5],
+      ["save", 60 + 450 - 15, 60 + 450 + 5],
+      ["chance", 60 + 500 - 20, 60 + 500 + 5],
     ]);
     expect(view.moments[0].title).toBe("Goal · Hana Highlight 3'");
 
@@ -61,7 +61,7 @@ describe("Match highlights", () => {
     const [goal, chance] = view.moments;
     await call(`/api/v1/fixtures/${fixtureId}/highlights`, { method: "PUT", token: coach.token, body: { moment: { id: goal.id, start: -5 } } });
     view = (await call(`/api/v1/fixtures/${fixtureId}/highlights`, { method: "PUT", token: coach.token, body: { moment: { id: chance.id, hidden: true } } })).data.data;
-    expect(view.moments[0].start).toBe(60 + 150 - 25);
+    expect(view.moments[0].start).toBe(60 + 150 - 35);
     expect(view.moments.find((m: any) => m.id === chance.id).hidden).toBe(true);
 
     // Fully adjustable: start the save 30 seconds before the tap and end 10 after

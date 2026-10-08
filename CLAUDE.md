@@ -9,7 +9,7 @@ Read `START_HERE.md` first: it covers running, testing and deploying. Then
 screenshots each screen at phone size). Other AI tools read `AGENTS.md`, which points to the same files.
 The code is the source of truth; old plans and status reports are in
 `archive/` for history only. When a doc disagrees with the code, trust the
-code, and fix the doc. Checked against the code on 6 October 2026.
+code, and fix the doc. Checked against the code on 8 October 2026.
 
 ## What this is
 
@@ -92,8 +92,15 @@ with personal data.
 - Full time saves the result (`team_results.fixture_id`), league points and
   players' goals/assists/cards (`match_events` ids starting `live-`), and marks
   the fixture completed. Undoing full time takes them back out.
-- Each tap sends `occurredAt` (the phone's time, trusted within 15 minutes), so
-  kick-off, half time and goals line up with match footage later.
+- Each tap sends `occurredAt`: the phone's time when the button was first
+  pressed (for a goal, before picking the scorer), trusted up to 4 hours back,
+  so kick-off, half time and goals line up with match footage later.
+- No signal: Match Centre keeps taps in a send queue saved on the phone
+  (`utils/liveOutbox.ts`, `services/liveOutbox.ts`, AsyncStorage
+  `match_centre_outbox_v1`), shows them straight away (`withQueued`), and
+  sends them in order every 8 seconds, when the browser comes back online and
+  after the app is reopened. The server ignores a repeated `clientEventId`, so
+  a resend never counts twice; a 4xx other than 408/429 drops the tap.
 - Line-ups: `routes/lineup.ts` (5/7/9/11-a-side; club `default_team_size`,
   fixture `team_size`). "Post team news" queues a line-up post.
 - Man of the Match: at full time the manager's phone pops up
@@ -140,9 +147,19 @@ with personal data.
   (`routes/highlights.ts`, `services/highlights.ts`) turns each tap into a clip
   of the match's YouTube video (a window before and after the tap, per type).
   Nothing is downloaded or re-encoded, so it's free.
-- The video is lined up by where kick-off is in it (`fixtures.video_kickoff_sec`):
-  worked out from the stream's real start time when YouTube detection found
-  it, otherwise staff pause on kick-off in the app. Staff set how many
+- A match can have several videos (`fixture_videos`, migration 0035,
+  `services/stream/parts.ts`): a stream that drops and is restarted, or a
+  second link, adds a part and never replaces the first;
+  `fixtures.youtube_live_id` stays the latest. Each tap is placed in the part
+  that was live at that clock time (`placeTap`, 60 s slack). A part's start
+  comes from YouTube (detection, or `videoStartedAt` for a pasted link when the
+  club's channel is connected); otherwise staff line it up by pausing on the
+  moment the view offers (`parts[].lineUpWith`, kick-off for part 1;
+  `PUT .../highlights {lineUp:{videoId,eventId,sec}}`) and its moments wait
+  until then (`momentsWaiting`). The older `video_kickoff_sec` still lines up
+  part 1 (`withLegacyKickoff`). Default windows: goal 30 s before / 8 after,
+  their goal 25/6, chance 20/5, save 15/5, great play 20/5, red 15/5, yellow
+  12/4. `DELETE .../stream?videoId=` removes one part. Staff set how many
   seconds each clip runs before and after its moment (0–120, `ClipTiming.tsx`,
   `PUT .../highlights {moment:{id,before,after}}`, stored as a shift from the
   type's default in `fixtures.highlight_edits`) or hide it.

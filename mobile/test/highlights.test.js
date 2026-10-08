@@ -14,7 +14,7 @@ require.extensions['.ts'] = (module, filename) => {
   module._compile(outputText, filename);
 };
 
-const { formatClock, parseClock, clipEmbedUrl, readPlayerMessage, nextClip, matchDate } = require('../src/utils/highlights.ts');
+const { formatClock, parseClock, clipEmbedUrl, readPlayerMessage, nextClip, matchDate, partsToLineUp, partName, capitalise, waitingLine } = require('../src/utils/highlights.ts');
 
 assert.equal(formatClock(754), '12:34');
 assert.equal(formatClock(3723), '1:02:03');
@@ -44,5 +44,21 @@ assert.equal(nextClip([m(false), m(true)], 0), -1);
 
 assert.equal(matchDate('2026-09-27'), 'Sun 27 Sept'.replace('Sept', new Date(Date.UTC(2026, 8, 27)).toLocaleDateString('en-GB', { month: 'short', timeZone: 'UTC' })));
 assert.equal(matchDate('rubbish'), 'rubbish');
+
+// A restarted stream: part 2 is a pasted link nobody has lined up yet
+const parts = [
+  { videoId: 'a', part: 1, lineUp: 'automatic', lineUpWith: { eventId: 'ko', label: 'kick-off' } },
+  { videoId: 'b', part: 2, lineUp: null, lineUpWith: { eventId: 'g2', label: "the goal by Sam (46')" } },
+  { videoId: 'c', part: 3, lineUp: null, lineUpWith: null },
+];
+assert.deepEqual(partsToLineUp({ parts }).map((p) => p.videoId), ['b']);
+assert.deepEqual(partsToLineUp({}), []);
+assert.equal(partName(parts[1], 3), 'part 2 of the video');
+assert.equal(partName(parts[0], 1), 'the video');
+assert.equal(capitalise('kick-off'), 'Kick-off');
+assert.equal(waitingLine({ momentsWaiting: 0, canEdit: true }), null);
+assert.equal(waitingLine({ canEdit: false }), null);
+assert.equal(waitingLine({ momentsWaiting: 1, canEdit: true }), '1 more clip will appear once the rest of the video is lined up.');
+assert.equal(waitingLine({ momentsWaiting: 3, canEdit: false }), '3 more clips will appear once the manager lines up the rest of the video.');
 
 console.log('highlights tests passed');

@@ -3,20 +3,24 @@
  * from the match's YouTube video (nothing is downloaded or re-encoded, so it
  * costs nothing). Pure functions: easy to test.
  *
- * Phones record when each button was tapped. Taps come a few seconds after
- * the moment, so each clip starts well before the tap and ends shortly after.
+ * Phones record when each button was first pressed (the clock time, sent
+ * with the update). Taps still come a few seconds after the moment, so each
+ * clip starts well before the tap and ends shortly after. A match can have
+ * several videos (a stream that dropped and restarted): each tap is placed in
+ * the part that was live at that time, by clock time (placeTap), so nothing
+ * depends on lining up kick-off unless a part's start time isn't known.
  */
 import type { LiveEvent, LiveEventType } from "./liveMatchState";
 
 /** Seconds before and after the tap for each kind of moment. */
 export const CLIP_WINDOWS: Partial<Record<LiveEventType, { before: number; after: number }>> = {
-  goal: { before: 20, after: 6 },
-  opp_goal: { before: 18, after: 5 },
-  chance: { before: 15, after: 4 },
-  save: { before: 12, after: 4 },
-  skill: { before: 15, after: 4 },
-  red: { before: 12, after: 5 },
-  yellow: { before: 10, after: 4 },
+  goal: { before: 30, after: 8 },
+  opp_goal: { before: 25, after: 6 },
+  chance: { before: 20, after: 5 },
+  save: { before: 15, after: 5 },
+  skill: { before: 20, after: 5 },
+  red: { before: 15, after: 5 },
+  yellow: { before: 12, after: 4 },
 };
 
 export const HIGHLIGHT_TYPES = Object.keys(CLIP_WINDOWS) as LiveEventType[];
@@ -32,6 +36,8 @@ export type HighlightEdits = Record<string, MomentEdit>;
 
 export interface HighlightMoment {
   id: string;
+  /** The YouTube video this clip plays from (a match can have several parts) */
+  videoId: string;
   type: LiveEventType;
   minute: number | null;
   title: string;
@@ -108,8 +114,52 @@ export function kickoffFromStreamStart(events: LiveEvent[], streamStartedAt: num
   return sec >= 0 && sec < 6 * 3600 ? Math.round(sec) : null;
 }
 
+/** One video of a match, as far as timing goes. */
+export interface PartTiming {
+  videoId: string;
+  /** When the stream went live (ms), if known */
+  startedAt: number | null;
+  /** When it was added to the match (ms) */
+  addedAt: number;
+  /** Staff line-up: `anchorSec` seconds into the video is the moment at `anchorAt` (ms) */
+  anchorSec: number | null;
+  anchorAt: number | null;
+}
+
+/** The clock time (ms) a part's video starts at, or null when it needs lining up. */
+export function partOrigin(p: PartTiming): number | null {
+  if (p.anchorSec !== null && p.anchorAt !== null) return p.anchorAt - p.anchorSec * 1000;
+  return p.startedAt;
+}
+
+/** A tap up to this long before a part's start still belongs to it (clocks differ a little). */
+const PART_SLACK_MS = 60_000;
+
+/**
+ * Which part a tap (clock time, ms) falls in and how many seconds into that
+ * video, or null when the part it falls in hasn't been lined up yet.
+ * Parts are ordered by when they started; a tap belongs to the last part that
+ * had started by then (or the first, for a tap just before the stream began).
+ */
+export function placeTap(parts: PartTiming[], tapAt: number): { videoId: string; sec: number } | null {
+  if (!parts.length) return null;
+  const from = (p: PartTiming) => partOrigin(p) ?? p.addedAt;
+  const ordered = [...parts].sort((a, b) => from(a) - from(b));
+  let part = ordered[0];
+  for (const p of ordered) if (from(p) <= tapAt + PART_SLACK_MS) part = p;
+  const origin = partOrigin(part);
+  if (origin === null) return null;
+  return { videoId: part.videoId, sec: (tapAt - origin) / 1000 };
+}
+
+/** Places a tap (clock time, ms) in a video: seconds into it and which video, or null if it can't be. */
+export type Placer = (tapAt: number) => { videoId: string; sec: number } | null;
+
+/** The match's parts as a placer. */
+export const partsPlacer = (parts: PartTiming[]): Placer => (tapAt) => placeTap(parts, tapAt);
+
 /** The highlight clips for a match, in match order. Hidden ones are included (flagged) for staff. */
-export function buildHighlights(events: LiveEvent[], kickoffSec: number, opponent: string, edits: HighlightEdits = {}): HighlightMoment[] {
+export function buildHighlights(events: LiveEvent[], place: Placer, opponent: string, edits: HighlightEdits = {}): HighlightMoment[] {
   const ko = events.find((e) => e.type === "kick_off");
   if (!ko) return [];
   const moments: HighlightMoment[] = [];
@@ -120,19 +170,28 @@ export function buildHighlights(events: LiveEvent[], kickoffSec: number, opponen
     if (e.type === "opp_goal") score.them++;
     const w = CLIP_WINDOWS[e.type];
     if (!w) continue;
-    const at = kickoffSec + (e.createdAt - ko.createdAt) / 1000;
+    const placed = place(e.createdAt);
+    // Not on any lined-up video, or before the video began (it wasn't filmed)
+    if (!placed || placed.sec + w.after < 0) continue;
+    const at = placed.sec;
     const edit = edits[e.id] ?? {};
     const start = Math.max(0, Math.round(at - w.before + (edit.start ?? 0)));
     const end = Math.max(start + 3, Math.round(at + w.after + (edit.end ?? 0)));
     const tapAt = Math.round(at);
     moments.push({
-      id: e.id, type: e.type, minute: e.minute, ...describe(e, opponent), start, end, hidden: edit.hidden === true,
+      id: e.id, videoId: placed.videoId, type: e.type, minute: e.minute, ...describe(e, opponent), start, end, hidden: edit.hidden === true,
       shift: { start: edit.start ?? 0, end: edit.end ?? 0 },
       tapAt, before: Math.max(0, tapAt - start), after: Math.max(0, end - tapAt),
       scoreBefore, scoreAfter: { ...score },
     });
   }
   return moments;
+}
+
+/** Times from kick-off (for cutting the camera's own recording): every moment, in seconds after kick-off. */
+export function fromKickOffPlacer(events: LiveEvent[], offset: number): Placer {
+  const ko = events.find((e) => e.type === "kick_off");
+  return (tapAt) => (ko ? { videoId: "", sec: offset + (tapAt - ko.createdAt) / 1000 } : null);
 }
 
 /**

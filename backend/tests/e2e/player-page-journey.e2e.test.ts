@@ -71,7 +71,7 @@ describe("Player pages", () => {
     expect(own.seasons.find((s: any) => s.id === "2026-27")).toMatchObject({ goals: 1, appearances: 1, current: true });
     expect(own.photos).toEqual([{ id: `img-${pat}`, url: "https://media.test/pat.jpg", type: "action" }]);
     expect(own.clips).toHaveLength(1);
-    expect(own.clips[0]).toMatchObject({ fixtureId, opponent: "Page Rovers", minute: 4, videoId: "abcdefghijk", start: 30 + 240 - 20, end: 30 + 240 + 6 });
+    expect(own.clips[0]).toMatchObject({ fixtureId, opponent: "Page Rovers", minute: 4, videoId: "abcdefghijk", start: 30 + 240 - 30, end: 30 + 240 + 8 });
 
     // Other members: bio and stats, but no photos or clips without a parent's yes
     let other = (await call(`/api/v1/players/${pat}/profile`, { token: supporter.token })).data.data;
