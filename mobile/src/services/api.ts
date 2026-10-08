@@ -9,6 +9,7 @@ import { AUTH_STORAGE_KEYS, authStorage, type AuthStorageKey } from './authStora
 import type { answersFrom, SigningOnEntry, SigningOnForm, SigningOnOverview } from '../utils/signingOn';
 import { getTenantId } from './club';
 import { appendPhoto } from './photoUpload';
+import type { Answer as AvailabilityAnswer, AvailabilityItem, AvailabilityOverview, ChildAnswer, ItemType as AvailabilityItemType, SquadAnswer } from '../utils/availability';
 import type { LeagueSnapshot } from '../utils/leagueTable';
 import { readGotm, type GoalOption, type GotmData, type newVoteBody } from '../utils/gotm';
 import type { Discussion, DiscussionSummary } from '../utils/teamTalk';
@@ -895,6 +896,8 @@ export interface Lineup {
   teamSize: number; clubDefaultTeamSize: number; starters: LineupPlayer[]; subs: LineupPlayer[];
   /** Staff only: players in the team whose parents haven't said yes to video */
   noVideoConsent?: string[];
+  /** Staff only: what each family said about this match (player id → yes/no/maybe) */
+  availability?: Record<string, AvailabilityAnswer>;
 }
 
 /** Starting line-ups (see backend routes/lineup.ts). */
@@ -1442,6 +1445,21 @@ export const signingOnApi = {
     (await api.put(`/api/v1/signing-on/players/${encodeURIComponent(playerId)}`, answers)).data.data,
   markPaid: async (playerId: string, paid: boolean): Promise<SigningOnEntry> =>
     (await api.put(`/api/v1/signing-on/players/${encodeURIComponent(playerId)}/paid`, { paid })).data.data,
+};
+
+/** Availability for matches, training and events (backend routes/availability.ts). */
+export const availabilityApi = {
+  /** The next four weeks: my children's answers (staff also get squad totals) */
+  overview: async (): Promise<AvailabilityOverview> => (await api.get('/api/v1/availability')).data.data,
+  /** Staff: the whole squad's answers for one item */
+  item: async (type: AvailabilityItemType, id: string): Promise<{ item: AvailabilityItem; players: SquadAnswer[] }> =>
+    (await api.get(`/api/v1/availability/${type}/${encodeURIComponent(id)}`)).data.data,
+  /** A child's family or staff; status null clears the answer */
+  answer: async (type: AvailabilityItemType, id: string, playerId: string, status: AvailabilityAnswer | null, note?: string | null): Promise<ChildAnswer> =>
+    (await api.put(`/api/v1/availability/${type}/${encodeURIComponent(id)}/players/${encodeURIComponent(playerId)}`, { status, note: note ?? null })).data.data,
+  /** Staff: push a reminder to families who haven't answered */
+  remind: async (type: AvailabilityItemType, id: string): Promise<{ families: number }> =>
+    (await api.post(`/api/v1/availability/${type}/${encodeURIComponent(id)}/remind`, {})).data.data,
 };
 
 export interface CutoutPlayer {

@@ -10,6 +10,7 @@ import { trialGate } from "./services/trialLock";
 import { membershipGate } from "./services/membershipGate";
 import { moduleGate } from "./services/clubModules";
 import { sendConsentReminders } from "./services/consentReminders";
+import { sendAvailabilityReminders } from "./services/availability/reminders";
 import { receiveFixtureEmail } from "./services/faEmail/inbound";
 import { detectStreams } from "./services/stream/detect";
 import { corsHeaders, isPreflight } from "./middleware/cors";
@@ -523,6 +524,10 @@ router.get("/api/:v/membership", (req, env, corsHdrs) => handleMembership(req, e
 
 // Linking parents to their children with an invite code (routes/parentLinks.ts)
 import { handleCreateParentInvite, handleLinkChild, handleListParents, handleUnlinkParent } from "./routes/parentLinks";
+router.get("/api/:v/availability", (req, env, corsHdrs) => handleGetAvailability(req, env, corsHdrs));
+router.get("/api/:v/availability/:type/:id", staffOnly((req, env, corsHdrs) => handleGetItemAvailability(req, env, corsHdrs, ((req as any).params || {}).type, ((req as any).params || {}).id)));
+router.put("/api/:v/availability/:type/:id/players/:playerId", (req, env, corsHdrs) => handleSetAvailability(req, env, corsHdrs, ((req as any).params || {}).type, ((req as any).params || {}).id, ((req as any).params || {}).playerId));
+router.post("/api/:v/availability/:type/:id/remind", staffOnly((req, env, corsHdrs) => handleRemindAvailability(req, env, corsHdrs, ((req as any).params || {}).type, ((req as any).params || {}).id)));
 router.get("/api/:v/squad/cutouts", staffOnly((req, env, corsHdrs) => handleListCutouts(req, env, corsHdrs)));
 router.put("/api/:v/players/:id/cutout", staffOnly((req, env, corsHdrs) => handleSaveCutout(req, env, corsHdrs, ((req as any).params || {}).id)));
 router.delete("/api/:v/players/:id/cutout", staffOnly((req, env, corsHdrs) => handleRemoveCutout(req, env, corsHdrs, ((req as any).params || {}).id)));
@@ -537,6 +542,7 @@ router.get("/api/:v/consent", (req, env, corsHdrs) => handleGetConsent(req, env,
 router.put("/api/:v/players/:id/consent", (req, env, corsHdrs) => handleSetConsent(req, env, corsHdrs, ((req as any).params || {}).id));
 import { handleGetSigningOn, handleGetSigningOnEntry, handleMarkSigningOnPaid, handleSaveSigningOnForm, handleSubmitSigningOn } from "./routes/signingOn";
 import { handleListCutouts, handleRemoveCutout, handleSaveCutout } from "./routes/playerCutouts";
+import { handleGetAvailability, handleGetItemAvailability, handleRemindAvailability, handleSetAvailability } from "./routes/availability";
 // Signing on (club extra; moduleGate refuses these when it's switched off)
 router.get("/api/:v/signing-on", (req, env, corsHdrs) => handleGetSigningOn(req, env, corsHdrs));
 router.put("/api/:v/signing-on/form", staffOnly((req, env, corsHdrs) => handleSaveSigningOnForm(req, env, corsHdrs)));
@@ -1231,6 +1237,9 @@ export default {
 
             // Every 5 minutes (daytime only): remind parents who haven't answered photo/video consent
             ctx.waitUntil(sendConsentReminders(env).catch((error) => logJSON({ level: 'error', msg: 'Consent reminders failed', error: error instanceof Error ? error.message : String(error) })));
+
+            // Every 5 minutes (daytime only): ask families who haven't said if their child can make the next two days' matches, training and events
+            ctx.waitUntil(sendAvailabilityReminders(env).catch((error) => logJSON({ level: 'error', msg: 'Availability reminders failed', error: error instanceof Error ? error.message : String(error) })));
 
             // 06:00 UTC: event reminders
             if (hour === 6 && minute < 5) {
