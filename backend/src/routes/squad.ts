@@ -312,8 +312,12 @@ export async function handleUpdatePlayer(req: Request, env: any, corsHdrs: Heade
             values.push(body.photoUrl);
         }
         if (body.dateOfBirth !== undefined) {
+            const dob = body.dateOfBirth === null || body.dateOfBirth === "" ? null : String(body.dateOfBirth);
+            if (dob !== null && !/^\d{4}-\d{2}-\d{2}$/.test(dob)) {
+                return json({ success: false, error: { code: "BAD_REQUEST", message: "Date of birth must be a date like 2012-03-14." } }, 400, corsHdrs);
+            }
             updates.push("dob = ?");
-            values.push(body.dateOfBirth);
+            values.push(dob);
         }
         if (body.previousClub !== undefined) {
             updates.push("previous_club = ?");
