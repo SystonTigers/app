@@ -62,9 +62,13 @@ describe("Line-ups and Man of the Match", () => {
     const second = await post({ type: "goal", playerId: starters[3], occurredAt: kickOffAt + 9 * 60_000 });
     expect(second.data.data.newPost.graphic).toMatchObject({ headline: "BRACE!", goalCount: 2 });
     expect(second.data.data.newPost.caption).toMatch(/^⚽⚽ BRACE! Player D\. 10'/);
+    // A tap sent late (no signal) keeps the time it was pressed, up to 4 hours back
+    const late = await post({ type: "note", text: "Rain", occurredAt: kickOffAt + 2 * 60_000 });
+    expect(late.data.data.events.find((e: { text: string | null }) => e.text === "Rain").createdAt).toBe(kickOffAt + 2 * 60_000);
     // A tap time far in the past isn't trusted
-    const odd = await post({ type: "note", text: "Rain", occurredAt: Date.now() - 3 * 3600_000 });
-    expect(Math.abs(odd.data.data.events[0].createdAt - Date.now())).toBeLessThan(5000);
+    const odd = await post({ type: "note", text: "Hail", occurredAt: Date.now() - 5 * 3600_000 });
+    const hail = odd.data.data.events.find((e: { text: string | null }) => e.text === "Hail");
+    expect(Math.abs(hail.createdAt - Date.now())).toBeLessThan(5000);
 
     // One sub comes on, one doesn't
     await post({ type: "sub", playerId: subs[0], player2Id: starters[6] });

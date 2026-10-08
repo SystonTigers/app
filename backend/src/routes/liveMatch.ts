@@ -22,6 +22,9 @@ import type { LiveEvent } from "../services/liveMatchState";
 import { refreshLeagueTable } from "../services/league/store";
 import { cancelEventAlert, queueEventAlert, type AlertsEnv } from "../services/matchAlerts/queue";
 
+
+/** How old a tap's phone time can be and still be used (queued taps sent once there's signal). */
+const TRUST_TAP_MS = 4 * 3600_000;
 type Env = { DB: D1Database; [key: string]: unknown };
 
 function fail(corsHdrs: Headers, status: number, code: string, message: string): Response {
@@ -193,10 +196,12 @@ export async function handleRecordLiveEvent(req: Request, env: Env, corsHdrs: He
     }
 
     // When the manager tapped (sent by the phone), so a slow connection doesn't shift the
-    // match clock or the footage timings. Trusted only if it's within the last 15 minutes.
+    // match clock or the footage timings. Taps queued on the phone with no signal can
+    // arrive much later, so the phone's time is trusted for up to 4 hours (when a match
+    // counts as abandoned), never in the future.
     const now = Date.now();
     const tapped = Number(body.occurredAt);
-    const occurredAt = Number.isFinite(tapped) && tapped <= now + 60_000 && tapped >= now - 15 * 60_000 ? Math.round(tapped) : now;
+    const occurredAt = Number.isFinite(tapped) && tapped <= now + 60_000 && tapped >= now - TRUST_TAP_MS ? Math.round(tapped) : now;
     if (type === "sin_bin" && player) {
       const serving = events.some((e) => e.type === "sin_bin" && e.playerId === player.id && sinBinRemainingMs(events, e, occurredAt) > 0);
       if (serving) return fail(corsHdrs, 409, "NOT_NOW", `${player.name} is already in the sin bin.`);

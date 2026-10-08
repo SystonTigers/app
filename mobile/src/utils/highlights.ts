@@ -8,6 +8,8 @@ export type MomentType = 'goal' | 'opp_goal' | 'chance' | 'save' | 'skill' | 'ye
 export interface HighlightMoment {
   id: string;
   type: MomentType;
+  /** The video part this clip plays from (a match can have several) */
+  videoId?: string;
   minute: number | null;
   title: string;
   detail: string | null;
@@ -40,17 +42,64 @@ export function nudgeSide(value: number, by: number): number | null {
 
 export interface HighlightsView {
   fixture: { id: string; opponent: string; date: string; homeAway: 'home' | 'away'; homeScore: number | null; awayScore: number | null };
+  /** The latest video (what "watch the whole match" opens) */
   video: { videoId: string; watchUrl: string; embeddable: boolean } | null;
-  /** Where kick-off is in the video, or null until it's lined up */
+  /**
+   * Every video of the match, earliest first: usually one, more when the
+   * stream dropped and was restarted. Each tap is placed in the part that was
+   * live at the time.
+   */
+  parts?: VideoPartView[];
+  /** Where kick-off is in the video, or null when it isn't in a lined-up part */
   kickoffSec: number | null;
   lineUp: 'automatic' | 'manual' | null;
   moments: HighlightMoment[];
   /** Staff only: the same clips as seconds from kick-off, for making a video from the camera's recording */
   momentsFromKickOff: HighlightMoment[];
   momentsTapped: number;
+  /** Tapped moments in a part that isn't lined up yet */
+  momentsWaiting?: number;
   canEdit: boolean;
   /** Staff only: the club's name and colours, for the scoreboard drawn on videos */
   brand: { clubName: string; primaryColor: string; secondaryColor: string } | null;
+}
+
+export interface VideoPartView {
+  videoId: string;
+  /** 1, 2, 3... */
+  part: number;
+  watchUrl: string;
+  embeddable: boolean;
+  /** automatic = from the stream's start time; manual = staff lined it up; null = not lined up */
+  lineUp: 'automatic' | 'manual' | null;
+  moments: number;
+  /** Staff only: what to pause on to line this part up */
+  lineUpWith: { eventId: string; label: string } | null;
+}
+
+/** Parts staff still need to line up (their moments are waiting). */
+export function partsToLineUp(view: Pick<HighlightsView, 'parts'>): VideoPartView[] {
+  return (view.parts ?? []).filter((p) => p.lineUp === null && p.lineUpWith);
+}
+
+/** "the video" for one part, "part 2 of the video" when there are several. */
+export function partName(part: Pick<VideoPartView, 'part'>, count: number): string {
+  return count > 1 ? `part ${part.part} of the video` : 'the video';
+}
+
+/** "kick-off" → "Kick-off" */
+export function capitalise(text: string): string {
+  return text ? text[0].toUpperCase() + text.slice(1) : text;
+}
+
+/** The note shown while some clips wait for a part to be lined up (null when none). */
+export function waitingLine(view: Pick<HighlightsView, 'momentsWaiting' | 'canEdit'>): string | null {
+  const n = view.momentsWaiting ?? 0;
+  if (n <= 0) return null;
+  const clips = n === 1 ? '1 more clip' : `${n} more clips`;
+  return view.canEdit
+    ? `${clips} will appear once the rest of the video is lined up.`
+    : `${clips} will appear once the manager lines up the rest of the video.`;
 }
 
 export interface HighlightsMatch {

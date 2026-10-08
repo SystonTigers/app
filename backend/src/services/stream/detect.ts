@@ -13,7 +13,8 @@ import { decryptToken, encryptToken } from "../social/tokenCrypto";
 import { loadEvents, loadFixture } from "../liveMatch";
 import { queueStreamAlert, type AlertsEnv } from "../matchAlerts/queue";
 import { kickOffAt, todaysFixtureRows, type FixtureRow } from "../matchDay";
-import { activeBroadcasts, refreshAccessToken, YouTubeAuthError, type Broadcast, type YouTubeEnv } from "./youtube";
+import { activeBroadcasts, refreshAccessToken, videoStartedAt, YouTubeAuthError, type Broadcast, type YouTubeEnv } from "./youtube";
+import { addPart, loadParts, removePart, setPartStart } from "./parts";
 
 export type StreamEnv = AlertsEnv & YouTubeEnv & { KV_IDEMP: KVNamespace };
 
@@ -25,16 +26,19 @@ export const reconnectKey = (tenantId: string) => `yt_reconnect:${tenantId}`;
 const accessKey = (tenantId: string) => `yt_access:${tenantId}`;
 
 /**
- * Point a fixture at a stream. Returns true if it changed. The first stream
- * for a match (before full time) queues the "Live now" notification.
+ * Point a fixture at a stream. Returns true if it changed. The stream is kept
+ * as a part of the match's video (services/stream/parts.ts): a restarted
+ * stream adds a part rather than replacing the first, so earlier clips keep
+ * working. The first stream for a match (before full time) queues the "Live
+ * now" notification (once per match).
  */
 export async function setFixtureStream(env: StreamEnv, tenantId: string, fixtureId: string, stream: { videoId: string; source: "youtube" | "link"; embeddable: boolean; startedAt?: number | null }, now = Date.now()): Promise<boolean> {
+  await addPart(env, tenantId, fixtureId, stream, now);
   const res = await env.DB.prepare(
-    `UPDATE fixtures SET video_kickoff_sec = CASE WHEN youtube_live_id = ? THEN video_kickoff_sec END,
-       youtube_live_id = ?, youtube_status = 'live', stream_source = ?, stream_embeddable = ?,
+    `UPDATE fixtures SET youtube_live_id = ?, youtube_status = 'live', stream_source = ?, stream_embeddable = ?,
        stream_started_at = COALESCE(CASE WHEN youtube_live_id = ? THEN stream_started_at END, ?)
      WHERE tenant_id = ? AND id = ? AND NOT (COALESCE(youtube_live_id, '') = ? AND COALESCE(youtube_status, '') = 'live' AND COALESCE(stream_source, '') = ? AND COALESCE(stream_embeddable, -1) = ?)`,
-  ).bind(stream.videoId, stream.videoId, stream.source, stream.embeddable ? 1 : 0, stream.videoId, stream.startedAt ?? now, tenantId, fixtureId, stream.videoId, stream.source, stream.embeddable ? 1 : 0).run();
+  ).bind(stream.videoId, stream.source, stream.embeddable ? 1 : 0, stream.videoId, stream.startedAt ?? now, tenantId, fixtureId, stream.videoId, stream.source, stream.embeddable ? 1 : 0).run();
   if ((res.meta?.changes ?? 0) === 0) return false;
 
   const fixture = await loadFixture(env, tenantId, fixtureId);
@@ -45,12 +49,49 @@ export async function setFixtureStream(env: StreamEnv, tenantId: string, fixture
   return true;
 }
 
-export async function clearFixtureStream(env: StreamEnv, tenantId: string, fixtureId: string): Promise<void> {
+/**
+ * Staff removing a wrong video: takes off the latest part (or the one named).
+ * If an earlier part is left, the match points back at it.
+ */
+export async function clearFixtureStream(env: StreamEnv, tenantId: string, fixtureId: string, videoId?: string): Promise<void> {
+  const current = await env.DB.prepare(`SELECT youtube_live_id FROM fixtures WHERE tenant_id = ? AND id = ?`).bind(tenantId, fixtureId).first<{ youtube_live_id: string | null }>();
+  const target = videoId ?? current?.youtube_live_id ?? null;
+  const left = target ? await removePart(env, tenantId, fixtureId, target) : await loadParts(env, tenantId, fixtureId);
+  const last = left[left.length - 1];
+  if (last && current?.youtube_live_id === target) {
+    await env.DB.prepare(
+      `UPDATE fixtures SET youtube_live_id = ?, youtube_status = 'ended', stream_source = ?, stream_embeddable = ?, stream_started_at = ?
+       WHERE tenant_id = ? AND id = ?`,
+    ).bind(last.videoId, last.source, last.embeddable ? 1 : 0, last.startedAt, tenantId, fixtureId).run();
+    return;
+  }
+  if (last) return;
   await env.DB.prepare(
     `UPDATE fixtures SET youtube_live_id = NULL, youtube_status = NULL, stream_source = NULL, stream_embeddable = NULL, stream_started_at = NULL,
        video_kickoff_sec = NULL
      WHERE tenant_id = ? AND id = ?`,
   ).bind(tenantId, fixtureId).run();
+}
+
+/**
+ * When a pasted link's stream started, from YouTube, if the club has its
+ * channel connected (one unit of the daily allowance). Saves it on the part
+ * so its clips line up without anyone pausing on kick-off.
+ */
+export async function lookUpLinkStart(env: StreamEnv, tenantId: string, fixtureId: string, videoId: string): Promise<boolean> {
+  if (!env.YT_CLIENT_ID || !env.YT_CLIENT_SECRET || !env.SOCIAL_TOKEN_KEY) return false;
+  const conn = await env.DB.prepare(`SELECT access_token_enc FROM social_connections WHERE tenant_id = ? AND platform = 'youtube'`)
+    .bind(tenantId).first<{ access_token_enc: string }>();
+  if (!conn) return false;
+  try {
+    const startedAt = await videoStartedAt(await accessToken(env, tenantId, conn.access_token_enc), videoId);
+    if (startedAt === null) return false;
+    await setPartStart(env, tenantId, fixtureId, videoId, startedAt);
+    return true;
+  } catch (err) {
+    console.warn(JSON.stringify({ event: "stream_link_start", outcome: "failed", tenant: tenantId, error: err instanceof Error ? err.message : String(err) }));
+    return false;
+  }
 }
 
 async function accessToken(env: StreamEnv, tenantId: string, stored: string): Promise<string> {

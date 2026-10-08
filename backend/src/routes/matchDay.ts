@@ -14,7 +14,7 @@
 import { json } from "../services/util";
 import { requireStaff, requireTenantJWT, type TenantClaims } from "../services/auth";
 import { matchDayFor, streamView, validCoords, VENUE_RADIUS_M, FIXTURE_COLUMNS, type FixtureRow } from "../services/matchDay";
-import { clearFixtureStream, setFixtureStream, type StreamEnv } from "../services/stream/detect";
+import { clearFixtureStream, lookUpLinkStart, setFixtureStream, type StreamEnv } from "../services/stream/detect";
 import { parseYouTubeVideoId } from "../services/stream/youtube";
 import { processDueAlerts } from "../services/matchAlerts/queue";
 
@@ -98,11 +98,12 @@ export async function handlePutStream(req: Request, env: Env, corsHdrs: Headers,
     if (!videoId) return fail(corsHdrs, 400, "VALIDATION", "Paste the YouTube link for the stream (from the Share button).");
     if (!(await fixtureRow(env, claims.tenantId, fixtureId))) return fail(corsHdrs, 404, "NOT_FOUND", "Match not found.");
     const changed = await setFixtureStream(env, claims.tenantId, fixtureId, { videoId, source: "link", embeddable: true });
+    // When the stream started, from YouTube (if the club's channel is connected), so clips line up by themselves
+    const lookUp = lookUpLinkStart(env, claims.tenantId, fixtureId, videoId).catch(() => false);
     // "Live now" goes out straight away rather than waiting for the next minute
-    if (changed) {
-      const work = processDueAlerts(env).catch(() => 0);
-      if (ctx) ctx.waitUntil(work); else await work;
-    }
+    const alerts = changed ? processDueAlerts(env).catch(() => 0) : Promise.resolve(0);
+    const work = Promise.all([lookUp, alerts]);
+    if (ctx) ctx.waitUntil(work); else await work;
     const row = await fixtureRow(env, claims.tenantId, fixtureId);
     return json({ success: true, data: { stream: row ? streamView(row) : null } }, 200, corsHdrs);
   } catch (err) {
@@ -114,8 +115,11 @@ export async function handleDeleteStream(req: Request, env: Env, corsHdrs: Heade
   const claims = await authenticate(req, env, corsHdrs, true);
   if (claims instanceof Response) return claims;
   try {
-    await clearFixtureStream(env, claims.tenantId, fixtureId);
-    return json({ success: true, data: { stream: null } }, 200, corsHdrs);
+    // ?videoId= removes that part of the match's video; otherwise the latest
+    const only = new URL(req.url).searchParams.get("videoId");
+    await clearFixtureStream(env, claims.tenantId, fixtureId, only && /^[A-Za-z0-9_-]{11}$/.test(only) ? only : undefined);
+    const row = await fixtureRow(env, claims.tenantId, fixtureId);
+    return json({ success: true, data: { stream: row ? streamView(row) : null } }, 200, corsHdrs);
   } catch (err) {
     return internalError(corsHdrs, "stream_clear", err);
   }

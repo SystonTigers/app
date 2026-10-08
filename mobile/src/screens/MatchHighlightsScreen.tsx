@@ -9,7 +9,7 @@ import { apiErrorMessage, highlightsApi } from '../services/api';
 import ClipPlayer from '../components/highlights/ClipPlayer';
 import ClipTiming from '../components/highlights/ClipTiming';
 import MakeHighlightsVideo from '../components/highlights/MakeHighlightsVideo';
-import { formatClock, matchDate, nextClip, parseClock, type HighlightMoment, type HighlightsView } from '../utils/highlights';
+import { capitalise, formatClock, matchDate, nextClip, parseClock, partName, partsToLineUp, waitingLine, type HighlightMoment, type HighlightsView, type VideoPartView } from '../utils/highlights';
 import { fixtureTitle } from '../utils/matchDay';
 
 const ICONS: Record<HighlightMoment['type'], string> = {
@@ -18,9 +18,10 @@ const ICONS: Record<HighlightMoment['type'], string> = {
 
 /**
  * Match highlights: each moment tapped in Match Centre, played one after
- * another from the match's YouTube video. Staff line the video up once
- * (where kick-off is) and set how long each clip runs before and after the
- * moment, or hide it.
+ * another from the match's YouTube video (or videos, when the stream was
+ * restarted). Clips are placed by the time of each tap; a part whose start
+ * time isn't known waits until staff line it up by pausing on a moment.
+ * Staff also set how long each clip runs before and after the moment, or hide it.
  */
 export default function MatchHighlightsScreen() {
   const COLORS = useBrandColors();
@@ -33,7 +34,8 @@ export default function MatchHighlightsScreen() {
   const [error, setError] = useState('');
   const [playing, setPlaying] = useState(-1);
   const [busy, setBusy] = useState(false);
-  const [lineUpOpen, setLineUpOpen] = useState(false);
+  /** The part staff chose to line up again (videoId) */
+  const [lineUpOpen, setLineUpOpen] = useState<string | null>(null);
   const [timingOpen, setTimingOpen] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -51,15 +53,18 @@ export default function MatchHighlightsScreen() {
 
   useEffect(() => { setLoading(true); setPlaying(-1); load(); }, [load]);
 
-  const save = async (body: Parameters<typeof highlightsApi.update>[1]) => {
-    if (!fixtureId) return;
+  /** Save a change; true when it saved. */
+  const save = async (body: Parameters<typeof highlightsApi.update>[1]): Promise<boolean> => {
+    if (!fixtureId) return false;
     setBusy(true);
     setError('');
     try {
       const res = await highlightsApi.update(fixtureId, body);
       setView(res.data);
+      return true;
     } catch (err) {
       setError(apiErrorMessage(err, "That didn't save. Please try again."));
+      return false;
     } finally {
       setBusy(false);
     }
@@ -74,6 +79,17 @@ export default function MatchHighlightsScreen() {
   const moments = view.moments;
   const current = playing >= 0 ? moments[playing] : null;
   const first = nextClip(moments, -1);
+  const parts = view.parts ?? [];
+  const needing = view.canEdit ? partsToLineUp(view) : [];
+  // Lining up: a part staff opened, or the first waiting one when there are no clips to show yet
+  const lining: VideoPartView | undefined = lineUpOpen
+    ? parts.find((p) => p.videoId === lineUpOpen)
+    : !moments.length ? needing[0] : undefined;
+  const waiting = waitingLine(view);
+  const lineUpPart = (p: VideoPartView, sec: number) => {
+    if (!p.lineUpWith) return;
+    save({ lineUp: { videoId: p.videoId, eventId: p.lineUpWith.eventId, sec } }).then((ok) => { if (ok) { setLineUpOpen(null); setPlaying(-1); } });
+  };
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -87,18 +103,18 @@ export default function MatchHighlightsScreen() {
           : 'The highlights appear here once the match video is added.'} />
       ) : !view.video.embeddable ? (
         <Note icon="youtube" text="This video can't play inside other apps. Turn on embedding for it in YouTube Studio." />
-      ) : view.kickoffSec === null || lineUpOpen ? (
-        view.canEdit ? (
-          <LineUp
-            videoId={view.video.videoId}
-            current={view.kickoffSec}
-            busy={busy}
-            onSave={async (sec) => { await save({ kickoffSec: sec }); setLineUpOpen(false); setPlaying(-1); }}
-            onCancel={view.kickoffSec !== null ? () => setLineUpOpen(false) : undefined}
-          />
-        ) : (
-          <Note icon="clock-outline" text="The highlights appear here once the manager lines up the video." />
-        )
+      ) : lining ? (
+        <LineUp
+          key={lining.videoId}
+          videoId={lining.videoId}
+          what={lining.lineUpWith?.label ?? 'kick-off'}
+          which={partName(lining, parts.length)}
+          busy={busy}
+          onSave={(sec) => lineUpPart(lining, sec)}
+          onCancel={lineUpOpen ? () => setLineUpOpen(null) : undefined}
+        />
+      ) : !moments.length && view.momentsWaiting ? (
+        <Note icon="clock-outline" text="The highlights appear here once the manager lines up the video." />
       ) : !moments.length ? (
         <Note icon="gesture-tap" text={view.momentsTapped ? 'All the clips are hidden.' : 'No moments were marked in Match Centre for this match. Goals, chances, saves and cards become clips.'} />
       ) : (
@@ -106,7 +122,8 @@ export default function MatchHighlightsScreen() {
           {current ? (
             <View>
               <ClipPlayer
-                videoId={view.video.videoId}
+                key={current.videoId ?? view.video.videoId}
+                videoId={current.videoId ?? view.video.videoId}
                 clip={{ start: current.start, end: current.end }}
                 onEnded={() => setPlaying((i) => nextClip(moments, i))}
               />
@@ -118,6 +135,14 @@ export default function MatchHighlightsScreen() {
               <Text style={styles.playAllText}>Play the highlights ({moments.filter((m) => !m.hidden).length} clips)</Text>
             </Pressable>
           )}
+
+          {needing.length ? (
+            <View style={styles.waitingBox}>
+              <Text style={styles.momentTitle}>{capitalise(partName(needing[0], parts.length))} needs lining up</Text>
+              <Text style={styles.momentDetail}>{waiting ?? 'Its clips will appear once it is lined up.'} It takes a minute: play it and pause on {needing[0].lineUpWith?.label}.</Text>
+              <Tweak label="Line it up" onPress={() => setLineUpOpen(needing[0].videoId)} disabled={busy} />
+            </View>
+          ) : waiting ? <Text style={styles.help}>{waiting}</Text> : null}
 
           <Text style={styles.label}>Moments</Text>
           {moments.map((m, i) => (
@@ -148,11 +173,7 @@ export default function MatchHighlightsScreen() {
             </View>
           ))}
 
-          {view.canEdit ? (
-            <Pressable onPress={() => setLineUpOpen(true)} accessibilityRole="button">
-              <Text style={styles.link}>Clips in the wrong place? Line up the video again</Text>
-            </Pressable>
-          ) : null}
+          {view.canEdit ? <RelineLinks parts={parts.filter((p) => p.lineUp !== null && p.lineUpWith)} count={parts.length} onOpen={setLineUpOpen} /> : null}
         </>
       )}
 
@@ -177,24 +198,24 @@ export default function MatchHighlightsScreen() {
   );
 }
 
-/** Staff: play the full video, pause at kick-off and save that point (or type the time). */
-function LineUp({ videoId, current, busy, onSave, onCancel }: { videoId: string; current: number | null; busy: boolean; onSave: (sec: number) => void; onCancel?: () => void }) {
+/** Staff: play the video, pause on the moment (kick-off, or the first tap in a later part) and save that point (or type the time). */
+function LineUp({ videoId, what, which, busy, onSave, onCancel }: { videoId: string; what: string; which: string; busy: boolean; onSave: (sec: number) => void; onCancel?: () => void }) {
   const COLORS = useBrandColors();
   const styles = useStyles();
   const [time, setTime] = useState<number | null>(null);
-  const [typed, setTyped] = useState(current !== null ? formatClock(current) : '');
+  const [typed, setTyped] = useState('');
   const [bad, setBad] = useState(false);
   const latest = useRef<number | null>(null);
   return (
     <View>
       <Text style={styles.help}>
-        Line the video up once so every clip lands in the right place: play it, pause on the kick-off whistle, then tap the button.
+        Line up {which} so every clip lands in the right place: play it, pause on {what}, then tap the button.
       </Text>
       <ClipPlayer videoId={videoId} clip={null} onTime={(s) => { latest.current = s; setTime(s); }} />
       <Pressable onPress={() => latest.current !== null && onSave(Math.round(latest.current))} disabled={busy || time === null} accessibilityRole="button" style={[styles.playAll, (busy || time === null) ? styles.disabled : null]}>
-        <Text style={styles.playAllText}>{time === null ? 'Play the video to find kick-off' : `Kick-off is at ${formatClock(time)}`}</Text>
+        <Text style={styles.playAllText}>{time === null ? `Play the video to find ${what}` : `${capitalise(what)} is at ${formatClock(time)}`}</Text>
       </Pressable>
-      <Text style={styles.help}>Or type where kick-off is in the video:</Text>
+      <Text style={styles.help}>Or type where {what} is in the video:</Text>
       <View style={styles.row}>
         <TextInput
           value={typed}
@@ -202,7 +223,7 @@ function LineUp({ videoId, current, busy, onSave, onCancel }: { videoId: string;
           placeholder="e.g. 4:35"
           placeholderTextColor={COLORS.textLight}
           style={styles.input}
-          accessibilityLabel="Kick-off time in the video"
+          accessibilityLabel={`Where ${what} is in the video`}
         />
         <Pressable
           onPress={() => { const s = parseClock(typed); if (s === null) setBad(true); else onSave(s); }}
@@ -215,6 +236,27 @@ function LineUp({ videoId, current, busy, onSave, onCancel }: { videoId: string;
       </View>
       {bad ? <Text style={styles.error}>Type it like 4:35 (minutes:seconds).</Text> : null}
       {onCancel ? <Pressable onPress={onCancel} accessibilityRole="button"><Text style={styles.link}>Cancel</Text></Pressable> : null}
+    </View>
+  );
+}
+
+/** "Clips in the wrong place? Line up the video again" (one link per part when there are several). */
+function RelineLinks({ parts, count, onOpen }: { parts: VideoPartView[]; count: number; onOpen: (videoId: string) => void }) {
+  const styles = useStyles();
+  if (!parts.length) return null;
+  if (count === 1) {
+    return (
+      <Pressable onPress={() => onOpen(parts[0].videoId)} accessibilityRole="button">
+        <Text style={styles.link}>Clips in the wrong place? Line up the video again</Text>
+      </Pressable>
+    );
+  }
+  return (
+    <View>
+      <Text style={styles.help}>Clips in the wrong place? Line up a part again:</Text>
+      <View style={styles.tweaks}>
+        {parts.map((p) => <Tweak key={p.videoId} label={`Part ${p.part}`} onPress={() => onOpen(p.videoId)} />)}
+      </View>
     </View>
   );
 }
@@ -254,8 +296,8 @@ const useStyles = themedStyles((COLORS) => ({
   help: { color: COLORS.textLight, marginVertical: 8 },
   label: { color: COLORS.text, fontFamily: FONTS.display, marginTop: 8, textTransform: 'uppercase', fontSize: 20, letterSpacing: 1 },
   nowPlaying: { color: COLORS.primary, fontWeight: '800', marginTop: 8 },
-  playAll: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: COLORS.primary, borderRadius: 12, paddingVertical: 16, marginTop: 8 },
-  playAllText: { color: COLORS.onPrimary, fontWeight: '900', fontSize: 16 },
+  playAll: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: COLORS.primary, borderRadius: 12, paddingVertical: 16, paddingHorizontal: 16, marginTop: 8, minHeight: 44 },
+  playAllText: { color: COLORS.onPrimary, fontWeight: '900', fontSize: 16, textAlign: 'center', flexShrink: 1 },
   moment: { backgroundColor: COLORS.surface, borderRadius: 18, borderWidth: 1, borderColor: COLORS.border, padding: 12 },
   momentPlaying: { borderWidth: 2, borderColor: COLORS.primary },
   momentHidden: { opacity: 0.5 },
@@ -266,7 +308,7 @@ const useStyles = themedStyles((COLORS) => ({
   consent: { color: COLORS.warning, fontSize: 12, fontWeight: '700' },
   momentTime: { color: COLORS.textLight, fontVariant: ['tabular-nums'] },
   tweaks: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 },
-  tweak: { borderWidth: 1, borderColor: COLORS.textLight, borderRadius: 8, paddingVertical: 6, paddingHorizontal: 10 },
+  tweak: { minHeight: 44, justifyContent: 'center', borderWidth: 1, borderColor: COLORS.textLight, borderRadius: 8, paddingVertical: 6, paddingHorizontal: 10 },
   tweakText: { color: COLORS.text, fontSize: 13, fontWeight: '700' },
   link: { color: COLORS.primary, fontWeight: '700', marginTop: 12 },
   note: { alignItems: 'center', gap: 10, paddingVertical: 32, paddingHorizontal: 16 },
@@ -276,4 +318,5 @@ const useStyles = themedStyles((COLORS) => ({
   smallButton: { backgroundColor: COLORS.primary, borderRadius: 8, paddingVertical: 10, paddingHorizontal: 16 },
   smallButtonText: { color: COLORS.onPrimary, fontWeight: '900' },
   disabled: { opacity: 0.5 },
+  waitingBox: { backgroundColor: COLORS.surface, borderRadius: 18, borderWidth: 1, borderColor: COLORS.warning, padding: 12, gap: 8 },
 }));

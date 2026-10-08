@@ -85,6 +85,17 @@ export async function myChannel(accessToken: string): Promise<{ id: string; titl
   return ch ? { id: ch.id, title: ch.snippet?.title ?? "YouTube channel" } : null;
 }
 
+/**
+ * When a live stream (or a video that was one) started, from YouTube, or
+ * null if it never was live or isn't visible to the club's account.
+ */
+export async function videoStartedAt(accessToken: string, videoId: string): Promise<number | null> {
+  if (!/^[A-Za-z0-9_-]{11}$/.test(videoId)) return null;
+  const body = await apiGet<{ items?: { liveStreamingDetails?: { actualStartTime?: string } }[] }>(accessToken, `/videos?part=liveStreamingDetails&id=${videoId}`);
+  const t = Date.parse(body.items?.[0]?.liveStreamingDetails?.actualStartTime ?? "");
+  return Number.isFinite(t) ? t : null;
+}
+
 interface BroadcastItem {
   id: string;
   snippet?: { title?: string; actualStartTime?: string };
