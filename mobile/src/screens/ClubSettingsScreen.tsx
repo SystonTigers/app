@@ -3,6 +3,7 @@ import { ActivityIndicator, AppState, RefreshControl, ScrollView, Text, View } f
 import { Button, Snackbar } from 'react-native-paper';
 import { useFocusEffect } from '@react-navigation/native';
 import ClubBadgeCard from '../components/clubSettings/ClubBadgeCard';
+import ClubColoursCard from '../components/clubSettings/ClubColoursCard';
 import SocialAccountsCard from '../components/clubSettings/SocialAccountsCard';
 import PostingCard from '../components/clubSettings/PostingCard';
 import GraphicsCard from '../components/clubSettings/GraphicsCard';
@@ -86,6 +87,7 @@ export default function ClubSettingsScreen() {
           Your badge, social media, what gets posted where, graphics, match stats, FA snippets, email forwarding and live video. Changes here also show on the website.
         </Text>
         <ClubBadgeCard canManage={settings.canManage} onMessage={say} />
+        <ClubColoursCard canManage={settings.canManage} onMessage={say} />
         <SocialAccountsCard settings={settings} onSaved={setSettings} onMessage={say} />
         <PostingCard settings={settings} onSaved={setSettings} onMessage={say} />
         <GraphicsCard settings={settings} onSaved={setSettings} onMessage={say} />

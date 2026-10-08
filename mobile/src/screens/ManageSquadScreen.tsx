@@ -18,6 +18,8 @@ import { FONTS } from '../theme/brandFonts';
 import { squadApi, statsApi } from '../services/api';
 import SeasonStatsModal from '../components/squad/SeasonStatsModal';
 import { namePartsOf, playerInitials, shirtNumber } from '../utils/playerNames';
+import { isoDate, ukDate } from '../utils/signingOn';
+import { birthdayLabel, dobProblem } from '../utils/squadDob';
 import { useTracksAssists } from '../context/ClubContext';
 
 interface Player {
@@ -27,6 +29,8 @@ interface Player {
   lastName: string;
   number: number | null;
   position: string;
+  /** YYYY-MM-DD, for birthday posts */
+  dob: string | null;
   photo?: string;
   goals: number;
   assists: number;
@@ -47,7 +51,7 @@ export default function ManageSquadScreen() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingPlayer, setEditingPlayer] = useState<Player | null>(null);
-  const [formData, setFormData] = useState({ firstName: '', lastName: '', number: '', position: 'Forward' });
+  const [formData, setFormData] = useState({ firstName: '', lastName: '', number: '', position: 'Forward', dob: '' });
   // Player whose season stats are open
   const [statsFor, setStatsFor] = useState<Player | null>(null);
 
@@ -72,6 +76,7 @@ export default function ManageSquadScreen() {
           lastName: namePartsOf(p).last,
           number: shirt === null || shirt === undefined || shirt === '' ? null : Number(shirt),
           position: p.position || 'Forward',
+          dob: typeof (p.dob ?? p.date_of_birth) === 'string' ? isoDate(String(p.dob ?? p.date_of_birth).slice(0, 10)) : null,
           goals: t.goals || 0,
           assists: t.assists || 0,
           appearances: t.appearances || 0,
@@ -91,13 +96,13 @@ export default function ManageSquadScreen() {
 
   const openAddModal = () => {
     setEditingPlayer(null);
-    setFormData({ firstName: '', lastName: '', number: '', position: 'Forward' });
+    setFormData({ firstName: '', lastName: '', number: '', position: 'Forward', dob: '' });
     setShowModal(true);
   };
 
   const openEditModal = (player: Player) => {
     setEditingPlayer(player);
-    setFormData({ firstName: player.firstName, lastName: player.lastName, number: player.number === null ? '' : String(player.number), position: player.position });
+    setFormData({ firstName: player.firstName, lastName: player.lastName, number: player.number === null ? '' : String(player.number), position: player.position, dob: ukDate(player.dob) });
     setShowModal(true);
   };
 
@@ -105,6 +110,11 @@ export default function ManageSquadScreen() {
     const firstName = formData.firstName.trim();
     const lastName = formData.lastName.trim();
     const number = formData.number.trim();
+    const dobIssue = formData.dob.trim() ? dobProblem(formData.dob) : null;
+    if (dobIssue) {
+      Alert.alert('Date of birth', dobIssue);
+      return;
+    }
     if (!firstName) {
       Alert.alert('Name needed', "Enter the player's first name.");
       return;
@@ -114,7 +124,8 @@ export default function ManageSquadScreen() {
       return;
     }
     try {
-      const playerData = { firstName, lastName, number: number ? Number(number) : null, position: formData.position };
+      const dob = formData.dob.trim() ? isoDate(formData.dob) : null;
+      const playerData = { firstName, lastName, number: number ? Number(number) : null, position: formData.position, dateOfBirth: dob };
 
       if (editingPlayer) {
         await squadApi.updatePlayer(editingPlayer.id, playerData);
@@ -209,6 +220,7 @@ export default function ManageSquadScreen() {
                         >
                           {player.position}
                         </Chip>
+                        <Paragraph style={styles.birthday}>{player.dob ? `Birthday ${birthdayLabel(player.dob)}` : 'No date of birth: no birthday post'}</Paragraph>
                       </View>
                     </View>
                     <IconButton
@@ -329,6 +341,18 @@ export default function ManageSquadScreen() {
                 </View>
               </View>
             </View>
+
+            <TextInput
+              label="Date of birth (optional)"
+              value={formData.dob}
+              onChangeText={(text) => setFormData({ ...formData, dob: text.slice(0, 10) })}
+              placeholder="dd/mm/yyyy"
+              style={styles.input}
+              mode="outlined"
+              keyboardType="numbers-and-punctuation"
+              accessibilityLabel="Date of birth, day month year"
+            />
+            <Paragraph style={styles.nameHelp}>For the club&apos;s birthday posts. Only staff and the player&apos;s family see it, and posts never show an age.</Paragraph>
 
             <Paragraph style={styles.formHelp}>
               Goals, apps and cards come from Match Centre. To add numbers for past seasons, save the player and tap Season stats.
@@ -537,6 +561,11 @@ const useStyles = themedStyles((COLORS) => ({
   halfInput: {
     flex: 1,
     marginRight: 8,
+  },
+  birthday: {
+    fontSize: 12,
+    marginTop: 4,
+    color: COLORS.textLight,
   },
   nameHelp: {
     fontSize: 12,

@@ -770,6 +770,10 @@ export const clubOptionsApi = {
   setTrackAssists: async (on: boolean): Promise<void> => {
     await api.patch('/api/v1/tenants/me', { trackAssists: on });
   },
+  /** Club admins: the kit colours (#RRGGBB) used across the app and in graphics */
+  setColours: async (primaryColor: string, secondaryColor: string): Promise<void> => {
+    await api.patch('/api/v1/tenants/me', { primaryColor, secondaryColor });
+  },
   /** Club admins: switch club extras on or off */
   setModules: async (modules: Partial<Record<'subs' | 'signingOn' | 'shop', boolean>>): Promise<void> => {
     await api.patch('/api/v1/tenants/me', { modules });

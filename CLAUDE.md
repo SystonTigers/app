@@ -241,6 +241,10 @@ with personal data.
 - The club badge is uploaded in Club Settings (`POST /api/v1/club/badge`,
   PNG/JPG under 3 MB, `tenant_brand.badge_url`); graphics, the app and club
   pages all read it from there.
+- Club colours: app Club Settings → Club colours (`ClubColoursCard`, kit
+  swatches or an exact #RRGGBB, `utils/clubColours.ts`; club admins only,
+  `PATCH /tenants/me {primaryColor, secondaryColor}` → `tenant_brand`). The
+  main colour is the app's accent for everyone and graphics' main colour.
 - Opponent badges come from the Opponents page (website Admin → Opponents,
   app Manager Zone → Opponents `OpponentsScreen`; `opponent_teams`; the
   upload takes the picture as the body or a form field `badge`);
@@ -453,6 +457,10 @@ with personal data.
   loads the club's names so name styles split "Mary Jane" + "Watson" or
   "Virgil" + "Van Dijk" correctly; players saved before the split use the
   first and last word until staff save them again.
+- Date of birth (for birthday posts only, never an age): app Manage Squad
+  (`utils/squadDob.ts`; each player shows "No date of birth: no birthday
+  post" until it's set), website Admin → Squad, or signing on. `PUT
+  /admin/squad/:id {dateOfBirth: YYYY-MM-DD | null}`.
 - Player stats are counted from Match Centre and match reports
   (`match_events`, line-ups); staff add numbers for past seasons by hand
   (Manage Squad → Season stats; `player_stat_entries`,
