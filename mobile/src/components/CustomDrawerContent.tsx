@@ -36,6 +36,7 @@ interface MenuGroup { id: string; title: string; icon: string; items: MenuItem[]
 const MEMBER_GROUPS: MenuGroup[] = [
     {
         id: 'match_day', title: 'Match day', icon: 'soccer-field', items: [
+            { label: 'Availability', screen: 'Availability', icon: 'calendar-check', roles: ['parent', 'player'], hiddenFor: ['supporter'] },
             { label: 'Live match', screen: 'LiveMatch', icon: 'whistle', roles: ALL },
             { label: 'Man of the Match vote', screen: 'MOTMVoting', icon: 'star-circle', roles: ALL },
             { label: 'Predictions', screen: 'LastManStanding', icon: 'crystal-ball', roles: ALL },
@@ -78,6 +79,7 @@ const STAFF_GROUPS: MenuGroup[] = [
     {
         id: 'staff_match', title: 'Match day', icon: 'scoreboard', items: [
             { label: 'Match Centre', screen: 'MatchCentre', icon: 'scoreboard', roles: STAFF },
+            { label: 'Availability', screen: 'Availability', icon: 'calendar-check', roles: STAFF },
             { label: 'New club post', screen: 'CreatePost', icon: 'pencil-plus', roles: STAFF },
             { label: 'Man of the Match votes', screen: 'ManageMOTM', icon: 'star-cog', roles: MANAGERS },
         ],

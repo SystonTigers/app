@@ -491,6 +491,24 @@ with personal data.
   `services/social/club.ts` blanks them for match day, countdown, postponed,
   fixture lists, team news and kick-off posts.
   App staff checks use `utils/roles.ts` (`isStaffRole`, `menuRole`).
+- Availability (app menu: Match day → Availability for families, Coach zone →
+  Match day → Availability for staff; `AvailabilityScreen`,
+  `components/availability/`, `utils/availability.ts`; backend
+  `routes/availability.ts`, `services/availability/`, migration 0034): for
+  each unplayed match, training session and club event in the next four
+  weeks a linked parent or player answers yes / maybe / no per child
+  (`player_availability`, one row per child per item, with an optional note
+  for the coaches after maybe or no). Families only see their own children;
+  staff get squad totals, the full list for an item (grouped, with notes and
+  "No family linked"), can answer for a child and "Remind families"
+  (`POST .../remind`, at most every 12 hours per item). The Home screen asks
+  families until they've answered (`AvailabilityPrompt`), and the line-up
+  editor shows each player's answer (`GET .../lineup` returns `availability`
+  to staff). Automatic push reminder: once, two days before an unanswered
+  item, one notification per family covering everything due (5-minute cron,
+  9am-7pm UK, claimed in `availability_reminders`; families who switched off
+  "reminders" in their alert settings are skipped). Called-off, postponed and
+  played matches drop out; past items can't be answered.
 - Training Centre (`TrainingScreen`, `routes/trainingSessions.ts`): staff plan
   sessions (date, time, place, focus, drills as `lib:<id>`/`club:<id>` refs in
   `training_plans.drill_refs`) and take the register (`training_attendance`);

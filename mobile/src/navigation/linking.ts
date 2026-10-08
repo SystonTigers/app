@@ -40,6 +40,7 @@ const DRAWER_PATHS: Record<string, string> = {
   Profile: 'profile',
   MediaConsent: 'consent',
   SigningOn: 'signing-on',
+  Availability: 'availability',
   Settings: 'settings',
   CreatePost: 'new-post',
   Gallery: 'gallery',

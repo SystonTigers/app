@@ -12,6 +12,8 @@ import { withoutVideoConsent } from "../services/consent";
 import { hasAnyRole, STAFF_ROLES } from "../services/auth";
 import { loadFixture } from "../services/liveMatch";
 import { drawAndPostSoon, queuePost } from "../services/social/jobs";
+import { availabilityForMatch } from "../services/availability/store";
+import type { Answer } from "../services/availability/rules";
 
 type Env = { DB: D1Database; [key: string]: unknown };
 
@@ -30,12 +32,18 @@ async function authenticate(req: Request, env: Env, corsHdrs: Headers, staff: bo
   }
 }
 
-/** Staff also see who in the team hasn't got video consent (they'll be on the live stream). */
-async function lineupView(env: Env, claims: TenantClaims, fixtureId: string): Promise<Lineup & { noVideoConsent?: string[] }> {
+/**
+ * Staff also see who in the team hasn't got video consent (they'll be on the
+ * live stream) and what each family said about availability.
+ */
+async function lineupView(env: Env, claims: TenantClaims, fixtureId: string): Promise<Lineup & { noVideoConsent?: string[]; availability?: Record<string, Answer> }> {
   const lineup = await getLineup(env, claims.tenantId, fixtureId);
   if (!hasAnyRole(claims, STAFF_ROLES)) return lineup;
-  const missing = await withoutVideoConsent(env, claims.tenantId, [...lineup.starters, ...lineup.subs].map((p) => p.playerId));
-  return { ...lineup, noVideoConsent: [...missing.values()] };
+  const [missing, availability] = await Promise.all([
+    withoutVideoConsent(env, claims.tenantId, [...lineup.starters, ...lineup.subs].map((p) => p.playerId)),
+    availabilityForMatch(env, claims.tenantId, fixtureId),
+  ]);
+  return { ...lineup, noVideoConsent: [...missing.values()], availability };
 }
 
 function ids(value: unknown): string[] | null {

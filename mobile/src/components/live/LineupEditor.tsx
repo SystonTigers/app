@@ -5,6 +5,7 @@ import { themedStyles, useBrandColors } from '../../theme/brand';
 import { FONTS } from '../../theme/brandFonts';
 import { apiErrorMessage, consentApi, lineupApi, type Lineup } from '../../services/api';
 import type { PickablePlayer } from './PlayerPicker';
+import { lineupHint, type Answer } from '../../utils/availability';
 
 const TEAM_SIZES = [5, 7, 9, 11];
 const MAX_SUBS = 12;
@@ -34,6 +35,8 @@ export default function LineupEditor({ visible, fixtureId, opponent, players, on
   const [error, setError] = useState('');
   // Players whose parents haven't said yes to video (they'd be on the live stream)
   const [noVideo, setNoVideo] = useState<Set<string>>(new Set());
+  // What each family said about this match (Availability)
+  const [availability, setAvailability] = useState<Record<string, Answer>>({});
 
   useEffect(() => {
     if (!visible || !fixtureId) return;
@@ -48,6 +51,7 @@ export default function LineupEditor({ visible, fixtureId, opponent, players, on
         res.data.subs.forEach((p) => { r[p.playerId] = 'sub'; });
         setRoles(r);
         setOrder([...res.data.starters, ...res.data.subs].map((p) => p.playerId));
+        setAvailability(res.data.availability ?? {});
       })
       .catch((err) => setError(apiErrorMessage(err, "We couldn't load the team.")))
       .finally(() => setLoading(false));
@@ -130,10 +134,10 @@ export default function LineupEditor({ visible, fixtureId, opponent, players, on
             {players.map((p) => {
               const role = roles[p.id];
               return (
-                <Pressable key={p.id} onPress={() => cycle(p.id)} accessibilityRole="button" accessibilityLabel={`${p.name}: ${role === 'starter' ? 'starting' : role === 'sub' ? 'sub' : 'not playing'}`}
+                <Pressable key={p.id} onPress={() => cycle(p.id)} accessibilityRole="button" accessibilityLabel={`${p.name}${lineupHint(availability[p.id]) ? `, ${lineupHint(availability[p.id])}` : ''}: ${role === 'starter' ? 'starting' : role === 'sub' ? 'sub' : 'not playing'}`}
                   style={({ pressed }) => [styles.row, pressed ? styles.pressed : null]}>
                   <Text style={styles.number}>{p.number ?? ''}</Text>
-                  <Text style={[styles.name, !role ? styles.dim : null]}>{p.name}{noVideo.has(p.id) ? <Text style={styles.noVideo}>  · no video consent</Text> : null}</Text>
+                  <Text style={[styles.name, !role ? styles.dim : null]}>{p.name}{lineupHint(availability[p.id]) ? <Text style={availability[p.id] === 'yes' ? styles.available : availability[p.id] === 'no' ? styles.unavailable : styles.maybe}>  · {lineupHint(availability[p.id])}</Text> : null}{noVideo.has(p.id) ? <Text style={styles.noVideo}>  · no video consent</Text> : null}</Text>
                   <Text style={[styles.badge, role === 'starter' ? styles.badgeStart : role === 'sub' ? styles.badgeSub : styles.badgeOut]}>
                     {role === 'starter' ? 'Starting' : role === 'sub' ? 'Sub' : '–'}
                   </Text>
@@ -172,6 +176,9 @@ const useStyles = themedStyles((COLORS) => ({
   name: { flex: 1, color: COLORS.text, fontSize: 16, fontWeight: '600' },
   dim: { color: COLORS.textLight },
   noVideo: { color: '#F5C400', fontSize: 12, fontWeight: '700' },
+  available: { color: COLORS.success, fontSize: 12, fontWeight: '700' },
+  maybe: { color: COLORS.warning, fontSize: 12, fontWeight: '700' },
+  unavailable: { color: COLORS.error, fontSize: 12, fontWeight: '700' },
   warning: { color: '#F5C400', fontSize: 13, marginBottom: 6 },
   badge: { minWidth: 72, textAlign: 'center', borderRadius: 999, paddingVertical: 4, paddingHorizontal: 10, fontWeight: '800', fontSize: 12, overflow: 'hidden' },
   badgeStart: { backgroundColor: COLORS.primary, color: COLORS.onPrimary },

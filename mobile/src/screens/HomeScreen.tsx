@@ -17,6 +17,7 @@ import FeedCard from '../components/FeedCard';
 import { SkeletonCard } from '../components/LoadingSkeleton';
 import InstallPrompt from '../components/InstallPrompt';
 import ConsentPrompt from '../components/ConsentPrompt';
+import AvailabilityPrompt from '../components/availability/AvailabilityPrompt';
 import HomeHeader from '../components/home/HomeHeader';
 import NextMatchCard from '../components/home/NextMatchCard';
 import HeadToHead from '../components/home/HeadToHead';
@@ -164,6 +165,7 @@ export default function HomeScreen({ navigation }: any) {
       <View style={{ paddingHorizontal: 16 }}>
         <InstallPrompt />
         <ConsentPrompt onOpen={() => navigation.navigate('MediaConsent')} />
+        <AvailabilityPrompt onOpen={() => navigation.navigate('Availability')} />
       </View>
 
       {/* Live video that's on before kick-off has been tapped in Match Centre */}
