@@ -59,7 +59,7 @@ function Team({ side }: { side: Side }) {
   );
 }
 
-export const opponentSide = (name: string, score?: number | null): Side => ({ name, color: OPPONENT, badgeUrl: null, score });
+export const opponentSide = (name: string, score?: number | null, badgeUrl?: string | null): Side => ({ name, color: OPPONENT, badgeUrl: badgeUrl ?? null, score });
 
 const useStyles = themedStyles((c) => ({
   card: { backgroundColor: c.surface, borderRadius: 18, borderWidth: 1, borderColor: c.border, padding: 14, marginHorizontal: 16, marginBottom: 12 },

@@ -34,3 +34,17 @@ export async function opponentBadgeUrl(env: { DB: D1Database }, tenantId: string
   ).bind(crypto.randomUUID(), tenantId, teamName.trim(), normalized).run();
   return null;
 }
+
+/**
+ * Every opponent badge the club has (uploaded, or from the shared library),
+ * looked up by team name. One read for a whole fixture list; never adds teams.
+ */
+export async function opponentBadgeLookup(env: { DB: D1Database }, tenantId: string): Promise<(teamName: string) => string | null> {
+  const { results } = await env.DB.prepare(
+    `SELECT ot.normalized_name AS name, COALESCE(ot.custom_badge_url, bl.badge_url) AS url
+     FROM opponent_teams ot LEFT JOIN badge_library bl ON bl.id = ot.badge_library_id
+     WHERE ot.tenant_id = ?`,
+  ).bind(tenantId).all<{ name: string; url: string | null }>();
+  const byName = new Map((results ?? []).filter((r) => r.url).map((r) => [r.name, r.url as string]));
+  return (teamName: string) => byName.get(normalizeTeamName(teamName ?? "")) ?? null;
+}

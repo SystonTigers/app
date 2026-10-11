@@ -33,6 +33,13 @@ describe("Opponents", () => {
     const notImage = await call(`/api/v1/opponents/${team.id}/upload-badge`, { token: coach.token, body: new TextEncoder().encode("hello"), headers: { "content-type": "text/plain" } });
     expect(notImage.status).toBe(400);
 
+    // The app's fixture cards show the badge instead of initials ("FC" and case don't matter)
+    const fx = await call("/api/v1/admin/fixtures", { token: coach.token, body: { opponent: "Badge Rovers FC", date: "2099-10-11", time: "14:00", homeAway: "home" } });
+    expect(fx.status, JSON.stringify(fx.data)).toBe(200);
+    const upcoming = await call("/api/v1/fixtures/upcoming", { token: parent.token });
+    const card = upcoming.data.find((f: any) => f.id === fx.data.id);
+    expect(card.opponentBadgeUrl).toBe((await find("Badge Rovers")).effective_badge_url);
+
     const removed = await call(`/api/v1/opponents/${team.id}`, { method: "DELETE", token: coach.token });
     expect(removed.status, JSON.stringify(removed.data)).toBe(200);
     expect(await find("Badge Rovers")).toBeFalsy();
