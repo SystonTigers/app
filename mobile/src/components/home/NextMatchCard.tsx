@@ -9,12 +9,12 @@ import { countdownLabel } from './homeUtils';
 const OPPONENT = '#8E99A4';
 
 /** The next fixture: both crests, a countdown and where/when, over a pitch-line pattern. */
-export default function NextMatchCard({ clubName, color, badgeUrl, opponent, homeAway, date, dateText, time, venue, competition, onPress }: {
-  clubName: string; color: string; badgeUrl?: string | null; opponent: string; homeAway: 'home' | 'away';
+export default function NextMatchCard({ clubName, color, badgeUrl, opponentBadgeUrl, opponent, homeAway, date, dateText, time, venue, competition, onPress }: {
+  clubName: string; color: string; badgeUrl?: string | null; opponentBadgeUrl?: string | null; opponent: string; homeAway: 'home' | 'away';
   date: string; dateText: string; time: string; venue: string | null; competition: string | null; onPress: () => void;
 }) {
   const us = { name: clubName, color, badge: badgeUrl };
-  const them = { name: opponent, color: OPPONENT, badge: null };
+  const them = { name: opponent, color: OPPONENT, badge: opponentBadgeUrl ?? null };
   const [home, away] = homeAway === 'away' ? [them, us] : [us, them];
   return (
     <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={`Next match: ${home.name} v ${away.name}, ${dateText} ${time}`} style={({ pressed }) => [styles.card, pressed ? styles.pressed : null]}>

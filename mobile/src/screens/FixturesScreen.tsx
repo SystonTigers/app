@@ -108,7 +108,7 @@ export default function FixturesScreen() {
         <>
       <SectionTitle title="UPCOMING" color={c.primary} />
       {fixtures.length ? fixtures.map((f) => {
-        const [home, away] = bySide(us(), opponentSide(f.opponent), f.homeAway);
+        const [home, away] = bySide(us(), opponentSide(f.opponent, undefined, f.opponentBadgeUrl), f.homeAway);
         const date = formatFixtureDate(f.date);
         const away_ = f.homeAway === 'away';
         return (

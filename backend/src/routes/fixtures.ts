@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { requireJWT } from '../services/auth';
 import { json } from '../services/util';
+import { opponentBadgeLookup } from '../services/opponentBadges';
 
 // Zod validation schemas
 const FixtureSyncSchema = z.object({
@@ -135,9 +136,11 @@ export async function handleGetUpcomingFixtures(req: Request, env: any): Promise
         AND status NOT IN ('postponed', 'completed', 'final')
       ORDER BY fixture_date ASC, kick_off_time ASC
       LIMIT 10
-    `).bind(claims.tenantId).all();
+    `).bind(claims.tenantId).all<{ opponent: string }>();
 
-    return json(result.results || []);
+    // The opponent's badge from the Opponents page, so the app shows it instead of initials
+    const badgeFor = await opponentBadgeLookup(env, claims.tenantId ?? "").catch(() => (_: string): string | null => null);
+    return json((result.results || []).map((f) => ({ ...f, opponentBadgeUrl: badgeFor(f.opponent) })));
 
   } catch (err) {
     return json({

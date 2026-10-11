@@ -32,6 +32,8 @@ export interface Fixture {
   kickOffTime: string;
   status: string;
   source?: string;
+  /** The opponent's badge from the Opponents page, when one is set */
+  opponentBadgeUrl?: string | null;
   /** Whether we're the home side (from the fixture) */
   homeAway?: 'home' | 'away';
   location?: string;

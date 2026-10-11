@@ -215,6 +215,7 @@ export default function HomeScreen({ navigation }: any) {
             color={color}
             badgeUrl={club?.badgeUrl}
             opponent={nextFixture.opponent}
+            opponentBadgeUrl={nextFixture.opponentBadgeUrl}
             homeAway={nextFixture.homeAway === 'away' ? 'away' : 'home'}
             date={String(nextFixture.date).slice(0, 10)}
             dateText={formatFixtureDate(nextFixture.date)}
