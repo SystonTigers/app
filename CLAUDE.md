@@ -101,6 +101,10 @@ with personal data.
   sends them in order every 8 seconds, when the browser comes back online and
   after the app is reopened. The server ignores a repeated `clientEventId`, so
   a resend never counts twice; a 4xx other than 408/429 drops the tap.
+- The phone's screen stays on while Match Centre is open, until full time or
+  while taps wait to send (`hooks/useKeepScreenOn`: expo-keep-awake on the phone
+  build; the browser's Screen Wake Lock in the web app, asked for again each
+  time the page comes back into view). iPhones need iOS 18.4+ for the web app.
 - Line-ups: `routes/lineup.ts` (5/7/9/11-a-side; club `default_team_size`,
   fixture `team_size`). "Post team news" queues a line-up post.
 - Subs: Match Centre asks who is going off, then who is coming on. With a
