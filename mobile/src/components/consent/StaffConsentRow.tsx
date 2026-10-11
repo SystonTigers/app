@@ -6,6 +6,7 @@ import { apiErrorMessage, consentApi, parentLinkApi, type LinkedParent, type Pla
 import { inviteMessage } from '../../services/inviteLink';
 import ConsentQuestion from './ConsentQuestion';
 import { shirtNumber } from '../../utils/playerNames';
+import { useIsAdultTeam } from '../../context/ClubContext';
 
 const mark = (v: boolean | null) => (v === true ? '✓' : v === false ? '✗' : '?');
 
@@ -94,9 +95,10 @@ export default function StaffConsentRow({ player, clubName, clubSlug, onChanged 
   };
 
   const linked = player.linkedParents ?? 0;
+  const adult = useIsAdultTeam();
   return (
     <View style={styles.wrap}>
-      <Pressable onPress={toggle} accessibilityRole="button" accessibilityLabel={`${player.name}: photos ${mark(player.photos)}, video ${mark(player.video)}, ${linked} parents linked`} style={styles.row}>
+      <Pressable onPress={toggle} accessibilityRole="button" accessibilityLabel={`${player.name}: photos ${mark(player.photos)}, video ${mark(player.video)}, ${linked} ${adult ? 'linked' : 'parents linked'}`} style={styles.row}>
         <Text style={styles.name} numberOfLines={1}>{shirtNumber(player.number) ? `${shirtNumber(player.number)}. ` : ''}{player.name}</Text>
         <View style={styles.badge}>
           <MaterialCommunityIcons name="camera" size={15} color={markColour(player.photos)} />
@@ -107,17 +109,17 @@ export default function StaffConsentRow({ player, clubName, clubSlug, onChanged 
           <Text style={[styles.badgeText, markStyle(player.video)]}>{mark(player.video)}</Text>
         </View>
         <View style={styles.badge}>
-          <MaterialCommunityIcons name="account-multiple" size={15} color={linked ? c.textLight : c.warning} />
-          <Text style={[styles.badgeText, linked ? styles.plain : styles.unknown]}>{linked}</Text>
+          <MaterialCommunityIcons name="account-multiple" size={15} color={linked || adult ? c.textLight : c.warning} />
+          <Text style={[styles.badgeText, linked || adult ? styles.plain : styles.unknown]}>{linked}</Text>
         </View>
       </Pressable>
       {open ? (
         <View style={styles.panel}>
           <ConsentQuestion label="Photos (recording a paper form)" value={player.photos} busy={busy === 'photos'} onAnswer={(v) => answer('photos', v)} />
           <ConsentQuestion label="Video" value={player.video} busy={busy === 'video'} onAnswer={(v) => answer('video', v)} />
-          {player.source ? <Text style={styles.small}>{player.source === 'parent' ? 'Last answered by a parent in the app' : 'Last recorded by club staff'}</Text> : null}
+          {player.source ? <Text style={styles.small}>{player.source === 'parent' ? 'Last answered by a parent in the app' : player.source === 'player' ? 'Last answered by the player in the app' : 'Last recorded by club staff'}</Text> : null}
 
-          <Text style={styles.heading}>Parents linked</Text>
+          <Text style={styles.heading}>{adult ? 'Linked to the app' : 'Parents linked'}</Text>
           {parents === null ? <Text style={styles.small}>Loading…</Text> : parents.length ? parents.map((p) => (
             <View key={p.userId} style={styles.parent}>
               <Text style={styles.parentEmail} numberOfLines={1}>{p.email}</Text>
@@ -125,9 +127,9 @@ export default function StaffConsentRow({ player, clubName, clubSlug, onChanged 
                 <Text style={styles.remove}>Remove</Text>
               </Pressable>
             </View>
-          )) : <Text style={styles.small}>Nobody yet. Send the family a code so they can answer in the app.</Text>}
+          )) : <Text style={styles.small}>{adult ? 'Not yet. Send the player a code so they can answer in the app.' : 'Nobody yet. Send the family a code so they can answer in the app.'}</Text>}
           <Pressable onPress={makeInvite} disabled={busy === 'invite'} accessibilityRole="button" style={styles.invite}>
-            <Text style={styles.inviteText}>{busy === 'invite' ? 'Making a code…' : 'Invite a parent (WhatsApp, text…)'}</Text>
+            <Text style={styles.inviteText}>{busy === 'invite' ? 'Making a code…' : adult ? 'Send the player a code (WhatsApp, text…)' : 'Invite a parent (WhatsApp, text…)'}</Text>
           </Pressable>
           {invite ? (
             <View style={styles.code}>

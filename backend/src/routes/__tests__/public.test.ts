@@ -93,7 +93,8 @@ describe("Public Routes", () => {
         describe("with valid tenant", () => {
             const setupTenantMock = (env: any) => {
                 (env.DB.prepare as any).mockImplementation((query: string) => {
-                    if (query.includes("FROM tenants")) {
+                    // The club lookup (other queries can mention tenants inside a check, e.g. photo consent)
+                    if (query.includes("FROM tenants") && !query.includes("FROM squad")) {
                         return {
                             bind: vi.fn().mockReturnThis(),
                             first: vi.fn().mockResolvedValue({

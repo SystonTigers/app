@@ -5,6 +5,7 @@ import { themedStyles, useBrandColors } from '../../theme/brand';
 import { FONTS } from '../../theme/brandFonts';
 import { galleryApi } from '../../services/api';
 import { photoCount, uploadSummary } from '../../utils/gallery';
+import { useIsAdultTeam } from '../../context/ClubContext';
 
 /**
  * Staff: check the picked photos, confirm consent and upload them to the
@@ -18,6 +19,7 @@ export default function UploadPhotosModal({ uris, albumId, onClose, onDone }: {
   /** Called with a message once uploading finishes (some may have failed) */
   onDone: (message: string, failed: string[]) => void;
 }) {
+  const adult = useIsAdultTeam();
   const COLORS = useBrandColors();
   const styles = useStyles();
   const [caption, setCaption] = useState('');
@@ -69,7 +71,7 @@ export default function UploadPhotosModal({ uris, albumId, onClose, onDone }: {
               <Text style={styles.label} onPress={() => !busy && setConsent(!consent)}>Everyone pictured is OK with this</Text>
             </View>
             <Text style={styles.help}>
-              Parents or guardians have agreed for any under-18s pictured. The gallery is only for club members. Photos ticked for Throwback Thursday may be posted on the club's social media, and only if the club allows player photos in posts.
+              {adult ? "Everyone pictured is happy to be shared with the club." : 'Parents or guardians have agreed for any under-18s pictured.'} The gallery is only for club members. Photos ticked for Throwback Thursday may be posted on the club's social media, and only if the club allows player photos in posts.
             </Text>
           </View>
           {busy ? (

@@ -53,6 +53,11 @@ export function useClub(): ClubContextType {
   return context;
 }
 
+/** Whether the club is an adult team (players answer for themselves; no parents). */
+export function useIsAdultTeam(): boolean {
+  return useClub().club?.teamType === 'adult';
+}
+
 /** Whether the club records assists (some only want top goalscorers). */
 export function useTracksAssists(): boolean {
   return useClub().club?.trackAssists !== false;

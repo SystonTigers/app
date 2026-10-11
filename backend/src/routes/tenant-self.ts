@@ -6,6 +6,7 @@ import { parse, isValidationError } from "../lib/validate";
 import { requireJWT, hasRole, hasAnyRole, STAFF_ROLES } from "../services/auth";
 import { logJSON } from "../lib/log";
 import { NAME_STYLES } from "../services/publicNames";
+import { teamType, type TeamType } from "../services/clubOptions";
 
 /**
  * Club URLs share the web app's top-level paths, so these can't be used as slugs.
@@ -18,6 +19,11 @@ export const RESERVED_SLUGS = new Set([
 ]);
 
 // PATCH /api/v1/tenants/me
+/** The new team type when it differs from the club's current one, else null. */
+async function teamTypeChange(env: any, tenantId: string, next: TeamType): Promise<TeamType | null> {
+    return (await teamType(env, tenantId)) === next ? null : next;
+}
+
 export async function updateTenantMe(req: Request, env: any, corsHdrs: Headers): Promise<Response> {
     try {
         const claims = await requireJWT(req, env);
@@ -47,6 +53,8 @@ export async function updateTenantMe(req: Request, env: any, corsHdrs: Headers):
             publicPhotos: z.boolean().optional(),
             // false = the club doesn't record assists (top goalscorers only)
             trackAssists: z.boolean().optional(),
+            // Junior (parents answer consent, match details members only) or adult team
+            teamType: z.enum(["junior", "adult"]).optional(),
             // Club extras: Subs and fees, Signing on, Shop (off unless switched on)
             modules: z.object({ subs: z.boolean().optional(), signingOn: z.boolean().optional(), shop: z.boolean().optional() }).strict().optional(),
             // Older single switch: full names and photos on/off
@@ -74,8 +82,17 @@ export async function updateTenantMe(req: Request, env: any, corsHdrs: Headers):
             params.push(data.slug);
         }
 
-        const nameStyle = data.publicNameStyle ?? (data.publicFullNames === undefined ? undefined : data.publicFullNames ? "full" : "first_initial");
-        const photos = data.publicPhotos ?? data.publicFullNames;
+        // Changing team type also sets the matching defaults unless this request sets them itself:
+        // adults full names and photos on, juniors back to initials and photos off
+        const switchedTo = data.teamType ? await teamTypeChange(env, tenantId, data.teamType) : null;
+        const nameStyle = data.publicNameStyle ?? (data.publicFullNames === undefined ? undefined : data.publicFullNames ? "full" : "first_initial")
+            ?? (switchedTo === "adult" ? "full" : switchedTo === "junior" ? "first_initial" : undefined);
+        const photos = data.publicPhotos ?? data.publicFullNames ?? (switchedTo ? switchedTo === "adult" : undefined);
+        if (data.teamType) {
+            updates.push("team_type = ?");
+            params.push(data.teamType);
+            if (switchedTo) logJSON({ level: "info", msg: "club_team_type", tenantId, teamType: switchedTo });
+        }
         if (nameStyle !== undefined) {
             updates.push("public_name_style = ?");
             params.push(nameStyle);

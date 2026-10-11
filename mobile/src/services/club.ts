@@ -26,6 +26,8 @@ export interface Club {
   trackAssists?: boolean;
   /** Club extras the club has switched on (off when missing) */
   modules?: ClubModules;
+  /** Junior (default) or adult team: adults answer for themselves and fixtures are public */
+  teamType?: 'junior' | 'adult';
 }
 
 export type ClubSummary = Pick<Club, 'slug' | 'name' | 'primaryColor' | 'badgeUrl'>;
@@ -89,6 +91,7 @@ export async function fetchClubInfo(slug: string): Promise<Club | null> {
     secondaryColor: data.secondaryColor ?? null,
     badgeUrl: data.badgeUrl ?? null,
     trackAssists: data.trackAssists !== false,
+    teamType: data.teamType === 'adult' ? 'adult' : 'junior',
     modules: {
       subs: data.modules?.subs === true,
       signingOn: data.modules?.signingOn === true,

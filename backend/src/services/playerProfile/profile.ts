@@ -14,6 +14,7 @@ import { seasonOptions } from "../seasons/range";
 import { squadStats, type PlayerStatLine } from "../squadStats";
 import { playerGoalClips, type GoalClip } from "./clips";
 import { taggedPhotos } from "../galleryTags";
+import { photoAllowedSql, videoAllowedSql } from "../consent";
 
 type Env = { DB: D1Database };
 
@@ -50,7 +51,7 @@ export interface PlayerProfile {
 
 interface SquadRow {
   id: string; name: string; first_name: string | null; number: number | null; position: string | null; bio: string | null; bio_updated_at: number | null;
-  headshot_url: string | null; photo_url: string | null; photo_consent: number | null; video_consent: number | null;
+  headshot_url: string | null; photo_url: string | null; photo_consent: number | null; video_consent: number | null; photo_ok: number; video_ok: number;
 }
 
 function line(s: PlayerStatLine | undefined): Omit<SeasonLine, "id" | "label" | "current"> {
@@ -68,7 +69,8 @@ export async function isThePlayer(env: Env, claims: TenantClaims, playerId: stri
 
 export async function playerProfile(env: Env, claims: TenantClaims, playerId: string): Promise<PlayerProfile | null> {
   const row = await env.DB.prepare(
-    `SELECT id, name, first_name, number, position, bio, bio_updated_at, headshot_url, photo_url, photo_consent, video_consent
+    `SELECT id, name, first_name, number, position, bio, bio_updated_at, headshot_url, photo_url, photo_consent, video_consent,
+            ${photoAllowedSql()} AS photo_ok, ${videoAllowedSql()} AS video_ok
      FROM squad WHERE tenant_id = ? AND id = ?`,
   ).bind(claims.tenantId, playerId).first<SquadRow>();
   if (!row) return null;
@@ -76,8 +78,8 @@ export async function playerProfile(env: Env, claims: TenantClaims, playerId: st
   const staff = isStaff(claims);
   const linked = (await linkedPlayerIds(env, claims)).has(playerId);
   const family = staff || linked;
-  const showPhotos = family || row.photo_consent === 1;
-  const showClips = family || row.video_consent === 1;
+  const showPhotos = family || row.photo_ok === 1;
+  const showClips = family || row.video_ok === 1;
 
   const seasons = await seasonOptions(env, claims.tenantId);
   const [career, ...perSeason] = await Promise.all([

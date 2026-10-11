@@ -7,7 +7,7 @@
  * `event_id` = the goal), gotm_votes (unique per vote and person).
  */
 import { hasAnyRole, STAFF_ROLES, type TenantClaims } from "../auth";
-import { graphicPhotoSql } from "../consent";
+import { graphicPhotoSql, videoAllowedSql } from "../consent";
 import { linkedPlayerIds } from "../playerPrivacy";
 import { fixtureGoalClips, type GoalClip } from "../playerProfile/clips";
 import { monthLabel, monthRange, MONTHS, winnersOf, type NewVote } from "./rules";
@@ -195,8 +195,8 @@ async function describeCandidates(env: Env, claims: TenantClaims, rows: Candidat
   const fixtureIds = [...new Set(rows.map((r) => r.match_id).filter((f): f is string => !!f))];
   const eventIds = [...new Set(rows.map((r) => r.event_id).filter((e): e is string => !!e))];
   const [players, fixtures, liveMinutes, reportMinutes, family] = await Promise.all([
-    env.DB.prepare(`SELECT id, name, video_consent FROM squad WHERE tenant_id = ? AND id IN (${marks(playerIds.length)})`)
-      .bind(tenantId, ...playerIds).all<{ id: string; name: string; video_consent: number | null }>(),
+    env.DB.prepare(`SELECT id, name, video_consent, ${videoAllowedSql()} AS video_ok FROM squad WHERE tenant_id = ? AND id IN (${marks(playerIds.length)})`)
+      .bind(tenantId, ...playerIds).all<{ id: string; name: string; video_consent: number | null; video_ok: number }>(),
     fixtureIds.length
       ? env.DB.prepare(`SELECT id, opponent, fixture_date FROM fixtures WHERE tenant_id = ? AND id IN (${marks(fixtureIds.length)})`)
         .bind(tenantId, ...fixtureIds).all<{ id: string; opponent: string; fixture_date: string }>()
@@ -224,7 +224,7 @@ async function describeCandidates(env: Env, claims: TenantClaims, rows: Candidat
     const p = player.get(r.player_id);
     const f = r.match_id ? fixture.get(r.match_id) : undefined;
     // Video of children: staff and the player's family always, other members only with consent
-    const mayShowVideo = staff || family.has(r.player_id) || p?.video_consent === 1;
+    const mayShowVideo = staff || family.has(r.player_id) || p?.video_ok === 1;
     out.set(r.id, {
       id: r.id, playerId: r.player_id, playerName: p?.name ?? "Former player", fixtureId: r.match_id,
       opponent: f?.opponent ?? null, date: f?.fixture_date.slice(0, 10) ?? null,

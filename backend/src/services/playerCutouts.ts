@@ -7,6 +7,7 @@
  * `players/<club>/<player>/cutout-<time>.png`; `squad.cutout_url` points at it.
  */
 import { deleteMedia, keyFromMediaUrl, mediaUrl, putMedia, type MediaEnv } from "./media";
+import { photoAllowedSql } from "./consent";
 
 type Env = MediaEnv & { DB: D1Database };
 
@@ -53,17 +54,18 @@ export function checkCutout(bytes: Uint8Array): void {
 /** Every player in the squad with their cut-out (staff screen). */
 export async function listCutouts(env: Env, tenantId: string): Promise<CutoutPlayer[]> {
   const { results } = await env.DB.prepare(
-    `SELECT id, name, number, cutout_url, COALESCE(headshot_url, photo_url) AS photo, photo_consent
+    `SELECT id, name, number, cutout_url, COALESCE(headshot_url, photo_url) AS photo, photo_consent, ${photoAllowedSql()} AS photo_ok
        FROM squad WHERE tenant_id = ?
       ORDER BY number IS NULL, number, name`,
-  ).bind(tenantId).all<{ id: string; name: string; number: number | null; cutout_url: string | null; photo: string | null; photo_consent: number | null }>();
+  ).bind(tenantId).all<{ id: string; name: string; number: number | null; cutout_url: string | null; photo: string | null; photo_consent: number | null; photo_ok: number }>();
   return (results || []).map((r) => ({
     playerId: r.id,
     name: r.name,
     number: typeof r.number === "number" ? r.number : null,
     cutoutUrl: r.cutout_url,
     photoUrl: r.photo,
-    photoConsent: r.photo_consent === 1 ? true : r.photo_consent === 0 ? false : null,
+    // Adults: not answered counts as yes
+    photoConsent: r.photo_ok === 1 ? true : r.photo_consent === 0 ? false : null,
   }));
 }
 

@@ -18,12 +18,17 @@ async function isApprovedMember(req: Request, env: any, tenantId: string): Promi
     }
 }
 
+/** Adult teams' fixtures, times and grounds are public; juniors' are for approved members only. */
+async function canSeeMatchDetails(req: Request, env: any, tenantId: string): Promise<boolean> {
+    return (await isAdultTeam(env, tenantId)) || isApprovedMember(req, env, tenantId);
+}
+
 /** Post kinds that can show the ground or kick-off time */
 const MATCH_DETAIL_KINDS = ["countdown", "matchday", "postponed", "fixtures", "month_fixtures", "lineup", "kick_off"];
 const MEMBERS_ONLY = { membersOnly: true, message: "Sign in to the club app to see fixtures." };
 import { publicPhotoSql } from "../services/consent";
 import { loadFaSnippets } from "../services/faFullTime";
-import { tracksAssists } from "../services/clubOptions";
+import { isAdultTeam, teamType, tracksAssists } from "../services/clubOptions";
 import { logJSON } from "../lib/log";
 import { closeExpiredSessions, findMatch, parseWinnerIds, playerNames } from "../services/motm";
 import { getPublicNamePolicy, publicName, publicPhoto, publicScorers } from "../services/publicNames";
@@ -363,7 +368,7 @@ export async function handlePublicTenantRequest(
         if (resource === "fa-full-time") {
             const snippets = await loadFaSnippets(env.DB, tenant.id);
             // The FA's fixture lists show kick-off times and grounds: members only, like ours
-            if (!(await isApprovedMember(req, env, tenant.id))) {
+            if (!(await canSeeMatchDetails(req, env, tenant.id))) {
                 delete snippets.fixtures;
                 delete snippets.team;
             }
@@ -372,12 +377,13 @@ export async function handlePublicTenantRequest(
 
         // Club name and colours for the club's public pages
         if (resource === "info") {
-            const [brand, trackAssists, modules] = await Promise.all([
+            const [brand, trackAssists, modules, type] = await Promise.all([
                 env.DB.prepare(
                     `SELECT primary_color, secondary_color, badge_url FROM tenant_brand WHERE tenant_id = ?`
                 ).bind(tenant.id).first() as Promise<{ primary_color?: string; secondary_color?: string; badge_url?: string } | null>,
                 tracksAssists(env, tenant.id),
                 clubModules(env, tenant.id),
+                teamType(env, tenant.id),
             ]);
             return json({
                 success: true,
@@ -391,6 +397,8 @@ export async function handlePublicTenantRequest(
                     trackAssists,
                     // Club extras switched on: { subs, signingOn, shop }
                     modules,
+                    // 'junior' or 'adult' (adults: players answer for themselves, fixtures are public)
+                    teamType: type,
                 },
             }, 200, corsHdrs);
         }
@@ -412,7 +420,7 @@ export async function handlePublicTenantRequest(
                 return json({ success: false, error: "Match not found" }, 404, corsHdrs);
             }
             // A match that hasn't been played yet is for members only
-            if (!resultRow && !(await isApprovedMember(req, env, tenant.id))) {
+            if (!resultRow && !(await canSeeMatchDetails(req, env, tenant.id))) {
                 return json({ success: false, error: "Match not found" }, 404, corsHdrs);
             }
 
@@ -429,7 +437,7 @@ export async function handlePublicTenantRequest(
         }
 
         if (resource === "fixtures" && segments[3] === "next") {
-            if (!(await isApprovedMember(req, env, tenant.id))) return json({ success: true, data: null, meta: MEMBERS_ONLY }, 200, corsHdrs);
+            if (!(await canSeeMatchDetails(req, env, tenant.id))) return json({ success: true, data: null, meta: MEMBERS_ONLY }, 200, corsHdrs);
             const row = await env.DB.prepare(
                 `SELECT
             id,
@@ -486,7 +494,7 @@ export async function handlePublicTenantRequest(
             }
 
             // Upcoming fixtures (dates, kick-off times, grounds) are for members only
-            if (!(await isApprovedMember(req, env, tenant.id))) return json({ success: true, data: [], meta: MEMBERS_ONLY }, 200, corsHdrs);
+            if (!(await canSeeMatchDetails(req, env, tenant.id))) return json({ success: true, data: [], meta: MEMBERS_ONLY }, 200, corsHdrs);
             const seasonWhere = seasonId ? `AND f.season_id = ?` : '';
             const binds = seasonId ? [tenant.id, seasonId, limit] : [tenant.id, limit];
 
@@ -523,7 +531,7 @@ export async function handlePublicTenantRequest(
             const pageSize = Math.min(parseInt(url.searchParams.get("pageSize") || url.searchParams.get("limit") || "10", 10) || 10, 50);
             const offset = (page - 1) * pageSize;
             // Posts that say where and when we play are for members, unless the club left those details out
-            const member = await isApprovedMember(req, env, tenant.id);
+            const member = await canSeeMatchDetails(req, env, tenant.id);
             const hideMatchPosts = member ? "" : `AND NOT EXISTS (
              SELECT 1 FROM social_jobs j JOIN tenants t ON t.id = j.tenant_id
              WHERE j.tenant_id = feed_posts.tenant_id AND feed_posts.id = 'social-' || j.id
@@ -658,7 +666,7 @@ export async function handlePublicTenantRequest(
         // Live and just-finished matches for the club page. Goals and match
         // phases only (no staff notes); player names follow the club's setting.
         if (resource === "live") {
-            if (!(await isApprovedMember(req, env, tenant.id))) return json({ success: true, data: [], meta: MEMBERS_ONLY }, 200, corsHdrs);
+            if (!(await canSeeMatchDetails(req, env, tenant.id))) return json({ success: true, data: [], meta: MEMBERS_ONLY }, 200, corsHdrs);
             const policy = await getPublicNamePolicy(env, tenant.id);
             const shown = new Set(["kick_off", "half_time", "second_half", "full_time", "goal", "opp_goal"]);
             const matches = [];

@@ -2,7 +2,8 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { themedStyles, useBrandColors } from '../theme/brand';
 import { FONTS } from '../theme/brandFonts';
-import { useClub } from '../context/ClubContext';
+import { useClub, useIsAdultTeam } from '../context/ClubContext';
+import { consentShown } from '../utils/teamType';
 import { apiErrorMessage, consentApi, type PlayerConsent } from '../services/api';
 import { consentSummary, filterConsent, type ConsentFilter } from '../utils/consent';
 import ConsentQuestion from '../components/consent/ConsentQuestion';
@@ -20,6 +21,12 @@ const FILTERS: Array<{ id: ConsentFilter; label: string }> = [
   { id: 'noParent', label: 'No parent linked' },
   { id: 'all', label: 'Everyone' },
 ];
+/** Adult teams: photos are used unless a player says no, so staff look for the no's */
+const ADULT_FILTERS: Array<{ id: ConsentFilter; label: string }> = [
+  { id: 'all', label: 'Everyone' },
+  { id: 'saidNo', label: 'Said no' },
+  { id: 'noParent', label: 'Not linked to the app' },
+];
 
 /**
  * Photo and video consent. Parents link their account to their child with
@@ -31,11 +38,12 @@ export default function MediaConsentScreen() {
   const styles = useStyles();
   const { club } = useClub();
   const { user } = useAuth();
-  const isPlayer = user?.role === 'player';
+  const adult = useIsAdultTeam();
+  const isPlayer = user?.role === 'player' || adult;
   const clubName = club?.name || 'the club';
   const [players, setPlayers] = useState<PlayerConsent[]>([]);
   const [staff, setStaff] = useState(false);
-  const [filter, setFilter] = useState<ConsentFilter>('unanswered');
+  const [filter, setFilter] = useState<ConsentFilter>(adult ? 'all' : 'unanswered');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [saving, setSaving] = useState<string | null>(null);
@@ -45,7 +53,8 @@ export default function MediaConsentScreen() {
     setError('');
     try {
       const res = await consentApi.get();
-      setPlayers(res.data.players);
+      // Adults: not answered means yes (used unless the player says no)
+      setPlayers(adult ? res.data.players.map((p) => ({ ...p, photos: consentShown(p.photos, true), video: consentShown(p.video, true) })) : res.data.players);
       setStaff(res.data.canEditAll);
     } catch (err) {
       setError(apiErrorMessage(err, "We couldn't load this. Check your signal and try again."));
@@ -53,7 +62,7 @@ export default function MediaConsentScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [adult]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -94,14 +103,20 @@ export default function MediaConsentScreen() {
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={COLORS.primary} />}
     >
       <Text style={styles.intro}>
-        {staff
+        {staff && adult
+          ? 'Players appear in the photos and videos the club shares unless they say no. Players can change their answer in the app once linked to their page; tap a player to send them a code or record their answer.'
+          : staff
           ? 'Who can appear in photos and videos the club shares publicly. Parents answer in the app once linked to their child; tap a player to send the family a code or record a paper form.'
           : isPlayer
             ? `Can ${clubName} use your photo and video? This covers social media posts, the club website and match highlight videos.`
             : `Can ${clubName} use your child's photo and video? This covers social media posts, the club website and match highlight videos.`}
       </Text>
       <Text style={styles.small}>
-        {isPlayer
+        {adult && staff
+          ? "If a player says no, their photo is never shown publicly and you're warned before sharing video of them."
+          : adult
+          ? 'Your photo and video are used unless you say no here. If you say no, your photo is never shown publicly and the manager is warned before sharing video of you. You can change your answer at any time.'
+          : isPlayer
           ? 'Without a yes, your photo is never shown publicly and the manager is warned before sharing video of you. You can change your answer at any time.'
           : "Without a yes, a child's photo is never shown publicly and the manager is warned before sharing video of them. Answers can be changed at any time."}
       </Text>
@@ -112,10 +127,10 @@ export default function MediaConsentScreen() {
           <View style={styles.summary}>
             <SummaryItem label="Photos: yes" value={`${summary.photosYes}/${players.length}`} />
             <SummaryItem label="Video: yes" value={`${summary.videoYes}/${players.length}`} />
-            <SummaryItem label="No parent linked" value={String(summary.noParent)} warn={summary.noParent > 0} />
+            <SummaryItem label={adult ? 'Not linked' : 'No parent linked'} value={String(summary.noParent)} warn={!adult && summary.noParent > 0} />
           </View>
           <View style={styles.filters}>
-            {FILTERS.map((f) => (
+            {(adult ? ADULT_FILTERS : FILTERS).map((f) => (
               <Pressable key={f.id} onPress={() => setFilter(f.id)} accessibilityRole="button" accessibilityState={{ selected: filter === f.id }}
                 style={[styles.filter, filter === f.id ? styles.filterOn : null]}>
                 <Text style={[styles.filterText, filter === f.id ? styles.filterTextOn : null]}>{f.label} ({filterConsent(players, f.id).length})</Text>
@@ -125,7 +140,7 @@ export default function MediaConsentScreen() {
           <View style={styles.legend}>
             <MaterialCommunityIcons name="camera" size={14} color={COLORS.textLight} /><Text style={styles.small}>photos</Text>
             <MaterialCommunityIcons name="video" size={14} color={COLORS.textLight} /><Text style={styles.small}>video</Text>
-            <MaterialCommunityIcons name="account-multiple" size={14} color={COLORS.textLight} /><Text style={styles.small}>parents linked · ✓ yes · ✗ no · ? not answered</Text>
+            <MaterialCommunityIcons name="account-multiple" size={14} color={COLORS.textLight} /><Text style={styles.small}>{adult ? 'linked to the app · ✓ yes · ✗ said no' : 'parents linked · ✓ yes · ✗ no · ? not answered'}</Text>
           </View>
           {shown.length ? shown.map((p) => (
             <StaffConsentRow key={p.playerId} player={p} clubName={clubName} clubSlug={club?.slug ?? null} onChanged={replace} />

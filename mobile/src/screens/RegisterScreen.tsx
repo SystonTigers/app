@@ -4,7 +4,7 @@ import { Text, TextInput, Button, Card, RadioButton, Chip, Checkbox } from 'reac
 import { PRIVACY_URL, TERMS_URL } from '../config';
 import { themedStyles, useBrandColors } from '../theme/brand';
 import type { AuthResult } from '../services/api';
-import { useClubName } from '../context/ClubContext';
+import { useClubName, useIsAdultTeam } from '../context/ClubContext';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { submitRegistration } from './authController';
 import { FONTS } from '../theme/brandFonts';
@@ -19,13 +19,15 @@ export default function RegisterScreen({ onRegister, onNavigateToLogin }: Regist
   const COLORS = useBrandColors();
   const styles = useStyles();
   const clubName = useClubName();
+  // Adult teams have no parents: players (and supporters) sign up for themselves
+  const adult = useIsAdultTeam();
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
     email: '',
     password: '',
     confirmPassword: '',
-    role: 'parent', // parent, player, supporter, coach (coach needs an admin's approval)
+    role: adult ? 'player' : 'parent', // parent, player, supporter, coach (coach needs an admin's approval)
     phone: '',
     playerName: '', // Only if role is parent
   });
@@ -83,7 +85,7 @@ export default function RegisterScreen({ onRegister, onNavigateToLogin }: Regist
     }
 
     // Player name (if parent)
-    if (formData.role === 'parent' && !formData.playerName.trim()) {
+    if (!adult && formData.role === 'parent' && !formData.playerName.trim()) {
       newErrors.playerName = 'Player name is required for parents';
     }
 
@@ -158,7 +160,7 @@ export default function RegisterScreen({ onRegister, onNavigateToLogin }: Regist
             {/* Role Selection */}
             <Text style={styles.sectionTitle}>I am a...</Text>
             <View style={styles.roleContainer}>
-              <Chip
+              {!adult ? <Chip
                 selected={formData.role === 'parent'}
                 onPress={() => updateField('role', 'parent')}
                 style={[styles.roleChip, formData.role === 'parent' && styles.roleChipSelected]}
@@ -166,7 +168,7 @@ export default function RegisterScreen({ onRegister, onNavigateToLogin }: Regist
                 icon="account-child"
               >
                 Parent
-              </Chip>
+              </Chip> : null}
               <Chip
                 selected={formData.role === 'player'}
                 onPress={() => updateField('role', 'player')}
@@ -265,7 +267,7 @@ export default function RegisterScreen({ onRegister, onNavigateToLogin }: Regist
             {errors.phone ? <Text style={styles.fieldError}>{errors.phone}</Text> : null}
 
             {/* Player Name (only for parents) */}
-            {formData.role === 'parent' && (
+            {!adult && formData.role === 'parent' && (
               <>
                 <TextInput
                   label="Player Name *"

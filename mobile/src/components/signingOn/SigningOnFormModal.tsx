@@ -5,6 +5,7 @@ import { themedStyles, useBrandColors } from '../../theme/brand';
 import { FONTS } from '../../theme/brandFonts';
 import { apiErrorMessage, signingOnApi } from '../../services/api';
 import { answersFrom, blankContact, draftFrom, draftProblem, type Draft, type SigningOnEntry, type SigningOnForm } from '../../utils/signingOn';
+import { useIsAdultTeam } from '../../context/ClubContext';
 
 /**
  * One child's signing-on form: details, emergency contacts, photo and video
@@ -17,6 +18,7 @@ export default function SigningOnFormModal({ player, form, onClose, onSaved }: {
   onClose: () => void;
   onSaved: (entry: SigningOnEntry) => void;
 }) {
+  const adult = useIsAdultTeam();
   const c = useBrandColors();
   const styles = useStyles();
   const [draft, setDraft] = useState<Draft>(draftFrom(null));
@@ -80,7 +82,7 @@ export default function SigningOnFormModal({ player, form, onClose, onSaved }: {
               <Text style={styles.section}>About them</Text>
               <TextInput mode="outlined" label="Date of birth (DD/MM/YYYY)" value={draft.dob} onChangeText={(dob) => set({ dob })} keyboardType="numbers-and-punctuation" />
               <TextInput mode="outlined" label="Home address (optional)" value={draft.address} onChangeText={(address) => set({ address })} multiline />
-              <TextInput mode="outlined" label="School (optional)" value={draft.school} onChangeText={(school) => set({ school })} />
+              {!adult ? <TextInput mode="outlined" label="School (optional)" value={draft.school} onChangeText={(school) => set({ school })} /> : null}
               <TextInput mode="outlined" label="Medical conditions the coaches should know (optional)" value={draft.medical} onChangeText={(medical) => set({ medical })} multiline />
               <TextInput mode="outlined" label="Allergies (optional)" value={draft.allergies} onChangeText={(allergies) => set({ allergies })} />
               <Text style={styles.meta}>Only the coaches and your family can see these.</Text>

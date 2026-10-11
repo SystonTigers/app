@@ -7,6 +7,7 @@
 import type { TenantClaims } from "./auth";
 import { hasAnyRole } from "./auth";
 import { revokeUserTokensIssuedBefore } from "./jwtRevocation";
+import { isAdultTeam } from "./clubOptions";
 
 type Env = { DB: D1Database; KV_IDEMP?: KVNamespace };
 
@@ -82,8 +83,8 @@ export function roleLabel(roles: string[]): ClubMember["role"] {
  * can make themselves staff: asking to be a coach makes them a supporter with
  * a request when they're approved.
  */
-export function rolesForSignUp(requested: unknown): { roles: string[]; joinAs: SignUpAs } {
-  const joinAs: SignUpAs = requested === "player" || requested === "supporter" || requested === "coach" ? requested : "parent";
+export function rolesForSignUp(requested: unknown, fallback: SignUpAs = "parent"): { roles: string[]; joinAs: SignUpAs } {
+  const joinAs: SignUpAs = requested === "player" || requested === "supporter" || requested === "coach" || (requested === "parent" && fallback === "parent") ? requested : fallback;
   return { roles: [PENDING_ROLE], joinAs };
 }
 
@@ -195,10 +196,12 @@ export async function declineMember(env: Env, claims: TenantClaims, memberId: st
  * Returns their new roles, or null if they weren't waiting.
  */
 export async function admitWithCode(env: Env, tenantId: string, userId: string): Promise<string[] | null> {
+  // Adult teams have no parents: a code always links a player to themselves
+  const adult = await isAdultTeam(env, tenantId);
   const row = await env.DB.prepare(`SELECT roles, profile FROM auth_users WHERE id = ? AND tenant_id = ?`).bind(userId, tenantId).first<{ roles: string; profile: string | null }>();
   if (!row || !isPendingRoles(parseRoles(row.roles))) return null;
   const profile = (() => { try { return JSON.parse(row.profile || "{}") as Record<string, unknown>; } catch { return {}; } })();
-  const { roles, requestedRole } = rolesWhenApproved(profile.joinAs === "player" ? "player" : profile.joinAs === "coach" ? "coach" : "parent");
+  const { roles, requestedRole } = rolesWhenApproved(profile.joinAs === "player" || adult ? (profile.joinAs === "coach" ? "coach" : "player") : profile.joinAs === "coach" ? "coach" : "parent");
   if (requestedRole) profile.pendingRole = requestedRole;
   profile.approvedAt = new Date().toISOString();
   profile.approvedBy = "code";

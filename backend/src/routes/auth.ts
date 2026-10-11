@@ -9,6 +9,7 @@ import { sendVerificationEmail, sendPasswordResetEmail } from "../lib/email";
 import { rateLimit } from "../middleware/rateLimit";
 import { requireJWT } from "../services/auth";
 import { rolesForSignUp, type SignUpAs } from "../services/clubMembers";
+import { isAdultTeam } from "../services/clubOptions";
 import { createInAppNotification, notifyTenantAdmins } from "../services/notifications";
 
 /** A new sign-up is waiting: tell the club's staff (in the app and by push). Never fails the sign-up. */
@@ -119,7 +120,8 @@ export async function handleAuthRegister(req: Request, env: any, corsHdrs: Heade
     // Everyone who signs themselves up waits for the club's staff to let them in
     // (a coach's code for their child lets a parent straight in: /link-child).
     const { profile: given = {} } = data;
-    const signUp = rolesForSignUp(given.requestedRole);
+    // Adult teams have no parents: anyone who doesn't choose joins as a player
+    const signUp = rolesForSignUp(given.requestedRole, (await isAdultTeam(env, data.tenant_id)) ? "player" : "parent");
     const { pendingRole: _ignored, joinAs: _alsoIgnored, approvedAt: _a, approvedBy: _b, ...cleanProfile } = given as Record<string, unknown>;
     const registration = await registerUser(env, {
       tenantId: data.tenant_id,

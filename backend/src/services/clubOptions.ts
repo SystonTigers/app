@@ -15,3 +15,15 @@ export async function tracksAssists(env: Env, tenantId: string): Promise<boolean
 export function hideAssists<T extends { assists: number }>(rows: T[], tracked: boolean): T[] {
   return tracked ? rows : rows.map((r) => ({ ...r, assists: 0 }));
 }
+
+export type TeamType = "junior" | "adult";
+
+/** Junior (the default) or adult team. Adult teams' rules are in docs: consent opt-out, public fixtures. */
+export async function teamType(env: Env, tenantId: string): Promise<TeamType> {
+  const row = await env.DB.prepare(`SELECT team_type FROM tenants WHERE id = ?`).bind(tenantId).first<{ team_type: string | null }>();
+  return row?.team_type === "adult" ? "adult" : "junior";
+}
+
+export async function isAdultTeam(env: Env, tenantId: string): Promise<boolean> {
+  return (await teamType(env, tenantId)) === "adult";
+}

@@ -70,10 +70,19 @@ export function firstNames(names: string[]): string {
 
 export interface ReminderItem { type: ItemType; title: string; date: string }
 
-/** One notification covering every unanswered item a family has coming up. */
-export function reminderMessage(children: string[], items: ReminderItem[], fromCoach = false): { title: string; body: string } {
+/**
+ * One notification covering every unanswered item a family has coming up.
+ * `self`: adult teams, where the player answers for themselves ("Can you make it?").
+ */
+export function reminderMessage(children: string[], items: ReminderItem[], fromCoach = false, self = false): { title: string; body: string } {
   const who = firstNames(children);
   const what = items.length === 1 ? `${items[0].title} on ${shortDay(items[0].date)}` : `${items.length} things coming up`;
+  if (self) {
+    return {
+      title: fromCoach ? "Your manager is asking: can you make it?" : "Can you make it?",
+      body: `Are you available for ${what}? Tap to answer so the manager can pick the team.`,
+    };
+  }
   return {
     title: fromCoach ? "Your coach is asking: who's available?" : "Can they make it?",
     body: `Is ${who} available for ${what}? Tap to answer so the coaches can plan.`,
