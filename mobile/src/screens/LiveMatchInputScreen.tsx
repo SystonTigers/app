@@ -2,7 +2,8 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ActivityIndicator, Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Modal, Portal, TextInput } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useIsFocused, useNavigation } from '@react-navigation/native';
+import { useKeepScreenOn } from '../hooks/useKeepScreenOn';
 import { COLORS } from '../config';
 import { useClub, useClubName, useTracksAssists } from '../context/ClubContext';
 import { useMatchDay } from '../context/MatchDayContext';
@@ -89,6 +90,9 @@ export default function LiveMatchInputScreen() {
   // What's shown: the server's view of the match with any queued taps on top
   const view = match ? withQueued(match, queue, names) : pendingStart;
   const viewFixtureId = view?.fixture.id ?? null;
+  // The screen stays on while Match Centre is open, until full time (and while taps are still waiting to send)
+  const focused = useIsFocused();
+  useKeepScreenOn(focused && (view?.status !== 'full_time' || queue.length > 0));
   // The match's line-up, so subs only offer who's on the pitch and who's on the bench
   const [lineupIds, setLineupIds] = useState<{ fixtureId: string; starters: string[]; subs: string[] } | null>(null);
   useEffect(() => {
