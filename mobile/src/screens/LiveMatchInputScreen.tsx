@@ -37,8 +37,8 @@ type PickStep = { at: number } & (
   | { kind: 'yellow' }
   | { kind: 'red' }
   | { kind: 'sin_bin' }
-  | { kind: 'sub_on' }
-  | { kind: 'sub_off'; onId: string });
+  | { kind: 'sub_off' }
+  | { kind: 'sub_on'; offId: string });
 
 /**
  * Match Centre (staff): run a match from the touchline. Every tap is timed
@@ -263,8 +263,9 @@ export default function LiveMatchInputScreen() {
       case 'yellow': setPick(null); record('yellow', { playerId: player.id }, pick.at); return;
       case 'red': setPick(null); record('red', { playerId: player.id }, pick.at); return;
       case 'sin_bin': setPick(null); record('sin_bin', { playerId: player.id }, pick.at); return;
-      case 'sub_on': setPick({ kind: 'sub_off', onId: player.id, at: pick.at }); return;
-      case 'sub_off': setPick(null); record('sub', { playerId: pick.onId, player2Id: player.id }, pick.at); return;
+      // Going off first, then coming on (how a sub happens on the touchline)
+      case 'sub_off': setPick({ kind: 'sub_on', offId: player.id, at: pick.at }); return;
+      case 'sub_on': setPick(null); record('sub', { playerId: player.id, player2Id: pick.offId }, pick.at); return;
     }
   };
 
@@ -445,7 +446,7 @@ export default function LiveMatchInputScreen() {
                 </View>
                 <Text style={styles.section}>TEAM</Text>
                 <View style={styles.grid}>
-                  <ActionTile icon="swap-horizontal" label="Sub" color={color} onPress={() => setPick({ kind: 'sub_on', at: Date.now() })} />
+                  <ActionTile icon="swap-horizontal" label="Sub" color={color} onPress={() => setPick({ kind: 'sub_off', at: Date.now() })} />
                   <ActionTile icon="timer-sand" label="Sin bin" color={color} iconColor={YELLOW} onPress={() => setPick({ kind: 'sin_bin', at: Date.now() })} />
                   <ActionTile icon="message-text-outline" label="Post an update" color={color} onPress={() => setNoteOpen(true)} />
                 </View>
@@ -482,7 +483,7 @@ export default function LiveMatchInputScreen() {
         visible={!!pick}
         title={pickTitle}
         players={pickable}
-        excludeId={pick?.kind === 'assist' ? pick.scorerId : pick?.kind === 'sub_off' ? pick.onId : null}
+        excludeId={pick?.kind === 'assist' ? pick.scorerId : pick?.kind === 'sub_on' ? pick.offId : null}
         onPick={onPick}
         onCancel={() => setPick(null)}
         cancelLabel={pick?.kind === 'assist' ? 'Cancel goal' : 'Cancel'}
