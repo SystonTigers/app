@@ -4,8 +4,10 @@ import { Button, Checkbox, Modal, Portal, TextInput } from 'react-native-paper';
 import { themedStyles, useBrandColors } from '../../theme/brand';
 import { FONTS } from '../../theme/brandFonts';
 import { apiErrorMessage, signingOnApi } from '../../services/api';
-import { answersFrom, blankContact, draftFrom, draftProblem, type Draft, type SigningOnEntry, type SigningOnForm } from '../../utils/signingOn';
-import { useIsAdultTeam } from '../../context/ClubContext';
+import { answersFrom, blankContact, draftFrom, draftProblem, hasMedical, type Draft, type SigningOnEntry, type SigningOnForm } from '../../utils/signingOn';
+import { useClubName, useIsAdultTeam } from '../../context/ClubContext';
+import { useAuth } from '../../context/AuthContext';
+import { isStaffRole } from '../../utils/roles';
 
 /**
  * One child's signing-on form: details, emergency contacts, photo and video
@@ -19,6 +21,9 @@ export default function SigningOnFormModal({ player, form, onClose, onSaved }: {
   onSaved: (entry: SigningOnEntry) => void;
 }) {
   const adult = useIsAdultTeam();
+  const clubName = useClubName();
+  const { user } = useAuth();
+  const staff = isStaffRole(user?.role);
   const c = useBrandColors();
   const styles = useStyles();
   const [draft, setDraft] = useState<Draft>(draftFrom(null));
@@ -85,7 +90,21 @@ export default function SigningOnFormModal({ player, form, onClose, onSaved }: {
               {!adult ? <TextInput mode="outlined" label="School (optional)" value={draft.school} onChangeText={(school) => set({ school })} /> : null}
               <TextInput mode="outlined" label="Medical conditions the coaches should know (optional)" value={draft.medical} onChangeText={(medical) => set({ medical })} multiline />
               <TextInput mode="outlined" label="Allergies (optional)" value={draft.allergies} onChangeText={(allergies) => set({ allergies })} />
-              <Text style={styles.meta}>Only the coaches and your family can see these.</Text>
+              <Text style={styles.meta}>{adult ? 'Only the coaches and you can see these.' : 'Only the coaches and your family can see these.'} Leave them blank if you&apos;d rather not share them; clear them and sign on again to remove them.</Text>
+              {hasMedical(draft) ? (
+                <Checkbox.Item
+                  label={staff
+                    ? 'The family (or player) agreed on the paper form to the club keeping these notes'
+                    : adult
+                      ? `I agree to ${clubName} keeping these notes so the coaches can look after me`
+                      : `I agree to ${clubName} keeping these notes so the coaches can look after ${player?.name.split(' ')[0] ?? 'them'}`}
+                  status={draft.agreeMedical ? 'checked' : 'unchecked'}
+                  onPress={() => set({ agreeMedical: !draft.agreeMedical })}
+                  position="leading"
+                  style={styles.check}
+                  labelStyle={styles.checkLabel}
+                />
+              ) : null}
 
               <Text style={styles.section}>Emergency contacts</Text>
               {draft.contacts.map((ct, i) => (
@@ -112,7 +131,7 @@ export default function SigningOnFormModal({ player, form, onClose, onSaved }: {
                 <>
                   <Text style={styles.section}>Code of conduct</Text>
                   <ScrollView style={styles.conduct} nestedScrollEnabled><Text style={styles.body} selectable>{form.conduct}</Text></ScrollView>
-                  <Checkbox.Item label="I've read it and agree" status={draft.agreeConduct ? 'checked' : 'unchecked'} onPress={() => set({ agreeConduct: !draft.agreeConduct })} position="leading" style={styles.check} />
+                  <Checkbox.Item label="I've read it and agree" status={draft.agreeConduct ? 'checked' : 'unchecked'} onPress={() => set({ agreeConduct: !draft.agreeConduct })} position="leading" style={styles.check} labelStyle={styles.checkLabel} />
                 </>
               ) : null}
             </>
@@ -134,6 +153,7 @@ const useStyles = themedStyles((c) => ({
   title: { color: c.text, fontFamily: FONTS.display, fontSize: 22, letterSpacing: 1 },
   section: { color: c.text, fontFamily: FONTS.display, fontSize: 18, letterSpacing: 0.6, marginTop: 10, textTransform: 'uppercase' },
   body: { color: c.text, lineHeight: 21 },
+  checkLabel: { color: c.text, lineHeight: 21, textAlign: 'left' },
   meta: { color: c.textLight, fontSize: 12 },
   contact: { gap: 8, paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: c.border },
   question: { gap: 6 },

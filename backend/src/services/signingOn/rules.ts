@@ -8,6 +8,13 @@ export interface SigningOnDetails {
   school: string | null;
   medical: string | null;
   allergies: string | null;
+  /**
+   * When the family (or adult player, or staff from a paper form) ticked to
+   * agree to the club keeping the medical notes and allergies: health data
+   * needs explicit consent. Null when there are none. Set by the server.
+   */
+  medicalAgreedAt?: number | null;
+  medicalAgreedBy?: "parent" | "player" | "staff" | null;
 }
 
 export interface EmergencyContact {
@@ -23,6 +30,8 @@ export interface SigningOnAnswers {
   photos: boolean;
   video: boolean;
   agreeConduct: boolean;
+  /** Ticked to agree to the club keeping the medical notes and allergies */
+  agreeMedical: boolean;
 }
 
 export interface SigningOnForm {
@@ -72,6 +81,11 @@ export function readAnswers(body: unknown, form: SigningOnForm, today: string): 
     allergies: text(d.allergies, 300, "Allergies"),
   };
   if (!details.dob) throw bad("Please add their date of birth.");
+  // Medical notes and allergies are health data: kept only with a clear yes
+  const agreeMedical = b.agreeMedical === true;
+  if ((details.medical || details.allergies) && !agreeMedical) {
+    throw bad("Tick the box to agree to the club keeping the medical notes and allergies, or leave them blank.");
+  }
 
   if (!Array.isArray(b.contacts)) throw bad("Please add at least one emergency contact.");
   if (b.contacts.length > 3) throw bad("Up to three emergency contacts.");
@@ -91,7 +105,7 @@ export function readAnswers(body: unknown, form: SigningOnForm, today: string): 
   if (typeof b.photos !== "boolean" || typeof b.video !== "boolean") throw bad("Please answer the photo and video questions.");
   const agreeConduct = b.agreeConduct === true;
   if (form.conduct && !agreeConduct) throw bad("Please read and agree to the club's code of conduct.");
-  return { details, contacts, photos: b.photos, video: b.video, agreeConduct };
+  return { details, contacts, photos: b.photos, video: b.video, agreeConduct, agreeMedical: agreeMedical && !!(details.medical || details.allergies) };
 }
 
 /** Check a club admin's form settings. */

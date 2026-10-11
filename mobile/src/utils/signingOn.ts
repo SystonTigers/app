@@ -3,7 +3,12 @@
  * its form. The server checks everything again (backend services/signingOn).
  */
 
-export interface SigningOnDetails { dob: string | null; address: string | null; school: string | null; medical: string | null; allergies: string | null }
+export interface SigningOnDetails {
+  dob: string | null; address: string | null; school: string | null; medical: string | null; allergies: string | null;
+  /** When someone ticked to agree to the club keeping the medical notes (set by the server) */
+  medicalAgreedAt?: number | null;
+  medicalAgreedBy?: 'parent' | 'player' | 'staff' | null;
+}
 export interface EmergencyContact { name: string; relationship: string | null; phone: string; email: string | null }
 export interface SigningOnForm { feeAmount: number | null; feeNote: string | null; conduct: string | null }
 export interface SigningOnEntry {
@@ -23,6 +28,8 @@ export interface Draft {
   dob: string; address: string; school: string; medical: string; allergies: string;
   contacts: Array<{ name: string; relationship: string; phone: string; email: string }>;
   photos: boolean | null; video: boolean | null; agreeConduct: boolean;
+  /** Agreed to the club keeping the medical notes and allergies (needed when either is filled in) */
+  agreeMedical: boolean;
 }
 
 const blankContact = () => ({ name: '', relationship: '', phone: '', email: '' });
@@ -50,12 +57,13 @@ export function isoDate(text: string): string | null {
 
 /** Start the form from last answers (or blank, with one empty contact). */
 export function draftFrom(entry: SigningOnEntry | null): Draft {
-  if (!entry) return { dob: '', address: '', school: '', medical: '', allergies: '', contacts: [blankContact()], photos: null, video: null, agreeConduct: false };
+  if (!entry) return { dob: '', address: '', school: '', medical: '', allergies: '', contacts: [blankContact()], photos: null, video: null, agreeConduct: false, agreeMedical: false };
   const d = entry.details;
   return {
     dob: ukDate(d.dob), address: d.address ?? '', school: d.school ?? '', medical: d.medical ?? '', allergies: d.allergies ?? '',
     contacts: entry.contacts.length ? entry.contacts.map((c) => ({ name: c.name, relationship: c.relationship ?? '', phone: c.phone, email: c.email ?? '' })) : [blankContact()],
     photos: entry.photos, video: entry.video, agreeConduct: entry.conductAgreed,
+    agreeMedical: !!d.medicalAgreedAt,
   };
 }
 
@@ -73,8 +81,14 @@ export function draftProblem(d: Draft, hasConduct: boolean): string | null {
     if (!PHONE.test(c.phone.trim())) return `Add a phone number for ${c.name.trim()}.`;
   }
   if (d.photos === null || d.video === null) return 'Answer the photo and video questions.';
+  if (hasMedical(d) && !d.agreeMedical) return 'Tick to agree to the club keeping the medical notes, or leave them blank.';
   if (hasConduct && !d.agreeConduct) return "Tick to agree to the club's code of conduct.";
   return null;
+}
+
+/** Whether any medical notes or allergies are filled in (they need the agreement tick). */
+export function hasMedical(d: Pick<Draft, 'medical' | 'allergies'>): boolean {
+  return !!(d.medical.trim() || d.allergies.trim());
 }
 
 /** The body the server expects (call draftProblem first). */
@@ -87,6 +101,7 @@ export function answersFrom(d: Draft) {
     photos: d.photos === true,
     video: d.video === true,
     agreeConduct: d.agreeConduct,
+    agreeMedical: hasMedical(d) && d.agreeMedical,
   };
 }
 

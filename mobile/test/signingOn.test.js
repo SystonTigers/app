@@ -29,13 +29,24 @@ d.contacts.push({ name: '', relationship: '', phone: '', email: '' });
 assert.deepEqual(s.answersFrom(d), {
   details: { dob: '2015-03-14', address: null, school: null, medical: null, allergies: null },
   contacts: [{ name: 'Pat', relationship: null, phone: '07700 900123', email: null }],
-  photos: true, video: false, agreeConduct: false,
+  photos: true, video: false, agreeConduct: false, agreeMedical: false,
 });
+
+// Medical notes need the agreement tick; blank ones don't
+d.medical = 'Asthma';
+assert.equal(s.draftProblem(d, false), 'Tick to agree to the club keeping the medical notes, or leave them blank.');
+d.agreeMedical = true;
+assert.equal(s.draftProblem(d, false), null);
+assert.equal(s.answersFrom(d).agreeMedical, true);
+d.medical = '  ';
+assert.equal(s.answersFrom(d).agreeMedical, false);
 
 const back = s.draftFrom({ playerId: 'p', details: { dob: '2015-03-14', address: 'x', school: null, medical: null, allergies: null }, contacts: [], photos: false, video: true, conductAgreed: true, submittedAt: 1, paid: false, paidAt: null });
 assert.equal(back.dob, '14/03/2015');
 assert.equal(back.contacts.length, 1);
 assert.equal(back.video, true);
+assert.equal(back.agreeMedical, false);
+assert.equal(s.draftFrom({ playerId: 'p', details: { dob: '2015-03-14', address: null, school: null, medical: 'x', allergies: null, medicalAgreedAt: 5 }, contacts: [], photos: false, video: true, conductAgreed: true, submittedAt: 1, paid: false, paidAt: null }).agreeMedical, true);
 
 assert.equal(s.feeText(45), '£45');
 assert.equal(s.feeText(45.5), '£45.50');

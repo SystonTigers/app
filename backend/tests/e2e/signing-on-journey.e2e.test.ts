@@ -16,6 +16,7 @@ const answers = (over: Record<string, unknown> = {}) => ({
   photos: true,
   video: false,
   agreeConduct: true,
+  agreeMedical: true,
   ...over,
 });
 
@@ -50,6 +51,9 @@ describe("Signing on", () => {
       expect((await put(parent.token, answers({ contacts: [] }))).data.error.message).toBe("Please add at least one emergency contact.");
       expect((await put(parent.token, answers({ agreeConduct: false }))).data.error.message).toBe("Please read and agree to the club's code of conduct.");
       expect((await put(parent.token, answers({ details: { dob: "2999-01-01" } }))).status).toBe(400);
+      // Medical notes are health data: only kept with a clear yes (blank notes need no tick)
+      expect((await put(parent.token, answers({ agreeMedical: false }))).data.error.message).toMatch(/Tick the box to agree to the club keeping the medical notes/);
+      expect((await put(parent.token, answers({ agreeMedical: "yes" }))).status).toBe(400);
       // Only the child's family (or staff) can sign them on or read the answers
       expect((await put(otherParent.token, answers())).status).toBe(403);
       expect((await call(`/api/v1/signing-on/players/${playerId}`, { token: otherParent.token })).status).toBe(403);
@@ -65,7 +69,13 @@ describe("Signing on", () => {
       expect(staffView).toMatchObject({ signedOn: true, paid: false, linkedParents: 1 });
       expect((await call(`/api/v1/signing-on/players/${playerId}/paid`, { method: "PUT", token: parent.token, body: { paid: true } })).status).toBe(403);
       expect((await call(`/api/v1/signing-on/players/${playerId}/paid`, { method: "PUT", token: admin.token, body: { paid: true } })).data.data.paid).toBe(true);
-      expect((await call(`/api/v1/signing-on/players/${playerId}`, { token: admin.token })).data.data.details.medical).toBe("Asthma: inhaler in bag");
+      const staffRead = (await call(`/api/v1/signing-on/players/${playerId}`, { token: admin.token })).data.data.details;
+      expect(staffRead).toMatchObject({ medical: "Asthma: inhaler in bag", medicalAgreedBy: "parent" });
+      expect(typeof staffRead.medicalAgreedAt).toBe("number");
+      // Clearing the notes withdraws them; no tick needed and nothing is kept
+      const cleared = await put(parent.token, answers({ details: { dob: "2015-03-14", medical: null, allergies: null }, agreeMedical: false }));
+      expect(cleared.status).toBe(200);
+      expect(cleared.data.data.details).toMatchObject({ medical: null, allergies: null, medicalAgreedAt: null });
 
       // Updating the form later keeps the payment
       expect((await put(parent.token, answers({ video: true }))).data.data).toMatchObject({ video: true, paid: true });
