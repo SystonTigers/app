@@ -57,7 +57,7 @@ These were found while writing the drafts. The owner decides on each; the drafts
 3. **No club-closure or export process.** The drafts promise deletion within 90 days of closure and a chance to download data first. Today this would be done by hand. A self-service export and close option should be built before there are many clubs.
 4. **Inactive-account deletion** (if 2 years is adopted) needs a scheduled job and a warning email.
 5. **Emergency contact data** is visible to club staff (owner, admin, manager, coach) in their club. Consider limiting it to named roles.
-6. **Medical notes consent tick (new, October 2026).** The signing-on form takes medical notes and allergies but has no separate explicit consent tick for them. Add an "I agree to the club keeping these medical notes so the coaches can look after [name]" tick, required whenever medical notes or allergies are filled in, before the policy is published.
+6. **Medical notes consent tick: done (October 2026).** Whenever medical notes or allergies are filled in, the signing-on form needs a separate tick: "I agree to [club] keeping these notes so the coaches can look after [name]". Staff entering a paper form tick that the family agreed on paper. The server refuses notes without it and records when it was given and by whom (parent, player or staff). Clearing the notes removes them.
 7. **Signing-on retention (new).** Forms are kept per season with no automatic deletion. Decide a period and add a clean-up job or a "delete past seasons" option.
 
 ## For the reviewer to confirm

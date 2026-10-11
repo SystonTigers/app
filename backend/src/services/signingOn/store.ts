@@ -128,6 +128,9 @@ export async function getEntry(env: DB, claims: TenantClaims, playerId: string, 
 /** Sign a child on (or update this season's answers). Keeps the squad's details and consent in step. */
 export async function submitEntry(env: DB, claims: TenantClaims, playerId: string, seasonId: string, a: SigningOnAnswers, now = Date.now()): Promise<SigningOnEntry> {
   await mayActFor(env, claims, playerId);
+  // Who answered: staff (from a paper form), the player themselves, or a parent
+  const by = isStaff(claims) ? "staff" : hasAnyRole(claims, ["player"]) ? "player" : "parent";
+  const details = { ...a.details, medicalAgreedAt: a.agreeMedical ? now : null, medicalAgreedBy: a.agreeMedical ? by : null };
   const c = (i: number) => a.contacts[i] ?? null;
   const contactBinds = [0, 1, 2].flatMap((i) => [c(i)?.relationship ?? null, c(i)?.name ?? null, c(i)?.phone ?? null, c(i)?.email ?? null]);
   await env.DB.batch([
@@ -137,7 +140,7 @@ export async function submitEntry(env: DB, claims: TenantClaims, playerId: strin
        ON CONFLICT(tenant_id, player_id, season_id) DO UPDATE SET details = excluded.details, contacts = excluded.contacts,
          photo_consent = excluded.photo_consent, video_consent = excluded.video_consent, conduct_agreed = excluded.conduct_agreed,
          submitted_by = excluded.submitted_by, submitted_at = excluded.submitted_at`,
-    ).bind(claims.tenantId, playerId, seasonId, JSON.stringify(a.details), JSON.stringify(a.contacts), a.photos ? 1 : 0, a.video ? 1 : 0,
+    ).bind(claims.tenantId, playerId, seasonId, JSON.stringify(details), JSON.stringify(a.contacts), a.photos ? 1 : 0, a.video ? 1 : 0,
       a.agreeConduct ? 1 : 0, claims.userId ?? null, now),
     env.DB.prepare(
       `UPDATE squad SET dob = ?,
@@ -146,7 +149,7 @@ export async function submitEntry(env: DB, claims: TenantClaims, playerId: strin
          contact3_relationship = ?, contact3_name = ?, contact3_phone = ?, contact3_email = ?,
          photo_consent = ?, video_consent = ?, consent_source = ?, consent_updated_at = ?
        WHERE tenant_id = ? AND id = ?`,
-    ).bind(a.details.dob, ...contactBinds, a.photos ? 1 : 0, a.video ? 1 : 0, isStaff(claims) ? "staff" : "parent", now, claims.tenantId, playerId),
+    ).bind(a.details.dob, ...contactBinds, a.photos ? 1 : 0, a.video ? 1 : 0, by, now, claims.tenantId, playerId),
   ]);
   logJSON({ level: "info", msg: "signing_on_submitted", tenantId: claims.tenantId, playerId, seasonId, byStaff: isStaff(claims) });
   return (await getEntry(env, claims, playerId, seasonId))!;

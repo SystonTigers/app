@@ -715,7 +715,10 @@ with personal data.
   each season a linked parent (or staff, from a paper form) fills in the
   child's date of birth, address, school, medical notes, allergies, up to
   three emergency contacts, photo/video consent and the code of conduct
-  (`signing_on_entries`); it also updates the squad row and consent. Staff
+  (`signing_on_entries`); it also updates the squad row and consent. Medical
+  notes or allergies need a separate "I agree to the club keeping these notes"
+  tick (`agreeMedical`; health data needs explicit consent): the server refuses
+  them without it and saves `medicalAgreedAt`/`medicalAgreedBy` in the details. Staff
   set the fee, how to pay and the code of conduct (`signing_on_forms`), see
   who has signed on and mark fees paid. App `SigningOnScreen` (menu: My club →
   Signing on); website Admin → Signing on (`admin/registration`). Medical
