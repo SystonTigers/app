@@ -14,7 +14,7 @@ export interface PickablePlayer {
  * Full-screen-ish list of the squad with big tap targets, for use on the touchline.
  * Tapping outside the list calls onDismiss (defaults to onCancel).
  */
-export default function PlayerPicker({ visible, title, players, onPick, onSkip, skipLabel, onCancel, cancelLabel, onDismiss, excludeId }: {
+export default function PlayerPicker({ visible, title, players, onPick, onSkip, skipLabel, onCancel, cancelLabel, onDismiss, excludeId, emptyText }: {
   visible: boolean;
   title: string;
   players: PickablePlayer[];
@@ -25,21 +25,24 @@ export default function PlayerPicker({ visible, title, players, onPick, onSkip, 
   cancelLabel?: string;
   onDismiss?: () => void;
   excludeId?: string | null;
+  /** Shown when nobody can be picked (default: add players first) */
+  emptyText?: string;
 }) {
   const COLORS = useBrandColors();
   const styles = useStyles();
+  const shown = players.filter((p) => p.id !== excludeId);
   return (
     <Portal>
       <Modal visible={visible} onDismiss={onDismiss ?? onCancel} contentContainerStyle={styles.modal}>
         <Text style={styles.title}>{title}</Text>
         <ScrollView style={styles.list}>
-          {players.filter((p) => p.id !== excludeId).map((p) => (
+          {shown.map((p) => (
             <Pressable key={p.id} onPress={() => onPick(p)} accessibilityRole="button" style={({ pressed }) => [styles.row, pressed ? styles.pressed : null]}>
               <Text style={styles.number}>{p.number ?? ''}</Text>
               <Text style={styles.name}>{p.name}</Text>
             </Pressable>
           ))}
-          {!players.length ? <Text style={styles.empty}>Add players in Manage Squad first.</Text> : null}
+          {!shown.length ? <Text style={styles.empty}>{emptyText ?? 'Add players in Manage Squad first.'}</Text> : null}
         </ScrollView>
         <View style={styles.actions}>
           {onSkip ? (

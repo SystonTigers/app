@@ -8,7 +8,7 @@ import { useClub, useClubName, useTracksAssists } from '../context/ClubContext';
 import { useMatchDay } from '../context/MatchDayContext';
 import { apiErrorMessage, fixturesApi, lineupApi, liveApi, motmApi, squadApi, type Lineup } from '../services/api';
 import FullTimeMotmSheet from '../components/motm/FullTimeMotmSheet';
-import { activeSinBins, newClientEventId, sentOffIds, sinBinMinutes, type LiveEvent, type LiveEventType, type LiveMatchView, type NewLiveEvent, type SocialPost } from '../utils/liveMatch';
+import { activeSinBins, newClientEventId, pitchAndBench, sentOffIds, sinBinMinutes, type LiveEvent, type LiveEventType, type LiveMatchView, type NewLiveEvent, type SocialPost } from '../utils/liveMatch';
 import { shareGraphic } from '../utils/postGraphic';
 import LineupEditor from '../components/live/LineupEditor';
 import MatchScoreboard from '../components/matchCentre/MatchScoreboard';
@@ -88,6 +88,18 @@ export default function LiveMatchInputScreen() {
   const pendingStart = !match ? fixtures.map((f) => queuedKickOff(f, queue)).find((v) => v !== null) ?? null : null;
   // What's shown: the server's view of the match with any queued taps on top
   const view = match ? withQueued(match, queue, names) : pendingStart;
+  const viewFixtureId = view?.fixture.id ?? null;
+  // The match's line-up, so subs only offer who's on the pitch and who's on the bench
+  const [lineupIds, setLineupIds] = useState<{ fixtureId: string; starters: string[]; subs: string[] } | null>(null);
+  useEffect(() => {
+    if (!viewFixtureId || lineupIds?.fixtureId === viewFixtureId) return;
+    let cancelled = false;
+    lineupApi.get(viewFixtureId)
+      .then((res) => { if (!cancelled) setLineupIds({ fixtureId: viewFixtureId, starters: res.data.starters.map((p) => p.playerId), subs: res.data.subs.map((p) => p.playerId) }); })
+      // No signal: subs can still be recorded (the server checks them when they send)
+      .catch(() => undefined);
+    return () => { cancelled = true; };
+  }, [viewFixtureId, lineupIds?.fixtureId]);
 
   const load = useCallback(async () => {
     try {
@@ -309,6 +321,7 @@ export default function LiveMatchInputScreen() {
     const fixture = lineupFor;
     setLineupFor(null);
     if (!fixture) return;
+    setLineupIds({ fixtureId: String(fixture.id), starters: lineup.starters.map((p) => p.playerId), subs: lineup.subs.map((p) => p.playerId) });
     if (!publish) {
       setNotice(`Team saved: ${lineup.starters.length} starting, ${lineup.subs.length} subs.`);
       return;
@@ -326,8 +339,11 @@ export default function LiveMatchInputScreen() {
     if (!view || !pick) return players;
     const off = sentOffIds(view.events);
     const binned = pick.kind === 'sin_bin' ? new Set(activeSinBins(view, Date.now()).map((b) => b.playerId)) : new Set<string | null>();
-    return players.filter((p) => !off.has(p.id) && !binned.has(p.id));
-  }, [players, view, pick]);
+    // With a line-up, only someone on the pitch can go off and only someone on the bench can come on
+    const sides = (pick.kind === 'sub_off' || pick.kind === 'sub_on') && lineupIds?.fixtureId === view.fixture.id ? pitchAndBench(lineupIds, view.events) : null;
+    const allowed = sides ? (pick.kind === 'sub_off' ? sides.onPitch : sides.bench) : null;
+    return players.filter((p) => !off.has(p.id) && !binned.has(p.id) && (!allowed || allowed.has(p.id)));
+  }, [players, view, pick, lineupIds]);
 
   if (loading) {
     return <View style={[styles.container, styles.center]}><ActivityIndicator size="large" color={color} /></View>;
@@ -488,6 +504,7 @@ export default function LiveMatchInputScreen() {
         onCancel={() => setPick(null)}
         cancelLabel={pick?.kind === 'assist' ? 'Cancel goal' : 'Cancel'}
         onDismiss={pick?.kind === 'assist' ? goalWithoutAssist : undefined}
+        emptyText={pick?.kind === 'sub_on' ? 'Nobody is on the bench. Add subs to the team (Line-up) first.' : pick?.kind === 'sub_off' ? 'Nobody is on the pitch.' : undefined}
         onSkip={pick?.kind === 'goal' ? goalWithoutScorer : pick?.kind === 'assist' ? goalWithoutAssist : undefined}
         skipLabel={pick?.kind === 'goal' ? 'Own goal / not sure' : 'No assist'}
       />

@@ -103,6 +103,11 @@ with personal data.
   a resend never counts twice; a 4xx other than 408/429 drops the tap.
 - Line-ups: `routes/lineup.ts` (5/7/9/11-a-side; club `default_team_size`,
   fixture `team_size`). "Post team news" queues a line-up post.
+- Subs: Match Centre asks who is going off, then who is coming on. With a
+  line-up, only players on the pitch can go off and only players on the bench
+  can come on (rolling subs: someone taken off can come back);
+  `pitchAndBench` in `services/liveMatchState.ts` and `utils/liveMatch.ts`,
+  and the server refuses others with 409. Without a line-up anyone can be picked.
 - Man of the Match: at full time the manager's phone pops up
   `components/motm/FullTimeMotmSheet` with everyone who played ticked
   (`GET /api/v1/motm/:id` gives staff `suggested` from `playersWhoPlayed`;

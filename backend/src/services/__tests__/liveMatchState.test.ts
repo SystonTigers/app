@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { computeState, matchMinute, rejectReason, undoBlockedReason, type LiveEvent, type LiveEventType } from "../liveMatchState";
+import { computeState, matchMinute, pitchAndBench, rejectReason, undoBlockedReason, type LiveEvent, type LiveEventType } from "../liveMatchState";
 
 let n = 0;
 const ev = (type: LiveEventType, createdAt: number, extra: Partial<LiveEvent> = {}): LiveEvent => ({
@@ -59,5 +59,28 @@ describe("live match state", () => {
     const fullTime = ev("full_time", 2 * MIN);
     expect(undoBlockedReason([kickOff, goal, fullTime], goal)).toMatch(/full time first/);
     expect(undoBlockedReason([kickOff, goal, fullTime], fullTime)).toBeNull();
+  });
+});
+
+describe("who is on the pitch", () => {
+  const lineup = { starters: ["a", "b", "c"], subs: ["d", "e"] };
+  it("starts from the line-up and follows subs, including a player coming back on", () => {
+    const first = pitchAndBench(lineup, [])!;
+    expect([...first.onPitch]).toEqual(["a", "b", "c"]);
+    expect([...first.bench]).toEqual(["d", "e"]);
+    const events = [ev("sub", 2 * MIN, { playerId: "d", player2Id: "a" }), ev("sub", 1 * MIN, { playerId: "e", player2Id: "b" })];
+    const later = pitchAndBench(lineup, events)!;
+    expect([...later.onPitch].sort()).toEqual(["c", "d", "e"]);
+    expect([...later.bench].sort()).toEqual(["a", "b"]);
+    const back = pitchAndBench(lineup, [...events, ev("sub", 3 * MIN, { playerId: "a", player2Id: "d" })])!;
+    expect(back.onPitch.has("a")).toBe(true);
+    expect(back.bench.has("d")).toBe(true);
+  });
+  it("takes sent-off players out of both, and means no rule without a line-up", () => {
+    const sides = pitchAndBench(lineup, [ev("yellow", MIN, { playerId: "c" }), ev("yellow", 2 * MIN, { playerId: "c" })])!;
+    expect(sides.onPitch.has("c")).toBe(false);
+    expect(sides.bench.has("c")).toBe(false);
+    expect(pitchAndBench(null, [])).toBeNull();
+    expect(pitchAndBench({ starters: [], subs: ["d"] }, [])).toBeNull();
   });
 });
