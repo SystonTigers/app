@@ -6,6 +6,7 @@ import { SocialSettings } from '@/components/SocialSettings';
 import { LiveVideoSettings } from '@/components/LiveVideoSettings';
 import { ClubBadgeSettings } from '@/components/ClubBadgeSettings';
 import { MatchStatsSettings } from '@/components/MatchStatsSettings';
+import { TeamTypeSettings } from '@/components/TeamTypeSettings';
 import { ClubExtrasSettings } from '@/components/ClubExtrasSettings';
 import { PageHeader } from '@/components/ui/Page';
 import { Icon } from '@/components/ui/Icon';
@@ -47,6 +48,7 @@ export default function SettingsPage({ params }: PageProps) {
                         </span>
                     </div>
                 </Link>
+                <TeamTypeSettings />
                 <Suspense fallback={null}>
                     <SocialSettings />
                 </Suspense>

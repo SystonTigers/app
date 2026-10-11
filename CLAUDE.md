@@ -548,10 +548,30 @@ with personal data.
   `training_plans.drill_refs`) and take the register (`training_attendance`);
   drill of the week rotates through the built-in library each Monday.
 
+## Junior and adult teams
+
+- `tenants.team_type` (migration 0036): `junior` (default) or `adult`. Set at
+  sign-up (website `/create-team`: "Who plays for the team?") and in Club
+  Settings (app `TeamTypeCard`, website `TeamTypeSettings`; club admins,
+  `PATCH /tenants/me {teamType}`). Switching also sets the posts' name style
+  and photos (adult: full names, photos on; junior: initials, photos off)
+  unless the same request sets them. `/public/:club/info` returns `teamType`
+  (app `useIsAdultTeam`, `utils/teamType.ts` for the wording).
+- Adult teams: photos and clips are used unless the player said no
+  (`photoAllowedSql` / `videoAllowedSql` / `consentAllows` in
+  `services/consent.ts`: unanswered counts as yes; every public photo, graphic,
+  player page, MOTM, cut-out and video warning goes through them); players
+  answer consent and availability for themselves (consent source `player`;
+  reminders say "Can you make it?"); no consent reminders or home consent
+  prompt; fixtures, kick-off times and grounds are public (`canSeeMatchDetails`
+  in `routes/public.ts`); new sign-ups and coach codes make players, not
+  parents (`rolesForSignUp(requested, fallback)`, `admitWithCode`); the app's
+  sign-up has no Parent option and signing on has no school field.
+
 ## Photo and video consent
 
 - `squad.photo_consent` / `video_consent` (1 yes, 0 no, NULL not asked =
-  no), set by a linked parent in the app (Photo & Video Consent screen, home
+  no for junior teams, yes for adult teams), set by a linked parent in the app (Photo & Video Consent screen, home
   prompt until answered) or by staff from a paper form
   (`GET /api/v1/consent`, `PUT /api/v1/players/:id/consent`,
   `services/consent.ts`).

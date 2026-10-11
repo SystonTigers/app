@@ -164,7 +164,8 @@ export default function HomeScreen({ navigation }: any) {
 
       <View style={{ paddingHorizontal: 16 }}>
         <InstallPrompt />
-        <ConsentPrompt onOpen={() => navigation.navigate('MediaConsent')} />
+        {/* Adult teams use photos unless a player says no, so there's nothing to ask */}
+        {club?.teamType !== 'adult' ? <ConsentPrompt onOpen={() => navigation.navigate('MediaConsent')} /> : null}
         <AvailabilityPrompt onOpen={() => navigation.navigate('Availability')} />
       </View>
 

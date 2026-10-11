@@ -13,6 +13,7 @@ import { deliver, type PushEnv } from "../push/delivery";
 import { isReminderHour } from "../consentReminders";
 import { AvailabilityError, MANUAL_GAP_MS, REMINDER_DAYS, reminderMessage, ukDate, type ItemType, type ReminderItem } from "./rules";
 import { getItem, OPEN_FIXTURE_SQL } from "./store";
+import { isAdultTeam } from "../clubOptions";
 
 const PER_RUN = 300;
 
@@ -71,7 +72,9 @@ export async function sendAvailabilityReminders(env: PushEnv, now = new Date()):
   const rows: Waiting[] = (results ?? []).map((r) => ({ ...r, title: r.item_type === "match" ? `the game against ${r.a}` : r.a }));
 
   let sent = 0;
+  const adult = new Map<string, boolean>();
   for (const fam of byFamily(rows).values()) {
+    if (!adult.has(fam.tenantId)) adult.set(fam.tenantId, await isAdultTeam(env, fam.tenantId));
     // Claim each item for this family first; only send what this run claimed
     const claimed: ReminderItem[] = [];
     for (const item of fam.items.values()) {
@@ -80,7 +83,7 @@ export async function sendAvailabilityReminders(env: PushEnv, now = new Date()):
       if ((claim.meta?.changes ?? 0) > 0) claimed.push(item);
     }
     if (!claimed.length) continue;
-    const msg = reminderMessage([...fam.children], claimed);
+    const msg = reminderMessage([...fam.children], claimed, false, adult.get(fam.tenantId));
     try {
       const result = await deliver(env, await devicesOf(env, fam.tenantId, fam.userId), { ...msg, data: { screen: "Availability" }, topic: "availability" });
       console.log(JSON.stringify({ level: "info", msg: "availability_reminder", tenantId: fam.tenantId, items: claimed.length, sent: result.sent, failed: result.failed }));
@@ -114,9 +117,10 @@ export async function remindForItem(env: PushEnv, tenantId: string, type: ItemTy
   for (const r of results ?? []) families.set(r.user_id, [...(families.get(r.user_id) ?? []), r.child]);
 
   let sent = 0;
+  const self = await isAdultTeam(env, tenantId);
   for (const [userId, children] of families) {
     try {
-      await deliver(env, await devicesOf(env, tenantId, userId), { ...reminderMessage(children, [reminderItem], true), data: { screen: "Availability" }, topic: "availability" });
+      await deliver(env, await devicesOf(env, tenantId, userId), { ...reminderMessage(children, [reminderItem], true, self), data: { screen: "Availability" }, topic: "availability" });
       sent++;
     } catch (err) {
       console.error(JSON.stringify({ level: "error", msg: "availability_nudge_failed", tenantId, error: err instanceof Error ? err.message : String(err) }));

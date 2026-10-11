@@ -13,6 +13,7 @@ import FixtureEmailCard from '../components/clubSettings/FixtureEmailCard';
 import MatchStatsCard from '../components/clubSettings/MatchStatsCard';
 import ClubExtrasCard from '../components/clubSettings/ClubExtrasCard';
 import LiveVideoCard from '../components/clubSettings/LiveVideoCard';
+import TeamTypeCard from '../components/clubSettings/TeamTypeCard';
 import { apiErrorMessage } from '../services/api';
 import { clubSettingsApi, type SocialSettings } from '../services/clubSettingsApi';
 import { themedStyles, useBrandColors } from '../theme/brand';
@@ -84,8 +85,9 @@ export default function ClubSettingsScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => load(true)} tintColor={c.primary} />}
       >
         <Text style={styles.intro}>
-          Your badge, social media, what gets posted where, graphics, match stats, FA snippets, email forwarding and live video. Changes here also show on the website.
+          Junior or adult team, your badge, social media, what gets posted where, graphics, match stats, FA snippets, email forwarding and live video. Changes here also show on the website.
         </Text>
+        <TeamTypeCard canManage={settings.canManage} onChanged={() => void load()} onMessage={say} />
         <ClubBadgeCard canManage={settings.canManage} onMessage={say} />
         <ClubColoursCard canManage={settings.canManage} onMessage={say} />
         <SocialAccountsCard settings={settings} onSaved={setSettings} onMessage={say} />

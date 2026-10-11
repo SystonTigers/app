@@ -767,6 +767,11 @@ export const matchDayApi = {
 
 /** Club-wide options (backend: PATCH /api/v1/tenants/me, club admins). */
 export const clubOptionsApi = {
+  /** Club admins: junior or adult team (also sets the matching name and photo defaults) */
+  setTeamType: async (teamType: 'junior' | 'adult'): Promise<void> => {
+    await api.patch('/api/v1/tenants/me', { teamType });
+  },
+
   setTrackAssists: async (on: boolean): Promise<void> => {
     await api.patch('/api/v1/tenants/me', { trackAssists: on });
   },
@@ -1393,7 +1398,7 @@ export interface PlayerConsent {
   number: number | null;
   photos: boolean | null;
   video: boolean | null;
-  source: 'parent' | 'staff' | null;
+  source: 'parent' | 'player' | 'staff' | null;
   updatedAt: number | null;
   /** Staff only: accounts linked to this player */
   linkedParents?: number;

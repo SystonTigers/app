@@ -6,6 +6,7 @@ import { FONTS } from '../../theme/brandFonts';
 import { apiErrorMessage, consentApi, lineupApi, type Lineup } from '../../services/api';
 import type { PickablePlayer } from './PlayerPicker';
 import { lineupHint, type Answer } from '../../utils/availability';
+import { useIsAdultTeam } from '../../context/ClubContext';
 
 const TEAM_SIZES = [5, 7, 9, 11];
 const MAX_SUBS = 12;
@@ -23,6 +24,7 @@ export default function LineupEditor({ visible, fixtureId, opponent, players, on
   onClose: () => void;
   onSaved: (lineup: Lineup, publish: boolean) => void;
 }) {
+  const adult = useIsAdultTeam();
   const COLORS = useBrandColors();
   const styles = useStyles();
   const [loading, setLoading] = useState(true);
@@ -128,7 +130,7 @@ export default function LineupEditor({ visible, fixtureId, opponent, players, on
             <Text style={styles.help}>Tap a player: starting → sub → not playing.</Text>
             {pickedWithoutVideo.length ? (
               <Text style={styles.warning}>
-                No video consent yet: {pickedWithoutVideo.map(label).join(', ')}. They'll be on the live stream, so ask their parents to answer in the app (Photo & Video Consent) or keep the camera off them.
+                No video consent yet: {pickedWithoutVideo.map(label).join(', ')}. They'll be on the live stream, so {adult ? "they've asked not to be filmed: keep the camera off them" : 'ask their parents to answer in the app (Photo & Video Consent) or keep the camera off them'}.
               </Text>
             ) : null}
             {players.map((p) => {

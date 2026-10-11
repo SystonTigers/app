@@ -16,7 +16,7 @@ export function consentSummary(players: Array<ConsentAnswers & { linkedParents?:
   };
 }
 
-export type ConsentFilter = 'all' | 'unanswered' | 'noVideo' | 'noParent';
+export type ConsentFilter = 'all' | 'unanswered' | 'noVideo' | 'noParent' | 'saidNo';
 
 /** Staff filters on the consent page. */
 export function filterConsent<T extends ConsentAnswers & { linkedParents?: number }>(players: T[], filter: ConsentFilter): T[] {
@@ -24,6 +24,7 @@ export function filterConsent<T extends ConsentAnswers & { linkedParents?: numbe
     case 'unanswered': return players.filter((p) => p.photos === null || p.video === null);
     case 'noVideo': return players.filter((p) => p.video !== true);
     case 'noParent': return players.filter((p) => !p.linkedParents);
+    case 'saidNo': return players.filter((p) => p.photos === false || p.video === false);
     default: return players;
   }
 }

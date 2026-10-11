@@ -43,6 +43,8 @@ export async function sendConsentReminders(env: PushEnv, now = new Date()): Prom
      JOIN squad s ON s.id = l.player_id AND s.tenant_id = l.tenant_id
      JOIN tenants t ON t.id = l.tenant_id
      WHERE (s.photo_consent IS NULL OR s.video_consent IS NULL)
+       -- Adult teams use photos unless a player says no, so there's nothing to chase
+       AND COALESCE(t.team_type, 'junior') != 'adult'
        AND EXISTS (SELECT 1 FROM devices d WHERE d.user_id = l.user_id AND d.tenant_id = l.tenant_id)
        -- Not for parents who switched reminders off
        AND NOT EXISTS (SELECT 1 FROM auth_users u WHERE u.id = l.user_id AND u.alert_prefs IS NOT NULL AND instr(u.alert_prefs, '"reminders"') > 0)

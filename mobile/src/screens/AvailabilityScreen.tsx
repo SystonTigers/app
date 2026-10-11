@@ -8,6 +8,8 @@ import { apiErrorMessage, availabilityApi } from '../services/api';
 import ItemCard from '../components/availability/ItemCard';
 import SquadSheet from '../components/availability/SquadSheet';
 import LinkChildCard from '../components/consent/LinkChildCard';
+import { useIsAdultTeam } from '../context/ClubContext';
+import { useAuth } from '../context/AuthContext';
 import { ukToday, unanswered, type Answer, type AvailabilityItem, type AvailabilityOverview, type ChildAnswer, type Counts } from '../utils/availability';
 
 /**
@@ -26,6 +28,10 @@ export default function AvailabilityScreen() {
   const [saving, setSaving] = useState<string | null>(null);
   const [open, setOpen] = useState<AvailabilityItem | null>(null);
   const today = ukToday();
+  // Players (and everyone at an adult team) answer for themselves
+  const { user } = useAuth();
+  const adultTeam = useIsAdultTeam();
+  const self = adultTeam || user?.role === 'player';
 
   const load = useCallback(async () => {
     setError('');
@@ -80,7 +86,7 @@ export default function AvailabilityScreen() {
         <Text style={styles.cardTitle}>{data?.staff ? "WHO'S AVAILABLE" : 'CAN THEY MAKE IT?'}</Text>
         <Text style={styles.body}>
           {data?.staff
-            ? 'Matches, training and events for the next four weeks. Open one to see the squad, answer for a player or remind families.'
+            ? `Matches, training and events for the next four weeks. Open one to see the squad, answer for a player or remind ${adultTeam ? 'players' : 'families'}.`
             : 'Let the coaches know who can make each match, training session and event. You can change your answer any time.'}
         </Text>
         {data && data.children.length && left ? <Text style={styles.left}>{left} still to answer</Text> : null}
@@ -97,8 +103,8 @@ export default function AvailabilityScreen() {
 
       {noChildren ? (
         <>
-          <Text style={styles.body}>Link your account to your child first, with the code from their coach.</Text>
-          <LinkChildCard prominent onLinked={(name) => { setNotice(`Linked to ${name}. You can answer for them now.`); load(); }} />
+          <Text style={styles.body}>{self ? 'Link your account to your player page first, with the code from your manager.' : 'Link your account to your child first, with the code from their coach.'}</Text>
+          <LinkChildCard prominent forSelf={self} onLinked={(name) => { setNotice(self ? 'Linked. You can answer now.' : `Linked to ${name}. You can answer for them now.`); load(); }} />
         </>
       ) : null}
 

@@ -5,6 +5,7 @@ import { themedStyles, useBrandColors } from '../../theme/brand';
 import { FONTS } from '../../theme/brandFonts';
 import { apiErrorMessage, availabilityApi } from '../../services/api';
 import AnswerButtons from './AnswerButtons';
+import { useIsAdultTeam } from '../../context/ClubContext';
 import { countsLine, groupSquad, whenLabel, type Answer, type AvailabilityItem, type Counts, type SquadAnswer } from '../../utils/availability';
 
 /**
@@ -20,6 +21,7 @@ export default function SquadSheet({ item, today, onClose, onChanged }: {
   /** Totals after a change, so the list behind stays right */
   onChanged: (counts: Counts) => void;
 }) {
+  const adult = useIsAdultTeam();
   const c = useBrandColors();
   const styles = useStyles();
   const [players, setPlayers] = useState<SquadAnswer[] | null>(null);
@@ -67,7 +69,11 @@ export default function SquadSheet({ item, today, onClose, onChanged }: {
     setReminding(true); setError(''); setNotice('');
     try {
       const { families } = await availabilityApi.remind(item.type, item.id);
-      setNotice(families ? `Reminder sent to ${families} ${families === 1 ? 'family' : 'families'}.` : "Nobody to remind: the players still to answer have no family on the app with notifications on. You can answer for them here.");
+      setNotice(families
+        ? `Reminder sent to ${families} ${adult ? (families === 1 ? 'player' : 'players') : families === 1 ? 'family' : 'families'}.`
+        : adult
+          ? "Nobody to remind: the players still to answer aren't on the app with notifications on. You can answer for them here."
+          : "Nobody to remind: the players still to answer have no family on the app with notifications on. You can answer for them here.");
     } catch (err) {
       setError(apiErrorMessage(err, "The reminder didn't send. Try again in a minute."));
     } finally {
@@ -91,7 +97,7 @@ export default function SquadSheet({ item, today, onClose, onChanged }: {
 
           {players && waiting ? (
             <Button mode="contained" icon="bell-ring-outline" onPress={remind} loading={reminding} disabled={reminding} style={styles.remind}>
-              Remind families who haven&apos;t answered
+              {adult ? 'Remind players who haven\'t answered' : 'Remind families who haven\'t answered'}
             </Button>
           ) : null}
 
@@ -105,7 +111,7 @@ export default function SquadSheet({ item, today, onClose, onChanged }: {
                       <Text style={styles.name}>{p.number !== null ? `${p.number}. ` : ''}{p.name}</Text>
                       {p.note ? <Text style={styles.noteText}>“{p.note}”</Text> : null}
                       {p.byStaff && p.status ? <Text style={styles.meta}>Answered by a coach</Text> : null}
-                      {!p.status && !p.linkedFamilies ? <Text style={styles.warn}>No family linked, so only a coach can answer</Text> : null}
+                      {!p.status && !p.linkedFamilies ? <Text style={styles.warn}>{adult ? 'Not on the app yet, so only a coach can answer' : 'No family linked, so only a coach can answer'}</Text> : null}
                     </View>
                     <Button mode="text" compact onPress={() => setEditing(editing === p.playerId ? null : p.playerId)}
                       accessibilityLabel={`Change ${p.name}'s answer`}>

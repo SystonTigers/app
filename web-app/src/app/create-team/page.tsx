@@ -13,6 +13,12 @@ const PLACEHOLDER_SLUG = /^club-[0-9a-f]{8}$/;
 
 type Step = 'loading' | 'account' | 'club';
 
+/** Junior or adult team: decides consent, who answers and whether fixtures are public. */
+const TEAM_TYPES: Array<{ value: 'junior' | 'adult'; label: string; hint: string }> = [
+  { value: 'junior', label: 'Juniors (under 18)', hint: 'Parents answer for their children; photos need a parent\'s yes; match times stay private.' },
+  { value: 'adult', label: 'Adults', hint: 'Players answer for themselves; photos are used unless a player says no; fixtures are public.' },
+];
+
 function CreateTeamContent() {
   const [step, setStep] = useState<Step>('loading');
   const [busy, setBusy] = useState(false);
@@ -20,7 +26,7 @@ function CreateTeamContent() {
   const [token, setToken] = useState<string | null>(null);
 
   const [account, setAccount] = useState({ name: '', email: '', password: '', clubName: '' });
-  const [club, setClub] = useState({ name: '', slug: '', primaryColor: '#FFD700', secondaryColor: '#000000' });
+  const [club, setClub] = useState({ name: '', slug: '', primaryColor: '#FFD700', secondaryColor: '#000000', teamType: 'junior' as 'junior' | 'adult' });
   const [slugEdited, setSlugEdited] = useState(false);
 
   // Resume an unfinished sign-up, or send a finished club to its dashboard.
@@ -102,6 +108,7 @@ function CreateTeamContent() {
           slug: club.slug,
           primaryColor: club.primaryColor,
           secondaryColor: club.secondaryColor,
+          teamType: club.teamType,
         }),
       });
       if (res.status === 401) {
@@ -197,6 +204,23 @@ function CreateTeamContent() {
               </div>
               <p id="slug-hint" className="mt-1.5 text-xs text-muted">Lowercase letters, numbers and dashes. This is the link you share with families.</p>
             </div>
+
+            <fieldset>
+              <legend className="label">Who plays for the team?</legend>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {TEAM_TYPES.map((t) => (
+                  <label key={t.value} className={`flex gap-3 items-start p-3 border cursor-pointer min-h-[44px] ${club.teamType === t.value ? 'border-brand' : 'border-border'}`}>
+                    <input type="radio" name="teamType" value={t.value} checked={club.teamType === t.value}
+                      onChange={() => setClub({ ...club, teamType: t.value })} className="mt-1" />
+                    <span>
+                      <span className="block font-semibold">{t.label}</span>
+                      <span className="block text-xs text-muted">{t.hint}</span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+              <p className="mt-1.5 text-xs text-muted">You can change this later in Settings.</p>
+            </fieldset>
 
             <div className="grid grid-cols-2 gap-4">
               <ColourField id="primaryColor" label="Main colour" value={club.primaryColor} onChange={(v) => setClub({ ...club, primaryColor: v })} />

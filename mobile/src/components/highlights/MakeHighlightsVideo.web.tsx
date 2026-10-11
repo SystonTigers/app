@@ -4,6 +4,7 @@ import { themedStyles, useBrandColors } from '../../theme/brand';
 import { clipsLength, formatClock, matchDate, parseClock, type MakeHighlightsVideoProps } from '../../utils/highlights';
 import type { OverlayMatch } from '../../services/highlightsOverlay';
 import ClipTiming from './ClipTiming';
+import { useIsAdultTeam } from '../../context/ClubContext';
 
 type Stage = 'pick' | 'lineup' | 'choose' | 'making' | 'done';
 
@@ -16,6 +17,7 @@ const OPPONENT_COLOR = '#9AA3AB';
  * the moments and their timing, then save or share the video.
  */
 export default function MakeHighlightsVideo({ moments, fileName, fixture, clubName, clubColor, busy, onTiming }: MakeHighlightsVideoProps) {
+  const adult = useIsAdultTeam();
   const COLORS = useBrandColors();
   const styles = useStyles();
   const [stage, setStage] = useState<Stage>('pick');
@@ -194,7 +196,7 @@ export default function MakeHighlightsVideo({ moments, fileName, fixture, clubNa
                 </Pressable>
               </View>
               {m.noVideoConsent?.length ? (
-                <Text style={styles.consent}>No video consent: {m.noVideoConsent.join(', ')}. Only post this clip once their parents say yes.</Text>
+                <Text style={styles.consent}>No video consent: {m.noVideoConsent.join(', ')}. {adult ? "They've asked not to appear in video, so don't post this clip." : 'Only post this clip once their parents say yes.'}</Text>
               ) : null}
               {timingOpen === m.id ? (
                 <ClipTiming before={m.before} after={m.after} disabled={busy || stage === 'making'} onChange={(t) => onTiming(m.id, t)} />

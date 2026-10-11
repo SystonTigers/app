@@ -75,10 +75,20 @@ export function unanswered(items: AvailabilityItem[]): Array<{ item: Availabilit
   return items.flatMap((item) => item.children.filter((c) => !c.status).map((child) => ({ item, child })));
 }
 
-/** The home prompt's line: "Can Ava make v Anstey on Sat 11 Oct?" / "3 answers needed for Ava and Ben". */
-export function promptLine(items: AvailabilityItem[]): string | null {
+/**
+ * The home prompt's line: "Can Ava make v Anstey on Sat 11 Oct?" / "3 answers needed for Ava and Ben".
+ * `self` (players, adult teams): "Can you make v Anstey on Sat 11 Oct?" / "3 answers needed from you".
+ */
+export function promptLine(items: AvailabilityItem[], self = false): string | null {
   const waiting = unanswered(items);
   if (!waiting.length) return null;
+  if (self) {
+    if (waiting.length === 1) {
+      const { item } = waiting[0];
+      return `Can you make ${item.type === 'training' ? 'training' : item.title} on ${dayLabel(item.date)}?`;
+    }
+    return `${waiting.length} answers needed from you. It only takes a tap each.`;
+  }
   if (waiting.length === 1) {
     const { item, child } = waiting[0];
     return `Can ${firstName(child.name)} make ${item.type === 'training' ? 'training' : item.title} on ${dayLabel(item.date)}?`;

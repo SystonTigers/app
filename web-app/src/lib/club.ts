@@ -10,6 +10,8 @@ export interface ClubInfo {
   trackAssists?: boolean;
   /** Club extras the club has switched on (all off unless it has). */
   modules: ClubModules;
+  /** Junior (default) or adult team */
+  teamType?: 'junior' | 'adult';
 }
 
 /** Club extras each club switches on for itself (Admin, Settings, Club extras). */
