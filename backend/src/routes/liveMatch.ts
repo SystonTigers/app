@@ -13,7 +13,7 @@
  */
 import { json } from "../services/util";
 import { hasAnyRole, requireStaff, requireTenantJWT, STAFF_ROLES, type TenantClaims } from "../services/auth";
-import { computeState, isLiveEventType, matchMinute, rejectReason, secondYellowIds, sentOffIds, sinBinMinutes, sinBinRemainingMs, undoBlockedReason, type LiveEventType } from "../services/liveMatchState";
+import { computeState, isLiveEventType, matchMinute, pitchAndBench, rejectReason, secondYellowIds, sentOffIds, sinBinMinutes, sinBinRemainingMs, undoBlockedReason, type LiveEventType } from "../services/liveMatchState";
 import { tracksAssists } from "../services/clubOptions";
 import { describeMatch, loadEvents, loadFixture, recentLiveFixtureIds, recordFullTime, revertFullTime, setMatchStatus, type LiveFixture } from "../services/liveMatch";
 import { cancelPost, drawAndPostSoon, jobsForFixture, postPerson, queuePost, type JobSummary } from "../services/social/jobs";
@@ -149,6 +149,14 @@ async function squadName(env: Env, tenantId: string, playerId: unknown): Promise
   return row ?? "invalid";
 }
 
+/** The match's line-up as squad ids (empty starters when there isn't one). */
+async function loadLineupIds(env: Env, tenantId: string, fixtureId: string): Promise<{ starters: string[]; subs: string[] }> {
+  const { results } = await env.DB.prepare(`SELECT player_id, role FROM match_lineups WHERE tenant_id = ? AND fixture_id = ? ORDER BY sort`)
+    .bind(tenantId, fixtureId).all<{ player_id: string; role: string }>();
+  const rows = results ?? [];
+  return { starters: rows.filter((r) => r.role === "starter").map((r) => r.player_id), subs: rows.filter((r) => r.role === "sub").map((r) => r.player_id) };
+}
+
 export async function handleRecordLiveEvent(req: Request, env: Env, corsHdrs: Headers, fixtureId: string, ctx?: ExecutionContext): Promise<Response> {
   const claims = await authenticate(req, env, corsHdrs, true);
   if (claims instanceof Response) return claims;
@@ -187,6 +195,12 @@ export async function handleRecordLiveEvent(req: Request, env: Env, corsHdrs: He
     if (offPlayer) return fail(corsHdrs, 409, "NOT_NOW", `${offPlayer.name} has been sent off.`);
     if (type === "goal" && !player && player2) return fail(corsHdrs, 400, "VALIDATION", "Choose who scored before the assist.");
     if (type === "sub" && (!player || !player2)) return fail(corsHdrs, 400, "VALIDATION", "Choose who came on and who went off.");
+    // With a line-up, only someone on the pitch can go off and only someone on the bench can come on
+    if (type === "sub" && player && player2) {
+      const sides = pitchAndBench(await loadLineupIds(env, claims.tenantId, fixtureId), events);
+      if (sides && !sides.onPitch.has(player2.id)) return fail(corsHdrs, 409, "NOT_NOW", `${player2.name} isn't on the pitch.`);
+      if (sides && !sides.bench.has(player.id)) return fail(corsHdrs, 409, "NOT_NOW", `${player.name} isn't on the bench.`);
+    }
 
     let text = typeof body.text === "string" ? body.text.trim().slice(0, 280) : "";
     if (type === "note" && !text) return fail(corsHdrs, 400, "VALIDATION", "Write the update first.");

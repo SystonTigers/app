@@ -266,3 +266,27 @@ export function minutesPlayed(lineup: LineupEntry[], events: LiveEvent[]): Map<s
   for (const id of [...onSince.keys()]) comeOff(id, end);
   return minutes;
 }
+
+/**
+ * Who is on the pitch and who is on the bench right now, from the line-up and
+ * the subs and red cards so far (rolling subs: a player taken off can come
+ * back on). Null when the match has no line-up, so anyone can be picked.
+ */
+export function pitchAndBench(lineup: { starters: string[]; subs: string[] } | null, events: LiveEvent[]): { onPitch: Set<string>; bench: Set<string> } | null {
+  if (!lineup || !lineup.starters.length) return null;
+  const onPitch = new Set(lineup.starters);
+  const bench = new Set(lineup.subs.filter((id) => !onPitch.has(id)));
+  const seconds = secondYellowIds(events);
+  for (const e of [...events].sort((a, b) => a.createdAt - b.createdAt)) {
+    if (e.type === "sub" && e.playerId && e.player2Id) {
+      onPitch.delete(e.player2Id);
+      bench.add(e.player2Id);
+      bench.delete(e.playerId);
+      onPitch.add(e.playerId);
+    } else if (e.playerId && (e.type === "red" || seconds.has(e.id))) {
+      onPitch.delete(e.playerId);
+      bench.delete(e.playerId);
+    }
+  }
+  return { onPitch, bench };
+}

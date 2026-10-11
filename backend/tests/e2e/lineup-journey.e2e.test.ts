@@ -70,8 +70,18 @@ describe("Line-ups and Man of the Match", () => {
     const hail = odd.data.data.events.find((e: { text: string | null }) => e.text === "Hail");
     expect(Math.abs(hail.createdAt - Date.now())).toBeLessThan(5000);
 
+    // Subs follow the line-up: only someone on the pitch goes off, only someone on the bench comes on
+    const notOn = await post({ type: "sub", playerId: subs[0], player2Id: subs[1] });
+    expect(notOn.status).toBe(409);
+    expect(notOn.data.error.message).toMatch(/isn't on the pitch/);
+    const notBench = await post({ type: "sub", playerId: starters[5], player2Id: starters[6] });
+    expect(notBench.status).toBe(409);
+    expect(notBench.data.error.message).toMatch(/isn't on the bench/);
+    const outsider = players.find((id: string) => !starters.includes(id) && !subs.includes(id));
+    if (outsider) expect((await post({ type: "sub", playerId: outsider, player2Id: starters[6] })).status).toBe(409);
     // One sub comes on, one doesn't
-    await post({ type: "sub", playerId: subs[0], player2Id: starters[6] });
+    const ok = await post({ type: "sub", playerId: subs[0], player2Id: starters[6] });
+    expect(ok.status).toBe(201);
     await post({ type: "full_time" });
 
     // Full time doesn't open the vote by itself: the manager's pop-up shows
