@@ -23,6 +23,21 @@ A multi-club platform for UK grassroots football: each club gets an installable 
   - Man of the Match voting rules;
   - a plain-language summary for young players.
 
+## Update, October 2026: adult teams and newer features
+
+The privacy policy draft was updated to match the product as it is now:
+
+- **Adult teams.** Clubs are now either junior or adult teams. For adult teams, photos and videos are used unless the player says no in the app (opt-out), instead of needing a parent's yes. The draft gives the lawful basis as the club's legitimate interests, with the right to object made easy (one switch in the app, from then on photos aren't shown publicly). Players answer for themselves, and fixtures, kick-off times and grounds are public. New sections: 6 (Adult teams) and a short version for adult players.
+- **Medical notes and allergies** (signing on, optional) are now described. They are special category health data, which the earlier draft said the service didn't collect.
+- **"At the match" location check:** done on the phone; only yes/no is sent. The earlier draft said location isn't collected; the draft now explains this.
+- **Also added:** Facebook/Instagram posting and YouTube live streams (Meta and Google as independent recipients), push notification services, the fixture-photo reader (Cloudflare, photo not kept), things done only on the device (photo cut-outs, highlight videos), and the 90-day fixture email log.
+
+**Please confirm:**
+
+- Legitimate interests (with opt-out) is a sound basis for adult players' photos and video, including on social media, and whether clubs should also mention it in their own sign-up or membership terms.
+- The Article 9 condition for medical notes (explicit consent, plus vital interests in an emergency), and whether clubs need an appropriate policy document.
+- A retention period for signing-on forms.
+
 ## Decisions for the owner
 
 These have to be settled before publishing. Each one is marked in [brackets] in the drafts.
@@ -42,6 +57,8 @@ These were found while writing the drafts. The owner decides on each; the drafts
 3. **No club-closure or export process.** The drafts promise deletion within 90 days of closure and a chance to download data first. Today this would be done by hand. A self-service export and close option should be built before there are many clubs.
 4. **Inactive-account deletion** (if 2 years is adopted) needs a scheduled job and a warning email.
 5. **Emergency contact data** is visible to club staff (owner, admin, manager, coach) in their club. Consider limiting it to named roles.
+6. **Medical notes consent tick (new, October 2026).** The signing-on form takes medical notes and allergies but has no separate explicit consent tick for them. Add an "I agree to the club keeping these medical notes so the coaches can look after [name]" tick, required whenever medical notes or allergies are filled in, before the policy is published.
+7. **Signing-on retention (new).** Forms are kept per season with no automatic deletion. Decide a period and add a clean-up job or a "delete past seasons" option.
 
 ## For the reviewer to confirm
 

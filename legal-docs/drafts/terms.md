@@ -28,13 +28,13 @@ Boost Huddle is an app and website that clubs use to run their teams: fixtures a
 - Keep your password to yourself. You are responsible for what happens in your account. Tell us straight away at [contact email] if you think someone else has used it.
 - Your club can remove your access, and you can delete your account at any time in App Settings.
 
-### A3. Being part of a youth football community
+### A3. Being part of a football community
 
-Boost Huddle is used by families and young players. When you use it you must not:
+Boost Huddle is used by families, young players and adult teams. When you use it you must not:
 
 - post anything abusive, threatening, discriminatory, sexual, or unsuitable for children;
 - bully, harass or pressure anyone, including in Man of the Match votes or comments;
-- share photos, videos or personal details of other people, especially children, without the permission the club requires;
+- share photos, videos or personal details of other people, especially children, without the permission the club requires (for adult players, don't share theirs if they've said no);
 - contact a child through Boost Huddle in a way that breaks your club's safeguarding policy;
 - pretend to be someone else, or try to get into accounts, clubs or parts of the service you are not allowed into;
 - upload anything that breaks the law or someone else's rights, or that contains viruses or harmful code;

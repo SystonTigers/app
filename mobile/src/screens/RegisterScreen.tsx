@@ -332,6 +332,13 @@ export default function RegisterScreen({ onRegister, onNavigateToLogin }: Regist
             />
             {errors.confirmPassword ? <Text style={styles.fieldError}>{errors.confirmPassword}</Text> : null}
 
+            {/* Adult teams use players' photos unless they say no: tell them before they join */}
+            {adult ? (
+              <Text style={styles.photoNotice}>
+                {clubName} shares players&apos; photos and match videos in the app, on its club page and on social media. Don&apos;t want yours used? Say no any time in Photo &amp; Video Consent.
+              </Text>
+            ) : null}
+
             {/* Age confirmation */}
             <Checkbox.Item
               label="I'm 13 or over, or I'm a parent or carer"
@@ -455,6 +462,7 @@ const useStyles = themedStyles((COLORS) => ({
     marginBottom: 8,
     backgroundColor: COLORS.background,
   },
+  photoNotice: { color: COLORS.textLight, fontSize: 13, lineHeight: 18, marginTop: 4, marginBottom: 8 },
   fieldError: {
     fontSize: 12,
     color: COLORS.error,
