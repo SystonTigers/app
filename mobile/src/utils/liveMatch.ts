@@ -67,6 +67,8 @@ export interface NewLiveEvent {
   text?: string;
   minute?: number;
   halfLength?: number;
+  /** A sub picked from "Show full squad": the server skips its on-the-pitch / on-the-bench check */
+  fullSquad?: boolean;
 }
 
 /** Same rule as the server: minute 1 starts at kick-off; the 2nd half carries on from the half length. */
