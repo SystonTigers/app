@@ -107,11 +107,21 @@ with personal data.
   time the page comes back into view). iPhones need iOS 18.4+ for the web app.
 - Line-ups: `routes/lineup.ts` (5/7/9/11-a-side; club `default_team_size`,
   fixture `team_size`). "Post team news" queues a line-up post.
-- Subs: Match Centre asks who is going off, then who is coming on. With a
-  line-up, only players on the pitch can go off and only players on the bench
-  can come on (rolling subs: someone taken off can come back);
-  `pitchAndBench` in `services/liveMatchState.ts` and `utils/liveMatch.ts`,
-  and the server refuses others with 409. Without a line-up anyone can be picked.
+- Who's on the pitch: with a line-up, Match Centre tracks it live (starters,
+  then each sub and red card; rolling subs, so someone taken off can come
+  back): `pitchAndBench` in `services/liveMatchState.ts` and `utils/liveMatch.ts`.
+  The pickers (`utils/matchPickers.ts`, `components/live/PlayerPicker`) use it:
+  a sub is two steps, who's going off (only the players on the pitch), then
+  who's coming on (only the bench); who scored and who made the assist list
+  only the players on the pitch (not anyone in the sin bin). Cards and sin
+  bins list the whole squad. The sub, scorer and assist pickers have "Show full squad"
+  (the usual group first, then everyone else labelled "On the bench" / "On
+  the pitch" / "Not in the team") for when a sub was missed or the manager
+  doesn't record subs. The server refuses a sub that doesn't fit the tracking
+  with 409, unless the app sends `fullSquad: true` (picked from the full
+  squad); the sub is then taken as given and the tracking catches up from it.
+  Sent-off players and the same player on and off are refused either way.
+  Without a line-up there's nothing to track and every picker lists the squad.
 - Man of the Match: at full time the manager's phone pops up
   `components/motm/FullTimeMotmSheet` with everyone who played ticked
   (`GET /api/v1/motm/:id` gives staff `suggested` from `playersWhoPlayed`;

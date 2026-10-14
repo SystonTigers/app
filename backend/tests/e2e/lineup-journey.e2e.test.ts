@@ -117,6 +117,49 @@ describe("Line-ups and Man of the Match", () => {
     expect(jobs.c).toBe(1);
   });
 
+  it("takes a sub picked from the full squad when tracking has drifted, and keeps the other rules", async () => {
+    const coach = await registerAdmin("lineup-drift");
+    const players: string[] = [];
+    for (let i = 1; i <= 9; i++) {
+      players.push((await call("/api/v1/admin/squad", { token: coach.token, body: { name: `Drift ${String.fromCharCode(64 + i)}ones`, squadNumber: i } })).data.playerId);
+    }
+    const fixtureId = (await call("/api/v1/admin/fixtures", {
+      token: coach.token,
+      body: { opponent: "Drift Town", date: "2026-10-04", time: "10:30", venue: "Home Ground", competition: "League", homeAway: "home" },
+    })).data.id as string;
+    const starters = players.slice(0, 7);
+    const subs = players.slice(7, 9);
+    expect((await call(`/api/v1/fixtures/${fixtureId}/lineup`, { method: "PUT", token: coach.token, body: { teamSize: 7, starters, subs } })).status).toBe(200);
+    const post = (body: Record<string, unknown>) => call(`/api/v1/fixtures/${fixtureId}/live/events`, { token: coach.token, body: { clientEventId: tap(), ...body } });
+    await post({ type: "kick_off", halfLength: 25 });
+
+    // subs[0] came on for starters[6] but nobody recorded it. Now subs[1] replaces subs[0]:
+    // the app thinks subs[0] is on the bench, so the usual check refuses it...
+    const refused = await post({ type: "sub", playerId: subs[1], player2Id: subs[0] });
+    expect(refused.status).toBe(409);
+    expect(refused.data.error.message).toMatch(/isn't on the pitch/);
+    // ...but picked from the full squad it goes through
+    const forced = await post({ type: "sub", playerId: subs[1], player2Id: subs[0], fullSquad: true });
+    expect(forced.status).toBe(201);
+
+    // Tracking catches up: subs[0] is on the bench now, so an ordinary sub can bring them back on
+    expect((await post({ type: "sub", playerId: subs[0], player2Id: starters[5] })).status).toBe(201);
+
+    // The full squad never skips the other rules: not the same player twice, nobody sent off
+    expect((await post({ type: "sub", playerId: starters[1], player2Id: starters[1], fullSquad: true })).status).toBe(400);
+    await post({ type: "red", playerId: starters[4] });
+    const sentOff = await post({ type: "sub", playerId: starters[4], player2Id: starters[3], fullSquad: true });
+    expect(sentOff.status).toBe(409);
+    expect(sentOff.data.error.message).toMatch(/sent off/);
+
+    // Only the literal true counts: anything else gets the usual check
+    expect((await post({ type: "sub", playerId: starters[0], player2Id: starters[2], fullSquad: "yes" })).status).toBe(409);
+
+    await post({ type: "full_time" });
+    const draft = await call(`/api/v1/motm/${fixtureId}`, { token: coach.token });
+    expect([...draft.data.data.suggested].sort()).toEqual([...starters, ...subs].sort());
+  });
+
   it("suggests nobody at full time without a line-up", async () => {
     const coach = await registerAdmin("lineup-none");
     const fixtureId = (await call("/api/v1/admin/fixtures", {

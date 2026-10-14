@@ -9,7 +9,7 @@ import { useClub, useClubName, useTracksAssists } from '../context/ClubContext';
 import { useMatchDay } from '../context/MatchDayContext';
 import { apiErrorMessage, fixturesApi, lineupApi, liveApi, motmApi, squadApi, type Lineup } from '../services/api';
 import FullTimeMotmSheet from '../components/motm/FullTimeMotmSheet';
-import { activeSinBins, newClientEventId, pitchAndBench, sentOffIds, sinBinMinutes, type LiveEvent, type LiveEventType, type LiveMatchView, type NewLiveEvent, type SocialPost } from '../utils/liveMatch';
+import { newClientEventId, sinBinMinutes, type LiveEvent, type LiveEventType, type LiveMatchView, type NewLiveEvent, type SocialPost } from '../utils/liveMatch';
 import { shareGraphic } from '../utils/postGraphic';
 import LineupEditor from '../components/live/LineupEditor';
 import MatchScoreboard from '../components/matchCentre/MatchScoreboard';
@@ -25,13 +25,18 @@ import PlayerPicker, { type PickablePlayer } from '../components/live/PlayerPick
 import StreamLinkCard from '../components/live/StreamLinkCard';
 import { afterFailure, dequeue, enqueue, queuedKickOff, tapLabel, waitingLine, withQueued, type QueuedTap } from '../utils/liveOutbox';
 import { loadOutbox, saveOutbox } from '../services/liveOutbox';
+import { pickerHeading, pickerPlayers, pickerToggleLabel } from '../utils/matchPickers';
 
 interface FixtureOption { id: string; opponent: string; date: string; time: string | null }
 
 const HALF_LENGTHS = [20, 25, 30, 35, 40, 45];
 const DAY_MS = 24 * 3600_000;
 
-/** A two-step pick: goal then optional assist (if the club records them), or player on then player off. */
+/**
+ * A two-step pick: goal then optional assist (if the club records them), or
+ * player off then player on. `offOutside`: who went off was picked from the
+ * full squad, not from the players on the pitch.
+ */
 type PickStep = { at: number } & (
   | { kind: 'goal' }
   | { kind: 'assist'; scorerId: string }
@@ -39,7 +44,7 @@ type PickStep = { at: number } & (
   | { kind: 'red' }
   | { kind: 'sin_bin' }
   | { kind: 'sub_off' }
-  | { kind: 'sub_on'; offId: string });
+  | { kind: 'sub_on'; offId: string; offOutside: boolean });
 
 /**
  * Match Centre (staff): run a match from the touchline. Every tap is timed
@@ -63,6 +68,9 @@ export default function LiveMatchInputScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [halfLength, setHalfLength] = useState(40);
   const [pick, setPick] = useState<PickStep | null>(null);
+  // The manager tapped "Show full squad" in the picker that's open (each step starts with the usual group)
+  const [fullSquad, setFullSquad] = useState(false);
+  const openPick = (next: PickStep) => { setFullSquad(false); setPick(next); };
   const [noteOpen, setNoteOpen] = useState(false);
   const [note, setNote] = useState('');
   const [sending, setSending] = useState(false);
@@ -273,15 +281,21 @@ export default function LiveMatchInputScreen() {
       case 'goal':
         // Clubs that don't record assists: the scorer is all we need
         if (!assists) { setPick(null); record('goal', { playerId: player.id }, pick.at); return; }
-        setPick({ kind: 'assist', scorerId: player.id, at: pick.at });
+        openPick({ kind: 'assist', scorerId: player.id, at: pick.at });
         return;
       case 'assist': setPick(null); record('goal', { playerId: pick.scorerId, player2Id: player.id }, pick.at); return;
       case 'yellow': setPick(null); record('yellow', { playerId: player.id }, pick.at); return;
       case 'red': setPick(null); record('red', { playerId: player.id }, pick.at); return;
       case 'sin_bin': setPick(null); record('sin_bin', { playerId: player.id }, pick.at); return;
-      // Going off first, then coming on (how a sub happens on the touchline)
-      case 'sub_off': setPick({ kind: 'sub_on', offId: player.id, at: pick.at }); return;
-      case 'sub_on': setPick(null); record('sub', { playerId: player.id, player2Id: pick.offId }, pick.at); return;
+      // Going off first (from the pitch), then coming on (from the bench): how a sub happens on the touchline
+      case 'sub_off': openPick({ kind: 'sub_on', offId: player.id, offOutside: !pickList.inGroup(player.id), at: pick.at }); return;
+      case 'sub_on': {
+        // Picked from the full squad (tracking had drifted): the server takes it and the app catches up
+        const outside = pick.offOutside || !pickList.inGroup(player.id);
+        setPick(null);
+        record('sub', { playerId: player.id, player2Id: pick.offId, ...(outside ? { fullSquad: true } : {}) }, pick.at);
+        return;
+      }
     }
   };
 
@@ -338,16 +352,14 @@ export default function LiveMatchInputScreen() {
     }
   };
 
-  // Sent-off players can't be picked again; someone already in the sin bin can't go in twice
-  const pickable = useMemo(() => {
-    if (!view || !pick) return players;
-    const off = sentOffIds(view.events);
-    const binned = pick.kind === 'sin_bin' ? new Set(activeSinBins(view, Date.now()).map((b) => b.playerId)) : new Set<string | null>();
-    // With a line-up, only someone on the pitch can go off and only someone on the bench can come on
-    const sides = (pick.kind === 'sub_off' || pick.kind === 'sub_on') && lineupIds?.fixtureId === view.fixture.id ? pitchAndBench(lineupIds, view.events) : null;
-    const allowed = sides ? (pick.kind === 'sub_off' ? sides.onPitch : sides.bench) : null;
-    return players.filter((p) => !off.has(p.id) && !binned.has(p.id) && (!allowed || allowed.has(p.id)));
-  }, [players, view, pick, lineupIds]);
+  // Scorer, assist and going off: the players on the pitch; coming on: the bench; one tap shows the full squad
+  const pickList = useMemo(() => {
+    const kind = pick?.kind ?? 'goal';
+    const excludeId = pick?.kind === 'assist' ? pick.scorerId : pick?.kind === 'sub_on' ? pick.offId : null;
+    const lineup = view && lineupIds?.fixtureId === view.fixture.id ? lineupIds : null;
+    const events = view ? view : { events: [], halfLength: 40, endedAt: null };
+    return pickerPlayers(kind, players, events, lineup, Date.now(), fullSquad, excludeId);
+  }, [players, view, pick, lineupIds, fullSquad]);
 
   if (loading) {
     return <View style={[styles.container, styles.center]}><ActivityIndicator size="large" color={color} /></View>;
@@ -454,20 +466,20 @@ export default function LiveMatchInputScreen() {
               <>
                 <Text style={styles.section}>GOALS</Text>
                 <View style={styles.grid}>
-                  <ActionTile hero wide icon="soccer" label="WE SCORED" color={color} onPress={() => setPick({ kind: 'goal', at: Date.now() })} disabled={!playing} />
+                  <ActionTile hero wide icon="soccer" label="WE SCORED" color={color} onPress={() => openPick({ kind: 'goal', at: Date.now() })} disabled={!playing} />
                   <ActionTile wide icon="soccer" label="They scored" color="#8E99A4" iconColor="#C9D1D8" onPress={() => record('opp_goal')} disabled={!playing} />
                 </View>
                 <Text style={styles.section}>CARDS</Text>
                 <View style={styles.grid}>
-                  <ActionTile quarter icon="card" label="Our yellow" color={color} iconColor={YELLOW} onPress={() => setPick({ kind: 'yellow', at: Date.now() })} />
-                  <ActionTile quarter icon="card" label="Our red" color={color} iconColor={RED} onPress={() => setPick({ kind: 'red', at: Date.now() })} />
+                  <ActionTile quarter icon="card" label="Our yellow" color={color} iconColor={YELLOW} onPress={() => openPick({ kind: 'yellow', at: Date.now() })} />
+                  <ActionTile quarter icon="card" label="Our red" color={color} iconColor={RED} onPress={() => openPick({ kind: 'red', at: Date.now() })} />
                   <ActionTile quarter icon="card" label="Their yellow" color={color} iconColor={YELLOW} onPress={() => record('opp_yellow')} />
                   <ActionTile quarter icon="card" label="Their red" color={color} iconColor={RED} onPress={() => record('opp_red')} />
                 </View>
                 <Text style={styles.section}>TEAM</Text>
                 <View style={styles.grid}>
-                  <ActionTile icon="swap-horizontal" label="Sub" color={color} onPress={() => setPick({ kind: 'sub_off', at: Date.now() })} />
-                  <ActionTile icon="timer-sand" label="Sin bin" color={color} iconColor={YELLOW} onPress={() => setPick({ kind: 'sin_bin', at: Date.now() })} />
+                  <ActionTile icon="swap-horizontal" label="Sub" color={color} onPress={() => openPick({ kind: 'sub_off', at: Date.now() })} />
+                  <ActionTile icon="timer-sand" label="Sin bin" color={color} iconColor={YELLOW} onPress={() => openPick({ kind: 'sin_bin', at: Date.now() })} />
                   <ActionTile icon="message-text-outline" label="Post an update" color={color} onPress={() => setNoteOpen(true)} />
                 </View>
                 {/* One tap marks the moment for the highlights video; nothing is posted */}
@@ -502,13 +514,14 @@ export default function LiveMatchInputScreen() {
       <PlayerPicker
         visible={!!pick}
         title={pickTitle}
-        players={pickable}
-        excludeId={pick?.kind === 'assist' ? pick.scorerId : pick?.kind === 'sub_on' ? pick.offId : null}
+        players={pickList.players}
+        heading={pickerHeading(pickList, fullSquad)}
+        toggle={pickList.group && (pickList.hiddenCount > 0 || fullSquad) ? { label: pickerToggleLabel(pickList.group, fullSquad), on: fullSquad, onPress: () => setFullSquad((v) => !v) } : null}
         onPick={onPick}
         onCancel={() => setPick(null)}
         cancelLabel={pick?.kind === 'assist' ? 'Cancel goal' : 'Cancel'}
         onDismiss={pick?.kind === 'assist' ? goalWithoutAssist : undefined}
-        emptyText={pick?.kind === 'sub_on' ? 'Nobody is on the bench. Add subs to the team (Line-up) first.' : pick?.kind === 'sub_off' ? 'Nobody is on the pitch.' : undefined}
+        emptyText={pickList.group && pickList.hiddenCount > 0 ? `Nobody is ${pickList.group === 'bench' ? 'on the bench' : 'on the pitch'}. Tap Show full squad to pick anyone.` : undefined}
         onSkip={pick?.kind === 'goal' ? goalWithoutScorer : pick?.kind === 'assist' ? goalWithoutAssist : undefined}
         skipLabel={pick?.kind === 'goal' ? 'Own goal / not sure' : 'No assist'}
       />

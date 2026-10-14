@@ -162,7 +162,7 @@ export async function handleRecordLiveEvent(req: Request, env: Env, corsHdrs: He
   if (claims instanceof Response) return claims;
   try {
     const body = (await req.json().catch(() => ({}))) as {
-      type?: unknown; playerId?: unknown; player2Id?: unknown; text?: unknown; minute?: unknown; clientEventId?: unknown; halfLength?: unknown; occurredAt?: unknown;
+      type?: unknown; playerId?: unknown; player2Id?: unknown; text?: unknown; minute?: unknown; clientEventId?: unknown; halfLength?: unknown; occurredAt?: unknown; fullSquad?: unknown;
     };
     if (!isLiveEventType(body.type)) return fail(corsHdrs, 400, "VALIDATION", "Choose what happened.");
     const type: LiveEventType = body.type;
@@ -195,8 +195,12 @@ export async function handleRecordLiveEvent(req: Request, env: Env, corsHdrs: He
     if (offPlayer) return fail(corsHdrs, 409, "NOT_NOW", `${offPlayer.name} has been sent off.`);
     if (type === "goal" && !player && player2) return fail(corsHdrs, 400, "VALIDATION", "Choose who scored before the assist.");
     if (type === "sub" && (!player || !player2)) return fail(corsHdrs, 400, "VALIDATION", "Choose who came on and who went off.");
-    // With a line-up, only someone on the pitch can go off and only someone on the bench can come on
-    if (type === "sub" && player && player2) {
+    if (type === "sub" && player && player2 && player.id === player2.id) return fail(corsHdrs, 400, "VALIDATION", "Pick a different player to come on.");
+    // With a line-up, only someone on the pitch can go off and only someone on the bench can come on,
+    // unless the manager picked from the full squad (Match Centre's "Show full squad": a sub was
+    // missed, so the app's idea of who's on the pitch is out). The sub is then taken as given and
+    // pitchAndBench catches up from it.
+    if (type === "sub" && player && player2 && body.fullSquad !== true) {
       const sides = pitchAndBench(await loadLineupIds(env, claims.tenantId, fixtureId), events);
       if (sides && !sides.onPitch.has(player2.id)) return fail(corsHdrs, 409, "NOT_NOW", `${player2.name} isn't on the pitch.`);
       if (sides && !sides.bench.has(player.id)) return fail(corsHdrs, 409, "NOT_NOW", `${player.name} isn't on the bench.`);
