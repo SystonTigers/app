@@ -20,7 +20,7 @@ import { navigationRef } from './src/navigation/navigationRef';
 import { usersApi } from './src/services/api';
 import { fetchClubInfo } from './src/services/club';
 import { registerForPushAfterSignIn } from './src/services/push';
-import { COLORS } from './src/config';
+import { COLORS, screenShown } from './src/config';
 import { ErrorBoundary } from './src/ErrorBoundary';
 import { initCrashReporting } from './src/services/crashReporting';
 
@@ -173,16 +173,19 @@ function TabNavigator() {
           ),
         }}
       />
-      <Tab.Screen
-        name="Videos"
-        children={() => <HighlightsScreen inTab />}
-        options={{
-          tabBarLabel: 'Highlights',
-          tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="play-box-multiple" size={size} color={color} />
-          ),
-        }}
-      />
+      {/* Highlights are shelved in version 1 (config.ts screenShown) */}
+      {screenShown('Videos') ? (
+        <Tab.Screen
+          name="Videos"
+          children={() => <HighlightsScreen inTab />}
+          options={{
+            tabBarLabel: 'Highlights',
+            tabBarIcon: ({ color, size }) => (
+              <MaterialCommunityIcons name="play-box-multiple" size={size} color={color} />
+            ),
+          }}
+        />
+      ) : null}
     </Tab.Navigator>
   );
 }

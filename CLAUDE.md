@@ -82,6 +82,21 @@ with personal data.
   (`services/trialLock.ts`, gate in `index.ts` fetch; `GET /billing/status`
   returns `readOnly` for the website banner).
 
+## Version 1 scope (match day only)
+
+- Version 1 links only to match day: Match Centre and its posts, fixtures,
+  results, league table, availability and "I'm at the match", Man of the
+  Match, player pages and stats (plus the setup they need: squad, opponents,
+  seasons, settings, consent, people). Everything else is shelved, not
+  deleted: its screens, pages and server routes stay and keep working, but
+  nothing links to them. App: `SHELVED_SCREENS` in `mobile/src/utils/v1Scope.ts`,
+  checked through `screenShown()` in `config.ts` (menu, tabs, Home quick
+  links, Team Admin, Fixtures, Match Centre, player pages). Website:
+  `SHELVED_PATHS` in `web-app/src/lib/v1Scope.ts` (`pathShown`: club menu,
+  admin menu and dashboard). Build with `EXPO_PUBLIC_SHOW_SHELVED=1` /
+  `NEXT_PUBLIC_SHOW_SHELVED=1` to show everything again. Don't build on
+  shelved features until they come back.
+
 ## Match day
 
 - Live match updates: staff use Match Centre in the app (`LiveMatchInputScreen`),

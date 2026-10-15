@@ -8,6 +8,7 @@ import { ClubBadgeSettings } from '@/components/ClubBadgeSettings';
 import { MatchStatsSettings } from '@/components/MatchStatsSettings';
 import { TeamTypeSettings } from '@/components/TeamTypeSettings';
 import { ClubExtrasSettings } from '@/components/ClubExtrasSettings';
+import { SHOW_SHELVED } from '@/lib/v1Scope';
 import { PageHeader } from '@/components/ui/Page';
 import { Icon } from '@/components/ui/Icon';
 
@@ -56,7 +57,8 @@ export default function SettingsPage({ params }: PageProps) {
                     <LiveVideoSettings />
                 </Suspense>
                 <MatchStatsSettings />
-                <ClubExtrasSettings />
+                {/* Subs and fees, signing on and the shop are shelved in version 1 */}
+                {SHOW_SHELVED ? <ClubExtrasSettings /> : null}
             </div>
         </div>
     );

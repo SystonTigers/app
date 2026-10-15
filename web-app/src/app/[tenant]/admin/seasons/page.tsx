@@ -9,6 +9,7 @@ import { formatDate } from '@/lib/format';
 import { PageHeader, EmptyNote } from '@/components/ui/Page';
 import { Icon } from '@/components/ui/Icon';
 import { ErrorNote, LoadingBlock, Notice, Pill, bodyError } from '@/components/admin/AdminUi';
+import { pathShown } from '@/lib/v1Scope';
 
 interface PageProps {
     params: Promise<{ tenant: string }>;
@@ -86,7 +87,7 @@ export default function SeasonsAdminPage({ params }: PageProps) {
                 subtitle="Start a new season, end the old one with its awards, and look back at past seasons."
                 actions={
                     <>
-                        <Link href={`/${tenant}/history`} className="btn btn-secondary"><Icon name="history" className="w-4 h-4" /> Club history</Link>
+                        {pathShown('/history') ? <Link href={`/${tenant}/history`} className="btn btn-secondary"><Icon name="history" className="w-4 h-4" /> Club history</Link> : null}
                         <button type="button" onClick={() => setShowStartModal(true)} className="btn btn-primary"><Icon name="plus" className="w-4 h-4" /> New season</button>
                     </>
                 }
@@ -134,7 +135,7 @@ export default function SeasonsAdminPage({ params }: PageProps) {
                                         <div className="flex items-center gap-2">
                                             {!isCurrent && !isArchived && <button type="button" onClick={() => handleSetCurrent(season)} className="btn btn-sm btn-secondary">Make current</button>}
                                             {isArchived && <button type="button" onClick={() => handleReopen(season)} className="btn btn-sm btn-secondary">Reopen</button>}
-                                            <Link href={`/${tenant}/history?season=${season.id}`} className="btn btn-sm btn-ghost">Stats</Link>
+                                            {pathShown('/history') ? <Link href={`/${tenant}/history?season=${season.id}`} className="btn btn-sm btn-ghost">Stats</Link> : null}
                                         </div>
                                     </li>
                                 );

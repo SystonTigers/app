@@ -11,6 +11,7 @@ import { apiErrorMessage, playerPageApi } from '../services/api';
 import { allTimeText, careerTiles, headlineRows, initials, type PlayerProfile } from '../utils/playerPage';
 import { playerInitials, shirtNumber } from '../utils/playerNames';
 import { useIsAdultTeam, useTracksAssists } from '../context/ClubContext';
+import { screenShown } from '../config';
 
 /**
  * A player's page: their own bio, all-time numbers, stats for each season,
@@ -140,7 +141,8 @@ export default function PlayerScreen({ navigation, route }: { navigation: any; r
           ))}
         </Section>
 
-        <Section title="Goals on video">
+        {/* Goal clips come from the highlights, shelved in version 1 */}
+        {screenShown('MatchHighlights') ? <Section title="Goals on video">
           {profile.clips.length ? <GoalClips clips={profile.clips} /> : (
             <Text style={styles.note}>
               {profile.hidden.clips
@@ -148,14 +150,14 @@ export default function PlayerScreen({ navigation, route }: { navigation: any; r
                 : 'Goals scored in matches with a video show here, from the Match Centre goal taps.'}
             </Text>
           )}
-        </Section>
+        </Section> : null}
 
         <Section title="Photos">
           {profile.photos.length ? <PlayerPhotos photos={profile.photos} name={player.name} /> : (
             <Text style={styles.note}>
               {profile.hidden.photos
                 ? (adult ? `${firstName} has asked for their photos not to be shown.` : `${firstName}'s photos show here once a parent says yes to photos in Photo & Video Consent.`)
-                : profile.canRemoveBio ? 'Add photos in Manager Zone → Player Images, or tag the player in a Gallery photo.' : 'No photos yet.'}
+                : profile.canRemoveBio ? (screenShown('Gallery') ? 'Add photos in Manager Zone → Player Images, or tag the player in a Gallery photo.' : 'Add photos in Manager Zone → Player Images.') : 'No photos yet.'}
             </Text>
           )}
         </Section>

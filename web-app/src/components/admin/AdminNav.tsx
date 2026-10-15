@@ -11,6 +11,7 @@ import { usePathname } from 'next/navigation';
 import { Icon, type IconName } from '@/components/ui/Icon';
 import { useClubModules } from '@/lib/clubModules';
 import type { ClubModule } from '@/lib/club';
+import { pathShown } from '@/lib/v1Scope';
 
 interface AdminLink {
     label: string;
@@ -47,7 +48,8 @@ export function AdminNav({ tenant }: { tenant: string }) {
     const base = `/${tenant}/admin`;
     const activeRef = useRef<HTMLAnchorElement>(null);
     const modules = useClubModules(tenant);
-    const links = LINKS.filter((link) => !link.module || modules?.[link.module] === true);
+    // Version 1: shelved pages stay out of the menu (lib/v1Scope.ts)
+    const links = LINKS.filter((link) => (!link.path || pathShown(`/admin${link.path}`)) && (!link.module || modules?.[link.module] === true));
 
     const isActive = (link: AdminLink) => {
         if (!link.path) return pathname === base || pathname === `${base}/`;
