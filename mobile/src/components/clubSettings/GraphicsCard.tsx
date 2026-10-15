@@ -3,12 +3,14 @@ import { Image, Linking, ScrollView, Text, View } from 'react-native';
 import { Button, TextInput } from 'react-native-paper';
 import SettingsCard, { useCardStyles } from './SettingsCard';
 import GraphicPreview from './GraphicPreview';
+import GraphicViewer from './GraphicViewer';
 import { pickImage } from './pickImage';
 import { apiErrorMessage } from '../../services/api';
 import { clubSettingsApi, type SocialSettings } from '../../services/clubSettingsApi';
 import { useClub } from '../../context/ClubContext';
 import { WEBSITE_URL } from '../../config';
 import { themedStyles } from '../../theme/brand';
+import { FONTS } from '../../theme/brandFonts';
 
 const SAMPLES: Array<[string, string]> = [
   ['goal', 'Goal'],
@@ -22,8 +24,9 @@ const SAMPLES: Array<[string, string]> = [
 ];
 
 /**
- * Graphics style, sponsor and opponents' badges. Styles are previewed with
- * the club's own badge, colours and sponsor; premium styles are unlocked per club.
+ * Graphics style, sponsor and opponents' badges. Each style shows its real
+ * graphics (drawn with the club's own badge, colours and sponsor) rather than
+ * describing them; tap one to see it full size. Premium styles are unlocked per club.
  */
 export default function GraphicsCard({ settings, onSaved, onMessage }: {
   settings: SocialSettings;
@@ -35,7 +38,8 @@ export default function GraphicsCard({ settings, onSaved, onMessage }: {
   const { club } = useClub();
   const g = settings.graphics;
   const admin = settings.canManage;
-  const [open, setOpen] = useState<string>('');
+  // The style and graphic open full size
+  const [viewing, setViewing] = useState<{ pack: string; index: number } | null>(null);
   const [sponsor, setSponsor] = useState(g.sponsorName ?? '');
   const [busy, setBusy] = useState<string | null>(null);
   // Previews redraw when the badge or sponsor changes
@@ -74,9 +78,23 @@ export default function GraphicsCard({ settings, onSaved, onMessage }: {
   }, 'Sponsor logo removed.', "The logo wasn't removed.");
 
   const lockedChoice = g.pack !== g.activePack;
+  const viewed = viewing ? g.packs.find((p) => p.id === viewing.pack) ?? null : null;
+
+  /** Use this style / In use / why it can't be chosen: on each style and in the full-size view */
+  const choice = (pack: (typeof g.packs)[number], wide = false) => {
+    if (g.pack === pack.id) return <Text style={[styles.inUse, wide ? styles.centre : null]}>IN USE FOR YOUR POSTS</Text>;
+    if (!pack.unlocked) return <Text style={[card.muted, wide ? styles.centre : null]}>Premium style. Contact Boost Huddle to unlock it for your club.</Text>;
+    if (!admin) return null;
+    return (
+      <Button mode="contained" onPress={() => choosePack(pack.id, pack.name)} loading={busy === `pack:${pack.id}`} disabled={!!busy}
+        accessibilityLabel={`Use ${pack.name} for our posts`}>
+        Use this style
+      </Button>
+    );
+  };
 
   return (
-    <SettingsCard icon="palette-outline" title="Graphics" help="Every post gets a graphic in your club's colours with both teams' badges. The examples use your own club details." testID="graphics-card">
+    <SettingsCard icon="palette-outline" title="Graphics" help="Every post gets a graphic like these, with your badge, colours and sponsor. Tap one to see it full size." testID="graphics-card">
       {lockedChoice ? (
         <Text style={card.locked}>Your chosen premium style is locked, so posts use {g.packs.find((p) => p.id === g.activePack)?.name} for now.</Text>
       ) : null}
@@ -85,28 +103,27 @@ export default function GraphicsCard({ settings, onSaved, onMessage }: {
         return (
           <View key={pack.id} style={[card.box, current && styles.current]}>
             <View style={card.row}>
-              <Text style={[card.body, { fontWeight: '800' }]}>{pack.name}</Text>
+              <Text style={styles.packName}>{pack.name}</Text>
               {pack.premium ? <Text style={styles.premium}>PREMIUM</Text> : null}
-              {current ? <Text style={styles.inUse}>IN USE</Text> : null}
             </View>
-            <Text style={card.muted}>{pack.description}</Text>
-            <View style={card.buttons}>
-              <Button mode="outlined" compact onPress={() => setOpen(open === pack.id ? '' : pack.id)} accessibilityState={{ expanded: open === pack.id }}>
-                {open === pack.id ? 'Hide examples' : 'See examples'}
-              </Button>
-              {!current && admin && pack.unlocked ? (
-                <Button mode="contained" compact onPress={() => choosePack(pack.id, pack.name)} loading={busy === `pack:${pack.id}`} disabled={!!busy}>Use this style</Button>
-              ) : null}
-            </View>
-            {!current && !pack.unlocked ? <Text style={[card.muted, { marginTop: 6 }]}>One-off purchase. Contact Boost Huddle to unlock it for your club.</Text> : null}
-            {open === pack.id ? (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 12 }}>
-                {SAMPLES.map(([sample, label]) => <GraphicPreview key={sample} pack={pack.id} sample={sample} label={label} version={version} />)}
-              </ScrollView>
-            ) : null}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.strip} accessibilityLabel={`${pack.name} graphics`}>
+              {SAMPLES.map(([sample, label], index) => (
+                <GraphicPreview key={sample} pack={pack.id} sample={sample} label={label} version={version} onPress={() => setViewing({ pack: pack.id, index })} />
+              ))}
+            </ScrollView>
+            <View style={styles.choice}>{choice(pack)}</View>
           </View>
         );
       })}
+      <GraphicViewer
+        pack={viewed}
+        samples={SAMPLES}
+        index={viewing?.index ?? 0}
+        version={version}
+        onIndex={(index) => setViewing((v) => (v ? { ...v, index } : v))}
+        onClose={() => setViewing(null)}
+        action={viewed ? choice(viewed, true) : null}
+      />
 
       <Text style={card.sub}>Sponsor</Text>
       <Text style={card.muted}>Shown at the bottom of every graphic. A logo looks best; without one we show the sponsor&apos;s name.</Text>
@@ -135,7 +152,11 @@ export default function GraphicsCard({ settings, onSaved, onMessage }: {
 }
 
 const useStyles = themedStyles((c) => ({
-  current: { borderColor: c.primary },
+  current: { borderColor: c.primary, borderWidth: 2 },
+  packName: { color: c.text, fontFamily: FONTS.display, fontSize: 20, letterSpacing: 0.5, textTransform: 'uppercase' },
+  strip: { marginTop: 10, marginHorizontal: -4 },
+  choice: { marginTop: 10, alignItems: 'flex-start' },
+  centre: { textAlign: 'center' },
   premium: { color: c.warning, fontSize: 11, fontWeight: '800', letterSpacing: 1 },
   inUse: { color: c.success, fontSize: 11, fontWeight: '800', letterSpacing: 1 },
   logo: { width: 96, height: 40, backgroundColor: '#FFFFFF', borderRadius: 6 },
