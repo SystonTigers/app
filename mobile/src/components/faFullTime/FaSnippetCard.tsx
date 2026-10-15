@@ -14,7 +14,7 @@ export default function FaSnippetCard({ code, title, flush = false }: { code: st
   const c = useBrandColors();
   const styles = useStyles();
   const { club } = useClub();
-  const palette = useMemo(() => ({ text: c.text, muted: c.textLight, line: c.border, head: c.surfaceRaised, brand: c.primary }), [c]);
+  const palette = useMemo(() => ({ text: c.text, muted: c.textLight, line: c.border, head: c.surfaceRaised, brand: c.primary, onBrand: c.onPrimary }), [c]);
   return (
     <View>
       <SectionTitle title={title} color={c.primary} />
