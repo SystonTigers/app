@@ -18,6 +18,7 @@ import { ClubBadge } from './Brand';
 import { useUserRole, canAccessAdmin } from '@/hooks/useUserRole';
 import { TenantSwitcher } from '../TenantSwitcher';
 import { clubAppLink } from '@/lib/app-link';
+import { SHOW_SHELVED } from '@/lib/v1Scope';
 
 interface PremiumNavProps {
     tenant: string;
@@ -80,7 +81,8 @@ export function PremiumNav({ tenant, teamName, badgeUrl }: PremiumNavProps) {
                                 {item.label}
                             </Link>
                         ))}
-                        <div className="relative" onMouseLeave={() => setMoreOpen(false)}>
+                        {/* Version 1: nothing members-only to list, so no More menu */}
+                        {more.length > 0 || (!isLoggedIn && SHOW_SHELVED) ? <div className="relative" onMouseLeave={() => setMoreOpen(false)}>
                             <button
                                 type="button"
                                 aria-expanded={moreOpen}
@@ -103,7 +105,7 @@ export function PremiumNav({ tenant, teamName, badgeUrl }: PremiumNavProps) {
                                                 {item.label}
                                             </Link>
                                         ))}
-                                        {!isLoggedIn && (
+                                        {!isLoggedIn && SHOW_SHELVED && (
                                             <p className="px-3 pt-2 pb-1 text-xs text-muted border-t border-border mt-1">
                                                 Log in to see the gallery, training and team talk.
                                             </p>
@@ -111,7 +113,7 @@ export function PremiumNav({ tenant, teamName, badgeUrl }: PremiumNavProps) {
                                     </div>
                                 </div>
                             )}
-                        </div>
+                        </div> : null}
                     </nav>
 
                     <div className="flex items-center gap-2 shrink-0">
@@ -208,7 +210,7 @@ export function PremiumNav({ tenant, teamName, badgeUrl }: PremiumNavProps) {
                                 <>
                                     <a href={clubAppLink(tenant)} className="btn btn-primary w-full">Get the club app</a>
                                     <Link href={loginHref} onClick={() => setMenuOpen(false)} className="btn btn-secondary w-full">Log in</Link>
-                                    <p className="text-xs text-muted text-center">Players, parents and staff log in to see the gallery, training and team talk.</p>
+                                    {SHOW_SHELVED ? <p className="text-xs text-muted text-center">Players, parents and staff log in to see the gallery, training and team talk.</p> : null}
                                 </>
                             )}
                         </div>

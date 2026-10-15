@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { getClubInfo } from '@/lib/club';
+import { pathShown } from '@/lib/v1Scope';
 import OnboardingChecklist from '@/components/OnboardingChecklist';
 import { PageHeader } from '@/components/ui/Page';
 import { Icon, type IconName } from '@/components/ui/Icon';
@@ -26,7 +27,7 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
         { href: `${a}/squad`, icon: 'users', title: 'Squad', text: 'Sign players, edit names and numbers, and share login codes.' },
         { href: `${a}/feed`, icon: 'news', title: 'News', text: 'Post club news to the website and the app.' },
         { href: `${a}/table`, icon: 'table', title: 'League table', text: 'Check the table or work it out again from your results.' },
-        { href: `${a}/settings`, icon: 'settings', title: 'Settings', text: 'Club badge, league table, automatic posts, live video and club extras.' },
+        { href: `${a}/settings`, icon: 'settings', title: 'Settings', text: pathShown('/admin/dues') ? 'Club badge, league table, automatic posts, live video and club extras.' : 'Club badge, league table, automatic posts and live video.' },
     ];
     // Club extras only show once the club has switched them on (Settings, Club extras)
     if (club.modules.subs) tiles.push({ href: `${a}/dues`, icon: 'money', title: 'Subs and fees', text: 'Ask families for subs and send reminders.' });
@@ -44,7 +45,8 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
             <OnboardingChecklist tenantSlug={tenant} />
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {tiles.map((tile) => (
+                {/* Version 1: shelved pages (News, club extras) aren't offered (lib/v1Scope.ts) */}
+                {tiles.filter((tile) => pathShown(`/admin${tile.href.slice(a.length)}`)).map((tile) => (
                     <Link key={tile.href} href={tile.href} className="card group block transition-colors hover:border-brand/60">
                         <div className="flex items-start gap-4">
                             <span className="w-12 h-12 hexagon bg-brand/15 text-brand flex items-center justify-center shrink-0 transition-colors group-hover:bg-brand group-hover:text-brand-foreground">

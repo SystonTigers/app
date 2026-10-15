@@ -11,6 +11,7 @@ import { Icon } from '@/components/ui/Icon';
 import { useUserRole } from '@/hooks/useUserRole';
 import { API_BASE, apiFetch, errorMessage } from '@/lib/session';
 import { formatDate } from '@/lib/format';
+import { pathShown } from '@/lib/v1Scope';
 
 interface Result {
   id: string;
@@ -105,8 +106,8 @@ export default function ResultsPage({ params }: { params: Promise<{ tenant: stri
   const [opening, setOpening] = useState<string | null>(null);
   const { snippets } = useFaSnippets(tenant);
 
-  // Match chats live in Team Talk, which fans can't use
-  const canTalk = isLoggedIn && role !== 'fan';
+  // Match chats live in Team Talk, which fans can't use (and which version 1 shelves)
+  const canTalk = isLoggedIn && role !== 'fan' && pathShown('/team');
 
   const load = useCallback(async () => {
     setLoading(true);

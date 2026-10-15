@@ -12,6 +12,7 @@ import { useFaSnippets } from '../components/faFullTime/useFaSnippets';
 import { useClub } from '../context/ClubContext';
 import { isStaffRole } from '../utils/roles';
 import { useAuth } from '../context/AuthContext';
+import { screenShown } from '../config';
 import {
   FixturesApiError,
   formatFixtureDate,
@@ -125,12 +126,12 @@ export default function FixturesScreen() {
               { icon: 'map-marker', text: f.venue || (away_ ? 'Away' : 'Home') },
             ]}
             accessibilityLabel={`${home.name} v ${away.name}, ${date} ${formatKickOffTime(f.kickOffTime)}`}
-            actions={(staff || away_) ? (
+            actions={(staff && screenShown('ScoutNotes')) || (away_ && screenShown('Carpool')) ? (
               <>
-                {away_ ? (
+                {away_ && screenShown('Carpool') ? (
                   <ActionButton icon="car" label="Lift sharing" onPress={() => navigation.navigate('Carpool', { fixtureId: f.id, opponent: f.opponent, fixtureDate: date })} />
                 ) : null}
-                {staff ? (
+                {staff && screenShown('ScoutNotes') ? (
                   <ActionButton icon="clipboard-text-outline" label="Scout report" onPress={() => navigation.navigate('ScoutNotes', { fixtureId: f.id, opponent: f.opponent })} />
                 ) : null}
               </>
@@ -157,8 +158,8 @@ export default function FixturesScreen() {
               { icon: 'calendar-blank', text: date },
               ...(r.scorers ? [{ icon: 'soccer', text: r.scorers }] : []),
             ]}
-            onPress={r.fixtureId ? () => navigation.navigate('MatchHighlights', { fixtureId: r.fixtureId }) : undefined}
-            accessibilityLabel={`${OUTCOME[o]} ${home.name} ${home.score} ${away.name} ${away.score}, ${date}${r.fixtureId ? '. Open highlights' : ''}`}
+            onPress={r.fixtureId && screenShown('MatchHighlights') ? () => navigation.navigate('MatchHighlights', { fixtureId: r.fixtureId }) : undefined}
+            accessibilityLabel={`${OUTCOME[o]} ${home.name} ${home.score} ${away.name} ${away.score}, ${date}${r.fixtureId && screenShown('MatchHighlights') ? '. Open highlights' : ''}`}
           />
         );
       }) : <Empty text="No results yet. Scores from Match Centre appear here after full time." />}

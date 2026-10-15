@@ -4,6 +4,7 @@ import { Card } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { themedStyles, useBrandColors } from '../theme/brand';
 import { FONTS } from '../theme/brandFonts';
+import { screenShown } from '../config';
 
 interface ManagementCard {
   title: string;
@@ -103,7 +104,7 @@ export default function ManageScreen({ navigation }: any) {
       </Text>
 
       <View style={styles.cardsContainer}>
-        {managementCards.map((card) => (
+        {managementCards.filter((card) => screenShown(card.screen)).map((card) => (
           <TouchableOpacity
             key={card.screen}
             onPress={() => navigation.navigate(card.screen)}

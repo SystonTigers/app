@@ -12,6 +12,7 @@ import LeagueTableCard from '../components/clubSettings/LeagueTableCard';
 import FixtureEmailCard from '../components/clubSettings/FixtureEmailCard';
 import MatchStatsCard from '../components/clubSettings/MatchStatsCard';
 import ClubExtrasCard from '../components/clubSettings/ClubExtrasCard';
+import { SHOW_SHELVED } from '../config';
 import LiveVideoCard from '../components/clubSettings/LiveVideoCard';
 import TeamTypeCard from '../components/clubSettings/TeamTypeCard';
 import { apiErrorMessage } from '../services/api';
@@ -94,7 +95,8 @@ export default function ClubSettingsScreen() {
         <PostingCard settings={settings} onSaved={setSettings} onMessage={say} />
         <GraphicsCard settings={settings} onSaved={setSettings} onMessage={say} />
         <MatchStatsCard canManage={settings.canManage} onMessage={say} />
-        <ClubExtrasCard canManage={settings.canManage} onMessage={say} />
+        {/* Subs and fees, signing on and the shop are shelved in version 1 */}
+        {SHOW_SHELVED ? <ClubExtrasCard canManage={settings.canManage} onMessage={say} /> : null}
         <LeagueTableCard canManage={settings.canManage} onMessage={say} />
         <FaSnippetsCard canManage={settings.canManage} onMessage={say} />
         <FixtureEmailCard onMessage={say} />

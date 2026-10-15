@@ -1,3 +1,5 @@
+import { isScreenShown, showsShelved } from './utils/v1Scope';
+
 // Environment variables.
 // Expo only inlines EXPO_PUBLIC_* when read as a literal `process.env.EXPO_PUBLIC_X`
 // at build time - a dynamic `process.env[key]` lookup is always undefined in a
@@ -37,6 +39,12 @@ export const GEO_FENCE_RADIUS = parseInt(envOr(process.env.EXPO_PUBLIC_GEO_FENCE
 // Feature Flags (loaded dynamically from API)
 export const ENABLE_OFFLINE_MODE = envOr(process.env.EXPO_PUBLIC_ENABLE_OFFLINE, 'false') === 'true';
 export const ENABLE_DEBUG_MODE = envOr(process.env.EXPO_PUBLIC_DEBUG_MODE, 'false') === 'true';
+
+// Version 1 is match day only (utils/v1Scope.ts). Shelved features keep working
+// but nothing links to them unless the build sets EXPO_PUBLIC_SHOW_SHELVED=1.
+export const SHOW_SHELVED = showsShelved(process.env.EXPO_PUBLIC_SHOW_SHELVED);
+/** Whether the app links to this screen (false for shelved features in version 1). */
+export const screenShown = (screen: string): boolean => isScreenShown(screen, SHOW_SHELVED);
 
 // Environment detection
 export const IS_DEV = envOr(process.env.NODE_ENV, 'development') === 'development';

@@ -26,6 +26,7 @@ import LiveCard from '../components/home/LiveCard';
 import QuickActions, { type QuickAction } from '../components/home/QuickActions';
 import SectionTitle from '../components/home/SectionTitle';
 import { isStaffRole } from '../utils/roles';
+import { screenShown } from '../config';
 import { useAuth } from '../context/AuthContext';
 
 /** While a match is live the score and "as it stands" table refresh this often. */
@@ -134,17 +135,21 @@ export default function HomeScreen({ navigation }: any) {
     .filter((f) => f.stream?.status === 'live' && f.matchStatus !== 'full_time' && !liveMatches.some((m) => m.fixture.id === f.id));
   const matchToday = (day?.fixtures ?? []).length > 0;
   const strip = stripFor(league);
+  const results: QuickAction = { label: 'Results', icon: 'scoreboard-outline', onPress: () => navigation.navigate('Results') };
+  // Version 1 shelves Highlights: Results takes its place, and families get Availability at the end
+  const highlights = screenShown('Highlights');
+  const familyLast: QuickAction | null = highlights ? results
+    : user?.role === 'supporter' ? null
+      : { label: 'Availability', icon: 'calendar-check', onPress: () => navigation.navigate('Availability') };
   const actions: QuickAction[] = [
     { label: 'Live Match', icon: 'whistle', onPress: () => navigation.navigate('LiveMatch'), highlight: matchToday || liveMatches.length > 0 },
     { label: 'Fixtures', icon: 'calendar-month', onPress: () => navigation.navigate('Matches') },
     { label: 'League', icon: 'format-list-numbered', onPress: () => navigation.navigate('LeagueTable') },
-    { label: 'Highlights', icon: 'play-box-multiple', onPress: () => navigation.navigate('Highlights') },
+    highlights ? { label: 'Highlights', icon: 'play-box-multiple', onPress: () => navigation.navigate('Highlights') } : results,
     { label: 'Man of the Match', icon: 'star-circle', onPress: () => navigation.navigate('MOTMVoting') },
     { label: 'Squad', icon: 'account-group', onPress: () => navigation.navigate('Squad') },
     { label: 'Stats', icon: 'chart-bar', onPress: () => navigation.navigate('Stats') },
-    staff
-      ? { label: 'Match Centre', icon: 'scoreboard', onPress: () => navigation.navigate('MatchCentre') }
-      : { label: 'Results', icon: 'scoreboard-outline', onPress: () => navigation.navigate('Results') },
+    ...(staff ? [{ label: 'Match Centre', icon: 'scoreboard', onPress: () => navigation.navigate('MatchCentre') }] : familyLast ? [familyLast] : []),
   ];
 
   return (
@@ -255,7 +260,7 @@ export default function HomeScreen({ navigation }: any) {
           if (item.type === 'result') return (
             <ResultCard key={item.id} {...item} />
           );
-          if (item.type === 'highlight') return (
+          if (item.type === 'highlight' && screenShown('Videos')) return (
             <HighlightCard
               key={item.id}
               {...item}

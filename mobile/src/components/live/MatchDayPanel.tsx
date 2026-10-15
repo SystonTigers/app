@@ -5,6 +5,7 @@ import { useMatchDay } from '../../context/MatchDayContext';
 import type { MatchDayFixture } from '../../utils/matchDay';
 import LiveStreamPlayer from './LiveStreamPlayer';
 import { useNavigation } from '@react-navigation/native';
+import { screenShown } from '../../config';
 
 /**
  * On Live Match: the match's video (live, or to watch back) and "I'm at the
@@ -38,7 +39,7 @@ export default function MatchDayPanel({ fixture }: { fixture: MatchDayFixture })
         <View style={styles.video}>
           <Text style={styles.label}>{fixture.stream.status === 'live' && !over ? '● Live video' : 'Watch the match back'}</Text>
           <LiveStreamPlayer stream={fixture.stream} />
-          {over ? (
+          {over && screenShown('MatchHighlights') ? (
             <Pressable onPress={() => navigation.navigate('MatchHighlights', { fixtureId: fixture.id })} accessibilityRole="button">
               <Text style={styles.link}>▶ Watch the highlights</Text>
             </Pressable>

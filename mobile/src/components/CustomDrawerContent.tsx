@@ -1,6 +1,7 @@
 import type { ClubModule } from '../services/club';
 import React, { useEffect, useState } from 'react';
 import { menuRole, roleLabel } from '../utils/roles';
+import { screenShown } from '../config';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -130,7 +131,8 @@ export default function CustomDrawerContent(props: any) {
     const current: string | undefined = props.state?.routes?.[props.state.index]?.name;
 
     const hasAccess = (allowedRoles?: string[]) => !allowedRoles || allowedRoles.includes(menuRole(userRole));
-    const shows = (item: MenuItem) => hasAccess(item.roles) && !item.hiddenFor?.includes(userRole) && (!item.module || club?.modules?.[item.module] === true);
+    // Version 1: shelved features stay out of the menu (config.ts screenShown)
+    const shows = (item: MenuItem) => screenShown(item.screen) && hasAccess(item.roles) && !item.hiddenFor?.includes(userRole) && (!item.module || club?.modules?.[item.module] === true);
     const staff = hasAccess(STAFF);
     const staffGroups = staff ? STAFF_GROUPS.map((g) => ({ ...g, items: g.items.filter(shows) })).filter((g) => g.items.length) : [];
     // One Coach zone section open at a time: the one you're in, else Match day

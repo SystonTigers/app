@@ -5,6 +5,7 @@ import { findClub } from '@/lib/club';
 import { PlayerDiscussButton } from '@/components/PlayerDiscussButton';
 import { CareerHistory } from '@/components/CareerHistory';
 import { Icon } from '@/components/ui/Icon';
+import { pathShown } from '@/lib/v1Scope';
 
 interface PublicPlayer {
   id: string;
@@ -39,7 +40,7 @@ export default async function PlayerBioPage({ params }: { params: Promise<{ tena
   const club = await findClub(tenant);
   const withAssists = club?.trackAssists !== false;
   // The shop card only shows when the club has switched its shop on
-  const hasShop = club?.modules.shop === true;
+  const hasShop = club?.modules.shop === true && pathShown('/shop');
   const tiles = TILES
     .filter((t) => withAssists || t.key !== 'assists')
     .map((t) => ({ ...t, value: player.stats?.[t.key] }))
@@ -75,7 +76,7 @@ export default async function PlayerBioPage({ params }: { params: Promise<{ tena
               </div>
               <h1 className="page-title text-5xl md:text-7xl break-words">{player.name}</h1>
             </div>
-            <PlayerDiscussButton tenant={tenant} playerId={playerId} playerName={player.name} />
+            {pathShown('/team') ? <PlayerDiscussButton tenant={tenant} playerId={playerId} playerName={player.name} /> : null}
           </div>
         </div>
       </section>

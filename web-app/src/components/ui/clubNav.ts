@@ -3,6 +3,7 @@
  * (CommandPalette). Visitors only get pages that work without logging in.
  */
 import type { IconName } from './Icon';
+import { pathShown } from '@/lib/v1Scope';
 
 export interface NavItem {
     label: string;
@@ -29,5 +30,6 @@ export function clubNav(tenant: string, signedIn: boolean): { main: NavItem[]; m
             { label: 'Season history', href: `${t}/history`, icon: 'history' },
         ]
         : [];
-    return { main, more };
+    // Version 1: shelved pages stay out of the menus (lib/v1Scope.ts)
+    return { main, more: more.filter((item) => pathShown(item.href.slice(t.length))) };
 }

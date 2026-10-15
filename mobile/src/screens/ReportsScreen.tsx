@@ -7,6 +7,7 @@ import { FONTS } from '../theme/brandFonts';
 import { apiErrorMessage, reportsApi } from '../services/api';
 import { REPORT_STATUSES, actionLabel, reasonLabel, reportTypeLabel, type ContentReport } from '../utils/reports';
 import { talkTime } from '../utils/teamTalk';
+import { screenShown } from '../config';
 
 /**
  * Staff: posts and Team Talk messages members have reported (the website's
@@ -91,7 +92,7 @@ export default function ReportsScreen({ navigation }: any) {
               </View>
             ) : <Text style={styles.meta}>{status === 'pending' ? 'It has already been deleted.' : ''}</Text>}
             {r.details ? <Text style={styles.body}><Text style={styles.author}>What they said: </Text>{r.details}</Text> : null}
-            {r.discussion_id && r.content_preview ? (
+            {r.discussion_id && r.content_preview && screenShown('TeamTalkThread') ? (
               <Button compact mode="text" icon="forum-outline" style={styles.start} onPress={() => navigation.navigate('TeamTalkThread', { id: r.discussion_id })}>Open the conversation</Button>
             ) : null}
             {status === 'pending' ? (

@@ -4,7 +4,7 @@ import { Modal, Portal, TextInput } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect, useIsFocused, useNavigation } from '@react-navigation/native';
 import { useKeepScreenOn } from '../hooks/useKeepScreenOn';
-import { COLORS } from '../config';
+import { COLORS, screenShown } from '../config';
 import { useClub, useClubName, useTracksAssists } from '../context/ClubContext';
 import { useMatchDay } from '../context/MatchDayContext';
 import { apiErrorMessage, fixturesApi, lineupApi, liveApi, motmApi, squadApi, type Lineup } from '../services/api';
@@ -454,10 +454,12 @@ export default function LiveMatchInputScreen() {
                   <MaterialCommunityIcons name="star-circle" size={22} color="#06080B" />
                   <Text style={styles.kickOffText}>{motmMessage ? 'MAN OF THE MATCH VOTE' : 'START MOTM VOTE'}</Text>
                 </Pressable>
-                <Pressable onPress={() => navigation.navigate('MatchHighlights', { fixtureId: view.fixture.id })} accessibilityRole="button" style={[styles.outline, { borderColor: color }]}>
-                  <MaterialCommunityIcons name="play-box-multiple" size={20} color={color} />
-                  <Text style={[styles.outlineText, { color }]}>Highlights: line up the video and check the clips</Text>
-                </Pressable>
+                {screenShown('MatchHighlights') ? (
+                  <Pressable onPress={() => navigation.navigate('MatchHighlights', { fixtureId: view.fixture.id })} accessibilityRole="button" style={[styles.outline, { borderColor: color }]}>
+                    <MaterialCommunityIcons name="play-box-multiple" size={20} color={color} />
+                    <Text style={[styles.outlineText, { color }]}>Highlights: line up the video and check the clips</Text>
+                  </Pressable>
+                ) : null}
                 <Pressable onPress={() => { setMatch(null); setMotmMessage(''); load(); }} accessibilityRole="button" style={styles.linkButton}>
                   <Text style={styles.linkText}>Back to fixtures</Text>
                 </Pressable>
@@ -482,13 +484,17 @@ export default function LiveMatchInputScreen() {
                   <ActionTile icon="timer-sand" label="Sin bin" color={color} iconColor={YELLOW} onPress={() => openPick({ kind: 'sin_bin', at: Date.now() })} />
                   <ActionTile icon="message-text-outline" label="Post an update" color={color} onPress={() => setNoteOpen(true)} />
                 </View>
-                {/* One tap marks the moment for the highlights video; nothing is posted */}
-                <Text style={styles.section}>MARK FOR HIGHLIGHTS</Text>
-                <View style={styles.grid}>
-                  <ActionTile icon="target" label="Chance" color={color} onPress={() => record('chance')} disabled={!playing} />
-                  <ActionTile icon="hand-back-left" label="Save" color={color} onPress={() => record('save')} disabled={!playing} />
-                  <ActionTile icon="star-outline" label="Great play" color={color} onPress={() => record('skill')} disabled={!playing} />
-                </View>
+                {/* One tap marks the moment for the highlights video; nothing is posted (shelved in version 1) */}
+                {screenShown('MatchHighlights') ? (
+                  <>
+                    <Text style={styles.section}>MARK FOR HIGHLIGHTS</Text>
+                    <View style={styles.grid}>
+                      <ActionTile icon="target" label="Chance" color={color} onPress={() => record('chance')} disabled={!playing} />
+                      <ActionTile icon="hand-back-left" label="Save" color={color} onPress={() => record('save')} disabled={!playing} />
+                      <ActionTile icon="star-outline" label="Great play" color={color} onPress={() => record('skill')} disabled={!playing} />
+                    </View>
+                  </>
+                ) : null}
               </>
             )}
 
