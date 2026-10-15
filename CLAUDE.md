@@ -333,7 +333,17 @@ with personal data.
   show the club's `team` snippet as "Our fixtures and results" until it has
   added matches of its own, and the league's fixtures/results snippets as
   "Around the league" (app: `components/faFullTime/FaSnippetCard`,
-  `useFaSnippets`). The FA's snippets only cover the season happening now,
+  `useFaSnippets`). In the app the FA table's team names are dark and our
+  row is filled in the club colour (`frame.ts`; the FA's own styles make the
+  table white). Tapping a team on the League screen opens
+  `TeamResultsSheet`: the league `results` snippet with only that team's
+  matches shown (`frameDocument(..., { filter })`). Home's "Our league
+  position" box (`StandingCard`) shows our row (P W D L F A GD Pts) from our
+  own table, else from the FA table read out of sight (`FaStandingSource`,
+  `utils/leagueStanding.ts`); goals the FA table leaves out are worked out
+  from the FA results only when they cover every game played.
+  `node test/faFrame.browser.test.js` checks the frame script in Chromium.
+  The FA's snippets only cover the season happening now,
   so they're hidden under a past season's tab (`showsFaSnippets` in the app,
   `PublicSeasonTabs`' `isCurrent` on the website). The website's frame reports what happened (FA
   unreachable, `cs1.html` blocked by the FA's security check, or loaded) so

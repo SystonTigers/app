@@ -179,18 +179,6 @@ export default function ManagePlayerImagesScreen() {
     }
   };
 
-  const showUploadOptions = () => {
-    Alert.alert(
-      'Upload Image',
-      'Choose how you want to upload',
-      [
-        { text: 'Take Photo', onPress: takePhoto },
-        { text: 'Choose from Library', onPress: pickImage },
-        { text: 'Cancel', style: 'cancel' }
-      ]
-    );
-  };
-
   const filteredImages = images.filter(img => {
     if (selectedFilter === 'all') return true;
     if (selectedFilter === 'headshots') return img.type === 'headshot';
@@ -382,14 +370,27 @@ export default function ManagePlayerImagesScreen() {
               />
             </View>
           ) : (
-            <Button
-              mode="outlined"
-              icon="camera"
-              onPress={showUploadOptions}
-              style={styles.uploadButton}
-            >
-              Select Image
-            </Button>
+            // Two buttons, not a pop-up question: in the web app a question can only be yes/no, so it always opened the camera
+            <View style={styles.pickRow}>
+              <Button
+                mode="outlined"
+                icon="image-multiple"
+                onPress={pickImage}
+                style={[styles.uploadButton, styles.pickButton]}
+                accessibilityLabel="Choose a photo from your phone"
+              >
+                Choose photo
+              </Button>
+              <Button
+                mode="outlined"
+                icon="camera"
+                onPress={takePhoto}
+                style={[styles.uploadButton, styles.pickButton]}
+                accessibilityLabel="Take a photo with the camera"
+              >
+                Take photo
+              </Button>
+            </View>
           )}
 
           {/* Action Buttons */}
@@ -681,6 +682,13 @@ const useStyles = themedStyles((COLORS) => ({
   },
   uploadButton: {
     marginVertical: 16,
+  },
+  pickRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  pickButton: {
+    flex: 1,
   },
   modalButtons: {
     flexDirection: 'row',

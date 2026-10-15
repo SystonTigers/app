@@ -8,6 +8,7 @@ import { useClub } from '../context/ClubContext';
 import { isOurTeam } from '../utils/clubMatch';
 import { getTenantId } from '../services/club';
 import FaFullTimeView from '../components/faFullTime/FaFullTimeView';
+import TeamResultsSheet from '../components/faFullTime/TeamResultsSheet';
 import { fetchFaSnippets, type FaSnippets } from '../components/faFullTime/frame';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -42,7 +43,11 @@ export default function LeagueTableScreen() {
     line: c.border,
     head: c.surfaceRaised,
     brand: c.primary,
+    onBrand: c.onPrimary,
   }), [c]);
+  // Tapping a team in the FA's table shows its results this season
+  const [teamResults, setTeamResults] = useState<string | null>(null);
+  const tableOptions = React.useMemo(() => ({ teamTaps: true }), []);
 
   const loadTable = async () => {
     try {
@@ -178,8 +183,16 @@ export default function LeagueTableScreen() {
       <ScrollView style={{ backgroundColor: c.background }} contentContainerStyle={styles.container}>
         <Text style={styles.sourceLine}>From FA Full-Time</Text>
         <View style={[styles.tableCard, { backgroundColor: c.surface, borderColor: c.border }]}>
-          <FaFullTimeView code={faSnippets.table} palette={palette} highlight={(club?.name || '').split(' ')[0]} />
+          <FaFullTimeView
+            code={faSnippets.table}
+            palette={palette}
+            highlight={(club?.name || '').split(' ')[0]}
+            options={tableOptions}
+            onMessage={(msg) => { if (msg.team) setTeamResults(msg.team); }}
+          />
         </View>
+        <Text style={styles.sourceLine}>Tap a team to see its results this season.</Text>
+        <TeamResultsSheet team={teamResults} resultsCode={faSnippets.results} palette={palette} onClose={() => setTeamResults(null)} />
       </ScrollView>
     );
   }

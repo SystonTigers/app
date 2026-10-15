@@ -22,6 +22,10 @@ import HomeHeader from '../components/home/HomeHeader';
 import NextMatchCard from '../components/home/NextMatchCard';
 import HeadToHead from '../components/home/HeadToHead';
 import LeagueStrip from '../components/home/LeagueStrip';
+import StandingCard from '../components/home/StandingCard';
+import FaStandingSource from '../components/faFullTime/FaStandingSource';
+import { useFaSnippets } from '../components/faFullTime/useFaSnippets';
+import { standingFromRow, type Standing } from '../utils/leagueStanding';
 import LiveCard from '../components/home/LiveCard';
 import QuickActions, { type QuickAction } from '../components/home/QuickActions';
 import SectionTitle from '../components/home/SectionTitle';
@@ -50,6 +54,8 @@ export default function HomeScreen({ navigation }: any) {
   const { theme } = useTheme();
   const { colors } = theme;
   const { club } = useClub();
+  const fa = useFaSnippets();
+  const [faStanding, setFaStanding] = useState<Standing | null>(null);
   const { user } = useAuth();
   const { day } = useMatchDay();
   const insets = useSafeAreaInsets();
@@ -135,6 +141,9 @@ export default function HomeScreen({ navigation }: any) {
     .filter((f) => f.stream?.status === 'live' && f.matchStatus !== 'full_time' && !liveMatches.some((m) => m.fixture.id === f.id));
   const matchToday = (day?.fixtures ?? []).length > 0;
   const strip = stripFor(league);
+  // Our standing (P W D L F A GD Pts): our own table if we keep one, else the FA's
+  const ownRow = league?.ourTeam ? league.rows.find((r) => r.team === league.ourTeam) : undefined;
+  const standing: Standing | null = ownRow ? standingFromRow(ownRow) : faStanding;
   const results: QuickAction = { label: 'Results', icon: 'scoreboard-outline', onPress: () => navigation.navigate('Results') };
   // Version 1 shelves Highlights: Results takes its place, and families get Availability at the end
   const highlights = screenShown('Highlights');
@@ -236,10 +245,19 @@ export default function HomeScreen({ navigation }: any) {
         </>
       ) : null}
 
-      {/* Our league row and the teams around us; "as it stands" during a league game */}
-      {strip && league?.ourTeam ? (
+      {/* Our league standing; during a league game, the table "as it stands" with the teams around us */}
+      {!strip?.live && standing ? (
         <>
-          <SectionTitle title={strip.live ? 'LIVE TABLE' : 'THE TABLE'} color={color} />
+          <SectionTitle title="OUR LEAGUE POSITION" color={color} />
+          <StandingCard standing={standing} color={color} onPress={() => navigation.navigate('LeagueTable')} />
+        </>
+      ) : null}
+      {!ownRow && fa.table ? (
+        <FaStandingSource tableCode={fa.table} resultsCode={fa.results} highlight={(club?.name || '').split(' ')[0]} onStanding={setFaStanding} />
+      ) : null}
+      {strip?.live && league?.ourTeam ? (
+        <>
+          <SectionTitle title="LIVE TABLE" color={color} />
           <LeagueStrip
             rows={strip.rows}
             ourTeam={league.ourTeam}
