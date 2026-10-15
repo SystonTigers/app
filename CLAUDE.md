@@ -289,6 +289,12 @@ with personal data.
   credit) and Elite (premium: included with Pro, otherwise unlocked per club
   in `graphics_unlocks` from the owner panel; no purchase flow until Stripe
   is live). Clubs pick a pack and sponsor in Club Settings (app or website).
+  The picker shows each pack's real graphics, not a description: a strip of
+  the eight samples drawn with the club's own badge, colours and sponsor
+  (`GET /api/v1/social/graphics/preview/:pack/:sample`, cached in R2), and
+  tapping one opens it full size with "Use this style" (app `GraphicsCard`,
+  `GraphicPreview`, `GraphicViewer`; website `GraphicsSettings`). Previews
+  load three at a time (`utils/previewQueue.ts`) and retry once.
 - The club badge is uploaded in Club Settings (`POST /api/v1/club/badge`,
   PNG/JPG under 3 MB, `tenant_brand.badge_url`); graphics, the app and club
   pages all read it from there.

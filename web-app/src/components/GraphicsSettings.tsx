@@ -31,40 +31,108 @@ const SAMPLES: Array<[string, string]> = [
     ['motm', 'Man of the Match'],
 ];
 
-/** A preview drawn by the server with the club's own name, colours, badge and sponsor. */
-function Preview({ pack, sample, label, version }: { pack: string; sample: string; label: string; version: string }) {
-    const [src, setSrc] = useState<string | null>(null);
+// Previews load three at a time so a page of styles doesn't ask the server to draw them all at once,
+// and are kept for the visit so the full-size view doesn't draw them again
+const cache = new Map<string, string>();
+let busy = 0;
+const queue: Array<() => void> = [];
+function take(): Promise<() => void> {
+    return new Promise((resolve) => {
+        const grant = () => {
+            busy += 1;
+            let given = false;
+            resolve(() => { if (given) return; given = true; busy -= 1; queue.shift()?.(); });
+        };
+        if (busy < 3) grant(); else queue.push(grant);
+    });
+}
+
+/** A graphic drawn by the server with the club's own name, colours, badge and sponsor. */
+function usePreview(pack: string, sample: string, version: string) {
+    const key = `${pack}/${sample}/${version}`;
+    const [src, setSrc] = useState<string | null>(cache.get(key) ?? null);
     const [failed, setFailed] = useState(false);
     useEffect(() => {
-        let url: string | null = null;
         let live = true;
-        setSrc(null);
         setFailed(false);
-        const token = getSessionToken();
-        fetch(`${API_BASE}/api/v1/social/graphics/preview/${pack}/${sample}.jpg?v=${encodeURIComponent(version)}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
-            .then((res) => (res.ok ? res.blob() : Promise.reject(new Error(String(res.status)))))
-            .then((blob) => {
-                url = URL.createObjectURL(blob);
-                if (live) setSrc(url);
-            })
-            .catch(() => live && setFailed(true));
-        return () => {
-            live = false;
-            if (url) URL.revokeObjectURL(url);
-        };
-    }, [pack, sample, version]);
+        if (cache.has(key)) { setSrc(cache.get(key) ?? null); return; }
+        setSrc(null);
+        take().then((free) => {
+            if (!live) { free(); return; }
+            const token = getSessionToken();
+            const load = () => fetch(`${API_BASE}/api/v1/social/graphics/preview/${pack}/${sample}.jpg?v=${encodeURIComponent(version)}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+                .then((res) => (res.ok ? res.blob() : Promise.reject(new Error(String(res.status)))));
+            // A busy server can drop one: try once more before giving up
+            load().catch(() => new Promise<Blob>((resolve, reject) => setTimeout(() => load().then(resolve, reject), 1500)))
+                .then((blob) => {
+                    const url = URL.createObjectURL(blob);
+                    cache.set(key, url);
+                    if (live) setSrc(url);
+                })
+                .catch(() => live && setFailed(true))
+                .finally(free);
+        });
+        return () => { live = false; };
+    }, [key, pack, sample, version]);
+    return { src, failed };
+}
+
+function Preview({ pack, sample, label, version, onOpen, className = 'w-44' }: { pack: string; sample: string; label: string; version: string; onOpen?: () => void; className?: string }) {
+    const { src, failed } = usePreview(pack, sample, version);
+    const body = (
+        <div className="aspect-[4/5] overflow-hidden bg-background border border-border flex items-center justify-center">
+            {src ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={src} alt={`${label} graphic in this style`} className="w-full h-full object-cover" />
+            ) : (
+                <span className="text-xs text-muted">{failed ? 'No preview' : 'Drawing…'}</span>
+            )}
+        </div>
+    );
     return (
-        <figure className="shrink-0 w-36">
-            <div className="aspect-[4/5] overflow-hidden bg-background border border-border flex items-center justify-center">
-                {src ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={src} alt={`${label} graphic in this style`} className="w-full h-full object-cover" />
-                ) : (
-                    <span className="text-xs text-muted">{failed ? 'No preview' : 'Drawing…'}</span>
-                )}
-            </div>
+        <figure className={`shrink-0 ${className}`}>
+            {onOpen ? (
+                <button type="button" onClick={onOpen} className="block w-full hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand" aria-label={`${label}: open it full size`}>
+                    {body}
+                </button>
+            ) : body}
             <figcaption className="text-xs text-muted mt-1">{label}</figcaption>
         </figure>
+    );
+}
+
+/** One style's graphics full size, one at a time. Escape or the backdrop closes it. */
+function Viewer({ pack, index, version, onIndex, onClose, action }: {
+    pack: GraphicsPack; index: number; version: string; onIndex: (i: number) => void; onClose: () => void; action: React.ReactNode;
+}) {
+    const [sample, label] = SAMPLES[index];
+    const step = (by: number) => onIndex((index + by + SAMPLES.length) % SAMPLES.length);
+    useEffect(() => {
+        const onKey = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') onClose();
+            if (e.key === 'ArrowLeft') step(-1);
+            if (e.key === 'ArrowRight') step(1);
+        };
+        document.addEventListener('keydown', onKey);
+        return () => document.removeEventListener('keydown', onKey);
+    });
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label={`${pack.name} graphics`}>
+            <button type="button" aria-label="Close" className="absolute inset-0 bg-black/80" onClick={onClose} />
+            <div className="relative card w-full max-w-md max-h-full overflow-y-auto">
+                <div className="flex items-center justify-between gap-3 mb-3">
+                    <h4 className="text-2xl">{pack.name}</h4>
+                    <button type="button" onClick={onClose} className="btn btn-sm btn-ghost" aria-label="Close">Close</button>
+                </div>
+                <Preview key={`${pack.id}-${sample}`} pack={pack.id} sample={sample} label={label} version={version} className="w-full" />
+                <div className="flex items-center justify-between mt-2">
+                    <button type="button" onClick={() => step(-1)} className="btn btn-sm btn-secondary" aria-label="Previous graphic">‹</button>
+                    <span className="text-sm text-muted tabular-nums" aria-live="polite">{label} · {index + 1} of {SAMPLES.length}</span>
+                    <button type="button" onClick={() => step(1)} className="btn btn-sm btn-secondary" aria-label="Next graphic">›</button>
+                </div>
+                <div className="mt-4 text-center">{action}</div>
+            </div>
+        </div>
     );
 }
 
@@ -82,7 +150,8 @@ export function GraphicsSettings({ graphics, busy, onSave, onMessage }: {
     const [sponsor, setSponsor] = useState(graphics.sponsorName ?? '');
     const [logo, setLogo] = useState(graphics.sponsorLogoUrl);
     const [uploading, setUploading] = useState(false);
-    const [open, setOpen] = useState(graphics.pack);
+    // The style and graphic open full size
+    const [viewing, setViewing] = useState<{ pack: string; index: number } | null>(null);
     // Previews change when the sponsor changes
     const version = `${graphics.sponsorName ?? ''}|${logo ?? ''}`;
 
@@ -127,11 +196,23 @@ export function GraphicsSettings({ graphics, busy, onSave, onMessage }: {
     const heading = 'text-2xl';
     const help = 'text-sm text-muted mt-1';
     const lockedChoice = graphics.pack !== graphics.activePack;
+    const viewed = viewing ? graphics.packs.find((p) => p.id === viewing.pack) ?? null : null;
+
+    /** Use this style / in use / why it can't be chosen: on each style and in the full-size view */
+    const choice = (pack: GraphicsPack) => {
+        if (graphics.pack === pack.id) return <span className="text-sm font-bold uppercase tracking-wide text-green-400">In use for your posts</span>;
+        if (!pack.unlocked) return <span className="text-sm text-muted">Premium style. Contact Boost Huddle to unlock it for your club.</span>;
+        return (
+            <button type="button" disabled={busy} onClick={() => onSave({ pack: pack.id }, `${pack.name} is now your graphics style.`)} className="btn btn-primary">
+                Use this style
+            </button>
+        );
+    };
 
     return (
         <section className={card} aria-labelledby="graphics-title">
             <h3 id="graphics-title" className={heading}>Graphics style</h3>
-            <p className={help}>Every post gets a graphic in your club&apos;s colours with both teams&apos; badges. Previews use your own club details.</p>
+            <p className={help}>Every post gets a graphic like these, with your badge, colours and sponsor. Click one to see it full size.</p>
             {lockedChoice && (
                 <p className="mt-2 text-sm text-amber-300">Your chosen premium style is locked, so posts use {graphics.packs.find((p) => p.id === graphics.activePack)?.name} for now.</p>
             )}
@@ -139,38 +220,24 @@ export function GraphicsSettings({ graphics, busy, onSave, onMessage }: {
                 {graphics.packs.map((pack) => {
                     const current = graphics.pack === pack.id;
                     return (
-                        <div key={pack.id} className={`border chamfer-sm ${current ? 'border-brand bg-brand/5' : 'border-border bg-surface-raised'}`}>
-                            <div className="flex flex-wrap items-center gap-3 p-4">
-                                <div className="flex-1 min-w-[12rem]">
-                                    <p className="font-semibold text-foreground">
-                                        {pack.name}
-                                        {pack.premium && <span className="ml-2 text-xs font-bold uppercase tracking-wide px-2 py-0.5 border border-amber-500/40 bg-amber-500/10 text-amber-300">Premium</span>}
-                                        {current && <span className="ml-2 text-xs font-bold uppercase tracking-wide text-green-400">In use</span>}
-                                    </p>
-                                    <p className="text-sm text-muted">{pack.description}</p>
-                                </div>
-                                <button type="button" onClick={() => setOpen(open === pack.id ? '' : pack.id)} aria-expanded={open === pack.id}
-                                    className="btn btn-sm btn-secondary">
-                                    {open === pack.id ? 'Hide examples' : 'See examples'}
-                                </button>
-                                {!current && (pack.unlocked ? (
-                                    <button type="button" disabled={busy} onClick={() => onSave({ pack: pack.id }, `${pack.name} is now your graphics style.`)}
-                                        className="btn btn-sm btn-primary">
-                                        Use this style
-                                    </button>
-                                ) : (
-                                    <span className="text-sm text-muted">One-off purchase. Contact Boost Huddle to unlock it for your club.</span>
+                        <div key={pack.id} className={`border chamfer-sm p-4 ${current ? 'border-brand border-2 bg-brand/5' : 'border-border bg-surface-raised'}`}>
+                            <p className="font-display text-xl font-bold uppercase tracking-wide text-foreground">
+                                {pack.name}
+                                {pack.premium && <span className="ml-2 align-middle text-xs font-bold uppercase tracking-wide px-2 py-0.5 border border-amber-500/40 bg-amber-500/10 text-amber-300">Premium</span>}
+                            </p>
+                            <div className="mt-3 flex gap-3 overflow-x-auto pb-1" aria-label={`${pack.name} graphics`}>
+                                {SAMPLES.map(([sample, label], index) => (
+                                    <Preview key={sample} pack={pack.id} sample={sample} label={label} version={version} onOpen={() => setViewing({ pack: pack.id, index })} />
                                 ))}
                             </div>
-                            {open === pack.id && (
-                                <div className="flex gap-3 overflow-x-auto px-4 pb-4">
-                                    {SAMPLES.map(([sample, label]) => <Preview key={sample} pack={pack.id} sample={sample} label={label} version={version} />)}
-                                </div>
-                            )}
+                            <div className="mt-3">{choice(pack)}</div>
                         </div>
                     );
                 })}
             </div>
+            {viewed && viewing && (
+                <Viewer pack={viewed} index={viewing.index} version={version} onIndex={(index) => setViewing({ pack: viewed.id, index })} onClose={() => setViewing(null)} action={choice(viewed)} />
+            )}
 
             <h4 className="mt-8 text-xl">Sponsor</h4>
             <p className={help}>Shown at the bottom of every graphic. A logo looks best; without one we show the sponsor&apos;s name.</p>
