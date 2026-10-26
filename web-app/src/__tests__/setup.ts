@@ -1,6 +1,12 @@
 /// <reference types="vitest/globals" />
-import { vi } from 'vitest';
-import '@testing-library/jest-dom/vitest';
+/// <reference types="@testing-library/jest-dom/vitest" />
+import { expect, vi } from 'vitest';
+// Registered on this package's own vitest: jest-dom's "/vitest" entry imports
+// vitest from wherever jest-dom is installed (the repo root), which a
+// website-only install (CI) doesn't have.
+import * as matchers from '@testing-library/jest-dom/matchers';
+
+expect.extend(matchers);
 
 // Mock Next.js router
 vi.mock('next/navigation', () => ({

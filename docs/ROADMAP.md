@@ -1,7 +1,29 @@
 # Roadmap: what's built and what's left
 
-Updated 6 October 2026. Keep this short and current: when something here is
+Updated 26 October 2026. Keep this short and current: when something here is
 done, move it to "Built" (one line) and update `CLAUDE.md`.
+
+## Version 1: match day only (agreed October 2026)
+
+Version 1 is match day: Match Centre and its posts and graphics, fixtures,
+results, league table, availability and "I'm at the match", Man of the Match,
+player pages and stats (bio, career goals, assists, minutes), plus the setup
+they need. Everything else is shelved: still in the code and still working,
+but hidden from menus and pages (`SHELVED_SCREENS` in the app,
+`SHELVED_PATHS` on the website; see CLAUDE.md). Don't build on shelved
+features until they come back.
+
+Recently finished for version 1:
+- Match Centre pickers: a sub is "who's going off" (pitch) then "who's coming
+  on" (bench); scorer and assist list only the players on the pitch; "Show
+  full squad" on all three for a missed sub.
+- League: only our row stands out in the FA table, tap a team for its results
+  this season, and Home's "Our league position" box (P W D L F A GD Pts).
+- Club Settings shows each graphics style's real graphics, drawn with the
+  club's badge and colours, instead of describing them.
+- Match-day rehearsal (manager and parent, 26 October): Home asks members to
+  vote while a Man of the Match vote is open, the timeline says BRACE! /
+  HAT-TRICK! like the posts, and the "Team saved" note clears at kick-off.
 
 ## Built (the detail is in CLAUDE.md)
 
@@ -33,7 +55,7 @@ done, move it to "Built" (one line) and update `CLAUDE.md`.
 - **Business:** club sign-up with a 14-day trial, Starter/Pro plans (Stripe,
   switched on by secrets), owner panel (clubs, trials, plans, suspensions).
 
-## One app (in progress, agreed October 2026)
+## One app (agreed October 2026; paused for version 1 apart from match day)
 
 The club experience becomes one app on phones and PCs (the Expo app, which is
 also the web app). Website-only club features move into the app in batches;
@@ -61,17 +83,21 @@ landing page, pricing, club sign-up, billing and the owner panel.
 
 ## Next, in order
 
-1. **Make sign-up work for real clubs:** Resend key and a sending domain
+1. **Match-day graphics that sell the app:** the goal post should match the
+   club's animated Canva GOAL design (the word flashing up on the picture).
+   Waiting on an MP4 export of that design; then decide between a short video
+   post and an improved still.
+2. **Make sign-up work for real clubs:** Resend key and a sending domain
    (emails are only logged today), legal pages approved and published
    (drafts in `legal-docs/drafts/`), `npx eas init` for phone-app push.
-2. **Decide the pricing model, then switch trial end on.** The read-only
+3. **Decide the pricing model, then switch trial end on.** The read-only
    switch is built (`TRIAL_END_MODE = "read_only"` in `wrangler.toml`; off
    today). Prices in code: Starter £14.99, Pro £29.99 a month, per club
    (`routes/billing.ts` PLANS). Under discussion: per-team pricing, no free
    tier, multi-team discounts. Once decided: update PLANS and Stripe prices,
    flip the switch, update the landing page.
-3. **XbotGo scoreboard:** push the live score to the camera's overlay.
-4. **TikTok posting:** waiting on TikTok's app review; managers use Share.
+4. **XbotGo scoreboard:** push the live score to the camera's overlay.
+5. **TikTok posting:** waiting on TikTok's app review; managers use Share.
 
 ## Switched off until they're ready
 

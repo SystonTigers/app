@@ -162,14 +162,37 @@ export function scoreline(match: LiveMatchView, clubName: string): { home: strin
 }
 
 /** One line for the timeline. `secondYellow`: this yellow was the player's second, so they're off. */
-export function describeEvent(e: LiveEvent, opponent: string, secondYellow = false): string {
+const COUNT_WORDS: Record<number, string> = { 4: 'FOUR', 5: 'FIVE', 6: 'SIX', 7: 'SEVEN', 8: 'EIGHT' };
+
+/** GOAL! / BRACE! / HAT-TRICK! / FOUR GOALS! for a scorer's nth goal of the match (the posts use the same words). */
+export function goalWord(n: number): string {
+  if (n >= 4) return `${COUNT_WORDS[n] ?? n} GOALS!`;
+  if (n === 3) return 'HAT-TRICK!';
+  if (n === 2) return 'BRACE!';
+  return 'GOAL!';
+}
+
+/** Each of our goals with a scorer: which of that player's goals in the match it was (1, 2, 3...). */
+export function scorerGoalNumbers(events: LiveEvent[]): Map<string, number> {
+  const counts = new Map<string, number>();
+  const out = new Map<string, number>();
+  for (const e of [...events].sort((a, b) => a.createdAt - b.createdAt)) {
+    if (e.type !== 'goal' || !e.playerId) continue;
+    const n = (counts.get(e.playerId) ?? 0) + 1;
+    counts.set(e.playerId, n);
+    out.set(e.id, n);
+  }
+  return out;
+}
+
+export function describeEvent(e: LiveEvent, opponent: string, secondYellow = false, goalNumber = 1): string {
   if (e.type === 'yellow' && secondYellow) return `Second yellow, sent off: ${e.playerName ?? 'Unknown'}`;
   switch (e.type) {
     case 'kick_off': return 'Kick-off';
     case 'half_time': return 'Half time';
     case 'second_half': return 'Second half under way';
     case 'full_time': return 'Full time';
-    case 'goal': return e.playerName ? `GOAL! ${e.playerName}${e.player2Name ? ` (assist ${e.player2Name})` : ''}` : 'GOAL!';
+    case 'goal': return e.playerName ? `${goalWord(goalNumber)} ${e.playerName}${e.player2Name ? ` (assist ${e.player2Name})` : ''}` : 'GOAL!';
     case 'opp_goal': return `${opponent} score${e.text ? ` (${e.text})` : ''}`;
     case 'yellow': return `Yellow card: ${e.playerName ?? 'Unknown'}`;
     case 'red': return `Red card: ${e.playerName ?? 'Unknown'}`;
@@ -194,11 +217,11 @@ export function eventSide(e: LiveEvent): 'us' | 'them' | 'middle' {
 }
 
 /** The text for an update shown under its team's name (the team is already clear from the side). */
-export function describeEventOnSide(e: LiveEvent, opponent: string, secondYellow = false): string {
+export function describeEventOnSide(e: LiveEvent, opponent: string, secondYellow = false, goalNumber = 1): string {
   if (e.type === 'opp_goal') return `GOAL!${e.text ? ` ${e.text}` : ''}`;
   if (e.type === 'opp_yellow') return `Yellow card${e.text ? ` ${e.text}` : ''}`;
   if (e.type === 'opp_red') return `Red card${e.text ? ` ${e.text}` : ''}`;
-  return describeEvent(e, opponent, secondYellow);
+  return describeEvent(e, opponent, secondYellow, goalNumber);
 }
 
 export function newClientEventId(): string {

@@ -262,6 +262,8 @@ export default function LiveMatchInputScreen() {
 
   const kickOff = (fixture: FixtureOption) => {
     setMotmMessage('');
+    // "Team saved" and the like are about getting ready; they'd sit over the match otherwise
+    setNotice('');
     queueTap(fixture.id, { type: 'kick_off', halfLength }, Date.now());
   };
 

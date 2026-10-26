@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { themedStyles, useBrandColors, type BrandColors } from '../../theme/brand';
-import { canUndo, describeEvent, describeEventOnSide, eventSide, postStatusText, secondYellowIds, type LiveEvent, type SocialPost } from '../../utils/liveMatch';
+import { canUndo, describeEvent, describeEventOnSide, eventSide, postStatusText, scorerGoalNumbers, secondYellowIds, type LiveEvent, type SocialPost } from '../../utils/liveMatch';
 
 type Tone = 'muted' | 'accent' | 'yellow' | 'red';
 
@@ -59,6 +59,7 @@ export default function LiveTimeline({ events, opponent, onUndo, busyId, posts, 
   const styles = useStyles();
   const [now, setNow] = useState(Date.now());
   const seconds = useMemo(() => secondYellowIds(events), [events]);
+  const goalNumbers = useMemo(() => scorerGoalNumbers(events), [events]);
   const counting = !!posts?.some((p) => p.status === 'pending' || p.status === 'posting');
   useEffect(() => {
     if (!counting) return;
@@ -67,13 +68,13 @@ export default function LiveTimeline({ events, opponent, onUndo, busyId, posts, 
   }, [counting]);
 
   if (!events.length) return <Text style={styles.empty}>Updates will appear here.</Text>;
-  if (usIsHome !== undefined) return <SideBySide events={events} opponent={opponent} usIsHome={usIsHome} seconds={seconds} />;
+  if (usIsHome !== undefined) return <SideBySide events={events} opponent={opponent} usIsHome={usIsHome} seconds={seconds} goalNumbers={goalNumbers} />;
   const postFor = new Map((posts ?? []).map((p) => [p.sourceId, p]));
   return (
     <View>
       {events.map((e) => {
         const icon = iconFor(e, seconds);
-        const text = describeEvent(e, opponent, seconds.has(e.id));
+        const text = describeEvent(e, opponent, seconds.has(e.id), goalNumbers.get(e.id));
         const post = postFor.get(e.id);
         return (
           <View key={e.id}>
@@ -113,7 +114,7 @@ export default function LiveTimeline({ events, opponent, onUndo, busyId, posts, 
 /** Each update under its team's name: home on the left, away on the right, minute in the middle. */
 const SHOWN_AT_FIRST = 5;
 
-function SideBySide({ events, opponent, usIsHome, seconds }: { events: LiveEvent[]; opponent: string; usIsHome: boolean; seconds: Set<string> }) {
+function SideBySide({ events, opponent, usIsHome, seconds, goalNumbers }: { events: LiveEvent[]; opponent: string; usIsHome: boolean; seconds: Set<string>; goalNumbers: Map<string, number> }) {
   const c = useBrandColors();
   const accent = c.primary;
   const styles = useStyles();
@@ -132,7 +133,7 @@ function SideBySide({ events, opponent, usIsHome, seconds }: { events: LiveEvent
           return (
             <View key={e.id} style={[styles.row, styles.middleRow]}>
               <MaterialCommunityIcons name={icon.name as any} size={16} color={toneColor(icon.tone, c)} />
-              <Text style={styles.middleText}>{minute ? `${minute} ` : ''}{describeEvent(e, opponent, second)}</Text>
+              <Text style={styles.middleText}>{minute ? `${minute} ` : ''}{describeEvent(e, opponent, second, goalNumbers.get(e.id))}</Text>
             </View>
           );
         }
@@ -141,12 +142,12 @@ function SideBySide({ events, opponent, usIsHome, seconds }: { events: LiveEvent
           <View style={[styles.sideContent, left ? styles.sideLeft : styles.sideRight]}>
             <MaterialCommunityIcons name={icon.name as any} size={18} color={toneColor(icon.tone, c)} />
             <Text style={[styles.sideText, left ? styles.textRight : null, e.type === 'goal' ? [styles.goal, { color: accent }] : e.type === 'opp_goal' ? styles.oppGoal : null]}>
-              {describeEventOnSide(e, opponent, second)}
+              {describeEventOnSide(e, opponent, second, goalNumbers.get(e.id))}
             </Text>
           </View>
         );
         return (
-          <View key={e.id} style={styles.row} accessibilityLabel={`${minute} ${describeEvent(e, opponent, second)}`}>
+          <View key={e.id} style={styles.row} accessibilityLabel={`${minute} ${describeEvent(e, opponent, second, goalNumbers.get(e.id))}`}>
             <View style={styles.half}>{left ? content : null}</View>
             <Text style={styles.sideMinute}>{minute}</Text>
             <View style={styles.half}>{left ? null : content}</View>
