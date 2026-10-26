@@ -10,7 +10,6 @@
     "dev:web": "npm --prefix web-app run dev",
     "test": "npm run test:backend && npm run test:web",
     "test:backend": "npm --prefix backend test",
-    "test:web": "npm --prefix web-app run test",
-    "prepare": "husky"
+    "test:web": "npm --prefix web-app run test"
   }
 }
