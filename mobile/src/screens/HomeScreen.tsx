@@ -18,6 +18,7 @@ import { SkeletonCard } from '../components/LoadingSkeleton';
 import InstallPrompt from '../components/InstallPrompt';
 import ConsentPrompt from '../components/ConsentPrompt';
 import AvailabilityPrompt from '../components/availability/AvailabilityPrompt';
+import MotmVotePrompt from '../components/motm/MotmVotePrompt';
 import HomeHeader from '../components/home/HomeHeader';
 import NextMatchCard from '../components/home/NextMatchCard';
 import HeadToHead from '../components/home/HeadToHead';
@@ -180,6 +181,7 @@ export default function HomeScreen({ navigation }: any) {
         <InstallPrompt />
         {/* Adult teams use photos unless a player says no, so there's nothing to ask */}
         {club?.teamType !== 'adult' ? <ConsentPrompt onOpen={() => navigation.navigate('MediaConsent')} /> : null}
+        <MotmVotePrompt onOpen={() => navigation.navigate('MOTMVoting')} />
         <AvailabilityPrompt onOpen={() => navigation.navigate('Availability')} />
       </View>
 

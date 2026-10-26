@@ -9,7 +9,7 @@ Read `START_HERE.md` first: it covers running, testing and deploying. Then
 screenshots each screen at phone size). Other AI tools read `AGENTS.md`, which points to the same files.
 The code is the source of truth; old plans and status reports are in
 `archive/` for history only. When a doc disagrees with the code, trust the
-code, and fix the doc. Checked against the code on 8 October 2026.
+code, and fix the doc. Checked against the code on 26 October 2026.
 
 ## What this is
 
@@ -144,7 +144,9 @@ with personal data.
   play, pick 2/3/4 hours or a custom time (up to 3 days) and open voting.
   Opening a vote that starts now queues a `motm` alert to everyone at the
   club (people at the match too; `queueMotmAlert`, one per opening), which
-  opens the vote screen. Closing the vote queues the winner post.
+  opens the vote screen. Home shows "Vote for Man of the Match" while a vote is open that
+  I haven't voted in (`components/motm/MotmVotePrompt`, `votePrompt` in
+  `utils/motmVote.ts`, from `GET /api/v1/motm/open`). Closing the vote queues the winner post.
 - Automatic posts: `services/social/` builds the caption and a `Graphic`
   (`services/graphics/types.ts`), applying the club's name style (full /
   `first_initial` / `initial_last` / `first` / `last`; managers can change it)
@@ -157,7 +159,8 @@ with personal data.
   to the app" page and parks any Page choice in KV (`metaAppReturn.ts`).
   TikTok needs TikTok's app review first; until then managers use Share.
 - A scorer's 2nd, 3rd, 4th... goal in a match posts as BRACE! / HAT-TRICK! /
-  FOUR GOALS! (`goalMilestone`); the graphic shows one ball per goal and turns
+  FOUR GOALS! (`goalMilestone`; the app's timeline uses the same words,
+  `scorerGoalNumbers`/`goalWord` in `utils/liveMatch.ts`); the graphic shows one ball per goal and turns
   gold from a hat-trick.
 - Undoing an update whose post already went out takes it down from the app
   and Facebook and queues a CORRECTION post (`correction` kind, score layout,

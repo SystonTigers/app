@@ -113,3 +113,18 @@ assert.equal(activeSinBins(restarted, 40 * MIN + 30_000)[0].remainingMs, 30_000)
 assert.equal(activeSinBins(restarted, 41 * MIN).length, 0, 'back on');
 assert.equal(activeSinBins({ ...binMatch, endedAt: 26 * MIN }, 27 * MIN).length, 0, 'nothing after full time');
 console.log('clock, second yellow and sin bin tests passed');
+
+// A scorer's 2nd, 3rd, 4th goal reads the way the post does
+{
+  const { scorerGoalNumbers, goalWord } = require('../src/utils/liveMatch.ts');
+  const g = (id, playerId, createdAt) => ({ id, type: 'goal', playerId, playerName: playerId, createdAt });
+  const events = [g('c', 'isaac', 30), g('a', 'isaac', 10), { id: 'o', type: 'opp_goal', createdAt: 15 }, g('b', 'sam', 20), g('d', 'isaac', 40), g('e', 'isaac', 50)];
+  const n = scorerGoalNumbers(events);
+  assert.deepEqual([n.get('a'), n.get('c'), n.get('d'), n.get('e'), n.get('b'), n.get('o')], [1, 2, 3, 4, 1, undefined]);
+  assert.equal(goalWord(1), 'GOAL!');
+  assert.equal(goalWord(2), 'BRACE!');
+  assert.equal(goalWord(3), 'HAT-TRICK!');
+  assert.equal(goalWord(4), 'FOUR GOALS!');
+  assert.equal(describeEvent({ type: 'goal', playerName: 'Isaac Jones' }, 'Rovers', false, 2), 'BRACE! Isaac Jones');
+  assert.equal(describeEvent({ type: 'goal', playerName: null }, 'Rovers', false, 2), 'GOAL!');
+}
