@@ -9,6 +9,7 @@
  *   DELETE /api/v1/admin/tenants/:id/graphics/:pack        platform owner: lock it again
  */
 import { json } from "../services/util";
+import { CREDIT_TEXT } from "../services/graphics/credit";
 import { hasAnyRole, requireAdmin, requireStaff, type TenantClaims } from "../services/auth";
 import { loadClubSocial, type SocialEnv } from "../services/social/club";
 import { PACKS, packsFor, packsIncludedWith } from "../services/graphics/packs";
@@ -44,7 +45,10 @@ async function sha(text: string): Promise<string> {
   return [...new Uint8Array(digest)].slice(0, 8).map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-/** A sample graphic in a pack, drawn with this club's name, colours, badge and sponsor. Cached in R2. */
+/**
+ * A sample graphic in a pack, drawn with this club's name, colours, badge and sponsor. Cached in R2,
+ * keyed by the brand and the credit line, so changing either redraws it.
+ */
 export async function handleGraphicPreview(req: Request, env: Env, corsHdrs: Headers, packId: string, sample: string): Promise<Response> {
   const claims = await staff(req, env, corsHdrs);
   if (claims instanceof Response) return claims;
@@ -54,7 +58,7 @@ export async function handleGraphicPreview(req: Request, env: Env, corsHdrs: Hea
   const name = sample.replace(/\.jpg$/, "");
   if (!pack || !(PREVIEW_SAMPLES as readonly string[]).includes(name)) return fail(corsHdrs, 404, "NOT_FOUND", "No such preview.");
   const graphic = sampleGraphics({ ...club.brand })[name];
-  const key = `social/previews/${claims.tenantId}/${pack.id}-${name}-${await sha(JSON.stringify(club.brand))}.jpg`;
+  const key = `social/previews/${claims.tenantId}/${pack.id}-${name}-${await sha(JSON.stringify([club.brand, CREDIT_TEXT]))}.jpg`;
   const headers = new Headers(corsHdrs);
   headers.set("content-type", "image/jpeg");
   headers.set("cache-control", "private, max-age=3600");

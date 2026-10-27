@@ -16,12 +16,14 @@ export function AuthBackdrop() {
 /**
  * The top of a sign-in screen (these have no navigation bar): the club's crest
  * and name when a club is chosen, otherwise the Boost Huddle emblem and wordmark,
- * then an optional line underneath.
+ * then an optional line underneath (without a club: the app's line,
+ * "Your club's match day, live").
  */
 export default function AuthBrandHeader({ title, subtitle }: { title?: string; subtitle?: string }) {
   const { club } = useClub();
   const c = useBrandColors();
   const heading = (title || club?.name || 'Boost Huddle').toUpperCase();
+  const line = subtitle ?? (club ? undefined : 'Your club’s match day, live');
   return (
     <View style={styles.wrap}>
       {club ? (
@@ -39,7 +41,7 @@ export default function AuthBrandHeader({ title, subtitle }: { title?: string; s
         {heading}
       </Text>
       <View style={[styles.underline, { backgroundColor: c.primary }]} />
-      {subtitle ? <Text style={[styles.subtitle, { color: c.textLight }]}>{subtitle}</Text> : null}
+      {line ? <Text style={[styles.subtitle, { color: c.textLight }]}>{line}</Text> : null}
     </View>
   );
 }

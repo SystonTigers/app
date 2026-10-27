@@ -34,7 +34,7 @@ export function SiteFooter() {
         <a href={`${LEGAL_BASE}/terms`} className="py-2 hover:text-foreground">Terms</a>
         <a href={`${LEGAL_BASE}/privacy`} className="py-2 hover:text-foreground">Privacy</a>
       </nav>
-      <p className="mt-2 text-center text-xs text-muted">&copy; {new Date().getFullYear()} Boost Huddle</p>
+      <p className="mt-2 text-center text-xs text-muted">&copy; {new Date().getFullYear()} Boost Huddle · Your club’s match day, live</p>
     </footer>
   );
 }

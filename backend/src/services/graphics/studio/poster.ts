@@ -5,6 +5,7 @@
  */
 import { badge, containImage, coverImage, hasImage, r, rect, text, type Canvas } from "../svg";
 import { measure } from "../text";
+import { CREDIT_TEXT } from "../credit";
 import type { MomentGraphic, TeamSide } from "../types";
 import {
   ball, brushStroke, chevrons, clubColours, crestDisc, duotoneFilter, fadeMask, ghosted, grain, halftone, letters, mix,
@@ -28,17 +29,20 @@ function fitAnton(value: string, width: number, maxSize: number, scaleX = 1): nu
 export function posterFooter(c: Canvas, g: { brand: MomentGraphic["brand"]; footer: string | null }, f: Frame, ink: string): string {
   let out = "";
   const y = f.h - 40;
+  // The credit pill sits bottom-right, so a long sponsor name stops short of it
+  const pill = f.credit ? Math.round(measure(CREDIT_TEXT, "Barlow Condensed SemiBold", 18, 2) + 36) : 0;
   if (hasImage(c, g.brand.sponsorLogoUrl)) {
     const sid = shadowFilter(c, 8, 0.35, 4);
     out += `<g filter="url(#${sid})"><rect x="40" y="${y - 120}" width="190" height="120" rx="8" fill="#FFFFFF"/></g>`;
     out += text("KINDLY SPONSORED BY", 135, y - 100, { font: "Barlow Condensed ExtraBold", size: 15, fill: "#333333", anchor: "middle", letterSpacing: 1 });
     out += containImage(c, g.brand.sponsorLogoUrl, 52, y - 92, 166, 80);
   } else if (g.brand.sponsorName) {
-    out += text(`SPONSORED BY ${g.brand.sponsorName.toUpperCase()}`, 44, y, { font: "Barlow Condensed ExtraBold", size: 24, fill: ink, letterSpacing: 2, maxWidth: f.w * 0.55, minSize: 16 });
+    out += text(`SPONSORED BY ${g.brand.sponsorName.toUpperCase()}`, 44, y, { font: "Barlow Condensed ExtraBold", size: 24, fill: ink, letterSpacing: 2, maxWidth: f.credit ? Math.min(f.w * 0.55, f.w - 44 - 32 - pill - 24) : f.w * 0.55, minSize: 16 });
   }
   if (f.credit) {
-    out += `<rect x="${f.w - 262}" y="${y - 24}" width="230" height="34" rx="17" fill="#000000" opacity="0.55"/>`;
-    out += text("MADE WITH BOOST HUDDLE", f.w - 147, y, { font: "Barlow Condensed SemiBold", size: 18, fill: "#FFFFFF", anchor: "middle", letterSpacing: 3, opacity: 0.85 });
+    // A pill sized to the line, 32px in from the right edge
+    out += `<rect x="${f.w - 32 - pill}" y="${y - 24}" width="${pill}" height="34" rx="17" fill="#000000" opacity="0.55"/>`;
+    out += text(CREDIT_TEXT, f.w - 32 - pill / 2, y, { font: "Barlow Condensed SemiBold", size: 18, fill: "#FFFFFF", anchor: "middle", letterSpacing: 2, opacity: 0.85 });
   }
   return out;
 }

@@ -73,7 +73,7 @@ html = html.replace(
 /** iPhone launch screens (CSS width, height, pixel ratio): full-screen images made by scripts/make-splash.mjs */
 const IOS_SPLASH = [[375, 667, 2], [414, 896, 2], [375, 812, 3], [414, 896, 3], [390, 844, 3], [393, 852, 3], [428, 926, 3], [430, 932, 3], [402, 874, 3], [440, 956, 3]];
 const head = [
-  '<meta name="description" content="Fixtures, results, team news and match videos for your football club." />',
+  '<meta name="description" content="Your club’s match day, live: live scores, fixtures, results, the league table and match posts for grassroots football clubs." />',
   '<meta name="theme-color" content="#0B0D0F" />',
   '<meta name="mobile-web-app-capable" content="yes" />',
   '<meta name="apple-mobile-web-app-capable" content="yes" />',

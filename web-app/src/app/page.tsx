@@ -3,9 +3,9 @@ import { SiteFooter, SiteHeader } from '@/components/SiteHeader';
 import { Icon, type IconName } from '@/components/ui/Icon';
 
 export const metadata = {
-  title: 'Boost Huddle – run your grassroots football club in one place',
+  title: 'Boost Huddle – your club’s match day, live',
   description:
-    'Fixtures, results, league table, squad, news and match highlights for grassroots football clubs. Free for 14 days, no card needed.',
+    'Live scores, fixtures, results, the league table and match posts for grassroots football clubs. Free for 14 days, no card needed.',
 };
 
 const features: { icon: IconName; title: string; body: string }[] = [
@@ -27,10 +27,10 @@ export default function HomePage() {
           <div className="container max-w-4xl pt-12 sm:pt-20 pb-16 sm:pb-24 text-center">
             <p className="eyebrow mb-4">For grassroots football clubs</p>
             <h1 className="text-5xl md:text-7xl italic leading-[0.95] mb-6">
-              Run your grassroots club <span className="text-brand">in one place</span>
+              Your club’s match day, <span className="text-brand">live</span>
             </h1>
             <p className="text-lg sm:text-xl text-muted mb-10 max-w-2xl mx-auto">
-              Live scores, fixtures, the league table, match highlights and social posts for your club, with no spreadsheets and no chasing group chats.
+              Every goal, card and sub reaches your families as it happens. Fixtures, results, the league table and match posts follow on their own, with no spreadsheets and no chasing group chats.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Link href="/create-team" className="btn btn-primary">
