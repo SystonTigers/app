@@ -9,7 +9,8 @@ export const BRAND_INK = '#06080B';
 
 /**
  * Full-screen launch screen: the Boost Huddle emblem glowing over the hex
- * backdrop, the club's name, and a thin loading bar.
+ * backdrop, the club's name (or the app's line, "Your club's match day, live"),
+ * and a thin loading bar.
  */
 export default function BrandSplash({ clubName }: { clubName?: string | null }) {
   const { width, height } = useWindowDimensions();
@@ -46,7 +47,7 @@ export default function BrandSplash({ clubName }: { clubName?: string | null }) 
         </Animated.View>
         <Image source={require('../../../assets/emblem.png')} style={{ width: size, height: size }} resizeMode="contain" accessibilityIgnoresInvertColors />
         <Text style={styles.wordmark}>BOOST HUDDLE</Text>
-        <Text style={styles.tagline}>{clubName ? clubName.toUpperCase() : 'TOP PLAY'}</Text>
+        <Text style={styles.tagline}>{clubName ? clubName.toUpperCase() : 'YOUR CLUB’S MATCH DAY, LIVE'}</Text>
       </View>
       <View style={styles.track}>
         <Animated.View style={[styles.fill, { transform: [{ translateX: bar.interpolate({ inputRange: [0, 1], outputRange: [-120, 120] }) }] }]} />
@@ -60,7 +61,7 @@ const styles = StyleSheet.create({
   center: { alignItems: 'center', justifyContent: 'center' },
   halo: { position: 'absolute', top: 0 },
   wordmark: { marginTop: 18, color: '#E9F1F5', fontFamily: FONTS.display, fontSize: 40, letterSpacing: 4, textShadowColor: BRAND_CYAN, textShadowRadius: 18 },
-  tagline: { marginTop: 2, color: BRAND_CYAN, fontFamily: FONTS.displaySemi, fontSize: 18, letterSpacing: 6 },
+  tagline: { marginTop: 2, color: BRAND_CYAN, fontFamily: FONTS.displaySemi, fontSize: 17, letterSpacing: 3, textAlign: 'center', paddingHorizontal: 24 },
   track: { position: 'absolute', bottom: 72, width: 160, height: 3, borderRadius: 2, backgroundColor: 'rgba(25,227,255,0.15)', overflow: 'hidden' },
   fill: { width: 60, height: 3, borderRadius: 2, backgroundColor: BRAND_CYAN, alignSelf: 'center' },
 });

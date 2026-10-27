@@ -1,5 +1,6 @@
 /** Pieces most layouts share: header, footer, score panel and team columns. */
 import { badge, containImage, hasImage, rect, roundRect, text, type Canvas } from "../svg";
+import { CREDIT_TEXT } from "../credit";
 import type { Palette, Theme } from "../theme";
 import { measure } from "../text";
 import { GRAPHIC_HEIGHT as H, GRAPHIC_WIDTH as W, type Graphic, type TeamSide } from "../types";
@@ -52,7 +53,7 @@ export function footer(d: DrawContext, g: Graphic): string {
     out += text(g.footer.toUpperCase(), MARGIN, y, { font: t.fonts.body, size: 26, fill: p.muted, letterSpacing: 2, maxWidth: W - 2 * MARGIN - sponsorW, minSize: 16 });
   }
   if (d.watermark) {
-    out += text("MADE WITH BOOST HUDDLE", W / 2, H - 26, { font: t.fonts.body, size: 20, fill: p.muted, anchor: "middle", letterSpacing: 3, opacity: 0.7 });
+    out += text(CREDIT_TEXT, W / 2, H - 26, { font: t.fonts.body, size: 20, fill: p.muted, anchor: "middle", letterSpacing: 3, opacity: 0.7 });
   }
   return out;
 }

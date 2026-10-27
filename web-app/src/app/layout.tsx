@@ -15,7 +15,7 @@ const display = localFont({
 
 export const metadata: Metadata = {
   title: 'Boost Huddle',
-  description: 'Live scores, fixtures, the league table and match posts for grassroots football clubs.',
+  description: 'Your club’s match day, live: live scores, fixtures, results, the league table and match posts for grassroots football clubs.',
   manifest: '/manifest.json',
   icons: {
     icon: '/icon-192.png',

@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { CREDIT_TEXT } from "../credit";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { drawGraphic, getPack, PACKS } from "../packs";
@@ -48,7 +49,7 @@ describe("design packs", () => {
         // Some designs stack the headline one word per line
         for (const word of graphic.headline.toUpperCase().replace(/'/g, "&apos;").split(" ")) expect(svg, `${pack.id}/${name}`).toContain(word);
         // Free packs carry the credit; premium packs and a club's own designs don't
-        expect(svg.includes("MADE WITH BOOST HUDDLE"), `${pack.id}/${name}`).toBe(!pack.premium && !pack.templates);
+        expect(svg.includes(CREDIT_TEXT), `${pack.id}/${name}`).toBe(!pack.premium && !pack.templates);
       }
     }
   });

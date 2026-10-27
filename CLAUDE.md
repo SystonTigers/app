@@ -288,8 +288,8 @@ with personal data.
   The phone build takes a ready-made PNG. The server only accepts PNGs with
   see-through pixels (4 MB). Graphics read photos through `graphicPhotoSql()`
   (cut-out, then headshot, then photo), so only with photo consent.
-- Packs: Touchline and Floodlights (free, small "Made with Boost Huddle"
-  credit) and Elite (premium: included with Pro, otherwise unlocked per club
+- Packs: Touchline and Floodlights (free, small "BOOST HUDDLE · YOUR
+  CLUB’S MATCH DAY, LIVE" credit, `graphics/credit.ts`) and Elite (premium: included with Pro, otherwise unlocked per club
   in `graphics_unlocks` from the owner panel; no purchase flow until Stripe
   is live). Clubs pick a pack and sponsor in Club Settings (app or website).
   The picker shows each pack's real graphics, not a description: a strip of
@@ -672,6 +672,8 @@ with personal data.
 
 ## App look (brand)
 
+- Brand line: "Boost Huddle: your club’s match day, live" (website title,
+  hero and footer, app launch and sign-in screens, manifests, graphics credit).
 - Brand: the Boost Huddle hexagon emblem (`assets/emblem.png`, cut out of the
   logo), dark ink `#06080B`, cyan glow `#19E3FF`; club screens use the club's
   colour (`theme.colors.primary`). Display type is Barlow Condensed

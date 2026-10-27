@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { CREDIT_TEXT } from "../credit";
 import { drawGraphic, getPack, packImageUrls, packsFor } from "../packs";
 import { sampleGraphics } from "../samples";
 import { backgroundUrl, getTemplateSet } from "../templates";
@@ -46,14 +47,14 @@ describe("a club's own designs", () => {
     expect(svg).toContain(`href="${BG}"`);
     expect(svg).toMatch(/width="1080" height="1080"/);
     for (const s of ["GOAL!", "SAM S.", "23&apos;", "SYSTON TIGERS", "HILLSIDE RANGERS", "2-1", ">9<"]) expect(svg).toContain(s);
-    expect(svg).not.toContain("MADE WITH BOOST HUDDLE");
+    expect(svg).not.toContain(CREDIT_TEXT);
   });
 
   it("falls back to Matchday when the background can't be loaded or there's no design", () => {
     expect(drawGraphic(pack, samples.goal, new Map())).toMatch(/width="1080" height="1350"/);
     const card = drawGraphic(pack, samples.card, withBackgrounds(samples.card));
     expect(card).toMatch(/width="1080" height="1350"/);
-    expect(card).not.toContain("MADE WITH BOOST HUDDLE");
+    expect(card).not.toContain(CREDIT_TEXT);
   });
 
   it("only reads design backgrounds straight from storage", async () => {

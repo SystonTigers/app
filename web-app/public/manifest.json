@@ -1,7 +1,7 @@
 {
     "name": "Boost Huddle",
     "short_name": "Boost Huddle",
-    "description": "Your football club's app: fixtures, live scores, news and highlights.",
+    "description": "Your club’s match day, live: live scores, fixtures, results, the league table and match posts for grassroots football clubs.",
     "start_url": "/",
     "display": "standalone",
     "background_color": "#0B0D0F",
