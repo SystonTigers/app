@@ -44,6 +44,26 @@ describe("FA Full-Time emails", () => {
     ]);
   });
 
+  it("reads weekly reminders (\"Home-v-Away, Venue: ...\" on one line, link in the HTML)", () => {
+    const html = `Weekly reminder, below is a list of fixtures for the next 14 days:<BR/><BR/>`
+      + `<B>Sunday Youth U17/18 County Cup (2nd Round)<BR/>Sun 01 Nov 2026 14:00  Syston Town Juniors U17 Tigers-v-Example Sports FC U18, Venue: MEMORIAL PARK</B><BR/>`
+      + `Official 1: Alex Example, 07000 000001 (M), ref@example.com<BR/><BR/>`
+      + `<a href="https://fulltime.thefa.com/displayFixture.html?id=31000001">Click here for full details of this fixture on Full-Time</a><BR/>`;
+    const [f] = parseFaEmail(html);
+    expect(f).toMatchObject({
+      date: "2026-11-01", time: "14:00",
+      homeTeam: "Syston Town Juniors U17 Tigers", awayTeam: "Example Sports FC U18",
+      venue: "MEMORIAL PARK", competition: "Sunday Youth U17/18 County Cup (2nd Round)",
+      status: "scheduled", statusText: null, faFixtureId: "31000001",
+    });
+  });
+
+  it("reads plain-text copies with bold markers and the venue after the status", () => {
+    const text = `*U18 Division One\nSun 15 Nov 2026 14:00, Example United U18 -v- Syston Town Juniors U18 Tigers Status: Normal Venue: EXAMPLE GROUND #1*`;
+    const [f] = parseFaEmail(text);
+    expect(f).toMatchObject({ homeTeam: "Example United U18", awayTeam: "Syston Town Juniors U18 Tigers", statusText: "Normal", status: "scheduled", venue: "EXAMPLE GROUND #1" });
+  });
+
   it("ignores lines that aren't fixtures", () => {
     expect(parseFaEmail("Daniel, weekly reminder\nNothing this week\n31 Feb 2026 10:00, A -v- B")).toEqual([]);
   });

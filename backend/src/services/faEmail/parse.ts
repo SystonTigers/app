@@ -33,8 +33,11 @@ const MONTHS: Record<string, number> = {
   jul: 7, july: 7, aug: 8, august: 8, sep: 9, sept: 9, september: 9, oct: 10, october: 10, nov: 11, november: 11, dec: 12, december: 12,
 };
 
-// "Sun 20 Sept 2026 14:00, Home -v- Away Status: Normal" (day name, comma and status optional)
-const FIXTURE = /^(?:(?:mon|tue|wed|thu|fri|sat|sun)[a-z]*\.?\s+)?(\d{1,2})(?:st|nd|rd|th)?\s+([a-z]{3,9})\.?\s+(\d{4})(?:\s+(\d{1,2})[:.](\d{2}))?\s*,?\s*(.+?)\s+-?v-?\s+(.+?)(?:\s+status:\s*(.+))?$/i;
+// "Sun 20 Sept 2026 14:00, Home -v- Away Status: Normal" (day name, comma and status optional).
+// Weekly reminders write "Home-v-Away, Venue: GROUND" with no spaces round "-v-".
+const FIXTURE = /^(?:(?:mon|tue|wed|thu|fri|sat|sun)[a-z]*\.?\s+)?(\d{1,2})(?:st|nd|rd|th)?\s+([a-z]{3,9})\.?\s+(\d{4})(?:\s+(\d{1,2})[:.](\d{2}))?\s*,?\s*(.+?)(?:\s*-v-\s*|\s+v\s+)(.+?)(?:\s+status:\s*(.+))?$/i;
+// A venue on the fixture's own line: "..., Venue: GROUND" or "... Status: Normal Venue: GROUND"
+const INLINE_VENUE = /,?\s*venue\s*:\s*(.+)$/i;
 const VENUE = /^venue\s*:\s*(.+)$/i;
 const FA_ID = /fulltime[^\s"'<>]*?[?&](?:id|fixtureid|fixture_id)=(\d{4,})/i;
 // A competition line looks like "Under 18 Division One" or "County Cup"
@@ -61,12 +64,23 @@ function clean(line: string): string {
     .replace(/&nbsp;/gi, " ").replace(/&amp;/gi, "&").replace(/&#39;|&apos;/gi, "'").replace(/&quot;/gi, '"')
     .replace(/[   \t]+/g, " ")
     .replace(/\s{2,}/g, " ")
+    .trim()
+    // Bold markers when the email was copied as plain text ("*Sun 01 Nov ...*")
+    .replace(/^\*+|\*+$/g, "")
     .trim();
+}
+
+/** "Team, Venue: GROUND" -> ["Team", "GROUND"]; no venue -> ["Team", null] */
+function splitVenue(text: string): [string, string | null] {
+  const v = INLINE_VENUE.exec(text);
+  return v ? [text.slice(0, v.index).trim(), v[1].trim() || null] : [text.trim(), null];
 }
 
 /** Every fixture in the email (pasted text or the email's body). */
 export function parseFaEmail(text: string): FaEmailFixture[] {
-  const lines = text.split(/\r?\n|<br\s*\/?>|<\/(?:p|div|tr|li)>/i).map(clean).filter(Boolean);
+  // Each line cleaned for reading, with its raw form kept for link addresses (<a href="...">)
+  const parts = text.split(/\r?\n|<br\s*\/?>|<\/(?:p|div|tr|li)>/i).map((raw) => ({ raw, text: clean(raw) })).filter((p) => p.text);
+  const lines = parts.map((p) => p.text);
   const out: FaEmailFixture[] = [];
   let lastPlain: string | null = null;
   for (let i = 0; i < lines.length; i++) {
@@ -77,13 +91,15 @@ export function parseFaEmail(text: string): FaEmailFixture[] {
     if (m && date) {
       const hour = m[4] !== undefined ? Number(m[4]) : null;
       const time = hour !== null && hour < 24 ? `${String(hour).padStart(2, "0")}:${m[5]}` : null;
+      const [awayTeam, venueAfterTeam] = splitVenue(m[7]);
+      const [statusText, venueAfterStatus] = splitVenue(m[8] ?? "");
       const fixture: FaEmailFixture = {
         date, time,
         homeTeam: m[6].trim(),
-        awayTeam: m[7].trim(),
-        status: statusOf(m[8] ?? null),
-        statusText: m[8]?.trim() ?? null,
-        venue: null,
+        awayTeam,
+        status: statusOf(statusText || null),
+        statusText: statusText || null,
+        venue: venueAfterStatus ?? venueAfterTeam,
         competition: lastPlain,
         faFixtureId: null,
       };
@@ -92,7 +108,7 @@ export function parseFaEmail(text: string): FaEmailFixture[] {
         if (FIXTURE.test(lines[j])) break;
         const v = VENUE.exec(lines[j]);
         if (v && !fixture.venue) fixture.venue = v[1].trim();
-        const id = FA_ID.exec(lines[j]);
+        const id = FA_ID.exec(parts[j].raw);
         if (id && !fixture.faFixtureId) fixture.faFixtureId = id[1];
       }
       out.push(fixture);
